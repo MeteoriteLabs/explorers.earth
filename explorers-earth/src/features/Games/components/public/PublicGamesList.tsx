@@ -11,8 +11,14 @@ import GameCoverCard from "./GameCoverCard";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -21,26 +27,65 @@ const PublicGamesList = () => {
     open: false,
     game: null,
   });
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
-  const { data, loading, error, refetch } = useQuery(GAME_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
+  const { data, loading, error, refetch, fetchMore } = useQuery(GAME_LIST_BY_SLUG, {
+    variables: {
+      slug: listSlug,
+      accountDocumentId,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !listSlug || !accountDocumentId,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const rawList = data?.gameLists?.[0];
   const list: GameList | null = rawList
-    ? { ...rawList, recommended_games: deduplicateGames(rawList.recommended_games) }
+    ? {
+        ...rawList,
+        recommended_games: deduplicateGames(
+          data?.recommendedGames_connection?.nodes,
+        ),
+      }
     : null;
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && listSlug),
+    resourceKind: "child",
+    entityExists: Boolean(list),
+    empty: Boolean(list) && (list?.recommended_games.length ?? 0) === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && !list,
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedGames_connection || !fetchMoreResult?.recommendedGames_connection) return previous;
+        return {
+          ...previous,
+          recommendedGames_connection: mergePublicConnectionPage(
+            previous.recommendedGames_connection,
+            fetchMoreResult.recommendedGames_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedGames_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${listSlug}`,
+  });
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -61,7 +106,7 @@ const PublicGamesList = () => {
   }, []);
 
   if (!data) return null;
-  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
   if (!list) return null;
 
   const coverUrl = buildCoverUrl(list.cover_image?.url);
@@ -151,6 +196,14 @@ const PublicGamesList = () => {
               </div>
             ))}
           </div>
+          <PublicConnectionPaginationControl
+            hasNextPage={pagination.hasNextPage}
+            isLoading={pagination.isLoadingNextPage}
+            error={pagination.nextPageError}
+            onLoadMore={() => void pagination.loadNextPage()}
+            onRetry={() => void pagination.retryNextPage()}
+            label="games"
+          />
         </div>
 
         <GameDetailModal

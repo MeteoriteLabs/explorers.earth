@@ -156,11 +156,17 @@ const taxonomyCases = [
     element: <PublicMovieGenre />,
     path: "/alice/movies/genre/comedy",
     routePath: "/:username/movies/genre/:genreSlug",
-    contentOperation: "PublicMovieData",
-    contentData: { movieLists: [] },
-    taxonomyOperation: "MovieCategories",
-    taxonomyData: { movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] },
-    missingTaxonomyData: { movieCategories: [] },
+    contentOperation: "MoviesByGenre",
+    contentData: {},
+    taxonomyOperation: "MoviesByGenre",
+    taxonomyData: {
+      movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }],
+      recommendedMovies_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
+    missingTaxonomyData: {
+      movieCategories: [],
+      recommendedMovies_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     heading: "Comedy",
     emptyText: "No movies found in this genre.",
   },
@@ -169,11 +175,17 @@ const taxonomyCases = [
     element: <PublicGamesGenre />,
     path: "/alice/games/genre/comedy",
     routePath: "/:username/games/genre/:genreSlug",
-    contentOperation: "PublicGameData",
-    contentData: { gameLists: [] },
-    taxonomyOperation: "GameCategories",
-    taxonomyData: { gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] },
-    missingTaxonomyData: { gameCategories: [] },
+    contentOperation: "GamesByGenre",
+    contentData: {},
+    taxonomyOperation: "GamesByGenre",
+    taxonomyData: {
+      gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }],
+      recommendedGames_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
+    missingTaxonomyData: {
+      gameCategories: [],
+      recommendedGames_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     heading: "Comedy",
     emptyText: "No games found in this genre.",
   },
@@ -183,10 +195,16 @@ const taxonomyCases = [
     path: "/alice/books/subject/science",
     routePath: "/:username/books/subject/:subjectSlug",
     contentOperation: "BooksBySubject",
-    contentData: { recommendedBooks: [] },
-    taxonomyOperation: "BookCategories",
-    taxonomyData: { bookCategories: [{ documentId: "subject-1", subject_name: "Science" }] },
-    missingTaxonomyData: { bookCategories: [] },
+    contentData: {},
+    taxonomyOperation: "BooksBySubject",
+    taxonomyData: {
+      bookCategories: [{ documentId: "subject-1", subject_name: "Science" }],
+      recommendedBooks_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
+    missingTaxonomyData: {
+      bookCategories: [],
+      recommendedBooks_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     heading: "Science",
     emptyText: "No books found for this subject.",
   },
@@ -297,7 +315,10 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/books/cached-list",
     routePath: "/:username/books/:listSlug",
     operation: "BookListBySlug",
-    data: { bookLists: [{ documentId: "books-1", List_Name: "Cached Books", slug: "cached-list", recommended_books: [] }] },
+    data: {
+      bookLists: [{ documentId: "books-1", List_Name: "Cached Books", slug: "cached-list" }],
+      recommendedBooks_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "Cached Books",
   },
   {
@@ -306,9 +327,11 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/books/subject/science",
     routePath: "/:username/books/subject/:subjectSlug",
     operation: "BooksBySubject",
-    data: { recommendedBooks: [] },
+    data: {
+      bookCategories: [{ documentId: "subject-1", subject_name: "Science" }],
+      recommendedBooks_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "No books found for this subject.",
-    supportingStates: { BookCategories: { bookCategories: [{ documentId: "subject-1", subject_name: "Science" }] } },
   },
   {
     label: "Games index",
@@ -325,7 +348,10 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/games/cached-list",
     routePath: "/:username/games/:listSlug",
     operation: "GameListBySlug",
-    data: { gameLists: [{ documentId: "games-1", List_Name: "Cached Games", slug: "cached-list", recommended_games: [] }] },
+    data: {
+      gameLists: [{ documentId: "games-1", List_Name: "Cached Games", slug: "cached-list" }],
+      recommendedGames_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "Cached Games",
   },
   {
@@ -333,10 +359,12 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     element: <PublicGamesGenre />,
     path: "/alice/games/genre/comedy",
     routePath: "/:username/games/genre/:genreSlug",
-    operation: "PublicGameData",
-    data: { gameLists: [] },
+    operation: "GamesByGenre",
+    data: {
+      gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }],
+      recommendedGames_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "No games found in this genre.",
-    supportingStates: { GameCategories: { gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
   },
   {
     label: "Movies index",
@@ -353,7 +381,10 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/movies/cached-list",
     routePath: "/:username/movies/:listSlug",
     operation: "MovieListBySlug",
-    data: { movieLists: [{ documentId: "movies-1", List_Name: "Cached Movies", slug: "cached-list", recommended_movies: [] }] },
+    data: {
+      movieLists: [{ documentId: "movies-1", List_Name: "Cached Movies", slug: "cached-list" }],
+      recommendedMovies_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "Cached Movies",
   },
   {
@@ -361,10 +392,12 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     element: <PublicMovieGenre />,
     path: "/alice/movies/genre/comedy",
     routePath: "/:username/movies/genre/:genreSlug",
-    operation: "PublicMovieData",
-    data: { movieLists: [] },
+    operation: "MoviesByGenre",
+    data: {
+      movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }],
+      recommendedMovies_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "No movies found in this genre.",
-    supportingStates: { MovieCategories: { movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
   },
   {
     label: "People index",
@@ -518,7 +551,9 @@ describe("production public leaf lifecycle rendering", () => {
 
   it.each(taxonomyCases)("delegates an initial $label query error without treating it as missing", async (fixture) => {
     queryStates.set(fixture.contentOperation, { loading: false, error: new Error("taxonomy content failed") });
-    queryStates.set(fixture.taxonomyOperation, { data: fixture.taxonomyData, loading: false });
+    if (fixture.taxonomyOperation !== fixture.contentOperation) {
+      queryStates.set(fixture.taxonomyOperation, { data: fixture.taxonomyData, loading: false });
+    }
 
     const { container } = renderTaxonomy(fixture.element, fixture.path, fixture.routePath);
 

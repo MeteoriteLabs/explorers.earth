@@ -12,8 +12,14 @@ import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -21,11 +27,17 @@ const PublicBookList = () => {
     open: false,
     book: null,
   });
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
-  const { data, loading, error, refetch } = useQuery(BOOK_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
+  const { data, loading, error, refetch, fetchMore } = useQuery(BOOK_LIST_BY_SLUG, {
+    variables: {
+      slug: listSlug,
+      accountDocumentId,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !listSlug || !accountDocumentId,
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const handleShare = async () => {
@@ -43,17 +55,46 @@ const PublicBookList = () => {
   };
 
   const rawList = data?.bookLists?.[0];
-  const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
+  const books: RecommendedBook[] = deduplicateBooks(
+    data?.recommendedBooks_connection?.nodes,
+  );
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && listSlug),
+    resourceKind: "child",
+    entityExists: Boolean(rawList),
+    empty: Boolean(rawList) && books.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && !rawList,
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: rawList });
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedBooks_connection || !fetchMoreResult?.recommendedBooks_connection) return previous;
+        return {
+          ...previous,
+          recommendedBooks_connection: mergePublicConnectionPage(
+            previous.recommendedBooks_connection,
+            fetchMoreResult.recommendedBooks_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedBooks_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${listSlug}`,
+  });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
@@ -75,7 +116,7 @@ const PublicBookList = () => {
 
   const listImage = rawList?.cover_image?.url || (books[0]?.cover_url ? books[0].cover_url : undefined);
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
   if (!data) return null;
 
   return (
@@ -174,6 +215,14 @@ const PublicBookList = () => {
             {books.length === 0 && (
               <p className="text-center text-white/30 py-16">No books in this list yet.</p>
             )}
+            <PublicConnectionPaginationControl
+              hasNextPage={pagination.hasNextPage}
+              isLoading={pagination.isLoadingNextPage}
+              error={pagination.nextPageError}
+              onLoadMore={() => void pagination.loadNextPage()}
+              onRetry={() => void pagination.retryNextPage()}
+              label="books"
+            />
           </>
         )}
       </div>

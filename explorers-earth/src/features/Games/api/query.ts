@@ -238,8 +238,19 @@ export const PINNED_GAMES = gql`
 // Query 1.5 — Games by Genre (for public genre page)
 // ─────────────────────────────────────────────────────────────
 export const GAMES_BY_GENRE = gql`
-  query GamesByGenre($accountDocumentId: ID!, $genreName: String!) {
-    recommendedGames(
+  query GamesByGenre(
+    $accountDocumentId: ID!
+    $genreName: String!
+    $pagination: PaginationArg!
+  ) {
+    gameCategories(
+      filters: { genre_name: { eq: $genreName } }
+      pagination: { limit: 1 }
+    ) {
+      documentId
+      genre_name
+    }
+    recommendedGames_connection(
       filters: {
         game_categories: { genre_name: { eq: $genreName } }
         game_list: {
@@ -247,22 +258,47 @@ export const GAMES_BY_GENRE = gql`
           Visibility: { eq: true }
         }
       }
-      sort: ["display_order:asc"]
-      pagination: { limit: 200 }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
     ) {
-      documentId
-      igdb_id
-      title
-      cover_url
-      igdb_rating
-      user_rating
-      genres
-      platforms
-      release_year
-      game_list {
+      nodes {
         documentId
-        List_Name
-        slug
+        igdb_id
+        title
+        cover_url
+        cover_url_large
+        summary
+        igdb_rating
+        user_rating
+        genres
+        platforms
+        release_year
+        screenshot_ids
+        media_details
+        user_recommendation_note
+        is_pinned
+        pin_order
+        display_order
+        game_list {
+          documentId
+          List_Name
+          slug
+        }
+        game_categories {
+          documentId
+          genre_name
+        }
+        Media {
+          documentId
+          url
+          caption
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }
@@ -272,13 +308,18 @@ export const GAMES_BY_GENRE = gql`
 // Query 1.6 — Game List by Slug (Public list page)
 // ─────────────────────────────────────────────────────────────
 export const GAME_LIST_BY_SLUG = gql`
-  query GameListBySlug($slug: String!, $username: String!) {
+  query GameListBySlug(
+    $slug: String!
+    $accountDocumentId: ID!
+    $pagination: PaginationArg!
+  ) {
     gameLists(
       filters: {
         slug: { eq: $slug }
-        account: { username: { eq: $username } }
+        account: { documentId: { eq: $accountDocumentId } }
         Visibility: { eq: true }
       }
+      pagination: { limit: 1 }
     ) {
       documentId
       List_Name
@@ -289,7 +330,23 @@ export const GAME_LIST_BY_SLUG = gql`
         alternativeText
       }
       top_picks_heading
-      recommended_games(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+      account {
+        documentId
+        username
+      }
+    }
+    recommendedGames_connection(
+      filters: {
+        game_list: {
+          slug: { eq: $slug }
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
         igdb_id
         title
@@ -313,9 +370,11 @@ export const GAME_LIST_BY_SLUG = gql`
           genre_name
         }
       }
-      account {
-        documentId
-        username
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

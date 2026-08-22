@@ -1,19 +1,24 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { RecommendedMovie } from "../../types";
-import { slugToGenreName, getGenreNames, deduplicateMovies, genreToSlug } from "../../utils/movieHelpers";
+import { slugToGenreName, deduplicateMovies } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
-import { MOVIE_CATEGORIES, PUBLIC_MOVIE_DATA } from "../../api/query";
+import { MOVIES_BY_GENRE } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 
 
@@ -27,49 +32,60 @@ const PublicMovieGenre = () => {
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
-  const { data: moviesData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = useQuery(PUBLIC_MOVIE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-  });
-  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(MOVIE_CATEGORIES, {
+  const { data, loading, error, refetch, fetchMore } = useQuery(MOVIES_BY_GENRE, {
+    variables: {
+      accountDocumentId,
+      genreName,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !accountDocumentId || !genreSlug,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  const loading = moviesLoading || categoriesLoading;
-  const error = moviesError ?? categoriesError;
-  const genre = categoriesData?.movieCategories?.find(
-    (category: { genre_name?: string | null }) => genreToSlug(category.genre_name ?? "") === genreSlug,
+  const genre = data?.movieCategories?.[0];
+  const filteredMovies: RecommendedMovie[] = deduplicateMovies(
+    data?.recommendedMovies_connection?.nodes ?? [],
   );
-
-  const allMovies: RecommendedMovie[] = useMemo(() => {
-    return deduplicateMovies((moviesData?.movieLists ?? []).flatMap((l: any) => l.recommended_movies ?? []));
-  }, [moviesData]);
-
-  const filteredMovies = useMemo(() => {
-    return allMovies.filter(movie => {
-      const slugs = getGenreNames(movie.genres).map(g => genreToSlug(g));
-      return slugs.includes(genreSlug ?? "");
-    });
-  }, [allMovies, genreSlug]);
-
-  const retry = useCallback(async () => {
-    await Promise.all([refetchMovies(), refetchCategories()]);
-  }, [refetchCategories, refetchMovies]);
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && genreSlug),
+    resourceKind: "child",
+    entityExists: Boolean(genre),
+    empty: Boolean(genre) && filteredMovies.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
-    retry,
-    hasUsableData: Boolean(moviesData && categoriesData),
-    empty: !loading && !error && Boolean(genre) && filteredMovies.length === 0,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: childState === "empty",
   });
 
-  if (shouldRedirectMissingPublicResource({
-    loading,
-    error,
-    resource: genre,
-  })) {
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedMovies_connection || !fetchMoreResult?.recommendedMovies_connection) return previous;
+        return {
+          ...previous,
+          recommendedMovies_connection: mergePublicConnectionPage(
+            previous.recommendedMovies_connection,
+            fetchMoreResult.recommendedMovies_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedMovies_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${genreSlug}`,
+  });
+
+  if (childState === "redirect") {
     return <PublicProfileFallbackRedirect />;
   }
 
@@ -82,7 +98,7 @@ const PublicMovieGenre = () => {
   const metaDescription = `Explore ${filteredMovies.length} ${genreName} movie${filteredMovies.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;
   const seoKeywords = [genreName, "movies", `${username} movies`, "explorers"];
 
-  if (!moviesData || !categoriesData) return null;
+  if (!data) return null;
 
   return (
     <>
@@ -129,6 +145,14 @@ const PublicMovieGenre = () => {
             </button>
           </div>
         </div>
+        <PublicConnectionPaginationControl
+          hasNextPage={pagination.hasNextPage}
+          isLoading={pagination.isLoadingNextPage}
+          error={pagination.nextPageError}
+          onLoadMore={() => void pagination.loadNextPage()}
+          onRetry={() => void pagination.retryNextPage()}
+          label="movies"
+        />
       </div>
 
       {/* Header */}

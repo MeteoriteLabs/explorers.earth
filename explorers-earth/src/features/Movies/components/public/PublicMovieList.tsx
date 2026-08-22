@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
@@ -10,32 +10,78 @@ import MovieDetailModal from "./MovieDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
-  const { data, loading, error, refetch } = useQuery(MOVIE_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !username || !listSlug,
+  const { data, loading, error, refetch, fetchMore } = useQuery(MOVIE_LIST_BY_SLUG, {
+    variables: {
+      slug: listSlug,
+      accountDocumentId,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !accountDocumentId || !listSlug,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const list = data?.movieLists?.[0];
-  const movies: RecommendedMovie[] = deduplicateMovies(list?.recommended_movies ?? []);
+  const movies: RecommendedMovie[] = deduplicateMovies(
+    data?.recommendedMovies_connection?.nodes ?? [],
+  );
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && listSlug),
+    resourceKind: "child",
+    entityExists: Boolean(list),
+    empty: Boolean(list) && movies.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && !list,
+    empty: childState === "empty",
   });
 
-  if (shouldRedirectMissingPublicResource({ loading, error, resource: list })) {
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedMovies_connection || !fetchMoreResult?.recommendedMovies_connection) {
+          return previous;
+        }
+        return {
+          ...previous,
+          recommendedMovies_connection: mergePublicConnectionPage(
+            previous.recommendedMovies_connection,
+            fetchMoreResult.recommendedMovies_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedMovies_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${listSlug}`,
+  });
+
+  if (childState === "redirect") {
     return <PublicProfileFallbackRedirect />;
   }
 
@@ -140,6 +186,14 @@ const PublicMovieList = () => {
               />
             ))}
         </div>
+        <PublicConnectionPaginationControl
+          hasNextPage={pagination.hasNextPage}
+          isLoading={pagination.isLoadingNextPage}
+          error={pagination.nextPageError}
+          onLoadMore={() => void pagination.loadNextPage()}
+          onRetry={() => void pagination.retryNextPage()}
+          label="movies"
+        />
       </div>
 
       {/* Movie detail modal */}

@@ -221,33 +221,72 @@ export const PINNED_BOOKS = gql`
 // Query 1.5 — Books by Subject (for public subject page)
 // ─────────────────────────────────────────────────────────────
 export const BOOKS_BY_SUBJECT = gql`
-  query BooksBySubject($accountDocumentId: ID!) {
-    recommendedBooks(
+  query BooksBySubject(
+    $accountDocumentId: ID!
+    $subjectName: String!
+    $pagination: PaginationArg!
+  ) {
+    bookCategories(
+      filters: { subject_name: { eq: $subjectName } }
+      pagination: { limit: 1 }
+    ) {
+      documentId
+      subject_name
+    }
+    recommendedBooks_connection(
       filters: {
+        book_categories: { subject_name: { eq: $subjectName } }
         book_list: {
           account: { documentId: { eq: $accountDocumentId } }
           visibility: { eq: true }
         }
       }
-      sort: ["display_order:asc"]
-      pagination: { limit: 200 }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
     ) {
-      documentId
-      volume_id
-      title
-      authors
-      cover_url
-      cover_url_large
-      google_rating
-      user_rating
-      subjects
-      year
-      description
-      media_details
-      book_list {
+      nodes {
         documentId
-        List_Name
-        slug
+        volume_id
+        title
+        subtitle
+        authors
+        cover_url
+        cover_url_large
+        google_rating
+        user_rating
+        subjects
+        year
+        description
+        publisher
+        page_count
+        isbn_13
+        preview_link
+        user_recommendation_note
+        buy_links
+        is_pinned
+        pin_order
+        display_order
+        media_details
+        book_list {
+          documentId
+          List_Name
+          slug
+        }
+        book_categories {
+          documentId
+          subject_name
+        }
+        Media {
+          documentId
+          url
+          caption
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }
@@ -257,13 +296,18 @@ export const BOOKS_BY_SUBJECT = gql`
 // Query 1.6 — Book List by Slug (Public list page)
 // ─────────────────────────────────────────────────────────────
 export const BOOK_LIST_BY_SLUG = gql`
-  query BookListBySlug($slug: String!, $username: String!) {
+  query BookListBySlug(
+    $slug: String!
+    $accountDocumentId: ID!
+    $pagination: PaginationArg!
+  ) {
     bookLists(
       filters: {
         slug: { eq: $slug }
-        account: { username: { eq: $username } }
+        account: { documentId: { eq: $accountDocumentId } }
         visibility: { eq: true }
       }
+      pagination: { limit: 1 }
     ) {
       documentId
       List_Name
@@ -275,7 +319,23 @@ export const BOOK_LIST_BY_SLUG = gql`
       }
       display_order
       top_reads_heading
-      recommended_books(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+      account {
+        documentId
+        username
+      }
+    }
+    recommendedBooks_connection(
+      filters: {
+        book_list: {
+          slug: { eq: $slug }
+          account: { documentId: { eq: $accountDocumentId } }
+          visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
         volume_id
         title
@@ -299,9 +359,11 @@ export const BOOK_LIST_BY_SLUG = gql`
           caption
         }
       }
-      account {
-        documentId
-        username
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

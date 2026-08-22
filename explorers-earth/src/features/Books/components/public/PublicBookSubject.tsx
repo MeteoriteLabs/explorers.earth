@@ -3,8 +3,8 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import { BOOK_CATEGORIES, BOOKS_BY_SUBJECT } from "../../api/query";
-import { deduplicateBooks, slugToSubjectName, subjectToSlug } from "../../utils/bookHelpers";
+import { BOOKS_BY_SUBJECT } from "../../api/query";
+import { deduplicateBooks, slugToSubjectName } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
@@ -13,7 +13,12 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
@@ -26,21 +31,18 @@ const PublicBookSubject = () => {
     book: null,
   });
 
-  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = useQuery(BOOKS_BY_SUBJECT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
-  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(BOOK_CATEGORIES, {
+  const { data, loading, error, refetch, fetchMore } = useQuery(BOOKS_BY_SUBJECT, {
+    variables: {
+      accountDocumentId,
+      subjectName,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !accountDocumentId || !subjectSlug,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  const loading = booksLoading || categoriesLoading;
-  const error = booksError ?? categoriesError;
-  const subject = categoriesData?.bookCategories?.find(
-    (category: { subject_name?: string | null }) => subjectToSlug(category.subject_name ?? "") === subjectSlug,
-  );
+  const subject = data?.bookCategories?.[0];
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -56,30 +58,45 @@ const PublicBookSubject = () => {
     }
   };
 
-  // Filter locally by subject slug
-  const allBooks: RecommendedBook[] = deduplicateBooks(data?.recommendedBooks ?? []);
-  const subjectBooks = allBooks.filter((b) =>
-    (b.subjects ?? []).some(
-      (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") === subjectSlug
-    )
+  const subjectBooks: RecommendedBook[] = deduplicateBooks(
+    data?.recommendedBooks_connection?.nodes,
   );
-
-  const retry = useCallback(async () => {
-    await Promise.all([refetchBooks(), refetchCategories()]);
-  }, [refetchBooks, refetchCategories]);
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && subjectSlug),
+    resourceKind: "child",
+    entityExists: Boolean(subject),
+    empty: Boolean(subject) && subjectBooks.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
-    retry,
-    hasUsableData: Boolean(data && categoriesData),
-    empty: !loading && !error && Boolean(subject) && subjectBooks.length === 0,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({
-    loading,
-    error,
-    resource: subject,
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedBooks_connection || !fetchMoreResult?.recommendedBooks_connection) return previous;
+        return {
+          ...previous,
+          recommendedBooks_connection: mergePublicConnectionPage(
+            previous.recommendedBooks_connection,
+            fetchMoreResult.recommendedBooks_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedBooks_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${subjectSlug}`,
   });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
@@ -90,8 +107,8 @@ const PublicBookSubject = () => {
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
   const seoKeywords = [subjectName, "books", `${username} books`, "explorers"];
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
-  if (!data || !categoriesData) return null;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (!data) return null;
 
   return (
     <>
@@ -151,6 +168,14 @@ const PublicBookSubject = () => {
             ))}
           </div>
         )}
+        <PublicConnectionPaginationControl
+          hasNextPage={pagination.hasNextPage}
+          isLoading={pagination.isLoadingNextPage}
+          error={pagination.nextPageError}
+          onLoadMore={() => void pagination.loadNextPage()}
+          onRetry={() => void pagination.retryNextPage()}
+          label="books"
+        />
       </div>
 
       <BookDetailModal

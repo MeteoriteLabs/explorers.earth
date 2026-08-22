@@ -215,33 +215,68 @@ export const PINNED_MOVIES = gql`
 // Query 1.5 — Movies by Genre (for public genre page)
 // ─────────────────────────────────────────────────────────────
 export const MOVIES_BY_GENRE = gql`
-  query MoviesByGenre($accountDocumentId: ID!, $genreName: String!) {
-    recommendedMovies(
+  query MoviesByGenre(
+    $accountDocumentId: ID!
+    $genreName: String!
+    $pagination: PaginationArg!
+  ) {
+    movieCategories(
+      filters: { genre_name: { eq: $genreName } }
+      pagination: { limit: 1 }
+    ) {
+      documentId
+      genre_name
+    }
+    recommendedMovies_connection(
       filters: {
+        movie_categories: { genre_name: { eq: $genreName } }
         movie_list: {
           account: { documentId: { eq: $accountDocumentId } }
           Visibility: { eq: true }
         }
       }
-      sort: ["display_order:asc"]
-      pagination: { limit: 200 }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
     ) {
-      documentId
-      tmdb_id
-      media_type
-      title
-      poster_path
-      tmdb_rating
-      user_rating
-      genres
-      overview
-      year
-      cast_details
-      media_details
-      movie_list {
+      nodes {
         documentId
-        List_Name
-        slug
+        tmdb_id
+        media_type
+        title
+        poster_path
+        backdrop_path
+        tmdb_rating
+        user_rating
+        genres
+        overview
+        year
+        cast_details
+        media_details
+        watch_providers
+        director
+        runtime
+        season_count
+        user_recommendation_note
+        movie_list {
+          documentId
+          List_Name
+          slug
+        }
+        movie_categories {
+          documentId
+          genre_name
+        }
+        Media {
+          documentId
+          url
+          caption
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }
@@ -251,13 +286,18 @@ export const MOVIES_BY_GENRE = gql`
 // Query 1.6 — Movie List by Slug (Public list page)
 // ─────────────────────────────────────────────────────────────
 export const MOVIE_LIST_BY_SLUG = gql`
-  query MovieListBySlug($slug: String!, $username: String!) {
+  query MovieListBySlug(
+    $slug: String!
+    $accountDocumentId: ID!
+    $pagination: PaginationArg!
+  ) {
     movieLists(
       filters: {
         slug: { eq: $slug }
-        account: { username: { eq: $username } }
+        account: { documentId: { eq: $accountDocumentId } }
         Visibility: { eq: true }
       }
+      pagination: { limit: 1 }
     ) {
       documentId
       List_Name
@@ -269,7 +309,23 @@ export const MOVIE_LIST_BY_SLUG = gql`
       }
       display_order
       top_picks_heading
-      recommended_movies(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+      account {
+        documentId
+        username
+      }
+    }
+    recommendedMovies_connection(
+      filters: {
+        movie_list: {
+          slug: { eq: $slug }
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
         tmdb_id
         media_type
@@ -293,9 +349,11 @@ export const MOVIE_LIST_BY_SLUG = gql`
           caption
         }
       }
-      account {
-        documentId
-        username
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

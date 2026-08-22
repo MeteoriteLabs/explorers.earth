@@ -1,19 +1,24 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { RecommendedGame } from "../../types";
-import { slugToGenreName, deduplicateGames, genreToSlug } from "../../utils/gameHelpers";
+import { slugToGenreName, deduplicateGames } from "../../utils/gameHelpers";
 import GameCoverCard from "./GameCoverCard";
 import GameDetailModal from "./GameDetailModal";
-import { GAME_CATEGORIES, PUBLIC_GAME_DATA } from "../../api/query";
+import { GAMES_BY_GENRE } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicGamesGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
@@ -25,49 +30,60 @@ const PublicGamesGenre = () => {
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
-  const { data: gamesData, loading: gamesLoading, error: gamesError, refetch: refetchGames } = useQuery(PUBLIC_GAME_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-  });
-  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(GAME_CATEGORIES, {
+  const { data, loading, error, refetch, fetchMore } = useQuery(GAMES_BY_GENRE, {
+    variables: {
+      accountDocumentId,
+      genreName,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !accountDocumentId || !genreSlug,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  const loading = gamesLoading || categoriesLoading;
-  const error = gamesError ?? categoriesError;
-  const genre = categoriesData?.gameCategories?.find(
-    (category: { genre_name?: string | null }) => genreToSlug(category.genre_name ?? "") === genreSlug,
+  const genre = data?.gameCategories?.[0];
+  const filteredGames: RecommendedGame[] = deduplicateGames(
+    data?.recommendedGames_connection?.nodes,
   );
-
-  const allGames: RecommendedGame[] = useMemo(() => {
-    return deduplicateGames((gamesData?.gameLists ?? []).flatMap((l: any) => l.recommended_games ?? []));
-  }, [gamesData]);
-
-  const filteredGames = useMemo(() => {
-    return allGames.filter(game => {
-      const slugs = (game.genres || []).map(g => genreToSlug(g));
-      return slugs.includes(genreSlug ?? "");
-    });
-  }, [allGames, genreSlug]);
-
-  const retry = useCallback(async () => {
-    await Promise.all([refetchGames(), refetchCategories()]);
-  }, [refetchCategories, refetchGames]);
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && genreSlug),
+    resourceKind: "child",
+    entityExists: Boolean(genre),
+    empty: Boolean(genre) && filteredGames.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
-    retry,
-    hasUsableData: Boolean(gamesData && categoriesData),
-    empty: !loading && !error && Boolean(genre) && filteredGames.length === 0,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: childState === "empty",
   });
 
-  if (shouldRedirectMissingPublicResource({
-    loading,
-    error,
-    resource: genre,
-  })) {
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedGames_connection || !fetchMoreResult?.recommendedGames_connection) return previous;
+        return {
+          ...previous,
+          recommendedGames_connection: mergePublicConnectionPage(
+            previous.recommendedGames_connection,
+            fetchMoreResult.recommendedGames_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedGames_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${genreSlug}`,
+  });
+
+  if (childState === "redirect") {
     return <PublicProfileFallbackRedirect />;
   }
 
@@ -90,7 +106,7 @@ const PublicGamesGenre = () => {
   const metaDescription = `Explore ${filteredGames.length} ${genreName} game${filteredGames.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;
   const seoKeywords = [genreName, "games", `${username} games`, "explorers"];
 
-  if (!gamesData || !categoriesData) return null;
+  if (!data) return null;
 
   return (
     <>
@@ -175,6 +191,14 @@ const PublicGamesGenre = () => {
             ))
           )}
         </div>
+        <PublicConnectionPaginationControl
+          hasNextPage={pagination.hasNextPage}
+          isLoading={pagination.isLoadingNextPage}
+          error={pagination.nextPageError}
+          onLoadMore={() => void pagination.loadNextPage()}
+          onRetry={() => void pagination.retryNextPage()}
+          label="games"
+        />
       </div>
 
       <GameDetailModal
