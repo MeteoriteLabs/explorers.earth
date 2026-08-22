@@ -14,7 +14,6 @@ import SubjectBrowse from "./SubjectBrowse";
 import TopReadsHero from "./TopReadsHero";
 import TopReadsMobileHero from "./TopReadsMobileHero";
 import useDeviceDetection from "../../../../hooks/useDeviceDetection";
-import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
@@ -115,6 +114,8 @@ const PublicBooks = () => {
     ...lists.map(l => l.List_Name)
   ];
 
+  if (!data) return null;
+
   return (
     <>
       {!loading && (
@@ -153,45 +154,9 @@ const PublicBooks = () => {
         </div>
       </div>
 
-      {/* ── LOADING SKELETON — shown while books resolve ── */}
-      {loading && topReads.length === 0 && (
-          <div className="mt-14 pb-4">
-            {/* Hero skeleton — Desktop */}
-            <div className="hidden md:block px-4 max-w-6xl mx-auto mb-12">
-              <HeroSkeleton accentColor="amber" showThumbnails />
-            </div>
-            {/* Hero skeleton — Mobile */}
-            <div className="md:hidden px-4 mb-4">
-              <HeroSkeleton accentColor="amber" mobile />
-            </div>
-            {/* Carousel row skeletons */}
-            <div className="px-4 md:px-8 max-w-6xl mx-auto">
-              {[0, 1, 2].map((i) => (
-                <section key={i} className="mb-8">
-                  {/* Row header */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1.5 h-[22px] bg-amber-400/20 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                    <div className="h-5 w-36 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
-                  </div>
-                  {/* Book cover strip */}
-                  <div className="flex gap-3 overflow-hidden">
-                    {[0, 1, 2, 3, 4].map((j) => (
-                      <div key={j} className="flex-shrink-0 w-[120px]">
-                        <div className="w-full aspect-[2/3] bg-white/6 rounded-xl skeleton-shimmer relative overflow-hidden mb-2" />
-                        <div className="h-3 bg-white/8 rounded w-3/4 skeleton-shimmer relative overflow-hidden mb-1" />
-                        <div className="h-3 bg-white/5 rounded w-1/2 skeleton-shimmer relative overflow-hidden" />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </div>
-      )}
-
       <div className="mt-14 pt-6 pb-20">
         {/* Top Reads Hero Section */}
-        {(loading || topReads.length > 0) && (
+        {topReads.length > 0 && (
           <div className="mb-0">
              {isDesktop ? (
                 <TopReadsHero 

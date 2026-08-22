@@ -76,6 +76,7 @@ const PublicBookList = () => {
   const listImage = rawList?.cover_image?.url || (books[0]?.cover_url ? books[0].cover_url : undefined);
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!data) return null;
 
   return (
     <>
@@ -121,16 +122,7 @@ const PublicBookList = () => {
           </Link>
         </div>
 
-        {loading && !data ? (
-          <div className="space-y-6">
-            <div className="h-8 w-64 bg-white/5 rounded-lg animate-pulse" />
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="aspect-[2/3] bg-white/8 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          </div>
-        ) : !rawList ? (
+        {!rawList ? (
           <div className="text-center py-24">
             <p className="text-white/40">This list doesn't exist or isn't publicly visible.</p>
           </div>

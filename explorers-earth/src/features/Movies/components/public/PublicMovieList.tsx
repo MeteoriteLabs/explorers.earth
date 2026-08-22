@@ -7,7 +7,6 @@ import type { RecommendedMovie } from "../../types";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
-import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
@@ -67,6 +66,8 @@ const PublicMovieList = () => {
 
   const listImage = list?.cover_image?.url || (movies[0]?.poster_path ? `https://image.tmdb.org/t/p/w500${movies[0].poster_path}` : undefined);
 
+  if (!data) return null;
+
   return (
     <>
       {!loading && list && (
@@ -112,14 +113,7 @@ const PublicMovieList = () => {
           <ArrowLeft size={14} /> {username}'s Movies
         </Link>
 
-        {loading ? (
-          <>
-            <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-            <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
-          </>
-        ) : error ? (
-          <p className="text-red-400">Failed to load list.</p>
-        ) : list ? (
+        {list ? (
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{list.List_Name}</h1>
@@ -137,18 +131,14 @@ const PublicMovieList = () => {
       {/* Grid */}
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-          {loading ? (
-            <MoviePosterSkeleton count={12} />
-          ) : (
-            movies.map(movie => (
+          {movies.map(movie => (
               <MoviePosterCard
                 key={movie.documentId}
                 movie={movie}
                 onClick={handleMovieClick}
                 size="sm"
               />
-            ))
-          )}
+            ))}
         </div>
       </div>
 

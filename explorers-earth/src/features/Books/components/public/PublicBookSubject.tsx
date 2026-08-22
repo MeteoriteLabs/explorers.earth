@@ -3,8 +3,8 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import { BOOKS_BY_SUBJECT } from "../../api/query";
-import { deduplicateBooks, slugToSubjectName } from "../../utils/bookHelpers";
+import { BOOK_CATEGORIES, BOOKS_BY_SUBJECT } from "../../api/query";
+import { deduplicateBooks, slugToSubjectName, subjectToSlug } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
@@ -31,8 +31,16 @@ const PublicBookSubject = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(BOOK_CATEGORIES, {
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
 
-  const loading = booksLoading;
+  const loading = booksLoading || categoriesLoading;
+  const error = booksError ?? categoriesError;
+  const subject = categoriesData?.bookCategories?.find(
+    (category: { subject_name?: string | null }) => subjectToSlug(category.subject_name ?? "") === subjectSlug,
+  );
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -57,21 +65,21 @@ const PublicBookSubject = () => {
   );
 
   const retry = useCallback(async () => {
-    await refetchBooks();
-  }, [refetchBooks]);
+    await Promise.all([refetchBooks(), refetchCategories()]);
+  }, [refetchBooks, refetchCategories]);
 
   usePublicRouteLifecycle({
     loading,
-    error: booksError,
+    error,
     retry,
-    hasUsableData: Boolean(data),
-    empty: !loading && !booksError && subjectBooks.length === 0,
+    hasUsableData: Boolean(data && categoriesData),
+    empty: !loading && !error && Boolean(subject) && subjectBooks.length === 0,
   });
 
   const missingResource = shouldRedirectMissingPublicResource({
     loading,
-    error: booksError,
-    resource: subjectBooks.length > 0 ? subjectBooks : null,
+    error,
+    resource: subject,
   });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
@@ -83,6 +91,7 @@ const PublicBookSubject = () => {
   const seoKeywords = [subjectName, "books", `${username} books`, "explorers"];
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!data || !categoriesData) return null;
 
   return (
     <>
@@ -133,13 +142,7 @@ const PublicBookSubject = () => {
           </p>
         </div>
 
-        {loading && !data ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-white/8 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : subjectBooks.length === 0 ? (
+        {subjectBooks.length === 0 ? (
           <p className="text-center text-white/30 py-16">No books found for this subject.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">

@@ -1,15 +1,21 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { queryResult, useQuerySpy } = vi.hoisted(() => ({
+const { queryResult, queryResultsByUsername, useQuerySpy } = vi.hoisted(() => ({
   queryResult: {
     data: undefined as Record<string, unknown> | undefined,
     loading: true,
     error: undefined as Error | undefined,
     refetch: vi.fn<() => Promise<unknown>>(),
   },
+  queryResultsByUsername: new Map<string, {
+    data: Record<string, unknown> | undefined;
+    loading: boolean;
+    error: Error | undefined;
+    refetch: ReturnType<typeof vi.fn>;
+  }>(),
   useQuerySpy: vi.fn(),
 }));
 
@@ -17,9 +23,10 @@ vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
   return {
     ...actual,
-    useQuery: (...args: unknown[]) => {
+    useQuery: (...args: any[]) => {
       useQuerySpy(...args);
-      return queryResult;
+      const key = args[1]?.variables?.filters?.username?.eq;
+      return queryResultsByUsername.get(key) ?? queryResult;
     },
   };
 });
@@ -51,6 +58,11 @@ function BootstrapRoute({ children }: { children: ReactNode }) {
   return <PublicProfileBootstrapProvider>{children}</PublicProfileBootstrapProvider>;
 }
 
+function NavigationControls() {
+  const navigate = useNavigate();
+  return <button type="button" onClick={() => navigate("/Bob")}>Visit Bob</button>;
+}
+
 function renderBootstrap(path = "/Alice") {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -61,6 +73,7 @@ function renderBootstrap(path = "/Alice") {
             <BootstrapRoute>
               <CaptureBootstrap label="first" />
               <CaptureBootstrap label="second" />
+              <NavigationControls />
             </BootstrapRoute>
           }
         />
@@ -75,6 +88,7 @@ describe("PublicProfileBootstrapContext", () => {
     queryResult.loading = true;
     queryResult.error = undefined;
     queryResult.refetch = vi.fn().mockResolvedValue(undefined);
+    queryResultsByUsername.clear();
     useQuerySpy.mockClear();
   });
 
@@ -148,6 +162,50 @@ describe("PublicProfileBootstrapContext", () => {
 
     await act(async () => resolveRetry?.());
 
+    await waitFor(() =>
+      expect(within(firstConsumer).getByRole("button", { name: "Retry" })).toBeEnabled(),
+    );
+  });
+
+  it("keys retry ownership to the mounted-router username and ignores an old completion", async () => {
+    let resolveAlice: (() => void) | undefined;
+    let resolveBob: (() => void) | undefined;
+    const aliceRefetch = vi.fn(
+      () => new Promise<void>((resolve) => { resolveAlice = resolve; }),
+    );
+    const bobRefetch = vi.fn(
+      () => new Promise<void>((resolve) => { resolveBob = resolve; }),
+    );
+    queryResultsByUsername.set("alice", {
+      data: undefined,
+      loading: false,
+      error: new Error("Alice offline"),
+      refetch: aliceRefetch,
+    });
+    queryResultsByUsername.set("bob", {
+      data: undefined,
+      loading: false,
+      error: new Error("Bob offline"),
+      refetch: bobRefetch,
+    });
+
+    renderBootstrap("/Alice");
+    const firstConsumer = screen.getByRole("region", { name: "first" });
+    fireEvent.click(within(firstConsumer).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(aliceRefetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Visit Bob" }));
+
+    await waitFor(() => expect(screen.getByTestId("first-key")).toHaveTextContent("bob"));
+    const bobRetry = within(firstConsumer).getByRole("button", { name: "Retry" });
+    expect(bobRetry).toBeEnabled();
+    fireEvent.click(bobRetry);
+    await waitFor(() => expect(bobRefetch).toHaveBeenCalledTimes(1));
+
+    await act(async () => resolveAlice?.());
+    expect(within(firstConsumer).getByRole("button", { name: "Retrying" })).toBeDisabled();
+
+    await act(async () => resolveBob?.());
     await waitFor(() =>
       expect(within(firstConsumer).getByRole("button", { name: "Retry" })).toBeEnabled(),
     );

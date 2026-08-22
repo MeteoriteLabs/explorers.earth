@@ -2,8 +2,6 @@ import { memo, useCallback, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
-import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
-import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
 import { GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
 import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
@@ -90,8 +88,8 @@ const PublicGuides = memo(() => {
     loading,
     error,
     retry,
-    hasUsableData: Boolean(account),
-    empty: !loading && !error && Boolean(account) && allGuides.length === 0,
+    hasUsableData: Boolean(guidesData),
+    empty: !loading && !error && Boolean(guidesData) && allGuides.length === 0,
   });
 
   const analytics = useTrackAnalytics({
@@ -462,31 +460,7 @@ const PublicGuides = memo(() => {
     purpose: `Explore travel guides and itineraries curated by ${profileName}`,
   });
 
-  // Check if account exists after loading is complete
-  if (!loading && !account) {
-    return (
-      <>
-        <SEO
-          title={pageTitle}
-          description={metaDescription}
-          keywords={keywords}
-          canonical={currentUrl}
-          enableGEO={true}
-          geoData={geoData}
-        />
-        <div className="flex bg-black items-center justify-center min-h-screen">
-          <div className="text-white text-center">
-            <h2 className="text-lg font-poppins font-semibold mb-2">
-              Profile not found
-            </h2>
-            <p className="text-gray-400 text-sm">
-              This user profile is not available.
-            </p>
-          </div>
-        </div>
-      </>
-    );
-  }
+  if (!guidesData) return null;
 
   return (
     <>
@@ -549,30 +523,8 @@ const PublicGuides = memo(() => {
         {/* Guides Content */}
         <div className="md:max-w-5xl md:mx-auto">
           
-          {/* ── LOADING SKELETON: shown while account/guides queries resolve ── */}
-          {loading && !account && (
-              <>
-                {/* Hero skeleton — Desktop */}
-                <div className="hidden md:block w-full mb-6 mt-4 px-4">
-                  <div className="max-w-4xl mx-auto">
-                    <HeroSkeleton accentColor="yellow" showThumbnails />
-                  </div>
-                </div>
-                {/* Hero skeleton — Mobile */}
-                <div className="md:hidden w-full mb-4 mt-4 px-4">
-                  <HeroSkeleton accentColor="yellow" mobile />
-                </div>
-                {/* Guide card grid skeleton */}
-                <div className="px-4 md:max-w-5xl md:mx-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
-                    <GuideCardSkeleton count={6} variant="public" />
-                  </div>
-                </div>
-              </>
-          )}
-
           {/* Featured Guides Slideshow Hero (only shown if pinned guides exist) */}
-          {!error && !loading && pinnedGuides.length > 0 && (
+          {pinnedGuides.length > 0 && (
             <>
               {/* Carousel Hero Section - Desktop Layout */}
               <div className="hidden md:block w-full mb-6 mt-4 px-4">
@@ -1120,22 +1072,8 @@ const PublicGuides = memo(() => {
             </div>
           </>
 
-          {/* Error State */}
-          {error && (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
-              <div className="bg-black p-6 rounded-lg border border-red-500 text-center">
-                <h1 className="text-red-400 font-poppins font-semibold text-lg md:text-xl mb-2">
-                  Error Loading Guides
-                </h1>
-                <p className="text-gray-300 font-poppins text-sm md:text-base">
-                  {error.message}
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Location Tags */}
-          {!error && filterOptions.locations.length > 0 && (
+          {filterOptions.locations.length > 0 && (
             <div className="px-4 mb-2">
               <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-1.5">
                 <div className="flex gap-3">
@@ -1162,14 +1100,11 @@ const PublicGuides = memo(() => {
           )}
 
           {/* Guides Grid */}
-          {!error && (
+          {(
             <div className="px-4 mb-14">
               <div className="bg-black rounded-lg py-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 overflow-visible">
-                  {loading ? (
-                    // Skeleton cards — same grid, public (dark) variant
-                    <GuideCardSkeleton count={6} variant="public" />
-                  ) : guides.length > 0 ? (
+                  {guides.length > 0 ? (
                     guides.map((guide) => (
                       <PublicGuideCard
                         key={guide.documentId}

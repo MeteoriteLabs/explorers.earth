@@ -7,7 +7,7 @@ import type { RecommendedGame } from "../../types";
 import { slugToGenreName, deduplicateGames, genreToSlug } from "../../utils/gameHelpers";
 import GameCoverCard from "./GameCoverCard";
 import GameDetailModal from "./GameDetailModal";
-import { PUBLIC_GAME_DATA } from "../../api/query";
+import { GAME_CATEGORIES, PUBLIC_GAME_DATA } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
@@ -29,8 +29,16 @@ const PublicGamesGenre = () => {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(GAME_CATEGORIES, {
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
 
-  const loading = gamesLoading;
+  const loading = gamesLoading || categoriesLoading;
+  const error = gamesError ?? categoriesError;
+  const genre = categoriesData?.gameCategories?.find(
+    (category: { genre_name?: string | null }) => genreToSlug(category.genre_name ?? "") === genreSlug,
+  );
 
   const allGames: RecommendedGame[] = useMemo(() => {
     return deduplicateGames((gamesData?.gameLists ?? []).flatMap((l: any) => l.recommended_games ?? []));
@@ -44,21 +52,21 @@ const PublicGamesGenre = () => {
   }, [allGames, genreSlug]);
 
   const retry = useCallback(async () => {
-    await refetchGames();
-  }, [refetchGames]);
+    await Promise.all([refetchGames(), refetchCategories()]);
+  }, [refetchCategories, refetchGames]);
 
   usePublicRouteLifecycle({
     loading,
-    error: gamesError,
+    error,
     retry,
-    hasUsableData: Boolean(gamesData),
-    empty: !loading && !gamesError && filteredGames.length === 0,
+    hasUsableData: Boolean(gamesData && categoriesData),
+    empty: !loading && !error && Boolean(genre) && filteredGames.length === 0,
   });
 
   if (shouldRedirectMissingPublicResource({
     loading,
-    error: gamesError,
-    resource: filteredGames.length > 0 ? filteredGames : null,
+    error,
+    resource: genre,
   })) {
     return <PublicProfileFallbackRedirect />;
   }
@@ -81,6 +89,8 @@ const PublicGamesGenre = () => {
   const pageTitle = `${genreName} Games | ${username}'s Game List | explorers`;
   const metaDescription = `Explore ${filteredGames.length} ${genreName} game${filteredGames.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;
   const seoKeywords = [genreName, "games", `${username} games`, "explorers"];
+
+  if (!gamesData || !categoriesData) return null;
 
   return (
     <>
@@ -132,13 +142,9 @@ const PublicGamesGenre = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 relative">
             <div className="flex-1">
               <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{genreName}</h1>
-              {!loading ? (
-                <p className="text-gray-400 font-poppins text-xs md:text-sm mt-1 uppercase tracking-wider">
-                  {filteredGames.length} game{filteredGames.length !== 1 ? "s" : ""}
-                </p>
-              ) : (
-                <div className="h-3 w-32 bg-white/5 animate-pulse rounded mt-2" />
-              )}
+              <p className="text-gray-400 font-poppins text-xs md:text-sm mt-1 uppercase tracking-wider">
+                {filteredGames.length} game{filteredGames.length !== 1 ? "s" : ""}
+              </p>
             </div>
           </div>
         </div>
@@ -147,11 +153,7 @@ const PublicGamesGenre = () => {
       {/* Main Grid */}
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 md:gap-6">
-          {loading ? (
-             [...Array(12)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-white/5 animate-pulse rounded-xl border border-white/5" />
-            ))
-          ) : filteredGames.length === 0 ? (
+          {filteredGames.length === 0 ? (
             <p className="col-span-full text-white/40 text-sm py-8 text-center font-poppins">
               No games found in this genre.
             </p>

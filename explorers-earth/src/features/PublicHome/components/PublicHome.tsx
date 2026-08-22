@@ -2,7 +2,7 @@ import { memo, useState, useRef, useMemo, useEffect } from "react";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
 import Button from "../../../components/ui/Button";
 import { useQuery } from "@apollo/client";
-import { accountsDetailQuery } from "../api/query";
+import { publicPlacesListsQuery } from "../api/query";
 import { recommendedPlacesQuery } from "../../Favorites/api/query";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
@@ -10,6 +10,7 @@ import RecommendationCardSkeleton from "../../../components/ui/RecommendationCar
 import PublicPlaceCard from "./PublicPlaceCard";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
+import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../routes/PublicProfileFallbackRedirect";
 import { shouldRedirectMissingPublicResource } from "../../../routes/publicRouteResourceState";
 
@@ -40,7 +41,6 @@ import ProductDetailModal from "../../Products/components/public/ProductDetailMo
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
 import { deduplicateProducts } from "../../Products/utils/productHelpers";
 import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
-import { getPlaceCoordinatesQuery } from "../api/query";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 
@@ -147,28 +147,31 @@ const PublicHome = memo(() => {
 
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const { data, loading, error, refetch } = useQuery(accountsDetailQuery, {
+  const bootstrapAccount = usePublicProfileBootstrapAccount();
+  const { data, loading, error, refetch } = useQuery(publicPlacesListsQuery, {
     variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
+      accountDocumentId: bootstrapAccount.documentId,
     },
-    skip: !username,
-    fetchPolicy: "cache-and-network", // Ensure fresh data is fetched
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const [showQR, setShowQR] = useState(false);
 
   const [_isQRVisible, setIsQRVisible] = useState(false);
-  const accountData = data?.accounts?.[0];
+  const accountData = useMemo(
+    () => ({
+      ...bootstrapAccount,
+      recommendation_lists: data?.recommendationLists ?? [],
+    }),
+    [bootstrapAccount, data?.recommendationLists],
+  );
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
-    hasUsableData: Boolean(accountData),
-    empty: !loading && !error && !accountData,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && Boolean(data) && data.recommendationLists.length === 0,
   });
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
@@ -595,25 +598,15 @@ const PublicHome = memo(() => {
 
 
 
-  // Fetch map data for preview (same as MapView)
-  const { data: mapData, loading: mapLoading } = useQuery(getPlaceCoordinatesQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-  });
+  const mapLoading = loading && !data;
 
   // Calculate map preview coordinates and bounds
   const mapPreviewData = useMemo(() => {
-    if (!mapData?.accounts?.[0]?.recommendation_lists) {
+    if (!accountData.recommendation_lists) {
       return { coordinates: [], center: { lat: 20.5937, lng: 78.9629 }, zoom: 2, places: [] };
     }
 
-    const recommendationLists = mapData.accounts[0].recommendation_lists;
+    const recommendationLists = accountData.recommendation_lists;
     const placeDataWithRegion = recommendationLists.flatMap(
       (list: any) =>
         list?.recommended_places?.map((place: any) => ({
@@ -675,7 +668,7 @@ const PublicHome = memo(() => {
       zoom: previewZoom,
       places
     };
-  }, [mapData]);
+  }, [accountData.recommendation_lists]);
 
   const shareButtons = [
     {
@@ -1022,7 +1015,7 @@ const PublicHome = memo(() => {
           description={metaDescription}
           keywords={dynamicKeywords}
           canonical={currentUrl}
-          image={profileImage}
+          image={profileImage ?? undefined}
           url={currentUrl}
           type="website"
           author={profileName}

@@ -10,8 +10,6 @@ import TopPicksHero from "./TopPicksHero";
 import TopPicksMobileHero from "./TopPicksMobileHero";
 import MovieDetailModal from "./MovieDetailModal";
 import GenreBrowse from "./GenreBrowse";
-import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
-import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
@@ -109,6 +107,8 @@ const PublicMovies = () => {
     ...lists.map(l => l.List_Name)
   ];
 
+  if (!movieData) return null;
+
   return (
     <>
       {!loading && (
@@ -147,33 +147,7 @@ const PublicMovies = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-        {loading && lists.length === 0 ? (
-            <div className="space-y-10 mt-4">
-              {/* Hero skeleton — Desktop (lg screens) */}
-              <div className="hidden lg:block">
-                <HeroSkeleton accentColor="yellow" showThumbnails />
-              </div>
-              {/* Hero skeleton — Mobile / Tablet */}
-              <div className="lg:hidden">
-                <HeroSkeleton accentColor="yellow" mobile />
-              </div>
-              {/* Carousel row skeletons */}
-              {[1, 2, 3].map((i) => (
-                <section key={i} className="mb-8">
-                  {/* Row header */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                    <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
-                  </div>
-                  {/* Poster strip */}
-                  <div className="flex gap-3 overflow-hidden">
-                    <MoviePosterSkeleton count={5} />
-                  </div>
-                </section>
-              ))}
-            </div>
-        ) : (
-          <>
+        <>
             {/* Empty state */}
             {lists.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -223,8 +197,7 @@ const PublicMovies = () => {
                 )}
               </>
             )}
-          </>
-        )}
+        </>
       </div>
 
       {/* Movie detail modal */}

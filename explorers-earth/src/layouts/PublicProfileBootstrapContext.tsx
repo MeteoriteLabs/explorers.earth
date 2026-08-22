@@ -88,8 +88,18 @@ export function normalizePublicProfileBootstrapKey(username: string | undefined)
 export function PublicProfileBootstrapProvider({ children }: { children: ReactNode }) {
   const { username } = useParams<{ username: string }>();
   const bootstrapKey = normalizePublicProfileBootstrapKey(username);
-  const [retrying, setRetrying] = useState(false);
-  const retryInFlightRef = useRef<Promise<void> | null>(null);
+  const currentBootstrapKeyRef = useRef(bootstrapKey);
+  currentBootstrapKeyRef.current = bootstrapKey;
+  const [retryState, setRetryState] = useState({
+    bootstrapKey,
+    retrying: false,
+  });
+  const retryInFlightRef = useRef<{
+    bootstrapKey: string;
+    operation: Promise<void>;
+  } | null>(null);
+  const retrying =
+    retryState.bootstrapKey === bootstrapKey && retryState.retrying;
 
   const { data, loading, error, refetch } = useQuery<{
     accounts?: PublicProfileBootstrapAccount[];
@@ -107,21 +117,29 @@ export function PublicProfileBootstrapProvider({ children }: { children: ReactNo
   });
 
   const retry = useCallback(() => {
-    if (retryInFlightRef.current) return retryInFlightRef.current;
+    const retryKey = bootstrapKey;
+    if (retryInFlightRef.current?.bootstrapKey === retryKey) {
+      return retryInFlightRef.current.operation;
+    }
 
-    const operation = (async () => {
-      setRetrying(true);
+    let operation!: Promise<void>;
+    operation = (async () => {
+      setRetryState({ bootstrapKey: retryKey, retrying: true });
       try {
         await refetch();
       } finally {
-        retryInFlightRef.current = null;
-        setRetrying(false);
+        if (retryInFlightRef.current?.operation === operation) {
+          retryInFlightRef.current = null;
+        }
+        if (currentBootstrapKeyRef.current === retryKey) {
+          setRetryState({ bootstrapKey: retryKey, retrying: false });
+        }
       }
     })();
 
-    retryInFlightRef.current = operation;
+    retryInFlightRef.current = { bootstrapKey: retryKey, operation };
     return operation;
-  }, [refetch]);
+  }, [bootstrapKey, refetch]);
 
   const value = useMemo<PublicProfileBootstrapValue>(() => {
     const account = data?.accounts?.[0];

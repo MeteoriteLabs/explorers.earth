@@ -69,6 +69,7 @@ const PublicProductList = () => {
   const listImage = list?.cover_image?.url || (products[0]?.logo_url ? buildImageUrl(products[0].logo_url) : undefined);
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!data) return null;
 
   return (
     <>
@@ -115,14 +116,7 @@ const PublicProductList = () => {
             <ArrowLeft size={14} /> {creatorName}'s Products
           </Link>
 
-          {loading ? (
-            <>
-              <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-              <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
-            </>
-          ) : error ? (
-            <p className="text-red-400">Failed to load list.</p>
-          ) : list ? (
+          {list ? (
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{list.List_Name}</h1>
@@ -140,12 +134,7 @@ const PublicProductList = () => {
         {/* Grid */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {loading ? (
-              [1, 2, 3, 4, 5, 6].map((idx) => (
-                <div key={idx} className="h-52 rounded-2xl bg-white/5 skeleton-shimmer relative overflow-hidden" />
-              ))
-            ) : (
-              products.map((product) => (
+            {products.map((product) => (
                 <button
                   key={product.documentId}
                   onClick={() => handleProductClick(product)}
@@ -168,8 +157,7 @@ const PublicProductList = () => {
                     <p className="text-xs font-bold text-emerald-400 mt-auto">{formatPrice(product.price, product.currency)}</p>
                   )}
                 </button>
-              ))
-            )}
+              ))}
           </div>
         </div>
 

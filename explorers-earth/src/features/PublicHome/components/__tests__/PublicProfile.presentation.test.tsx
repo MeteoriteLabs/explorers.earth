@@ -3,27 +3,32 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { state, recommendationProps, seoProps } = vi.hoisted(() => ({
+const { state, recommendationProps, seoProps, profileQueryCalls } = vi.hoisted(() => ({
   state: {
     account: null as Record<string, any> | null,
+    bootstrapAccount: null as Record<string, any> | null,
     loading: false,
   },
   recommendationProps: [] as Array<Record<string, any>>,
   seoProps: [] as Array<Record<string, any>>,
+  profileQueryCalls: [] as Array<{ operation: string; options: Record<string, any> }>,
 }));
 
 vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
   return {
     ...actual,
-    useQuery: (document: any) => {
+    useQuery: (document: any, options: Record<string, any> = {}) => {
       const operation = document.definitions.find(
         (definition: any) => definition.kind === "OperationDefinition",
       )?.name?.value;
 
-      if (operation === "PublicProfileData") {
+      if (operation === "PublicProfileData" || operation === "PublicProfileContent") {
+        profileQueryCalls.push({ operation, options });
         return {
-          data: { accounts: state.account ? [state.account] : [] },
+          data: operation === "PublicProfileContent"
+            ? { account: state.account }
+            : { accounts: state.account ? [state.account] : [] },
           loading: state.loading,
         };
       }
@@ -36,6 +41,10 @@ vi.mock("@apollo/client", async (importOriginal) => {
 vi.mock("../../../../services/analyticsService", () => ({
   createAnalyticsOptions: { profile: vi.fn(() => ({})) },
   useTrackAnalytics: () => ({ trackClick: vi.fn() }),
+}));
+
+vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({
+  usePublicProfileBootstrapAccount: () => state.bootstrapAccount ?? state.account,
 }));
 
 vi.mock("../../../../hooks/useQRActions", () => ({
@@ -59,9 +68,6 @@ vi.mock("../../../../components/ui/MediaViewer", () => ({
         role="dialog"
         aria-label="Profile media viewer"
         data-media-items={JSON.stringify(mediaItems)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <button type="button" onClick={onClose}>Close viewer</button>
       </div>
@@ -147,16 +153,28 @@ describe("PublicProfile recommendation presentation", () => {
   beforeEach(() => {
     recommendationProps.length = 0;
     seoProps.length = 0;
+    profileQueryCalls.length = 0;
     state.account = makeAccount();
+    state.bootstrapAccount = null;
     state.loading = false;
   });
 
   it("delegates initial loading to the shared route shell", () => {
+    state.bootstrapAccount = makeAccount();
+    state.account = null;
     state.loading = true;
 
     const { container } = renderProfile();
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("keeps cached profile content mounted during a background refresh", async () => {
+    state.loading = true;
+
+    renderProfile();
+
+    expect(await screen.findByRole("heading", { name: "Alice" })).toBeInTheDocument();
   });
 
   it("renders the profile after the shared route shell settles", async () => {
@@ -167,12 +185,31 @@ describe("PublicProfile recommendation presentation", () => {
     });
   });
 
+  it("uses bootstrap identity and theme while fetching profile-only content by document ID", async () => {
+    state.bootstrapAccount = makeAccount({
+      Account_Name: "Bootstrap Alice",
+      social_media: { theme_settings: themeSettings({ preset: "editorial-light" }) },
+    });
+    state.account = makeAccount({
+      Account_Name: "Duplicate identity",
+      social_media: { theme_settings: themeSettings({ preset: "cinematic-dark" }) },
+    });
+
+    renderProfile();
+
+    expect(await screen.findByRole("heading", { name: "Bootstrap Alice" })).toBeInTheDocument();
+    expect(profileQueryCalls).toContainEqual({
+      operation: "PublicProfileContent",
+      options: expect.objectContaining({ variables: { documentId: "account-1" } }),
+    });
+  });
+
   it.each([
     ["configured", { profile_picture: { url: "https://example.com/alice.jpg" } }, "https://example.com/alice.jpg", 0],
     ["safe fallback", { profile_picture: null }, "/images/Profile.jpg", 0],
     ["generated default", { profile_picture: { url: "https://example.com/broken.jpg" } }, "data:image/svg+xml", 2],
   ] as const)(
-    "opens the %s avatar alone in the media viewer and returns focus after Escape",
+    "opens the %s avatar alone in the media viewer and returns focus after close",
     async (_source, accountOverrides, expectedUrl, failures) => {
       state.account = makeAccount(accountOverrides);
       renderProfile();
@@ -200,7 +237,7 @@ describe("PublicProfile recommendation presentation", () => {
       expect(mediaItems[0].url).toContain(expectedUrl);
       expect(screen.queryByRole("dialog", { name: "Profile QR Code" })).toBeNull();
 
-      fireEvent.keyDown(viewer, { key: "Escape" });
+      fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
       await waitFor(() => expect(viewer).not.toBeInTheDocument());
       expect(avatar).toHaveFocus();
     },
@@ -219,10 +256,19 @@ describe("PublicProfile recommendation presentation", () => {
     expect(enterViewer).toBeVisible();
     expect(screen.queryByRole("dialog", { name: "Profile QR Code" })).toBeNull();
 
-    fireEvent.keyDown(enterViewer, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
     await waitFor(() => expect(avatar).toHaveFocus());
     await user.keyboard(" ");
     expect(await screen.findByRole("dialog", { name: "Profile media viewer" })).toBeVisible();
+  });
+
+  it("opens the profile QR dialog from the dedicated Share control without opening avatar media", async () => {
+    renderProfile();
+
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+    expect(await screen.findByRole("dialog", { name: "Profile QR Code" })).toBeVisible();
+    expect(screen.queryByRole("dialog", { name: "Profile media viewer" })).toBeNull();
   });
 
   it("sanitizes API rich text at the public render boundary and rejects an unsafe business website", () => {

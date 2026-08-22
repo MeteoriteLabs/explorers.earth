@@ -7,8 +7,7 @@ import type { RecommendedMovie } from "../../types";
 import { slugToGenreName, getGenreNames, deduplicateMovies, genreToSlug } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
-import MoviePosterSkeleton from "./MoviePosterSkeleton";
-import { PUBLIC_MOVIE_DATA } from "../../api/query";
+import { MOVIE_CATEGORIES, PUBLIC_MOVIE_DATA } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
@@ -32,8 +31,16 @@ const PublicMovieGenre = () => {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(MOVIE_CATEGORIES, {
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
 
-  const loading = moviesLoading;
+  const loading = moviesLoading || categoriesLoading;
+  const error = moviesError ?? categoriesError;
+  const genre = categoriesData?.movieCategories?.find(
+    (category: { genre_name?: string | null }) => genreToSlug(category.genre_name ?? "") === genreSlug,
+  );
 
   const allMovies: RecommendedMovie[] = useMemo(() => {
     return deduplicateMovies((moviesData?.movieLists ?? []).flatMap((l: any) => l.recommended_movies ?? []));
@@ -47,21 +54,21 @@ const PublicMovieGenre = () => {
   }, [allMovies, genreSlug]);
 
   const retry = useCallback(async () => {
-    await refetchMovies();
-  }, [refetchMovies]);
+    await Promise.all([refetchMovies(), refetchCategories()]);
+  }, [refetchCategories, refetchMovies]);
 
   usePublicRouteLifecycle({
     loading,
-    error: moviesError,
+    error,
     retry,
-    hasUsableData: Boolean(moviesData),
-    empty: !loading && !moviesError && filteredMovies.length === 0,
+    hasUsableData: Boolean(moviesData && categoriesData),
+    empty: !loading && !error && Boolean(genre) && filteredMovies.length === 0,
   });
 
   if (shouldRedirectMissingPublicResource({
     loading,
-    error: moviesError,
-    resource: filteredMovies.length > 0 ? filteredMovies : null,
+    error,
+    resource: genre,
   })) {
     return <PublicProfileFallbackRedirect />;
   }
@@ -74,6 +81,8 @@ const PublicMovieGenre = () => {
   const pageTitle = `${genreName} Movies | ${username}'s Movie List | explorers`;
   const metaDescription = `Explore ${filteredMovies.length} ${genreName} movie${filteredMovies.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;
   const seoKeywords = [genreName, "movies", `${username} movies`, "explorers"];
+
+  if (!moviesData || !categoriesData) return null;
 
   return (
     <>
@@ -137,13 +146,9 @@ const PublicMovieGenre = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 relative">
             <div className="flex-1">
               <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{genreName}</h1>
-              {!loading ? (
-                <p className="text-gray-400 font-poppins text-xs md:text-sm mt-1">
-                  {filteredMovies.length} movie{filteredMovies.length !== 1 ? "s" : ""}
-                </p>
-              ) : (
-                <div className="h-3 w-32 bg-white/5 animate-pulse rounded mt-2" />
-              )}
+              <p className="text-gray-400 font-poppins text-xs md:text-sm mt-1">
+                {filteredMovies.length} movie{filteredMovies.length !== 1 ? "s" : ""}
+              </p>
             </div>
           </div>
         </div>
@@ -151,9 +156,7 @@ const PublicMovieGenre = () => {
 
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-          {loading ? (
-            <MoviePosterSkeleton count={12} />
-          ) : filteredMovies.length === 0 ? (
+          {filteredMovies.length === 0 ? (
             <p className="col-span-full text-white/40 text-sm py-8 text-center">
               No movies found in this genre.
             </p>

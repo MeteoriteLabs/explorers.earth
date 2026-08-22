@@ -105,6 +105,8 @@ const PublicGames = () => {
     ...lists.map(l => l.List_Name)
   ];
 
+  if (!data) return null;
+
   return (
     <>
       {!loading && (
@@ -143,24 +145,7 @@ const PublicGames = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-        {loading && lists.length === 0 ? (
-            <div className="space-y-10 mt-4">
-              {[1, 2, 3].map(i => (
-                <section key={i}>
-                  <div className="h-5 w-40 bg-white/5 animate-pulse rounded mb-4" />
-                  <div className="flex gap-3 overflow-hidden">
-                    {[1, 2, 3, 4, 5].map(j => (
-                      <div key={j} className="w-36 flex-shrink-0">
-                        <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
-                        <div className="h-3 mt-2 bg-white/5 animate-pulse rounded w-4/5" />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-        ) : (
-          <>
+        <>
             {/* Empty state */}
             {lists.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -210,8 +195,7 @@ const PublicGames = () => {
                 )}
               </>
             )}
-          </>
-        )}
+        </>
       </div>
 
       <GameDetailModal

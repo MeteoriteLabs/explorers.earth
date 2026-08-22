@@ -12,6 +12,7 @@ import { useQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
+import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -172,22 +173,18 @@ const PublicProfile = memo(() => {
     utmParams: utmParams, // Only include if user came from QR scan
   });
 
-  // Clean share URL without QR code UTM parameters for direct sharing
-  const getCleanShareUrl = () => {
-    return `${window.location.origin}/${username}`;
-  };
-
+  const bootstrapAccount = usePublicProfileBootstrapAccount();
   const { data, loading, error, refetch } = useQuery(getPublicProfileDataQuery, {
     variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
+      documentId: bootstrapAccount.documentId,
     },
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
-  const accountData = data?.accounts[0];
+  const accountData = data?.account
+    ? { ...data.account, ...bootstrapAccount }
+    : undefined;
   const themeSettings = useMemo(
     () => normalizeThemeSettings(accountData?.social_media?.theme_settings),
     [accountData?.social_media?.theme_settings],
@@ -490,38 +487,9 @@ const PublicProfile = memo(() => {
     emailSocial,
   ]);
 
-  const handleShare = async () => {
-    const shareUrl = getCleanShareUrl();
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: `${accountData?.Account_Name || username}'s Profile`,
-          text: "Check out this profile!",
-          url: shareUrl,
-        });
-        analytics.trackClick("share-button", { context: "profile-header" });
-        return;
-      } catch (err: any) {
-        if (err?.name === "AbortError") {
-          return;
-        }
-      }
-    }
-
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success("Link copied!");
-      } else {
-        throw new Error("Clipboard API unavailable");
-      }
-    } catch (error) {
-      toast.error("Failed to copy link");
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to copy text:", error);
-      }
-    }
-    analytics.trackClick("share-button", { context: "profile-header" });
+  const handleShare = () => {
+    setShowQR(true);
+    analytics.trackClick("share-button", { context: "profile-header", action: "open-qr" });
   };
 
   // Redirect if public_profile tab is disabled
@@ -645,12 +613,10 @@ const PublicProfile = memo(() => {
     [hasBusinessDetails],
   );
 
-  if (loading) {
-    return null;
-  }
-
   // Add safety check for accountData
   if (!accountData) {
+    if (loading) return null;
+
     return (
       <div className="flex bg-black items-center justify-center min-h-screen">
         <div className="text-white text-center">

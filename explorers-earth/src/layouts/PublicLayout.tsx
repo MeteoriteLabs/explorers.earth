@@ -6,7 +6,13 @@ import {
   useReducer,
   useRef,
 } from "react";
-import { Outlet, useLocation, useMatches, useParams } from "react-router-dom";
+import {
+  matchRoutes,
+  Outlet,
+  useLocation,
+  useParams,
+  type RouteObject,
+} from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import PublicNav from "../components/PublicNav";
@@ -34,9 +40,19 @@ import {
   type PublicRouteReadinessState,
 } from "./publicRouteReadiness";
 
-function matchedPublicRoute(matches: ReturnType<typeof useMatches>): PublicRouteContractEntry | undefined {
-  const ids = new Set(matches.map((match) => match.id));
-  return publicRouteContract.find((route) => ids.has(route.id));
+const publicRouteMatchers: RouteObject[] = [{
+  path: "/:username",
+  children: publicRouteContract.map((route) => ({
+    id: route.id,
+    index: "index" in route && route.index,
+    path: "index" in route && route.index ? undefined : route.path,
+  })),
+}];
+
+function matchedPublicRoute(pathname: string): PublicRouteContractEntry | undefined {
+  const matches = matchRoutes(publicRouteMatchers, pathname);
+  const matchedId = matches?.[matches.length - 1]?.route.id;
+  return publicRouteContract.find((route) => route.id === matchedId);
 }
 
 function focusFirstContentHeading() {
@@ -50,11 +66,10 @@ function focusFirstContentHeading() {
 
 function PublicLayoutContent() {
   const location = useLocation();
-  const matches = useMatches();
   const { username } = useParams<{ username: string }>();
   const { t } = useTranslation();
   const bootstrap = usePublicProfileBootstrap();
-  const route = matchedPublicRoute(matches);
+  const route = matchedPublicRoute(location.pathname);
   const generation = useMemo(
     () => `${username ?? ""}:${location.key}`,
     [location.key, username],

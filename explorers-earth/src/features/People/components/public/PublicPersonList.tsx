@@ -68,6 +68,7 @@ const PublicPersonList = () => {
     : ["people list", "explorers"];
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!data) return null;
 
   return (
     <>
@@ -113,14 +114,7 @@ const PublicPersonList = () => {
             <ArrowLeft size={14} /> {creatorName}'s People
           </Link>
 
-          {loading ? (
-            <>
-              <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-              <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
-            </>
-          ) : error ? (
-            <p className="text-red-400">Failed to load list.</p>
-          ) : list ? (
+          {list ? (
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{list.List_Name}</h1>
@@ -138,15 +132,7 @@ const PublicPersonList = () => {
         {/* Grid of person cards */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {loading ? (
-              [1, 2, 3, 4, 5, 6].map((idx) => (
-                <div key={idx} className="flex flex-col items-center gap-3">
-                  <div className="w-24 h-24 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                  <div className="w-20 h-3 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                </div>
-              ))
-            ) : (
-              people.map((person) => (
+            {people.map((person) => (
                 <button
                   key={person.documentId}
                   onClick={() => handlePersonClick(person)}
@@ -176,8 +162,7 @@ const PublicPersonList = () => {
                     )}
                   </div>
                 </button>
-              ))
-            )}
+              ))}
           </div>
         </div>
 

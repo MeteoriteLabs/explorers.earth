@@ -12,7 +12,6 @@ import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import PersonTopPicksHero from "./PersonTopPicksHero";
 import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
-import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
@@ -94,6 +93,8 @@ const PublicPeople = () => {
     ...lists.map(l => l.List_Name)
   ];
 
+  if (!data) return null;
+
   return (
     <>
       {!loading && (
@@ -133,33 +134,7 @@ const PublicPeople = () => {
 
         {/* Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading && lists.length === 0 ? (
-              <div className="space-y-10 mt-4">
-                <div className="hidden lg:block">
-                  <HeroSkeleton accentColor="purple" showThumbnails />
-                </div>
-                <div className="lg:hidden">
-                  <HeroSkeleton accentColor="purple" mobile />
-                </div>
-                {[1, 2, 3].map((i) => (
-                  <section key={i} className="mb-8">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                      <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
-                    </div>
-                    <div className="flex gap-5 overflow-hidden">
-                      {[1, 2, 3, 4, 5].map((idx) => (
-                        <div key={idx} className="flex-shrink-0 flex flex-col items-center gap-2">
-                          <div className="w-20 h-20 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                          <div className="w-16 h-3 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-          ) : (
-            <>
+          <>
               {/* Empty state */}
               {lists.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -218,8 +193,7 @@ const PublicPeople = () => {
                   )}
                 </>
               )}
-            </>
-          )}
+          </>
         </div>
 
         <PersonDetailModal

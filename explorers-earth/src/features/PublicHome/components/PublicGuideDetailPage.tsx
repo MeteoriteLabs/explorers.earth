@@ -2,7 +2,6 @@ import { memo, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { EarthLoader } from "../../../components/EarthLoader";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import { GET_PUBLIC_GUIDE_BY_ID_QUERY, GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
 import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
@@ -655,53 +654,7 @@ const PublicGuideDetailPage = memo(() => {
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
 
-  if (loadingState) {
-    return (
-      <>
-        <SEO
-          title={seoTitle}
-          description={seoDescription}
-          keywords={seoKeywords}
-          canonical={createCanonicalUrl(`/${username}/guides/${guideSlug}`)}
-          type="article"
-          siteName="explorers"
-          enableGEO={true}
-          geoData={geoData}
-        />
-        <div className="flex items-center justify-center min-h-screen bg-black">
-          <EarthLoader context="general" size="small" />
-        </div>
-      </>
-    );
-  }
-
-  if (routeError || !guide) {
-    return (
-      <>
-        <SEO
-          title={seoTitle}
-          description={seoDescription}
-          keywords={seoKeywords}
-          canonical={createCanonicalUrl(`/${username}/guides/${guideSlug}`)}
-          type="article"
-          siteName="explorers"
-          enableGEO={true}
-          geoData={geoData}
-        />
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black p-8">
-          <p className="text-red-400 font-poppins text-lg mb-4">
-            Failed to load guide
-          </p>
-          <button
-            onClick={() => navigate(`/${username}/guides`)}
-            className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Back to Guides
-          </button>
-        </div>
-      </>
-    );
-  }
+  if (!guide) return null;
 
   return (
     <>

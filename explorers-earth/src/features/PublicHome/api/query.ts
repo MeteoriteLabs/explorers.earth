@@ -70,6 +70,95 @@ export const recommendationCategoriesQuery = gql`
   }
 `;
 
+// Places leaf data only. Account identity, visibility, navigation pins, and
+// theme are owned by PublicProfileBootstrapContext.
+export const publicPlacesListsQuery = gql`
+  query PublicPlacesLists($accountDocumentId: ID!) {
+    recommendationLists(
+      filters: {
+        account: { documentId: { eq: $accountDocumentId } }
+        Visibility: { eq: true }
+      }
+      pagination: { limit: 100 }
+    ) {
+      documentId
+      List_Name
+      Visibility
+      is_pinned
+      pin_order
+      display_order
+      List_Name_Details
+      recommended_places(pagination: { limit: 100 }) {
+        recommendation_category {
+          Category_Name
+        }
+        documentId
+        Media {
+          url
+        }
+        Place_Details
+        Recommendation_Type
+        Contact_Name
+        media_details
+      }
+      person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+        documentId
+        List_Name
+        slug
+        Visibility
+        recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+          documentId
+          name
+          username_handle
+          headline
+          location
+          avatar_path
+          media_details
+          primary_platform
+          social_urls
+          skills_tags
+          user_recommendation_note
+          user_rating
+          is_pinned
+          display_order
+          people_category {
+            documentId
+            Category_name
+          }
+        }
+      }
+      product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+        documentId
+        List_Name
+        slug
+        Visibility
+        recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+          documentId
+          product_url
+          title
+          brand
+          price
+          currency
+          buy_url
+          logo_url
+          description
+          specifications
+          user_recommendation_note
+          user_rating
+          is_pinned
+          display_order
+          images
+          product_category {
+            documentId
+            name
+            slug
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const recommendedListByIdQuery = gql`
   query RecommendationLists($documentId: ID!) {
     recommendationList(documentId: $documentId) {
@@ -417,37 +506,13 @@ export const getPublicAccountBasicQuery = gql`
 // Includes social media, feed, bio, etc. but NOT mobile_number
 // Mobile number is fetched separately only when visibility is confirmed
 export const getPublicProfileDataQuery = gql`
-  query PublicProfileData($filters: AccountFiltersInput) {
-    accounts(filters: $filters) {
-      Account_Name
-      Account_Type
-      Primary_Address
+  query PublicProfileContent($documentId: ID!) {
+    account(documentId: $documentId) {
       Bio
-      bg_picture {
-        url
-      }
       createdAt
-      documentId
-      profile_picture {
-        url
-      }
-      social_media
-      localtunes_public
       Public_Profile_Address
       Feed_Data
       mobile_number_visibility
-      public_profile
-      public_recommendations
-      public_music
-      public_movie
-      public_books
-      public_guides
-      public_games
-      public_apps
-      public_products
-      public_people
-      pinned_nav_tabs
-      auto_pinning
     }
   }
 `;

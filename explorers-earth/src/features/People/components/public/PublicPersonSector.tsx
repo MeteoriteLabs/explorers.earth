@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
-import { PUBLIC_PEOPLE_DATA } from "../../api/query";
+import { PERSON_CATEGORIES, PUBLIC_PEOPLE_DATA } from "../../api/query";
 import {
   deduplicatePeople,
   buildImageUrl,
@@ -36,8 +36,16 @@ const PublicPersonSector = () => {
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(PERSON_CATEGORIES, {
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
 
-  const loading = peopleLoading;
+  const loading = peopleLoading || categoriesLoading;
+  const routeError = error ?? categoriesError;
+  const sector = categoriesData?.peopleCategories?.find(
+    (category: { Category_name?: string | null }) => categoryToSlug(category.Category_name ?? "") === sectorSlug,
+  );
 
   const lists = data?.personLists ?? [];
 
@@ -55,21 +63,21 @@ const PublicPersonSector = () => {
   }, [allPeople, sectorSlug]);
 
   const retry = useCallback(async () => {
-    await refetchPeople();
-  }, [refetchPeople]);
+    await Promise.all([refetchPeople(), refetchCategories()]);
+  }, [refetchCategories, refetchPeople]);
 
   usePublicRouteLifecycle({
     loading,
-    error,
+    error: routeError,
     retry,
-    hasUsableData: Boolean(data),
-    empty: !loading && !error && sectorPeople.length === 0,
+    hasUsableData: Boolean(data && categoriesData),
+    empty: !loading && !routeError && Boolean(sector) && sectorPeople.length === 0,
   });
 
   const missingResource = shouldRedirectMissingPublicResource({
     loading,
-    error,
-    resource: sectorPeople.length > 0 ? sectorPeople : null,
+    error: routeError,
+    resource: sector,
   });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
@@ -95,6 +103,7 @@ const PublicPersonSector = () => {
   const seoKeywords = [sectorName, `${creatorName} people`, "people list", "explorers"];
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!data || !categoriesData) return null;
 
   return (
     <>
@@ -140,14 +149,7 @@ const PublicPersonSector = () => {
             <ArrowLeft size={14} /> {creatorName}'s People
           </Link>
 
-          {loading ? (
-            <>
-              <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-              <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
-            </>
-          ) : error ? (
-            <p className="text-red-400">Failed to load sector.</p>
-          ) : (
+          {(
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
@@ -164,14 +166,7 @@ const PublicPersonSector = () => {
         {/* Grid of person cards */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {loading ? (
-              [1, 2, 3, 4, 5, 6].map((idx) => (
-                <div key={idx} className="flex flex-col items-center gap-3">
-                  <div className="w-24 h-24 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                  <div className="w-20 h-3 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                </div>
-              ))
-            ) : sectorPeople.length === 0 ? (
+            {sectorPeople.length === 0 ? (
               <div className="col-span-full py-12 text-center text-white/40 text-sm">
                 No people recommended in this sector.
               </div>
