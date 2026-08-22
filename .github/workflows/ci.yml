@@ -211,3 +211,12 @@ jobs:
           name: e2e-failure-artifacts
           path: explorers-earth/test-results/
           retention-days: 7
+
+      - name: Upload public profile contact-sheet artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-profile-contact-sheet
+          path: explorers-earth/test-results/contact-sheet/
+          retention-days: 14
+

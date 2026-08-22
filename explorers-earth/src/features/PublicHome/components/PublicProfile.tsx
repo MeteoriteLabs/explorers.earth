@@ -125,7 +125,7 @@ function FullWallpaperBackground({ wallpaperUrl }: { wallpaperUrl: string | null
           className="w-full h-full object-cover opacity-25 blur-[3px] scale-105 transition-opacity duration-300 motion-reduce:transition-none"
         />
       )}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
     </div>
   );
 }
@@ -890,7 +890,17 @@ const PublicProfile = memo(() => {
         />
       )}
 
-      <div className="h-full min-h-screen overflow-auto preview-scroll pb-20" style={{ ...themeStyles, backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}>
+      <div
+        className="h-full min-h-screen overflow-auto preview-scroll pb-20"
+        style={{
+          ...themeStyles,
+          ...(surface.mode === "full-wallpaper-image"
+            ? { "--text-primary": "#F8FAFC", "--text-secondary": "#CBD5E1" }
+            : {}),
+          backgroundColor: "var(--bg-page)",
+          color: "var(--text-primary)",
+        }}
+      >
         {/* Full-Screen Wallpaper Background Mode */}
         {surface.mode === "full-wallpaper-image" && (
           <FullWallpaperBackground wallpaperUrl={surface.wallpaperUrl} />
@@ -901,7 +911,7 @@ const PublicProfile = memo(() => {
           <div
             className="fixed inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-500"
             style={{
-              background: `linear-gradient(155deg, color-mix(in srgb, var(--accent-color, #10b981) 62%, var(--bg-page, #000000)) 0%, var(--bg-page, #000000) 62%, color-mix(in srgb, var(--accent-color, #10b981) 18%, var(--bg-page, #000000)) 100%)`,
+              background: `linear-gradient(135deg, color-mix(in srgb, ${themeSettings.accentColor} ${themeSettings.presetId?.includes("dark") || themeSettings.presetId === "glassmorphism" ? "8%" : "4%"}, var(--bg-page)) 0%, var(--bg-page) 100%)`,
             }}
           />
         )}
