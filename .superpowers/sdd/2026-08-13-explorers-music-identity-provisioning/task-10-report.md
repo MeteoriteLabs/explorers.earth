@@ -519,3 +519,140 @@ was performed.
 
 Task 10 remains unapproved. The controller must dispatch a separate independent
 scoped rereview of the tested code hash; this report is not self-approval.
+
+## External rereview fix round 2: exact-commit evidence (2026-08-22)
+
+Every result in this section is bound to the clean detached execution authority
+`9000eca66eb66e158bbb70526ccf3c77a08243f6`
+(`fix(music): close qualification rereview gaps`). The subsequent
+`docs(music): record qualification evidence` commit records the already-produced
+results only and was not the execution authority. This controller ruling keeps
+the tested code hash unchanged, at the cost of two commits for the fix round and
+an explicit tested-parent-hash check by reviewers. Two exact-proof restarts were
+also required: one after persisted telemetry exposed over-redaction and one
+after three distinct 20-second deployment-process timeouts established a
+recurring harness defect. All superseded evidence and setup REDs were retained.
+
+The exact proof checkout was
+`C:\Users\TK\AppData\Local\Temp\music-c10-r2-9000eca\checkout`; its generated
+evidence was copied byte-for-byte to
+`.artifacts/music-c10-evidence/9000eca/music-runs/`. The active ignored source
+`.env.music.test` was not read, repaired, or mutated. No schema, migration,
+production, external registry push, `GATE_PROD`, Task 11, or Task 12 action
+occurred.
+
+### Three rereview findings: RED, diagnosis, and GREEN
+
+- **I1, default-deny fixture contract.** Direct hostile-wrapper REDs proved the
+  prior rendered-Compose check admitted empty database/gate mounts,
+  `SYS_ADMIN`, wrong digests, and other ambient authority. The validator now
+  exhaustively checks all seven expected services: exact repository and digest,
+  required read-only secret/config sources and targets, networks, volumes,
+  labels, ports, commands/entrypoints, health and dependencies. It rejects
+  missing/empty mounts plus dangerous or ambient fields including privilege,
+  capability deviations, devices, host namespaces, security options, sysctls,
+  extra hosts, env files, builds, raw binds/host paths, and pull/build escapes.
+  The final hostile suite passed 23 cases, including empty database/gate mounts
+  and `SYS_ADMIN`.
+- **I2, release deployment execution.** Exact release-only opt-in
+  `MUSIC_C3_TRAEFIK_TEST=1` made `registration-compat-traefik.test.ts` execute.
+  Its first real run exposed a stale `${router_security}` YAML substitution;
+  the focused RED became 2/2 GREEN. Qualification now requires the exact
+  `Test Files 11 passed (11)` summary and fails on any wholly skipped deployment
+  file. Both final release samples executed 11/11 files; each reported 192
+  passing tests plus one intentional individual-test skip and no file-level
+  skip.
+- **I3, generic sanitation.** Hostile corpus RED showed
+  `MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY` could survive persisted text.
+  Sanitization now covers case-insensitive `*_KEY`, `*_SECRET`, `*_TOKEN`,
+  `*_PASSWORD`, credential/private/signing/encryption variants in text,
+  command arguments, `Config.Env` arrays, and nested objects. A subsequent real
+  lane proved harmless numeric telemetry had also been hidden; the minimal
+  GREEN preserves only the exact bounded telemetry fields while redacting
+  secret-shaped neighbors. The qualification contract passed 37/37.
+- Three different full deployment runs then timed out at the former hard 20s
+  cleanup bound (`after_ledger`, diagnostic `after_floor`, and public-response
+  nonzero cleanup). Healthy focused upper tails were measured at 14.66s for
+  crash recovery and 12.73s for public-response cleanup. A source-contract RED
+  preceded the smallest scoped fix: only the seven affected recovery cases use
+  a 30s Windows process-recovery bound; other tests remain at 20s. Worst-case
+  allowance increases by 70s, leaving the 60-minute release budget meaningful.
+  Independent focused verification passed all seven affected cases in 97.68s;
+  post-fix maxima were 14.60s and 13.16s.
+
+Superseded ledgers remain under
+`.artifacts/music-c10-evidence/f2e62c8/music-runs/` (423 files) and
+`.artifacts/music-c10-evidence/ee88f1b/music-runs/` (312 files). They retain the
+telemetry-redaction release failure, all three recurring timeout samples, their
+diagnostics, and every setup/lane failure; none was rewritten or promoted.
+
+### Clean exact authority and two-sample lane matrix
+
+Fresh supported lifecycle commands passed: bootstrap
+`20260822155101648-858e11e5` in 43.598s; resume bootstrap
+`20260822155217037-235211d0` in 58.712s; doctor
+`20260822155343650-df4f309e` in 0.616s; five-service up
+`20260822155344836-8cc664a8` in 110.429s; cold/warm smoke
+`20260822155544401-bd2f7301` / `20260822155545862-e0fb7649` in
+0.907s / 0.824s; and the real fixture browser passed 1/1 in 4.7s. The disposable
+PostgreSQL 15 authority was bound to loopback port 59158 and all proof artifacts
+used environment fingerprint
+`fec1ee2240a6af449afd6180f33e56d18b382e8de9ff86cccc30a78d9819491a`.
+
+Each row used the supported `npm run --silent music:test:<lane> -- --format json`
+runner. The named directory contains `qualification-<lane>.json`,
+`command-result.json`, and retained task logs.
+
+| Lane | Sample 1 | Sample 2 | Budget | Result |
+| --- | --- | --- | --- | --- |
+| fast | `20260822155607616-7e32bdde`, 17.994s | `20260822155626165-86779217`, 4.388s | 3m | 3/3 twice, green |
+| PR | `20260822155635771-269d68de`, 315.336s | `20260822160156884-2e58c934`, 307.395s | 15m | 14/14 twice, green |
+| nightly | `20260822161444088-98270f29`, 418.486s | `20260822162155962-2576e90e`, 435.750s | 45m | 23/23 twice, green |
+| release | `20260822162927742-1e3d9ed0`, 1091.969s | `20260822164800804-006d2300`, 1105.629s | 60m | 20/20 twice, green |
+
+All eight counted samples had zero task failures and zero diagnostic reruns.
+Nightly setup `20260822160716163-66c7f3c0` remains a failure (429.991s): its
+original reconciliation checkpoint timeout and security peak 4>2 were retained
+even though both diagnostics passed. It was not counted. Both counted nightly
+samples observed bounded real HTTP/service/repository/PostgreSQL load at load 5,
+300 telemetry events, one exact eight-key set, zero forbidden keys, value
+cardinality 8, and 200 rejected invalid tokens.
+
+Both counted release samples passed all 20 tasks and all 11 deployment files.
+Their local-registry rehearsals took 678.47s and 679.59s. Each persisted the
+full real-Docker envelope: migration and readiness failures observed, exact
+rollback restored, unknown and pre-floor rollback refused, kill switch
+verified, compatibility-route usage 0, and bounded telemetry cardinality.
+
+### Artifact sanitation and guarded cleanup
+
+- The final ignored evidence copy contains 278 files. Its sorted byte-manifest
+  SHA-256 is
+  `36bbf87378c7de377fd6417f1c60ce17f81e7d6b2510b1f5f13beace10c56ed4`
+  and matched the detached source byte-for-byte.
+- A guarded count-only scan found zero developer absolute paths, zero active
+  authority paths, zero raw Docker inspect payloads, zero exact sensitive
+  values, and zero generic unredacted sensitive assignments. Post-down cleanup
+  artifacts also contained zero unsafe paths/raw inspect/assignments and no
+  missing structured redaction placeholders.
+- Supported down `20260822170731781-2861a01f` passed in 4.694s. The exact
+  sidecar was removed only after literal name, ID, image, commit labels,
+  loopback binding, and volume-use checks. Fourteen unattached orphan release
+  proxy networks from retained prior evidence were each exact-name/project/
+  label/attachment attested before removal. Final fixture/qualification
+  containers, volumes, networks, registry matches, and listeners on
+  55432/51337/55000/55173/59158 were zero.
+- The final and two superseded proof worktrees each passed exact path, detached
+  hash, registration, and clean tracked-state checks. Git deregistered them;
+  two Windows long-path residues contained only the bounded `tunes` tree and
+  one exact self-junction apiece. Each junction target was revalidated and its
+  reparse tag removed without traversal, an isolated empty-index dry run named
+  only that disposable `tunes` tree, and Git cleared the residual. Fresh clean
+  detached registrations at the same exact hashes were then removed normally.
+  All three registrations, checkout paths, and parent temporary roots are
+  absent. Removed generated authority/dependencies are not recoverable; the
+  sanitized ignored evidence copies remain.
+
+Task 10 remains unapproved. The controller must dispatch a separate independent
+scoped rereview of tested code hash
+`9000eca66eb66e158bbb70526ccf3c77a08243f6`; this report is not self-approval.
