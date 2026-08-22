@@ -49,9 +49,9 @@ All commands in this section run from `explorers-earth/`. Node `>=22.12` is requ
 | Live read-only | `VITE_API_URL` | Yes | `present` / `missing` | GraphQL endpoint for the public capability preflight. |
 | Live read-only | `VITE_PUBLIC_READ_ACCESS_TOKEN` | Yes | `dedicated` / `missing` | Published-read-only browser capability. |
 | Protected mutation | `VITE_ANALYTICS_WRITE_ACCESS_TOKEN` | Yes | `dedicated` / `missing` | Analytics-write-only browser capability; it must not read or perform other mutations. |
-| Protected capability proof | `PUBLIC_API_CAPABILITY_SCOPE` | Yes | `configured` / `missing` | Server-recorded capability scope. |
-| Protected capability proof | `PUBLIC_API_ORIGIN_POLICY` | Yes | `configured` / `missing` | Server-recorded allowed-origin policy. |
-| Protected capability proof | `PUBLIC_API_RATE_LIMIT_POLICY` | Yes | `configured` / `missing` | Server-recorded rate-limit policy. |
+| Protected capability proof | `PUBLIC_API_CAPABILITY_SCOPE` | Yes | `valid` / `invalid` | Must be exactly `published-read-only`. |
+| Protected capability proof | `PUBLIC_API_EXPECTED_ORIGIN` and `PUBLIC_API_ORIGIN_POLICY` | Yes | `valid` / `invalid` | Expected non-production origin and JSON `{"allowOrigins":["…"]}` containing it. |
+| Protected capability proof | `PUBLIC_API_RATE_LIMIT_POLICY` | Yes | `valid` / `invalid` | JSON `{"environment":"non-production","limit":positive-int,"windowSeconds":positive-int}`. |
 | Controlled negative fixture | `PUBLIC_API_CONTROLLED_FIXTURE` plus the four `PUBLIC_API_PRIVATE_*` IDs/slugs | Yes for release | `configured` / `missing` | Non-production private account/list/item/slug probes only. Never point these at production data. |
 | Protected mutation | `PUBLIC_PROFILE_MUTATION_APPROVED` | Yes | `true` / `missing` | Explicit non-production mutation opt-in. |
 | Protected mutation | `PUBLIC_PROFILE_TEST_ACCOUNT_MARKER` | Yes | `matched` / `mismatch` | Must be exactly `public-profile-mutation-fixture`. |

@@ -10,9 +10,8 @@ test("stops after an unauthorized account bootstrap and emits a redacted stable 
     env: {
       VITE_API_URL: "https://fixture.invalid/graphql",
       VITE_PUBLIC_READ_ACCESS_TOKEN: "private-read-token",
-      PUBLIC_API_CAPABILITY_SCOPE: "configured",
-      PUBLIC_API_ORIGIN_POLICY: "configured",
-      PUBLIC_API_RATE_LIMIT_POLICY: "configured",
+      PUBLIC_API_CAPABILITY_SCOPE: "published-read-only", PUBLIC_API_EXPECTED_ORIGIN: "https://fixture.invalid",
+      PUBLIC_API_ORIGIN_POLICY: '{"allowOrigins":["https://fixture.invalid"]}', PUBLIC_API_RATE_LIMIT_POLICY: '{"environment":"non-production","limit":3,"windowSeconds":60}',
     },
     fetchImpl: async () => {
       calls += 1;
@@ -40,9 +39,8 @@ test("probes only enabled published collections after a successful bootstrap", a
     env: {
       VITE_API_URL: "https://fixture.invalid/graphql",
       VITE_PUBLIC_READ_ACCESS_TOKEN: "private-read-token",
-      PUBLIC_API_CAPABILITY_SCOPE: "configured",
-      PUBLIC_API_ORIGIN_POLICY: "configured",
-      PUBLIC_API_RATE_LIMIT_POLICY: "configured",
+      PUBLIC_API_CAPABILITY_SCOPE: "published-read-only", PUBLIC_API_EXPECTED_ORIGIN: "https://fixture.invalid",
+      PUBLIC_API_ORIGIN_POLICY: '{"allowOrigins":["https://fixture.invalid"]}', PUBLIC_API_RATE_LIMIT_POLICY: '{"environment":"non-production","limit":3,"windowSeconds":60}',
     },
     fetchImpl: async (_url, options) => {
       const request = JSON.parse(options.body);
@@ -99,9 +97,9 @@ test("fails closed before any request when protected security proof is missing",
     operation: "security-proof",
     classification: "malformed",
     code: "SECURITY_PROOF_MISSING",
-    observedStatus: "scope-origin-rate-limit-missing",
-    likelyCause: "Required server-side capability evidence is missing.",
-    remediation: "Configure PUBLIC_API_CAPABILITY_SCOPE, PUBLIC_API_ORIGIN_POLICY, and PUBLIC_API_RATE_LIMIT_POLICY in the protected environment.",
+    observedStatus: "scope-origin-rate-limit-invalid",
+    likelyCause: "Required server-side capability evidence is missing or invalid.",
+    remediation: "Use published-read-only scope, an allowOrigins policy containing PUBLIC_API_EXPECTED_ORIGIN, and non-production positive rate-limit JSON.",
   }]);
 });
 
@@ -110,7 +108,7 @@ test("rejects a bootstrap account that is not publicly published", async () => {
     username: "private-fixture",
     env: {
       VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "public-read-token",
-      PUBLIC_API_CAPABILITY_SCOPE: "configured", PUBLIC_API_ORIGIN_POLICY: "configured", PUBLIC_API_RATE_LIMIT_POLICY: "configured",
+      PUBLIC_API_CAPABILITY_SCOPE: "published-read-only", PUBLIC_API_EXPECTED_ORIGIN: "https://fixture.invalid", PUBLIC_API_ORIGIN_POLICY: '{"allowOrigins":["https://fixture.invalid"]}', PUBLIC_API_RATE_LIMIT_POLICY: '{"environment":"non-production","limit":3,"windowSeconds":60}',
     },
     fetchImpl: async () => Response.json({ data: { accounts: [{ documentId: "private-id", public_profile: "No" }] } }),
   });

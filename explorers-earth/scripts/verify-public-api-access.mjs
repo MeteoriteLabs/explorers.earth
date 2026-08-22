@@ -22,6 +22,16 @@ function sourceFor(env, name, legacy = "VITE_PUBLIC_ACCESS_TOKEN") {
   return "missing";
 }
 
+function policyEvidence(env) {
+  try {
+    const origin = JSON.parse(env.PUBLIC_API_ORIGIN_POLICY ?? "");
+    const rate = JSON.parse(env.PUBLIC_API_RATE_LIMIT_POLICY ?? "");
+    const originValid = typeof env.PUBLIC_API_EXPECTED_ORIGIN === "string" && origin.allowOrigins?.includes(env.PUBLIC_API_EXPECTED_ORIGIN);
+    const rateValid = rate.environment === "non-production" && Number.isInteger(rate.limit) && rate.limit > 0 && Number.isInteger(rate.windowSeconds) && rate.windowSeconds > 0;
+    return { capabilityScope: env.PUBLIC_API_CAPABILITY_SCOPE === "published-read-only" ? "valid" : "invalid", originPolicy: originValid ? "valid" : "invalid", rateLimitPolicy: rateValid ? "valid" : "invalid" };
+  } catch { return { capabilityScope: env.PUBLIC_API_CAPABILITY_SCOPE === "published-read-only" ? "valid" : "invalid", originPolicy: "invalid", rateLimitPolicy: "invalid" }; }
+}
+
 async function requestOperation({ endpoint, token, operation, variables, fetchImpl, timeoutMs, retries }) {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -107,19 +117,17 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
   const configuration = {
     publicReadSource,
     analyticsWriteSource: sourceFor(env, "VITE_ANALYTICS_WRITE_ACCESS_TOKEN"),
-    capabilityScope: env.PUBLIC_API_CAPABILITY_SCOPE ? "configured" : "missing",
-    originPolicy: env.PUBLIC_API_ORIGIN_POLICY ? "configured" : "missing",
-    rateLimitPolicy: env.PUBLIC_API_RATE_LIMIT_POLICY ? "configured" : "missing",
+    ...policyEvidence(env),
   };
   if (!username || !endpoint || !token) {
     const operation = diagnostic("account-bootstrap", "unauthorized", "credential-or-endpoint-missing");
     return { code: operation.code, username: username ? "provided" : "missing", configuration, operations: [operation] };
   }
-  if (Object.values(configuration).slice(2).some((value) => value === "missing")) {
+  if (Object.values(configuration).slice(2).some((value) => value !== "valid")) {
     const operation = {
       operation: "security-proof", classification: "malformed", code: "SECURITY_PROOF_MISSING",
-      observedStatus: "scope-origin-rate-limit-missing", likelyCause: "Required server-side capability evidence is missing.",
-      remediation: "Configure PUBLIC_API_CAPABILITY_SCOPE, PUBLIC_API_ORIGIN_POLICY, and PUBLIC_API_RATE_LIMIT_POLICY in the protected environment.",
+      observedStatus: "scope-origin-rate-limit-invalid", likelyCause: "Required server-side capability evidence is missing or invalid.",
+      remediation: "Use published-read-only scope, an allowOrigins policy containing PUBLIC_API_EXPECTED_ORIGIN, and non-production positive rate-limit JSON.",
     };
     return { code: operation.code, username: "provided", configuration, operations: [operation] };
   }
