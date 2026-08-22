@@ -69,6 +69,7 @@ const PublicAppList = () => {
   const listImage = list?.cover_image?.url || (apps[0]?.logo_url ? buildLogoUrl(apps[0].logo_url) : undefined);
 
   if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!data) return null;
 
   return (
     <>

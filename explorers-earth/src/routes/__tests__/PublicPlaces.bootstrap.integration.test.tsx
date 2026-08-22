@@ -1,12 +1,24 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import type { DocumentNode, FieldNode, OperationDefinitionNode } from "graphql";
+import {
+  ApolloClient,
+  ApolloLink,
+  ApolloProvider,
+  InMemoryCache,
+  Observable,
+  type Operation,
+} from "@apollo/client";
+import type { DocumentNode, OperationDefinitionNode } from "graphql";
 import type { ReactNode } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { observedOperations } = vi.hoisted(() => ({
-  observedOperations: [] as DocumentNode[],
-}));
+type ObservedOperation = {
+  name: string;
+  query: DocumentNode;
+  variables: Record<string, unknown>;
+};
+
+const observedOperations: ObservedOperation[] = [];
 
 function operationName(query: DocumentNode): string {
   const operation = query.definitions.find(
@@ -15,93 +27,75 @@ function operationName(query: DocumentNode): string {
   return operation?.name?.value ?? "anonymous";
 }
 
-function hasRootAccountsField(query: DocumentNode): boolean {
+function rootFieldNames(query: DocumentNode): string[] {
   const operation = query.definitions.find(
     (definition): definition is OperationDefinitionNode => definition.kind === "OperationDefinition",
   );
-  return Boolean(
-    operation?.selectionSet.selections.some(
-      (selection): selection is FieldNode =>
-        selection.kind === "Field" && selection.name.value === "accounts",
-    ),
-  );
+  return operation?.selectionSet.selections.flatMap((selection) =>
+    selection.kind === "Field" ? [selection.name.value] : [],
+  ) ?? [];
 }
 
-vi.mock("@apollo/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@apollo/client")>();
-  return {
-    ...actual,
-    useQuery: (query: DocumentNode) => {
-      observedOperations.push(query);
-      const name = operationName(query);
-      if (name === "PublicProfileBootstrap") {
-        return {
-          data: {
-            accounts: [{
-              documentId: "account-1",
-              Account_Name: "Alice",
-              public_profile: "Yes",
-              public_recommendations: "Yes",
-              social_media: { theme_settings: { preset: "cinematic-dark" } },
-            }],
-          },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn().mockResolvedValue(undefined),
-        };
-      }
-      if (name === "PublicCategoryListCounts") {
-        return {
-          data: {
-            recommendationLists: [], bookLists: [], movieLists: [], gameLists: [],
-            appLists: [], productLists: [], personLists: [], guides: [],
-          },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn().mockResolvedValue(undefined),
-        };
-      }
-      if (name === "user") {
-        return {
-          data: {
-            accounts: [{
-              documentId: "account-1",
-              Account_Name: "Alice",
-              Primary_Address: { address: "Earth" },
-              recommendation_lists: [],
-            }],
-          },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn().mockResolvedValue(undefined),
-        };
-      }
-      if (name === "Account") {
-        return {
-          data: { accounts: [{ Account_Name: "Alice", recommendation_lists: [] }] },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn().mockResolvedValue(undefined),
-        };
-      }
-      if (name === "PublicPlacesLists") {
-        return {
-          data: { recommendationLists: [] },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn().mockResolvedValue(undefined),
-        };
-      }
+function responseFor(operation: Operation) {
+  switch (operation.operationName) {
+    case "PublicProfileBootstrap":
       return {
-        data: undefined,
-        loading: false,
-        error: undefined,
-        refetch: vi.fn().mockResolvedValue(undefined),
-        fetchMore: vi.fn(),
+        data: {
+          accounts: [{
+            __typename: "Account",
+            documentId: "account-1",
+            Account_Name: "Alice",
+            Account_Type: "Personal",
+            Primary_Address: { __typename: "ComponentAddressAddress", address: "Earth" },
+            bg_picture: null,
+            profile_picture: null,
+            social_media: { __typename: "ComponentSocialSocial", theme_settings: { preset: "cinematic-dark" } },
+            localtunes_public: false,
+            public_profile: "Yes",
+            public_recommendations: "Yes",
+            public_music: "No",
+            public_movie: "No",
+            public_books: "No",
+            public_guides: "No",
+            public_games: "No",
+            public_apps: "No",
+            public_products: "No",
+            public_people: "No",
+            pinned_nav_tabs: [],
+            auto_pinning: false,
+          }],
+        },
       };
-    },
-  };
-});
+    case "PublicCategoryListCounts":
+      return {
+        data: {
+          recommendationLists: [], bookLists: [], movieLists: [], gameLists: [],
+          appLists: [], productLists: [], personLists: [], guides: [],
+        },
+      };
+    case "PublicPlacesLists":
+      return { data: { recommendationLists: [] } };
+    default:
+      throw new Error(`Unexpected Apollo operation: ${operation.operationName}`);
+  }
+}
+
+function createTestClient() {
+  const link = new ApolloLink((operation) => new Observable((observer) => {
+    observedOperations.push({
+      name: operation.operationName,
+      query: operation.query,
+      variables: operation.variables,
+    });
+    observer.next(responseFor(operation));
+    observer.complete();
+  }));
+
+  return new ApolloClient({
+    cache: new InMemoryCache({ addTypename: false }),
+    link,
+  });
+}
 
 vi.mock("../../services/analyticsService", () => ({
   useTrackAnalytics: () => ({
@@ -166,15 +160,25 @@ describe("real direct Places bootstrap ownership", () => {
       { initialEntries: ["/alice/places"] },
     );
 
-    render(<RouterProvider router={router} />);
+    render(
+      <ApolloProvider client={createTestClient()}>
+        <RouterProvider router={router} />
+      </ApolloProvider>,
+    );
 
     await screen.findByRole("heading", { name: "No Places Yet" });
-    await waitFor(() => {
-      const accountOperations = Array.from(new Set(
-        observedOperations.filter(hasRootAccountsField).map(operationName),
-      ));
-      expect(accountOperations).toEqual(["PublicProfileBootstrap"]);
-    });
-    expect(observedOperations.map(operationName)).toContain("PublicPlacesLists");
+    await waitFor(() => expect(
+      observedOperations.filter(({ name }) => name === "PublicProfileBootstrap"),
+    ).toHaveLength(1));
+
+    const bootstrap = observedOperations.filter(({ name }) => name === "PublicProfileBootstrap");
+    expect(bootstrap).toHaveLength(1);
+    expect(bootstrap[0]?.variables).toEqual({ filters: { username: { eq: "alice" } } });
+    expect(rootFieldNames(bootstrap[0]!.query)).toEqual(["accounts"]);
+
+    const places = observedOperations.filter(({ name }) => name === "PublicPlacesLists");
+    expect(places).toHaveLength(1);
+    expect(places[0]?.variables).toEqual({ accountDocumentId: "account-1" });
+    expect(rootFieldNames(places[0]!.query)).toEqual(["recommendationLists"]);
   });
 });

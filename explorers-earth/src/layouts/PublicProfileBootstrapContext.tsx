@@ -98,6 +98,7 @@ export function PublicProfileBootstrapProvider({ children }: { children: ReactNo
     bootstrapKey: string;
     operation: Promise<void>;
   } | null>(null);
+  const retryOwnerByKeyRef = useRef(new Map<string, Promise<void>>());
   const retrying =
     retryState.bootstrapKey === bootstrapKey && retryState.retrying;
 
@@ -128,16 +129,21 @@ export function PublicProfileBootstrapProvider({ children }: { children: ReactNo
       try {
         await refetch();
       } finally {
+        const ownsRetryKey = retryOwnerByKeyRef.current.get(retryKey) === operation;
         if (retryInFlightRef.current?.operation === operation) {
           retryInFlightRef.current = null;
         }
-        if (currentBootstrapKeyRef.current === retryKey) {
+        if (ownsRetryKey) {
+          retryOwnerByKeyRef.current.delete(retryKey);
+        }
+        if (ownsRetryKey && currentBootstrapKeyRef.current === retryKey) {
           setRetryState({ bootstrapKey: retryKey, retrying: false });
         }
       }
     })();
 
     retryInFlightRef.current = { bootstrapKey: retryKey, operation };
+    retryOwnerByKeyRef.current.set(retryKey, operation);
     return operation;
   }, [bootstrapKey, refetch]);
 

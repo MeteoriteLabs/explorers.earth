@@ -44,6 +44,7 @@ const fixtureProps: PublicProfileHeaderProps = {
   avatarUrl: "https://example.com/avatar.jpg",
   socialLinks: mockSocialLinks,
   onShare: vi.fn(),
+  onOpenQR: vi.fn(),
   onAvatarActivate: vi.fn(),
 };
 

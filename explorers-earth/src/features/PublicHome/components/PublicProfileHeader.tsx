@@ -18,6 +18,7 @@ export function PublicProfileHeader({
   avatarUrl,
   socialLinks,
   onShare,
+  onOpenQR,
   onAvatarActivate,
 }: PublicProfileHeaderProps) {
   const navigate = useNavigate();
@@ -211,28 +212,40 @@ export function PublicProfileHeader({
             <LogoIcon className="h-8 md:h-9 w-auto text-current" />
           </a>
 
-          <button
-            type="button"
-            onClick={onShare}
-            aria-label="Share"
-            className="p-2 min-w-[44px] min-h-[44px] bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-md transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)]"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenQR}
+              aria-label="Show profile QR code"
+              className="p-2 min-w-[44px] min-h-[44px] bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-md transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)]"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-              />
-            </svg>
-          </button>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v6h-6v-2" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={onShare}
+              aria-label="Share"
+              className="p-2 min-w-[44px] min-h-[44px] bg-gray-800/60 hover:bg-gray-700/80 text-white rounded-md transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)]"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 

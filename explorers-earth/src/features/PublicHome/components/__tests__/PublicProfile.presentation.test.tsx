@@ -2,16 +2,27 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PublicRouteReadinessContext } from "../../../../layouts/PublicRouteReadinessContext";
 
-const { state, recommendationProps, seoProps, profileQueryCalls } = vi.hoisted(() => ({
+const { state, recommendationProps, seoProps, profileQueryCalls, lifecycle } = vi.hoisted(() => ({
   state: {
     account: null as Record<string, any> | null,
     bootstrapAccount: null as Record<string, any> | null,
     loading: false,
+    error: undefined as Error | undefined,
+    refetch: vi.fn().mockResolvedValue(undefined),
   },
   recommendationProps: [] as Array<Record<string, any>>,
   seoProps: [] as Array<Record<string, any>>,
   profileQueryCalls: [] as Array<{ operation: string; options: Record<string, any> }>,
+  lifecycle: {
+    markLoading: vi.fn(),
+    markReady: vi.fn(),
+    markRefreshing: vi.fn(),
+    markEmpty: vi.fn(),
+    markNotFound: vi.fn(),
+    markError: vi.fn(),
+  },
 }));
 
 vi.mock("@apollo/client", async (importOriginal) => {
@@ -30,6 +41,8 @@ vi.mock("@apollo/client", async (importOriginal) => {
             ? { account: state.account }
             : { accounts: state.account ? [state.account] : [] },
           loading: state.loading,
+          error: state.error,
+          refetch: state.refetch,
         };
       }
 
@@ -142,7 +155,17 @@ const renderProfile = (path = "/alice") => {
     [{ path: "/:username", element: <PublicProfile /> }],
     { initialEntries: [path] },
   );
-  const result = render(<RouterProvider router={router} />);
+  const result = render(
+    <PublicRouteReadinessContext.Provider
+      value={{
+        generation: "alice:profile",
+        readiness: { generation: "alice:profile", status: "initial-loading" },
+        ...lifecycle,
+      }}
+    >
+      <RouterProvider router={router} />
+    </PublicRouteReadinessContext.Provider>,
+  );
   return { ...result, router };
 };
 
@@ -157,6 +180,17 @@ describe("PublicProfile recommendation presentation", () => {
     state.account = makeAccount();
     state.bootstrapAccount = null;
     state.loading = false;
+    state.error = undefined;
+    state.refetch = vi.fn().mockResolvedValue(undefined);
+    Object.values(lifecycle).forEach((spy) => spy.mockClear());
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
   });
 
   it("delegates initial loading to the shared route shell", () => {
@@ -175,6 +209,38 @@ describe("PublicProfile recommendation presentation", () => {
     renderProfile();
 
     expect(await screen.findByRole("heading", { name: "Alice" })).toBeInTheDocument();
+  });
+
+  it("delegates an initial profile query error to the shared route Retry surface", async () => {
+    state.bootstrapAccount = makeAccount();
+    state.account = null;
+    state.error = new Error("profile forbidden");
+
+    const { container } = renderProfile();
+
+    await waitFor(() => expect(lifecycle.markError).toHaveBeenCalledWith(
+      "alice:profile",
+      "route",
+      state.refetch,
+      false,
+    ));
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText("Profile not found")).toBeNull();
+  });
+
+  it("keeps cached profile content mounted during a refresh failure", async () => {
+    state.error = new Error("profile refresh failed");
+
+    renderProfile();
+
+    expect(await screen.findByRole("heading", { name: "Alice" })).toBeInTheDocument();
+    await waitFor(() => expect(lifecycle.markError).toHaveBeenCalledWith(
+      "alice:profile",
+      "route",
+      state.refetch,
+      true,
+    ));
+    expect(screen.queryByText("Profile not found")).toBeNull();
   });
 
   it("renders the profile after the shared route shell settles", async () => {
@@ -262,10 +328,38 @@ describe("PublicProfile recommendation presentation", () => {
     expect(await screen.findByRole("dialog", { name: "Profile media viewer" })).toBeVisible();
   });
 
-  it("opens the profile QR dialog from the dedicated Share control without opening avatar media", async () => {
+  it("uses native share from the header Share control without opening QR or avatar media", async () => {
+    const nativeShare = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: nativeShare });
     renderProfile();
 
     fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+    await waitFor(() => expect(nativeShare).toHaveBeenCalledWith({
+      title: "Alice's Profile",
+      text: "Check out this profile!",
+      url: `${window.location.origin}/alice`,
+    }));
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "Profile QR Code" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Profile media viewer" })).toBeNull();
+  });
+
+  it("copies the clean profile URL when native share is unavailable", async () => {
+    renderProfile();
+
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/alice`,
+    ));
+    expect(screen.queryByRole("dialog", { name: "Profile QR Code" })).toBeNull();
+  });
+
+  it("opens the profile QR dialog from the dedicated QR control without opening avatar media", async () => {
+    renderProfile();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show profile QR code" }));
 
     expect(await screen.findByRole("dialog", { name: "Profile QR Code" })).toBeVisible();
     expect(screen.queryByRole("dialog", { name: "Profile media viewer" })).toBeNull();

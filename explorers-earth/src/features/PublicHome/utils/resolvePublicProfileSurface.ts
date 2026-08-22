@@ -28,6 +28,7 @@ export interface PublicProfileHeaderProps {
   avatarUrl?: string;
   socialLinks: PublicProfileSocialLinkViewModel[];
   onShare: () => void;
+  onOpenQR: () => void;
   onAvatarActivate: (
     item: PublicAvatarMediaItem,
     trigger: HTMLButtonElement,

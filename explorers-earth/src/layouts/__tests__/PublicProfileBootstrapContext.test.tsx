@@ -60,7 +60,12 @@ function BootstrapRoute({ children }: { children: ReactNode }) {
 
 function NavigationControls() {
   const navigate = useNavigate();
-  return <button type="button" onClick={() => navigate("/Bob")}>Visit Bob</button>;
+  return (
+    <>
+      <button type="button" onClick={() => navigate("/Alice")}>Visit Alice</button>
+      <button type="button" onClick={() => navigate("/Bob")}>Visit Bob</button>
+    </>
+  );
 }
 
 function renderBootstrap(path = "/Alice") {
@@ -209,5 +214,57 @@ describe("PublicProfileBootstrapContext", () => {
     await waitFor(() =>
       expect(within(firstConsumer).getByRole("button", { name: "Retry" })).toBeEnabled(),
     );
+  });
+
+  it("keeps a newer Alice retry owned when Alice A1 resolves after Alice to Bob to Alice navigation", async () => {
+    const resolveAlice: Array<() => void> = [];
+    let resolveBob: (() => void) | undefined;
+    const aliceRefetch = vi.fn(
+      () => new Promise<void>((resolve) => { resolveAlice.push(resolve); }),
+    );
+    const bobRefetch = vi.fn(
+      () => new Promise<void>((resolve) => { resolveBob = resolve; }),
+    );
+    queryResultsByUsername.set("alice", {
+      data: undefined,
+      loading: false,
+      error: new Error("Alice offline"),
+      refetch: aliceRefetch,
+    });
+    queryResultsByUsername.set("bob", {
+      data: undefined,
+      loading: false,
+      error: new Error("Bob offline"),
+      refetch: bobRefetch,
+    });
+
+    renderBootstrap("/Alice");
+    const firstConsumer = screen.getByRole("region", { name: "first" });
+    fireEvent.click(within(firstConsumer).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(aliceRefetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Visit Bob" }));
+    await waitFor(() => expect(screen.getByTestId("first-key")).toHaveTextContent("bob"));
+    fireEvent.click(within(firstConsumer).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(bobRefetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Visit Alice" }));
+    await waitFor(() => expect(screen.getByTestId("first-key")).toHaveTextContent("alice"));
+    fireEvent.click(within(firstConsumer).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(aliceRefetch).toHaveBeenCalledTimes(2));
+    expect(within(firstConsumer).getByRole("button", { name: "Retrying" })).toBeDisabled();
+
+    await act(async () => resolveAlice[0]?.());
+
+    const aliceA2 = within(firstConsumer).getByRole("button", { name: "Retrying" });
+    expect(aliceA2).toBeDisabled();
+    fireEvent.click(aliceA2);
+    expect(aliceRefetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => resolveAlice[1]?.());
+    await waitFor(() =>
+      expect(within(firstConsumer).getByRole("button", { name: "Retry" })).toBeEnabled(),
+    );
+    await act(async () => resolveBob?.());
   });
 });

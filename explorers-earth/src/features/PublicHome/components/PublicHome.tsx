@@ -993,6 +993,8 @@ const PublicHome = memo(() => {
     }
   }, [heroSlides.length, activeHeroIndex]);
 
+  if (!data) return null;
+
   const matchedPlaceResource = !placeSlug
     ? true
     : PublishedCities.find(

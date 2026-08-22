@@ -487,7 +487,35 @@ const PublicProfile = memo(() => {
     emailSocial,
   ]);
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/${username}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${accountData?.Account_Name || username}'s Profile`,
+          text: "Check out this profile!",
+          url: shareUrl,
+        });
+        analytics.trackClick("share-button", { context: "profile-header" });
+        return;
+      } catch (shareError: any) {
+        if (shareError?.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied!");
+    } catch (clipboardError) {
+      toast.error("Failed to copy link");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to copy text:", clipboardError);
+      }
+    }
+    analytics.trackClick("share-button", { context: "profile-header" });
+  };
+
+  const handleOpenQR = () => {
     setShowQR(true);
     analytics.trackClick("share-button", { context: "profile-header", action: "open-qr" });
   };
@@ -615,7 +643,7 @@ const PublicProfile = memo(() => {
 
   // Add safety check for accountData
   if (!accountData) {
-    if (loading) return null;
+    if (loading || error) return null;
 
     return (
       <div className="flex bg-black items-center justify-center min-h-screen">
@@ -853,6 +881,7 @@ const PublicProfile = memo(() => {
           avatarUrl={accountData?.profile_picture?.url}
           socialLinks={socialLinks}
           onShare={handleShare}
+          onOpenQR={handleOpenQR}
           onAvatarActivate={handleAvatarActivate}
         />
 

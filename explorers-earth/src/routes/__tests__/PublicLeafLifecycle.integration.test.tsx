@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import type { DocumentNode, OperationDefinitionNode } from "graphql";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -61,6 +61,15 @@ vi.mock("../../services/analyticsService", () => ({
   createAnalyticsOptions: new Proxy({}, { get: () => vi.fn(() => ({})) }),
 }));
 vi.mock("../../components/SEO", () => ({ default: () => null }));
+vi.mock("../../hooks/useQRActions", () => ({
+  useQRActions: () => ({ handleCopyLink: vi.fn() }),
+}));
+vi.mock("@vis.gl/react-google-maps", () => ({
+  AdvancedMarker: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  Map: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Pin: () => null,
+  useMap: () => null,
+}));
 
 import PublicAppList from "../../features/AppsAndTools/components/public/PublicAppList";
 import PublicApps from "../../features/AppsAndTools/components/public/PublicApps";
@@ -80,6 +89,7 @@ import PublicProducts from "../../features/Products/components/public/PublicProd
 import PublicBookSubject from "../../features/Books/components/public/PublicBookSubject";
 import PublicGuideDetailPage from "../../features/PublicHome/components/PublicGuideDetailPage";
 import PublicGuides from "../../features/PublicHome/components/PublicGuides";
+import PublicHome from "../../features/PublicHome/components/PublicHome";
 
 const guideSummary = {
   documentId: "guide-1",
@@ -194,6 +204,214 @@ const taxonomyCases = [
   },
 ] as const;
 
+type LeafLifecycleFixture = {
+  label: string;
+  element: ReactElement;
+  path: string;
+  routePath: string;
+  operation: string;
+  data: Record<string, any>;
+  supportingStates?: Record<string, Record<string, any>>;
+};
+
+const leafLifecycleCases: LeafLifecycleFixture[] = [
+  {
+    label: "Places index",
+    element: <PublicHome />,
+    path: "/alice/places",
+    routePath: "/:username/places",
+    operation: "PublicPlacesLists",
+    data: { recommendationLists: [] },
+  },
+  {
+    label: "Places detail",
+    element: <PublicHome />,
+    path: "/alice/places/paris",
+    routePath: "/:username/places/:placeSlug",
+    operation: "PublicPlacesLists",
+    data: {
+      recommendationLists: [{
+        documentId: "place-list-1",
+        List_Name: "Paris",
+        Visibility: true,
+        is_pinned: false,
+        recommended_places: [],
+        person_lists: [],
+        product_lists: [],
+      }],
+    },
+  },
+  {
+    label: "Guides index",
+    element: <PublicGuides />,
+    path: "/alice/guides",
+    routePath: "/:username/guides",
+    operation: "GetPublicGuides",
+    data: { guides: [guideSummary] },
+  },
+  {
+    label: "Guide detail",
+    element: <PublicGuideDetailPage />,
+    path: "/alice/guides/fixture-guide",
+    routePath: "/:username/guides/:guideSlug",
+    operation: "GetPublicGuideById",
+    data: { guide: guideDetail },
+    supportingStates: { GetPublicGuides: { guides: [guideSummary] } },
+  },
+  {
+    label: "Apps index",
+    element: <PublicApps />,
+    path: "/alice/apps",
+    routePath: "/:username/apps",
+    operation: "PublicAppData",
+    data: { appLists: [] },
+  },
+  {
+    label: "App list",
+    element: <PublicAppList />,
+    path: "/alice/apps/cached-list",
+    routePath: "/:username/apps/:listSlug",
+    operation: "AppListBySlug",
+    data: { appLists: [{ documentId: "apps-1", List_Name: "Cached Apps", slug: "cached-list", recommended_apps: [] }] },
+  },
+  {
+    label: "Books index",
+    element: <PublicBooks />,
+    path: "/alice/books",
+    routePath: "/:username/books",
+    operation: "PublicBookData",
+    data: { bookLists: [] },
+  },
+  {
+    label: "Book list",
+    element: <PublicBookList />,
+    path: "/alice/books/cached-list",
+    routePath: "/:username/books/:listSlug",
+    operation: "BookListBySlug",
+    data: { bookLists: [{ documentId: "books-1", List_Name: "Cached Books", slug: "cached-list", recommended_books: [] }] },
+  },
+  {
+    label: "Book subject",
+    element: <PublicBookSubject />,
+    path: "/alice/books/subject/science",
+    routePath: "/:username/books/subject/:subjectSlug",
+    operation: "BooksBySubject",
+    data: { recommendedBooks: [] },
+    supportingStates: { BookCategories: { bookCategories: [{ documentId: "subject-1", subject_name: "Science" }] } },
+  },
+  {
+    label: "Games index",
+    element: <PublicGames />,
+    path: "/alice/games",
+    routePath: "/:username/games",
+    operation: "PublicGameData",
+    data: { gameLists: [] },
+  },
+  {
+    label: "Game list",
+    element: <PublicGamesList />,
+    path: "/alice/games/cached-list",
+    routePath: "/:username/games/:listSlug",
+    operation: "GameListBySlug",
+    data: { gameLists: [{ documentId: "games-1", List_Name: "Cached Games", slug: "cached-list", recommended_games: [] }] },
+  },
+  {
+    label: "Game genre",
+    element: <PublicGamesGenre />,
+    path: "/alice/games/genre/comedy",
+    routePath: "/:username/games/genre/:genreSlug",
+    operation: "PublicGameData",
+    data: { gameLists: [] },
+    supportingStates: { GameCategories: { gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
+  },
+  {
+    label: "Movies index",
+    element: <PublicMovies />,
+    path: "/alice/movies",
+    routePath: "/:username/movies",
+    operation: "PublicMovieData",
+    data: { movieLists: [] },
+  },
+  {
+    label: "Movie list",
+    element: <PublicMovieList />,
+    path: "/alice/movies/cached-list",
+    routePath: "/:username/movies/:listSlug",
+    operation: "MovieListBySlug",
+    data: { movieLists: [{ documentId: "movies-1", List_Name: "Cached Movies", slug: "cached-list", recommended_movies: [] }] },
+  },
+  {
+    label: "Movie genre",
+    element: <PublicMovieGenre />,
+    path: "/alice/movies/genre/comedy",
+    routePath: "/:username/movies/genre/:genreSlug",
+    operation: "PublicMovieData",
+    data: { movieLists: [] },
+    supportingStates: { MovieCategories: { movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
+  },
+  {
+    label: "People index",
+    element: <PublicPeople />,
+    path: "/alice/people",
+    routePath: "/:username/people",
+    operation: "PublicPeopleData",
+    data: { personLists: [] },
+  },
+  {
+    label: "People list",
+    element: <PublicPersonList />,
+    path: "/alice/people/cached-list",
+    routePath: "/:username/people/:listSlug",
+    operation: "PersonListBySlug",
+    data: { personLists: [{ documentId: "people-1", List_Name: "Cached People", slug: "cached-list", recommended_people: [] }] },
+  },
+  {
+    label: "People sector",
+    element: <PublicPersonSector />,
+    path: "/alice/people/sector/creators",
+    routePath: "/:username/people/sector/:sectorSlug",
+    operation: "PublicPeopleData",
+    data: { personLists: [] },
+    supportingStates: { PersonCategories: { peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }] } },
+  },
+  {
+    label: "Products index",
+    element: <PublicProducts />,
+    path: "/alice/products",
+    routePath: "/:username/products",
+    operation: "PublicProductData",
+    data: { productLists: [] },
+  },
+  {
+    label: "Product list",
+    element: <PublicProductList />,
+    path: "/alice/products/cached-list",
+    routePath: "/:username/products/:listSlug",
+    operation: "ProductListBySlug",
+    data: { productLists: [{ documentId: "products-1", List_Name: "Cached Products", slug: "cached-list", recommended_products: [] }] },
+  },
+];
+
+function setLeafLifecycleState(
+  fixture: LeafLifecycleFixture,
+  state: "initial-error" | "refresh" | "refresh-error",
+) {
+  Object.entries(fixture.supportingStates ?? {}).forEach(([operation, data]) => {
+    queryStates.set(operation, { data, loading: false });
+  });
+
+  if (state === "initial-error") {
+    queryStates.set(fixture.operation, { loading: false, error: new Error(`${fixture.label} initial failure`) });
+    return;
+  }
+
+  queryStates.set(fixture.operation, {
+    data: fixture.data,
+    loading: state === "refresh",
+    error: state === "refresh-error" ? new Error(`${fixture.label} refresh failure`) : undefined,
+  });
+}
+
 describe("production public leaf lifecycle rendering", () => {
   beforeEach(() => {
     queryStates.clear();
@@ -207,6 +425,43 @@ describe("production public leaf lifecycle rendering", () => {
         disconnect() {}
       },
     });
+  });
+
+  it.each(leafLifecycleCases)("delegates an initial $label error to the shared route Retry surface", async (fixture) => {
+    setLeafLifecycleState(fixture, "initial-error");
+
+    const { container } = renderLeaf(fixture.element, fixture.path, fixture.routePath);
+
+    await waitFor(() => expect(lifecycle.markError).toHaveBeenCalledWith(
+      "alice:leaf",
+      "route",
+      expect.any(Function),
+      false,
+    ));
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it.each(leafLifecycleCases)("retains cached $label content during refresh", async (fixture) => {
+    setLeafLifecycleState(fixture, "refresh");
+
+    const { container } = renderLeaf(fixture.element, fixture.path, fixture.routePath);
+
+    await waitFor(() => expect(lifecycle.markRefreshing).toHaveBeenCalledWith("alice:leaf"));
+    expect(container).not.toBeEmptyDOMElement();
+  });
+
+  it.each(leafLifecycleCases)("retains cached $label content during refresh failure", async (fixture) => {
+    setLeafLifecycleState(fixture, "refresh-error");
+
+    const { container } = renderLeaf(fixture.element, fixture.path, fixture.routePath);
+
+    await waitFor(() => expect(lifecycle.markError).toHaveBeenCalledWith(
+      "alice:leaf",
+      "route",
+      expect.any(Function),
+      true,
+    ));
+    expect(container).not.toBeEmptyDOMElement();
   });
 
   it.each(taxonomyCases)("keeps a valid published $label with zero items on its empty page", async (fixture) => {
