@@ -137,6 +137,21 @@ describe("ProfileRecommendationsLayouts", () => {
     expect(loadingSection.querySelector("h2")).not.toHaveStyle({ color: "#10B981" });
   });
 
+  it("matches Classic Shelves loading geometry without a temporary outer card", () => {
+    renderLayouts("shelves", [
+      { status: "loading", id: "music", label: "Music" },
+    ]);
+
+    const loadingSection = screen.getByLabelText("Loading Music");
+    expect(loadingSection).toHaveAttribute("data-loading-variant", "shelf");
+    expect(loadingSection).not.toHaveClass(
+      "border",
+      "bg-[var(--bg-card)]",
+      "rounded-2xl",
+    );
+    expect(within(loadingSection).getAllByTestId("shelf-list-skeleton")).toHaveLength(2);
+  });
+
   it("aligns shelf category heading and first card to container edge while allowing overflow", () => {
     renderLayouts("shelves");
     const shelvesContainer = screen.getByTestId("recommendations-shelves");

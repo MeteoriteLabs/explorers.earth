@@ -119,24 +119,55 @@ const LoadingCategory = ({
   slot,
   className = "",
   testId,
+  variant = "card",
 }: {
   slot: RecommendationCategoryLoadingViewModel;
   className?: string;
   testId?: string;
-}) => (
-  <section
-    data-testid={testId}
-    data-category-id={slot.id}
-    aria-label={`Loading ${slot.label}`}
-    aria-busy="true"
-    className={`rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4 ${className}`}
-  >
-    <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">
-      {slot.label}
-    </h2>
-    <div className="mt-3 h-24 animate-pulse rounded-xl bg-[var(--border-card)] opacity-60" />
-  </section>
-);
+  variant?: "card" | "shelf" | "grid" | "featured" | "compact";
+}) => {
+  if (variant === "shelf") {
+    return (
+      <section
+        data-testid={testId}
+        data-category-id={slot.id}
+        data-loading-variant="shelf"
+        aria-label={`Loading ${slot.label}`}
+        aria-busy="true"
+        className={`space-y-3 ${className}`}
+      >
+        <h2 className="flex min-h-12 items-center font-poppins text-lg font-black text-[var(--text-primary)]">
+          {slot.label}
+        </h2>
+        <div className="flex gap-4 overflow-hidden pb-4 pt-2">
+          {[0, 1].map((index) => (
+            <div
+              key={index}
+              data-testid="shelf-list-skeleton"
+              className="skeleton-shimmer h-[9.75rem] w-[8.5rem] shrink-0 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] motion-reduce:animate-none"
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      data-testid={testId}
+      data-category-id={slot.id}
+      data-loading-variant={variant}
+      aria-label={`Loading ${slot.label}`}
+      aria-busy="true"
+      className={`rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4 ${className}`}
+    >
+      <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">
+        {slot.label}
+      </h2>
+      <div className="skeleton-shimmer mt-3 h-24 rounded-xl bg-[var(--border-card)] opacity-60 motion-reduce:animate-none" />
+    </section>
+  );
+};
 
 const ClassicShelves = ({
   slots,
@@ -146,7 +177,7 @@ const ClassicShelves = ({
   <div data-testid="recommendations-shelves" className="space-y-6">
     {slots.map((slot) => {
       if (slot.status === "loading") {
-        return <LoadingCategory key={slot.id} slot={slot} />;
+        return <LoadingCategory key={slot.id} slot={slot} variant="shelf" />;
       }
 
       return (
@@ -190,7 +221,7 @@ const CategoryMosaic = ({
   >
     {slots.map((slot) => {
       if (slot.status === "loading") {
-        return <LoadingCategory key={slot.id} slot={slot} className="min-h-56" />;
+        return <LoadingCategory key={slot.id} slot={slot} className="min-h-56" variant="grid" />;
       }
       const images = categoryImages(slot, 3);
       const visibleImages = images.length ? images : [FALLBACK_IMAGE];
@@ -310,12 +341,13 @@ const FeaturedFirst = ({
           slot={first}
           testId="featured-category"
           className="min-h-72"
+          variant="featured"
         />
       )}
       <div data-testid="featured-compact-categories" className="space-y-3">
         {rest.map((slot) => {
           if (slot.status === "loading") {
-            return <LoadingCategory key={slot.id} slot={slot} className="min-h-24" />;
+            return <LoadingCategory key={slot.id} slot={slot} className="min-h-24" variant="compact" />;
           }
           const Icon = slot.icon;
           const [image = FALLBACK_IMAGE] = categoryImages(slot, 1);
