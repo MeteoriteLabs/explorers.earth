@@ -37,6 +37,18 @@ describe("public place and guide child queries", () => {
 		expect(source).toContain('sort: ["createdAt:asc", "documentId:asc"]');
 	});
 
+	it("builds the same account-owned published-list filter for initial and later Place pages", async () => {
+		const { buildPublicRecommendedPlacesFilters } = await import("../query");
+		expect(buildPublicRecommendedPlacesFilters("account-1", "place-list-1", "Museums")).toEqual({
+			recommendation_list: {
+				documentId: { eq: "place-list-1" },
+				account: { documentId: { eq: "account-1" } },
+				Visibility: { eq: true },
+			},
+			recommendation_category: { Category_Name: { eq: "Museums" } },
+		});
+	});
+
 	it("looks up one published guide by account and slug on the server", () => {
 		const source = print(GET_PUBLIC_GUIDE_BY_SLUG_QUERY);
 

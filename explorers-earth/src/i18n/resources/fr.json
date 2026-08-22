@@ -505,11 +505,14 @@
     "error": "Une erreur s'est produite. Veuillez réessayer plus tard.",
     "hidePassword": "Masquer le mot de passe",
     "loading": "Chargement...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Chargement de plus de {{label}}…",
+    "loadMore": "Charger plus de {{label}}",
     "noResults": "Aucun résultat trouvé",
+    "paginationLabels": {
+      "guideDays": "jours du guide"
+    },
     "retry": "Réessayer",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Réessayer de charger plus de {{label}}",
     "showPassword": "Afficher le mot de passe",
     "signInWithGoogle": "Se connecter avec Google",
     "signUpWithGoogle": "S'inscrire avec Google",

@@ -1,6 +1,12 @@
-import { renderHook } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { usePublicRouteReadiness } from "../PublicRouteReadinessContext";
+import {
+  PublicRouteReadinessContext,
+  usePublicLeafRequestGeneration,
+  usePublicRouteReadiness,
+  type PublicRouteReadinessContextValue,
+} from "../PublicRouteReadinessContext";
 
 const originalConsoleError = console.error;
 const expectedProviderError = "usePublicRouteReadiness must be used within";
@@ -50,5 +56,61 @@ describe("usePublicRouteReadiness", () => {
       "usePublicRouteReadiness must be used within a PublicRouteReadinessContext.Provider",
     ));
     expect(forward).toHaveBeenCalledTimes(1);
+  });
+});
+
+function readinessValue(generation: string): PublicRouteReadinessContextValue {
+  return {
+    generation,
+    readiness: { generation, status: "initial-loading" },
+    markLoading: () => {}, markReady: () => {}, markRefreshing: () => {},
+    markEmpty: () => {}, markNotFound: () => {}, markError: () => {},
+  };
+}
+
+function LeafGenerationProbe({ requestKey }: { requestKey: string }) {
+  const generation = usePublicLeafRequestGeneration(requestKey);
+  return <output aria-label="leaf request generation">{generation}</output>;
+}
+
+function ReadinessProvider({ generation, children }: { generation: string; children: ReactNode }) {
+  return (
+    <PublicRouteReadinessContext.Provider value={readinessValue(generation)}>
+      {children}
+    </PublicRouteReadinessContext.Provider>
+  );
+}
+
+describe("usePublicLeafRequestGeneration", () => {
+  it("advances when the readiness provider begins the route after params render", () => {
+    const view = render(
+      <ReadinessProvider generation="alice:key-before-begin-route">
+        <LeafGenerationProbe requestKey="account-1:same-list" />
+      </ReadinessProvider>,
+    );
+    expect(screen.getByLabelText("leaf request generation")).toHaveTextContent("alice:key-before-begin-route");
+
+    view.rerender(
+      <ReadinessProvider generation="alice:key-after-begin-route">
+        <LeafGenerationProbe requestKey="account-1:same-list" />
+      </ReadinessProvider>,
+    );
+
+    expect(screen.getByLabelText("leaf request generation")).toHaveTextContent("alice:key-after-begin-route");
+  });
+
+  it("advances for the same resource when only the location-key generation changes", () => {
+    const view = render(
+      <ReadinessProvider generation="alice:location-key-a">
+        <LeafGenerationProbe requestKey="account-1:same-list" />
+      </ReadinessProvider>,
+    );
+    view.rerender(
+      <ReadinessProvider generation="alice:location-key-b">
+        <LeafGenerationProbe requestKey="account-1:same-list" />
+      </ReadinessProvider>,
+    );
+
+    expect(screen.getByLabelText("leaf request generation")).toHaveTextContent("alice:location-key-b");
   });
 });

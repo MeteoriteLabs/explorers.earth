@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "További {{label}} betöltése…",
+    "loadMore": "További {{label}} betöltése",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "útikalauz napjai"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "További {{label}} betöltésének újrapróbálása",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

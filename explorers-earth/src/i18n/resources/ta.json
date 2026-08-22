@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "மேலும் {{label}} ஏற்றப்படுகிறது…",
+    "loadMore": "மேலும் {{label}} ஏற்றுக",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "வழிகாட்டி நாட்கள்"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "மேலும் {{label}} ஏற்ற மீண்டும் முயல்க",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

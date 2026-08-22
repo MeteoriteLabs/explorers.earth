@@ -505,11 +505,14 @@
     "error": "Er is een fout opgetreden. Probeer het later opnieuw.",
     "hidePassword": "Wachtwoord verbergen",
     "loading": "Laden...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Meer {{label}} laden…",
+    "loadMore": "Meer {{label}} laden",
     "noResults": "Geen resultaten gevonden",
+    "paginationLabels": {
+      "guideDays": "gidsdagen"
+    },
     "retry": "Opnieuw proberen",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Opnieuw meer {{label}} laden",
     "showPassword": "Wachtwoord tonen",
     "signInWithGoogle": "Inloggen met Google",
     "signUpWithGoogle": "Registreren met Google",

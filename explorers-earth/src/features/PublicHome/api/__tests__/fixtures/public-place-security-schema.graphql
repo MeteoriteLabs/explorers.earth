@@ -4,6 +4,7 @@ type Query {
   recommendationLists(filters: RecommendationListFiltersInput, pagination: PaginationArg): [RecommendationList!]!
   recommendedPeople_connection(filters: RecommendedPersonFiltersInput, pagination: PaginationArg, sort: [String!]): RecommendedPersonConnection!
   recommendedProducts_connection(filters: RecommendedProductFiltersInput, pagination: PaginationArg, sort: [String!]): RecommendedProductConnection!
+  recommendedPlaces_connection(filters: RecommendedPlaceFiltersInput, pagination: PaginationArg, sort: [String!]): RecommendedPlaceConnection!
 }
 
 input PaginationArg { limit: Int, page: Int, pageSize: Int }
@@ -19,10 +20,15 @@ input RecommendationListFiltersInput {
   or: [RecommendationListFiltersInput!]
 }
 input RecommendationListRelationFiltersInput {
+  documentId: IDFilterInput
   account: AccountFiltersInput
   Visibility: BooleanFilterInput
 }
-input RecommendedPlaceFiltersInput { recommendation_list: RecommendationListRelationFiltersInput }
+input RecommendationCategoryFiltersInput { Category_Name: StringFilterInput }
+input RecommendedPlaceFiltersInput {
+  recommendation_list: RecommendationListRelationFiltersInput
+  recommendation_category: RecommendationCategoryFiltersInput
+}
 input PersonListFiltersInput { account: AccountFiltersInput, Visibility: BooleanFilterInput }
 input PersonListRelationFiltersInput {
   account: AccountFiltersInput
@@ -51,6 +57,9 @@ type RecommendedPlace {
   Recommendation_Type: String
   Contact_Name: String
   media_details: JSON
+  recommendation_list: RecommendationList
+  user_rating: Float
+  google_rating: Float
 }
 
 type RecommendedPerson {
@@ -95,6 +104,7 @@ type RecommendedProduct {
 type PageInfo { page: Int!, pageSize: Int!, pageCount: Int!, total: Int! }
 type RecommendedPersonConnection { nodes: [RecommendedPerson!]!, pageInfo: PageInfo! }
 type RecommendedProductConnection { nodes: [RecommendedProduct!]!, pageInfo: PageInfo! }
+type RecommendedPlaceConnection { nodes: [RecommendedPlace!]!, pageInfo: PageInfo! }
 
 type PersonList {
   documentId: ID!

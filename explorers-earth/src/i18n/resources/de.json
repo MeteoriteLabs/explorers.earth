@@ -505,11 +505,14 @@
     "error": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
     "hidePassword": "Passwort ausblenden",
     "loading": "Wird geladen...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Weitere {{label}} werden geladen…",
+    "loadMore": "Weitere {{label}} laden",
     "noResults": "Keine Ergebnisse gefunden",
+    "paginationLabels": {
+      "guideDays": "Reisetage"
+    },
     "retry": "Erneut versuchen",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Weitere {{label}} erneut laden",
     "showPassword": "Passwort anzeigen",
     "signInWithGoogle": "Mit Google anmelden",
     "signUpWithGoogle": "Mit Google registrieren",

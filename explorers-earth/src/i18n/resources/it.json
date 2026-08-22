@@ -505,11 +505,14 @@
     "error": "Si è verificato un errore. Riprova più tardi.",
     "hidePassword": "Nascondi password",
     "loading": "Caricamento...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Caricamento di altri {{label}}…",
+    "loadMore": "Carica altri {{label}}",
     "noResults": "Nessun risultato trovato",
+    "paginationLabels": {
+      "guideDays": "giorni della guida"
+    },
     "retry": "Riprova",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Riprova a caricare altri {{label}}",
     "showPassword": "Mostra password",
     "signInWithGoogle": "Accedi con Google",
     "signUpWithGoogle": "Registrati con Google",

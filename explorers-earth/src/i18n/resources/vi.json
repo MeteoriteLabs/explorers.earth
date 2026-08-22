@@ -505,11 +505,14 @@
     "error": "Đã xảy ra lỗi. Vui lòng thử lại sau.",
     "hidePassword": "Ẩn mật khẩu",
     "loading": "Đang tải...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Đang tải thêm {{label}}…",
+    "loadMore": "Tải thêm {{label}}",
     "noResults": "Không tìm thấy kết quả",
+    "paginationLabels": {
+      "guideDays": "các ngày trong hướng dẫn"
+    },
     "retry": "Thử lại",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Thử tải thêm {{label}} lần nữa",
     "showPassword": "Hiển thị mật khẩu",
     "signInWithGoogle": "Đăng nhập bằng Google",
     "signUpWithGoogle": "Đăng ký bằng Google",

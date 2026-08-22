@@ -508,6 +508,9 @@
     "loadingMore": "Loading more {{label}}…",
     "loadMore": "Load more {{label}}",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "guide days"
+    },
     "retry": "Try Again",
     "retryLoadingMore": "Retry loading more {{label}}",
     "showPassword": "Show password",

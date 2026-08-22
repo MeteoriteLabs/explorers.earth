@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "مزید {{label}} لوڈ ہو رہے ہیں…",
+    "loadMore": "مزید {{label}} لوڈ کریں",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "رہنما کے دن"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "مزید {{label}} دوبارہ لوڈ کریں",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

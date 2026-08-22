@@ -505,11 +505,14 @@
     "error": "发生错误。请稍后再试。",
     "hidePassword": "隐藏密码",
     "loading": "加载中...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "正在加载更多{{label}}…",
+    "loadMore": "加载更多{{label}}",
     "noResults": "未找到结果",
+    "paginationLabels": {
+      "guideDays": "指南天数"
+    },
     "retry": "重试",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "重试加载更多{{label}}",
     "showPassword": "显示密码",
     "signInWithGoogle": "使用 Google 登录",
     "signUpWithGoogle": "使用 Google 注册",

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,11 +20,14 @@ import {
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const legacySubjectName = slugToSubjectName(subjectSlug ?? "");
+  const legacySubjectLookupName = publicTaxonomyLegacyLookupName(subjectSlug ?? "", legacySubjectName);
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
   const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${subjectSlug}`);
@@ -38,7 +41,7 @@ const PublicBookSubject = () => {
     variables: {
       accountDocumentId,
       taxonomyDocumentId: subjectSlug,
-      legacySubjectName,
+      legacySubjectName: legacySubjectLookupName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !subjectSlug,
@@ -50,9 +53,13 @@ const PublicBookSubject = () => {
   const subjectName = subject?.subject_name ?? legacySubjectName;
   useEffect(() => {
     if (subject?.documentId && subjectSlug !== subject.documentId) {
-      navigate(`/${username}/books/subject/${encodeURIComponent(subject.documentId)}`, { replace: true });
+      navigate({
+        pathname: publicTaxonomyPath(username ?? "", "books", "subject", subject.documentId),
+        search: location.search,
+        hash: location.hash,
+      }, { replace: true });
     }
-  }, [navigate, subject?.documentId, subjectSlug, username]);
+  }, [location.hash, location.search, navigate, subject?.documentId, subjectSlug, username]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -185,7 +192,7 @@ const PublicBookSubject = () => {
           error={pagination.nextPageError}
           onLoadMore={() => void pagination.loadNextPage()}
           onRetry={() => void pagination.retryNextPage()}
-          label="books"
+          labelKey="sections.productCategories.categories.2.label"
         />
       </div>
 

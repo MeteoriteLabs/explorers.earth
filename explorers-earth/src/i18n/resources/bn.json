@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "আরও {{label}} লোড হচ্ছে…",
+    "loadMore": "আরও {{label}} লোড করুন",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "গাইডের দিন"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "আরও {{label}} লোড করার চেষ্টা করুন",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

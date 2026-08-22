@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PEOPLE_BY_SECTOR } from "../../api/query";
@@ -24,11 +24,14 @@ import {
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const legacySectorName = slugToCategoryName(sectorSlug ?? "");
+  const legacySectorLookupName = publicTaxonomyLegacyLookupName(sectorSlug ?? "", legacySectorName);
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
@@ -41,7 +44,7 @@ const PublicPersonSector = () => {
     variables: {
       accountDocumentId,
       taxonomyDocumentId: sectorSlug,
-      legacySectorName,
+      legacySectorName: legacySectorLookupName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !sectorSlug,
@@ -53,9 +56,13 @@ const PublicPersonSector = () => {
   const sectorName = sector?.Category_name ?? legacySectorName;
   useEffect(() => {
     if (sector?.documentId && sectorSlug !== sector.documentId) {
-      navigate(`/${username}/people/sector/${encodeURIComponent(sector.documentId)}`, { replace: true });
+      navigate({
+        pathname: publicTaxonomyPath(username ?? "", "people", "sector", sector.documentId),
+        search: location.search,
+        hash: location.hash,
+      }, { replace: true });
     }
-  }, [navigate, sector?.documentId, sectorSlug, username]);
+  }, [location.hash, location.search, navigate, sector?.documentId, sectorSlug, username]);
   const sectorPeople = deduplicatePeople<RecommendedPerson>(
     data?.recommendedPeople_connection?.nodes ?? [],
   );
@@ -237,7 +244,7 @@ const PublicPersonSector = () => {
             error={pagination.nextPageError}
             onLoadMore={() => void pagination.loadNextPage()}
             onRetry={() => void pagination.retryNextPage()}
-            label="people"
+            labelKey="sections.productCategories.categories.1.label"
           />
         </div>
 

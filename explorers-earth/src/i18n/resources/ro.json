@@ -505,11 +505,14 @@
     "error": "A apărut o eroare. Vă rugăm să încercați din nou mai târziu.",
     "hidePassword": "Ascunde parola",
     "loading": "Se încarcă...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Se încarcă mai multe {{label}}…",
+    "loadMore": "Încarcă mai multe {{label}}",
     "noResults": "Nu s-au găsit rezultate",
+    "paginationLabels": {
+      "guideDays": "zilele ghidului"
+    },
     "retry": "Încearcă din nou",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Reîncearcă încărcarea mai multor {{label}}",
     "showPassword": "Afișează parola",
     "signInWithGoogle": "Conectează-te cu Google",
     "signUpWithGoogle": "Înregistrează-te cu Google",

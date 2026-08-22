@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "در حال بارگیری {{label}} بیشتر…",
+    "loadMore": "بارگیری {{label}} بیشتر",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "روزهای راهنما"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "تلاش دوباره برای بارگیری {{label}} بیشتر",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

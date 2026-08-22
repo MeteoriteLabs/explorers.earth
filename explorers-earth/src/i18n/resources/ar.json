@@ -505,11 +505,14 @@
     "error": "حدث خطأ. يرجى المحاولة مرة أخرى لاحقًا.",
     "hidePassword": "إخفاء كلمة المرور",
     "loading": "جاري التحميل...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "جارٍ تحميل المزيد من {{label}}…",
+    "loadMore": "تحميل المزيد من {{label}}",
     "noResults": "لم يتم العثور على نتائج",
+    "paginationLabels": {
+      "guideDays": "أيام الدليل"
+    },
     "retry": "حاول مرة أخرى",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "إعادة محاولة تحميل المزيد من {{label}}",
     "showPassword": "إظهار كلمة المرور",
     "signInWithGoogle": "تسجيل الدخول باستخدام Google",
     "signUpWithGoogle": "التسجيل باستخدام Google",

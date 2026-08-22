@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Memuatkan lebih banyak {{label}}…",
+    "loadMore": "Muatkan lebih banyak {{label}}",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "hari panduan"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Cuba lagi memuatkan lebih banyak {{label}}",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

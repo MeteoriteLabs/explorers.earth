@@ -505,11 +505,14 @@
     "error": "오류가 발생했습니다. 나중에 다시 시도해주세요.",
     "hidePassword": "비밀번호 숨기기",
     "loading": "로딩 중...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "{{label}} 더 불러오는 중…",
+    "loadMore": "{{label}} 더 불러오기",
     "noResults": "결과를 찾을 수 없습니다",
+    "paginationLabels": {
+      "guideDays": "가이드 일정"
+    },
     "retry": "다시 시도",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "{{label}} 추가 불러오기 재시도",
     "showPassword": "비밀번호 표시",
     "signInWithGoogle": "Google로 로그인",
     "signUpWithGoogle": "Google로 가입",

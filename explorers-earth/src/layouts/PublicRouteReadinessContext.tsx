@@ -35,7 +35,11 @@ export function usePublicRouteReadiness(): PublicRouteReadinessContextValue {
 export function usePublicLeafRequestGeneration(requestKey: string): string | undefined {
   const context = useContext(PublicRouteReadinessContext);
   const request = useRef<{ key: string; generation: string | undefined } | undefined>(undefined);
-  if (!request.current || request.current.key !== requestKey) {
+  if (
+    !request.current ||
+    request.current.key !== requestKey ||
+    request.current.generation !== context?.generation
+  ) {
     request.current = { key: requestKey, generation: context?.generation };
   }
   return request.current.generation;

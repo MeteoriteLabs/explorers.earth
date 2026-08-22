@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -20,16 +20,19 @@ import {
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 
 
 const PublicMovieGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const legacyGenreName = slugToGenreName(genreSlug ?? "");
+  const legacyGenreLookupName = publicTaxonomyLegacyLookupName(genreSlug ?? "", legacyGenreName);
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
   const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${genreSlug}`);
@@ -38,7 +41,7 @@ const PublicMovieGenre = () => {
     variables: {
       accountDocumentId,
       taxonomyDocumentId: genreSlug,
-      legacyGenreName,
+      legacyGenreName: legacyGenreLookupName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !genreSlug,
@@ -50,9 +53,13 @@ const PublicMovieGenre = () => {
   const genreName = genre?.genre_name ?? legacyGenreName;
   useEffect(() => {
     if (genre?.documentId && genreSlug !== genre.documentId) {
-      navigate(`/${username}/movies/genre/${encodeURIComponent(genre.documentId)}`, { replace: true });
+      navigate({
+        pathname: publicTaxonomyPath(username ?? "", "movies", "genre", genre.documentId),
+        search: location.search,
+        hash: location.hash,
+      }, { replace: true });
     }
-  }, [genre?.documentId, genreSlug, navigate, username]);
+  }, [genre?.documentId, genreSlug, location.hash, location.search, navigate, username]);
   const filteredMovies: RecommendedMovie[] = deduplicateMovies(
     data?.recommendedMovies_connection?.nodes ?? [],
   );
@@ -161,7 +168,7 @@ const PublicMovieGenre = () => {
           error={pagination.nextPageError}
           onLoadMore={() => void pagination.loadNextPage()}
           onRetry={() => void pagination.retryNextPage()}
-          label="movies"
+          labelKey="sections.productCategories.categories.3.label"
         />
       </div>
 

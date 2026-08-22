@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Φόρτωση περισσότερων {{label}}…",
+    "loadMore": "Φόρτωση περισσότερων {{label}}",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "ημέρες οδηγού"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Νέα προσπάθεια φόρτωσης περισσότερων {{label}}",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

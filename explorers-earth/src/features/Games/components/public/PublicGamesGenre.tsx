@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -20,14 +20,17 @@ import {
 } from "../../../../hooks/usePublicConnectionPagination";
 import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 import { usePublicLeafRequestGeneration } from "../../../../layouts/PublicRouteReadinessContext";
+import { publicTaxonomyLegacyLookupName, publicTaxonomyPath } from "../../../../routes/publicTaxonomyRoute";
 
 const PublicGamesGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedGame, setSelectedGame] = useState<RecommendedGame | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const legacyGenreName = slugToGenreName(genreSlug ?? "");
+  const legacyGenreLookupName = publicTaxonomyLegacyLookupName(genreSlug ?? "", legacyGenreName);
 
   const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
   const requestGeneration = usePublicLeafRequestGeneration(`${accountDocumentId}:${genreSlug}`);
@@ -36,7 +39,7 @@ const PublicGamesGenre = () => {
     variables: {
       accountDocumentId,
       taxonomyDocumentId: genreSlug,
-      legacyGenreName,
+      legacyGenreName: legacyGenreLookupName,
       pagination: { page: 1, pageSize: 200 },
     },
     skip: !accountDocumentId || !genreSlug,
@@ -48,9 +51,13 @@ const PublicGamesGenre = () => {
   const genreName = genre?.genre_name ?? legacyGenreName;
   useEffect(() => {
     if (genre?.documentId && genreSlug !== genre.documentId) {
-      navigate(`/${username}/games/genre/${encodeURIComponent(genre.documentId)}`, { replace: true });
+      navigate({
+        pathname: publicTaxonomyPath(username ?? "", "games", "genre", genre.documentId),
+        search: location.search,
+        hash: location.hash,
+      }, { replace: true });
     }
-  }, [genre?.documentId, genreSlug, navigate, username]);
+  }, [genre?.documentId, genreSlug, location.hash, location.search, navigate, username]);
   const filteredGames: RecommendedGame[] = deduplicateGames(
     data?.recommendedGames_connection?.nodes,
   );
@@ -207,7 +214,7 @@ const PublicGamesGenre = () => {
           error={pagination.nextPageError}
           onLoadMore={() => void pagination.loadNextPage()}
           onRetry={() => void pagination.retryNextPage()}
-          label="games"
+          labelKey="sections.productCategories.categories.4.label"
         />
       </div>
 

@@ -505,11 +505,14 @@
     "error": "एक त्रुटि हुई। कृपया बाद में पुनः प्रयास करें।",
     "hidePassword": "पासवर्ड छुपाएं",
     "loading": "लोड हो रहा है...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "और {{label}} लोड हो रहे हैं…",
+    "loadMore": "और {{label}} लोड करें",
     "noResults": "कोई परिणाम नहीं मिला",
+    "paginationLabels": {
+      "guideDays": "गाइड के दिन"
+    },
     "retry": "पुनः प्रयास करें",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "और {{label}} फिर से लोड करें",
     "showPassword": "पासवर्ड दिखाएं",
     "signInWithGoogle": "Google से साइन इन करें",
     "signUpWithGoogle": "Google से साइन अप करें",

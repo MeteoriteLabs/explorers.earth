@@ -1180,7 +1180,7 @@ const PublicGuideDetailPage = memo(() => {
                   error={sectionPagination.nextPageError}
                   onLoadMore={() => void sectionPagination.loadNextPage()}
                   onRetry={() => void sectionPagination.retryNextPage()}
-                  label="guide days"
+                  labelKey="common.paginationLabels.guideDays"
                 />
               </div>
             </div>

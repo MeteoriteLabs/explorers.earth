@@ -505,11 +505,14 @@
     "error": "Wystąpił błąd. Spróbuj ponownie później.",
     "hidePassword": "Ukryj hasło",
     "loading": "Ładowanie...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Wczytywanie kolejnych: {{label}}…",
+    "loadMore": "Wczytaj więcej: {{label}}",
     "noResults": "Nie znaleziono wyników",
+    "paginationLabels": {
+      "guideDays": "dni przewodnika"
+    },
     "retry": "Spróbuj ponownie",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Ponów wczytywanie: {{label}}",
     "showPassword": "Pokaż hasło",
     "signInWithGoogle": "Zaloguj się przez Google",
     "signUpWithGoogle": "Zarejestruj się przez Google",

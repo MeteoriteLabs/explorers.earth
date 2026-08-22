@@ -505,11 +505,14 @@
     "error": "Terjadi kesalahan. Silakan coba lagi nanti.",
     "hidePassword": "Sembunyikan kata sandi",
     "loading": "Memuat...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Memuat lebih banyak {{label}}…",
+    "loadMore": "Muat lebih banyak {{label}}",
     "noResults": "Tidak ada hasil ditemukan",
+    "paginationLabels": {
+      "guideDays": "hari panduan"
+    },
     "retry": "Coba Lagi",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Coba lagi memuat lebih banyak {{label}}",
     "showPassword": "Tampilkan kata sandi",
     "signInWithGoogle": "Masuk dengan Google",
     "signUpWithGoogle": "Daftar dengan Google",

@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "आणखी {{label}} लोड होत आहेत…",
+    "loadMore": "आणखी {{label}} लोड करा",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "मार्गदर्शकाचे दिवस"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "आणखी {{label}} पुन्हा लोड करा",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

@@ -505,11 +505,14 @@
     "error": "Tapahtui virhe. Yritä myöhemmin uudelleen.",
     "hidePassword": "Piilota salasana",
     "loading": "Ladataan...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Ladataan lisää: {{label}}…",
+    "loadMore": "Lataa lisää: {{label}}",
     "noResults": "Tuloksia ei löytynyt",
+    "paginationLabels": {
+      "guideDays": "opaspäivät"
+    },
     "retry": "Yritä uudelleen",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Yritä ladata lisää uudelleen: {{label}}",
     "showPassword": "Näytä salasana",
     "signInWithGoogle": "Kirjaudu sisään Google-tilillä",
     "signUpWithGoogle": "Rekisteröidy Google-tilillä",

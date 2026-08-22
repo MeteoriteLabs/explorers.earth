@@ -60,12 +60,12 @@ export function usePublicConnectionPagination({
 	const [isLoadingNextPage, setIsLoadingNextPage] = useState(false);
 	const [nextPageError, setNextPageError] = useState<unknown>();
 	const requestInFlight = useRef(false);
-	const generation = useRef(0);
+	const epoch = useRef(0);
 	const currentResetKey = useRef(resetKey);
 	currentResetKey.current = resetKey;
 
 	useEffect(() => {
-		generation.current += 1;
+		epoch.current += 1;
 		requestInFlight.current = false;
 		setIsLoadingNextPage(false);
 		setNextPageError(undefined);
@@ -80,11 +80,13 @@ export function usePublicConnectionPagination({
 			return;
 		}
 
-		const requestGeneration = generation.current;
+		const requestEpoch = epoch.current;
 		const requestResetKey = resetKey;
 		const request: PublicPageRequest = {
 			resetKey: requestResetKey,
-			isCurrent: () => currentResetKey.current === requestResetKey,
+			isCurrent: () =>
+				currentResetKey.current === requestResetKey &&
+				epoch.current === requestEpoch,
 		};
 		requestInFlight.current = true;
 		setIsLoadingNextPage(true);
@@ -93,11 +95,11 @@ export function usePublicConnectionPagination({
 		try {
 			await loadPage(pageInfo.page + 1, request);
 		} catch (error) {
-			if (requestGeneration === generation.current) {
+			if (request.isCurrent()) {
 				setNextPageError(error);
 			}
 		} finally {
-			if (requestGeneration === generation.current) {
+			if (request.isCurrent()) {
 				requestInFlight.current = false;
 				setIsLoadingNextPage(false);
 			}

@@ -106,4 +106,44 @@ describe("usePublicConnectionPagination", () => {
 		release();
 		await act(() => loading);
 	});
+
+	it("invalidates the first A request across an A to B to A reset cycle", async () => {
+		let firstARequest:
+			| { resetKey: string; isCurrent: () => boolean }
+			| undefined;
+		let releaseFirstA!: () => void;
+		const firstAPending = new Promise<void>((resolve) => {
+			releaseFirstA = resolve;
+		});
+		const loadPage = vi.fn(async (_page: number, request: NonNullable<typeof firstARequest>) => {
+			if (!firstARequest) {
+				firstARequest = request;
+				await firstAPending;
+			}
+		});
+		const { result, rerender } = renderHook(
+			({ resetKey }) =>
+				usePublicConnectionPagination({
+					pageInfo: { page: 1, pageSize: 200, pageCount: 2, total: 201 },
+					loadPage,
+					resetKey,
+				}),
+			{ initialProps: { resetKey: "account:list-a" } },
+		);
+
+		let firstALoad!: Promise<void>;
+		act(() => {
+			firstALoad = result.current.loadNextPage();
+		});
+		expect(firstARequest?.isCurrent()).toBe(true);
+
+		rerender({ resetKey: "account:list-b" });
+		rerender({ resetKey: "account:list-a" });
+
+		expect(firstARequest?.resetKey).toBe("account:list-a");
+		expect(firstARequest?.isCurrent()).toBe(false);
+
+		releaseFirstA();
+		await act(() => firstALoad);
+	});
 });

@@ -505,11 +505,14 @@
     "error": "אירעה שגיאה. אנא נסה שוב מאוחר יותר.",
     "hidePassword": "הסתר סיסמה",
     "loading": "טוען...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "טוען {{label}} נוספים…",
+    "loadMore": "טעינת {{label}} נוספים",
     "noResults": "לא נמצאו תוצאות",
+    "paginationLabels": {
+      "guideDays": "ימי המדריך"
+    },
     "retry": "נסה שוב",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "ניסיון חוזר לטעינת {{label}} נוספים",
     "showPassword": "הצג סיסמה",
     "signInWithGoogle": "התחבר עם Google",
     "signUpWithGoogle": "הירשם עם Google",

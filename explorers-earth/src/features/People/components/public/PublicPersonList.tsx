@@ -212,7 +212,7 @@ const PublicPersonList = () => {
             error={pagination.nextPageError}
             onLoadMore={() => void pagination.loadNextPage()}
             onRetry={() => void pagination.retryNextPage()}
-            label="people"
+            labelKey="sections.productCategories.categories.1.label"
           />
         </div>
 

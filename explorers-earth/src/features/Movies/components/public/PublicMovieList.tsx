@@ -195,7 +195,7 @@ const PublicMovieList = () => {
           error={pagination.nextPageError}
           onLoadMore={() => void pagination.loadNextPage()}
           onRetry={() => void pagination.retryNextPage()}
-          label="movies"
+          labelKey="sections.productCategories.categories.3.label"
         />
       </div>
 

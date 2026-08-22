@@ -205,7 +205,7 @@ const PublicGamesList = () => {
             error={pagination.nextPageError}
             onLoadMore={() => void pagination.loadNextPage()}
             onRetry={() => void pagination.retryNextPage()}
-            label="games"
+            labelKey="sections.productCategories.categories.4.label"
           />
         </div>
 

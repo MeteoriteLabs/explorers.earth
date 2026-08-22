@@ -505,11 +505,14 @@
     "error": "เกิดข้อผิดพลาด กรุณาลองอีกครั้งในภายหลัง",
     "hidePassword": "ซ่อนรหัสผ่าน",
     "loading": "กำลังโหลด...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "กำลังโหลด {{label}} เพิ่มเติม…",
+    "loadMore": "โหลด {{label}} เพิ่มเติม",
     "noResults": "ไม่พบผลลัพธ์",
+    "paginationLabels": {
+      "guideDays": "วันในคู่มือ"
+    },
     "retry": "ลองอีกครั้ง",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "ลองโหลด {{label}} เพิ่มเติมอีกครั้ง",
     "showPassword": "แสดงรหัสผ่าน",
     "signInWithGoogle": "เข้าสู่ระบบด้วย Google",
     "signUpWithGoogle": "ลงทะเบียนด้วย Google",

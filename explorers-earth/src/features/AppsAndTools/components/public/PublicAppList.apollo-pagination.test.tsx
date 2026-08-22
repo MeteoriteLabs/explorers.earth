@@ -20,6 +20,7 @@ vi.mock("./AppDetailModal", () => ({ default: () => null }));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string, { label }: { label?: string } = {}) => ({
+			"sections.productCategories.categories.7.label": "apps",
 			"common.loadMore": `Load more ${label}`,
 			"common.loadingMore": `Loading more ${label}`,
 			"common.retryLoadingMore": `Retry loading more ${label}`,
@@ -79,7 +80,7 @@ function renderWithLink(link: ApolloLink, initialEntry = "/alice/apps/old") {
 
 function GenerationLayout() {
 	const location = useLocation();
-	const generation = location.pathname;
+	const generation = `alice:${location.key}`;
 	return (
 		<PublicRouteReadinessContext.Provider value={{
 			generation,
@@ -161,6 +162,51 @@ describe("PublicAppList real Apollo pagination", () => {
 		await waitFor(() => expect(screen.getByText("new app")).toBeVisible());
 		expect(screen.queryByText("old late app")).toBeNull();
 		expect(router.state.location.pathname).toBe("/alice/apps/new");
+	});
+
+	it("does not merge the first A page after an A to B to A navigation cycle", async () => {
+		let firstAPageTwo: Deferred | undefined;
+		let aPageOneAttempts = 0;
+		const link = new ApolloLink((operation: Operation) => new Observable((observer) => {
+			const page = (operation.variables.pagination as { page: number }).page;
+			const slug = operation.variables.slug as string;
+			if (slug === "a" && page === 2) {
+				firstAPageTwo = {
+					next: (result) => observer.next(result),
+					complete: () => observer.complete(),
+				};
+				return;
+			}
+			queueMicrotask(() => {
+				if (slug === "a") aPageOneAttempts += 1;
+				const title = slug === "a" ? `a current ${aPageOneAttempts}` : "b current";
+				observer.next(response(slug, [app(`${slug}-current`, title)], 1, slug === "a" ? 2 : 1, slug === "a" ? 2 : 1));
+				observer.complete();
+			});
+		}));
+		const { router } = renderWithLink(link, "/alice/apps/a");
+
+		await screen.findByText("a current 1");
+		fireEvent.click(screen.getByRole("button", { name: /load more apps/i }));
+		await waitFor(() => expect(firstAPageTwo).toBeDefined());
+
+		await act(async () => {
+			await router.navigate("/alice/apps/b");
+		});
+		await screen.findByText("b current");
+		await act(async () => {
+			await router.navigate("/alice/apps/a");
+		});
+		await screen.findByText("a current 2");
+
+		act(() => {
+			firstAPageTwo!.next(response("a", [app("a-late", "first a late app")], 2, 2, 2));
+			firstAPageTwo!.complete();
+		});
+
+		await waitFor(() => expect(screen.getByText("a current 2")).toBeVisible());
+		expect(screen.queryByText("first a late app")).toBeNull();
+		expect(router.state.location.pathname).toBe("/alice/apps/a");
 	});
 
 	it("cannot redirect or replace a new slug when the old slug's missing lookup settles", async () => {

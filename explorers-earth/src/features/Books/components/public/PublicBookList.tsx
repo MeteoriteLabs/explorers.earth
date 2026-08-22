@@ -224,7 +224,7 @@ const PublicBookList = () => {
               error={pagination.nextPageError}
               onLoadMore={() => void pagination.loadNextPage()}
               onRetry={() => void pagination.retryNextPage()}
-              label="books"
+              labelKey="sections.productCategories.categories.2.label"
             />
           </>
         )}

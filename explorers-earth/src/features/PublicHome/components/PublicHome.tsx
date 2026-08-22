@@ -3,6 +3,7 @@ import InstagramIcon from "../../../assets/icons/InstagramIcon";
 import Button from "../../../components/ui/Button";
 import { useQuery } from "@apollo/client";
 import {
+  buildPublicRecommendedPlacesFilters,
   publicPlaceListBySlugQuery,
   publicPlacesListsQuery,
   publicRecommendedPlacesConnectionQuery,
@@ -187,7 +188,6 @@ const PublicHome = memo(() => {
     loading: parentQueryLoading,
     error: parentQueryError,
     refetch,
-    fetchMore: fetchMoreLinked,
   } = activePlacesQuery;
 
   const [showQR, setShowQR] = useState(false);
@@ -204,6 +204,27 @@ const PublicHome = memo(() => {
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
+  const activePlaceList = placeSlug ? resolvedPlaceList : selectedCity;
+  const rootLinkedQuery = useQuery(publicPlaceListBySlugQuery, {
+    variables: {
+      accountDocumentId: bootstrapAccount.documentId,
+      slug: selectedCity?.slug ?? selectedCity?.documentId ?? "",
+      documentId: selectedCity?.documentId ?? "",
+      peoplePagination: { page: 1, pageSize: 200 },
+      productPagination: { page: 1, pageSize: 200 },
+    },
+    skip: Boolean(placeSlug) || !selectedCity?.documentId || selectedCity.Visibility !== true,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
+  const activeLinkedQuery = placeSlug ? childQuery : rootLinkedQuery;
+  const {
+    data: linkedData,
+    loading: linkedQueryLoading,
+    error: linkedQueryError,
+    refetch: refetchLinked,
+    fetchMore: fetchMoreLinked,
+  } = activeLinkedQuery;
 
   // Reset activeTab when selectedCity changes
   useEffect(() => {
@@ -211,24 +232,24 @@ const PublicHome = memo(() => {
   }, [selectedCity?.documentId]);
 
   const linkedPeople = useMemo(() => {
-    const raw = (data?.recommendedPeople_connection?.nodes ?? []).map((person: any) => ({
+    const raw = (linkedData?.recommendedPeople_connection?.nodes ?? []).map((person: any) => ({
       ...person,
       _listName: person.person_list?.List_Name,
       _listId: person.person_list?.documentId,
       _listSlug: person.person_list?.slug,
     }));
     return deduplicatePeople(raw);
-  }, [data?.recommendedPeople_connection?.nodes]);
+  }, [linkedData?.recommendedPeople_connection?.nodes]);
 
   const linkedProducts = useMemo(() => {
-    const raw = (data?.recommendedProducts_connection?.nodes ?? []).map((product: any) => ({
+    const raw = (linkedData?.recommendedProducts_connection?.nodes ?? []).map((product: any) => ({
       ...product,
       _listName: product.product_list?.List_Name,
       _listId: product.product_list?.documentId,
       _listSlug: product.product_list?.slug,
     }));
     return deduplicateProducts(raw);
-  }, [data?.recommendedProducts_connection?.nodes]);
+  }, [linkedData?.recommendedProducts_connection?.nodes]);
 
   // local state for inline details modals
   const [isExpanded, setIsExpanded] = useState<{
@@ -302,16 +323,11 @@ const PublicHome = memo(() => {
         pageSize: 200,
       },
       filters: {
-        recommendation_list: {
-          documentId: {
-            eq: (placeSlug ? resolvedPlaceList : selectedCity)?.documentId,
-          },
-        },
-        ...(selectedCategory ? {
-          recommendation_category: {
-            Category_Name: { eq: selectedCategory },
-          },
-        } : {}),
+        ...buildPublicRecommendedPlacesFilters(
+          bootstrapAccount.documentId,
+          (placeSlug ? resolvedPlaceList : selectedCity)?.documentId ?? "",
+          selectedCategory || undefined,
+        ),
       },
     },
     fetchPolicy: "cache-and-network",
@@ -321,17 +337,28 @@ const PublicHome = memo(() => {
       !(placeSlug ? resolvedPlaceList : selectedCity)?.documentId ||
       (placeSlug ? resolvedPlaceList : selectedCity)?.Visibility !== true,
   });
-  const activePlaceList = placeSlug ? resolvedPlaceList : selectedCity;
   const placesConnectionExpected = Boolean(
     activePlaceList?.documentId && activePlaceList.Visibility === true,
   );
   const placesHaveUsableData = Boolean(
     placesData?.recommendedPlaces_connection,
   );
+  const linkedConnectionsExpected = Boolean(
+    activePlaceList?.documentId && activePlaceList.Visibility === true,
+  );
+  const linkedHaveUsableData = Boolean(
+    linkedData?.recommendedPeople_connection &&
+    linkedData?.recommendedProducts_connection,
+  );
+  const rootSelectionPending = Boolean(
+    !placeSlug && PublishedCities.length > 0 && !selectedCity?.documentId,
+  );
   const loading =
     parentQueryLoading ||
-    (placesConnectionExpected && placesQueryLoading && !placesHaveUsableData);
-  const error = parentQueryError ?? placesQueryError;
+    rootSelectionPending ||
+    (placesConnectionExpected && placesQueryLoading && !placesHaveUsableData) ||
+    (linkedConnectionsExpected && linkedQueryLoading && !linkedHaveUsableData);
+  const error = parentQueryError ?? placesQueryError ?? linkedQueryError;
   const childState = resolvePublicChildState({
     loading,
     error,
@@ -342,19 +369,30 @@ const PublicHome = memo(() => {
       ? Boolean(resolvedPlaceList) &&
         !selectedCategory &&
         placesHaveUsableData &&
-        (placesData?.recommendedPlaces_connection?.nodes.length ?? 0) === 0
+        linkedHaveUsableData &&
+        (placesData?.recommendedPlaces_connection?.nodes.length ?? 0) === 0 &&
+        (linkedData?.recommendedPeople_connection?.nodes.length ?? 0) === 0 &&
+        (linkedData?.recommendedProducts_connection?.nodes.length ?? 0) === 0
       : Boolean(data) && data.recommendationLists.length === 0,
   });
   const retryPlacesRoute = useCallback(async () => {
     const retries: Promise<unknown>[] = [refetch()];
     if (placesConnectionExpected) retries.push(refetchPlaces());
+    if (linkedConnectionsExpected) retries.push(refetchLinked());
     await Promise.all(retries);
-  }, [placesConnectionExpected, refetch, refetchPlaces]);
+  }, [linkedConnectionsExpected, placesConnectionExpected, refetch, refetchLinked, refetchPlaces]);
   usePublicRouteLifecycle({
-    loading: parentQueryLoading || (placesConnectionExpected && placesQueryLoading),
+    loading:
+      parentQueryLoading ||
+      rootSelectionPending ||
+      (placesConnectionExpected && placesQueryLoading) ||
+      (linkedConnectionsExpected && linkedQueryLoading),
     error,
     retry: retryPlacesRoute,
-    hasUsableData: Boolean(data) && (!placesConnectionExpected || placesHaveUsableData),
+    hasUsableData:
+      Boolean(data) &&
+      (!placesConnectionExpected || placesHaveUsableData) &&
+      (!linkedConnectionsExpected || linkedHaveUsableData),
     empty: childState === "empty",
   });
   const loadPeoplePage = useCallback(async (
@@ -376,9 +414,9 @@ const PublicHome = memo(() => {
     });
   }, [fetchMoreLinked]);
   const peoplePagination = usePublicConnectionPagination({
-    pageInfo: data?.recommendedPeople_connection?.pageInfo,
+    pageInfo: linkedData?.recommendedPeople_connection?.pageInfo,
     loadPage: loadPeoplePage,
-    resetKey: `${bootstrapAccount.documentId}:${placeSlug}:people`,
+    resetKey: `${bootstrapAccount.documentId}:${activePlaceList?.documentId ?? "no-place-list"}:people`,
   });
   const loadProductPage = useCallback(async (
     page: number,
@@ -399,9 +437,9 @@ const PublicHome = memo(() => {
     });
   }, [fetchMoreLinked]);
   const productPagination = usePublicConnectionPagination({
-    pageInfo: data?.recommendedProducts_connection?.pageInfo,
+    pageInfo: linkedData?.recommendedProducts_connection?.pageInfo,
     loadPage: loadProductPage,
-    resetKey: `${bootstrapAccount.documentId}:${placeSlug}:products`,
+    resetKey: `${bootstrapAccount.documentId}:${activePlaceList?.documentId ?? "no-place-list"}:products`,
   });
   useEffect(() => {
     if (selectedCategory || !activePlaceList?.documentId || !placesHaveUsableData) return;
@@ -506,14 +544,11 @@ const PublicHome = memo(() => {
         variables: {
           pagination: { page, pageSize: 200 },
           filters: {
-            recommendation_list: {
-              documentId: { eq: activePlaceList.documentId },
-            },
-            ...(selectedCategory ? {
-              recommendation_category: {
-                Category_Name: { eq: selectedCategory },
-              },
-            } : {}),
+            ...buildPublicRecommendedPlacesFilters(
+              bootstrapAccount.documentId,
+              activePlaceList.documentId,
+              selectedCategory || undefined,
+            ),
           },
         },
         updateQuery: (previous, { fetchMoreResult }) => {
@@ -531,7 +566,7 @@ const PublicHome = memo(() => {
         },
       });
     },
-    [activePlaceList?.documentId, fetchMore, selectedCategory],
+    [activePlaceList?.documentId, bootstrapAccount.documentId, fetchMore, selectedCategory],
   );
   const {
     hasNextPage,
@@ -1801,22 +1836,21 @@ const PublicHome = memo(() => {
                                     />
                                   );
                                 })}
-                                {nextPageError ? (
-                                  <button
-                                    type="button"
-                                    className="col-span-full text-sm text-blue-300 underline py-3"
-                                    onClick={() => void retryNextPage()}
-                                  >
-                                    Retry loading more places
-                                  </button>
-                                ) : (
-                                  <div
-                                    ref={desktopObserverTarget}
-                                    className="h-10 w-full col-span-full text-center text-sm text-gray-400"
-                                  >
-                                    {isLoadingNextPage ? "Loading more places…" : null}
-                                  </div>
-                                )}
+                                <div
+                                  ref={desktopObserverTarget}
+                                  className="h-px w-full col-span-full"
+                                  aria-hidden="true"
+                                />
+                                <div className="col-span-full flex justify-center">
+                                  <PublicConnectionPaginationControl
+                                    hasNextPage={hasNextPage}
+                                    isLoading={isLoadingNextPage}
+                                    error={nextPageError}
+                                    onLoadMore={() => void loadNextPage()}
+                                    onRetry={() => void retryNextPage()}
+                                    labelKey="sections.productCategories.categories.0.label"
+                                  />
+                                </div>
                               </>
                             ) : (
                               <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-2 py-8">
@@ -1877,7 +1911,7 @@ const PublicHome = memo(() => {
                               error={peoplePagination.nextPageError}
                               onLoadMore={() => void peoplePagination.loadNextPage()}
                               onRetry={() => void peoplePagination.retryNextPage()}
-                              label="people"
+                              labelKey="sections.productCategories.categories.1.label"
                             />
                           </div>
                         </div>
@@ -1922,7 +1956,7 @@ const PublicHome = memo(() => {
                               error={productPagination.nextPageError}
                               onLoadMore={() => void productPagination.loadNextPage()}
                               onRetry={() => void productPagination.retryNextPage()}
-                              label="products"
+                              labelKey="sections.productCategories.categories.6.label"
                             />
                           </div>
                         </div>

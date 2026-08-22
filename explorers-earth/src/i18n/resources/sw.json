@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Inapakia {{label}} zaidi…",
+    "loadMore": "Pakia {{label}} zaidi",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "siku za mwongozo"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Jaribu tena kupakia {{label}} zaidi",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

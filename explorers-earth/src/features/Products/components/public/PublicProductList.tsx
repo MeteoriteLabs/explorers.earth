@@ -207,7 +207,7 @@ const PublicProductList = () => {
             error={pagination.nextPageError}
             onLoadMore={() => void pagination.loadNextPage()}
             onRetry={() => void pagination.retryNextPage()}
-            label="products"
+            labelKey="sections.productCategories.categories.6.label"
           />
         </div>
 

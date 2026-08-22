@@ -324,6 +324,25 @@ export const publicRecommendedPlacesConnectionQuery = gql`
   }
 `;
 
+export function buildPublicRecommendedPlacesFilters(
+  accountDocumentId: string,
+  recommendationListDocumentId: string,
+  categoryName?: string,
+) {
+  return {
+    recommendation_list: {
+      documentId: { eq: recommendationListDocumentId },
+      account: { documentId: { eq: accountDocumentId } },
+      Visibility: { eq: true },
+    },
+    ...(categoryName ? {
+      recommendation_category: {
+        Category_Name: { eq: categoryName },
+      },
+    } : {}),
+  };
+}
+
 export const recommendedListByIdQuery = gql`
   query RecommendationLists($documentId: ID!) {
     recommendationList(documentId: $documentId) {

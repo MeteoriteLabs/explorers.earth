@@ -505,11 +505,14 @@
     "error": "Ett fel uppstod. Försök igen senare.",
     "hidePassword": "Dölj lösenord",
     "loading": "Laddar...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Läser in fler {{label}}…",
+    "loadMore": "Läs in fler {{label}}",
     "noResults": "Inga resultat hittades",
+    "paginationLabels": {
+      "guideDays": "guidedagar"
+    },
     "retry": "Försök igen",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Försök läsa in fler {{label}} igen",
     "showPassword": "Visa lösenord",
     "signInWithGoogle": "Logga in med Google",
     "signUpWithGoogle": "Registrera dig med Google",

@@ -505,11 +505,14 @@
     "error": "May naganap na error. Subukan ulit mamaya.",
     "hidePassword": "Hide password",
     "loading": "Naglo-load...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Naglo-load pa ng {{label}}…",
+    "loadMore": "Mag-load pa ng {{label}}",
     "noResults": "Walang nahanap na resulta",
+    "paginationLabels": {
+      "guideDays": "mga araw ng gabay"
+    },
     "retry": "Subukan Muli",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Subukang muli ang pag-load ng {{label}}",
     "showPassword": "Show password",
     "signInWithGoogle": "Mag-sign in gamit ang Google",
     "signUpWithGoogle": "Mag-sign up gamit ang Google",

@@ -1,7 +1,11 @@
 import { buildSchema, graphql, print } from "graphql";
 import { describe, expect, it } from "vitest";
 
-import { publicPlaceListBySlugQuery } from "../query";
+import {
+	buildPublicRecommendedPlacesFilters,
+	publicPlaceListBySlugQuery,
+	publicRecommendedPlacesConnectionQuery,
+} from "../query";
 import schemaSource from "./fixtures/public-place-security-schema.graphql?raw";
 
 type SecuredEntity = Record<string, any> & {
@@ -79,5 +83,40 @@ describe("public Place linked recommendation security", () => {
 		expect(result.errors).toBeUndefined();
 		expect((result.data as any).recommendedPeople_connection.nodes.map(({ documentId }: any) => documentId)).toEqual(["person-ok"]);
 		expect((result.data as any).recommendedProducts_connection.nodes.map(({ documentId }: any) => documentId)).toEqual(["product-ok"]);
+	});
+
+	it("executes the primary places connection with an account-owned published-list boundary", async () => {
+		const lists: SecuredEntity[] = [
+			{ __account: "account-1", __visible: true, documentId: "place-list-1", List_Name: "Public" },
+			{ __account: "account-1", __visible: false, documentId: "place-list-1", List_Name: "Private" },
+			{ __account: "account-2", __visible: true, documentId: "place-list-1", List_Name: "Cross account" },
+		];
+		const places = lists.map((recommendation_list, index) => ({
+			documentId: ["place-ok", "place-private", "place-cross"][index],
+			recommendation_list,
+		}));
+		const pageInfo = { page: 1, pageSize: 200, pageCount: 1, total: 1 };
+
+		const result = await graphql({
+			schema: buildSchema(schemaSource),
+			source: print(publicRecommendedPlacesConnectionQuery),
+			variableValues: {
+				filters: buildPublicRecommendedPlacesFilters("account-1", "place-list-1"),
+				pagination: { page: 1, pageSize: 200 },
+			},
+			rootValue: {
+				recommendedPlaces_connection: (args: any) => ({
+					nodes: places.filter(({ recommendation_list }) => {
+						const filters = args.filters.recommendation_list;
+						return filters.documentId?.eq === recommendation_list.documentId
+							&& matchesScope(filters, recommendation_list);
+					}),
+					pageInfo,
+				}),
+			},
+		});
+
+		expect(result.errors).toBeUndefined();
+		expect((result.data as any).recommendedPlaces_connection.nodes.map(({ documentId }: any) => documentId)).toEqual(["place-ok"]);
 	});
 });

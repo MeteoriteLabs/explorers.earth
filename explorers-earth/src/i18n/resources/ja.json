@@ -505,11 +505,14 @@
     "error": "エラーが発生しました。後でもう一度お試しください。",
     "hidePassword": "パスワードを非表示",
     "loading": "読み込み中...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "{{label}}をさらに読み込み中…",
+    "loadMore": "{{label}}をさらに読み込む",
     "noResults": "結果が見つかりません",
+    "paginationLabels": {
+      "guideDays": "ガイドの日程"
+    },
     "retry": "再試行",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "{{label}}の追加読み込みを再試行",
     "showPassword": "パスワードを表示",
     "signInWithGoogle": "Googleでサインイン",
     "signUpWithGoogle": "Googleでサインアップ",

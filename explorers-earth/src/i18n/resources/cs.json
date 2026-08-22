@@ -505,11 +505,14 @@
     "error": "Došlo k chybě. Zkuste to prosím později.",
     "hidePassword": "Skrýt heslo",
     "loading": "Načítání...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Načítají se další {{label}}…",
+    "loadMore": "Načíst další {{label}}",
     "noResults": "Nebyly nalezeny žádné výsledky",
+    "paginationLabels": {
+      "guideDays": "dny průvodce"
+    },
     "retry": "Zkusit znovu",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Zkusit znovu načíst další {{label}}",
     "showPassword": "Zobrazit heslo",
     "signInWithGoogle": "Přihlásit se pomocí Google",
     "signUpWithGoogle": "Registrovat se pomocí Google",

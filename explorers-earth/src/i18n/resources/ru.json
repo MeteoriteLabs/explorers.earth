@@ -505,11 +505,14 @@
     "error": "Произошла ошибка. Попробуйте позже.",
     "hidePassword": "Скрыть пароль",
     "loading": "Загрузка...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "Загружаются ещё {{label}}…",
+    "loadMore": "Загрузить ещё {{label}}",
     "noResults": "Результаты не найдены",
+    "paginationLabels": {
+      "guideDays": "дни путеводителя"
+    },
     "retry": "Попробовать снова",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "Повторить загрузку {{label}}",
     "showPassword": "Показать пароль",
     "signInWithGoogle": "Войти через Google",
     "signUpWithGoogle": "Зарегистрироваться через Google",

@@ -209,7 +209,7 @@ const PublicAppList = () => {
             error={pagination.nextPageError}
             onLoadMore={() => void pagination.loadNextPage()}
             onRetry={() => void pagination.retryNextPage()}
-            label="apps"
+            labelKey="sections.productCategories.categories.7.label"
           />
         </div>
 

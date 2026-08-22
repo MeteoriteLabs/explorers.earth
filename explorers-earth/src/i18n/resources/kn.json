@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "ಇನ್ನಷ್ಟು {{label}} ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+    "loadMore": "ಇನ್ನಷ್ಟು {{label}} ಲೋಡ್ ಮಾಡಿ",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "ಮಾರ್ಗದರ್ಶಿಯ ದಿನಗಳು"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "ಇನ್ನಷ್ಟು {{label}} ಮರುಲೋಡ್ ಮಾಡಿ",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",

@@ -505,11 +505,14 @@
     "error": "An error occurred. Please try again later.",
     "hidePassword": "Hide password",
     "loading": "Loading...",
-    "loadingMore": "Loading more {{label}}…",
-    "loadMore": "Load more {{label}}",
+    "loadingMore": "കൂടുതൽ {{label}} ലോഡ് ചെയ്യുന്നു…",
+    "loadMore": "കൂടുതൽ {{label}} ലോഡ് ചെയ്യുക",
     "noResults": "No results found",
+    "paginationLabels": {
+      "guideDays": "ഗൈഡ് ദിവസങ്ങൾ"
+    },
     "retry": "Try Again",
-    "retryLoadingMore": "Retry loading more {{label}}",
+    "retryLoadingMore": "കൂടുതൽ {{label}} വീണ്ടും ലോഡ് ചെയ്യുക",
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",
