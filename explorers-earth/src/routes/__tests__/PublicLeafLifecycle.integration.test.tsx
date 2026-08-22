@@ -307,7 +307,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/books/subject/:subjectSlug",
     operation: "BooksBySubject",
     data: { recommendedBooks: [] },
-    staleText: "Science",
+    staleText: "No books found for this subject.",
     supportingStates: { BookCategories: { bookCategories: [{ documentId: "subject-1", subject_name: "Science" }] } },
   },
   {
@@ -335,7 +335,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/games/genre/:genreSlug",
     operation: "PublicGameData",
     data: { gameLists: [] },
-    staleText: "Comedy",
+    staleText: "No games found in this genre.",
     supportingStates: { GameCategories: { gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
   },
   {
@@ -363,7 +363,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/movies/genre/:genreSlug",
     operation: "PublicMovieData",
     data: { movieLists: [] },
-    staleText: "Comedy",
+    staleText: "No movies found in this genre.",
     supportingStates: { MovieCategories: { movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
   },
   {
@@ -391,7 +391,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/people/sector/:sectorSlug",
     operation: "PublicPeopleData",
     data: { personLists: [] },
-    staleText: "Creators",
+    staleText: "No people recommended in this sector.",
     supportingStates: { PersonCategories: { peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }] } },
   },
   {

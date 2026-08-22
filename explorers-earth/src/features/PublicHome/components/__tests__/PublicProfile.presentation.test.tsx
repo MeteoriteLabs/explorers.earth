@@ -172,6 +172,14 @@ const renderProfile = (path = "/alice") => {
 const selectedTab = () =>
   screen.getAllByRole("tab").find((tab) => tab.getAttribute("aria-selected") === "true");
 
+function expectNoLocalProfileTransientSurface(container: HTMLElement) {
+  expect(screen.queryByText("Profile not found")).toBeNull();
+  expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByText(/^(?:loading(?:…|\.\.\.)?|failed to load.*|something went wrong.*|error loading.*)$/i)).toBeNull();
+  expect(container.querySelector(".animate-spin, [role='status'], [role='progressbar'], [data-testid*='skeleton']")).toBeNull();
+}
+
 describe("PublicProfile recommendation presentation", () => {
   beforeEach(() => {
     recommendationProps.length = 0;
@@ -206,12 +214,11 @@ describe("PublicProfile recommendation presentation", () => {
   it("keeps cached profile content mounted during a background refresh", async () => {
     state.loading = true;
 
-    renderProfile();
+    const { container } = renderProfile();
 
     expect(await screen.findByRole("heading", { name: "Alice" })).toBeInTheDocument();
     await waitFor(() => expect(lifecycle.markRefreshing).toHaveBeenCalledWith("alice:profile"));
-    expect(screen.queryByText("Profile not found")).toBeNull();
-    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+    expectNoLocalProfileTransientSurface(container);
   });
 
   it("delegates an initial profile query error to the shared route Retry surface", async () => {
@@ -234,7 +241,7 @@ describe("PublicProfile recommendation presentation", () => {
   it("keeps cached profile content mounted during a refresh failure", async () => {
     state.error = new Error("profile refresh failed");
 
-    renderProfile();
+    const { container } = renderProfile();
 
     expect(await screen.findByRole("heading", { name: "Alice" })).toBeInTheDocument();
     await waitFor(() => expect(lifecycle.markError).toHaveBeenCalledWith(
@@ -243,7 +250,7 @@ describe("PublicProfile recommendation presentation", () => {
       state.refetch,
       true,
     ));
-    expect(screen.queryByText("Profile not found")).toBeNull();
+    expectNoLocalProfileTransientSurface(container);
   });
 
   it("renders the profile after the shared route shell settles", async () => {
