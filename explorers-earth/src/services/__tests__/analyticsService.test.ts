@@ -5,6 +5,21 @@ import useAuthStore from '../../store/store';
 import * as apollo from '@apollo/client';
 import * as urlHelpers from '../../utils/urlHelpers';
 
+const transportHarness = vi.hoisted(() => ({
+  transport: { request: vi.fn() },
+  capabilities: {
+    publicRead: 'public-read-capability',
+    analyticsWrite: 'analytics-write-capability',
+  },
+  createApolloTransport: vi.fn(),
+  resolveBrowserApolloCapabilities: vi.fn(),
+}));
+
+vi.mock('../../lib/apolloTransport', () => ({
+  createApolloTransport: transportHarness.createApolloTransport.mockReturnValue(transportHarness.transport),
+  resolveBrowserApolloCapabilities: transportHarness.resolveBrowserApolloCapabilities.mockReturnValue(transportHarness.capabilities),
+}));
+
 // Mock Apollo Client
 vi.mock('@apollo/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@apollo/client')>();
@@ -13,7 +28,6 @@ vi.mock('@apollo/client', async (importOriginal) => {
     useMutation: vi.fn(),
     ApolloClient: vi.fn(),
     InMemoryCache: vi.fn(),
-    createHttpLink: vi.fn(),
   };
 });
 
@@ -34,10 +48,8 @@ describe('analyticsService', () => {
     mockCreateAnalytic.mockResolvedValue({ data: { createPublicPageAnalytic: { documentId: '123' } } });
     (apollo.useMutation as any).mockReturnValue([mockCreateAnalytic]);
 
-    // Setup global fetch mock for IP address
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ip: '192.168.1.1' }),
+    global.fetch = vi.fn(() => {
+      throw new Error('analytics must not call third-party IP discovery');
     });
 
     // Clear session storage
@@ -96,6 +108,18 @@ describe('analyticsService', () => {
 
   // ── useTrackAnalytics ────────────────────────────────────────────────────
   describe('useTrackAnalytics', () => {
+    it('uses the shared transport with the analytics-write capability', () => {
+      expect(transportHarness.resolveBrowserApolloCapabilities).toHaveBeenCalledWith(import.meta.env);
+      expect(transportHarness.createApolloTransport).toHaveBeenCalledWith({
+        uri: import.meta.env.VITE_API_URL,
+        getSessionToken: expect.any(Function),
+        capabilities: transportHarness.capabilities,
+      });
+      expect(apollo.ApolloClient).toHaveBeenCalledWith(expect.objectContaining({
+        link: transportHarness.transport,
+      }));
+    });
+
     it('auto-tracks view on mount', async () => {
       renderHook(() => useTrackAnalytics({
         accountId: 'acc1',
@@ -103,8 +127,9 @@ describe('analyticsService', () => {
         autoTrackView: true
       }));
 
-      // Advance timers if necessary or wait for async IP fetch
-      await vi.runAllTimersAsync();
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
 
       expect(mockCreateAnalytic).toHaveBeenCalledTimes(1);
       const callArgs = mockCreateAnalytic.mock.calls[0][0].variables.data;
@@ -183,7 +208,7 @@ describe('analyticsService', () => {
       expect(callArgs.Stats[0].element).toBe('scroll');
     });
 
-    it('includes UTM params and IP address in payload', async () => {
+    it('includes UTM params without discovering or sending a browser-supplied IP address', async () => {
       (urlHelpers.extractUtmParamsFromCurrentUrl as any).mockReturnValue({ utm_source: 'twitter' });
       
       const { result } = renderHook(() => useTrackAnalytics({
@@ -196,10 +221,13 @@ describe('analyticsService', () => {
         result.current.trackView();
       });
 
-      await vi.runAllTimersAsync();
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
 
       const callArgs = mockCreateAnalytic.mock.calls[0][0].variables.data;
-      expect(callArgs.Stats[0].ipAddress).toBe('192.168.1.1');
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(callArgs.Stats[0]).not.toHaveProperty('ipAddress');
       expect(callArgs.Stats[0].utmParams).toEqual({ utm_source: 'twitter' });
     });
   });

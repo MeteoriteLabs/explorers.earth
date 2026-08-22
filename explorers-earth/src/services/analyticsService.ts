@@ -1,59 +1,20 @@
-import { gql, useMutation, ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
+import { gql, useMutation, ApolloClient, InMemoryCache } from "@apollo/client";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { extractUtmParamsFromCurrentUrl, UTMParameters } from "../utils/urlHelpers";
 import useAuthStore from "../store/store";
+import {
+  createApolloTransport,
+  resolveBrowserApolloCapabilities,
+} from "../lib/apolloTransport";
 
-// Create Apollo Client for analytics using VITE_PUBLIC_ACCESS_TOKEN
 const analyticsClient = new ApolloClient({
-  link: createHttpLink({
+  link: createApolloTransport({
     uri: import.meta.env.VITE_API_URL,
-    headers: {
-      authorization: `Bearer ${import.meta.env.VITE_PUBLIC_ACCESS_TOKEN}`,
-    },
+    getSessionToken: () => localStorage.getItem("qrtoken"),
+    capabilities: resolveBrowserApolloCapabilities(import.meta.env),
   }),
   cache: new InMemoryCache(),
 });
-
-// Analytics service using VITE_PUBLIC_ACCESS_TOKEN for API access
-
-// Function to get user's IP address
-const getUserIPAddress = async (): Promise<string | null> => {
-  try {
-    // Try multiple IP detection services for better reliability
-    const ipServices = [
-      'https://api.ipify.org?format=json',
-      'https://ipapi.co/json/',
-      'https://ipinfo.io/json',
-      'https://api.ipgeolocation.io/ipgeo?api_key=free'
-    ];
-
-    for (const service of ipServices) {
-      try {
-        const response = await fetch(service, { 
-          method: 'GET',
-          mode: 'cors',
-          cache: 'no-cache'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          // Different services return IP in different fields
-          const ip = data.ip || data.query || data.ipAddress;
-          if (ip && typeof ip === 'string') {
-            return ip;
-          }
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error getting IP address:', error);
-    return null;
-  }
-};
 
 // GraphQL Mutations for Analytics
 export const CREATE_PUBLIC_PAGE_ANALYTIC = gql`
@@ -76,7 +37,6 @@ export interface AnalyticsEvent {
   page: string;
   element?: string;
   metadata?: Record<string, any>;
-  ipAddress?: string; // Add IP address to analytics events
   utmParams?: UTMParameters; // Add UTM parameters to analytics events
 }
 
@@ -183,7 +143,7 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
   /**
    * Generic event tracking function - always creates new records
    */
-  const trackEvent = useCallback(async (event: Omit<AnalyticsEvent, 'timestamp' | 'page' | 'ipAddress'>) => {
+  const trackEvent = useCallback(async (event: Omit<AnalyticsEvent, 'timestamp' | 'page'>) => {
     // Skip tracking if user is authenticated and visiting their own page
     if (shouldSkipTracking) {
       return;
@@ -242,9 +202,6 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
     setLoading(true);
     setError(null);
 
-    // Get user's IP address
-    const ipAddress = await getUserIPAddress();
-
     // Extract UTM parameters from current URL
     const utmParams = extractUtmParamsFromCurrentUrl();
 
@@ -252,7 +209,6 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       ...event,
       timestamp: new Date().toISOString(),
       page: pageName,
-      ipAddress: ipAddress || undefined, // Only include if we successfully got an IP
       utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined, // Only include if UTM params exist
       metadata: {
         ...event.metadata

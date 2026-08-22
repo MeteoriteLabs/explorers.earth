@@ -6,11 +6,12 @@ import {
   ApolloClient,
   InMemoryCache,
   ApolloProvider,
-  createHttpLink,
 } from "@apollo/client";
-import { setContext } from "@apollo/client/link/context";
-import { onError } from "@apollo/client/link/error";
 import { typePolicies } from "./lib/apolloCache";
+import {
+  createApolloTransport,
+  resolveBrowserApolloCapabilities,
+} from "./lib/apolloTransport";
 import { Toaster } from "sonner";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import {HelmetProvider} from "react-helmet-async";
@@ -19,63 +20,15 @@ import { queryClient } from "./lib/queryClient";
 import { ThemeProvider } from "./components/theme-provider";
 import { initAnalytics } from "./utils/analytics";
 
-// setting headers for authentication
-const authLink = setContext((operation, { headers, skipPublicAccessToken }) => {
-  const sessionToken = localStorage.getItem("qrtoken");
-  const publicAccessToken = import.meta.env.VITE_PUBLIC_ACCESS_TOKEN;
-  const isAuthenticationOperation = [
-    "login",
-    "register",
-    "forgotPassword",
-    "resetPassword",
-    "CheckUsernameAvailability",
-  ].includes(operation.operationName ?? "");
-  const accessToken = isAuthenticationOperation
-    ? undefined
-    : sessionToken || (skipPublicAccessToken ? undefined : publicAccessToken);
-  const usedPublicAccessToken = Boolean(
-    accessToken && !sessionToken && accessToken === publicAccessToken,
-  );
-  
-  // return the headers to the context so httpLink can read them
-  return {
-    headers: {
-      ...headers,
-      // The deployed Strapi role currently requires the public credential for
-      // recommendation-list collections. A signed-in session always wins.
-      ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
-    },
-    usedPublicAccessToken,
-  };
-});
-
-const publicCredentialFallbackLink = onError(({ networkError, operation, forward }) => {
-  const statusCode = (networkError as { statusCode?: number; status?: number } | undefined)?.statusCode
-    ?? (networkError as { statusCode?: number; status?: number } | undefined)?.status;
-  const context = operation.getContext();
-
-  if (statusCode !== 401 || !context.usedPublicAccessToken) return;
-
-  const { authorization: _authorization, ...headersWithoutAuthorization } = context.headers ?? {};
-  operation.setContext({
-    ...context,
-    headers: headersWithoutAuthorization,
-    skipPublicAccessToken: true,
-    usedPublicAccessToken: false,
-  });
-
-  return forward(operation);
-});
-
-// create a httpLink with the help of Graphql
-const httpLink = createHttpLink({
+const apolloTransport = createApolloTransport({
   uri: import.meta.env.VITE_API_URL,
+  getSessionToken: () => localStorage.getItem("qrtoken"),
+  capabilities: resolveBrowserApolloCapabilities(import.meta.env),
 });
 
 // initalising the apollo client
 const client = new ApolloClient({
-  // link should be with the headers it it exist
-  link: publicCredentialFallbackLink.concat(authLink).concat(httpLink),
+  link: apolloTransport,
   // current cache — typePolicies key Strapi entities by documentId so publish
   // mutations patch the rendered list entity (fixes the stale "Draft" label)
   cache: new InMemoryCache({ typePolicies }),
