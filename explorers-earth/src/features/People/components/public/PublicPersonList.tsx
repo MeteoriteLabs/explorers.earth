@@ -13,7 +13,12 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicPersonList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -22,25 +27,59 @@ const PublicPersonList = () => {
 
   const account = usePublicProfileBootstrapAccount();
 
-  const { data, loading, error, refetch } = useQuery<{ personLists: PersonList[] }>(PERSON_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
+  const { data, loading, error, refetch, fetchMore } = useQuery(PERSON_LIST_BY_SLUG, {
+    variables: {
+      slug: listSlug,
+      accountDocumentId: account.documentId,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !listSlug || !account.documentId,
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
-  const list = data?.personLists?.[0];
-  const people = deduplicatePeople<RecommendedPerson>(list?.recommended_people ?? []);
+  const list: PersonList | undefined = data?.personLists?.[0];
+  const people = deduplicatePeople<RecommendedPerson>(
+    data?.recommendedPeople_connection?.nodes ?? [],
+  );
   const creatorName = account.Account_Name || username;
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(account.documentId && listSlug),
+    resourceKind: "child",
+    entityExists: Boolean(list),
+    empty: Boolean(list) && people.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && !list,
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedPeople_connection || !fetchMoreResult?.recommendedPeople_connection) return previous;
+        return {
+          ...previous,
+          recommendedPeople_connection: mergePublicConnectionPage(
+            previous.recommendedPeople_connection,
+            fetchMoreResult.recommendedPeople_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedPeople_connection?.pageInfo,
+    loadPage,
+    resetKey: `${account.documentId}:${listSlug}`,
+  });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);
@@ -67,7 +106,7 @@ const PublicPersonList = () => {
     ? [`${list.List_Name}`, `${creatorName} people`, `${list.slug}`, "people list", "explorers"]
     : ["people list", "explorers"];
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
   if (!data) return null;
 
   return (
@@ -162,8 +201,16 @@ const PublicPersonList = () => {
                     )}
                   </div>
                 </button>
-              ))}
+            ))}
           </div>
+          <PublicConnectionPaginationControl
+            hasNextPage={pagination.hasNextPage}
+            isLoading={pagination.isLoadingNextPage}
+            error={pagination.nextPageError}
+            onLoadMore={() => void pagination.loadNextPage()}
+            onRetry={() => void pagination.retryNextPage()}
+            label="people"
+          />
         </div>
 
         <PersonDetailModal

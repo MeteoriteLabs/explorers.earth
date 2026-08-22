@@ -83,6 +83,7 @@ type CardDataItem = {
 
 interface City {
   List_Name?: string;
+  slug?: string;
   recommended_places?: CardDataItem[];
   imageUrl?: string;
   documentId?: string;
@@ -98,6 +99,9 @@ interface City {
   person_lists?: any[];
   product_lists?: any[];
 }
+
+const getCityRouteSlug = (city: City): string =>
+  city.slug || toUrlSlug(city.List_Name || "");
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: CardDataItem): string => {
@@ -407,9 +411,7 @@ const PublicHome = memo(() => {
           setSelectedCity(firstPublishedCity);
           // Update URL to reflect the new selection
           navigate(
-            `/${username}/places/${toUrlSlug(
-              firstPublishedCity.List_Name || ""
-            )}`
+            `/${username}/places/${getCityRouteSlug(firstPublishedCity)}`
           );
         } else {
           // No published cities available, clear selection
@@ -575,7 +577,7 @@ const PublicHome = memo(() => {
     if (city.Visibility === true) {
       setSelectedCity(city);
       // Update URL with the new place slug using the /places/ structure
-      navigate(`/${username}/places/${toUrlSlug(city.List_Name || "")}`);
+      navigate(`/${username}/places/${getCityRouteSlug(city)}`);
       analytics.trackClick("city-select", {
         cityName: city.List_Name,
         cityId: city.documentId,
@@ -588,7 +590,7 @@ const PublicHome = memo(() => {
       if (firstPublishedCity) {
         setSelectedCity(firstPublishedCity);
         navigate(
-          `/${username}/places/${toUrlSlug(firstPublishedCity.List_Name || "")}`
+          `/${username}/places/${getCityRouteSlug(firstPublishedCity)}`
         );
       }
     }
@@ -934,7 +936,7 @@ const PublicHome = memo(() => {
 
   // Create URL for current selection
   const currentUrl = selectedCityName
-    ? `${getBaseUrl()}/${username}/places/${toUrlSlug(selectedCityName)}`
+    ? `${getBaseUrl()}/${username}/places/${getCityRouteSlug(selectedCity ?? {})}`
     : `${getBaseUrl()}/${username}/places`;
 
   // Generate GEO data for enhanced structured data
@@ -1068,7 +1070,7 @@ const PublicHome = memo(() => {
               <button
                 onClick={async () => {
                   const shareUrl = selectedCity?.List_Name
-                    ? `${window.location.origin}/${username}/places/${toUrlSlug(selectedCity.List_Name)}`
+                    ? `${window.location.origin}/${username}/places/${getCityRouteSlug(selectedCity)}`
                     : `${window.location.origin}/${username}/places`;
                   if (navigator.share) {
                     navigator.share({
@@ -1160,7 +1162,9 @@ const PublicHome = memo(() => {
                           if (slide.isMap) {
                             handleMapNavigation();
                           } else {
-                            const slug = toUrlSlug(slide.title);
+                            const slug = "city" in slide && slide.city
+                              ? getCityRouteSlug(slide.city)
+                              : toUrlSlug(slide.title);
                             navigate(`/${username}/places/${slug}`);
                           }
                         }}
@@ -1277,7 +1281,9 @@ const PublicHome = memo(() => {
                                 if (slide.isMap) {
                                   handleMapNavigation();
                                 } else {
-                                  const slug = toUrlSlug(slide.title);
+                                  const slug = "city" in slide && slide.city
+                                    ? getCityRouteSlug(slide.city)
+                                    : toUrlSlug(slide.title);
                                   navigate(`/${username}/places/${slug}`);
                                 }
                               }}
@@ -1371,7 +1377,9 @@ const PublicHome = memo(() => {
                                 if (slide.isMap) {
                                   handleMapNavigation();
                                 } else {
-                                  const slug = toUrlSlug(slide.title);
+                                  const slug = "city" in slide && slide.city
+                                    ? getCityRouteSlug(slide.city)
+                                    : toUrlSlug(slide.title);
                                   navigate(`/${username}/places/${slug}`);
                                 }
                               }
@@ -1463,7 +1471,9 @@ const PublicHome = memo(() => {
                                     if (slide.isMap) {
                                       handleMapNavigation();
                                     } else {
-                                      const slug = toUrlSlug(slide.title);
+                                      const slug = "city" in slide && slide.city
+                                        ? getCityRouteSlug(slide.city)
+                                        : toUrlSlug(slide.title);
                                       navigate(`/${username}/places/${slug}`);
                                     }
                                   }}
@@ -1490,9 +1500,7 @@ const PublicHome = memo(() => {
                   onClose={() => setShowShareModal(false)}
                   url={
                     selectedCity?.List_Name
-                      ? `${url}/${username}/places/${toUrlSlug(
-                        selectedCity.List_Name
-                      )}`
+                      ? `${url}/${username}/places/${getCityRouteSlug(selectedCity)}`
                       : `${url}/${username}/places`
                   }
                   utmParams={utmParams}
@@ -1511,7 +1519,7 @@ const PublicHome = memo(() => {
                   <div className="px-4 max-w-4xl mx-auto w-full pb-16">
                     <div className="flex flex-col gap-8">
                       {PublishedCities.map((city: any, idx: number) => {
-                        const citySlug = toUrlSlug(city.List_Name || "");
+                        const citySlug = getCityRouteSlug(city);
                         const placesList = city.recommended_places || [];
                         const count = placesList.length;
 

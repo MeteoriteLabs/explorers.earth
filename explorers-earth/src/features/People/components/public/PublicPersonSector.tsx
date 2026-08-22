@@ -1,16 +1,15 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
-import { PERSON_CATEGORIES, PUBLIC_PEOPLE_DATA } from "../../api/query";
+import { PEOPLE_BY_SECTOR } from "../../api/query";
 import {
   deduplicatePeople,
   buildImageUrl,
   slugToCategoryName,
-  categoryToSlug,
 } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
-import type { RecommendedPerson, PersonList } from "../../types";
+import type { RecommendedPerson } from "../../types";
 import PersonDetailModal from "./PersonDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
@@ -18,7 +17,12 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
@@ -31,53 +35,57 @@ const PublicPersonSector = () => {
   const accountDocumentId = account.documentId;
   const creatorName = account.Account_Name || username;
 
-  const { data, loading: peopleLoading, error, refetch: refetchPeople } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
-  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useQuery(PERSON_CATEGORIES, {
+  const { data, loading, error, refetch, fetchMore } = useQuery(PEOPLE_BY_SECTOR, {
+    variables: {
+      accountDocumentId,
+      sectorName,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !accountDocumentId || !sectorSlug,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
 
-  const loading = peopleLoading || categoriesLoading;
-  const routeError = error ?? categoriesError;
-  const sector = categoriesData?.peopleCategories?.find(
-    (category: { Category_name?: string | null }) => categoryToSlug(category.Category_name ?? "") === sectorSlug,
+  const sector = data?.peopleCategories?.[0];
+  const sectorPeople = deduplicatePeople<RecommendedPerson>(
+    data?.recommendedPeople_connection?.nodes ?? [],
   );
-
-  const lists = data?.personLists ?? [];
-
-  // Extract all people across lists, deduplicate, and filter by sector slug
-  const allPeople = useMemo(() => {
-    return deduplicatePeople<RecommendedPerson>(lists.flatMap((l) => l.recommended_people ?? []));
-  }, [lists]);
-
-  const sectorPeople = useMemo(() => {
-    return allPeople.filter(
-      (p) =>
-        p.people_category?.Category_name &&
-        categoryToSlug(p.people_category.Category_name) === sectorSlug
-    );
-  }, [allPeople, sectorSlug]);
-
-  const retry = useCallback(async () => {
-    await Promise.all([refetchPeople(), refetchCategories()]);
-  }, [refetchCategories, refetchPeople]);
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(accountDocumentId && sectorSlug),
+    resourceKind: "child",
+    entityExists: Boolean(sector),
+    empty: Boolean(sector) && sectorPeople.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
-    error: routeError,
-    retry,
-    hasUsableData: Boolean(data && categoriesData),
-    empty: !loading && !routeError && Boolean(sector) && sectorPeople.length === 0,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({
-    loading,
-    error: routeError,
-    resource: sector,
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedPeople_connection || !fetchMoreResult?.recommendedPeople_connection) return previous;
+        return {
+          ...previous,
+          recommendedPeople_connection: mergePublicConnectionPage(
+            previous.recommendedPeople_connection,
+            fetchMoreResult.recommendedPeople_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedPeople_connection?.pageInfo,
+    loadPage,
+    resetKey: `${accountDocumentId}:${sectorSlug}`,
   });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
@@ -102,8 +110,8 @@ const PublicPersonSector = () => {
   const metaDescription = `Explore ${sectorPeople.length} people in ${sectorName} recommended by ${creatorName} on explorers.`;
   const seoKeywords = [sectorName, `${creatorName} people`, "people list", "explorers"];
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
-  if (!data || !categoriesData) return null;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
+  if (!data) return null;
 
   return (
     <>
@@ -213,6 +221,14 @@ const PublicPersonSector = () => {
               ))
             )}
           </div>
+          <PublicConnectionPaginationControl
+            hasNextPage={pagination.hasNextPage}
+            isLoading={pagination.isLoadingNextPage}
+            error={pagination.nextPageError}
+            onLoadMore={() => void pagination.loadNextPage()}
+            onRetry={() => void pagination.retryNextPage()}
+            label="people"
+          />
         </div>
 
         <PersonDetailModal

@@ -217,13 +217,18 @@ export const PUBLIC_APP_DATA = gql`
 // Query 1.5 — App List by Slug (Public list page)
 // ─────────────────────────────────────────────────────────────
 export const APP_LIST_BY_SLUG = gql`
-  query AppListBySlug($slug: String!, $username: String!) {
+  query AppListBySlug(
+    $slug: String!
+    $accountDocumentId: ID!
+    $pagination: PaginationArg!
+  ) {
     appLists(
       filters: {
         slug: { eq: $slug }
-        account: { username: { eq: $username } }
+        account: { documentId: { eq: $accountDocumentId } }
         Visibility: { eq: true }
       }
+      pagination: { limit: 1 }
     ) {
       documentId
       List_Name
@@ -234,7 +239,23 @@ export const APP_LIST_BY_SLUG = gql`
         alternativeText
       }
       top_apps_heading
-      recommended_apps(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+      account {
+        documentId
+        username
+      }
+    }
+    recommendedApps_connection(
+      filters: {
+        app_list: {
+          slug: { eq: $slug }
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
         app_url
         title
@@ -255,9 +276,11 @@ export const APP_LIST_BY_SLUG = gql`
           slug
         }
       }
-      account {
-        documentId
-        username
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

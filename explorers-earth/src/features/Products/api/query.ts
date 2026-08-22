@@ -219,13 +219,18 @@ export const PUBLIC_PRODUCT_DATA = gql`
 // Query 1.5 — Product List by Slug (Public list page)
 // ─────────────────────────────────────────────────────────────
 export const PRODUCT_LIST_BY_SLUG = gql`
-  query ProductListBySlug($slug: String!, $username: String!) {
+  query ProductListBySlug(
+    $slug: String!
+    $accountDocumentId: ID!
+    $pagination: PaginationArg!
+  ) {
     productLists(
       filters: {
         slug: { eq: $slug }
-        account: { username: { eq: $username } }
+        account: { documentId: { eq: $accountDocumentId } }
         Visibility: { eq: true }
       }
+      pagination: { limit: 1 }
     ) {
       documentId
       List_Name
@@ -236,7 +241,23 @@ export const PRODUCT_LIST_BY_SLUG = gql`
         alternativeText
       }
       top_products_heading
-      recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+      account {
+        documentId
+        username
+      }
+    }
+    recommendedProducts_connection(
+      filters: {
+        product_list: {
+          slug: { eq: $slug }
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
         product_url
         title
@@ -258,9 +279,11 @@ export const PRODUCT_LIST_BY_SLUG = gql`
           slug
         }
       }
-      account {
-        documentId
-        username
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

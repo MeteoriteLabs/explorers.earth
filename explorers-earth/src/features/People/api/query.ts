@@ -198,13 +198,18 @@ export const PUBLIC_PEOPLE_DATA = gql`
 // Query 1.5 — Person List by Slug (Public list page)
 // ─────────────────────────────────────────────────────────────
 export const PERSON_LIST_BY_SLUG = gql`
-  query PersonListBySlug($slug: String!, $username: String!) {
+  query PersonListBySlug(
+    $slug: String!
+    $accountDocumentId: ID!
+    $pagination: PaginationArg!
+  ) {
     personLists(
       filters: {
         slug: { eq: $slug }
-        account: { username: { eq: $username } }
+        account: { documentId: { eq: $accountDocumentId } }
         Visibility: { eq: true }
       }
+      pagination: { limit: 1 }
     ) {
       documentId
       List_Name
@@ -215,7 +220,23 @@ export const PERSON_LIST_BY_SLUG = gql`
         alternativeText
       }
       top_people_heading: top_picks_heading
-      recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+      account {
+        documentId
+        username
+      }
+    }
+    recommendedPeople_connection(
+      filters: {
+        person_list: {
+          slug: { eq: $slug }
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
         name
         username_handle
@@ -235,9 +256,71 @@ export const PERSON_LIST_BY_SLUG = gql`
           Category_name
         }
       }
-      account {
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
+      }
+    }
+  }
+`;
+
+export const PEOPLE_BY_SECTOR = gql`
+  query PeopleBySector(
+    $accountDocumentId: ID!
+    $sectorName: String!
+    $pagination: PaginationArg!
+  ) {
+    peopleCategories(
+      filters: { Category_name: { eq: $sectorName } }
+      pagination: { limit: 1 }
+    ) {
+      documentId
+      Category_name
+    }
+    recommendedPeople_connection(
+      filters: {
+        people_category: { Category_name: { eq: $sectorName } }
+        person_list: {
+          account: { documentId: { eq: $accountDocumentId } }
+          Visibility: { eq: true }
+        }
+      }
+      sort: ["display_order:asc", "documentId:asc"]
+      pagination: $pagination
+    ) {
+      nodes {
         documentId
-        username
+        name
+        username_handle
+        headline
+        location
+        avatar_path
+        media_details
+        primary_platform
+        social_urls
+        skills_tags
+        user_recommendation_note
+        user_rating
+        is_pinned
+        pin_order
+        display_order
+        people_category {
+          documentId
+          Category_name
+        }
+        person_list {
+          documentId
+          List_Name
+          slug
+        }
+      }
+      pageInfo {
+        page
+        pageSize
+        pageCount
+        total
       }
     }
   }

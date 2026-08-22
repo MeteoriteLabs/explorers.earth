@@ -12,7 +12,12 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicProductList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -21,25 +26,59 @@ const PublicProductList = () => {
 
   const account = usePublicProfileBootstrapAccount();
 
-  const { data, loading, error, refetch } = useQuery<{ productLists: ProductList[] }>(PRODUCT_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
+  const { data, loading, error, refetch, fetchMore } = useQuery(PRODUCT_LIST_BY_SLUG, {
+    variables: {
+      slug: listSlug,
+      accountDocumentId: account.documentId,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !listSlug || !account.documentId,
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
-  const list = data?.productLists?.[0];
-  const products = deduplicateProducts<RecommendedProduct>(list?.recommended_products ?? []);
+  const list: ProductList | undefined = data?.productLists?.[0];
+  const products = deduplicateProducts<RecommendedProduct>(
+    data?.recommendedProducts_connection?.nodes ?? [],
+  );
   const creatorName = account.Account_Name || username;
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(account.documentId && listSlug),
+    resourceKind: "child",
+    entityExists: Boolean(list),
+    empty: Boolean(list) && products.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && !list,
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedProducts_connection || !fetchMoreResult?.recommendedProducts_connection) return previous;
+        return {
+          ...previous,
+          recommendedProducts_connection: mergePublicConnectionPage(
+            previous.recommendedProducts_connection,
+            fetchMoreResult.recommendedProducts_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedProducts_connection?.pageInfo,
+    loadPage,
+    resetKey: `${account.documentId}:${listSlug}`,
+  });
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setSelectedProduct(product);
@@ -68,7 +107,7 @@ const PublicProductList = () => {
 
   const listImage = list?.cover_image?.url || (products[0]?.logo_url ? buildImageUrl(products[0].logo_url) : undefined);
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
   if (!data) return null;
 
   return (
@@ -157,8 +196,16 @@ const PublicProductList = () => {
                     <p className="text-xs font-bold text-emerald-400 mt-auto">{formatPrice(product.price, product.currency)}</p>
                   )}
                 </button>
-              ))}
+            ))}
           </div>
+          <PublicConnectionPaginationControl
+            hasNextPage={pagination.hasNextPage}
+            isLoading={pagination.isLoadingNextPage}
+            error={pagination.nextPageError}
+            onLoadMore={() => void pagination.loadNextPage()}
+            onRetry={() => void pagination.retryNextPage()}
+            label="products"
+          />
         </div>
 
         <ProductDetailModal

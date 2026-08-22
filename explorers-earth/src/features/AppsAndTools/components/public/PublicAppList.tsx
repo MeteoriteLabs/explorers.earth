@@ -12,7 +12,12 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
-import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
+import { resolvePublicChildState } from "../../../../routes/resolvePublicChildState";
+import {
+  mergePublicConnectionPage,
+  usePublicConnectionPagination,
+} from "../../../../hooks/usePublicConnectionPagination";
+import { PublicConnectionPaginationControl } from "../../../../components/PublicConnectionPaginationControl";
 
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -21,25 +26,59 @@ const PublicAppList = () => {
 
   const account = usePublicProfileBootstrapAccount();
 
-  const { data, loading, error, refetch } = useQuery<{ appLists: AppList[] }>(APP_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
+  const { data, loading, error, refetch, fetchMore } = useQuery(APP_LIST_BY_SLUG, {
+    variables: {
+      slug: listSlug,
+      accountDocumentId: account.documentId,
+      pagination: { page: 1, pageSize: 200 },
+    },
+    skip: !listSlug || !account.documentId,
     fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
-  const list = data?.appLists?.[0];
-  const apps = deduplicateApps<RecommendedApp>(list?.recommended_apps ?? []);
+  const list: AppList | undefined = data?.appLists?.[0];
+  const apps = deduplicateApps<RecommendedApp>(
+    data?.recommendedApps_connection?.nodes ?? [],
+  );
   const creatorName = account.Account_Name || username;
+  const childState = resolvePublicChildState({
+    loading,
+    error,
+    bootstrapReady: Boolean(account.documentId && listSlug),
+    resourceKind: "child",
+    entityExists: Boolean(list),
+    empty: Boolean(list) && apps.length === 0,
+  });
 
   usePublicRouteLifecycle({
     loading,
     error,
     retry: refetch,
     hasUsableData: Boolean(data),
-    empty: !loading && !error && !list,
+    empty: childState === "empty",
   });
 
-  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
+  const loadPage = useCallback(async (page: number) => {
+    await fetchMore({
+      variables: { pagination: { page, pageSize: 200 } },
+      updateQuery: (previous, { fetchMoreResult }) => {
+        if (!previous.recommendedApps_connection || !fetchMoreResult?.recommendedApps_connection) return previous;
+        return {
+          ...previous,
+          recommendedApps_connection: mergePublicConnectionPage(
+            previous.recommendedApps_connection,
+            fetchMoreResult.recommendedApps_connection,
+          ),
+        };
+      },
+    });
+  }, [fetchMore]);
+  const pagination = usePublicConnectionPagination({
+    pageInfo: data?.recommendedApps_connection?.pageInfo,
+    loadPage,
+    resetKey: `${account.documentId}:${listSlug}`,
+  });
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setSelectedApp(app);
@@ -68,7 +107,7 @@ const PublicAppList = () => {
 
   const listImage = list?.cover_image?.url || (apps[0]?.logo_url ? buildLogoUrl(apps[0].logo_url) : undefined);
 
-  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (childState === "redirect") return <PublicProfileFallbackRedirect />;
   if (!data) return null;
 
   return (
@@ -159,8 +198,16 @@ const PublicAppList = () => {
                     </span>
                   )}
                 </button>
-              ))}
+            ))}
           </div>
+          <PublicConnectionPaginationControl
+            hasNextPage={pagination.hasNextPage}
+            isLoading={pagination.isLoadingNextPage}
+            error={pagination.nextPageError}
+            onLoadMore={() => void pagination.loadNextPage()}
+            onRetry={() => void pagination.retryNextPage()}
+            label="apps"
+          />
         </div>
 
         <AppDetailModal

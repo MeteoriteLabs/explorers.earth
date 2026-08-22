@@ -1,0 +1,48 @@
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const queryState = vi.hoisted(() => ({ data: undefined as any }));
+
+vi.mock("@apollo/client", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@apollo/client")>()),
+	useQuery: () => ({ data: queryState.data, loading: false, error: undefined, refetch: vi.fn().mockResolvedValue(undefined), fetchMore: vi.fn().mockResolvedValue(undefined) }),
+}));
+vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({ usePublicProfileBootstrapAccount: () => ({ documentId: "account-1" }) }));
+vi.mock("../../../../components/SEO", () => ({ default: () => null }));
+
+import PublicBookSubject from "./PublicBookSubject";
+
+const connection = { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } };
+
+function renderSubject() {
+	return render(
+		<MemoryRouter initialEntries={["/alice/books/subject/science"]}>
+			<Routes>
+				<Route path="/:username/books/subject/:subjectSlug" element={<PublicBookSubject />} />
+				<Route path="/:username" element={<div>Profile fallback</div>} />
+			</Routes>
+		</MemoryRouter>,
+	);
+}
+
+describe("PublicBookSubject", () => {
+	beforeEach(() => { queryState.data = undefined; });
+
+	it("keeps a published empty subject on its URL", () => {
+		queryState.data = {
+			bookCategories: [{ documentId: "subject-1", subject_name: "Science" }],
+			recommendedBooks_connection: connection,
+		};
+		renderSubject();
+		expect(screen.getByRole("heading", { name: "Science" })).toBeInTheDocument();
+		expect(screen.getByText("No books found for this subject.")).toBeInTheDocument();
+		expect(screen.queryByText("Profile fallback")).toBeNull();
+	});
+
+	it("redirects a settled missing subject", async () => {
+		queryState.data = { bookCategories: [], recommendedBooks_connection: connection };
+		renderSubject();
+		expect(await screen.findByText("Profile fallback")).toBeInTheDocument();
+	});
+});

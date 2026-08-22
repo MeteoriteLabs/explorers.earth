@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { DocumentNode, OperationDefinitionNode } from "graphql";
 import type { ReactElement, ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
@@ -213,11 +213,17 @@ const taxonomyCases = [
     element: <PublicPersonSector />,
     path: "/alice/people/sector/creators",
     routePath: "/:username/people/sector/:sectorSlug",
-    contentOperation: "PublicPeopleData",
-    contentData: { personLists: [] },
-    taxonomyOperation: "PersonCategories",
-    taxonomyData: { peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }] },
-    missingTaxonomyData: { peopleCategories: [] },
+    contentOperation: "PeopleBySector",
+    contentData: {},
+    taxonomyOperation: "PeopleBySector",
+    taxonomyData: {
+      peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }],
+      recommendedPeople_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
+    missingTaxonomyData: {
+      peopleCategories: [],
+      recommendedPeople_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     heading: "Creators",
     emptyText: "No people recommended in this sector.",
   },
@@ -297,7 +303,10 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/apps/cached-list",
     routePath: "/:username/apps/:listSlug",
     operation: "AppListBySlug",
-    data: { appLists: [{ documentId: "apps-1", List_Name: "Cached Apps", slug: "cached-list", recommended_apps: [] }] },
+    data: {
+      appLists: [{ documentId: "apps-1", List_Name: "Cached Apps", slug: "cached-list" }],
+      recommendedApps_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "Cached Apps",
   },
   {
@@ -414,7 +423,10 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/people/cached-list",
     routePath: "/:username/people/:listSlug",
     operation: "PersonListBySlug",
-    data: { personLists: [{ documentId: "people-1", List_Name: "Cached People", slug: "cached-list", recommended_people: [] }] },
+    data: {
+      personLists: [{ documentId: "people-1", List_Name: "Cached People", slug: "cached-list" }],
+      recommendedPeople_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "Cached People",
   },
   {
@@ -422,10 +434,12 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     element: <PublicPersonSector />,
     path: "/alice/people/sector/creators",
     routePath: "/:username/people/sector/:sectorSlug",
-    operation: "PublicPeopleData",
-    data: { personLists: [] },
+    operation: "PeopleBySector",
+    data: {
+      peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }],
+      recommendedPeople_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "No people recommended in this sector.",
-    supportingStates: { PersonCategories: { peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }] } },
   },
   {
     label: "Products index",
@@ -442,7 +456,10 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     path: "/alice/products/cached-list",
     routePath: "/:username/products/:listSlug",
     operation: "ProductListBySlug",
-    data: { productLists: [{ documentId: "products-1", List_Name: "Cached Products", slug: "cached-list", recommended_products: [] }] },
+    data: {
+      productLists: [{ documentId: "products-1", List_Name: "Cached Products", slug: "cached-list" }],
+      recommendedProducts_connection: { nodes: [], pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 } },
+    },
     staleText: "Cached Products",
   },
 ];
@@ -661,8 +678,11 @@ describe("production public leaf lifecycle rendering", () => {
           documentId: "list-1",
           List_Name: "Useful Apps",
           slug: "useful-apps",
-          recommended_apps: [{ documentId: "app-1", title: "Cached App" }],
         }],
+        recommendedApps_connection: {
+          nodes: [{ documentId: "app-1", title: "Cached App" }],
+          pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 1 },
+        },
       },
       loading: state.loading,
       error: state.error,
@@ -678,5 +698,52 @@ describe("production public leaf lifecycle rendering", () => {
     expect(screen.getByText("Cached App")).toBeInTheDocument();
     expect(screen.queryByText("Failed to load list.")).toBeNull();
     expect(document.querySelector(".skeleton-shimmer")).toBeNull();
+  });
+
+  it("does not let a settled old leaf redirect the current route generation", async () => {
+    queryStates.set("AppListBySlug", { loading: true });
+    queryStates.set("ProductListBySlug", {
+      loading: false,
+      data: {
+        productLists: [{
+          documentId: "current-list",
+          List_Name: "Current Products",
+          slug: "current-list",
+        }],
+        recommendedProducts_connection: {
+          nodes: [],
+          pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 },
+        },
+      },
+    });
+
+    const tree = (
+      <PublicRouteReadinessContext.Provider
+        value={{
+          generation: "alice:leaf",
+          readiness: { generation: "alice:leaf", status: "initial-loading" },
+          ...lifecycle,
+        }}
+      >
+        <MemoryRouter initialEntries={["/alice/apps/old-list"]}>
+          <Link to="/alice/products/current-list">Open current route</Link>
+          <Routes>
+            <Route path="/:username/apps/:listSlug" element={<PublicAppList />} />
+            <Route path="/:username/products/:listSlug" element={<PublicProductList />} />
+            <Route path="/:username" element={<div>Profile fallback destination</div>} />
+          </Routes>
+        </MemoryRouter>
+      </PublicRouteReadinessContext.Provider>
+    );
+    const view = render(tree);
+
+    fireEvent.click(screen.getByRole("link", { name: "Open current route" }));
+    expect(await screen.findByRole("heading", { name: "Current Products" })).toBeInTheDocument();
+
+    queryStates.set("AppListBySlug", { loading: false, data: { appLists: [] } });
+    view.rerender(tree);
+
+    expect(screen.getByRole("heading", { name: "Current Products" })).toBeInTheDocument();
+    expect(screen.queryByText("Profile fallback destination")).toBeNull();
   });
 });
