@@ -58,6 +58,8 @@ All commands in this section run from `explorers-earth/`. Node `>=22.12` is requ
 
 `VITE_PUBLIC_ACCESS_TOKEN` is a deprecated **local-only** compatibility fallback. It is never valid when protected release verification would use it for both public reads and analytics writes.
 
+The protected analytics proof is deliberately blocked unless explicit approval, the dedicated marker, non-production QA sink, run ID, canary write, cleanup, and cleanup-verification contract are all present. It must never use an ordinary list or production analytics target.
+
 ```bash
 # deterministic and safe on a contributor machine
 npm run verify:public-profile:env -- --mode=fixture --json
@@ -125,6 +127,7 @@ npm run verify:public-profile:env -- --mode=mutation --json
 | `STRAPI_ACCESS_TOKEN` | No | Strapi API token (server-side) | `token...` |
 | `VITE_API_URL` | No | Strapi GraphQL endpoint (client-side, for embedded auth) | `http://localhost:1337/graphql` |
 | `VITE_REST_API_URL` | No | Strapi REST endpoint (client-side) | `http://localhost:1337` |
+| `VITE_PUBLIC_ACCESS_TOKEN` | No | Legacy local public access token for unauthenticated requests | `token...` |
 
 ### AI
 

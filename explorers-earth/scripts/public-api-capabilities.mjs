@@ -1,7 +1,7 @@
 export const ACCOUNT_BOOTSTRAP = {
   id: "account-bootstrap",
   operationName: "PublicAccountBootstrap",
-  query: `query PublicAccountBootstrap($username: String!) { accounts(filters: { Account_Name: { eq: $username } }) { documentId public_profile public_recommendations public_music public_movie public_books public_guides public_games public_apps public_products public_people } }`,
+  query: `query PublicAccountBootstrap($username: String!) { accounts(filters: { and: [{ Account_Name: { eq: $username } }, { public_profile: { eq: "Yes" } }] }) { documentId public_profile public_recommendations public_music public_movie public_books public_guides public_games public_apps public_products public_people } }`,
   variables: (username) => ({ username }),
   path: ["accounts"],
 };

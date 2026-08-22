@@ -15,7 +15,10 @@
 git clone <repository-url>
 cd explorers.earth-main
 
-# Install explorers-earth dependencies from its app directory
+# Install dependencies for both apps
+npm run install:all
+
+# Public-profile verification is scoped to explorers-earth
 cd explorers-earth
 npm ci
 
@@ -23,7 +26,7 @@ npm ci
 npx playwright install chromium
 ```
 
-Run public-profile commands from `explorers-earth/`. Use `npm ci` for the lockfile workflow; do not replace it with `npm install` for verification.
+This preserves the both-app installation path. Run public-profile commands from `explorers-earth/`; use `npm ci` for its lockfile verification workflow.
 
 ## Environment Setup
 

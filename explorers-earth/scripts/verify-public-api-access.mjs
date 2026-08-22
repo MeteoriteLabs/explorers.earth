@@ -33,14 +33,15 @@ async function requestOperation({ endpoint, token, operation, variables, fetchIm
         body: JSON.stringify({ operationName: operation.operationName, query: operation.query, variables }),
         signal: controller.signal,
       });
-      clearTimeout(timeout);
-      if (response.status === 401) return { diagnostic: diagnostic(operation.id, "unauthorized", "http-401") };
-      if (response.status === 403) return { diagnostic: diagnostic(operation.id, "forbidden", "http-403") };
-      if (!response.ok) return { diagnostic: diagnostic(operation.id, "transport-error", `http-${response.status}`) };
+      if (response.status === 401) { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "unauthorized", "http-401") }; }
+      if (response.status === 403) { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "forbidden", "http-403") }; }
+      if (!response.ok) { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "transport-error", `http-${response.status}`) }; }
       let body;
-      try { body = await response.json(); } catch { return { diagnostic: diagnostic(operation.id, "malformed", "invalid-json") }; }
+      try { body = await response.json(); } catch { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "malformed", "invalid-json") }; }
+      clearTimeout(timeout);
       if (body?.errors?.some((error) => /forbidden/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "forbidden", "graphql-forbidden") };
       if (body?.errors?.some((error) => /unauthorized/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "unauthorized", "graphql-unauthorized") };
+      if (body?.errors?.some((error) => /validation|unknown field|invalid input|unsupported/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "forbidden", "graphql-validation-denied") };
       const value = operation.path.reduce((current, key) => current?.[key], body?.data);
       if (!Array.isArray(value)) return { diagnostic: diagnostic(operation.id, "malformed", "missing-data") };
       return { diagnostic: diagnostic(operation.id, value.length === 0 ? "empty" : "ready", "http-200"), value };
@@ -62,32 +63,40 @@ const NEGATIVE_PROBES = [
   ["private-item-direct-id", "CapabilityPrivateItem", "query CapabilityPrivateItem($id: ID!) { recommendedPlace(documentId: $id) { documentId } }", "public-read", (env) => ({ id: env.PUBLIC_API_PRIVATE_ITEM_ID })],
   ["private-list-by-slug", "CapabilityPrivateListSlug", "query CapabilityPrivateListSlug($slug: String!) { recommendationLists(filters: { slug: { eq: $slug } }) { documentId } }", "public-read", (env) => ({ slug: env.PUBLIC_API_PRIVATE_LIST_SLUG })],
   ["public-omits-visibility", "CapabilityUnfilteredRead", "query CapabilityUnfilteredRead { recommendationLists { documentId } }", "public-read", () => ({})],
-  ["public-mutation", "CapabilityPublicMutation", "mutation CapabilityPublicMutation($id: ID!) { deleteRecommendationList(documentId: $id) { documentId } }", "public-read", (env) => ({ id: env.PUBLIC_API_PRIVATE_LIST_ID })],
+  ["public-mutation", "PublicReadCapabilityCanary", "mutation PublicReadCapabilityCanary($runId: String!) { publicReadCapabilityCanary(runId: $runId) { accepted } }", "public-read", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
   ["analytics-read", "CapabilityAnalyticsRead", "query CapabilityAnalyticsRead { accounts { documentId } }", "analytics-write", () => ({})],
-  ["analytics-non-analytics-mutation", "CapabilityAnalyticsMutation", "mutation CapabilityAnalyticsMutation($id: ID!) { deleteRecommendationList(documentId: $id) { documentId } }", "analytics-write", (env) => ({ id: env.PUBLIC_API_PRIVATE_LIST_ID })],
-  ["analytics-unknown-field", "CapabilityAnalyticsUnknownField", "mutation CapabilityAnalyticsUnknownField { createAnalyticsEvent(data: { unsupported: true }) { documentId } }", "analytics-write", () => ({})],
-  ["analytics-invalid-account", "CapabilityAnalyticsInvalidAccount", "mutation CapabilityAnalyticsInvalidAccount($id: ID!) { createAnalyticsEvent(data: { account: $id }) { documentId } }", "analytics-write", (env) => ({ id: env.PUBLIC_API_PRIVATE_ACCOUNT_ID })],
-  ["analytics-unsupported-event", "CapabilityAnalyticsUnsupportedEvent", "mutation CapabilityAnalyticsUnsupportedEvent { createAnalyticsEvent(data: { eventType: \"unsupported\" }) { documentId } }", "analytics-write", () => ({})],
+  ["analytics-non-analytics-mutation", "AnalyticsNonAnalyticsCanary", "mutation AnalyticsNonAnalyticsCanary($runId: String!) { analyticsNonAnalyticsCanary(runId: $runId) { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
+  ["analytics-unknown-field", "AnalyticsValidationCanaryUnknown", "mutation AnalyticsValidationCanaryUnknown($runId: String!) { analyticsValidationCanary(runId: $runId, shape: \"unknown-field\") { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
+  ["analytics-invalid-account", "AnalyticsValidationCanaryAccount", "mutation AnalyticsValidationCanaryAccount($runId: String!) { analyticsValidationCanary(runId: $runId, shape: \"invalid-account\") { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
+  ["analytics-unsupported-event", "AnalyticsValidationCanaryEvent", "mutation AnalyticsValidationCanaryEvent($runId: String!) { analyticsValidationCanary(runId: $runId, shape: \"unsupported-event\") { accepted } }", "analytics-write", (env) => ({ runId: env.PUBLIC_API_RUN_ID })],
   ["rate-limit", "CapabilityRateLimitProbe", "query CapabilityRateLimitProbe { accounts { documentId } }", "public-read", () => ({})],
 ];
 
 export async function runControlledNegativeProbes({ endpoint, env = process.env, fetchImpl = fetch, timeoutMs = 1500, retries = 0 } = {}) {
-  const required = ["VITE_PUBLIC_READ_ACCESS_TOKEN", "VITE_ANALYTICS_WRITE_ACCESS_TOKEN", "PUBLIC_API_PRIVATE_ACCOUNT_ID", "PUBLIC_API_PRIVATE_LIST_ID", "PUBLIC_API_PRIVATE_ITEM_ID", "PUBLIC_API_PRIVATE_LIST_SLUG"];
+  const required = ["VITE_PUBLIC_READ_ACCESS_TOKEN", "VITE_ANALYTICS_WRITE_ACCESS_TOKEN", "PUBLIC_API_PRIVATE_ACCOUNT_ID", "PUBLIC_API_PRIVATE_LIST_ID", "PUBLIC_API_PRIVATE_ITEM_ID", "PUBLIC_API_PRIVATE_LIST_SLUG", "PUBLIC_API_RUN_ID"];
   if (env.PUBLIC_API_CONTROLLED_FIXTURE !== "true" || required.some((name) => !env[name])) {
     return {
       code: "CONTROLLED_FIXTURE_REQUIRED",
       operations: [diagnostic("controlled-negative-probes", "malformed", "fixture-missing")],
     };
   }
-  const results = await Promise.all(NEGATIVE_PROBES.map(async ([id, operationName, query, capability, variablesFor]) => {
+  if (env.PUBLIC_PROFILE_MUTATION_APPROVED !== "true" || env.PUBLIC_PROFILE_TEST_ACCOUNT_MARKER !== "public-profile-mutation-fixture" || !env.PUBLIC_API_ANALYTICS_QA_SINK || !env.PUBLIC_API_ANALYTICS_CANARY_MUTATION || !env.PUBLIC_API_ANALYTICS_CLEANUP_MUTATION || !env.PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY) {
+    return { code: "ANALYTICS_CANARY_REQUIRED", operations: [{ operation: "analytics-canary", classification: "malformed", code: "ANALYTICS_CANARY_REQUIRED", observedStatus: "approval-sink-or-cleanup-missing", likelyCause: "Approved analytics canary cleanup cannot be guaranteed.", remediation: "Provide the protected approval, dedicated marker, QA sink, canary mutation, cleanup mutation, and cleanup verification query." }] };
+  }
+  const results = [];
+  for (const [id, operationName, query, capability, variablesFor] of NEGATIVE_PROBES) {
     const variables = variablesFor(env);
     const operation = { id, operationName, query, variables: () => variables, path: ["__must_not_exist__"] };
     const token = capability === "analytics-write" ? env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN : env.VITE_PUBLIC_READ_ACCESS_TOKEN;
     const response = await requestOperation({ endpoint, token, operation, variables, fetchImpl, timeoutMs, retries });
     const expected = id === "rate-limit" ? "transport-error" : "forbidden";
     const passed = response.diagnostic.classification === expected;
-    return { ...response.diagnostic, code: passed ? "PUBLIC_API_READY" : "PUBLIC_CAPABILITY_BOUNDARY_BROKEN", expected, passed };
-  }));
+    results.push({ ...response.diagnostic, code: passed ? "PUBLIC_API_READY" : "PUBLIC_CAPABILITY_BOUNDARY_BROKEN", expected, passed });
+  }
+  const rateRequests = [];
+  for (let attempt = 0; attempt < 3; attempt += 1) rateRequests.push(await requestOperation({ endpoint, token: env.VITE_PUBLIC_READ_ACCESS_TOKEN, operation: { id: "rate-limit", operationName: "CapabilityRateLimitProbe", query: "query CapabilityRateLimitProbe { accounts { documentId } }", path: ["accounts"] }, variables: {}, fetchImpl, timeoutMs, retries: 0 }));
+  const ratePassed = rateRequests.some((response) => response.diagnostic.observedStatus === "http-429");
+  results.push({ ...diagnostic("rate-limit", ratePassed ? "transport-error" : "malformed", ratePassed ? "http-429" : "rate-limit-not-observed"), code: ratePassed ? "PUBLIC_API_READY" : "PUBLIC_CAPABILITY_BOUNDARY_BROKEN", expected: "http-429", passed: ratePassed });
   return { code: results.every((result) => result.passed) ? "PUBLIC_API_READY" : "PUBLIC_CAPABILITY_BOUNDARY_BROKEN", operations: results };
 }
 
@@ -106,11 +115,23 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
     const operation = diagnostic("account-bootstrap", "unauthorized", "credential-or-endpoint-missing");
     return { code: operation.code, username: username ? "provided" : "missing", configuration, operations: [operation] };
   }
+  if (Object.values(configuration).slice(2).some((value) => value === "missing")) {
+    const operation = {
+      operation: "security-proof", classification: "malformed", code: "SECURITY_PROOF_MISSING",
+      observedStatus: "scope-origin-rate-limit-missing", likelyCause: "Required server-side capability evidence is missing.",
+      remediation: "Configure PUBLIC_API_CAPABILITY_SCOPE, PUBLIC_API_ORIGIN_POLICY, and PUBLIC_API_RATE_LIMIT_POLICY in the protected environment.",
+    };
+    return { code: operation.code, username: "provided", configuration, operations: [operation] };
+  }
   const bootstrapResponse = await requestOperation({ endpoint, token, operation: ACCOUNT_BOOTSTRAP, variables: ACCOUNT_BOOTSTRAP.variables(username), fetchImpl, timeoutMs, retries });
   const bootstrap = bootstrapResponse.diagnostic;
   if (bootstrap.classification !== "ready") return { code: bootstrap.code, username: "provided", configuration, operations: [bootstrap] };
   const bootstrapOperation = { ...bootstrap, operation: "account-bootstrap" };
   const account = bootstrapResponse.value[0];
+  if (account.public_profile !== "Yes" && account.public_profile !== true) {
+    const privateAccount = { ...bootstrapOperation, classification: "forbidden", code: "PUBLIC_READ_FORBIDDEN", observedStatus: "private-account-returned", likelyCause: "The bootstrap query exposed an unpublished account.", remediation: "Require public_profile publication in the server query policy or use a BFF/server proxy." };
+    return { code: privateAccount.code, username: "provided", configuration, operations: [privateAccount] };
+  }
   const collectionResponses = await Promise.all(enabledPublicOperations(account).map((operation) => requestOperation({ endpoint, token, operation, variables: operation.variables(account.documentId), fetchImpl, timeoutMs, retries })));
   const collectionResults = collectionResponses.map((response) => response.diagnostic);
   const operations = [bootstrapOperation, ...collectionResults];
