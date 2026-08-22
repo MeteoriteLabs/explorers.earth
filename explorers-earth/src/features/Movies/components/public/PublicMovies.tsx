@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useState, useMemo, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { Film, Share2 } from "lucide-react";
@@ -16,6 +16,7 @@ import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/
 import { gql } from "@apollo/client";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -38,10 +39,8 @@ const PublicMovies = () => {
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
   // Step 1: Resolve account documentId from username
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -50,21 +49,27 @@ const PublicMovies = () => {
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
   // Step 2: Fetch movie data
-  const { data: movieData, loading: moviesLoading } = useQuery(PUBLIC_MOVIE_DATA, {
+  const { data: movieData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = useQuery(PUBLIC_MOVIE_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
 
   const loading = userLoading || moviesLoading;
 
-  useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
-
   const lists: MovieList[] = movieData?.movieLists ?? [];
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchMovies();
+  }, [accountDocumentId, refetchMovies, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? moviesError,
+    retry,
+    hasUsableData: Boolean(userLookup && movieData),
+    empty: !loading && !userError && !moviesError && lists.length === 0,
+  });
 
   // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
@@ -164,8 +169,7 @@ const PublicMovies = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
+        {loading && lists.length === 0 ? (
             <div className="space-y-10 mt-4">
               {/* Hero skeleton — Desktop (lg screens) */}
               <div className="hidden lg:block">
@@ -190,7 +194,6 @@ const PublicMovies = () => {
                 </section>
               ))}
             </div>
-          ) : null
         ) : (
           <>
             {/* Empty state */}

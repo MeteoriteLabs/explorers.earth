@@ -214,7 +214,7 @@ describe("PublicProfileHeader", () => {
         },
       });
 
-      let wallpaperImg = screen.getByTestId("wallpaper-image");
+      const wallpaperImg = screen.getByTestId("wallpaper-image");
       expect(wallpaperImg).toHaveAttribute("src", "https://example.com/broken-banner.jpg");
 
       // First failure -> tries fallback image

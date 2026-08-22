@@ -81,17 +81,6 @@ const PublicLayout = () => {
     []
   );
 
-  const setIsPageLoaded = useCallback(
-    (loaded: boolean) => {
-      if (loaded) {
-        actions.ready();
-      } else {
-        actions.initialLoading();
-      }
-    },
-    [actions]
-  );
-
   const contextValue = useMemo<PublicRouteReadinessContextValue>(
     () => ({
       generation,
@@ -102,19 +91,13 @@ const PublicLayout = () => {
       markEmpty,
       markNotFound,
       markError,
-      setIsPageLoaded,
     }),
-    [generation, readiness, markLoading, markReady, markRefreshing, markEmpty, markNotFound, markError, setIsPageLoaded]
+    [generation, readiness, markLoading, markReady, markRefreshing, markEmpty, markNotFound, markError]
   );
 
   // Check if current route is a map route
   const isMapRoute = location.pathname.includes("/map") || location.pathname.includes("/placesmap");
   const isPageLoaded = readiness.status === "ready" || readiness.status === "empty" || readiness.status === "refreshing";
-
-  const outletContext = useMemo(
-    () => ({ isPageLoaded, setIsPageLoaded }),
-    [isPageLoaded, setIsPageLoaded]
-  );
 
   return (
     <PublicRouteReadinessContext.Provider value={contextValue}>
@@ -124,14 +107,14 @@ const PublicLayout = () => {
         <div className="min-h-screen bg-black flex items-center justify-center">
           <EarthLoader context="general" size="default" />
           <div className="hidden" aria-hidden="true">
-            <Outlet context={outletContext} />
+            <Outlet />
           </div>
         </div>
       ) : isPageLoaded ? (
         <>
           {isPageLoaded && !isMapRoute && <PublicNav />}
           <main>
-            <Outlet context={outletContext} />
+            <Outlet />
           </main>
         </>
       ) : (
@@ -143,7 +126,9 @@ const PublicLayout = () => {
               title={
                 readiness.source === "username"
                   ? t("publicProfile.error.verifyTitle", "Couldn’t verify this profile")
-                  : t("publicProfile.error.loadTitle", "Couldn’t load this profile")
+                  : readiness.source === "profile"
+                    ? t("publicProfile.error.loadTitle", "Couldn’t load this profile")
+                    : t("publicProfile.error.sectionTitle", "Couldn’t load this section")
               }
               description={t("publicProfile.error.description", "Please check your connection and try again.")}
               retrying={readiness.retrying}
@@ -154,7 +139,7 @@ const PublicLayout = () => {
             />
           )}
           <div className="hidden" aria-hidden="true">
-            <Outlet context={outletContext} />
+            <Outlet />
           </div>
         </>
       )}

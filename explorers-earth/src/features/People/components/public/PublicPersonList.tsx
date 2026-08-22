@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PERSON_LIST_BY_SLUG } from "../../api/query";
@@ -10,6 +10,7 @@ import PersonDetailModal from "./PersonDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForPersonList($username: String!) {
@@ -27,8 +28,6 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicPersonList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
   const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
@@ -36,7 +35,7 @@ const PublicPersonList = () => {
     skip: !username,
   });
 
-  const { data, loading, error } = useQuery<{ personLists: PersonList[] }>(PERSON_LIST_BY_SLUG, {
+  const { data, loading, error, refetch } = useQuery<{ personLists: PersonList[] }>(PERSON_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
     skip: !listSlug || !username,
     fetchPolicy: "cache-and-network",
@@ -46,11 +45,13 @@ const PublicPersonList = () => {
   const people = deduplicatePeople<RecommendedPerson>(list?.recommended_people ?? []);
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && !list,
+  });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);

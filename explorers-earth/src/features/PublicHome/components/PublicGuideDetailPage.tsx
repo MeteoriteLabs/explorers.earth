@@ -3,6 +3,7 @@ import { useQuery } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
+import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import { GET_PUBLIC_GUIDE_BY_ID_QUERY, GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
 import { getPublicAccountBasicQuery } from "../api/query";
 import JourneyIcon from "../../../assets/icons/JourneyIcon";
@@ -51,7 +52,12 @@ const PublicGuideDetailPage = memo(() => {
 
 
   // First, get account data to get account documentId
-  const { data: accountData } = useQuery(getPublicAccountBasicQuery, {
+  const {
+    data: accountData,
+    loading: accountLoading,
+    error: accountError,
+    refetch: refetchAccount,
+  } = useQuery(getPublicAccountBasicQuery, {
     variables: {
       filters: {
         username: {
@@ -65,7 +71,12 @@ const PublicGuideDetailPage = memo(() => {
   const accountDocumentId = accountData?.accounts?.[0]?.documentId;
 
   // Fetch all public guides to find the one matching the slug
-  const { data: guidesData, loading: guidesLoading } = useQuery(GET_PUBLIC_GUIDES_QUERY, {
+  const {
+    data: guidesData,
+    loading: guidesLoading,
+    error: guidesError,
+    refetch: refetchGuides,
+  } = useQuery(GET_PUBLIC_GUIDES_QUERY, {
     variables: {
       filters: {
         and: [
@@ -103,14 +114,29 @@ const PublicGuideDetailPage = memo(() => {
   }, [guidesData?.guides, guideSlug]);
 
   // Now fetch the full guide details using documentId
-  const { data, loading, error } = useQuery(GET_PUBLIC_GUIDE_BY_ID_QUERY, {
-    variables: { documentId: foundGuide?.documentId || guideSlug || "" },
-    skip: !foundGuide?.documentId && !guideSlug,
+  const { data, loading, error, refetch: refetchGuide } = useQuery(GET_PUBLIC_GUIDE_BY_ID_QUERY, {
+    variables: { documentId: foundGuide?.documentId || "" },
+    skip: !foundGuide?.documentId,
     fetchPolicy: "network-only",
   });
 
   const guide = data?.guide;
-  const loadingState = guidesLoading || loading;
+  const loadingState = accountLoading || guidesLoading || loading;
+  const routeError = accountError ?? guidesError ?? error;
+
+  const retry = useCallback(async () => {
+    await refetchAccount();
+    if (accountDocumentId) await refetchGuides();
+    if (foundGuide?.documentId) await refetchGuide();
+  }, [accountDocumentId, foundGuide?.documentId, refetchAccount, refetchGuide, refetchGuides]);
+
+  usePublicRouteLifecycle({
+    loading: loadingState,
+    error: routeError,
+    retry,
+    hasUsableData: Boolean(guide),
+    empty: !loadingState && !routeError && !guide,
+  });
 
   // Scroll detection for sticky tabs and header visibility
   // This effect needs to run after guide data is loaded and DOM is ready
@@ -657,7 +683,7 @@ const PublicGuideDetailPage = memo(() => {
     );
   }
 
-  if (error || !guide) {
+  if (routeError || !guide) {
     return (
       <>
         <SEO

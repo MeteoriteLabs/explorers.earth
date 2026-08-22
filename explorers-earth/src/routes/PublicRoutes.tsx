@@ -1,6 +1,4 @@
-import { useContext, useEffect } from "react";
-import { Route, useOutletContext } from "react-router-dom";
-import { PublicRouteReadinessContext } from "../layouts/PublicRouteReadinessContext";
+import { Route } from "react-router-dom";
 
 // Import components
 import PublicProfile from "../features/PublicHome/components/PublicProfile";
@@ -22,19 +20,7 @@ import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
-
-const ReadyOnMount = ({ children }: { children: React.ReactNode }) => {
-  const readinessCtx = useContext(PublicRouteReadinessContext);
-  const outletCtx = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-  const generation = readinessCtx?.generation || "";
-
-  useEffect(() => {
-    readinessCtx?.markReady(generation);
-    outletCtx?.setIsPageLoaded?.(true);
-  }, [generation, readinessCtx, outletCtx]);
-
-  return <>{children}</>;
-};
+import { PublicRouteNotFound } from "../layouts/PublicRouteNotFound";
 
 const PublicRoutes = [
   <Route
@@ -64,9 +50,9 @@ const PublicRoutes = [
             <PublicHomePage />
           </TabVisibilityGuard>
         } />
-        <Route path="map" element={<ReadyOnMount><MapView /></ReadyOnMount>} />
-        <Route path=":placeSlug/map" element={<ReadyOnMount><MapView /></ReadyOnMount>} />
-        <Route path=":place/placesmap" element={<ReadyOnMount><PlaceMapView /></ReadyOnMount>} />
+        <Route path="map" element={<MapView />} />
+        <Route path=":placeSlug/map" element={<MapView />} />
+        <Route path=":place/placesmap" element={<PlaceMapView />} />
       </Route>
       <Route path="guides">
         <Route index element={
@@ -76,11 +62,11 @@ const PublicRoutes = [
         } />
         <Route path=":guideSlug" element={
           <TabVisibilityGuard tabField="public_guides" defaultVisible={false}>
-            <ReadyOnMount><PublicGuideDetailPage /></ReadyOnMount>
+            <PublicGuideDetailPage />
           </TabVisibilityGuard>
         } />
       </Route>
-      <Route path="community" element={<ReadyOnMount><Community /></ReadyOnMount>} />
+      <Route path="community" element={<Community />} />
 
       {/* Movies & Shows public routes */}
       <Route path="movies">
@@ -185,6 +171,7 @@ const PublicRoutes = [
           </TabVisibilityGuard>
         } />
       </Route>
+      <Route path="*" element={<PublicRouteNotFound />} />
     </Route>
   </Route>,
 ];

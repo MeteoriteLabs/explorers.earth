@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { ArrowLeft, Star, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -11,26 +11,20 @@ import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
     book: null,
   });
 
-  const { data, loading } = useQuery(BOOK_LIST_BY_SLUG, {
+  const { data, loading, error, refetch } = useQuery(BOOK_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
     skip: !listSlug || !username,
     fetchPolicy: "cache-and-network",
   });
-
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -48,6 +42,14 @@ const PublicBookList = () => {
 
   const rawList = data?.bookLists?.[0];
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
+
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && !rawList,
+  });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });

@@ -40,7 +40,10 @@ export interface ResolvePublicProfileSurfaceOptions {
 export function isSafeMediaUrl(url: unknown): boolean {
   if (typeof url !== "string") return false;
   // Reject control characters before trimming
-  if (/[\x00-\x1F\x7F]/.test(url)) return false;
+  if ([...url].some((character) => {
+    const codePoint = character.charCodeAt(0);
+    return codePoint <= 31 || codePoint === 127;
+  })) return false;
   const trimmed = url.trim();
   if (!trimmed) return false;
   if (trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("../")) {

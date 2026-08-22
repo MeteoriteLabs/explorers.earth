@@ -143,25 +143,22 @@ describe("PublicProfile recommendation presentation", () => {
     seoProps.length = 0;
     state.account = makeAccount();
     state.loading = false;
-    (window as any).__publicProfileLoaded = false;
   });
 
   it("delegates initial loading to the shared route shell", () => {
     state.loading = true;
-    (window as any).__publicProfileLoaded = true;
 
     const { container } = renderProfile();
 
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("does not coordinate readiness through a window global", async () => {
+  it("renders the profile after the shared route shell settles", async () => {
     renderProfile();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Alice" })).toBeInTheDocument();
     });
-    expect((window as any).__publicProfileLoaded).toBe(false);
   });
 
   it("sanitizes API rich text at the public render boundary and rejects an unsafe business website", () => {

@@ -8,6 +8,7 @@ import { useQuery } from "@apollo/client";
 import { getPlaceCoordinatesByListQuery } from "../api/query";
 import Card from "../../../components/ui/Card";
 import { EarthLoader } from "../../../components/EarthLoader";
+import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 
 type List = {
   recommended_places: {
@@ -73,7 +74,7 @@ const PlaceMapView = memo(() => {
   };
 
   const { username, place } = useParams();
-  const { data, loading } = useQuery(getPlaceCoordinatesByListQuery, {
+  const { data, loading, error, refetch } = useQuery(getPlaceCoordinatesByListQuery, {
     variables: {
       filters: {
         username: {
@@ -107,6 +108,14 @@ const PlaceMapView = memo(() => {
         category: place.recommendation_category.Category_Name,
       }))
   );
+
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && (!placeData || placeData.length === 0),
+  });
 
   // fetching categories for the recommendation list
   const categories: string[] = Array.from(

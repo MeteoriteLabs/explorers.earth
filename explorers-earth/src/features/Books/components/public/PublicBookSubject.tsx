@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -26,10 +27,9 @@ const ACCOUNT_BY_USERNAME = gql`
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const subjectName = slugToSubjectName(subjectSlug ?? "");
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -41,19 +41,13 @@ const PublicBookSubject = () => {
     book: null,
   });
 
-  const { data, loading: booksLoading } = useQuery(BOOKS_BY_SUBJECT, {
+  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = useQuery(BOOKS_BY_SUBJECT, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
 
   const loading = userLoading || booksLoading;
-
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -76,6 +70,19 @@ const PublicBookSubject = () => {
       (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") === subjectSlug
     )
   );
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchBooks();
+  }, [accountDocumentId, refetchBooks, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? booksError,
+    retry,
+    hasUsableData: Boolean(userLookup && data),
+    empty: !loading && !userError && !booksError && subjectBooks.length === 0,
+  });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });

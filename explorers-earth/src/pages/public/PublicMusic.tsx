@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import PlaylistCard, { PlaylistCardContent } from "../../components/ui/PlaylistCard";
@@ -19,6 +19,8 @@ import { getSongLimits, getUserSubscriptionPlans, getSubscriptionPlanById } from
 import SEO from "../../components/SEO";
 import { createCanonicalUrl } from "../../utils/getCurrentDomain";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../services/analyticsService";
+import { usePublicRouteLifecycle } from "../../layouts/usePublicRouteLifecycle";
+import { derivePublicMusicRouteState } from "./publicMusicRouteState";
 import { motion, PanInfo } from "framer-motion";
 import "./PublicMusic.css";
 
@@ -93,12 +95,10 @@ const MusicSkeleton = () => {
 export default function PublicMusic() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { updateTheme } = useTheme();
   const [themeUpdated, setThemeUpdated] = useState(false);
-  const [guestUrl, setGuestUrl] = useState<string | null>(null);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [accordionsOpen, setAccordionsOpen] = useState({
     queue: true,
@@ -120,35 +120,28 @@ export default function PublicMusic() {
 
 
   // First, fetch account data to get Local Tunes link
-  const { data: accountData, loading: accountLoading } = useApolloQuery(getPublicAccountBasicQuery, {
+  const {
+    data: accountData,
+    loading: accountLoading,
+    error: accountError,
+    refetch: refetchAccount,
+  } = useApolloQuery(getPublicAccountBasicQuery, {
     variables: {
       filters: {
         username: { eq: username }
       }
     },
     skip: !username,
-    onCompleted: (data) => {
-      console.log('Account data received:', data);
-      const localTunesPublicLink = data?.accounts?.[0]?.localtunes_public;
-
-      if (localTunesPublicLink) {
-        console.log('LocalTunes public link:', localTunesPublicLink);
-        const extractedGuestUrl = extractGuestUrlFromLocalTunesLink(localTunesPublicLink);
-        console.log('Extracted guestUrl:', extractedGuestUrl);
-        if (extractedGuestUrl) {
-          setGuestUrl(extractedGuestUrl);
-        } else {
-          toast("Invalid Local Tunes playlist link for this user", { variant: "destructive" });
-        }
-      } else {
-        toast("No Local Tunes playlist found for this user", { variant: "destructive" });
-      }
-    },
     onError: (error) => {
       console.error("Error fetching account data:", error);
       toast("Error loading user data", { variant: "destructive" });
     }
   });
+
+  const localTunesPublicLink = accountData?.accounts?.[0]?.localtunes_public;
+  const guestUrl = localTunesPublicLink
+    ? extractGuestUrlFromLocalTunesLink(localTunesPublicLink)
+    : null;
 
   // Fetch user by username to get user documentId
   const { data: userData } = useApolloQuery(GET_USER_BY_USERNAME_QUERY, {
@@ -226,7 +219,12 @@ export default function PublicMusic() {
   const shouldDisableSearch = !hasActiveNonExpiredPlan || isLimitReached;
 
   // Query for playlist data (only when we have guestUrl)
-  const { data: playlist, isLoading, error } = useQuery<PlaylistResponse>({
+  const {
+    data: playlist,
+    isLoading,
+    error: playlistError,
+    refetch: refetchPlaylist,
+  } = useQuery<PlaylistResponse>({
     queryKey: [`/api/playlist/${guestUrl}`],
     queryFn: () => apiRequest("GET", `/api/playlist/${guestUrl}`),
     refetchInterval: POLLING_INTERVAL,
@@ -484,27 +482,27 @@ export default function PublicMusic() {
 
   const queueSongs = playlist?.songs || [];
 
-  // Show loader during the full chain:
-  // 1. Account data is still fetching
-  // 2. Account loaded but onCompleted hasn't set guestUrl yet (brief async gap)
-  // 3. guestUrl is set and playlist is being fetched
-  const isPageLoading = accountLoading || (!accountLoading && !guestUrl && !error) || isLoading;
+  const routeState = derivePublicMusicRouteState({
+    accountLoading,
+    accountError,
+    guestUrl,
+    playlistLoading: isLoading,
+    playlistError,
+    playlist,
+  });
 
-  useEffect(() => {
-    if (!isPageLoading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [isPageLoading, outletContext]);
+  const retry = useCallback(async () => {
+    await refetchAccount();
+    if (guestUrl) await refetchPlaylist();
+  }, [guestUrl, refetchAccount, refetchPlaylist]);
 
-  if (isPageLoading) {
-    if ((window as any).__publicProfileLoaded) {
-      return <MusicSkeleton />;
-    }
-    return null;
+  usePublicRouteLifecycle({ ...routeState, retry });
+
+  if (routeState.loading && !routeState.hasUsableData) {
+    return <MusicSkeleton />;
   }
 
-  if (error || !playlist || !guestUrl) {
+  if (routeState.error || !playlist || !guestUrl) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
         <PlaylistCard className="w-full max-w-md mx-4 border-none bg-black text-white">

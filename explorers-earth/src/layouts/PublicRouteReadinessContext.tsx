@@ -15,7 +15,6 @@ export interface PublicRouteReadinessContextValue {
   markEmpty: (generation: string) => void;
   markNotFound: (generation: string) => void;
   markError: (generation: string, source: PublicRouteErrorSource, retry: () => Promise<unknown>) => void;
-  setIsPageLoaded: (loaded: boolean) => void;
 }
 
 export const PublicRouteReadinessContext = createContext<PublicRouteReadinessContextValue | null>(null);

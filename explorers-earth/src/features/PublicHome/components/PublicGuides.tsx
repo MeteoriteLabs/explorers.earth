@@ -1,6 +1,7 @@
-import { memo, useMemo, useState, useEffect } from "react";
+import { memo, useCallback, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
@@ -29,7 +30,6 @@ interface FilterState {
 const PublicGuides = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [filters, setFilters] = useState<FilterState>({
     guideType: null,
     category: null,
@@ -44,7 +44,12 @@ const PublicGuides = memo(() => {
   const [activeHeroIndex, setActiveHeroIndex] = useState<number>(0);
 
   // First, get account data to get account documentId
-  const { data: accountData, loading: accountLoading } = useQuery(
+  const {
+    data: accountData,
+    loading: accountLoading,
+    error: accountError,
+    refetch: refetchAccount,
+  } = useQuery(
     getPublicAccountBasicQuery,
     {
       variables: {
@@ -64,7 +69,8 @@ const PublicGuides = memo(() => {
   const {
     data: guidesData,
     loading: guidesLoading,
-    error,
+    error: guidesError,
+    refetch: refetchGuides,
   } = useQuery(GET_PUBLIC_GUIDES_QUERY, {
     variables: {
       filters: {
@@ -94,13 +100,20 @@ const PublicGuides = memo(() => {
   const allGuides: Guide[] = guidesData?.guides || [];
   const account = accountData?.accounts?.[0];
   const loading = accountLoading || guidesLoading;
+  const error = accountError ?? guidesError;
 
-  useEffect(() => {
-    if (!loading && account) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, account, outletContext]);
+  const retry = useCallback(async () => {
+    await refetchAccount();
+    if (accountDocumentId) await refetchGuides();
+  }, [accountDocumentId, refetchAccount, refetchGuides]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry,
+    hasUsableData: Boolean(account),
+    empty: !loading && !error && Boolean(account) && allGuides.length === 0,
+  });
 
   const analytics = useTrackAnalytics({
     accountId: account?.documentId || "",
@@ -558,8 +571,7 @@ const PublicGuides = memo(() => {
         <div className="md:max-w-5xl md:mx-auto">
           
           {/* ── LOADING SKELETON: shown while account/guides queries resolve ── */}
-          {loading && (
-            (window as any).__publicProfileLoaded ? (
+          {loading && !account && (
               <>
                 {/* Hero skeleton — Desktop */}
                 <div className="hidden md:block w-full mb-6 mt-4 px-4">
@@ -578,7 +590,6 @@ const PublicGuides = memo(() => {
                   </div>
                 </div>
               </>
-            ) : null
           )}
 
           {/* Featured Guides Slideshow Hero (only shown if pinned guides exist) */}

@@ -9,6 +9,7 @@ import { useQuery } from "@apollo/client";
 import { getPlaceCoordinatesQuery } from "../api/query";
 import Card from "../../../components/ui/Card";
 import { EarthLoader } from "../../../components/EarthLoader";
+import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import SEO from "../../../components/SEO";
 import { createMapGEOData } from "../../../utils/geoHelpers";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
@@ -267,7 +268,7 @@ const MapView = memo(() => {
 
   const { username } = useParams();
   const { placeSlug } = useParams();
-  const { data, loading, error } = useQuery(getPlaceCoordinatesQuery, {
+  const { data, loading, error, refetch } = useQuery(getPlaceCoordinatesQuery, {
     variables: {
       filters: {
         username: {
@@ -280,6 +281,14 @@ const MapView = memo(() => {
 
   // Extract all recommendation lists (regions)
   const recommendationLists = data?.accounts?.[0]?.recommendation_lists || [];
+
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && recommendationLists.length === 0,
+  });
 
   // Get available regions from recommendation lists with fallback
   const regions: string[] = Array.from(

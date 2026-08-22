@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useState, useMemo, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Smartphone, Share2 } from "lucide-react";
 import { PUBLIC_APP_DATA } from "../../api/query";
@@ -13,6 +13,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import AppTopPicksHero from "./AppTopPicksHero";
 import AppTopPicksMobileHero from "./AppTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameApps($username: String!) {
@@ -33,14 +34,12 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicApps = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
   const [modalState, setModalState] = useState<{ open: boolean; app: RecommendedApp | null }>({
     open: false,
     app: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -48,7 +47,7 @@ const PublicApps = () => {
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
-  const { data, loading: appsLoading } = useQuery(PUBLIC_APP_DATA, {
+  const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = useQuery(PUBLIC_APP_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
@@ -56,14 +55,20 @@ const PublicApps = () => {
 
   const loading = userLoading || appsLoading;
 
-  useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
-
   const lists: AppList[] = data?.appLists ?? [];
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchApps();
+  }, [accountDocumentId, refetchApps, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? appsError,
+    retry,
+    hasUsableData: Boolean(userLookup && data),
+    empty: !loading && !userError && !appsError && lists.length === 0,
+  });
 
   const allApps = useMemo(() => {
     return deduplicateApps(lists.flatMap((l) => l.recommended_apps ?? []));
@@ -149,8 +154,7 @@ const PublicApps = () => {
 
         {/* Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading ? (
-            (window as any).__publicProfileLoaded ? (
+          {loading && lists.length === 0 ? (
               <div className="space-y-10 mt-4">
                 {/* Hero skeleton — Desktop (lg screens) */}
                 <div className="hidden lg:block">
@@ -177,7 +181,6 @@ const PublicApps = () => {
                   </section>
                 ))}
               </div>
-            ) : null
           ) : (
             <>
               {/* Empty state */}

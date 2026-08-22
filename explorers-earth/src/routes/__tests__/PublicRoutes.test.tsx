@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
 
 // 1. Hoisted state MUST be defined before vi.mock calls that reference it
-const { profileMock, dummyFeature, queryState, defaultEmptyQueryResult, defaultRefetch } = vi.hoisted(() => {
+const { profileMock, readyLeaf, dummyFeature, queryState, defaultEmptyQueryResult, defaultRefetch } = vi.hoisted(() => {
   const refetch = vi.fn();
   const emptyResult = { data: undefined as any, loading: false, error: undefined as any, refetch };
   const state = {
@@ -33,7 +33,6 @@ const { profileMock, dummyFeature, queryState, defaultEmptyQueryResult, defaultR
         if (!profileState.data.accounts?.[0]) {
           markNotFound?.(generation);
         } else {
-          (window as any).__publicProfileLoaded = true;
           markReady?.(generation);
         }
       }
@@ -42,10 +41,23 @@ const { profileMock, dummyFeature, queryState, defaultEmptyQueryResult, defaultR
     return <div data-testid="public-profile-stub">Public Profile Content</div>;
   };
 
-  const dummy = { default: () => null, PublicMovies: () => null, PublicMovieList: () => null, PublicMovieGenre: () => null, PublicBooks: () => null, PublicBookList: () => null, PublicBookSubject: () => null, PublicGames: () => null, PublicGamesList: () => null, PublicGamesGenre: () => null, PublicApps: () => null, PublicAppList: () => null, PublicProducts: () => null, PublicProductList: () => null, PublicPeople: () => null, PublicPersonList: () => null, PublicPersonSector: () => null };
+  const ReadyLeafMock = () => {
+    const readinessCtx = useContext(PublicRouteReadinessContext);
+    const generation = readinessCtx?.generation || "";
+    const markReady = readinessCtx?.markReady;
+
+    useEffect(() => {
+      markReady?.(generation);
+    }, [generation, markReady]);
+
+    return <div>Public route content</div>;
+  };
+
+  const dummy = { default: ReadyLeafMock, PublicMovies: ReadyLeafMock, PublicMovieList: ReadyLeafMock, PublicMovieGenre: ReadyLeafMock, PublicBooks: ReadyLeafMock, PublicBookList: ReadyLeafMock, PublicBookSubject: ReadyLeafMock, PublicGames: ReadyLeafMock, PublicGamesList: ReadyLeafMock, PublicGamesGenre: ReadyLeafMock, PublicApps: ReadyLeafMock, PublicAppList: ReadyLeafMock, PublicProducts: ReadyLeafMock, PublicProductList: ReadyLeafMock, PublicPeople: ReadyLeafMock, PublicPersonList: ReadyLeafMock, PublicPersonSector: ReadyLeafMock };
 
   return {
     profileMock: ProfileMockComponent,
+    readyLeaf: ReadyLeafMock,
     dummyFeature: dummy,
     defaultRefetch: refetch,
     defaultEmptyQueryResult: emptyResult,
@@ -79,20 +91,20 @@ vi.mock("./validators/TabVisibilityGuard", () => ({ default: ({ children }: { ch
 vi.mock("../features/PublicHome/components/PublicProfile", () => ({ default: profileMock }));
 vi.mock("../../features/PublicHome/components/PublicProfile", () => ({ default: profileMock }));
 
-vi.mock("../pages/public/PublicHomePage", () => ({ default: () => null }));
-vi.mock("../../pages/public/PublicHomePage", () => ({ default: () => null }));
-vi.mock("../pages/public/PublicMusic", () => ({ default: () => null }));
-vi.mock("../../pages/public/PublicMusic", () => ({ default: () => null }));
-vi.mock("../features/PublicHome/components/PublicGuides", () => ({ default: () => null }));
-vi.mock("../../features/PublicHome/components/PublicGuides", () => ({ default: () => null }));
-vi.mock("../features/PublicHome/components/MapView", () => ({ default: () => null }));
-vi.mock("../../features/PublicHome/components/MapView", () => ({ default: () => null }));
-vi.mock("../features/PublicHome/components/PlaceMapView", () => ({ default: () => null }));
-vi.mock("../../features/PublicHome/components/PlaceMapView", () => ({ default: () => null }));
-vi.mock("../features/PublicHome/components/Community", () => ({ default: () => null }));
-vi.mock("../../features/PublicHome/components/Community", () => ({ default: () => null }));
-vi.mock("../features/PublicHome/components/PublicGuideDetailPage", () => ({ default: () => null }));
-vi.mock("../../features/PublicHome/components/PublicGuideDetailPage", () => ({ default: () => null }));
+vi.mock("../pages/public/PublicHomePage", () => ({ default: readyLeaf }));
+vi.mock("../../pages/public/PublicHomePage", () => ({ default: readyLeaf }));
+vi.mock("../pages/public/PublicMusic", () => ({ default: readyLeaf }));
+vi.mock("../../pages/public/PublicMusic", () => ({ default: readyLeaf }));
+vi.mock("../features/PublicHome/components/PublicGuides", () => ({ default: readyLeaf }));
+vi.mock("../../features/PublicHome/components/PublicGuides", () => ({ default: readyLeaf }));
+vi.mock("../features/PublicHome/components/MapView", () => ({ default: readyLeaf }));
+vi.mock("../../features/PublicHome/components/MapView", () => ({ default: readyLeaf }));
+vi.mock("../features/PublicHome/components/PlaceMapView", () => ({ default: readyLeaf }));
+vi.mock("../../features/PublicHome/components/PlaceMapView", () => ({ default: readyLeaf }));
+vi.mock("../features/PublicHome/components/Community", () => ({ default: readyLeaf }));
+vi.mock("../../features/PublicHome/components/Community", () => ({ default: readyLeaf }));
+vi.mock("../features/PublicHome/components/PublicGuideDetailPage", () => ({ default: readyLeaf }));
+vi.mock("../../features/PublicHome/components/PublicGuideDetailPage", () => ({ default: readyLeaf }));
 
 vi.mock("../features/Movies", () => dummyFeature);
 vi.mock("../../features/Movies", () => dummyFeature);
@@ -195,7 +207,6 @@ describe("PublicRoutes orchestration and readiness", () => {
   beforeEach(() => {
     queryState.username = stateLoadingUsername;
     queryState.profile = stateLoadingProfile;
-    (window as any).__publicProfileLoaded = false;
   });
 
   afterEach(() => {
@@ -301,6 +312,16 @@ describe("PublicRoutes orchestration and readiness", () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId("public-profile-shell")).toBeNull();
+    });
+  });
+
+  it("renders Not Found for an unsupported public child route", async () => {
+    queryState.username = stateSuccessUsername;
+
+    render(<PublicRouteRunner initialEntries={["/alice/spaces"]} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Page Not Found")).toBeInTheDocument();
     });
   });
 

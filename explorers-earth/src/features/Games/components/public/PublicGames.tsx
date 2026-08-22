@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useState, useCallback, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Gamepad2, Share2 } from "lucide-react";
 import { PUBLIC_GAME_DATA } from "../../api/query";
@@ -13,6 +13,7 @@ import GenreBrowse from "./GenreBrowse";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -33,14 +34,12 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicGames = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-  
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
     open: false,
     game: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -48,7 +47,7 @@ const PublicGames = () => {
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
-  const { data, loading: gamesLoading } = useQuery(PUBLIC_GAME_DATA, {
+  const { data, loading: gamesLoading, error: gamesError, refetch: refetchGames } = useQuery(PUBLIC_GAME_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
@@ -56,14 +55,20 @@ const PublicGames = () => {
 
   const loading = userLoading || gamesLoading;
 
-  useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
-
   const lists: GameList[] = data?.gameLists ?? [];
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchGames();
+  }, [accountDocumentId, refetchGames, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? gamesError,
+    retry,
+    hasUsableData: Boolean(userLookup && data),
+    empty: !loading && !userError && !gamesError && lists.length === 0,
+  });
 
   // Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
@@ -158,8 +163,7 @@ const PublicGames = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
+        {loading && lists.length === 0 ? (
             <div className="space-y-10 mt-4">
               {[1, 2, 3].map(i => (
                 <section key={i}>
@@ -175,7 +179,6 @@ const PublicGames = () => {
                 </section>
               ))}
             </div>
-          ) : null
         ) : (
           <>
             {/* Empty state */}

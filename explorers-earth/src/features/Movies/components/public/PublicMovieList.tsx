@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { MOVIE_LIST_BY_SLUG } from "../../api/query";
@@ -10,27 +10,29 @@ import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const { data, loading, error } = useQuery(MOVIE_LIST_BY_SLUG, {
+  const { data, loading, error, refetch } = useQuery(MOVIE_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
     skip: !username || !listSlug,
   });
 
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
-
   const list = data?.movieLists?.[0];
   const movies: RecommendedMovie[] = deduplicateMovies(list?.recommended_movies ?? []);
+
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && !list,
+  });
 
   const handleMovieClick = (movie: RecommendedMovie) => {
     setSelectedMovie(movie);

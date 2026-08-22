@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import TopReadsMobileHero from "./TopReadsMobileHero";
 import useDeviceDetection from "../../../../hooks/useDeviceDetection";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsername($username: String!) {
@@ -33,9 +34,7 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicBooks = () => {
   const { username } = useParams<{ username: string }>();
   const { isDesktop } = useDeviceDetection();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -47,20 +46,13 @@ const PublicBooks = () => {
     book: null,
   });
 
-  const { data, loading: booksLoading } = useQuery(PUBLIC_BOOK_DATA, {
+  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = useQuery(PUBLIC_BOOK_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
 
   const loading = userLoading || booksLoading;
-
-  useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
 
   // Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
@@ -71,6 +63,19 @@ const PublicBooks = () => {
     ...l,
     recommended_books: deduplicateBooks(l.recommended_books),
   }));
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchBooks();
+  }, [accountDocumentId, refetchBooks, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? booksError,
+    retry,
+    hasUsableData: Boolean(userLookup && data),
+    empty: !loading && !userError && !booksError && lists.length === 0,
+  });
 
   // Collect all pinned books across all lists (Top Reads)
   const allBooks = lists.flatMap((l) => l.recommended_books);
@@ -167,7 +172,6 @@ const PublicBooks = () => {
 
       {/* ── LOADING SKELETON — shown while books resolve ── */}
       {loading && topReads.length === 0 && (
-        (window as any).__publicProfileLoaded ? (
           <div className="mt-14 pb-4">
             {/* Hero skeleton — Desktop */}
             <div className="hidden md:block px-4 max-w-6xl mx-auto mb-12">
@@ -200,7 +204,6 @@ const PublicBooks = () => {
               ))}
             </div>
           </div>
-        ) : null
       )}
 
       <div className="mt-14 pt-6 pb-20">

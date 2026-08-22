@@ -1,5 +1,5 @@
 import { useEffect, useContext } from "react";
-import { useNavigate, useParams, useLocation, Outlet } from "react-router-dom";
+import { useParams, useLocation, Outlet } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
@@ -16,7 +16,6 @@ export const checkUsernameQuery = gql`
 
 export const UsernameValidator = () => {
   const { username } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const readinessCtx = useContext(PublicRouteReadinessContext);
   const generation = readinessCtx?.generation || "";
@@ -70,7 +69,7 @@ export const UsernameValidator = () => {
 
         // Check if the current route is valid
         if (!validRoutes.includes(currentRoute)) {
-          navigate(`/${username}/places`, { replace: true });
+          markNotFound?.(generation);
           return;
         }
 
@@ -83,7 +82,7 @@ export const UsernameValidator = () => {
             !validPlacesSubRoutes.includes(placesSubRoute) &&
             !/^[a-zA-Z0-9-_]+$/.test(placesSubRoute)
           ) {
-            navigate(`/${username}/places`, { replace: true });
+            markNotFound?.(generation);
             return;
           }
         }
@@ -91,7 +90,7 @@ export const UsernameValidator = () => {
 
       markLoading?.(generation);
     }
-  }, [data, loading, error, username, navigate, location.pathname, generation, markLoading, markError, markNotFound, refetch]);
+  }, [data, loading, error, username, location.pathname, generation, markLoading, markError, markNotFound, refetch]);
 
   if (loading || error || !data || !data.accounts?.[0]) {
     return null;

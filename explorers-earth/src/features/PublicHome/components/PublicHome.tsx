@@ -8,7 +8,8 @@ import { useTrackAnalytics } from "../../../services/analyticsService";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PublicPlaceCard from "./PublicPlaceCard";
-import { useNavigate, useParams, useLocation, useOutletContext } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
@@ -129,7 +130,6 @@ const PublicHome = memo(() => {
   const [hasMoreData, setHasMoreData] = useState<boolean>(true);
   const animationTriggeredRef = useRef<boolean>(false);
   const previousPathnameRef = useRef<string>('');
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Extract UTM parameters from current URL, or create default ones for QR codes
   const utmParams = useMemo(() => {
@@ -145,7 +145,7 @@ const PublicHome = memo(() => {
 
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const { data, loading } = useQuery(accountsDetailQuery, {
+  const { data, loading, error, refetch } = useQuery(accountsDetailQuery, {
     variables: {
       filters: {
         username: {
@@ -159,14 +159,15 @@ const PublicHome = memo(() => {
 
   const [showQR, setShowQR] = useState(false);
 
-  useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
   const [_isQRVisible, setIsQRVisible] = useState(false);
-  const accountData = data?.accounts[0];
+  const accountData = data?.accounts?.[0];
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(accountData),
+    empty: !loading && !error && !accountData,
+  });
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
@@ -230,7 +231,7 @@ const PublicHome = memo(() => {
           List_Name: string;
           Visibility: boolean;
           recommended_places: string[];
-        }) => list.Visibility === true
+        } | null) => list?.Visibility === true
       ) || []
     );
   }, [accountData?.recommendation_lists]);
@@ -1065,8 +1066,7 @@ const PublicHome = memo(() => {
           </div>
         </div>
 
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
+        {loading && !accountData ? (
             <div className="bg-black min-h-screen">
               {/* ── Hero skeleton — Desktop ── */}
               <div className="hidden md:block w-full mb-12 mt-4 px-4">
@@ -1107,7 +1107,6 @@ const PublicHome = memo(() => {
                 </div>
               </div>
             </div>
-          ) : null
         ) : accountData ? (
           <>            {/* ========================================== */}
             {/*             HERO CAROUSEL SECTION          */}

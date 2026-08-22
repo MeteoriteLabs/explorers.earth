@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
+import { useState, useCallback, useMemo } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PUBLIC_PEOPLE_DATA } from "../../api/query";
@@ -15,6 +15,7 @@ import PersonDetailModal from "./PersonDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForPersonSector($username: String!) {
@@ -32,12 +33,11 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const sectorName = slugToCategoryName(sectorSlug ?? "");
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
@@ -45,19 +45,13 @@ const PublicPersonSector = () => {
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
-  const { data, loading: peopleLoading, error } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
+  const { data, loading: peopleLoading, error, refetch: refetchPeople } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "cache-and-network",
   });
 
   const loading = userLoading || peopleLoading;
-
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
 
   const lists = data?.personLists ?? [];
 
@@ -73,6 +67,19 @@ const PublicPersonSector = () => {
         categoryToSlug(p.people_category.Category_name) === sectorSlug
     );
   }, [allPeople, sectorSlug]);
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchPeople();
+  }, [accountDocumentId, refetchPeople, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? error,
+    retry,
+    hasUsableData: Boolean(userLookup && data),
+    empty: !loading && !userError && !error && sectorPeople.length === 0,
+  });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);

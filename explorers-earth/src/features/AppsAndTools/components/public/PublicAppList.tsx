@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 import { Smartphone, Share2, ArrowLeft } from "lucide-react";
 import { APP_LIST_BY_SLUG } from "../../api/query";
@@ -9,6 +9,7 @@ import AppDetailModal from "./AppDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForAppList($username: String!) {
@@ -26,8 +27,6 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
   const [selectedApp, setSelectedApp] = useState<RecommendedApp | null>(null);
 
   const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
@@ -35,7 +34,7 @@ const PublicAppList = () => {
     skip: !username,
   });
 
-  const { data, loading, error } = useQuery<{ appLists: AppList[] }>(APP_LIST_BY_SLUG, {
+  const { data, loading, error, refetch } = useQuery<{ appLists: AppList[] }>(APP_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
     skip: !listSlug || !username,
     fetchPolicy: "cache-and-network",
@@ -45,11 +44,13 @@ const PublicAppList = () => {
   const apps = deduplicateApps<RecommendedApp>(list?.recommended_apps ?? []);
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
 
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && !list,
+  });
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setSelectedApp(app);

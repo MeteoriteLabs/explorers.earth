@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
+import { useState, useMemo, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
@@ -12,6 +12,7 @@ import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { PUBLIC_MOVIE_DATA } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForGenre($username: String!) {
@@ -28,30 +29,23 @@ const ACCOUNT_BY_USERNAME = gql`
 const PublicMovieGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const genreName = slugToGenreName(genreSlug ?? "");
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
+  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
     variables: { username },
     skip: !username,
   });
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
 
-  const { data: moviesData, loading: moviesLoading } = useQuery(PUBLIC_MOVIE_DATA, {
+  const { data: moviesData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = useQuery(PUBLIC_MOVIE_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
 
   const loading = userLoading || moviesLoading;
-
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
 
   const allMovies: RecommendedMovie[] = useMemo(() => {
     return deduplicateMovies((moviesData?.movieLists ?? []).flatMap((l: any) => l.recommended_movies ?? []));
@@ -63,6 +57,19 @@ const PublicMovieGenre = () => {
       return slugs.includes(genreSlug ?? "");
     });
   }, [allMovies, genreSlug]);
+
+  const retry = useCallback(async () => {
+    await refetchUser();
+    if (accountDocumentId) await refetchMovies();
+  }, [accountDocumentId, refetchMovies, refetchUser]);
+
+  usePublicRouteLifecycle({
+    loading,
+    error: userError ?? moviesError,
+    retry,
+    hasUsableData: Boolean(userLookup && moviesData),
+    empty: !loading && !userError && !moviesError && filteredMovies.length === 0,
+  });
 
   const handleMovieClick = (movie: RecommendedMovie) => {
     setSelectedMovie(movie);

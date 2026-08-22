@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { Gamepad2, ArrowLeft, Star, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,18 +10,17 @@ import GameDetailModal from "./GameDetailModal";
 import GameCoverCard from "./GameCoverCard";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
     open: false,
     game: null,
   });
 
-  const { data, loading } = useQuery(GAME_LIST_BY_SLUG, {
+  const { data, loading, error, refetch } = useQuery(GAME_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
     skip: !listSlug || !username,
   });
@@ -31,11 +30,13 @@ const PublicGamesList = () => {
     ? { ...rawList, recommended_games: deduplicateGames(rawList.recommended_games) }
     : null;
 
-  useEffect(() => {
-    if (!loading) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [loading, outletContext]);
+  usePublicRouteLifecycle({
+    loading,
+    error,
+    retry: refetch,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && !list,
+  });
 
   const handleShare = async () => {
     const url = window.location.href;
