@@ -603,7 +603,7 @@ export async function installPublicFixture(
       });
     }
 
-    if (snapshotState.mode === "all-error" && (state.attempts[operation] || 0) <= 2) {
+    if (snapshotState.mode === "all-error" && (state.attempts[operation] || 0) <= 1) {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
