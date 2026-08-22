@@ -157,7 +157,8 @@ export function PublicProfileHeader({
 
   // Fixed Navigation Header styling based on scroll & surface mode
   const isDarkOverlayHero =
-    surface.mode === "banner-top" || surface.mode === "full-wallpaper-image";
+    surface.mode === "full-wallpaper-image" ||
+    (surface.mode === "banner-top" && Boolean(wallpaperState.activeUrl));
   const navTransparentAtTop = isDarkOverlayHero && !isScrolled;
 
   const navBgClass = navTransparentAtTop

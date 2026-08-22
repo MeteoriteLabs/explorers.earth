@@ -85,6 +85,24 @@ describe("PublicProfileHeader", () => {
     },
   );
 
+  it("uses the preset surface when banner mode has no usable image", () => {
+    renderHeader({
+      surface: {
+        mode: "banner-top",
+        wallpaperUrl: null,
+        fallbackToPresetSurface: true,
+      },
+    });
+
+    expect(screen.getByRole("banner")).toHaveClass("bg-[var(--nav-bg)]");
+    expect(screen.getByRole("heading", { name: "Jane Explorer" })).toHaveClass(
+      "text-[var(--text-primary)]",
+    );
+    expect(screen.getByText("Reykjavik, Iceland").parentElement).toHaveClass(
+      "text-[var(--text-secondary)]",
+    );
+  });
+
   it("renders header brand link containing the accessible icon logo with 44px min target", () => {
     renderHeader();
     const brandLink = screen.getByRole("link", { name: "explorers.earth" });
