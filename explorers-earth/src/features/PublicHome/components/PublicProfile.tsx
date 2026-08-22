@@ -852,6 +852,8 @@ const PublicProfile = memo(() => {
 
       <div
         className="h-full min-h-screen overflow-auto preview-scroll pb-20"
+        data-theme-preset={themeSettings.preset}
+        data-accent-color={themeSettings.accentColor}
         style={{
           ...themeStyles,
           ...(surface.mode === "full-wallpaper-image"

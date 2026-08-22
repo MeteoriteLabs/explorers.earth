@@ -321,6 +321,14 @@ const MapView = memo(() => {
     return regions.find(region => toUrlSlug(region) === slug);
   };
 
+  const matchedRegion = placeSlug ? findRegionBySlug(placeSlug) : undefined;
+
+  useEffect(() => {
+    if (!loading && !error && placeSlug && !matchedRegion) {
+      navigate(`/${username}`, { replace: true });
+    }
+  }, [error, loading, matchedRegion, navigate, placeSlug, username]);
+
   // Set initial region based on URL parameter
   useEffect(() => {
     if (placeSlug && regions.length > 0 && !initialRegionSet.current) {
@@ -611,7 +619,7 @@ const MapView = memo(() => {
 
       <div className="relative">
         <Map
-          defaultCenter={currentCoords ?? latLngArray[0]}
+          defaultCenter={currentCoords ?? latLngArray[0] ?? { lat: 20.5937, lng: 78.9629 }}
           center={currentCoords}
           zoom={currentZoom}
           onCameraChanged={handleCameraChanged}

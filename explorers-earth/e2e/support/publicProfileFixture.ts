@@ -64,6 +64,7 @@ export interface RouteContractFixtureController {
   httpStatus?: 401 | 403 | 429 | 500;
   bootstrapDelayMs: number;
   leafDelayMs: number;
+  responseLabel?: string;
   observedOperations: string[];
   unknownOperations: string[];
   attempts: Record<string, number>;
@@ -153,18 +154,25 @@ const PUBLIC_RUNTIME_OPERATIONS = [
   ...PUBLIC_COLLECTION_OPERATIONS.flatMap((capability) => capability.runtimeOperationNames),
 ];
 
-export const ALLOWLISTED_OPERATIONS = new Set([
-  ...PUBLIC_RUNTIME_OPERATIONS,
+export const PUBLIC_ANALYTICS_OPERATION_NAMES = new Set([
+  "CreatePublicPageAnalytic",
+]);
+
+export const DASHBOARD_FIXTURE_OPERATION_NAMES = new Set([
   "CheckUsername",
   "PublicProfileData",
   "GetMusicLists",
   "CheckOnboardingStatus",
   "user",
-  "CreatePublicPageAnalytic",
-  "Unknown",
 ]);
 
-export const operationName = (route: Route) => {
+export const ALLOWLISTED_OPERATIONS = new Set([
+  ...PUBLIC_RUNTIME_OPERATIONS,
+  ...PUBLIC_ANALYTICS_OPERATION_NAMES,
+  ...DASHBOARD_FIXTURE_OPERATION_NAMES,
+]);
+
+export const operationName = (route: Route): string | null => {
   const request = route.request();
   try {
     const url = new URL(request.url());
@@ -186,7 +194,7 @@ export const operationName = (route: Route) => {
     // Environment fallback
   }
 
-  return "Unknown";
+  return null;
 };
 
 export const accountFixture = (state: FixtureState) => {
@@ -526,11 +534,11 @@ export async function installPublicFixture(
     const operation = operationName(route);
 
     // Enforce strict operation allowlist
-    if (!ALLOWLISTED_OPERATIONS.has(operation)) {
+    if (!operation || !ALLOWLISTED_OPERATIONS.has(operation)) {
       return route.fulfill({
-        status: 500,
+        status: 400,
         contentType: "application/json",
-        body: JSON.stringify({ errors: [{ message: `Forbidden unknown GraphQL operation: ${operation}` }] }),
+        body: JSON.stringify({ errors: [{ message: "Forbidden anonymous, malformed, or undeclared GraphQL operation" }] }),
       });
     }
 
@@ -770,11 +778,7 @@ export async function installPublicFixture(
   });
 }
 
-const routeContractOperations = new Set([
-  ...PUBLIC_RUNTIME_OPERATION_CAPABILITIES.keys(),
-  "CreatePublicPageAnalytic",
-  "Unknown",
-]);
+const routeContractOperations = new Set(PUBLIC_RUNTIME_OPERATION_CAPABILITIES.keys());
 
 const emptyConnection = {
   nodes: [],
@@ -804,9 +808,10 @@ const routeList = {
 function routeContractResponse(
   operation: string,
   outcome: RouteContractFixtureOutcome,
+  responseLabel?: string,
 ): Record<string, unknown> {
   const childExists = outcome !== "missing-child";
-  const list = childExists ? [routeList] : [];
+  const list = childExists ? [{ ...routeList, List_Name: responseLabel ?? routeList.List_Name }] : [];
   const taxonomy = childExists ? [{ documentId: "example", genre_name: "Example", subject_name: "Example", Category_name: "Example" }] : [];
 
   const responses: Record<string, Record<string, unknown>> = {
@@ -879,7 +884,11 @@ function routeContractResponse(
       accounts: [{
         documentId: "fixture-account",
         Account_Name: "Route Fixture",
-        recommendation_lists: [],
+        recommendation_lists: childExists ? [{
+          documentId: "example",
+          List_Name: "Example",
+          recommended_places: [],
+        }] : [],
         recommended_places: [],
       }],
       account: { documentId: "fixture-account", mobile_number_visibility: false, mobile_number: null },
@@ -972,9 +981,24 @@ export async function installPublicRouteContractFixture(
   }));
   await page.route("**/graphql", async (route) => {
     const operation = operationName(route);
+    if (!operation || (!routeContractOperations.has(operation) && !PUBLIC_ANALYTICS_OPERATION_NAMES.has(operation))) {
+      controller.unknownOperations.push(operation ?? "anonymous-or-malformed");
+      return route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({ errors: [{ message: "Forbidden anonymous, malformed, or undeclared GraphQL operation" }] }),
+      });
+    }
     controller.observedOperations.push(operation);
     controller.attempts[operation] = (controller.attempts[operation] ?? 0) + 1;
-    if (!routeContractOperations.has(operation)) controller.unknownOperations.push(operation);
+
+    if (controller.httpStatus && operation !== "CreatePublicPageAnalytic") {
+      return route.fulfill({
+        status: controller.httpStatus,
+        contentType: "application/json",
+        body: JSON.stringify({ errors: [{ message: `Fixture HTTP ${controller.httpStatus}` }] }),
+      });
+    }
 
     if (operation === "PublicProfileBootstrap") {
       if (controller.bootstrapDelayMs > 0) {
@@ -1010,14 +1034,7 @@ export async function installPublicRouteContractFixture(
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { accounts: [account] } }) });
     }
 
-    if (controller.httpStatus && operation !== "CreatePublicPageAnalytic") {
-      return route.fulfill({
-        status: controller.httpStatus,
-        contentType: "application/json",
-        body: JSON.stringify({ errors: [{ message: `Fixture HTTP ${controller.httpStatus}` }] }),
-      });
-    }
-
+    const responseLabel = controller.responseLabel;
     if (controller.leafDelayMs > 0 && operation !== "CreatePublicPageAnalytic") {
       await new Promise((resolve) => setTimeout(resolve, controller.leafDelayMs));
     }
@@ -1025,7 +1042,7 @@ export async function installPublicRouteContractFixture(
     return route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ data: routeContractResponse(operation, controller.outcome) }),
+      body: JSON.stringify({ data: routeContractResponse(operation, controller.outcome, responseLabel) }),
     });
   });
 
@@ -1139,17 +1156,19 @@ export async function evaluateCorePixelContrast(
     box: { x: number; y: number; width: number; height: number };
   }> = [];
   for (const t of targets) {
-    if (await t.locator.isVisible()) {
-      const box = await t.locator.boundingBox();
-      if (box && box.width > 0 && box.height > 0) {
-        targetBoxes.push({
-          name: t.name,
-          minRatio: t.minRatio,
-          sample: t.sample ?? "element",
-          box,
-        });
-      }
+    if (!(await t.locator.isVisible())) {
+      throw new Error(`CONTRAST_TARGET_MISSING:${t.name}`);
     }
+    const box = await t.locator.boundingBox();
+    if (!box || box.width <= 0 || box.height <= 0) {
+      throw new Error(`CONTRAST_TARGET_MISSING:${t.name}`);
+    }
+    targetBoxes.push({
+      name: t.name,
+      minRatio: t.minRatio,
+      sample: t.sample ?? "element",
+      box,
+    });
   }
   if (targetBoxes.length === 0) throw new Error("CONTRAST_TARGETS_EMPTY");
 

@@ -21,4 +21,12 @@ export function validateProtectedPrerequisites(env = process.env) {
   if (missing.length > 0) {
     throw new Error(`ENV_MISSING: ${missing.join(", ")}`);
   }
+
+  const verification = verifyPublicProfileEnvironment({ mode: "mutation", env });
+  if (verification.code !== "READY") {
+    throw new Error(`${verification.code}: ${verification.summary}`);
+  }
+
+  return verification;
 }
+import { verifyPublicProfileEnvironment } from "./verify-public-profile-env.mjs";

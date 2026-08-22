@@ -52,12 +52,60 @@ test("protected prerequisite validation fails closed before suite execution", as
     () => validateProtectedPrerequisites({}),
     /ENV_MISSING.*E2E_PROFILE_USERNAME.*E2E_PROFILE_STORAGE_STATE.*E2E_PROFILE_LIVE_WRITES/s,
   );
-  assert.doesNotThrow(() => validateProtectedPrerequisites({
+});
+
+test("protected prerequisite validation reuses the full mutation environment doctor and exact account marker", async () => {
+  const { validateProtectedPrerequisites } = await import("../protected-prerequisites.mjs");
+  const complete = {
     E2E_PROFILE_USERNAME: "fixture-owner",
     E2E_PROFILE_STORAGE_STATE: "fixture-state.json",
     E2E_PROFILE_LIVE_WRITES: "1",
     E2E_PROFILE_LIVE_WRITE_CONFIRMATION: "I_APPROVE_PROFILE_MUTATION_AND_RESTORE",
-  }));
+    VITE_API_URL: "https://api.fixture.invalid/graphql",
+    VITE_PUBLIC_READ_ACCESS_TOKEN: "dedicated-read",
+    VITE_ANALYTICS_WRITE_ACCESS_TOKEN: "dedicated-analytics",
+    PUBLIC_API_CAPABILITY_SCOPE: "public-profile-read",
+    PUBLIC_API_EXPECTED_ORIGIN: "https://fixture.invalid",
+    PUBLIC_API_ORIGIN_POLICY: "fixture-only",
+    PUBLIC_API_RATE_LIMIT_POLICY: "bounded",
+    PUBLIC_API_CONTROLLED_FIXTURE: "fixture-owner",
+    PUBLIC_API_PRIVATE_ACCOUNT_ID: "account-id",
+    PUBLIC_API_PRIVATE_LIST_ID: "list-id",
+    PUBLIC_API_PRIVATE_ITEM_ID: "item-id",
+    PUBLIC_API_PRIVATE_LIST_SLUG: "list-slug",
+    PUBLIC_API_RUN_ID: "qa-run-id",
+    PUBLIC_PROFILE_MUTATION_APPROVED: "true",
+    PUBLIC_PROFILE_TEST_ACCOUNT_MARKER: "public-profile-mutation-fixture",
+    PUBLIC_API_ANALYTICS_QA_SINK: "qa-sink",
+    PUBLIC_API_ANALYTICS_CANARY_MUTATION: "canary",
+    PUBLIC_API_ANALYTICS_CLEANUP_MUTATION: "cleanup",
+    PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY: "verify",
+  };
+
+  assert.doesNotThrow(() => validateProtectedPrerequisites(complete));
+  assert.throws(
+    () => validateProtectedPrerequisites({ ...complete, PUBLIC_PROFILE_MUTATION_APPROVED: undefined }),
+    /LIVE_WRITE_NOT_APPROVED/,
+  );
+  assert.throws(
+    () => validateProtectedPrerequisites({ ...complete, PUBLIC_PROFILE_TEST_ACCOUNT_MARKER: "wrong-account" }),
+    /ACCOUNT_MARKER_MISMATCH/,
+  );
+});
+
+test("protected global setup fails before any protected test callback can begin", async () => {
+  const { runProtectedGlobalSetup } = await import("../playwright-global-setup.mjs");
+  let laterTestStarted = false;
+
+  await assert.rejects(
+    () => runProtectedGlobalSetup({
+      projectNames: ["real-account"],
+      env: {},
+      onProtectedReady: () => { laterTestStarted = true; },
+    }),
+    /ENV_MISSING|LIVE_WRITE_NOT_APPROVED/,
+  );
+  assert.equal(laterTestStarted, false);
 });
 
 test("Task 0 capabilities own every runtime GraphQL operation identity", async () => {
@@ -150,6 +198,36 @@ test("protected reporter redacts stdout and report content and removes raw attac
   assert.equal(fs.existsSync(rawAttachment), false);
   const report = fs.readFileSync(outputFile, "utf8");
   assert.doesNotMatch(report, /live-secret-token|owner@example\.com|trace\.zip/);
+});
+
+test("protected reporting is allowlist-only under adversarial recursive Playwright values", async () => {
+  const { createProtectedReport } = await import("../protected-playwright-report.mjs");
+  const report = createProtectedReport({
+    status: "failed",
+    runId: "qa-run-17",
+    tests: [{
+      code: "PROTECTED_TEST_FAILED",
+      status: "failed",
+      operation: "profile-save-restore",
+      error: {
+        message: "owner@example.com Secret bio +10000000001",
+        stack: "C:/private/account/profile.spec.ts:91",
+        dom: "<main data-address='Secret street'>Fixture Owner</main>",
+        nested: [{ token: "live-secret-token", phone: "+10000000001" }],
+      },
+      attachments: [{ path: "C:/private/trace.zip", body: "raw DOM snapshot" }],
+    }],
+  });
+
+  assert.deepEqual(Object.keys(report).sort(), ["code", "runId", "status", "tests"]);
+  assert.deepEqual(Object.keys(report.tests[0]).sort(), ["code", "operation", "status"]);
+  assert.deepEqual(report, {
+    code: "PROTECTED_RUN_COMPLETE",
+    runId: "qa-run-17",
+    status: "failed",
+    tests: [{ code: "PROTECTED_TEST_FAILED", status: "failed", operation: "profile-save-restore" }],
+  });
+  assert.doesNotMatch(JSON.stringify(report), /owner|bio|address|phone|dom|secret|token|private|trace/i);
 });
 
 test("deterministic reporter copies ordinary failure artifacts to stable names", async () => {

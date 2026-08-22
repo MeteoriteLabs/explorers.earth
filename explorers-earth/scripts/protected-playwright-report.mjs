@@ -37,8 +37,43 @@ export function redactProtectedValue(value, secrets = [], key = "") {
   return output;
 }
 
+const SAFE_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
+const SAFE_CODES = new Set([
+  "PROTECTED_RUN_COMPLETE",
+  "PROTECTED_TEST_PASSED",
+  "PROTECTED_TEST_FAILED",
+  "PROTECTED_TEST_SKIPPED",
+]);
+const SAFE_OPERATIONS = new Set([
+  "environment-prerequisite",
+  "profile-save-restore",
+  "protected-test",
+]);
+
+const safeStatus = (value) => SAFE_STATUSES.has(value) ? value : "failed";
+const safeCode = (value) => SAFE_CODES.has(value) ? value : "PROTECTED_TEST_FAILED";
+const safeOperation = (value) => SAFE_OPERATIONS.has(value) ? value : "protected-test";
+const safeRunId = (value) => /^qa[-_][a-z0-9_-]{1,64}$/i.test(String(value ?? ""))
+  ? String(value)
+  : "unavailable";
+
+export function createProtectedReport(value = {}) {
+  return {
+    code: "PROTECTED_RUN_COMPLETE",
+    runId: safeRunId(value.runId),
+    status: safeStatus(value.status),
+    tests: Array.isArray(value.tests)
+      ? value.tests.map((entry) => ({
+          code: safeCode(entry?.code),
+          status: safeStatus(entry?.status),
+          operation: safeOperation(entry?.operation),
+        }))
+      : [],
+  };
+}
+
 export async function writeProtectedReport(outputFile, value, secrets = []) {
   await fs.mkdir(path.dirname(outputFile), { recursive: true });
-  const safe = redactProtectedValue(value, secrets);
+  const safe = createProtectedReport(value);
   await fs.writeFile(outputFile, `${JSON.stringify(safe, null, 2)}\n`, "utf8");
 }

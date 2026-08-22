@@ -31,6 +31,14 @@ export const PUBLIC_PROFILE_ENVIRONMENT_TIERS = Object.freeze({
   ]),
 });
 
+const PUBLIC_READ_REQUIRED = PUBLIC_PROFILE_ENVIRONMENT_TIERS["read-only"].filter(
+  (name) => name !== "VITE_PUBLIC_ACCESS_TOKEN",
+);
+const MUTATION_REQUIRED = [
+  ...PUBLIC_READ_REQUIRED,
+  ...PUBLIC_PROFILE_ENVIRONMENT_TIERS.mutation,
+];
+
 export function classifyPublicProfileEnvironment(env = {}) {
   return Object.fromEntries(Object.entries(PUBLIC_PROFILE_ENVIRONMENT_TIERS).flatMap(([tier, names]) => names.map((name) => {
     const presence = env[name] ? "present" : "missing";
@@ -89,6 +97,19 @@ export function verifyPublicProfileEnvironment({ mode = "fixture", env = process
       summary: "Verification mode is not supported.",
       safeContext: { ...baseContext, mode: "invalid" },
       remediation: "Use --mode=fixture, --mode=read-only, or --mode=mutation.",
+    });
+  }
+
+  const missingMutationConfiguration = MUTATION_REQUIRED.filter((name) => !env[name]);
+  const missingBeforeApproval = missingMutationConfiguration.filter(
+    (name) => name !== "PUBLIC_PROFILE_MUTATION_APPROVED" && name !== "PUBLIC_PROFILE_TEST_ACCOUNT_MARKER",
+  );
+  if (missingBeforeApproval.length > 0) {
+    return createVerificationResult({
+      code: "ENV_MISSING",
+      summary: "Protected mutation verification is missing required environment or capability configuration.",
+      safeContext: { ...baseContext, missingConfiguration: missingBeforeApproval },
+      remediation: `Configure the complete protected capability tier: ${missingBeforeApproval.join(", ")}.`,
     });
   }
 

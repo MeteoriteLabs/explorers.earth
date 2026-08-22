@@ -7,6 +7,8 @@ import {
   type Page,
   type Route,
 } from "@playwright/test";
+import { publicRouteContract, publicRoutePath } from "../src/routes/publicRouteContract";
+import { emulateBrowserReflowZoom200 } from "./support/browserReflow";
 import { PUBLIC_PROFILE_SETTINGS_MANIFEST } from "./support/publicProfileSettingsManifest";
 
 const CATEGORY_IDS = [
@@ -317,6 +319,40 @@ const categoryPayload = (operation: string) => {
       bookLists: [
         { ...common, visibility: true, recommended_books: [] },
       ],
+    },
+    PublicBookData: {
+      bookLists: [{
+        ...common,
+        documentId: "saved-books-list",
+        List_Name: "Saved books",
+        list_description: "Saved public category parity",
+        slug: "saved-books",
+        visibility: true,
+        display_order: 0,
+        top_reads_heading: null,
+        recommended_books: [{
+          documentId: "saved-book-item",
+          volume_id: "saved-volume",
+          title: "Saved book item",
+          subtitle: null,
+          authors: ["Fixture Author"],
+          year: "2026",
+          cover_url: null,
+          cover_url_large: null,
+          subjects: [],
+          google_rating: null,
+          user_rating: null,
+          description: null,
+          user_recommendation_note: null,
+          buy_links: [],
+          is_pinned: false,
+          pin_order: null,
+          media_details: null,
+          Media: [],
+          book_list: { documentId: "saved-books-list", List_Name: "Saved books", slug: "saved-books" },
+        }],
+      }],
+      recommendedBooks: [],
     },
     GetGamesLists: {
       gameLists: [{ ...common, recommended_games: [] }],
@@ -908,13 +944,28 @@ test.describe("deterministic editor-to-public profile parity", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await openAppearance(page);
+    await expect(page.getByRole("button", { name: /Sunset Glow/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Sunset Pink", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByLabel("Wallpaper and cover style")).toHaveValue("ambient-gradient");
     await expect(page.getByLabel("First view")).toHaveValue("music");
     await expect(page.getByLabel("Footer branding")).toHaveValue("minimal");
     await expect(page.getByRole("checkbox", { name: "Business Details", exact: true })).not.toBeChecked();
     await expect(page.getByRole("radio", { name: "Featured First" })).toBeChecked();
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
 
+    await page.getByRole("tab", { name: "Profile", exact: true }).click();
+    await expect(page.locator('input[name="accountName"]')).toHaveValue("Synthetic Explorer Edited");
+    await expect(page.locator(".bio-editor .ql-editor")).toContainText("A rich deterministic profile.");
+    await page.locator('[data-walkthrough="social-media-accordion"] button').first().click();
+    await expect(page.locator('input[name="instagramLink"]')).toHaveValue("https://example.test/instagram-edited");
+    await page.getByRole("tab", { name: "Gallery", exact: true }).click();
+    await expect(page.locator('img[alt="task-6-gallery.png"]')).toBeVisible();
+
     await page.goto("/synthetic-explorer", { waitUntil: "domcontentloaded" });
+    const publicSurface = page.locator(".preview-scroll");
+    await expect(publicSurface).toHaveAttribute("data-theme-preset", "sunset-glow");
+    await expect(publicSurface).toHaveAttribute("data-accent-color", "#EC4899");
+    await expect(page.getByTestId("public-profile-hero")).toHaveAttribute("data-wallpaper-mode", "ambient-gradient");
     const publicTabs = page.getByRole("tablist", { name: "Profile sections" });
     await expect(publicTabs).toBeVisible();
     await expect(publicTabs.getByRole("tab")).toHaveCount(2);
@@ -930,6 +981,9 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
     await expect(page.getByText("A rich deterministic profile.", { exact: true })).toBeVisible();
     await expect(page.locator('a[href="https://example.test/instagram-edited"]')).toBeVisible();
+    await page.getByRole("tab", { name: "Gallery", exact: true }).click();
+    await expect(page.locator('img[alt="task-6-gallery.png"]')).toBeVisible();
+    await page.getByRole("tab", { name: "Recommendations", exact: true }).click();
     await expect(page.locator("footer")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Footer" })).toHaveCount(0);
     expect(await publicCategoryIds(page)).toEqual([
@@ -948,6 +1002,13 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
     expect((await publicCategoryIds(page))[0]).toBe("music");
     await expect(page.getByRole("tab", { name: "Business Details" })).toHaveCount(0);
+
+    const savedBooksRoute = publicRouteContract.find((route) => route.id === "books-index")!;
+    const savedBooksPath = publicRoutePath(savedBooksRoute, { username: "synthetic-explorer" });
+    await page.goto(savedBooksPath, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(savedBooksPath);
+    await expect(page.locator('[data-public-route-leaf="public-books-page"]')).toBeVisible();
+    await expect(page.getByText("Saved books", { exact: true })).toBeVisible();
   });
 
   test("keyboard reorder lifts, previews, drops once, and cancels without saving", async ({
@@ -1498,13 +1559,12 @@ test.describe("responsive and accessibility geometry gates", () => {
     expect(baselineViewport.visualWidth).toBe(750);
     expect(baselineViewport.visualScale).toBe(1);
 
-    const zoomSession = await context.newCDPSession(page);
-    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
+    const zoom = await emulateBrowserReflowZoom200(context, page);
     const effectiveZoomViewport = await browserViewportGeometry(page);
-    expect(effectiveZoomViewport.layoutWidth).toBe(750);
-    expect(effectiveZoomViewport.clientWidth).toBe(750);
-    expect(effectiveZoomViewport.visualWidth).toBe(375);
-    expect(effectiveZoomViewport.visualScale).toBe(2);
+    expect(effectiveZoomViewport.layoutWidth).toBe(zoom.layoutWidth);
+    expect(effectiveZoomViewport.clientWidth).toBe(zoom.layoutWidth);
+    expect(effectiveZoomViewport.visualWidth).toBe(zoom.layoutWidth);
+    expect(effectiveZoomViewport.visualScale).toBe(1);
     await expectNoHorizontalOverflow(page);
     await expect(page.getByLabel("First view")).toBeVisible();
     await expect(page.locator('[data-preview-variant="mobile"]')).toBeVisible();
@@ -1558,7 +1618,7 @@ test.describe("responsive and accessibility geometry gates", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-testid=profile-editor-root]")).toHaveAttribute("dir", "rtl");
     await expectTooltipContained(page, "rtl");
-    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
+    await zoom.restore();
   });
 });
 

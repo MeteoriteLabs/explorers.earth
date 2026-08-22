@@ -111,6 +111,14 @@ test("contrast gate fails closed when a visible target yields zero sampled pixel
   );
 });
 
+test("contrast gate fails each missing required target even when another target is sampleable", async ({ page }) => {
+  await page.setContent('<main><p id="present">Readable target</p></main>');
+  await expect(evaluateCorePixelContrast(page, [
+    { name: "present", locator: page.locator("#present"), minRatio: 4.5 },
+    { name: "missing-retry-label", locator: page.locator("#missing"), minRatio: 4.5 },
+  ])).rejects.toThrow("CONTRAST_TARGET_MISSING:missing-retry-label");
+});
+
 test("settings artifacts include project, case, viewport, and attempt", () => {
   expect(settingsArtifactName({
     project: "deterministic",

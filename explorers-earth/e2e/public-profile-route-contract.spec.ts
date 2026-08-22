@@ -22,6 +22,35 @@ const profileRoute = publicRouteContract.find((route) => route.id === "profile")
 if (!profileRoute) throw new Error("profile route missing from contract");
 const profilePath = publicRoutePath(profileRoute, routeParams);
 
+const ROUTE_UI_TEXT: Record<(typeof publicRouteContract)[number]["id"], RegExp> = {
+  profile: /Route Fixture/,
+  music: /Playlist Not Found/,
+  "places-index": /No locations available/,
+  "places-detail": /Fixture list/,
+  "places-map": /No categories available/,
+  "places-detail-map": /No categories available/,
+  "places-map-detail": /List View/,
+  "guides-index": /No guides available yet/,
+  "guides-detail": /Fixture guide/,
+  community: /^Community$/,
+  "movies-index": /No movies shared yet/,
+  "movies-genre": /No movies found in this genre/,
+  "movies-list": /Fixture list/,
+  "books-index": /No books yet/,
+  "books-subject": /No books found for this subject/,
+  "books-list": /No books in this list yet/,
+  "games-index": /No games shared yet/,
+  "games-genre": /No games found in this genre/,
+  "games-list": /Fixture list/,
+  "apps-index": /No apps shared yet/,
+  "apps-list": /Fixture list/,
+  "products-index": /No products shared yet/,
+  "products-list": /Fixture list/,
+  "people-index": /No people shared yet/,
+  "people-sector": /No people recommended in this sector/,
+  "people-list": /Fixture list/,
+};
+
 function assertDeclaredOperations(
   route: (typeof publicRouteContract)[number],
   controller: RouteContractFixtureController,
@@ -47,14 +76,24 @@ function assertDeclaredOperations(
 
 test.describe("application-owned public route contract", () => {
   for (const route of publicRouteContract) {
-    test(`${route.id}: direct entry, internal navigation, refresh, marker and operations`, async ({ page }) => {
-      const controller = await installPublicRouteContractFixture(page);
+    test(`${route.id}: real leaf direct/internal/refresh/content/error and settled redirect semantics`, async ({ page }) => {
+      const controller = await installPublicRouteContractFixture(page, {
+        // Keep the fixture pending across multiple browser locator polls. This proves the
+        // real request-driven Earth state without adding a minimum duration to the app.
+        bootstrapDelayMs: 800,
+        leafDelayMs: 800,
+      });
       const path = publicRoutePath(route, routeParams);
 
-      await page.goto(path);
-      const assembledRoute = page.locator(`[data-public-route-marker="${route.marker}"]`);
+      const directNavigation = page.goto(path, { waitUntil: "domcontentloaded" });
+      await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
+      await directNavigation;
+      if (route.family === "profile" || route.requiredOperations.length > 1) {
+        await expect(page.getByTestId(`public-route-skeleton-${route.skeleton}`)).toBeVisible();
+      }
+      const assembledRoute = page.locator(`[data-public-route-leaf="${route.marker}"]`);
       await expect(assembledRoute).toBeVisible();
-      await expect(assembledRoute).toHaveAttribute("data-public-route-id", route.id);
+      await expect(assembledRoute).toContainText(ROUTE_UI_TEXT[route.id]);
       expect(await assembledRoute.locator(":scope > *").count(), `${route.id} empty/content leaf`).toBeGreaterThan(0);
       await expect(page.getByTestId(`public-route-skeleton-${route.skeleton}`)).toHaveCount(0);
       await expect(page.getByRole("button", { name: /retry/i })).toHaveCount(0);
@@ -62,32 +101,84 @@ test.describe("application-owned public route contract", () => {
       assertDeclaredOperations(route, controller);
       await page.waitForLoadState("networkidle");
 
+      controller.bootstrapDelayMs = 0;
+      controller.leafDelayMs = 0;
+      controller.httpStatus = 500;
+      const errorParams = { ...routeParams, username: `error-${route.id}` };
+      const errorPath = publicRoutePath(route, errorParams);
+      await page.goto(errorPath, { waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(errorPath);
+      const retry = page.getByRole("button", { name: /retry/i });
+      await expect(retry).toBeVisible();
+      controller.httpStatus = undefined;
+      await retry.click();
+      await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toContainText(ROUTE_UI_TEXT[route.id]);
+      await expect(page).toHaveURL(errorPath);
+      await page.goto(path);
+
       controller.observedOperations.length = 0;
       controller.unknownOperations.length = 0;
 
       await page.goto(profilePath);
-      await expect(page.locator('[data-public-route-marker="public-profile-shell"]')).toBeVisible();
+      await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
       await page.evaluate((nextPath) => {
         window.history.pushState({}, "", nextPath);
         window.dispatchEvent(new PopStateEvent("popstate"));
       }, path);
-      await expect(page.locator(`[data-public-route-marker="${route.marker}"]`)).toBeVisible();
+      await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toBeVisible();
       await expect(page.locator(".earth-loader-wrapper")).toHaveCount(0);
       await page.waitForLoadState("networkidle");
 
       await page.reload();
-      await expect(page.locator(`[data-public-route-marker="${route.marker}"]`)).toBeVisible();
+      await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toBeVisible();
       await expect(page).toHaveURL(path);
       await page.waitForLoadState("networkidle");
 
-      expect(controller.networkAudit, `clean network and console for ${route.id}`).toEqual({
-        consoleErrors: [],
-        failedRequests: [],
-        badResponses: [],
-        unknownRequests: [],
-      });
+      if (route.resourceKind === "child") {
+        controller.outcome = "missing-child";
+        controller.leafDelayMs = 150;
+        await page.goto(path, { waitUntil: "domcontentloaded" });
+        await expect(page.getByTestId(`public-route-skeleton-${route.skeleton}`)).toBeVisible();
+        await expect(page).toHaveURL(profilePath);
+        controller.outcome = "empty";
+        controller.leafDelayMs = 0;
+      }
+
+      if (route.visibility === "guarded" && route.id !== "profile") {
+        controller.hiddenField = route.visibilityField;
+        controller.bootstrapDelayMs = 150;
+        const hiddenParams = { ...routeParams, username: `hidden-${route.id}` };
+        const hiddenPath = publicRoutePath(route, hiddenParams);
+        const hiddenProfilePath = publicRoutePath(profileRoute, hiddenParams);
+        const hiddenNavigation = page.goto(hiddenPath, { waitUntil: "domcontentloaded" });
+        await expect(page).toHaveURL(hiddenPath);
+        await hiddenNavigation;
+        await expect(page).toHaveURL(hiddenProfilePath);
+        controller.hiddenField = undefined;
+        controller.bootstrapDelayMs = 0;
+      }
+
+      expect(controller.unknownOperations, `declared GraphQL operations for ${route.id}`).toEqual([]);
+      expect(controller.networkAudit.unknownRequests, `known network surface for ${route.id}`).toEqual([]);
+      expect(controller.networkAudit.badResponses).toContainEqual(expect.objectContaining({ status: 500 }));
     });
   }
+
+  test("books-list stale response is distinguishable and the newest route generation wins", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page, { leafDelayMs: 350 });
+    const booksList = publicRouteContract.find((route) => route.id === "books-list")!;
+    const booksPath = publicRoutePath(booksList, routeParams);
+    controller.responseLabel = "Old books-list content";
+    const oldNavigation = page.goto(booksPath, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("public-route-skeleton-detail")).toBeVisible();
+    controller.responseLabel = "Current books-list content";
+    controller.leafDelayMs = 0;
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Current books-list content", { exact: true })).toBeVisible();
+    await oldNavigation.catch(() => undefined);
+    await expect(page.getByText("Old books-list content", { exact: true })).toHaveCount(0);
+    await expect(page).toHaveURL(booksPath);
+  });
 
   const familyScenarios = [
     { family: "profile", scenario: "timing" },
@@ -117,11 +208,11 @@ test.describe("application-owned public route contract", () => {
         const navigation = page.goto(firstPath, { waitUntil: "domcontentloaded" });
         await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
         await navigation;
-        await expect(page.locator(`[data-public-route-id="${first.id}"]`)).toBeVisible();
+        await expect(page.locator(`[data-public-route-leaf="${first.marker}"]`)).toBeVisible();
         const refresh = page.reload({ waitUntil: "domcontentloaded" });
         await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
         await refresh;
-        await expect(page.locator(`[data-public-route-id="${first.id}"]`)).toBeVisible();
+        await expect(page.locator(`[data-public-route-leaf="${first.marker}"]`)).toBeVisible();
         return;
       }
 
@@ -133,7 +224,7 @@ test.describe("application-owned public route contract", () => {
         await expect(retry).toBeVisible();
         controller.httpStatus = undefined;
         await retry.click();
-        await expect(page.locator(`[data-public-route-id="${first.id}"]`)).toBeVisible();
+        await expect(page.locator(`[data-public-route-leaf="${first.marker}"]`)).toBeVisible();
         await expect(page).toHaveURL(firstPath);
         return;
       }
@@ -157,7 +248,7 @@ test.describe("application-owned public route contract", () => {
       await page.waitForTimeout(400);
       await expect(page.getByTestId(`public-route-skeleton-${second.skeleton}`)).toBeVisible();
       await expect(page).toHaveURL(secondPath);
-      await expect(page.locator(`[data-public-route-id="${second.id}"]`)).toBeVisible();
+      await expect(page.locator(`[data-public-route-leaf="${second.marker}"]`)).toBeVisible();
       await expect(page).toHaveURL(secondPath);
     });
   }
@@ -169,23 +260,23 @@ test.describe("application-owned public route contract", () => {
       username: "route-fixture-other",
     });
     await page.goto(profilePath);
-    await expect(page.locator(`[data-public-route-id="${profileRoute.id}"]`)).toBeVisible();
+    await expect(page.locator(`[data-public-route-leaf="${profileRoute.marker}"]`)).toBeVisible();
     await page.evaluate((nextPath) => {
       window.history.pushState({}, "", nextPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, otherProfilePath);
-    await expect(page.locator(`[data-public-route-id="${profileRoute.id}"]`)).toBeVisible();
+    await expect(page.locator(`[data-public-route-leaf="${profileRoute.marker}"]`)).toBeVisible();
 
     controller.bootstrapDelayMs = 700;
     await page.evaluate((nextPath) => {
       window.history.pushState({}, "", nextPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, profilePath);
-    await expect(page.locator(`[data-public-route-id="${profileRoute.id}"]`)).toBeVisible();
+    await expect(page.locator(`[data-public-route-leaf="${profileRoute.marker}"]`)).toBeVisible();
     await expect(page.getByTestId("public-route-refresh-progress")).toBeVisible();
     await expect(page.locator(".earth-loader-wrapper")).toHaveCount(0);
     await expect(page.getByTestId("public-route-refresh-progress")).toHaveCount(0);
-    await expect(page.locator(`[data-public-route-id="${profileRoute.id}"]`)).toBeVisible();
+    await expect(page.locator(`[data-public-route-leaf="${profileRoute.marker}"]`)).toBeVisible();
   });
 
 
@@ -194,7 +285,7 @@ test.describe("application-owned public route contract", () => {
     await page.goto(`/${routeParams.username}/not-a-public-route?utm_source=contract#proof`);
 
     await expect(page).toHaveURL(`/${routeParams.username}?utm_source=contract#proof`);
-    await expect(page.locator('[data-public-route-marker="public-profile-shell"]')).toBeVisible();
+    await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
   });
 
   test("hidden category redirects only after the successful bootstrap settles", async ({ page }) => {
@@ -209,7 +300,7 @@ test.describe("application-owned public route contract", () => {
     await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
     await navigation;
     await expect(page).toHaveURL(`/${routeParams.username}?utm_source=hidden#proof`);
-    await expect(page.locator('[data-public-route-marker="public-profile-shell"]')).toBeVisible();
+    await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
   });
 
   test("missing child redirects only after successful child data settles", async ({ page }) => {
@@ -223,7 +314,7 @@ test.describe("application-owned public route contract", () => {
 
     await expect(page.locator('[data-testid="public-route-skeleton-detail"]')).toBeVisible();
     await expect(page).toHaveURL(`/${routeParams.username}?utm_source=missing#proof`);
-    await expect(page.locator('[data-public-route-marker="public-profile-shell"]')).toBeVisible();
+    await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
   });
 
   for (const status of [401, 403, 429, 500] as const) {
@@ -240,7 +331,7 @@ test.describe("application-owned public route contract", () => {
       await retry.click();
 
       await expect(page).toHaveURL(target);
-      await expect(page.locator('[data-public-route-marker="public-books-page"]')).toBeVisible();
+      await expect(page.locator('[data-public-route-leaf="public-books-page"]')).toBeVisible();
     });
   }
 
@@ -269,5 +360,32 @@ test.describe("application-owned public route contract", () => {
     expect(audit.unknownRequests).toContainEqual(expect.objectContaining({
       url: "https://unexpected.fixture.invalid/private",
     }));
+  });
+
+  test("anonymous, malformed, and undeclared GraphQL operations fail closed", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+
+    const statuses = await page.evaluate(async () => Promise.all([
+      fetch("/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "{ __typename }" }),
+      }).then((response) => response.status),
+      fetch("/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{malformed",
+      }).then((response) => response.status),
+      fetch("/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ operationName: "PrivateAccountDump", query: "query PrivateAccountDump { __typename }" }),
+      }).then((response) => response.status),
+    ]));
+
+    expect(statuses).toEqual([400, 400, 400]);
+    expect(controller.unknownOperations).toHaveLength(3);
+    expect(controller.observedOperations).not.toContain("Unknown");
   });
 });

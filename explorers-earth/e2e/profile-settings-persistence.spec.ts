@@ -90,7 +90,7 @@ test("saved dashboard state renders identically on public root, category, and ha
 
   await page.goto("/presentation-fixture/books", { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/presentation-fixture\/books$/);
-  await expect(page.locator('[data-public-route-marker="public-books-page"]')).toBeVisible();
+  await expect(page.locator('[data-public-route-leaf="public-books-page"]')).toBeVisible();
   expect(observed).toContain("PublicProfileBootstrap");
   expect(observed).toContain("PublicProfileContent");
 });

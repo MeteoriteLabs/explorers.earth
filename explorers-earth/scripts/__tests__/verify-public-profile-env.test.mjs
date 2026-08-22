@@ -78,13 +78,18 @@ test("read-only verification identifies missing public API inputs without values
 });
 
 test("mutation verification requires opt-in before the dedicated account marker", () => {
+  const completeProtectedEnvironment = Object.fromEntries(
+    Object.values(expectedEnvironmentTiers).flat().map((name) => [name, "configured"]),
+  );
   const result = verifyPublicProfileEnvironment({
     mode: "mutation",
     env: {
+      ...completeProtectedEnvironment,
       VITE_API_URL: "https://fixture.invalid/graphql",
       VITE_PUBLIC_READ_ACCESS_TOKEN: "public-read-value",
       VITE_ANALYTICS_WRITE_ACCESS_TOKEN: "analytics-write-value",
       PUBLIC_PROFILE_TEST_ACCOUNT_MARKER: "public-profile-mutation-fixture",
+      PUBLIC_PROFILE_MUTATION_APPROVED: "",
     },
   });
 

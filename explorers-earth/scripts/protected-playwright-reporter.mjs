@@ -2,8 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import {
-  redactProtectedText,
-  redactProtectedValue,
   writeProtectedReport,
 } from "./protected-playwright-report.mjs";
 
@@ -22,27 +20,20 @@ export default class ProtectedPlaywrightReporter {
     this.writeStdout = options.writeStdout ?? ((chunk) => process.stdout.write(chunk));
     this.artifactRoot = path.resolve(options.artifactRoot ?? process.cwd());
     this.results = [];
+    this.runId = options.runId ?? process.env.PUBLIC_API_RUN_ID;
   }
 
-  onStdOut(chunk) {
-    this.writeStdout(redactProtectedText(chunk.toString(), this.secrets));
+  onStdOut() {
+    // Protected stdout can contain arbitrary DOM, account, and error payloads.
+    // It is intentionally suppressed rather than serialized and redacted.
   }
 
-  onStdErr(chunk) {
-    this.writeStdout(redactProtectedText(chunk.toString(), this.secrets));
+  onStdErr() {
+    // See onStdOut: allowlist-by-construction means no arbitrary text leaves the run.
   }
 
   onBegin(_config, suite) {
-    for (const test of suite.allTests()) {
-      const projectName = test.parent?.project?.()?.name ?? "real-account";
-      const location = test.location
-        ? `${path.basename(test.location.file)}:${test.location.line}`
-        : "protected";
-      this.writeStdout(redactProtectedText(
-        `[${projectName}] ${location} › ${test.titlePath().join(" › ")}\n`,
-        this.secrets,
-      ));
-    }
+    this.writeStdout(`[protected] ${suite.allTests().length} test(s); arbitrary output suppressed\n`);
   }
 
   async onTestEnd(test, result) {
@@ -54,20 +45,24 @@ export default class ProtectedPlaywrightReporter {
       }
     }
 
-    this.results.push(redactProtectedValue({
-      title: test.titlePath().join(" > "),
+    const requestedOperation = test.annotations?.find(
+      (annotation) => annotation.type === "operation",
+    )?.description;
+    this.results.push({
+      code: result.status === "passed"
+        ? "PROTECTED_TEST_PASSED"
+        : result.status === "skipped"
+          ? "PROTECTED_TEST_SKIPPED"
+          : "PROTECTED_TEST_FAILED",
       status: result.status,
-      retry: result.retry,
-      errors: result.errors,
-      attachments: (result.attachments ?? []).map((attachment) => ({
-        name: "[REDACTED_ATTACHMENT]",
-        contentType: attachment.contentType,
-      })),
-    }, this.secrets));
+      operation: requestedOperation,
+    });
   }
 
   async onEnd(result) {
     await writeProtectedReport(this.outputFile, {
+      code: "PROTECTED_RUN_COMPLETE",
+      runId: this.runId,
       status: result.status,
       tests: this.results,
     }, this.secrets);

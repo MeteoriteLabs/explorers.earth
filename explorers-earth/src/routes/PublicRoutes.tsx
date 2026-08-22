@@ -1,57 +1,20 @@
 import type { ReactElement } from "react";
 import { Route } from "react-router-dom";
 
-import { PublicApps, PublicAppList } from "../features/AppsAndTools";
-import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
-import { PublicGames, PublicGamesGenre, PublicGamesList } from "../features/Games";
-import Community from "../features/PublicHome/components/Community";
-import MapView from "../features/PublicHome/components/MapView";
-import PlaceMapView from "../features/PublicHome/components/PlaceMapView";
-import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuideDetailPage";
-import PublicGuides from "../features/PublicHome/components/PublicGuides";
-import PublicProfile from "../features/PublicHome/components/PublicProfile";
-import { PublicMovies, PublicMovieGenre, PublicMovieList } from "../features/Movies";
-import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/People";
-import { PublicProducts, PublicProductList } from "../features/Products";
 import PublicLayout from "../layouts/PublicLayout";
-import PublicHomePage from "../pages/public/PublicHomePage";
-import PublicMusic from "../pages/public/PublicMusic";
 import { PublicProfileFallbackRedirect } from "./PublicProfileFallbackRedirect";
 import { publicRouteContract, type PublicRouteId } from "./publicRouteContract";
+import { publicRouteLeafComponents } from "./publicRouteLeaves";
+import { assertPublicRouteLeafAssembly } from "./publicRouteLeafIdentity";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
 import { UsernameValidator } from "./validators/UsernameValidator";
 
-const publicRouteElements: Record<PublicRouteId, ReactElement> = {
-  profile: <PublicProfile />,
-  music: <PublicMusic />,
-  "places-index": <PublicHomePage />,
-  "places-detail": <PublicHomePage />,
-  "places-map": <MapView />,
-  "places-detail-map": <MapView />,
-  "places-map-detail": <PlaceMapView />,
-  "guides-index": <PublicGuides />,
-  "guides-detail": <PublicGuideDetailPage />,
-  community: <Community />,
-  "movies-index": <PublicMovies />,
-  "movies-genre": <PublicMovieGenre />,
-  "movies-list": <PublicMovieList />,
-  "books-index": <PublicBooks />,
-  "books-subject": <PublicBookSubject />,
-  "books-list": <PublicBookList />,
-  "games-index": <PublicGames />,
-  "games-genre": <PublicGamesGenre />,
-  "games-list": <PublicGamesList />,
-  "apps-index": <PublicApps />,
-  "apps-list": <PublicAppList />,
-  "products-index": <PublicProducts />,
-  "products-list": <PublicProductList />,
-  "people-index": <PublicPeople />,
-  "people-sector": <PublicPersonSector />,
-  "people-list": <PublicPersonList />,
-};
+const publicRouteElements = Object.fromEntries(
+  Object.entries(publicRouteLeafComponents).map(([id, Component]) => [id, <Component />]),
+) as Record<PublicRouteId, ReactElement>;
 
 function withVisibilityGuard(route: (typeof publicRouteContract)[number]): ReactElement {
-  const element = publicRouteElements[route.id];
+  const element = assertPublicRouteLeafAssembly(route.marker, publicRouteElements[route.id]);
 
   const guardedElement = (() => {
     if (route.visibility === "always-visible") return element;
@@ -70,15 +33,7 @@ function withVisibilityGuard(route: (typeof publicRouteContract)[number]): React
     );
   })();
 
-  return (
-    <div
-      className="contents"
-      data-public-route-id={route.id}
-      data-public-route-marker={route.marker}
-    >
-      {guardedElement}
-    </div>
-  );
+  return guardedElement;
 }
 
 const PublicRoutes = [

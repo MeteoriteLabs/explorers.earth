@@ -540,7 +540,7 @@ test.describe("public recommendation presentation visual matrix", () => {
       const payload = route.request().postDataJSON() as
         | { query?: string }
         | undefined;
-      if (/\bmutation\b/.test(payload?.query || "")) mutations.push(operation);
+      if (/\bmutation\b/.test(payload?.query || "") && operation) mutations.push(operation);
       if (operation === "CheckOnboardingStatus") {
         return route.fulfill({
           status: 200,

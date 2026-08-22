@@ -36,6 +36,7 @@ type Geometry = {
   lat: number;
   lng: number;
 };
+const DEFAULT_MAP_CENTER: Geometry = { lat: 20.5937, lng: 78.9629 };
 const PlaceMapView = memo(() => {
   const [currentCoords, setCurrentCoords] = useState<Geometry | null>(null);
   const [activeMarker, setActiveMarker] = useState<Geometry | null>(null);
@@ -90,17 +91,18 @@ const PlaceMapView = memo(() => {
   });
   const navigate = useNavigate();
 
-  const latLngArray = data?.accounts?.[0].recommendation_lists.flatMap(
+  const recommendationLists = data?.accounts?.[0]?.recommendation_lists ?? [];
+  const latLngArray = recommendationLists.flatMap(
     (list: List) =>
       list?.recommended_places.map((place) => place.Place_Details.Geometry)
-  );
+  ).filter((geometry: Geometry | undefined): geometry is Geometry => Boolean(geometry));
 
   const handleCardClick = (geometry: Geometry) => {
     setCurrentCoords(geometry);
     setActiveMarker(geometry);
   };
 
-  const placeData = data?.accounts?.[0].recommendation_lists.flatMap(
+  const placeData = recommendationLists.flatMap(
     (list: List) =>
       list?.recommended_places.map((place) => ({
         ...place.Place_Details,
@@ -116,6 +118,12 @@ const PlaceMapView = memo(() => {
     hasUsableData: Boolean(data),
     empty: !loading && !error && (!placeData || placeData.length === 0),
   });
+
+  useEffect(() => {
+    if (!loading && !error && recommendationLists.length === 0) {
+      navigate(`/${username}`, { replace: true });
+    }
+  }, [error, loading, navigate, recommendationLists.length, username]);
 
   // fetching categories for the recommendation list
   const categories: string[] = Array.from(
@@ -139,7 +147,7 @@ const PlaceMapView = memo(() => {
   return (
     <div className="relative">
       <Map
-        defaultCenter={currentCoords ?? latLngArray[0]}
+        defaultCenter={currentCoords ?? latLngArray[0] ?? DEFAULT_MAP_CENTER}
         center={currentCoords}
         defaultZoom={13}
         onCameraChanged={handleCameraChanged}

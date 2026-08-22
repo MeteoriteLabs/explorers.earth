@@ -192,6 +192,8 @@ vi.mock("@apollo/client", () => ({
 
 // 3. Imports under test
 import PublicRoutes from "../PublicRoutes";
+import { publicRouteLeafComponents } from "../publicRouteLeaves";
+import { assertPublicRouteLeafAssembly } from "../publicRouteLeafIdentity";
 
 const createTestQueryClient = () =>
   new QueryClient({
@@ -263,6 +265,24 @@ describe("PublicRoutes orchestration and readiness", () => {
     expect(source).not.toContain("window.__publicProfileLoaded");
     expect(source).not.toContain("ReadyOnMount");
     expect(source).not.toContain("setIsPageLoaded");
+  });
+
+  it("does not manufacture route identity from the route contract wrapper", () => {
+    const assembledSource = Object.entries(import.meta.glob(
+      ["../PublicRoutes.tsx"],
+      { eager: true, query: "?raw", import: "default" },
+    ) as Record<string, string>).map(([, contents]) => contents).join("\n");
+
+    expect(assembledSource).not.toContain("data-public-route-marker={route.marker}");
+    expect(assembledSource).not.toContain("data-public-route-id={route.id}");
+  });
+
+  it("rejects a deliberate books-list to books-index component mismatch", () => {
+    const WrongLeaf = publicRouteLeafComponents["books-index"];
+    expect(() => assertPublicRouteLeafAssembly(
+      "public-book-list",
+      <WrongLeaf />,
+    )).toThrow("PUBLIC_ROUTE_LEAF_MISMATCH:public-book-list:public-books-page");
   });
 
   it("replaces Earth with one route skeleton after username bootstrap succeeds", async () => {
@@ -422,13 +442,22 @@ describe("PublicRoutes orchestration and readiness", () => {
 
     await waitFor(() => {
       expect(router.state.matches.at(-1)?.route.id).toBe(route.id);
+      expect(document.querySelector(`[data-public-route-leaf="${route.marker}"]`)).not.toBeNull();
     });
+
+    const visibilityGuard = screen.queryByTestId("public-route-visibility-guard");
+    if (route.visibility === "guarded") {
+      expect(visibilityGuard).toHaveAttribute("data-tab-field", route.visibilityField);
+    } else {
+      expect(visibilityGuard).toBeNull();
+    }
 
     expect(route.requiredOperations.length).toBeGreaterThan(0);
     expect(route.conditionalOperations).toBeDefined();
     expect(route.shell).toBeDefined();
     expect(route.skeleton).toBeDefined();
     expect(route.marker).toBeTruthy();
+    expect(route.resourceKind).toMatch(/^(collection|child)$/);
     expect(route.analytics).toBeDefined();
   });
 

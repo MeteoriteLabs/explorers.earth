@@ -10,6 +10,7 @@ import {
   expectNoHorizontalOverflow,
   evaluateCorePixelContrast,
 } from "./support/publicProfileFixture";
+import { emulateBrowserReflowZoom200 } from "./support/browserReflow";
 import {
   PROFILE_THEMES,
   THEME_WALLPAPER_CASES,
@@ -225,7 +226,7 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
         await evaluateCorePixelContrast(page, [{
           name: `${caseLabel}: recommendation-card`,
           locator: recommendationCardLabel,
-          minRatio: 3.0,
+          minRatio: 4.5,
         }]);
         const footerBrandControl = page.locator('footer a[aria-label="explorers.earth"]');
         await footerBrandControl.scrollIntoViewIfNeeded();
@@ -376,7 +377,7 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
     await retryBtn.focus();
     await evaluateCorePixelContrast(page, [
       { name: "error-state", locator: page.getByText(/Couldn['’]t load recommendations/i), minRatio: 4.5 },
-      { name: "error-control", locator: retryBtn.getByTestId("recommendations-retry-label"), minRatio: 3.0 },
+      { name: "error-control", locator: retryBtn.getByTestId("recommendations-retry-label"), minRatio: 4.5 },
     ]);
     await retryBtn.click();
     await expect(page.getByTestId("recommendations-grid")).toBeVisible();
@@ -389,12 +390,22 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
 
     // RTL & 200% zoom
     await page.evaluate(() => { document.documentElement.dir = "rtl"; });
-    const zoomSession = await context.newCDPSession(page);
-    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
-    await expect.poll(() => page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(2);
-    await expect.poll(() => page.evaluate(() => Math.round(window.visualViewport?.width ?? 0))).toBe(188);
+    const zoom = await emulateBrowserReflowZoom200(context, page);
+    const zoomGeometry = await page.evaluate(() => ({
+      innerWidth: window.innerWidth,
+      visualWidth: Math.round(window.visualViewport?.width ?? 0),
+      scale: window.visualViewport?.scale ?? 1,
+    }));
+    expect(zoomGeometry).toEqual({ innerWidth: zoom.layoutWidth, visualWidth: zoom.layoutWidth, scale: 1 });
     await expectNoHorizontalOverflow(page);
-    await zoomSession.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
+    const focusedTab = page.getByRole("tab", { name: "Recommendations" });
+    await focusedTab.focus();
+    const focusedBox = await focusedTab.boundingBox();
+    expect(focusedBox).not.toBeNull();
+    expect(focusedBox!.x).toBeGreaterThanOrEqual(0);
+    expect(focusedBox!.x + focusedBox!.width).toBeLessThanOrEqual(zoom.layoutWidth);
+    await expect(page.getByText("A deterministic public profile fixture.")).toBeVisible();
+    await zoom.restore();
     await page.evaluate(() => { document.documentElement.dir = "ltr"; });
 
     // Touch targets >= 44x44
