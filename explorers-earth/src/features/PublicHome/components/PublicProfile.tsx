@@ -334,7 +334,7 @@ const PublicProfile = memo(() => {
         id: "instagram",
         href: publicSocialHrefs.instagram,
         ariaLabel: "Instagram",
-        renderIcon: ({ className }) => <span className={className}><InstagramIcon color="currentColor" /></span>,
+        renderIcon: ({ className }) => <InstagramIcon className={className} color="currentColor" />,
         analyticsPlatform: "instagram",
       });
     }

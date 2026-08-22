@@ -157,13 +157,14 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
           }
 
           // Core-pixel contrast check
+          const caseLabel = `${preset}/${wallpaperMode}/${width}`;
           const targets = [
-            { name: "account-name", locator: page.getByRole("heading", { name: "Fixture Explorer" }), minRatio: 4.5 },
-            { name: "location-text", locator: page.getByText("Fixture City", { exact: true }), minRatio: 4.0 },
-            { name: "social-icon", locator: page.locator('a[href="https://instagram.com/fixture"] svg path').first(), minRatio: 2.5 },
-            { name: "bio-text", locator: page.getByText("A deterministic public profile fixture."), minRatio: 4.5 },
-            { name: "tab-recommendations", locator: page.getByRole("tab", { name: "Recommendations" }).locator("span").first(), minRatio: 4.5 },
-            { name: "header-logo", locator: page.locator('header a[aria-label="explorers.earth"] svg path[fill="currentColor"]').first(), minRatio: 2.5 },
+            { name: `${caseLabel}: account-name`, locator: page.getByRole("heading", { name: "Fixture Explorer" }), minRatio: 4.5 },
+            { name: `${caseLabel}: location-text`, locator: page.getByText("Fixture City", { exact: true }), minRatio: 4.0 },
+            { name: `${caseLabel}: social-icon`, locator: page.locator('a[href="https://instagram.com/fixture"]'), minRatio: 3.0 },
+            { name: `${caseLabel}: bio-text`, locator: page.getByText("A deterministic public profile fixture."), minRatio: 4.5 },
+            { name: `${caseLabel}: tab-recommendations`, locator: page.getByRole("tab", { name: "Recommendations" }).locator("span").first(), minRatio: 4.5 },
+            { name: `${caseLabel}: header-logo`, locator: page.locator('header a[aria-label="explorers.earth"] svg path[fill="currentColor"]').first(), minRatio: 2.5 },
           ];
 
           await evaluateCorePixelContrast(page, targets);

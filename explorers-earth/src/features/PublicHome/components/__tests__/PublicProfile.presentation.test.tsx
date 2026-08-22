@@ -291,6 +291,7 @@ describe("PublicProfile recommendation presentation", () => {
       expect(hero).toHaveAttribute("data-wallpaper-mode", wallpaperMode);
       expect(screen.queryByTestId("profile-metadata-card")).not.toBeInTheDocument();
       expect(socialLink).toBeInTheDocument();
+      expect(socialLink?.querySelector("svg")).toHaveClass("w-5", "h-5", "fill-current");
     },
   );
 
