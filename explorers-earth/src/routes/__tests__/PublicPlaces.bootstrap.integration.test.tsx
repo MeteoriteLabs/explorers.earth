@@ -6,6 +6,7 @@ import {
   InMemoryCache,
   Observable,
   type Operation,
+  useQuery,
 } from "@apollo/client";
 import type { DocumentNode, OperationDefinitionNode } from "graphql";
 import type { ReactNode } from "react";
@@ -87,13 +88,16 @@ function createTestClient() {
       query: operation.query,
       variables: operation.variables,
     });
-    observer.next(responseFor(operation));
-    observer.complete();
+    queueMicrotask(() => {
+      observer.next(responseFor(operation));
+      observer.complete();
+    });
   }));
 
   return new ApolloClient({
     cache: new InMemoryCache({ addTypename: false }),
     link,
+    queryDeduplication: false,
   });
 }
 
@@ -123,8 +127,17 @@ vi.mock("@vis.gl/react-google-maps", () => ({
 
 import PublicHome from "../../features/PublicHome/components/PublicHome";
 import PublicLayout from "../../layouts/PublicLayout";
+import { publicProfileBootstrapQuery } from "../../layouts/PublicProfileBootstrapContext";
 import TabVisibilityGuard from "../validators/TabVisibilityGuard";
 import { UsernameValidator } from "../validators/UsernameValidator";
+
+function DeliberateBootstrapOwner() {
+  useQuery(publicProfileBootstrapQuery, {
+    variables: { filters: { username: { eq: "alice" } } },
+    fetchPolicy: "network-only",
+  });
+  return null;
+}
 
 describe("real direct Places bootstrap ownership", () => {
   beforeEach(() => {
@@ -137,6 +150,21 @@ describe("real direct Places bootstrap ownership", () => {
         disconnect() {}
       },
     });
+  });
+
+  it("makes a deliberately duplicated bootstrap owner fail the exact-one condition", async () => {
+    render(
+      <ApolloProvider client={createTestClient()}>
+        <DeliberateBootstrapOwner />
+        <DeliberateBootstrapOwner />
+      </ApolloProvider>,
+    );
+
+    await waitFor(() => expect(
+      observedOperations.filter(({ name }) => name === "PublicProfileBootstrap"),
+    ).toHaveLength(2));
+
+    expect(observedOperations.filter(({ name }) => name === "PublicProfileBootstrap")).not.toHaveLength(1);
   });
 
   it("issues one account identity/theme/visibility operation and gives leaf data its own query", async () => {

@@ -209,6 +209,9 @@ describe("PublicProfile recommendation presentation", () => {
     renderProfile();
 
     expect(await screen.findByRole("heading", { name: "Alice" })).toBeInTheDocument();
+    await waitFor(() => expect(lifecycle.markRefreshing).toHaveBeenCalledWith("alice:profile"));
+    expect(screen.queryByText("Profile not found")).toBeNull();
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
   });
 
   it("delegates an initial profile query error to the shared route Retry surface", async () => {

@@ -124,6 +124,7 @@ function renderLeaf(element: ReactElement, path: string, routePath: string) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path={routePath} element={element} />
+          <Route path="/:username" element={<div>Profile fallback destination</div>} />
         </Routes>
       </MemoryRouter>
     </PublicRouteReadinessContext.Provider>,
@@ -211,6 +212,7 @@ type LeafLifecycleFixture = {
   routePath: string;
   operation: string;
   data: Record<string, any>;
+  staleText: string;
   supportingStates?: Record<string, Record<string, any>>;
 };
 
@@ -222,6 +224,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/places",
     operation: "PublicPlacesLists",
     data: { recommendationLists: [] },
+    staleText: "No Places Yet",
   },
   {
     label: "Places detail",
@@ -240,6 +243,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
         product_lists: [],
       }],
     },
+    staleText: "Paris",
   },
   {
     label: "Guides index",
@@ -248,6 +252,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/guides",
     operation: "GetPublicGuides",
     data: { guides: [guideSummary] },
+    staleText: "Fixture Guide",
   },
   {
     label: "Guide detail",
@@ -256,6 +261,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/guides/:guideSlug",
     operation: "GetPublicGuideById",
     data: { guide: guideDetail },
+    staleText: "Fixture Guide",
     supportingStates: { GetPublicGuides: { guides: [guideSummary] } },
   },
   {
@@ -265,6 +271,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/apps",
     operation: "PublicAppData",
     data: { appLists: [] },
+    staleText: "No apps shared yet",
   },
   {
     label: "App list",
@@ -273,6 +280,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/apps/:listSlug",
     operation: "AppListBySlug",
     data: { appLists: [{ documentId: "apps-1", List_Name: "Cached Apps", slug: "cached-list", recommended_apps: [] }] },
+    staleText: "Cached Apps",
   },
   {
     label: "Books index",
@@ -281,6 +289,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/books",
     operation: "PublicBookData",
     data: { bookLists: [] },
+    staleText: "No books yet",
   },
   {
     label: "Book list",
@@ -289,6 +298,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/books/:listSlug",
     operation: "BookListBySlug",
     data: { bookLists: [{ documentId: "books-1", List_Name: "Cached Books", slug: "cached-list", recommended_books: [] }] },
+    staleText: "Cached Books",
   },
   {
     label: "Book subject",
@@ -297,6 +307,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/books/subject/:subjectSlug",
     operation: "BooksBySubject",
     data: { recommendedBooks: [] },
+    staleText: "Science",
     supportingStates: { BookCategories: { bookCategories: [{ documentId: "subject-1", subject_name: "Science" }] } },
   },
   {
@@ -306,6 +317,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/games",
     operation: "PublicGameData",
     data: { gameLists: [] },
+    staleText: "No games shared yet",
   },
   {
     label: "Game list",
@@ -314,6 +326,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/games/:listSlug",
     operation: "GameListBySlug",
     data: { gameLists: [{ documentId: "games-1", List_Name: "Cached Games", slug: "cached-list", recommended_games: [] }] },
+    staleText: "Cached Games",
   },
   {
     label: "Game genre",
@@ -322,6 +335,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/games/genre/:genreSlug",
     operation: "PublicGameData",
     data: { gameLists: [] },
+    staleText: "Comedy",
     supportingStates: { GameCategories: { gameCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
   },
   {
@@ -331,6 +345,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/movies",
     operation: "PublicMovieData",
     data: { movieLists: [] },
+    staleText: "No movies shared yet",
   },
   {
     label: "Movie list",
@@ -339,6 +354,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/movies/:listSlug",
     operation: "MovieListBySlug",
     data: { movieLists: [{ documentId: "movies-1", List_Name: "Cached Movies", slug: "cached-list", recommended_movies: [] }] },
+    staleText: "Cached Movies",
   },
   {
     label: "Movie genre",
@@ -347,6 +363,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/movies/genre/:genreSlug",
     operation: "PublicMovieData",
     data: { movieLists: [] },
+    staleText: "Comedy",
     supportingStates: { MovieCategories: { movieCategories: [{ documentId: "genre-1", genre_name: "Comedy" }] } },
   },
   {
@@ -356,6 +373,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/people",
     operation: "PublicPeopleData",
     data: { personLists: [] },
+    staleText: "No people shared yet",
   },
   {
     label: "People list",
@@ -364,6 +382,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/people/:listSlug",
     operation: "PersonListBySlug",
     data: { personLists: [{ documentId: "people-1", List_Name: "Cached People", slug: "cached-list", recommended_people: [] }] },
+    staleText: "Cached People",
   },
   {
     label: "People sector",
@@ -372,6 +391,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/people/sector/:sectorSlug",
     operation: "PublicPeopleData",
     data: { personLists: [] },
+    staleText: "Creators",
     supportingStates: { PersonCategories: { peopleCategories: [{ documentId: "sector-1", Category_name: "Creators" }] } },
   },
   {
@@ -381,6 +401,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/products",
     operation: "PublicProductData",
     data: { productLists: [] },
+    staleText: "No products shared yet",
   },
   {
     label: "Product list",
@@ -389,6 +410,7 @@ const leafLifecycleCases: LeafLifecycleFixture[] = [
     routePath: "/:username/products/:listSlug",
     operation: "ProductListBySlug",
     data: { productLists: [{ documentId: "products-1", List_Name: "Cached Products", slug: "cached-list", recommended_products: [] }] },
+    staleText: "Cached Products",
   },
 ];
 
@@ -410,6 +432,15 @@ function setLeafLifecycleState(
     loading: state === "refresh",
     error: state === "refresh-error" ? new Error(`${fixture.label} refresh failure`) : undefined,
   });
+}
+
+function expectCachedLeafSurface(fixture: LeafLifecycleFixture, container: HTMLElement) {
+  expect(screen.getAllByText(fixture.staleText).length).toBeGreaterThan(0);
+  expect(screen.queryByText("Profile fallback destination")).toBeNull();
+  expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByText(/^(?:loading(?:…|\.\.\.)?|failed to load.*|something went wrong.*|error loading.*)$/i)).toBeNull();
+  expect(container.querySelector(".animate-spin, [role='progressbar'], [data-testid*='skeleton']")).toBeNull();
 }
 
 describe("production public leaf lifecycle rendering", () => {
@@ -447,7 +478,7 @@ describe("production public leaf lifecycle rendering", () => {
     const { container } = renderLeaf(fixture.element, fixture.path, fixture.routePath);
 
     await waitFor(() => expect(lifecycle.markRefreshing).toHaveBeenCalledWith("alice:leaf"));
-    expect(container).not.toBeEmptyDOMElement();
+    expectCachedLeafSurface(fixture, container);
   });
 
   it.each(leafLifecycleCases)("retains cached $label content during refresh failure", async (fixture) => {
@@ -461,7 +492,7 @@ describe("production public leaf lifecycle rendering", () => {
       expect.any(Function),
       true,
     ));
-    expect(container).not.toBeEmptyDOMElement();
+    expectCachedLeafSurface(fixture, container);
   });
 
   it.each(taxonomyCases)("keeps a valid published $label with zero items on its empty page", async (fixture) => {

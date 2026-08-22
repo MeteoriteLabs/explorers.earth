@@ -197,7 +197,7 @@ const PublicBooks = () => {
           )}
 
           {/* Empty state */}
-          {!loading && !hasContent && (
+          {!hasContent && (
             <div className="text-center py-32">
               <BookOpen size={56} className="text-white/15 mx-auto mb-4" />
               <h2 className="text-xl font-semibold text-white/40 mb-2">No books yet</h2>
