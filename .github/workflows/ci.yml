@@ -109,6 +109,70 @@ jobs:
           path: explorers-earth/coverage/
           retention-days: 14
 
+  public-profile-contract:
+    name: 🔐 Public Profile Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run deterministic capability and environment contracts
+        run: npm run test:public-profile-contract
+
+  public-api-preflight:
+    name: 🔐 Protected Public API Preflight
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [public-profile-contract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: public-profile-capability
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run live public API capability preflight
+        run: npm run verify:public-api -- --username="${{ vars.PUBLIC_PROFILE_CAPABILITY_USERNAME }}" --json > public-api-preflight.json
+        env:
+          VITE_API_URL: ${{ vars.PUBLIC_API_URL }}
+          VITE_PUBLIC_READ_ACCESS_TOKEN: ${{ secrets.VITE_PUBLIC_READ_ACCESS_TOKEN }}
+          VITE_ANALYTICS_WRITE_ACCESS_TOKEN: ${{ secrets.VITE_ANALYTICS_WRITE_ACCESS_TOKEN }}
+          PUBLIC_API_CAPABILITY_SCOPE: ${{ vars.PUBLIC_API_CAPABILITY_SCOPE }}
+          PUBLIC_API_ORIGIN_POLICY: ${{ vars.PUBLIC_API_ORIGIN_POLICY }}
+          PUBLIC_API_RATE_LIMIT_POLICY: ${{ vars.PUBLIC_API_RATE_LIMIT_POLICY }}
+          PUBLIC_API_CONTROLLED_FIXTURE: 'true'
+          PUBLIC_API_PRIVATE_ACCOUNT_ID: ${{ vars.PUBLIC_API_PRIVATE_ACCOUNT_ID }}
+          PUBLIC_API_PRIVATE_LIST_ID: ${{ vars.PUBLIC_API_PRIVATE_LIST_ID }}
+          PUBLIC_API_PRIVATE_ITEM_ID: ${{ vars.PUBLIC_API_PRIVATE_ITEM_ID }}
+          PUBLIC_API_PRIVATE_LIST_SLUG: ${{ vars.PUBLIC_API_PRIVATE_LIST_SLUG }}
+
+      - name: Archive redacted capability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-api-preflight
+          path: explorers-earth/public-api-preflight.json
+          if-no-files-found: error
+          retention-days: 14
+
   # ─────────────────────────────────────────
   # Job 3b: Production Build (parity with deploy)
   # ─────────────────────────────────────────

@@ -41,6 +41,21 @@ npm run lint
 npm run test:local-tunes
 ```
 
+#### Public-profile verification
+
+Run these commands from `explorers-earth/` with Node `>=22.12` after `npm ci`. Install Chromium with `npx playwright install chromium` (CI uses `npx playwright install --with-deps chromium`).
+
+| Tier | Command | Safety / expected duration | Artifacts |
+|---|---|---|---|
+| Deterministic fixture | `npm run verify:public-profile:env -- --mode=fixture --json` | Safe, no live credential; under a second | JSON only on stdout |
+| Contract scripts | `npm run test:public-profile-contract` | Safe; under a second | Node test output |
+| Live read-only | `npm run verify:public-api -- --username=<published-username> --json` | No mutation; usually seconds | Redacted JSON only |
+| Protected mutation | `npm run verify:public-profile:env -- --mode=mutation --json` | Dedicated non-production account only | Any retained recovery path blocks further mutations |
+
+Use `npm run test:e2e -- --headed` for headed browser debugging and `PWDEBUG=1 npm run test:e2e` for Playwright step-through debugging. The normal policy is a clean browser console and no unexpected network failures; a named preflight failure is evidence of a release blocker, not a permitted empty-state fallback.
+
+Stable verification codes include `ENV_MISSING`, `ACCOUNT_MARKER_MISMATCH`, `PUBLIC_READ_UNAUTHORIZED`, `LIVE_WRITE_NOT_APPROVED`, `RESTORE_FAILED`, and `ANALYTICS_CLEANUP_FAILED`. JSON results contain only `code`, `summary`, `safeContext`, `remediation`, and optionally `artifactPath`; they never contain credentials, storage state, or private API payloads.
+
 #### Test File Structure
 
 Test files live in `__tests__/` subdirectories within each module:

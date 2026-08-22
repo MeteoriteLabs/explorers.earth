@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js 18+** — [Download](https://nodejs.org/)
+- **Node.js >=22.12** — [Download](https://nodejs.org/)
 - **PostgreSQL 15+** — Required for tunes only. [Download](https://www.postgresql.org/download/)
 - **YouTube Data API key** — Required for tunes song search. [Get API Key](https://console.cloud.google.com/)
 - **Google Maps API key** — Required for explorers-earth. [Get API Key](https://console.cloud.google.com/)
@@ -15,11 +15,15 @@
 git clone <repository-url>
 cd explorers.earth-main
 
-# Install dependencies for both apps
-npm run install:all
+# Install explorers-earth dependencies from its app directory
+cd explorers-earth
+npm ci
+
+# Install the deterministic browser once (Linux CI uses --with-deps)
+npx playwright install chromium
 ```
 
-This runs `npm install` in both `tunes/` and `explorers-earth/` directories.
+Run public-profile commands from `explorers-earth/`. Use `npm ci` for the lockfile workflow; do not replace it with `npm install` for verification.
 
 ## Environment Setup
 
@@ -91,6 +95,18 @@ cd explorers-earth && npm run build
 ```
 
 ## Verifying It Works
+
+### Public-profile verification contract
+
+```bash
+# Safe deterministic tier, no live capability required
+npm run verify:public-profile:env -- --mode=fixture --json
+
+# Live read-only tier; returns a named non-zero failure until the public capability is configured
+npm run verify:public-api -- --username=<published-username> --json
+```
+
+Protected mutation verification is limited to the dedicated non-production account and requires `PUBLIC_PROFILE_MUTATION_APPROVED=true` plus the exact `PUBLIC_PROFILE_TEST_ACCOUNT_MARKER=public-profile-mutation-fixture`. Do not run it against a personal or production account.
 
 ### explorers-earth
 - Open `http://localhost:5173`

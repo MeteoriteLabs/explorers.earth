@@ -17,8 +17,9 @@ explorers-earth is a React-based web application that enables users to create pe
 ## Quick Start
 
 ```bash
-# Install dependencies
-npm install
+# From explorers-earth/, use the lockfile workflow (Node >=22.12)
+node --version
+npm ci
 
 # Set up environment variables
 cp .env.example .env
@@ -28,6 +29,14 @@ cp .env.example .env
 npm run dev
 # App available at http://localhost:5173
 ```
+
+Install the browser used by the deterministic Playwright suite once:
+
+```bash
+npx playwright install chromium
+```
+
+Public-profile verification has three safety tiers. `npm run verify:public-profile:env -- --mode=fixture --json` is deterministic and needs no live credentials. `npm run verify:public-api -- --username=<published-username> --json` is live read-only and reports a named failure when the public capability is absent or over-broad. Mutation checks are protected non-production work only and require the documented account marker and explicit opt-in. See [environment variables](../docs/environment-variables.md) and [testing](../docs/testing.md).
 
 ## Key Features
 

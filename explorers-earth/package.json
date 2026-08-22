@@ -25,7 +25,10 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "verify:public-api": "node scripts/verify-public-api-access.mjs",
+    "verify:public-profile:env": "node scripts/verify-public-profile-env.mjs",
+    "test:public-profile-contract": "node --test scripts/__tests__/public-profile-contract.test.mjs scripts/__tests__/verify-public-api-access.test.mjs scripts/__tests__/verify-public-profile-env.test.mjs scripts/__tests__/verificationResult.test.mjs"
   },
   "dependencies": {
     "@apollo/client": "^3.12.2",

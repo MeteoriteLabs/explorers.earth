@@ -25,7 +25,6 @@ All environment variables for both applications. Each app has its own `.env` fil
 | `VITE_PAYMENT_API_URL` | No | Payment backend API URL | `https://pay.explorers.earth` |
 | `VITE_RAZORPAY_KEY_ID_DEV` | No | Razorpay key for dev/test environment | `rzp_test_...` |
 | `VITE_RAZORPAY_KEY_ID_PROD` | No | Razorpay key for production | `rzp_live_...` |
-| `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for Strapi (unauthenticated reads) | `token...` |
 | `VITE_LOCAL_TUNES_API_URL` | No | tunes API URL for cross-app integration | `https://localtunes.earth` |
 | `VITE_LOCAL_TUNES_WS_URL` | No | tunes WebSocket URL | `wss://localtunes.earth` |
 | `VITE_LOCAL_TUNES_ENABLED` | No | Enable/disable tunes integration | `true` |
@@ -39,6 +38,36 @@ All environment variables for both applications. Each app has its own `.env` fil
 > **Note on Razorpay**: Two separate keys are used — `VITE_RAZORPAY_KEY_ID_DEV` for test/staging and `VITE_RAZORPAY_KEY_ID_PROD` for production. The app selects based on environment.
 
 > Note: All explorers-earth env vars are prefixed with `VITE_` because Vite exposes these to the client bundle. Do not put secrets here.
+
+## Public-profile verification tiers
+
+All commands in this section run from `explorers-earth/`. Node `>=22.12` is required. Every `VITE_*` value is browser-extractable: capability values are not secrets and must be limited by the API to their documented operation, origin, and server-side rate-limit policy.
+
+| Tier | Variable | Required | Safe report value | Purpose |
+|---|---|---:|---|---|
+| Deterministic fixture | None | No | `not-required` | Runs unit and fixture checks without live credentials. |
+| Live read-only | `VITE_API_URL` | Yes | `present` / `missing` | GraphQL endpoint for the public capability preflight. |
+| Live read-only | `VITE_PUBLIC_READ_ACCESS_TOKEN` | Yes | `dedicated` / `missing` | Published-read-only browser capability. |
+| Protected mutation | `VITE_ANALYTICS_WRITE_ACCESS_TOKEN` | Yes | `dedicated` / `missing` | Analytics-write-only browser capability; it must not read or perform other mutations. |
+| Protected capability proof | `PUBLIC_API_CAPABILITY_SCOPE` | Yes | `configured` / `missing` | Server-recorded capability scope. |
+| Protected capability proof | `PUBLIC_API_ORIGIN_POLICY` | Yes | `configured` / `missing` | Server-recorded allowed-origin policy. |
+| Protected capability proof | `PUBLIC_API_RATE_LIMIT_POLICY` | Yes | `configured` / `missing` | Server-recorded rate-limit policy. |
+| Controlled negative fixture | `PUBLIC_API_CONTROLLED_FIXTURE` plus the four `PUBLIC_API_PRIVATE_*` IDs/slugs | Yes for release | `configured` / `missing` | Non-production private account/list/item/slug probes only. Never point these at production data. |
+| Protected mutation | `PUBLIC_PROFILE_MUTATION_APPROVED` | Yes | `true` / `missing` | Explicit non-production mutation opt-in. |
+| Protected mutation | `PUBLIC_PROFILE_TEST_ACCOUNT_MARKER` | Yes | `matched` / `mismatch` | Must be exactly `public-profile-mutation-fixture`. |
+
+`VITE_PUBLIC_ACCESS_TOKEN` is a deprecated **local-only** compatibility fallback. It is never valid when protected release verification would use it for both public reads and analytics writes.
+
+```bash
+# deterministic and safe on a contributor machine
+npm run verify:public-profile:env -- --mode=fixture --json
+
+# live read-only: intentionally returns a named non-zero result until the scoped capability works
+npm run verify:public-api -- --username=<published-username> --json
+
+# protected non-production only; never run against a personal or production account
+npm run verify:public-profile:env -- --mode=mutation --json
+```
 
 ## tunes (`tunes/.env`)
 
@@ -96,7 +125,6 @@ All environment variables for both applications. Each app has its own `.env` fil
 | `STRAPI_ACCESS_TOKEN` | No | Strapi API token (server-side) | `token...` |
 | `VITE_API_URL` | No | Strapi GraphQL endpoint (client-side, for embedded auth) | `http://localhost:1337/graphql` |
 | `VITE_REST_API_URL` | No | Strapi REST endpoint (client-side) | `http://localhost:1337` |
-| `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for unauthenticated requests | `token...` |
 
 ### AI
 

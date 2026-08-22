@@ -122,6 +122,21 @@ netstat -ano | findstr :5000
 
 **This is expected behavior** — users without geolocation data are counted in the "Unknown" category.
 
+## Public-profile verification failures
+
+Run these commands from `explorers-earth/` after `npm ci` with Node `>=22.12` and Chromium installed (`npx playwright install chromium`; Linux CI uses `--with-deps`). Do not paste a token, a storage export, or a raw API response into an issue.
+
+| Code | Meaning | Corrective action |
+|---|---|---|
+| `ENV_MISSING` | A required API endpoint or dedicated capability is absent. | Use `.env.example` and [environment variables](environment-variables.md); run the read-only doctor again. |
+| `PUBLIC_READ_UNAUTHORIZED` | The configured public-read capability was rejected. | Issue a published-read-only capability; do not silently retry anonymously. |
+| `ACCOUNT_MARKER_MISMATCH` | The mutation target is not the dedicated fixture account. | Stop and set `PUBLIC_PROFILE_TEST_ACCOUNT_MARKER=public-profile-mutation-fixture` in protected non-production only. |
+| `LIVE_WRITE_NOT_APPROVED` | Mutation was not explicitly approved. | Stop unless the protected environment has `PUBLIC_PROFILE_MUTATION_APPROVED=true`. |
+| `RESTORE_FAILED` / `ANALYTICS_CLEANUP_FAILED` | A protected mutation did not restore its fixture. | Retain the recovery artifact, perform the documented read-only restoration check, and block every later mutation until it is resolved. |
+| `CONTROLLED_FIXTURE_REQUIRED` | Negative permission/rate-limit probes cannot be proven safely. | Treat a BFF/server proxy as a release prerequisite; do not claim browser transport is safe. |
+
+Use `npm run verify:public-profile:env -- --mode=fixture --json` for deterministic setup and `npm run verify:public-api -- --username=<published-username> --json` for live read-only diagnosis. The human output starts with the failing condition; JSON is redacted and suitable for CI artifacts.
+
 ## Getting Help
 
 If your issue isn't listed here:
