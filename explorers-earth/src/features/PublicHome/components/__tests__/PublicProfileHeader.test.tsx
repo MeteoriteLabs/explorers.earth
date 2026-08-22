@@ -99,7 +99,8 @@ describe("PublicProfileHeader", () => {
       "text-[var(--text-primary)]",
     );
     expect(screen.getByText("Reykjavik, Iceland").parentElement).toHaveClass(
-      "text-[var(--text-secondary)]",
+      "text-[var(--text-primary)]",
+      "opacity-75",
     );
   });
 

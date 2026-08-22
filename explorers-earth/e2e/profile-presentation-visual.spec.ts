@@ -89,8 +89,8 @@ test.describe("public recommendation presentation visual matrix", () => {
 
     await openFixture(page, "minimal-light-solid-header-icons");
     expect(await readHeaderColors()).toEqual({
-      location: "rgb(100, 116, 139)",
-      locationIcon: "rgb(100, 116, 139)",
+      location: "rgb(15, 23, 42)",
+      locationIcon: "rgb(15, 23, 42)",
       social: "rgb(15, 23, 42)",
       socialIcon: "rgb(15, 23, 42)",
     });
