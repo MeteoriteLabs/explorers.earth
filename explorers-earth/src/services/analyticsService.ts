@@ -114,7 +114,7 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
   // Reset tracking state when page changes
   useEffect(() => {
     setHasTrackedView(false);
-  }, [pageName, accountId, locationId, recommendationId]);
+  }, [pageName, accountId, locationId, recommendationId, routeVariant, routePath]);
 
   // Auto-track view event on mount (only once per page load)
   // Skip if user is authenticated and visiting their own page
@@ -131,12 +131,14 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
 
   /**
    * Generate session key for this specific page and event type
-   * For public-home page, use a consistent key regardless of locationId changes
+   * For public-home page, use a route-specific key that ignores locationId changes
    */
   const getSessionKey = useCallback((eventType: string) => {
-    // For public-home page, use a consistent key that doesn't change with locationId
-    // This prevents duplicate records when navigating via navbar
+    // Places city selection can change locationId without changing route identity.
     if (pageName === 'public-home') {
+      if (eventType === 'view') {
+        return `analytics_${pageName}_${routeVariant || 'route'}_${routePath || 'path'}_${eventType}_${accountId}`;
+      }
       return `analytics_${pageName}_${eventType}_${accountId}`;
     }
     // For other pages, include locationId and recommendationId

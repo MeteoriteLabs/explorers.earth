@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import useTrackAnalytics, { createAnalyticsOptions, getAccountIdFromUsername } from '../analyticsService';
 import useAuthStore from '../../store/store';
 import * as apollo from '@apollo/client';
@@ -240,6 +242,120 @@ describe('analyticsService', () => {
 
       expect(mockCreateAnalytic).toHaveBeenCalledTimes(1);
       expect(mockCreateAnalytic.mock.calls[0][0].variables.data.Stats[0].type).toBe('view');
+    });
+
+    it('tracks each same-mounted Places pathname identity once while ignoring rerenders, query/hash, and city changes', async () => {
+      const wrapper = ({ children }: { children: ReactNode }) => createElement(
+        MemoryRouter,
+        { initialEntries: ['/alice/places'] },
+        children,
+      );
+      const { result, rerender } = renderHook(
+        ({ cityId, cityName }) => {
+          const location = useLocation();
+          const navigate = useNavigate();
+          useTrackAnalytics({
+            accountId: 'acc1',
+            locationId: cityId,
+            pageName: 'public-home',
+            pageUsername: 'alice',
+            autoTrackView: true,
+            waitForLocation: true,
+            cityName,
+            routeVariant: location.pathname === '/alice/places' ? 'index' : 'detail',
+            routePath: location.pathname,
+          });
+          return { navigate };
+        },
+        {
+          wrapper,
+          initialProps: { cityId: 'city-doc-1', cityName: 'Paris' },
+        },
+      );
+
+      await act(async () => { await vi.runAllTimersAsync(); });
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(1);
+
+      rerender({ cityId: 'city-doc-1', cityName: 'Paris' });
+      await act(async () => { await vi.runAllTimersAsync(); });
+      act(() => result.current.navigate('/alice/places?utm_source=qa#top'));
+      await act(async () => { await vi.runAllTimersAsync(); });
+      rerender({ cityId: 'city-doc-2', cityName: 'Rome' });
+      await act(async () => { await vi.runAllTimersAsync(); });
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(1);
+
+      act(() => result.current.navigate('/alice/places/paris'));
+      await act(async () => { await vi.runAllTimersAsync(); });
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(2);
+
+      act(() => result.current.navigate('/alice/places/paris?tab=guides#details'));
+      await act(async () => { await vi.runAllTimersAsync(); });
+      act(() => result.current.navigate('/alice/places/rome'));
+      await act(async () => { await vi.runAllTimersAsync(); });
+      act(() => result.current.navigate('/alice/places'));
+      await act(async () => { await vi.runAllTimersAsync(); });
+      act(() => result.current.navigate('/alice/places/paris'));
+      await act(async () => { await vi.runAllTimersAsync(); });
+
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(3);
+      expect(mockCreateAnalytic.mock.calls.map((call) => call[0].variables.data.Stats[0].metadata)).toEqual([
+        expect.objectContaining({ routeVariant: 'index', routePath: '/alice/places' }),
+        expect.objectContaining({ routeVariant: 'detail', routePath: '/alice/places/paris' }),
+        expect.objectContaining({ routeVariant: 'detail', routePath: '/alice/places/rome' }),
+      ]);
+    });
+
+    it('uses current owner auth when a same-mounted Places route becomes trackable', async () => {
+      useAuthStore.setState({
+        isAuthenticated: true,
+        user: { id: '2', documentId: 'acc2', username: 'bob', email: 'b', blocked: false }
+      });
+      const wrapper = ({ children }: { children: ReactNode }) => createElement(
+        MemoryRouter,
+        { initialEntries: ['/alice/places'] },
+        children,
+      );
+      const { result } = renderHook(() => {
+        const location = useLocation();
+        const navigate = useNavigate();
+        useTrackAnalytics({
+          accountId: 'acc1',
+          locationId: 'city-doc-1',
+          pageName: 'public-home',
+          pageUsername: 'alice',
+          autoTrackView: true,
+          waitForLocation: true,
+          routeVariant: location.pathname === '/alice/places' ? 'index' : 'detail',
+          routePath: location.pathname,
+        });
+        return { navigate };
+      }, { wrapper });
+
+      await act(async () => { await vi.runAllTimersAsync(); });
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        useAuthStore.setState({
+          isAuthenticated: true,
+          user: { id: '1', documentId: 'acc1', username: 'alice', email: 'a', blocked: false }
+        });
+        result.current.navigate('/alice/places/paris');
+      });
+      await act(async () => { await vi.runAllTimersAsync(); });
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        useAuthStore.setState({
+          isAuthenticated: true,
+          user: { id: '2', documentId: 'acc2', username: 'bob', email: 'b', blocked: false }
+        });
+      });
+      await act(async () => { await vi.runAllTimersAsync(); });
+
+      expect(mockCreateAnalytic).toHaveBeenCalledTimes(2);
+      expect(mockCreateAnalytic.mock.calls[1][0].variables.data.Stats[0].metadata).toEqual(
+        expect.objectContaining({ routeVariant: 'detail', routePath: '/alice/places/paris' }),
+      );
     });
 
     it('uses the current owner identity after render when suppressing clicks', async () => {
