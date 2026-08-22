@@ -241,6 +241,7 @@ const PublicPersonList = () => {
           open={!!selectedPerson}
           person={selectedPerson}
           onClose={() => setSelectedPerson(null)}
+          onShare={(id) => analytics.trackClick("share-button", { context: "people-list-detail", id })}
         />
       </div>
     </>

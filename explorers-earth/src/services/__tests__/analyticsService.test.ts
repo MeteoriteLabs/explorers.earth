@@ -80,12 +80,17 @@ describe('analyticsService', () => {
         accountId: 'doc123',
         pageName: 'public-profile',
         pageUsername: 'john',
-        autoTrackView: true
+        autoTrackView: true,
+        routeVariant: 'profile',
+        routePath: '/john',
       });
     });
 
     it('creates home options correctly', () => {
-      const options = createAnalyticsOptions.home('doc123', 'john', 'loc123', 'rec123', 'Paris');
+      const options = createAnalyticsOptions.home('doc123', 'john', 'loc123', 'rec123', 'Paris', {
+        variant: 'detail',
+        path: '/john/places/paris',
+      });
       expect(options).toEqual({
         accountId: 'doc123',
         locationId: 'loc123',
@@ -93,7 +98,19 @@ describe('analyticsService', () => {
         pageName: 'public-home',
         pageUsername: 'john',
         autoTrackView: true,
-        cityName: 'Paris'
+        cityName: 'Paris',
+        routeVariant: 'detail',
+        routePath: '/john/places/paris',
+      });
+    });
+
+    it('creates complete music route metadata without changing the Music surface', () => {
+      expect(createAnalyticsOptions.music('doc123', 'john')).toMatchObject({
+        accountId: 'doc123',
+        pageName: 'public-music',
+        pageUsername: 'john',
+        routeVariant: 'index',
+        routePath: '/john/music',
       });
     });
 

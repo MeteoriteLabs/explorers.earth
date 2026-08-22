@@ -62,7 +62,12 @@ vi.mock("../AppCarouselRow", () => ({
 vi.mock("../AppTopPicksHero", () => ({ default: () => null }));
 vi.mock("../AppTopPicksMobileHero", () => ({ default: () => null }));
 vi.mock("../AppDetailModal", () => ({
-  default: ({ app }: any) => app ? <div data-testid="selected-app">{app.documentId}</div> : null,
+  default: ({ app, onShare }: any) => app ? (
+    <div>
+      <div data-testid="selected-app">{app.documentId}</div>
+      <button type="button" onClick={() => onShare?.(app.documentId)}>Share {app.title} detail</button>
+    </div>
+  ) : null,
 }));
 
 import PublicAppList from "../PublicAppList";
@@ -134,6 +139,11 @@ describe("public apps analytics", () => {
       title: "Focus App",
     }));
     expect(screen.getByTestId("selected-app")).toHaveTextContent("app-doc-1");
+    fireEvent.click(screen.getByRole("button", { name: "Share Focus App detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", {
+      context: "apps-index-detail",
+      id: "app-doc-1",
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Share" }));
     await waitFor(() => {
@@ -141,7 +151,7 @@ describe("public apps analytics", () => {
     });
   });
 
-  it("tracks list views and cards with the list document ID rather than its slug", () => {
+  it("tracks list views, cards, detail Share, and list Share with stable document IDs", async () => {
     queryState.data = {
       appLists: [{ documentId: "app-list-1", List_Name: "Useful Apps", slug: "useful-apps" }],
       recommendedApps_connection: { nodes: [app], pageInfo },
@@ -159,6 +169,16 @@ describe("public apps analytics", () => {
     fireEvent.click(screen.getByRole("button", { name: /Focus App/ }));
     expect(analyticsHarness.trackClick).toHaveBeenCalledWith("app-card", expect.objectContaining({
       id: "app-doc-1",
+      listId: "app-list-1",
+    }));
+    fireEvent.click(screen.getByRole("button", { name: "Share Focus App detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", {
+      context: "apps-list-detail",
+      id: "app-doc-1",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", {
+      context: "apps-list",
       listId: "app-list-1",
     }));
   });

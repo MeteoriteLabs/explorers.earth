@@ -12,11 +12,12 @@ interface PersonDetailModalProps {
   person: RecommendedPerson | null;
   open: boolean;
   onClose: () => void;
+  onShare?: (documentId: string) => void;
 }
 
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
-const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) => {
+const PersonDetailModal = ({ person, open, onClose, onShare }: PersonDetailModalProps) => {
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -53,13 +54,14 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
   };
 
   const handleShare = useCallback(async () => {
+    if (person?.documentId) onShare?.(person.documentId);
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: person?.full_name, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  }, [person?.full_name]);
+  }, [onShare, person?.documentId, person?.full_name]);
 
   const lightboxMediaItems = useMemo(() => {
     if (!person) return [];

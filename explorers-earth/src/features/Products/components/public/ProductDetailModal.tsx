@@ -10,11 +10,12 @@ interface ProductDetailModalProps {
   product: RecommendedProduct | null;
   open: boolean;
   onClose: () => void;
+  onShare?: (documentId: string) => void;
 }
 
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
-const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps) => {
+const ProductDetailModal = ({ product, open, onClose, onShare }: ProductDetailModalProps) => {
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [imgIdx, setImgIdx] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -53,13 +54,14 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   };
 
   const handleShare = useCallback(async () => {
+    if (product?.documentId) onShare?.(product.documentId);
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: product?.title, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  }, [product?.title]);
+  }, [onShare, product?.documentId, product?.title]);
 
   const lightboxMediaItems = useMemo(() => {
     if (!product) return [];

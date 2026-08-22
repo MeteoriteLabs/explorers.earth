@@ -11,11 +11,12 @@ interface MovieDetailModalProps {
   movie: RecommendedMovie | null;
   open: boolean;
   onClose: () => void;
+  onShare?: (documentId: string) => void;
 }
 
 const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
-const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
+const MovieDetailModal = ({ movie, open, onClose, onShare }: MovieDetailModalProps) => {
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [photoIndex, setPhotoIndex] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -82,13 +83,14 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
   };
 
   const handleShare = useCallback(async () => {
+    if (movie?.documentId) onShare?.(movie.documentId);
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: movie?.title, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  }, [movie?.title]);
+  }, [movie?.documentId, movie?.title, onShare]);
 
   const lightboxMediaItems = useMemo(() => {
     if (!movie) return [];

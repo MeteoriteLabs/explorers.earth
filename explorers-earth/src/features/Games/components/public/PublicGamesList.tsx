@@ -234,6 +234,7 @@ const PublicGamesList = () => {
           open={modalState.open}
           game={modalState.game}
           onClose={() => setModalState({ open: false, game: null })}
+          onShare={(id) => analytics.trackClick("share-button", { context: "games-list-detail", id })}
         />
       </div>
     </>

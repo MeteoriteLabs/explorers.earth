@@ -238,6 +238,7 @@ const PublicAppList = () => {
           open={!!selectedApp}
           app={selectedApp}
           onClose={() => setSelectedApp(null)}
+          onShare={(id) => analytics.trackClick("share-button", { context: "apps-list-detail", id })}
         />
       </div>
     </>

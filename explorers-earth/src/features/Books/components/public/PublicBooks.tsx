@@ -221,6 +221,7 @@ const PublicBooks = () => {
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}
+        onShare={(id) => analytics.trackClick("share-button", { context: "books-index-detail", id })}
       />
     </div>
     </>

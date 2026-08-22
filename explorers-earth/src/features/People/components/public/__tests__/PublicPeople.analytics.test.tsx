@@ -25,7 +25,7 @@ vi.mock("../../../../../services/analyticsService", () => ({ createAnalyticsOpti
 vi.mock("../PersonCarouselRow", () => ({ default: ({ list, onPersonClick }: any) => <button type="button" onClick={() => onPersonClick(list.recommended_people[0])}>Open {list.recommended_people[0].full_name}</button> }));
 vi.mock("../PersonTopPicksHero", () => ({ default: () => null }));
 vi.mock("../PersonTopPicksMobileHero", () => ({ default: () => null }));
-vi.mock("../PersonDetailModal", () => ({ default: ({ person }: any) => person ? <div data-testid="selected-person">{person.documentId}</div> : null }));
+vi.mock("../PersonDetailModal", () => ({ default: ({ person, onShare }: any) => person ? <div><div data-testid="selected-person">{person.documentId}</div><button type="button" onClick={() => onShare?.(person.documentId)}>Share {person.full_name} detail</button></div> : null }));
 
 import PublicPeople from "../PublicPeople";
 import PublicPersonList from "../PublicPersonList";
@@ -56,25 +56,35 @@ describe("public people analytics", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open Asha Rao" }));
     expect(analyticsHarness.trackClick).toHaveBeenCalledWith("person-card", expect.objectContaining({ id: "person-doc-1", name: "Asha Rao" }));
     expect(screen.getByTestId("selected-person")).toHaveTextContent("person-doc-1");
+    fireEvent.click(screen.getByRole("button", { name: "Share Asha Rao detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "people-index-detail", id: "person-doc-1" });
     fireEvent.click(screen.getByRole("button", { name: "Share" }));
     await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "people-index" }));
   });
 
-  it("tracks list views and cards with the person-list document ID", () => {
+  it("tracks list views, cards, detail Share, and list Share with stable document IDs", async () => {
     queryState.data = { personLists: [{ documentId: "person-list-1", List_Name: "Creators", slug: "creators" }], recommendedPeople_connection: { nodes: [person], pageInfo } };
     renderAt("/alice/people/creators", <PublicPersonList />, "/:username/people/:listSlug");
 
     expect(analyticsHarness.people).toHaveBeenCalledWith("account-1", "alice", "person-list-1", undefined, { variant: "list", path: "/alice/people/creators" });
     fireEvent.click(screen.getByRole("button", { name: /Asha Rao/ }));
     expect(analyticsHarness.trackClick).toHaveBeenCalledWith("person-card", expect.objectContaining({ id: "person-doc-1", listId: "person-list-1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share Asha Rao detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "people-list-detail", id: "person-doc-1" });
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "people-list", listId: "person-list-1" }));
   });
 
-  it("tracks sector filters with the stable taxonomy document ID", () => {
+  it("tracks sector cards, detail Share, and filter Share with the stable taxonomy document ID", async () => {
     queryState.data = { peopleCategories: [{ documentId: "sector-doc-1", Category_name: "Scientists" }], recommendedPeople_connection: { nodes: [person], pageInfo } };
     renderAt("/alice/people/sector/sector-doc-1", <PublicPersonSector />, "/:username/people/sector/:sectorSlug");
 
     expect(analyticsHarness.people).toHaveBeenCalledWith("account-1", "alice", "sector-doc-1", undefined, { variant: "filter", path: "/alice/people/sector/sector-doc-1" });
     fireEvent.click(screen.getByRole("button", { name: /Asha Rao/ }));
     expect(analyticsHarness.trackClick).toHaveBeenCalledWith("person-card", expect.objectContaining({ id: "person-doc-1", filterId: "sector-doc-1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share Asha Rao detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "people-filter-detail", id: "person-doc-1" });
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "people-sector", filterId: "sector-doc-1" }));
   });
 });

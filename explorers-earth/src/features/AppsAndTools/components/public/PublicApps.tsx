@@ -219,6 +219,7 @@ const PublicApps = () => {
           open={modalState.open}
           app={modalState.app}
           onClose={() => setModalState({ open: false, app: null })}
+          onShare={(id) => analytics.trackClick("share-button", { context: "apps-index-detail", id })}
         />
       </div>
     </>

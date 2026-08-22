@@ -236,6 +236,7 @@ const PublicProductList = () => {
           open={!!selectedProduct}
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          onShare={(id) => analytics.trackClick("share-button", { context: "products-list-detail", id })}
         />
       </div>
     </>

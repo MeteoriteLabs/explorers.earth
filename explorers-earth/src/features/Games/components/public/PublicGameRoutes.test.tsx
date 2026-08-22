@@ -18,7 +18,7 @@ vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({ usePublicP
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../../../services/analyticsService", () => ({ createAnalyticsOptions: { games: analyticsHarness.games }, useTrackAnalytics: analyticsHarness.useTrackAnalytics }));
 vi.mock("./GameCoverCard", () => ({ default: ({ title, onClick }: any) => <button type="button" onClick={onClick}>{title}</button> }));
-vi.mock("./GameDetailModal", () => ({ default: () => null }));
+vi.mock("./GameDetailModal", () => ({ default: ({ game, onShare }: any) => game ? <button type="button" onClick={() => onShare?.(game.documentId)}>Share {game.title} detail</button> : null }));
 
 import PublicGamesGenre from "./PublicGamesGenre";
 import PublicGamesList from "./PublicGamesList";
@@ -100,6 +100,8 @@ describe("PublicGamesGenre", () => {
 		expect(analyticsHarness.games).toHaveBeenCalledWith("account-1", "alice", "game-list-1", undefined, { variant: "list", path: "/alice/games/favorites" });
 		fireEvent.click(screen.getByRole("button", { name: "Journey" }));
 		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("game-card", expect.objectContaining({ id: "game-doc-1", listId: "game-list-1" }));
+		fireEvent.click(screen.getByRole("button", { name: "Share Journey detail" }));
+		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "games-list-detail", id: "game-doc-1" });
 		fireEvent.click(screen.getByRole("button", { name: "Share" }));
 		await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", expect.objectContaining({ context: "games-list" })));
 	});

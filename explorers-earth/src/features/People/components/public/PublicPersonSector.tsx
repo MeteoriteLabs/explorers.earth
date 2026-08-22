@@ -272,6 +272,7 @@ const PublicPersonSector = () => {
           open={!!selectedPerson}
           person={selectedPerson}
           onClose={() => setSelectedPerson(null)}
+          onShare={(id) => analytics.trackClick("share-button", { context: "people-filter-detail", id })}
         />
       </div>
     </>

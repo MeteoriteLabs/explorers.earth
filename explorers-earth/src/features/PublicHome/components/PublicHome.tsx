@@ -293,6 +293,8 @@ const PublicHome = memo(() => {
     autoTrackView: true,
     waitForLocation: true, // Wait for location to be set before auto-tracking view
     cityName: selectedCity?.List_Name, // Pass city name for analytics metadata
+    routeVariant: placeSlug ? "detail" : "index",
+    routePath: location.pathname,
   });
 
   // QR URL generation for PublicHome page
@@ -2030,6 +2032,7 @@ const PublicHome = memo(() => {
                   open={!!selectedProduct}
                   product={selectedProduct}
                   onClose={() => setSelectedProduct(null)}
+                  onShare={(id) => analytics.trackClick("share-button", { context: "places-product-detail", id })}
                 />
 
                 {/* Person Detail Modal */}
@@ -2037,6 +2040,7 @@ const PublicHome = memo(() => {
                   open={!!selectedPerson}
                   person={selectedPerson}
                   onClose={() => setSelectedPerson(null)}
+                  onShare={(id) => analytics.trackClick("share-button", { context: "places-person-detail", id })}
                 />
               </>
             ) : (

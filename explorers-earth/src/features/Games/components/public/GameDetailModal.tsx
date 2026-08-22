@@ -11,11 +11,12 @@ interface GameDetailModalProps {
   game: RecommendedGame | null;
   open: boolean;
   onClose: () => void;
+  onShare?: (documentId: string) => void;
 }
 
 const FALLBACK_COVER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
-const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
+const GameDetailModal = ({ game, open, onClose, onShare }: GameDetailModalProps) => {
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -57,13 +58,14 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
   };
 
   const handleShare = useCallback(async () => {
+    if (game?.documentId) onShare?.(game.documentId);
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: game?.title, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  }, [game?.title]);
+  }, [game?.documentId, game?.title, onShare]);
 
   const lightboxMediaItems = useMemo(() => {
     if (!game) return [];

@@ -238,6 +238,7 @@ const PublicMovieGenre = () => {
         movie={selectedMovie}
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
+        onShare={(id) => analytics.trackClick("share-button", { context: "movies-filter-detail", id })}
       />
       </div>
     </>

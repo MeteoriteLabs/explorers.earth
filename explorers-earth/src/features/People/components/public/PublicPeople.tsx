@@ -223,6 +223,7 @@ const PublicPeople = () => {
           open={modalState.open}
           person={modalState.person}
           onClose={() => setModalState({ open: false, person: null })}
+          onShare={(id) => analytics.trackClick("share-button", { context: "people-index-detail", id })}
         />
       </div>
     </>

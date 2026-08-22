@@ -404,20 +404,31 @@ export const createAnalyticsOptions = {
     accountId: accountDocumentId,
     pageName: 'public-profile',
     pageUsername,
-    autoTrackView: true
+    autoTrackView: true,
+    routeVariant: 'profile',
+    routePath: `/${pageUsername || ''}`,
   }),
 
   /**
    * For public home pages (recommendations)
    */
-  home: (accountDocumentId: string, pageUsername?: string, locationDocumentId?: string, recommendationDocumentId?: string, cityName?: string): UseTrackAnalyticsOptions => ({
+  home: (
+    accountDocumentId: string,
+    pageUsername?: string,
+    locationDocumentId?: string,
+    recommendationDocumentId?: string,
+    cityName?: string,
+    route?: AnalyticsRouteMetadata,
+  ): UseTrackAnalyticsOptions => ({
     accountId: accountDocumentId,
     locationId: locationDocumentId || null,
     recommendationId: recommendationDocumentId || null,
     pageName: 'public-home',
     pageUsername,
     autoTrackView: true,
-    cityName
+    cityName,
+    routeVariant: route?.variant || 'index',
+    routePath: route?.path || `/${pageUsername || ''}/places`.replace('//', '/'),
   }),
 
   /**
@@ -439,7 +450,9 @@ export const createAnalyticsOptions = {
     accountId: accountDocumentId,
     pageName: 'public-music',
     pageUsername,
-    autoTrackView: true
+    autoTrackView: true,
+    routeVariant: 'index',
+    routePath: `/${pageUsername || ''}/music`.replace('//', '/'),
   }),
 
   /**

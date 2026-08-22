@@ -10,11 +10,12 @@ interface AppDetailModalProps {
   app: RecommendedApp | null;
   open: boolean;
   onClose: () => void;
+  onShare?: (documentId: string) => void;
 }
 
 const FALLBACK_LOGO = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23171e2e'/></svg>`;
 
-const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
+const AppDetailModal = ({ app, open, onClose, onShare }: AppDetailModalProps) => {
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [_screenshotIdx, _setScreenshotIdx] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -53,13 +54,14 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
   };
 
   const handleShare = useCallback(async () => {
+    if (app?.documentId) onShare?.(app.documentId);
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: app?.title, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  }, [app?.title]);
+  }, [app?.documentId, app?.title, onShare]);
 
   const lightboxMediaItems = useMemo(() => {
     if (!app) return [];

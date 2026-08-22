@@ -18,7 +18,7 @@ vi.mock("../../../../layouts/PublicProfileBootstrapContext", () => ({ usePublicP
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../../../services/analyticsService", () => ({ createAnalyticsOptions: { books: analyticsHarness.books }, useTrackAnalytics: analyticsHarness.useTrackAnalytics }));
 vi.mock("./BookCoverCard", () => ({ default: ({ book, onClick }: any) => <button type="button" onClick={() => onClick(book)}>{book.title}</button> }));
-vi.mock("./BookDetailModal", () => ({ default: () => null }));
+vi.mock("./BookDetailModal", () => ({ default: ({ book, onShare }: any) => book ? <button type="button" onClick={() => onShare?.(book.documentId)}>Share {book.title} detail</button> : null }));
 
 import PublicBookSubject from "./PublicBookSubject";
 import PublicBookList from "./PublicBookList";
@@ -100,6 +100,8 @@ describe("PublicBookSubject", () => {
 		expect(analyticsHarness.books).toHaveBeenCalledWith("account-1", "alice", "book-list-1", undefined, { variant: "list", path: "/alice/books/favorites" });
 		fireEvent.click(screen.getByRole("button", { name: "Kindred" }));
 		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("book-card", expect.objectContaining({ id: "book-doc-1", listId: "book-list-1" }));
+		fireEvent.click(screen.getByRole("button", { name: "Share Kindred detail" }));
+		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "books-list-detail", id: "book-doc-1" });
 		fireEvent.click(screen.getByRole("button", { name: "Share" }));
 		await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", expect.objectContaining({ context: "books-list" })));
 	});

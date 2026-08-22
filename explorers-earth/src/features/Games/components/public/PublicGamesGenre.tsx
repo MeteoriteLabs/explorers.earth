@@ -242,6 +242,7 @@ const PublicGamesGenre = () => {
         game={selectedGame}
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedGame(null); }}
+        onShare={(id) => analytics.trackClick("share-button", { context: "games-filter-detail", id })}
       />
     </div>
     </>

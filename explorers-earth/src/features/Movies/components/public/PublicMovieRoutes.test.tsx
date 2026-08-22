@@ -33,7 +33,7 @@ vi.mock("../../../../services/analyticsService", () => ({
 vi.mock("./MoviePosterCard", () => ({
 	default: ({ movie, onClick }: any) => <button type="button" onClick={() => onClick(movie)}>{movie.title}</button>,
 }));
-vi.mock("./MovieDetailModal", () => ({ default: () => null }));
+vi.mock("./MovieDetailModal", () => ({ default: ({ movie, onShare }: any) => movie ? <button type="button" onClick={() => onShare?.(movie.documentId)}>Share {movie.title} detail</button> : null }));
 
 import PublicMovieGenre from "./PublicMovieGenre";
 import PublicMovieList from "./PublicMovieList";
@@ -123,6 +123,8 @@ describe("PublicMovieGenre", () => {
 		});
 		fireEvent.click(screen.getByRole("button", { name: "Arrival" }));
 		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("movie-card", expect.objectContaining({ id: "movie-doc-1", listId: "movie-list-1" }));
+		fireEvent.click(screen.getByRole("button", { name: "Share Arrival detail" }));
+		expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "movies-list-detail", id: "movie-doc-1" });
 		fireEvent.click(screen.getByRole("button", { name: "Share" }));
 		await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", expect.objectContaining({ context: "movies-list" })));
 	});

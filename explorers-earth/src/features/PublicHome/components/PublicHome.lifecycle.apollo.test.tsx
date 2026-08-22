@@ -2,9 +2,13 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { ApolloClient, ApolloLink, ApolloProvider, InMemoryCache, Observable, type FetchResult, type Operation } from "@apollo/client";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../services/analyticsService", () => ({ useTrackAnalytics: () => ({ trackClick: vi.fn(), trackEvent: vi.fn() }) }));
+const analyticsHarness = vi.hoisted(() => ({
+	useTrackAnalytics: vi.fn(() => ({ trackClick: vi.fn(), trackEvent: vi.fn() })),
+}));
+
+vi.mock("../../../services/analyticsService", () => ({ useTrackAnalytics: analyticsHarness.useTrackAnalytics }));
 vi.mock("../../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../../hooks/useQRActions", () => ({ useQRActions: () => ({ handleCopyLink: vi.fn() }) }));
 vi.mock("@vis.gl/react-google-maps", () => ({
@@ -97,6 +101,30 @@ function readinessSpies(): PublicRouteReadinessContextValue {
 }
 
 describe("PublicHome connection lifecycle with real Apollo", () => {
+	beforeEach(() => {
+		analyticsHarness.useTrackAnalytics.mockClear();
+	});
+
+	it("passes the current Places detail route metadata to custom analytics", async () => {
+		const link = new ApolloLink((operation: Operation) => new Observable((observer) => {
+			queueMicrotask(() => {
+				if (operation.operationName === "PublicPlaceListBySlug") {
+					observer.next(parentResponse());
+				} else {
+					observer.next({ data: { recommendedPlaces_connection: emptyConnection } });
+				}
+				observer.complete();
+			});
+		}));
+
+		renderRoute(link, readinessSpies(), "/alice/places/empty-places");
+
+		await waitFor(() => expect(analyticsHarness.useTrackAnalytics).toHaveBeenCalledWith(expect.objectContaining({
+			routeVariant: "detail",
+			routePath: "/alice/places/empty-places",
+		})));
+	});
+
 	it("keeps account ownership and publication filters on a later Place page", async () => {
 		let laterPageVariables: Record<string, unknown> | undefined;
 		const place = {

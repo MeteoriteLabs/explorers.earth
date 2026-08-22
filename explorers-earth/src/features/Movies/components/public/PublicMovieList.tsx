@@ -225,6 +225,7 @@ const PublicMovieList = () => {
         movie={selectedMovie}
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedMovie(null); }}
+        onShare={(id) => analytics.trackClick("share-button", { context: "movies-list-detail", id })}
       />
       </div>
     </>

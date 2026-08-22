@@ -25,7 +25,7 @@ vi.mock("../../../../../services/analyticsService", () => ({ createAnalyticsOpti
 vi.mock("../ProductCarouselRow", () => ({ default: ({ list, onProductClick }: any) => <button type="button" onClick={() => onProductClick(list.recommended_products[0])}>Open {list.recommended_products[0].title}</button> }));
 vi.mock("../ProductTopPicksHero", () => ({ default: () => null }));
 vi.mock("../ProductTopPicksMobileHero", () => ({ default: () => null }));
-vi.mock("../ProductDetailModal", () => ({ default: ({ product }: any) => product ? <div data-testid="selected-product">{product.documentId}</div> : null }));
+vi.mock("../ProductDetailModal", () => ({ default: ({ product, onShare }: any) => product ? <div><div data-testid="selected-product">{product.documentId}</div><button type="button" onClick={() => onShare?.(product.documentId)}>Share {product.title} detail</button></div> : null }));
 
 import PublicProductList from "../PublicProductList";
 import PublicProducts from "../PublicProducts";
@@ -55,16 +55,22 @@ describe("public products analytics", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open Field Camera" }));
     expect(analyticsHarness.trackClick).toHaveBeenCalledWith("product-card", expect.objectContaining({ id: "product-doc-1", title: "Field Camera" }));
     expect(screen.getByTestId("selected-product")).toHaveTextContent("product-doc-1");
+    fireEvent.click(screen.getByRole("button", { name: "Share Field Camera detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "products-index-detail", id: "product-doc-1" });
     fireEvent.click(screen.getByRole("button", { name: "Share" }));
     await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "products-index" }));
   });
 
-  it("tracks list views and cards with the product-list document ID", () => {
+  it("tracks list views, cards, detail Share, and list Share with stable document IDs", async () => {
     queryState.data = { productLists: [{ documentId: "product-list-1", List_Name: "Gear", slug: "gear" }], recommendedProducts_connection: { nodes: [product], pageInfo } };
     renderAt("/alice/products/gear", <PublicProductList />, "/:username/products/:listSlug");
 
     expect(analyticsHarness.products).toHaveBeenCalledWith("account-1", "alice", "product-list-1", undefined, { variant: "list", path: "/alice/products/gear" });
     fireEvent.click(screen.getByRole("button", { name: /Field Camera/ }));
     expect(analyticsHarness.trackClick).toHaveBeenCalledWith("product-card", expect.objectContaining({ id: "product-doc-1", listId: "product-list-1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share Field Camera detail" }));
+    expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "products-list-detail", id: "product-doc-1" });
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(analyticsHarness.trackClick).toHaveBeenCalledWith("share-button", { context: "products-list", listId: "product-list-1" }));
   });
 });
