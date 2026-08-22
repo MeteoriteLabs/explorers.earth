@@ -398,9 +398,9 @@ test.describe("public recommendation presentation visual matrix", () => {
       if ((await categories.count()) >= 2) {
         const first = await categories.nth(0).boundingBox();
         const second = await categories.nth(1).boundingBox();
-        if (width <= 640) {
+        if (width < 640) {
           expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeGreaterThan(10);
-        } else if (width >= 768) {
+        } else {
           expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeLessThan(2);
         }
       }

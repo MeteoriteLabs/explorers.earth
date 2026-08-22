@@ -854,7 +854,7 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await expect(publicTabs.getByRole("tab")).toHaveCount(3);
     expect(
       await publicTabs.getByRole("tab").evaluateAll((tabs) =>
-        tabs.map((tab) => tab.getAttribute("aria-label")),
+        tabs.map((tab) => tab.textContent?.trim()),
       ),
     ).toEqual(["Recommendations", "Gallery", "Business Details"]);
     await expect(page.getByRole("tab", { name: "Appearance" })).toHaveCount(0);
