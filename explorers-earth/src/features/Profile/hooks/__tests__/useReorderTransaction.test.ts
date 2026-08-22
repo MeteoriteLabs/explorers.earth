@@ -1,8 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 import {
   useReorderTransaction,
   type ReorderSessionId,
+  type UseReorderTransactionOptions,
 } from "../useReorderTransaction";
 import type {
   RecommendationCategoryId,
@@ -36,7 +37,7 @@ const MOVED_ONCE: RecommendationCategoryId[] = [
 interface HarnessProps {
   cleanupSession: (sessionId: ReorderSessionId) => void;
   isActive: boolean;
-  onCommit: ReturnType<typeof vi.fn>;
+  onCommit: Mock<UseReorderTransactionOptions["onCommit"]>;
   scopeKey: string;
   value?: RecommendationsPresentationWire | null;
 }
@@ -45,7 +46,7 @@ const renderTransaction = (overrides: Partial<HarnessProps> = {}) => {
   const props: HarnessProps = {
     cleanupSession: vi.fn(),
     isActive: true,
-    onCommit: vi.fn(),
+    onCommit: vi.fn<UseReorderTransactionOptions["onCommit"]>(),
     scopeKey: "account-a",
     value: { layout: "shelves", categoryOrder: CANONICAL_ORDER },
     ...overrides,

@@ -1,41 +1,73 @@
-import { expect, test, type Page } from "@playwright/test";
-import sharp from "sharp";
+import { expect, test } from "@playwright/test";
+import sharp, { type OverlayOptions } from "sharp";
 import path from "node:path";
 import fs from "node:fs";
 import {
-  type PresetId,
-  type LayoutId,
-  type WallpaperMode,
   type FixtureState,
-  PRESETS,
-  LAYOUT_TEST_IDS,
-  LONG_TITLE,
-  categoryOrder,
+  ONE_PIXEL_PNG,
   installPublicFixture,
   openFixture,
   expectNoHorizontalOverflow,
   evaluateCorePixelContrast,
 } from "./support/publicProfileFixture";
+import {
+  PROFILE_THEMES,
+  THEME_WALLPAPER_CASES,
+  generateSecondaryPairwiseCases,
+  settingsArtifactName,
+} from "./support/publicProfileSettingsManifest";
 
-const WALLPAPER_MODES: WallpaperMode[] = [
-  "solid-color",
-  "banner-top",
-  "full-wallpaper-image",
-  "ambient-gradient",
-];
-
-const ALL_PRESETS: PresetId[] = [
-  "cinematic-dark",
-  "glassmorphism",
-  "sunset-glow",
-  "minimal-light",
-  "emerald-nature",
-  "neon-cyber",
-];
-
-const LAYOUTS: LayoutId[] = ["shelves", "grid", "featured"];
+const themeScreenshots: Array<{ name: string; path: string }> = [];
+const themeCaptureDir = path.join(process.cwd(), "test-results", "contact-sheet", "captures");
 
 test.describe("public profile adaptive theme surface visual matrix", () => {
+  test.afterAll(async () => {
+    if (themeScreenshots.length !== 24) return;
+    const cardWidth = 375;
+    const cardHeight = 667;
+    const columns = 4;
+    const labelHeight = 30;
+    const rows = Math.ceil(themeScreenshots.length / columns);
+    const overlays: OverlayOptions[] = [];
+
+    for (let index = 0; index < themeScreenshots.length; index += 1) {
+      const item = themeScreenshots[index];
+      const left = (index % columns) * cardWidth;
+      const top = Math.floor(index / columns) * (cardHeight + labelHeight);
+      const label = Buffer.from(
+        `<svg width="${cardWidth}" height="${labelHeight}">` +
+        `<rect width="100%" height="100%" fill="#1e293b"/>` +
+        `<text x="50%" y="62%" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">${item.name}</text>` +
+        `</svg>`,
+      );
+      overlays.push({ input: label, left, top });
+      overlays.push({
+        input: await sharp(item.path).resize(cardWidth, cardHeight, { fit: "cover" }).toBuffer(),
+        left,
+        top: top + labelHeight,
+      });
+    }
+
+    const contactSheetDir = path.join(process.cwd(), "test-results", "contact-sheet");
+    fs.mkdirSync(contactSheetDir, { recursive: true });
+    const contactSheetPath = path.join(
+      contactSheetDir,
+      settingsArtifactName({
+        project: "deterministic",
+        caseId: "public-profile-contact-sheet",
+        viewport: { width: 375, height: 667 },
+        attempt: 0,
+      }),
+    );
+    await sharp({
+      create: {
+        width: columns * cardWidth,
+        height: rows * (cardHeight + labelHeight),
+        channels: 3,
+        background: "#0f172a",
+      },
+    }).composite(overlays).png().toFile(contactSheetPath);
+  });
   // Step 1: Geometry & Regression Assertions
   test("enforces strict geometry boundaries, zero metadata card, clean avatar, and gutter alignment", async ({
     page,
@@ -106,144 +138,142 @@ test.describe("public profile adaptive theme surface visual matrix", () => {
     }
   });
 
-  // Step 3 & 4 & 8: 24 Preset x Wallpaper combinations with core-pixel contrast & screenshot collection
-  test("evaluates core-pixel contrast across all 24 preset x wallpaper combinations at 375 and 1024", async ({
-    page,
-  }) => {
-    test.setTimeout(180_000);
-    const observed: string[] = [];
-    const state: FixtureState = {
-      preset: "minimal-light",
-      layout: "shelves",
-      mode: "success",
-      headerSocial: true,
-      headerImageUrl: "/e2e-split-luminance-header.png",
-      attempts: {},
-    };
-    await installPublicFixture(page, state, observed);
+  for (const [caseIndex, themeCase] of THEME_WALLPAPER_CASES.entries()) {
+    test(`theme-wallpaper ${themeCase.id}: rendered contrast at 375 and 1024`, async ({ page }, testInfo) => {
+      test.setTimeout(60_000);
+      const observed: string[] = [];
+      const state: FixtureState = {
+        preset: themeCase.theme,
+        wallpaperMode: themeCase.wallpaper,
+        layout: (["shelves", "grid", "featured"] as const)[caseIndex % 3],
+        mode: "success",
+        headerSocial: true,
+        headerImageUrl: "/e2e-split-luminance-header.png",
+        attempts: {},
+      };
+      await installPublicFixture(page, state, observed);
 
-    const screenshotDir = path.join(process.cwd(), "test-results", "contact-sheet");
-    fs.mkdirSync(screenshotDir, { recursive: true });
-    const screenshotPaths: { name: string; path: string }[] = [];
+      for (const viewport of [{ width: 375, height: 900 }, { width: 1024, height: 900 }]) {
+        await page.setViewportSize(viewport);
+        await openFixture(page, `combo-${themeCase.id}-${viewport.width}`);
 
-    let comboIndex = 0;
-    for (const preset of ALL_PRESETS) {
-      for (const wallpaperMode of WALLPAPER_MODES) {
-        const layout = LAYOUTS[comboIndex % LAYOUTS.length];
-        comboIndex++;
-
-        state.preset = preset;
-        state.wallpaperMode = wallpaperMode;
-        state.layout = layout;
-        state.attempts = {};
-
-        for (const width of [375, 1024]) {
-          await page.setViewportSize({ width, height: 900 });
-          await openFixture(page, `combo-${preset}-${wallpaperMode}-${width}`);
-
-          if (wallpaperMode === "banner-top" || wallpaperMode === "full-wallpaper-image") {
-            const wallpaperImg = page.locator('img[src="/e2e-split-luminance-header.png"]').first();
-            if (await wallpaperImg.isVisible()) {
-              await expect.poll(() => wallpaperImg.evaluate((img: HTMLImageElement) => img.complete)).toBe(true);
-            }
+        if (themeCase.wallpaper === "banner-top" || themeCase.wallpaper === "full-wallpaper-image") {
+          const wallpaper = page.locator('img[src="/e2e-split-luminance-header.png"]').first();
+          if (await wallpaper.isVisible()) {
+            await expect.poll(() => wallpaper.evaluate((image: HTMLImageElement) => image.complete)).toBe(true);
           }
-
-          // At 375px, save screenshot for the 24-combination contact sheet
-          if (width === 375) {
-            const ssName = `preset_${preset}_${wallpaperMode}.png`;
-            const ssPath = path.join(screenshotDir, ssName);
-            await page.screenshot({ path: ssPath, animations: "disabled" });
-            screenshotPaths.push({ name: `${preset} (${wallpaperMode})`, path: ssPath });
-          }
-
-          // Core-pixel contrast check
-          const caseLabel = `${preset}/${wallpaperMode}/${width}`;
-          const targets = [
-            { name: `${caseLabel}: account-name`, locator: page.getByRole("heading", { name: "Fixture Explorer" }), minRatio: 4.5 },
-            { name: `${caseLabel}: location-text`, locator: page.getByText("Fixture City", { exact: true }), minRatio: 4.0 },
-            { name: `${caseLabel}: social-icon`, locator: page.locator('a[href="https://instagram.com/fixture"]'), minRatio: 3.0 },
-            { name: `${caseLabel}: bio-text`, locator: page.getByText("A deterministic public profile fixture."), minRatio: 4.5 },
-            { name: `${caseLabel}: tab-recommendations`, locator: page.getByRole("tab", { name: "Recommendations" }).locator("span").first(), minRatio: 4.5 },
-            { name: `${caseLabel}: header-logo`, locator: page.locator('header a[aria-label="explorers.earth"] svg path[fill="currentColor"]').first(), minRatio: 2.5 },
-          ];
-
-          await evaluateCorePixelContrast(page, targets);
         }
+
+        if (viewport.width === 375) {
+          fs.mkdirSync(themeCaptureDir, { recursive: true });
+          const screenshotPath = path.join(themeCaptureDir, settingsArtifactName({
+            project: testInfo.project.name,
+            caseId: themeCase.id,
+            viewport,
+            attempt: testInfo.retry,
+          }));
+          await page.screenshot({ path: screenshotPath, animations: "disabled" });
+          await testInfo.attach(`theme-${themeCase.id}`, { path: screenshotPath, contentType: "image/png" });
+          themeScreenshots.push({ name: themeCase.id, path: screenshotPath });
+        }
+
+        const caseLabel = `${themeCase.id}/${viewport.width}`;
+        await evaluateCorePixelContrast(page, [
+          { name: `${caseLabel}: account-name`, locator: page.getByRole("heading", { name: "Fixture Explorer" }), minRatio: 4.5 },
+          { name: `${caseLabel}: location-text`, locator: page.getByText("Fixture City", { exact: true }), minRatio: 4.5 },
+          { name: `${caseLabel}: social-icon`, locator: page.locator('a[href="https://instagram.com/fixture"]'), minRatio: 3.0 },
+          { name: `${caseLabel}: bio-text`, locator: page.getByText("A deterministic public profile fixture."), minRatio: 4.5 },
+          { name: `${caseLabel}: tab-recommendations`, locator: page.getByRole("tab", { name: "Recommendations" }).locator("span").first(), minRatio: 4.5 },
+          { name: `${caseLabel}: header-logo`, locator: page.locator('header a[aria-label="explorers.earth"] svg path[fill="currentColor"]').first(), minRatio: 3.0 },
+        ]);
       }
-    }
+    });
+  }
 
-    // Produce composed labelled contact sheet
-    if (screenshotPaths.length === 24) {
-      const cardWidth = 375;
-      const cardHeight = 667;
-      const cols = 4;
-      const rows = 6;
-      const labelHeight = 30;
+  for (const [caseIndex, settings] of generateSecondaryPairwiseCases().entries()) {
+    test(`secondary-settings pairwise-${String(caseIndex + 1).padStart(2, "0")}: ${Object.entries(settings).map(([name, value]) => `${name}=${value}`).join(", ")}`, async ({ page }) => {
+      const observed: string[] = [];
+      const categoryOrders: Record<typeof settings.categoryOrder, string[]> = {
+        canonical: ["books", "places", "guides"],
+        reverse: ["guides", "places", "books"],
+        rotate: ["places", "guides", "books"],
+        "preferred-first": ["guides", "books", "places"],
+      };
+      const bioByState: Record<typeof settings.bio, string | null> = {
+        empty: null,
+        plain: "Pairwise profile biography.",
+        "long-rich-text": `<p><strong>Long rich profile biography.</strong> ${"Readable public profile content. ".repeat(12)}</p>`,
+      };
+      const headerImageByState: Record<typeof settings.hero, string | null> = {
+        present: "/e2e-split-luminance-header.png",
+        absent: null,
+        broken: "/broken-cover.jpg",
+      };
+      const feedItems = settings.gallery === "empty"
+        ? []
+        : [{
+            documentId: `pairwise-${settings.gallery}`,
+            url: `data:image/png;base64,${ONE_PIXEL_PNG}`,
+            fileName: `${settings.gallery}-gallery.png`,
+            type: "image",
+            aspectRatio: "1:1",
+            width: 1,
+            height: 1,
+          }];
+      const state: FixtureState = {
+        preset: PROFILE_THEMES[caseIndex % PROFILE_THEMES.length],
+        wallpaperMode: "banner-top",
+        layout: settings.recommendationLayout,
+        mode: "success",
+        headerImageUrl: headerImageByState[settings.hero],
+        footerBranding: settings.footer,
+        categoryOrder: categoryOrders[settings.categoryOrder],
+        bio: bioByState[settings.bio],
+        socialVisibility: settings.social,
+        feedItems,
+        attempts: {},
+      };
+      await installPublicFixture(page, state, observed);
+      await page.setViewportSize(caseIndex % 2 === 0
+        ? { width: 375, height: 667 }
+        : { width: 1024, height: 900 });
+      await openFixture(page, `secondary-${caseIndex + 1}`);
 
-      const sheetWidth = cols * cardWidth;
-      const sheetHeight = rows * (cardHeight + labelHeight);
+      await expect(page.getByTestId(`recommendations-${settings.recommendationLayout}`)).toBeVisible();
+      expect(await page.locator("[data-category-id]").evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute("data-category-id")),
+      )).toEqual(categoryOrders[settings.categoryOrder]);
 
-      const compositeOperations: sharp.OverlayOptions[] = [];
-
-      for (let i = 0; i < screenshotPaths.length; i++) {
-        const item = screenshotPaths[i];
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-
-        const x = col * cardWidth;
-        const y = row * (cardHeight + labelHeight);
-
-        // Label SVG
-        const labelSvg = Buffer.from(
-          `<svg width="${cardWidth}" height="${labelHeight}">
-            <rect width="100%" height="100%" fill="#1e293b"/>
-            <text x="50%" y="60%" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold" text-anchor="middle">${item.name}</text>
-          </svg>`
-        );
-
-        compositeOperations.push({
-          input: labelSvg,
-          left: x,
-          top: y,
-        });
-
-        // Screenshot image resized if needed
-        const resizedSs = await sharp(item.path)
-          .resize(cardWidth, cardHeight, { fit: "cover" })
-          .toBuffer();
-
-        compositeOperations.push({
-          input: resizedSs,
-          left: x,
-          top: y + labelHeight,
-        });
+      if (settings.hero === "present") {
+        await expect(page.getByTestId("wallpaper-image")).toHaveAttribute("src", "/e2e-split-luminance-header.png");
+      } else {
+        await expect(page.getByTestId("wallpaper-image")).toHaveAttribute("src", "/images/Background.jpg");
       }
 
-      const sheetBuffer = await sharp({
-        create: {
-          width: sheetWidth,
-          height: sheetHeight,
-          channels: 3,
-          background: "#0f172a",
-        },
-      })
-        .composite(compositeOperations)
-        .png()
-        .toBuffer();
-
-      const finalContactSheetPath = path.join(screenshotDir, "public-profile-contact-sheet.png");
-      fs.writeFileSync(finalContactSheetPath, sheetBuffer);
-
-      // Also copy into docs/superpowers/reports/assets/ if available
-      const docsAssetsDir = path.join(process.cwd(), "..", "docs", "superpowers", "reports", "assets");
-      try {
-        fs.mkdirSync(docsAssetsDir, { recursive: true });
-        fs.writeFileSync(path.join(docsAssetsDir, "public-profile-contact-sheet.png"), sheetBuffer);
-      } catch {
-        // Fallback gracefully if directory is outside workspace
+      const footer = page.locator("footer");
+      if (settings.footer === "disabled") {
+        await expect(footer).toHaveCount(0);
+      } else {
+        await expect(footer.locator('a[aria-label="explorers.earth"]')).toBeVisible();
+        await expect(page.getByRole("navigation", { name: "Footer" })).toHaveCount(settings.footer === "enabled" ? 1 : 0);
       }
-    }
-  });
+
+      if (settings.bio === "empty") {
+        await expect(page.getByText("Pairwise profile biography.")).toHaveCount(0);
+      } else {
+        await expect(page.getByText(settings.bio === "plain" ? "Pairwise profile biography." : "Long rich profile biography.", { exact: false })).toBeVisible();
+      }
+
+      await expect(page.locator('a[href="https://instagram.com/fixture"]')).toHaveCount(settings.social === "visible" ? 1 : 0);
+      await page.getByRole("tab", { name: "Gallery" }).click();
+      if (settings.gallery === "empty") {
+        await expect(page.getByText(/No public photos yet/i)).toBeVisible();
+      } else {
+        await expect(page.locator(`img[alt="${settings.gallery}-gallery.png"]`)).toBeVisible();
+      }
+      await expectNoHorizontalOverflow(page);
+    });
+  }
 
   // Step 5: State & Resilience cases
   test("covers loading, empty, partial-error, all-error, touch targets, RTL, 200% zoom, and footer settings", async ({

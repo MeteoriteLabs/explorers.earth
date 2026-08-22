@@ -7,12 +7,12 @@ describe('Location extra GEO data checks', () => {
       locationName: 'Paris',
       recommenderName: 'Alice',
       placesCount: 5,
-      topCategories: ['Cafes', 'Museums'],
-      username: 'alice'
+      topCategories: ['Cafes', 'Museums']
     });
 
-    expect(data.pageContext.primaryEntity).toBe('Paris');
-    expect(data.pageContext.secondaryEntities).toContain('Alice');
-    expect(data.pageContext.secondaryEntities).toContain('Cafes');
+    expect(data.pageContext).toBeDefined();
+    expect(data.pageContext!.primaryEntity).toBe('Paris');
+    expect(data.pageContext!.secondaryEntities).toContain('Alice');
+    expect(data.pageContext!.secondaryEntities).toContain('Cafes');
   });
 });

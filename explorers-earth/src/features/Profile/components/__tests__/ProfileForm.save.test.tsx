@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDeferredProfileSave } from "../../types/profileSave";
-import ProfileForm from "../ProfileForm";
+import ProfileForm, { type ProfileFormProps } from "../ProfileForm";
 
 const { settingsQuery } = vi.hoisted(() => ({
   settingsQuery: {
@@ -84,7 +84,7 @@ const renderForm = ({
         onFormDirtyChange,
         onRegisterSubmit,
         surface,
-      } as never)}
+      } as ProfileFormProps)}
     />,
   );
   return { onFormDirtyChange, onRegisterSubmit };
@@ -211,7 +211,7 @@ describe("ProfileForm save outcomes", () => {
           setPlaces: vi.fn(),
           DetectLocation: vi.fn(),
           onFormDirtyChange,
-        } as never)}
+        } as ProfileFormProps)}
       />,
     );
     await act(async () => {

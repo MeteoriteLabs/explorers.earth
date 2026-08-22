@@ -33,12 +33,12 @@ test("the package environment-doctor command returns the stable deterministic re
 
 test("Playwright discovery for the deterministic project excludes real-account specs", () => {
   const playwrightCli = path.resolve(appRoot, "node_modules/@playwright/test/cli.js");
-  const child = spawnSync(process.execPath, [playwrightCli, "test", "--project=chromium", "--list"], { cwd: appRoot, encoding: "utf8" });
+  const child = spawnSync(process.execPath, [playwrightCli, "test", "--project=deterministic", "--list"], { cwd: appRoot, encoding: "utf8" });
   const output = `${child.stdout}\n${child.stderr}`;
 
   assert.equal(child.status, 0, output);
   assert.match(output, /Listing tests:/);
-  assert.match(output, /\[chromium\]/);
+  assert.match(output, /\[deterministic\]/);
   assert.doesNotMatch(output, /real-account/i);
 });
 

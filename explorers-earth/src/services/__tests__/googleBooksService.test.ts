@@ -90,13 +90,13 @@ describe('googleBooksService', () => {
     });
 
     it('extractIsbn prioritizes ISBN_13', () => {
-      const vi13 = { industryIdentifiers: [{ type: 'ISBN_13', identifier: '131313' }, { type: 'ISBN_10', identifier: '101010' }] };
+      const vi13 = { title: 'Fixture', industryIdentifiers: [{ type: 'ISBN_13', identifier: '131313' }, { type: 'ISBN_10', identifier: '101010' }] };
       expect(googleBooksService.extractIsbn(vi13)).toBe('131313');
 
-      const vi10 = { industryIdentifiers: [{ type: 'ISBN_10', identifier: '101010' }] };
+      const vi10 = { title: 'Fixture', industryIdentifiers: [{ type: 'ISBN_10', identifier: '101010' }] };
       expect(googleBooksService.extractIsbn(vi10)).toBe('101010');
 
-      const viEmpty = { industryIdentifiers: [] };
+      const viEmpty = { title: 'Fixture', industryIdentifiers: [] };
       expect(googleBooksService.extractIsbn(viEmpty)).toBe('');
     });
   });

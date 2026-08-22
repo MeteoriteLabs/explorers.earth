@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { parseSectionData, parseTimeline, parseTransport, parseStay, parseActivity, parseBudget } from '../utils/guideDataParser';
+import type { ActivityData, BudgetData, StayData, TimelineData } from '../types/guideSectionTypes';
 
 describe('guideDataParser', () => {
   const originalConsoleError = console.error;
@@ -37,7 +38,7 @@ describe('guideDataParser', () => {
 
   describe('specific parsers', () => {
     it('parses Timeline correctly', () => {
-      const data = { morning: [{ id: 1 }], evening: [{ id: 2 }] };
+      const data = { morning: [{ id: 1 }], evening: [{ id: 2 }] } as unknown as TimelineData;
       expect(parseTimeline(data)).toEqual({
         morning: [{ id: 1 }],
         afternoon: [],
@@ -53,20 +54,20 @@ describe('guideDataParser', () => {
     });
 
     it('parses Stay correctly', () => {
-      expect(parseStay({ accommodations: [{ id: 1 }] })).toEqual({
+      expect(parseStay({ accommodations: [{ id: 1 }] } as unknown as StayData)).toEqual({
         accommodations: [{ id: 1 }]
       });
       expect(parseStay(null)).toEqual({ accommodations: [] });
     });
 
     it('parses Activity correctly', () => {
-      expect(parseActivity({ activities: [{ id: 1 }] })).toEqual({
+      expect(parseActivity({ activities: [{ id: 1 }] } as unknown as ActivityData)).toEqual({
         activities: [{ id: 1 }]
       });
     });
 
     it('parses Budget correctly', () => {
-      const data = { afternoon: [{ cost: 10 }] };
+      const data = { afternoon: [{ cost: 10 }] } as unknown as BudgetData;
       expect(parseBudget(data)).toEqual({
         morning: [],
         afternoon: [{ cost: 10 }],

@@ -15,6 +15,6 @@ describe('tmdbService Error & Formatting States', () => {
       json: async () => ({ status_message: 'Not Found' })
     } as unknown as Response);
 
-    await expect(tmdbService.getMovieDetails('invalid-id')).rejects.toThrow('TMDB API error: Not Found');
+    await expect(tmdbService.getMovieDetails(-1)).rejects.toThrow('TMDB API error: Not Found');
   });
 });

@@ -120,7 +120,7 @@ const fixtures: PublicNoteFixture[] = [
           game={{
             ...baseGame,
             user_recommendation_note: unsafeRichText,
-          } as RecommendedGame}
+          } as unknown as RecommendedGame}
           open
           onClose={vi.fn()}
         />,
@@ -134,7 +134,7 @@ const fixtures: PublicNoteFixture[] = [
           book={{
             ...baseBook,
             user_recommendation_note: structuredUnsafeRichText,
-          } as RecommendedBook}
+          } as unknown as RecommendedBook}
           open
           onClose={vi.fn()}
         />,
@@ -162,7 +162,7 @@ const fixtures: PublicNoteFixture[] = [
           movie={{
             ...baseMovie,
             user_recommendation_note: structuredUnsafeRichText,
-          } as RecommendedMovie}
+          } as unknown as RecommendedMovie}
           open
           onClose={vi.fn()}
         />,

@@ -2,9 +2,6 @@ import ThemeAppearanceSection from "./ThemeAppearanceSection";
 import { Formik, Form, Field, ErrorMessage, useFormikContext } from "formik";
 import { FC, memo, ReactNode, useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import * as Yup from "yup";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { countries } from "../../../components/ui/CountryCodeDropdown";
 import { createProfileValidationSchema } from "../data";
 import {
   SOCIAL_VISIBILITY_FORM_FIELDS,
@@ -55,62 +52,6 @@ import type {
   ProfileWorkspace,
   ProfileWorkspaceId,
 } from "../types/profileWorkspaces";
-
-// Helper function to normalize mobile number format
-// Converts wrong format (ISO code + number, like "AF9140284510") to correct format (+numeric code, like "+939140284510")
-// @ts-expect-error - Legacy helper function kept for potential future use
-const normalizeMobileNumber = (value: string | undefined): string => {
-  if (!value || value.trim() === '') return "";
-
-  // Check if value is in wrong format (ISO code + number, like "AF9140284510")
-  const isoCodeMatch = value.match(/^([A-Z]{2})(\d+)$/);
-  if (isoCodeMatch) {
-    // Convert wrong format to correct format
-    const [, isoCode, number] = isoCodeMatch;
-    const country = countries.find(c => c.code === isoCode);
-    if (country) {
-      return `${country.callingCode}${number}`;
-    }
-  }
-
-  // If already in correct format or needs parsing, try to parse and reformat
-  try {
-    const parsed = parsePhoneNumberFromString(value);
-    if (parsed && parsed.isValid()) {
-      // Format as E.164 (international format with +)
-      return parsed.format('E.164') || value;
-    }
-  } catch (error) {
-    // If parsing fails, return original value
-    console.warn('Could not parse mobile number:', value);
-  }
-
-  return value;
-};
-
-// Phone number validation schema
-// @ts-expect-error - Legacy validation schema kept for potential future use
-const phoneValidationSchema = Yup.object({
-  mobilenumberLink: Yup.string()
-    .test(
-      'is-valid-phone',
-      'Please enter a valid mobile number',
-      function (value) {
-        if (!value || value.trim() === '') return true; // Allow empty values
-
-        try {
-          // Parse the phone number - this handles international formats
-          const phoneNumber = parsePhoneNumberFromString(value);
-
-          // Check if it's a valid phone number
-          return phoneNumber && phoneNumber.isValid();
-        } catch (error) {
-          // If parsing fails, it's not a valid phone number
-          return false;
-        }
-      }
-    ),
-});
 
 export type { KeyValuePair } from "../types/profileSave";
 

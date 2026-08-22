@@ -41,7 +41,7 @@ describe('paymentService', () => {
   describe('createRazorpayOrder', () => {
     it('throws if no token', async () => {
       localStorage.removeItem('qrtoken');
-      await expect(createRazorpayOrder({ amount: 100, planId: 'plan_1', mode: 'DEV' }))
+      await expect(createRazorpayOrder({ amount: 100, planId: 'plan_1', userId: 'user_1', currency: 'INR', mode: 'DEV' }))
         .rejects.toThrow('Authentication token not found');
     });
 
@@ -50,7 +50,7 @@ describe('paymentService', () => {
         data: { orderId: 'order_123', amount: 1000, currency: 'INR', keyId: 'key_123' }
       });
 
-      const req: CreateOrderRequest = { amount: 1000, planId: 'plan_1', mode: 'DEV' };
+      const req: CreateOrderRequest = { amount: 1000, planId: 'plan_1', userId: 'user_1', currency: 'INR', mode: 'DEV' };
       const res = await createRazorpayOrder(req);
 
       expect(axios.post).toHaveBeenCalledWith(
@@ -67,7 +67,7 @@ describe('paymentService', () => {
         response: { data: { error: 'Backend error' } }
       });
 
-      await expect(createRazorpayOrder({ amount: 100, planId: 'plan_1', mode: 'DEV' }))
+      await expect(createRazorpayOrder({ amount: 100, planId: 'plan_1', userId: 'user_1', currency: 'INR', mode: 'DEV' }))
         .rejects.toThrow('Backend error');
     });
   });
@@ -79,9 +79,11 @@ describe('paymentService', () => {
       });
 
       const res = await verifyPayment({
-        razorpay_order_id: '1',
-        razorpay_payment_id: '2',
-        razorpay_signature: '3'
+        orderId: '1',
+        paymentId: '2',
+        signature: '3',
+        planId: 'plan_1',
+        userId: 'user_1'
       });
 
       expect(res.success).toBe(true);
@@ -94,9 +96,11 @@ describe('paymentService', () => {
       });
 
       const res = await verifyPayment({
-        razorpay_order_id: '1',
-        razorpay_payment_id: '2',
-        razorpay_signature: '3'
+        orderId: '1',
+        paymentId: '2',
+        signature: '3',
+        planId: 'plan_1',
+        userId: 'user_1'
       });
 
       expect(res.success).toBe(false);
@@ -110,7 +114,7 @@ describe('paymentService', () => {
         data: { subscriptionId: 'sub_123', razorpayPlanId: 'plan_1', status: 'created' }
       });
 
-      const req: CreateSubscriptionRequest = { planId: '1', mode: 'DEV' };
+      const req: CreateSubscriptionRequest = { planId: '1', userId: 'user_1', duration: 'monthly', mode: 'DEV' };
       const res = await createRazorpaySubscription(req);
 
       expect(res.subscriptionId).toBe('sub_123');
@@ -124,9 +128,12 @@ describe('paymentService', () => {
       });
 
       const res = await verifySubscription({
-        razorpay_subscription_id: 'sub_1',
-        razorpay_payment_id: 'pay_1',
-        razorpay_signature: 'sig_1'
+        subscriptionId: 'sub_1',
+        paymentId: 'pay_1',
+        signature: 'sig_1',
+        planId: 'plan_1',
+        userId: 'user_1',
+        duration: 'monthly'
       });
 
       expect(res.success).toBe(true);
@@ -188,7 +195,10 @@ describe('paymentService', () => {
         key: 'test',
         amount: 100,
         currency: 'INR',
-        name: 'Test'
+        name: 'Test',
+        description: 'Fixture checkout',
+        order_id: 'order_1',
+        handler: vi.fn()
       });
 
       // Wait for it to not reject immediately
@@ -212,7 +222,10 @@ describe('paymentService', () => {
         key: 'test',
         amount: 100,
         currency: 'INR',
-        name: 'Test'
+        name: 'Test',
+        description: 'Fixture checkout',
+        order_id: 'order_1',
+        handler: vi.fn()
       });
 
       expect(mockRazorpay).toHaveBeenCalled();

@@ -3,6 +3,7 @@ import { setupMockAuthentication } from './setup/auth';
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
 
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
@@ -42,6 +43,7 @@ test.beforeEach(async ({ context, page }) => {
         })
       });
     } else if (payload?.query?.includes('createRecommendedBook')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -104,7 +106,7 @@ test.beforeEach(async ({ context, page }) => {
                 slug: 'my-summer-reads',
                 visibility: false,
                 display_order: 0,
-                recommended_books: [
+                recommended_books: recommendationCreated ? [
                   {
                     documentId: 'book-rec-456',
                     volume_id: 'clean-code-id',
@@ -131,7 +133,7 @@ test.beforeEach(async ({ context, page }) => {
                     book_categories: [],
                     Media: []
                   }
-                ]
+                ] : []
               }
             ]
           }

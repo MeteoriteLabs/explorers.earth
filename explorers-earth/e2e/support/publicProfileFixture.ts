@@ -36,8 +36,31 @@ export interface FixtureState {
   headerSocial?: boolean;
   landingTab?: string;
   business?: unknown;
-  headerImageUrl?: string;
+  headerImageUrl?: string | null;
   footerBranding?: "enabled" | "minimal" | "disabled";
+  categoryOrder?: string[];
+  bio?: string | null;
+  feedItems?: unknown[];
+  socialVisibility?: "none" | "visible" | "hidden";
+  enabledCategories?: string[];
+  localTunesUrl?: string | null;
+  attempts: Record<string, number>;
+}
+
+export type RouteContractFixtureOutcome =
+  | "content"
+  | "empty"
+  | "missing-child"
+  | "unknown-user";
+
+export interface RouteContractFixtureController {
+  outcome: RouteContractFixtureOutcome;
+  hiddenField?: string;
+  httpStatus?: 401 | 403 | 429 | 500;
+  bootstrapDelayMs: number;
+  leafDelayMs: number;
+  observedOperations: string[];
+  unknownOperations: string[];
   attempts: Record<string, number>;
 }
 
@@ -115,6 +138,8 @@ export const categoryOrder = [
 ];
 
 export const ALLOWLISTED_OPERATIONS = new Set([
+  "PublicProfileBootstrap",
+  "PublicProfileContent",
   "CheckUsername",
   "PublicAccountBasic",
   "PublicProfileData",
@@ -123,7 +148,7 @@ export const ALLOWLISTED_OPERATIONS = new Set([
   "GetBooksLists",
   "GetGuidesLists",
   "GetMusicLists",
-  "GetMovieLists",
+  "GetMoviesLists",
   "GetGamesLists",
   "GetAppsLists",
   "GetProductsLists",
@@ -133,6 +158,8 @@ export const ALLOWLISTED_OPERATIONS = new Set([
   "Account",
   "user",
   "PublicCategoryListCounts",
+  "PublicBookData",
+  "CreatePublicPageAnalytic",
   "Unknown",
 ]);
 
@@ -163,6 +190,14 @@ export const operationName = (route: Route) => {
 
 export const accountFixture = (state: FixtureState) => {
   const disabled = state.mode === "disabled";
+  const headerImageUrl = state.headerImageUrl === undefined
+    ? "/images/bg-image.jpg"
+    : state.headerImageUrl;
+  const socialVisibility = state.socialVisibility ?? (state.headerSocial ? "visible" : "none");
+  const categoryIsEnabled = (category: string, defaultValue: boolean) =>
+    state.enabledCategories
+      ? state.enabledCategories.includes(category)
+      : defaultValue;
   return {
     __typename: "Account",
     documentId: "fixture-account",
@@ -171,31 +206,31 @@ export const accountFixture = (state: FixtureState) => {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     Primary_Address: { address: "Fixture City" },
-    Bio: "A deterministic public profile fixture.",
-    Feed_Data: [],
+    Bio: state.bio === undefined ? "A deterministic public profile fixture." : state.bio,
+    Feed_Data: state.feedItems ?? [],
     Public_Profile_Address: state.business ?? null,
-    bg_picture: { url: state.headerImageUrl || "/images/bg-image.jpg" },
+    bg_picture: headerImageUrl ? { url: headerImageUrl } : null,
     profile_picture: { url: "/images/Profile.jpg" },
     mobile_number_visibility: false,
     public_profile: "Yes",
-    public_recommendations: "Yes",
-    public_books: disabled ? "No" : "Yes",
-    public_guides: disabled ? "No" : "Yes",
-    public_music: "No",
-    public_movie: "No",
-    public_games: "No",
-    public_apps: "No",
-    public_products: "No",
-    public_people: "No",
-    localtunes_public: null,
+    public_recommendations: categoryIsEnabled("places", true) ? "Yes" : "No",
+    public_books: categoryIsEnabled("books", !disabled) ? "Yes" : "No",
+    public_guides: categoryIsEnabled("guides", !disabled) ? "Yes" : "No",
+    public_music: categoryIsEnabled("music", false) ? "Yes" : "No",
+    public_movie: categoryIsEnabled("movies", false) ? "Yes" : "No",
+    public_games: categoryIsEnabled("games", false) ? "Yes" : "No",
+    public_apps: categoryIsEnabled("apps", false) ? "Yes" : "No",
+    public_products: categoryIsEnabled("products", false) ? "Yes" : "No",
+    public_people: categoryIsEnabled("people", false) ? "Yes" : "No",
+    localtunes_public: state.localTunesUrl ?? null,
     pinned_nav_tabs: [],
     auto_pinning: false,
     social_media: {
-      ...(state.headerSocial
+      ...(socialVisibility !== "none"
         ? {
             instagram: {
               link: "https://instagram.com/fixture",
-              visibility: true,
+              visibility: socialVisibility === "visible",
             },
           }
         : {}),
@@ -212,7 +247,7 @@ export const accountFixture = (state: FixtureState) => {
         footerBranding: state.footerBranding || "disabled",
         recommendations: {
           layout: state.layout,
-          categoryOrder,
+          categoryOrder: state.categoryOrder ?? categoryOrder,
         },
       },
     },
@@ -286,11 +321,6 @@ export const publicBookDetailFixture = {
       cover_image: null,
       display_order: 0,
       top_reads_heading: null,
-      account: {
-        __typename: "Account",
-        documentId: "fixture-account",
-        username: "presentation-fixture",
-      },
       recommended_books: [
         {
           __typename: "RecommendedBook",
@@ -332,14 +362,11 @@ export const publicBookDetailFixture = {
               ],
             },
           ],
-          buy_links: [],
-          is_pinned: false,
-          pin_order: null,
           media_details: null,
-          Media: [],
         },
       ],
       account: {
+        __typename: "Account",
         documentId: "fixture-account",
         username: "presentation-fixture",
         createdAt: "2026-01-01T00:00:00.000Z",
@@ -438,6 +465,23 @@ export async function installPublicFixture(
 ) {
   const images = await getAdversarialImageBuffers();
 
+  await page.route("**/api/playlist/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        playlists: state.enabledCategories?.includes("music")
+          ? [{
+              id: "fixture-playlist",
+              name: "Fixture playlist",
+              isVisibleToGuests: true,
+              songs: [],
+            }]
+          : [],
+      }),
+    });
+  });
+
   await page.route("**/e2e-cover.png", async (route) => {
     await route.fulfill({
       status: 200,
@@ -497,6 +541,17 @@ export async function installPublicFixture(
 
     const account = accountFixture(snapshotState);
 
+    if (operation === "PublicProfileBootstrap") {
+      if (delays?.usernameMs) {
+        await new Promise((r) => setTimeout(r, delays.usernameMs));
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { accounts: [account] } }),
+      });
+    }
+
     if (operation === "CheckUsername") {
       if (delays?.usernameMs) {
         await new Promise((r) => setTimeout(r, delays.usernameMs));
@@ -525,11 +580,94 @@ export async function installPublicFixture(
       });
     }
 
-    if (operation === "BookListBySlug") {
+    if (operation === "PublicProfileContent") {
+      if (delays?.profileMs) {
+        await new Promise((r) => setTimeout(r, delays.profileMs));
+      }
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ data: publicBookDetailFixture }),
+        body: JSON.stringify({
+          data: {
+            account: {
+              Bio: account.Bio,
+              createdAt: account.createdAt,
+              Public_Profile_Address: account.Public_Profile_Address,
+              Feed_Data: account.Feed_Data,
+              mobile_number_visibility: account.mobile_number_visibility,
+            },
+          },
+        }),
+      });
+    }
+
+    if (operation === "CreatePublicPageAnalytic") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { createPublicPageAnalytic: null } }),
+      });
+    }
+
+    if (operation === "PublicCategoryListCounts") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            recommendationLists: [],
+            bookLists: [],
+            movieLists: [],
+            gameLists: [],
+            appLists: [],
+            productLists: [],
+            personLists: [],
+            guides: [],
+          },
+        }),
+      });
+    }
+
+    if (operation === "PublicBookData") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            bookLists: [{
+              documentId: "saved-books-list",
+              List_Name: "Saved books",
+              list_description: "Saved public category parity",
+              slug: "saved-books",
+              cover_image: null,
+              top_reads_heading: null,
+              recommended_books: [],
+            }],
+          },
+        }),
+      });
+    }
+
+    if (operation === "BookListBySlug") {
+      const fixtureList = publicBookDetailFixture.bookLists[0];
+      const { recommended_books: fixtureBooks, ...publicList } = fixtureList;
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            bookLists: [publicList],
+            recommendedBooks_connection: {
+              nodes: fixtureBooks,
+              pageInfo: {
+                page: 1,
+                pageSize: 200,
+                pageCount: 1,
+                total: fixtureBooks.length,
+              },
+            },
+          },
+        }),
       });
     }
 
@@ -538,7 +676,7 @@ export async function installPublicFixture(
       "GetBooksLists",
       "GetGuidesLists",
       "GetMusicLists",
-      "GetMovieLists",
+      "GetMoviesLists",
       "GetGamesLists",
       "GetAppsLists",
       "GetProductsLists",
@@ -561,16 +699,25 @@ export async function installPublicFixture(
       await new Promise((resolve) => setTimeout(resolve, 700));
     }
 
+    const listFixture = {
+      documentId: "fixture-list",
+      List_Name: "Fixture list",
+      slug: "fixture-list",
+      Visibility: true,
+      visibility: true,
+      cover_image: null,
+      recommendationCount: [{ documentId: "fixture-item" }],
+    };
     const successData: Record<string, unknown> = {
       GetPlacesLists: placesFixture(snapshotState.mode),
       GetBooksLists: booksFixture(snapshotState.mode),
       GetGuidesLists: guidesFixture,
       GetMusicLists: { musicLists: [] },
-      GetMovieLists: { movieLists: [] },
-      GetGamesLists: { gameLists: [] },
-      GetAppsLists: { appLists: [] },
-      GetProductsLists: { productLists: [] },
-      GetPeopleLists: { peopleLists: [] },
+      GetMoviesLists: { movieLists: [{ ...listFixture, recommended_movies: [] }] },
+      GetGamesLists: { gameLists: [{ ...listFixture, recommended_games: [] }] },
+      GetAppsLists: { appLists: [{ ...listFixture, recommended_apps: [] }] },
+      GetProductsLists: { productLists: [{ ...listFixture, recommended_products: [] }] },
+      GetPeopleLists: { personLists: [{ ...listFixture, recommended_people: [] }] },
     };
 
     if (snapshotState.mode === "empty") {
@@ -620,6 +767,252 @@ export async function installPublicFixture(
       body: JSON.stringify({ data: successData[operation] || {} }),
     });
   });
+}
+
+const routeContractOperations = new Set([
+  "PublicProfileBootstrap",
+  "PublicCategoryListCounts",
+  "PublicProfileContent",
+  "PublicAccountBasic",
+  "UsersPermissionsUser",
+  "CreatePublicPageAnalytic",
+  "GetPlacesLists",
+  "GetBooksLists",
+  "GetGuidesLists",
+  "GetMoviesLists",
+  "GetGamesLists",
+  "GetAppsLists",
+  "GetProductsLists",
+  "GetPeopleLists",
+  "PublicPlacesLists",
+  "PublicPlaceListBySlug",
+  "PublicRecommendedPlacesConnection",
+  "GetPublicGuides",
+  "GetPublicGuideBySlug",
+  "PublicMovieData",
+  "MovieListBySlug",
+  "MoviesByGenre",
+  "PublicBookData",
+  "BookListBySlug",
+  "BooksBySubject",
+  "PublicGameData",
+  "GameListBySlug",
+  "GamesByGenre",
+  "PublicAppData",
+  "AppListBySlug",
+  "PublicProductData",
+  "ProductListBySlug",
+  "PublicPeopleData",
+  "PersonListBySlug",
+  "PeopleBySector",
+  "Account",
+  "Unknown",
+]);
+
+const emptyConnection = {
+  nodes: [],
+  pageInfo: { page: 1, pageSize: 200, pageCount: 1, total: 0 },
+};
+
+const routeList = {
+  __typename: "PublicFixtureList",
+  documentId: "example",
+  List_Name: "Fixture list",
+  list_description: "Deterministic empty list",
+  slug: "example",
+  Visibility: true,
+  is_pinned: false,
+  pin_order: null,
+  display_order: 0,
+  List_Name_Details: null,
+  cover_image: null,
+  top_picks_heading: null,
+  top_reads_heading: null,
+  top_apps_heading: null,
+  top_products_heading: null,
+  top_people_heading: null,
+  account: { documentId: "fixture-account", username: "route-fixture" },
+};
+
+function routeContractResponse(
+  operation: string,
+  outcome: RouteContractFixtureOutcome,
+): Record<string, unknown> {
+  const childExists = outcome !== "missing-child";
+  const list = childExists ? [routeList] : [];
+  const taxonomy = childExists ? [{ documentId: "example", genre_name: "Example", subject_name: "Example", Category_name: "Example" }] : [];
+
+  const responses: Record<string, Record<string, unknown>> = {
+    PublicCategoryListCounts: {
+      recommendationLists: [], bookLists: [], movieLists: [], gameLists: [],
+      appLists: [], productLists: [], personLists: [], guides: [],
+    },
+    PublicProfileContent: {
+      account: {
+        Bio: "Deterministic route fixture",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        Public_Profile_Address: null,
+        Feed_Data: [],
+        mobile_number_visibility: false,
+      },
+    },
+    PublicAccountBasic: { accounts: [] },
+    UsersPermissionsUser: { usersPermissionsUsers: [] },
+    GetPlacesLists: { recommendationLists: [] },
+    GetBooksLists: { bookLists: [] },
+    GetGuidesLists: { guides: [] },
+    GetMoviesLists: { movieLists: [] },
+    GetGamesLists: { gameLists: [] },
+    GetAppsLists: { appLists: [] },
+    GetProductsLists: { productLists: [] },
+    GetPeopleLists: { personLists: [] },
+    PublicPlacesLists: { recommendationLists: [] },
+    PublicPlaceListBySlug: {
+      recommendationLists: list,
+      recommendedPeople_connection: emptyConnection,
+      recommendedProducts_connection: emptyConnection,
+    },
+    PublicRecommendedPlacesConnection: { recommendedPlaces_connection: emptyConnection },
+    GetPublicGuides: { guides: [] },
+    GetPublicGuideBySlug: {
+      guides: childExists ? [{
+        ...routeList,
+        Title: "Fixture guide",
+        Description: "Empty guide",
+        Guide_Type: null,
+        Estimated_Budget: null,
+        Number_Of_Days: null,
+        Guide_Media: [],
+        Place_Details: null,
+        Tips_Notes: null,
+        Guide_Section_Details: null,
+        Guide_Tags: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      }] : [],
+      guideSections_connection: emptyConnection,
+    },
+    PublicMovieData: { movieLists: [], recommendedMovies: [] },
+    MovieListBySlug: { movieLists: list, recommendedMovies_connection: emptyConnection },
+    MoviesByGenre: { movieCategories: taxonomy, recommendedMovies_connection: emptyConnection },
+    PublicBookData: { bookLists: [], recommendedBooks: [] },
+    BookListBySlug: { bookLists: list, recommendedBooks_connection: emptyConnection },
+    BooksBySubject: { bookCategories: taxonomy, recommendedBooks_connection: emptyConnection },
+    PublicGameData: { gameLists: [], recommendedGames: [] },
+    GameListBySlug: { gameLists: list, recommendedGames_connection: emptyConnection },
+    GamesByGenre: { gameCategories: taxonomy, recommendedGames_connection: emptyConnection },
+    PublicAppData: { appLists: [], recommendedApps: [] },
+    AppListBySlug: { appLists: list, recommendedApps_connection: emptyConnection },
+    PublicProductData: { productLists: [], recommendedProducts: [] },
+    ProductListBySlug: { productLists: list, recommendedProducts_connection: emptyConnection },
+    PublicPeopleData: { personLists: [] },
+    PersonListBySlug: { personLists: list, recommendedPeople_connection: emptyConnection },
+    PeopleBySector: { peopleCategories: taxonomy, recommendedPeople_connection: emptyConnection },
+    Account: {
+      accounts: [{
+        documentId: "fixture-account",
+        Account_Name: "Route Fixture",
+        recommendation_lists: [],
+        recommended_places: [],
+      }],
+      account: { documentId: "fixture-account", mobile_number_visibility: false, mobile_number: null },
+    },
+    CreatePublicPageAnalytic: { createPublicPageAnalytic: null },
+  };
+
+  return responses[operation] ?? {};
+}
+
+export async function installPublicRouteContractFixture(
+  page: Page,
+  initial: Partial<Pick<RouteContractFixtureController, "outcome" | "hiddenField" | "httpStatus" | "bootstrapDelayMs" | "leafDelayMs">> = {},
+): Promise<RouteContractFixtureController> {
+  const controller: RouteContractFixtureController = {
+    outcome: initial.outcome ?? "empty",
+    hiddenField: initial.hiddenField,
+    httpStatus: initial.httpStatus,
+    bootstrapDelayMs: initial.bootstrapDelayMs ?? 0,
+    leafDelayMs: initial.leafDelayMs ?? 0,
+    observedOperations: [],
+    unknownOperations: [],
+    attempts: {},
+  };
+
+  for (const url of [
+    "https://www.google-analytics.com/**",
+    "https://*.clarity.ms/**",
+    "https://maps.googleapis.com/**",
+    "https://fonts.gstatic.com/**",
+    "https://www.googletagmanager.com/**",
+    "https://zupimages.net/**",
+  ]) {
+    await page.route(url, (route) => route.fulfill({ status: 204, body: "" }));
+  }
+  await page.route("**/api/subscriptions/**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ success: true, data: [], count: 0 }),
+  }));
+  await page.route("**/graphql", async (route) => {
+    const operation = operationName(route);
+    controller.observedOperations.push(operation);
+    controller.attempts[operation] = (controller.attempts[operation] ?? 0) + 1;
+    if (!routeContractOperations.has(operation)) controller.unknownOperations.push(operation);
+
+    if (operation === "PublicProfileBootstrap") {
+      if (controller.bootstrapDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, controller.bootstrapDelayMs));
+      }
+      if (controller.outcome === "unknown-user") {
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { accounts: [] } }) });
+      }
+      const visibility = (field: string) => controller.hiddenField === field ? "No" : "Yes";
+      const account = {
+        __typename: "Account",
+        documentId: "fixture-account",
+        Account_Name: "Route Fixture",
+        Account_Type: "personal",
+        Primary_Address: { address: "Fixture City" },
+        bg_picture: null,
+        profile_picture: null,
+        social_media: { theme_settings: { preset: "cinematic-dark", wallpaperMode: "solid-color" } },
+        localtunes_public: null,
+        public_profile: visibility("public_profile"),
+        public_recommendations: visibility("public_recommendations"),
+        public_music: visibility("public_music"),
+        public_movie: visibility("public_movie"),
+        public_books: visibility("public_books"),
+        public_guides: visibility("public_guides"),
+        public_games: visibility("public_games"),
+        public_apps: visibility("public_apps"),
+        public_products: visibility("public_products"),
+        public_people: visibility("public_people"),
+        pinned_nav_tabs: [],
+        auto_pinning: false,
+      };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { accounts: [account] } }) });
+    }
+
+    if (controller.httpStatus && operation !== "CreatePublicPageAnalytic") {
+      return route.fulfill({
+        status: controller.httpStatus,
+        contentType: "application/json",
+        body: JSON.stringify({ errors: [{ message: `Fixture HTTP ${controller.httpStatus}` }] }),
+      });
+    }
+
+    if (controller.leafDelayMs > 0 && operation !== "CreatePublicPageAnalytic") {
+      await new Promise((resolve) => setTimeout(resolve, controller.leafDelayMs));
+    }
+
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: routeContractResponse(operation, controller.outcome) }),
+    });
+  });
+
+  return controller;
 }
 
 export async function openFixture(page: Page, caseId: string) {

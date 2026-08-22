@@ -5,6 +5,7 @@ test.beforeEach(async ({ context, page }) => {
   page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
   page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
 
   // Intercept GraphQL queries
   await page.route('**/graphql', async route => {
@@ -45,6 +46,7 @@ test.beforeEach(async ({ context, page }) => {
         })
       });
     } else if (payload?.query?.includes('createRecommendedMovie')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -111,7 +113,7 @@ test.beforeEach(async ({ context, page }) => {
                 slug: 'my-favorite-sci-fi',
                 Visibility: false,
                 display_order: 0,
-                recommended_movies: [
+                recommended_movies: recommendationCreated ? [
                   {
                     documentId: 'movie-rec-456',
                     tmdb_id: '157336',
@@ -138,7 +140,7 @@ test.beforeEach(async ({ context, page }) => {
                     movie_categories: [],
                     Media: []
                   }
-                ]
+                ] : []
               }
             ]
           }

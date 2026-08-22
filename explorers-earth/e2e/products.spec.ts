@@ -3,6 +3,7 @@ import { setupMockAuthentication } from './setup/auth';
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
 
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
@@ -52,6 +53,7 @@ test.beforeEach(async ({ context, page }) => {
         })
       });
     } else if (payload?.query?.includes('createRecommendedProduct')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -96,7 +98,7 @@ test.beforeEach(async ({ context, page }) => {
                 slug: 'tech-gear',
                 Visibility: false,
                 display_order: 0,
-                recommended_products: [
+                recommended_products: recommendationCreated ? [
                   {
                     documentId: 'product-rec-456',
                     product_url: 'https://example.com/item',
@@ -116,7 +118,7 @@ test.beforeEach(async ({ context, page }) => {
                     images: '[]',
                     product_category: null
                   }
-                ]
+                ] : []
               }
             ]
           }

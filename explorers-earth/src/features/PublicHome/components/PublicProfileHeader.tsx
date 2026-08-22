@@ -207,7 +207,9 @@ export function PublicProfileHeader({
               navigate("/");
             }}
             aria-label="explorers.earth"
-            className="flex items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] rounded-md p-1 min-w-[44px] min-h-[44px]"
+            className={`flex items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-color)] rounded-md p-1 min-w-[44px] min-h-[44px] ${
+              navTransparentAtTop ? "bg-black/75 border border-white/30 shadow-sm" : "border border-transparent"
+            }`}
           >
             <LogoIcon className="h-8 md:h-9 w-auto text-current" />
           </a>

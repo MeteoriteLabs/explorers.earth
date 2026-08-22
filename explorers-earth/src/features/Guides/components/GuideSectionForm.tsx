@@ -71,8 +71,6 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   existingSections = [],
   guide,
   onSuccess,
-  // @ts-expect-error - onCancel is part of the component interface
-  onCancel,
   onLoadingChange,
 }) => {
   const apolloClient = useApolloClient();
@@ -92,8 +90,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   const [sequence, setSequence] = useState<number>(
     initialData?.Sequence || getNextSequence()
   );
-  // @ts-expect-error - loading is used via setLoading throughout the component
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("timeline");
 
   // Location selection for multi-city guides

@@ -1,10 +1,10 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from "vitest";
 import PublicProfileBio from "../PublicProfileBio";
 
 describe("PublicProfileBio", () => {
-  let mockResizeObserverDisconnect: vi.Mock;
+  let mockResizeObserverDisconnect: Mock;
 
   beforeEach(() => {
     mockResizeObserverDisconnect = vi.fn();

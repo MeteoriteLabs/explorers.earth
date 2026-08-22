@@ -122,12 +122,12 @@ describe('igdbService', () => {
         first_release_date: 1577836800,
         total_rating: 85.5,
         total_rating_count: 100,
-        cover: { id: 1, image_id: 'cov1' },
+        cover: { image_id: 'cov1' },
         genres: [{ id: 1, name: 'RPG' }],
         platforms: [{ id: 1, name: 'PlayStation 5' }],
-        involved_companies: [{ id: 1, company: { id: 1, name: 'Dev' }, developer: true, publisher: false }],
+        involved_companies: [{ company: { name: 'Dev' }, developer: true, publisher: false }],
         game_modes: [{ id: 1, name: 'Single player' }],
-        screenshots: [{ id: 1, image_id: 'scr1' }],
+        screenshots: [{ image_id: 'scr1' }],
         url: 'https://igdb.com/game'
       };
 

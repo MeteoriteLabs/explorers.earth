@@ -362,8 +362,8 @@ test.describe("public recommendation presentation visual matrix", () => {
     await expect(page.getByText("Couldn’t load recommendations")).toBeVisible();
     const retry = page.getByRole("button", { name: "Try again" });
     await retry.evaluate((button) => {
-      button.click();
-      button.click();
+      (button as HTMLElement).click();
+      (button as HTMLElement).click();
     });
     await expect(page.getByTestId("recommendations-grid")).toBeVisible();
     expect(state.attempts.GetPlacesLists).toBe(2);

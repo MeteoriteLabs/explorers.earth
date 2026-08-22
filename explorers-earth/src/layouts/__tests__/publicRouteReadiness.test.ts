@@ -172,6 +172,35 @@ describe("publicRouteReadinessReducer", () => {
 
     expect(publicRouteReadinessReducer(current, event)).toBe(current);
   });
+
+  it("only changes retry state while the route is in an error state", () => {
+    const ready = { generation: "alice:key-a", status: "ready" } as const;
+    expect(publicRouteReadinessReducer(ready, {
+      type: "retry-started",
+      generation: "alice:key-a",
+    })).toBe(ready);
+    expect(publicRouteReadinessReducer(ready, {
+      type: "retry-finished",
+      generation: "alice:key-a",
+    })).toBe(ready);
+
+    const failed = {
+      generation: "alice:key-a",
+      status: "error",
+      source: "route",
+      hasUsableContent: false,
+      retrying: false,
+    } as const;
+    const retrying = publicRouteReadinessReducer(failed, {
+      type: "retry-started",
+      generation: "alice:key-a",
+    });
+    expect(retrying).toEqual({ ...failed, retrying: true });
+    expect(publicRouteReadinessReducer(retrying, {
+      type: "retry-finished",
+      generation: "alice:key-a",
+    })).toEqual(failed);
+  });
 });
 
 describe("createGenerationBoundRouteActions", () => {
@@ -221,5 +250,22 @@ describe("createGenerationBoundRouteActions", () => {
     actions.fail("profile", false);
 
     expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("emits the initial-loading and not-found lifecycle events for the current generation", () => {
+    const events: PublicRouteReadinessEvent[] = [];
+    const actions = createGenerationBoundRouteActions({
+      generation: "alice:key-a",
+      isCurrent: () => true,
+      dispatch: (event) => events.push(event),
+    });
+
+    actions.initialLoading();
+    actions.notFound();
+
+    expect(events).toEqual([
+      { type: "begin-route", generation: "alice:key-a" },
+      { type: "not-found", generation: "alice:key-a" },
+    ]);
   });
 });

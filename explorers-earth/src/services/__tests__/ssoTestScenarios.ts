@@ -5,9 +5,10 @@
  * Run this script in the browser console to test different scenarios.
  */
 
-import { performLocalTunesSSO, clearLocalTunesSSO, checkLocalTunesSSOStatus } from '../services/ssoService';
-import { debugCookies } from '../utils/cookieUtils';
-import { debugSessionStorage } from '../utils/sessionCredentials';
+import { performLocalTunesSSO, clearLocalTunesSSO, checkLocalTunesSSOStatus } from '../ssoService';
+import { debugCookies } from '../../utils/cookieUtils';
+import { debugSessionStorage } from '../../utils/sessionCredentials';
+import type { ApolloClient } from '@apollo/client';
 
 // Mock Apollo client for testing
 const mockApolloClient = {
@@ -32,7 +33,7 @@ const mockApolloClient = {
 
     return { data: null };
   }
-};
+} as unknown as ApolloClient<any>;
 
 // Test scenarios
 export const ssoTestScenarios = {
@@ -74,7 +75,7 @@ export const ssoTestScenarios = {
           }
         };
       }
-    };
+    } as unknown as ApolloClient<any>;
 
     const result = await performLocalTunesSSO(disabledApolloClient, 'test-document-id');
     console.log('SSO Result:', result);

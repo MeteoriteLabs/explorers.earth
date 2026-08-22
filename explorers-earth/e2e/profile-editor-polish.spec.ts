@@ -517,7 +517,9 @@ class SyntheticProfileFixture {
         });
       }
 
-      const isSameOrigin = url.origin === "http://localhost:5173";
+      const isSameOrigin =
+        (url.hostname === "127.0.0.1" || url.hostname === "localhost") &&
+        (url.protocol === "http:" || url.protocol === "https:");
       const resourceType = request.resourceType();
       const isAppDocument =
         isSameOrigin &&
@@ -609,8 +611,26 @@ class SyntheticProfileFixture {
       });
     }
 
-    if (operation === "PublicAccountBasic" || operation === "PublicProfileData") {
+    if (operation === "PublicProfileBootstrap") {
       return fulfillJson(route, { data: { accounts: [account] } });
+    }
+
+    if (operation === "PublicProfileContent") {
+      return fulfillJson(route, {
+        data: {
+          account: {
+            Bio: account.Bio,
+            createdAt: account.createdAt,
+            Public_Profile_Address: account.Public_Profile_Address,
+            Feed_Data: account.Feed_Data,
+            mobile_number_visibility: account.mobile_number_visibility,
+          },
+        },
+      });
+    }
+
+    if (operation === "CreatePublicPageAnalytic") {
+      return fulfillJson(route, { data: { createPublicPageAnalytic: null } });
     }
 
     if (operation === "Account") {
@@ -878,6 +898,41 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
     expect((await publicCategoryIds(page))[0]).toBe("music");
     await expect(page.getByRole("tab", { name: "Business Details" })).toHaveCount(1);
+  });
+
+  test("keyboard reorder lifts, previews, drops once, and cancels without saving", async ({
+    page,
+    synthetic,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await openDashboard(page);
+    await openAppearance(page);
+
+    const placesHandle = page.getByRole("button", { name: "Drag Places", exact: true });
+    const status = page.getByRole("status");
+    await placesHandle.focus();
+    await placesHandle.press("Space");
+    await expect(placesHandle).toHaveAttribute("aria-pressed", "true");
+    await expect(status).toContainText("Lifted Places. Position 1 of 9.");
+
+    await placesHandle.press("End");
+    await expect.poll(() => readOrder(page)).toEqual(SAVED_ORDER);
+    await expect(status).toContainText("Places moved to position 9 of 9.");
+    expect(synthetic.mutationVariables).toEqual([]);
+
+    await placesHandle.press("Enter");
+    await expect(status).toContainText("Dropped Places at position 9 of 9.");
+    await expect(page.locator('[data-reorder-active="true"]')).toHaveCount(0);
+    expect(synthetic.mutationVariables).toEqual([]);
+
+    const musicHandle = page.getByRole("button", { name: "Drag Music", exact: true });
+    await musicHandle.focus();
+    await musicHandle.press("Space");
+    await musicHandle.press("End");
+    await musicHandle.press("Escape");
+    await expect(status).toContainText("Cancelled moving Music.");
+    await expect.poll(() => readOrder(page)).toEqual(SAVED_ORDER);
+    expect(synthetic.mutationVariables).toEqual([]);
   });
 
   test("Gallery selection, progress, success, and failure survive workspace switches and block premature save", async ({
@@ -1552,6 +1607,12 @@ async function mobileFixedSurfaceGeometry(page: Page) {
     .locator("..");
   await expect(saveBar).toHaveCSS("position", "fixed");
   await expect(bottomNav).toHaveCSS("position", "fixed");
+  const saveButtonElement = await saveButton.elementHandle();
+  const saveBarElement = await saveBar.elementHandle();
+  const bottomNavElement = await bottomNav.elementHandle();
+  if (!saveButtonElement || !saveBarElement || !bottomNavElement) {
+    throw new Error("Responsive save/navigation geometry elements were unavailable");
+  }
   return page.evaluate(
     ({ saveButtonElement, saveBarElement, bottomNavElement }) => {
       const box = (element: Element) => {
@@ -1601,9 +1662,9 @@ async function mobileFixedSurfaceGeometry(page: Page) {
       };
     },
     {
-      saveButtonElement: await saveButton.elementHandle(),
-      saveBarElement: await saveBar.elementHandle(),
-      bottomNavElement: await bottomNav.elementHandle(),
+      saveButtonElement,
+      saveBarElement,
+      bottomNavElement,
     },
   );
 }

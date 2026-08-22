@@ -3,6 +3,7 @@ import { setupMockAuthentication } from './setup/auth';
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
 
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
@@ -52,6 +53,7 @@ test.beforeEach(async ({ context, page }) => {
         })
       });
     } else if (payload?.query?.includes('createRecommendedGame')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -96,7 +98,7 @@ test.beforeEach(async ({ context, page }) => {
                 slug: 'my-favorite-games',
                 Visibility: false,
                 display_order: 0,
-                recommended_games: [
+                recommended_games: recommendationCreated ? [
                   {
                     documentId: 'game-rec-456',
                     igdb_id: 125,
@@ -126,7 +128,7 @@ test.beforeEach(async ({ context, page }) => {
                     game_categories: [],
                     Media: []
                   }
-                ]
+                ] : []
               }
             ]
           }

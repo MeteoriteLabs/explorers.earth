@@ -249,6 +249,13 @@ describe("classifyApolloOperation", () => {
     expect(classifyApolloOperation(operation("CreatePublicPageAnalytic", aliasedAnalytics)))
       .toBe("analytics-write");
   });
+
+  it("classifies anonymous and subscription documents without assuming a named query", () => {
+    expect(classifyApolloOperation({ query: gql`query { publicApps { documentId } }` }))
+      .toBe("public-read");
+    expect(classifyApolloOperation({ query: gql`subscription { publicApps { documentId } }` }))
+      .toBe("session-only");
+  });
 });
 
 describe("selectAuthorization", () => {

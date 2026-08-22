@@ -29,12 +29,12 @@ describe('geoHelpers', () => {
         topCategories: ['Cafes', 'Museums']
       });
 
-      expect(data.pageContext.primaryEntity).toBe('Alice Guide');
-      expect(data.pageContext.secondaryEntities).toContain('Paris, France');
-      expect(data.pageContext.secondaryEntities).toContain('Cafes');
-      expect(data.aiDescription.conversational).toContain('Alice Guide is a trusted local expert based in Paris, France');
-      expect(data.aiDescription.conversational).toContain('They have recommended 12 places specializing in Cafes, Museums');
-      expect(data.contextualData.location?.name).toBe('Paris, France');
+      expect(data.pageContext!.primaryEntity).toBe('Alice Guide');
+      expect(data.pageContext!.secondaryEntities).toContain('Paris, France');
+      expect(data.pageContext!.secondaryEntities).toContain('Cafes');
+      expect(data.aiDescription!.conversational).toContain('Alice Guide is a trusted local expert based in Paris, France');
+      expect(data.aiDescription!.conversational).toContain('They have recommended 12 places specializing in Cafes, Museums');
+      expect(data.contextualData!.location?.name).toBe('Paris, France');
     });
 
     it('creates GEO data with minimum fields provided', () => {
@@ -43,10 +43,10 @@ describe('geoHelpers', () => {
         username: 'bob'
       });
 
-      expect(data.pageContext.primaryEntity).toBe('Bob');
-      expect(data.pageContext.secondaryEntities).toHaveLength(0);
-      expect(data.aiDescription.conversational).toContain('Bob is a trusted local expert who curates');
-      expect(data.contextualData.location).toBeUndefined();
+      expect(data.pageContext!.primaryEntity).toBe('Bob');
+      expect(data.pageContext!.secondaryEntities).toHaveLength(0);
+      expect(data.aiDescription!.conversational).toContain('Bob is a trusted local expert who curates');
+      expect(data.contextualData!.location).toBeUndefined();
     });
   });
 
@@ -62,10 +62,10 @@ describe('geoHelpers', () => {
         coordinates: { lat: 35.6762, lng: 139.6503 }
       });
 
-      expect(data.pageContext.primaryEntity).toBe('Tokyo');
-      expect(data.pageContext.secondaryEntities).toEqual(['Alice Guide', 'Sushi', 'Parks']);
-      expect(data.aiDescription.conversational).toContain('Discover Tokyo through Alice Guide');
-      expect(data.contextualData.location?.coordinates).toEqual({ lat: 35.6762, lng: 139.6503 });
+      expect(data.pageContext!.primaryEntity).toBe('Tokyo');
+      expect(data.pageContext!.secondaryEntities).toEqual(['Alice Guide', 'Sushi', 'Parks']);
+      expect(data.aiDescription!.conversational).toContain('Discover Tokyo through Alice Guide');
+      expect(data.contextualData!.location?.coordinates).toEqual({ lat: 35.6762, lng: 139.6503 });
     });
   });
 
@@ -81,10 +81,10 @@ describe('geoHelpers', () => {
         operatingHours: '6AM - 1AM'
       });
 
-      expect(data.pageContext.primaryEntity).toBe('Central Park');
-      expect(data.pageContext.secondaryEntities).toEqual(['New York', 'Park', 'Bob']);
-      expect(data.aiDescription.conversational).toContain('Central Park is a Park located at 123 Park Ave in New York');
-      expect(data.contextualData.temporal?.operatingHours).toBe('6AM - 1AM');
+      expect(data.pageContext!.primaryEntity).toBe('Central Park');
+      expect(data.pageContext!.secondaryEntities).toEqual(['New York', 'Park', 'Bob']);
+      expect(data.aiDescription!.conversational).toContain('Central Park is a Park located at 123 Park Ave in New York');
+      expect(data.contextualData!.temporal?.operatingHours).toBe('6AM - 1AM');
     });
   });
 
@@ -98,8 +98,8 @@ describe('geoHelpers', () => {
         categories: ['Food', 'Sights']
       });
 
-      expect(data.pageContext.primaryEntity).toBe('All Locations');
-      expect(data.aiDescription.conversational).toContain('across multiple locations');
+      expect(data.pageContext!.primaryEntity).toBe('All Locations');
+      expect(data.aiDescription!.conversational).toContain('across multiple locations');
     });
 
     it('creates GEO data for a specific location map', () => {
@@ -111,9 +111,9 @@ describe('geoHelpers', () => {
         categories: ['Pubs']
       });
 
-      expect(data.pageContext.primaryEntity).toBe('London');
-      expect(data.aiDescription.conversational).toContain('in London');
-      expect(data.contextualData.location?.name).toBe('London');
+      expect(data.pageContext!.primaryEntity).toBe('London');
+      expect(data.aiDescription!.conversational).toContain('in London');
+      expect(data.contextualData!.location?.name).toBe('London');
     });
   });
 
@@ -127,9 +127,9 @@ describe('geoHelpers', () => {
         features: ['QR sharing', 'Custom Lists']
       });
 
-      expect(data.pageContext.primaryEntity).toBe('explorers');
-      expect(data.pageContext.secondaryEntities).toContain('Technology');
-      expect(data.aiDescription.conversational).toContain('explorers is a technology platform that a platform for sharing local knowledge');
+      expect(data.pageContext!.primaryEntity).toBe('explorers');
+      expect(data.pageContext!.secondaryEntities).toContain('Technology');
+      expect(data.aiDescription!.conversational).toContain('explorers is a technology platform that a platform for sharing local knowledge');
     });
   });
 
@@ -142,9 +142,9 @@ describe('geoHelpers', () => {
         description: 'Access your account',
       });
 
-      expect(data.pageContext.primaryEntity).toBe('Sign In to Explorers');
-      expect(data.pageContext.secondaryEntities).toContain('Login');
-      expect(data.aiDescription.conversational).toContain('This is the Login page for explorers');
+      expect(data.pageContext!.primaryEntity).toBe('Sign In to Explorers');
+      expect(data.pageContext!.secondaryEntities).toContain('Login');
+      expect(data.aiDescription!.conversational).toContain('This is the Login page for explorers');
     });
   });
 

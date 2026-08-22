@@ -8,9 +8,9 @@ type Deferred = {
 };
 
 function deferred(): Deferred {
-  let resolve = () => undefined;
+  let resolve!: () => void;
   const promise = new Promise<void>((done) => {
-    resolve = done;
+    resolve = () => done();
   });
   return { promise, resolve };
 }

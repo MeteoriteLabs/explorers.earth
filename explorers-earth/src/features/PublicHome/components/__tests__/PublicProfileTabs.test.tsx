@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from "vitest";
 import PublicProfileTabs, { type PublicProfileTabDefinition } from "../PublicProfileTabs";
 
 const DummyIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
@@ -12,7 +12,7 @@ const tabs: PublicProfileTabDefinition[] = [
 ];
 
 describe("PublicProfileTabs", () => {
-  let mockScrollIntoView: vi.Mock;
+  let mockScrollIntoView: Mock;
 
   beforeEach(() => {
     mockScrollIntoView = vi.fn();
