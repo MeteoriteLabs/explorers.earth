@@ -656,3 +656,144 @@ verified, compatibility-route usage 0, and bounded telemetry cardinality.
 Task 10 remains unapproved. The controller must dispatch a separate independent
 scoped rereview of tested code hash
 `9000eca66eb66e158bbb70526ccf3c77a08243f6`; this report is not self-approval.
+
+## External rereview fix round 3: authenticated manifest evidence (2026-08-23)
+
+Every result in this section is bound to the clean detached execution authority
+`ae573ac40709e2a9aca5073105560412cfb799fd`
+(`fix(music): authenticate fixture compose manifest`). The subsequent
+`docs(music): record qualification evidence` commit records these already-run
+results only and was not the execution authority. This preserves the tested
+code hash at the cost of a docs-only successor and an explicit tested-parent
+hash check by the reviewer. The active ignored source `.env.music.test` was not
+read, repaired, or mutated. No schema, migration, production, external push,
+`GATE_PROD`, Task 11, or Task 12 action occurred.
+
+The final proof checkout was
+`C:\Users\TK\AppData\Local\Temp\music-c10-r3-ae573ac\checkout`; its generated
+evidence was copied byte-for-byte to
+`.artifacts/music-c10-evidence/ae573ac/music-runs/`. Superseded round-3 ledgers
+remain under `.artifacts/music-c10-evidence/8c400c3/music-runs/` (137 files)
+and `.artifacts/music-c10-evidence/46f54f8/music-runs/` (79 files), including
+all setup failures, three release failures, diagnostics, and expected
+interrupt-child failures. Nothing was overwritten or promoted to green.
+
+### I1 and M1: RED, diagnosis, and GREEN
+
+- **I1, authenticated exact Compose authority.** Hostile direct-wrapper REDs
+  independently substituted the PostgreSQL, Traefik, Tunes, and every other
+  service digest; changed security-relevant environment values; introduced
+  wildcard origins, disabled required controls, duplicated/added environment
+  entries, altered secret/config targets, and supplied ambient dangerous
+  fields. The wrapper now receives authenticated canonical image authority,
+  binds every expected service to its exact image reference, and performs an
+  exhaustive/default-deny comparison of the seven-service rendered Compose
+  contract. Exact allowlists cover production environment values and required
+  absences, including kill-switch state and allowed origins, while explicitly
+  admitted per-run values remain narrow. All direct probes fail before Docker
+  mutation. The final qualification contract suite passed 39/39, and the
+  affected critical suite passed 519 tests plus one intentional platform skip
+  with 100% critical-module coverage in 50.60s.
+- **M1, reproducible evidence hash.** The committed
+  `npm run --silent music:evidence-manifest --prefix tunes -- <create|verify>
+  <evidence-root> <manifest-file>` utility writes and verifies the exact
+  manifest bytes. Serialization is UTF-8 with one
+  `relative-path<TAB>byte-length<TAB>sha256` record per regular file,
+  forward-slash paths sorted by UTF-8 byte order, LF separators, and no trailing
+  newline. Symlinks, non-files, unsafe path characters, byte-length changes,
+  path-set changes, digest changes, and non-canonical manifest bytes fail
+  closed. The preserved 278-file round-2 corpus verifies against
+  `.artifacts/music-c10-evidence/9000eca/music-runs.manifest.tsv` at exact
+  SHA-256
+  `c9eca9e017e1716e7634f32ae842d531baa705117936776f6b5a10716f16fb55`.
+- Two distinct deployment recovery cases exceeded the old 20-second process
+  bound at 20.893s and 20.815s. A source-contract RED preceded the smallest
+  platform-scoped correction: all tests in that process-heavy file use its
+  existing 30-second Windows / 20-second non-Windows bound. Independent focused
+  verification passed both prior cases in 19.85s. The full deployment/security
+  command then passed 212 tests plus three intentional skips in 718.52s, and
+  release-only Traefik verification executed 2/2.
+- Two release attempts independently exposed the same hard 5-second
+  checkpoint-filesystem proof timeout at 5.055s and 5.495s. Both RED samples
+  remain preserved. A second source-contract RED preceded a narrow 10-second
+  Windows / 5-second non-Windows bound; the checkpoint test passed twice at
+  approximately 1.29s. No unchanged retry loop was used after recurrence.
+
+### Clean exact authority, real services, and retained flake
+
+Supported lifecycle commands on the final authority passed: bootstrap
+`20260822202913986-5f19e4e6` in 86.443s; doctor
+`20260822203047088-3f5cc0d4` in 0.798s; five-service up
+`20260822203055753-e4fbca1a` in 103.885s; cold smoke
+`20260822203245919-7bd5928e` in 1.057s; and warm smoke
+`20260822203247733-42a475d4` in 1.097s. All clean counted evidence used
+environment fingerprint
+`507715dc0f6097c6c31b14e412ec29f19dbbefc647ce422a901acd183aa5d56b`
+and the exact labeled PostgreSQL 15 sidecar on loopback port 54050.
+
+Nightly `20260822203308780-a7d48e15` is retained as a failure: 22 original
+tasks passed, `security-matrices` failed its socket-expiration owner-disconnect
+timing assertion, and its 119/119 diagnostic rerun passed. The clean independent
+repeat `20260822203959123-449af659` passed 23/23 with no rerun in 373.384s,
+inside the 45-minute budget, so the timing flake did not reproduce. That green
+run crossed real HTTP/services/repository/PostgreSQL load: 50 concurrent
+queries through a four-connection pool at 189.528ms p50 / 298.828ms p95, 200
+invalid tokens rejected, five persisted load measurements, and 300 observed
+telemetry events with one exact eight-key set, zero forbidden keys, bounded
+label-value cardinality 8, and `telemetryCardinality=bounded`.
+
+### Two clean release samples
+
+Both samples used
+`npm run --silent music:test:release -- --format json`, remained under the
+60-minute budget, used the exact commit/fingerprint above, and recorded zero
+original failures, timeouts, retries, or diagnostic reruns.
+
+| Sample | Lane wall | Tasks | Deployment execution | Real local-registry rehearsal |
+| --- | --- | --- | --- | --- |
+| `20260822204628869-ca335f37` | 1,019.091s | 20/20 | 653.101s; 11/11 files, 214 pass + 1 intentional test skip | 63.384s, attempt 1 |
+| `20260822210339326-b67025af` | 1,055.131s | 20/20 | 674.017s; 11/11 files, 214 pass + 1 intentional test skip | 74.585s, attempt 1 |
+
+The second report persisted the cross-run release p50/p95 as
+1,019.091s / 1,055.131s. In both samples the fixture browser, disposable
+real-Docker proof, interrupt/resume proof, 11-file deployment suite, and shared
+engine local-registry rehearsal each passed on attempt 1. Each persisted the
+complete operational envelope: compatibility-route usage 0; migration and
+readiness failures observed; exact rollback restored; unknown and pre-floor
+rollback refused; kill switch verified; and bounded observed telemetry.
+Release setup `20260822200532679-be00348d` is retained as a 1,189.307s
+measurement failure after its 20 tasks passed because its lifecycle fingerprint
+was not authoritative; it was not counted.
+
+### Artifact preservation, sanitation, and guarded cleanup
+
+- The final detached source and ignored copy contain 266 files and matched
+  path-for-path and SHA-256-for-SHA-256 with zero mismatches. Canonical manifest
+  `.artifacts/music-c10-evidence/ae573ac/music-runs.manifest.tsv` has 266
+  records and exact SHA-256
+  `59ac329f3346dc51f85d02fad674d889589b716ecdaae73dbf6d07329dfc2370`;
+  two independent `verify` invocations reproduced it.
+- A count-only sanitation scan over all 267 final files found zero developer
+  absolute paths, zero active-source authority absolute paths, and zero raw
+  Docker `Config.Env` arrays. Generic secret-shaped assignment scanning found
+  no credential assignments; its only lexical candidates were the intended
+  harmless numeric/telemetry `metricKeySet` property in six reports/logs,
+  explicitly preserved by the sanitizer contract.
+- Supported teardown `20260822212255061-6354b986` passed in 4.059s. The two
+  exact fixture-owned volumes and the exact PG sidecar were removed only after
+  literal names, image, full-commit/owner labels, loopback port, and tmpfs/data
+  authority were checked. Final fixture containers, networks, volumes, and
+  commit-labeled sidecars were 0/0/0/0; listeners on
+  55432/51337/55000/55173/54050 were all zero. These disposable resources are
+  not recoverable; the sanitized ignored evidence copies remain.
+- The final proof passed exact detached hash and clean tracked-state checks.
+  Git deregistered it but reported a Windows long-path deletion failure. The
+  residual was confined to the exact disposable checkout and contained one
+  verified self-junction back to that same checkout. Its reparse tag was
+  removed without traversal, a zero-reparse-point rescan passed, and an
+  isolated empty-index dry run named only `tunes/` before bounded cleanup.
+  The worktree registration, checkout, and parent temporary root are absent.
+
+Task 10 remains unapproved. The controller must dispatch an independent scoped
+rereview of tested code hash
+`ae573ac40709e2a9aca5073105560412cfb799fd`; this report is not self-approval.
