@@ -19,10 +19,29 @@ const source = "https://github.com/explorers-earth/explorers.earth";
 const hmacSentinel = "state-hmac-key-with-at-least-thirty-two-bytes";
 const publicationAuthority = Buffer.alloc(32, 0x70).toString("base64url");
 const publicResponseSentinel = "UNTRUSTED_PUBLIC_RESPONSE_SENTINEL";
+const deploymentProcessRecoveryTimeoutMs = process.platform === "win32" ? 30_000 : 20_000;
 
 function shellPath(path: string): string {
   const normalized = path.replaceAll("\\", "/");
   return process.platform === "win32" ? `/${normalized[0].toLowerCase()}${normalized.slice(2)}` : normalized;
+}
+
+function makePrivateDirectory(path: string): void {
+  if (process.platform !== "win32") {
+    chmodSync(path, 0o700);
+    return;
+  }
+  const sid = spawnSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], {
+    encoding: "utf8",
+    windowsHide: true,
+  }).stdout.match(/,"([^"]+)"\s*$/)?.[1];
+  if (!sid) throw new Error("Windows test runner SID is unavailable");
+  const hardened = spawnSync("icacls.exe", [path, "/inheritance:r", "/grant:r",
+    `*${sid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (hardened.status !== 0) throw new Error(`Windows test directory hardening failed: ${hardened.stderr}`);
 }
 
 interface RunOptions {
@@ -58,6 +77,7 @@ describe("checked-in production Music deploy executable", () => {
   beforeEach(() => {
     sandbox = mkdtempSync(join(tmpdir(), "music-deploy-process-"));
     root = mkdtempSync(join(tmpdir(), "music-c10-release-unit-"));
+    makePrivateDirectory(root);
     fakeBin = join(sandbox, "bin");
     eventLog = join(sandbox, "events.log");
     requestFile = join(root, "request.txt");
@@ -123,16 +143,85 @@ describe("checked-in production Music deploy executable", () => {
       labels: fixtureLabels,
       networks,
     });
+    const healthyDatabase = { db: { condition: "service_healthy", required: true } };
+    const healthcheck = {
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"],
+      interval: "2s",
+      timeout: "2s",
+      retries: 20,
+    };
+    const fixtureTunesEnvironment = () => ({
+      NODE_ENV: "production", PORT: "5000", MUSIC_MODE: "live", MUSIC_DATABASE_HOST: "db",
+      MUSIC_DATABASE_PORT: "5432", MUSIC_DATABASE_NAME: "music_release_fixture",
+      MUSIC_DATABASE_USER: "music_runtime_login", MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
+      MUSIC_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-runtime",
+      SESSION_SECRET: "dedicated-session-authority", COOKIE_SECRET: "dedicated-cookie-authority",
+      STRAPI_URL: "https://8.8.8.8", MUSIC_STRAPI_ALLOWED_ORIGINS: "https://8.8.8.8",
+      STRAPI_ACCESS_TOKEN: "dedicated-strapi-access-authority", STRAPI_JWT_SECRET: "dedicated-strapi-jwt-authority",
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: "/run/music-secrets/strapi-lifecycle", TRUST_PROXY_HOPS: "1",
+      MUSIC_TRUSTED_PROXY_IP: "172.18.0.2", ALLOWED_ORIGINS: "https://localtunes.earth",
+      MUSIC_GATE_ATTESTATION_KEY: "dedicated-gate-attestation-authority", MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true",
+      MUSIC_NEW_ENTRY_KILL_SWITCH: "true", MUSIC_COHORT_ENABLED: "false",
+      MUSIC_TOKEN_CURRENT_KID: "fixture-token-current-v1",
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: "/run/music-secrets/music-token/current",
+      MUSIC_TOKEN_LIFETIME_SECONDS: "600", MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-current-v1",
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: "/run/music-secrets/music-publication-response/current",
+      MUSIC_IMAGE_DIGEST: digest("a"), MUSIC_IMAGE_COMMIT: commit("a"),
+      MUSIC_MIGRATION_MARKER: "0013_publication_operation_database_clock",
+      MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${digest("a")}.json`,
+    });
+    const fixtureTunesService = (slot: "blue" | "green") => ({
+      ...fixtureService(fixtureImage, ["proxy", "internal"]),
+      restart: "unless-stopped",
+      depends_on: healthyDatabase,
+      environment: fixtureTunesEnvironment(),
+      volumes: ["music-gate-attestations:/deployment-gates:ro", "fixture-secrets:/run/music-secrets:ro"],
+      healthcheck,
+    });
     writeFileSync(composeModelFile, JSON.stringify({
       name: "music-c10-release-unit",
       services: {
-        traefik: { ...fixtureService(`127.0.0.1:5001/fixture-traefik@${digest("c")}`, ["proxy"]), ports: ["127.0.0.1:54443:443"] },
-        db: { ...fixtureService(`127.0.0.1:5001/fixture-postgres@${digest("d")}`), volumes: ["postgres-data:/var/lib/postgresql/data"] },
-        "legacy-tunes": fixtureService(fixtureImage, ["proxy"]),
-        "tunes-register-compat": fixtureService(fixtureImage, ["proxy"]),
-        "tunes-gate": { ...fixtureService(), volumes: ["music-gate-attestations:/deployment-gates", "fixture-secrets:/run/music-secrets:ro"] },
-        "tunes-blue": fixtureService(fixtureImage, ["internal", "proxy"]),
-        "tunes-green": fixtureService(fixtureImage, ["internal", "proxy"]),
+        traefik: {
+          ...fixtureService(`127.0.0.1:5001/fixture-traefik@${digest("c")}`, ["proxy"]),
+          command: ["--api.dashboard=false", "--providers.docker=false", "--providers.file.directory=/deployment-routing", "--providers.file.watch=true", "--entrypoints.websecure.address=:443"],
+          ports: ["127.0.0.1:54443:443"],
+          volumes: [`${shellPath(root)}/deployment-routing:/deployment-routing:ro`],
+        },
+        db: {
+          ...fixtureService(`127.0.0.1:5001/fixture-postgres@${digest("d")}`),
+          environment: { POSTGRES_USER: "music_migrator", POSTGRES_PASSWORD_FILE: "/run/music-secrets/database-migrator", POSTGRES_DB: "music_release_fixture" },
+          volumes: ["postgres-data:/var/lib/postgresql/data", "fixture-secrets:/run/music-secrets:ro"],
+          healthcheck: { test: ["CMD-SHELL", "pg_isready -U music_migrator -d music_release_fixture"], interval: "2s", timeout: "2s", retries: 30 },
+        },
+        "legacy-tunes": {
+          ...fixtureService(fixtureImage, ["proxy"]),
+          container_name: "music-c10-release-unit-legacy",
+          command: ["node", "-e", "require('node:http').createServer((q,s)=>{s.writeHead(200,{'content-type':'text/plain'});s.end('legacy')}).listen(5000,'0.0.0.0')"],
+        },
+        "tunes-register-compat": {
+          ...fixtureService(fixtureImage, ["proxy"]), profiles: ["deployment"], restart: "unless-stopped",
+          command: ["node", "dist/server/deployment/run-registration-compat.js"], environment: { PORT: "5100" },
+        },
+        "tunes-gate": {
+          ...fixtureService(), profiles: ["deployment"], restart: "no",
+          command: ["node", "dist/server/deployment/run-migration-gate.js"],
+          environment: {
+            MUSIC_MODE: "live", MUSIC_DATABASE_HOST: "db", MUSIC_DATABASE_PORT: "5432",
+            MUSIC_DATABASE_NAME: "music_release_fixture", MUSIC_DATABASE_USER: "music_migrator",
+            MUSIC_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-migrator",
+            MUSIC_RUNTIME_DATABASE_USER: "music_runtime_login",
+            MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-runtime",
+            MUSIC_IMAGE_DIGEST: digest("a"), MUSIC_IMAGE_COMMIT: commit("a"),
+            MUSIC_MIGRATION_MARKER: "0013_publication_operation_database_clock",
+            MUSIC_GATE_ATTESTATION_KEY: "dedicated-gate-attestation-authority",
+            MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${digest("a")}.json`,
+          },
+          depends_on: healthyDatabase,
+          volumes: ["music-gate-attestations:/deployment-gates", "fixture-secrets:/run/music-secrets:ro"],
+        },
+        "tunes-blue": fixtureTunesService("blue"),
+        "tunes-green": fixtureTunesService("green"),
       },
       networks: { proxy: {}, internal: { internal: true } },
       volumes: {
@@ -857,12 +946,41 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(existsSync(eventLog)).toBe(false);
   });
 
+  it.runIf(process.platform === "win32")("rejects an actual broad Windows fixture-root write ACL before Docker inspection", () => {
+    const granted = spawnSync("icacls.exe", [root, "/grant", "*S-1-1-0:(OI)(CI)(W)"], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    expect(granted.status).toBe(0);
+    const result = run("bootstrap", digest("a"), commit("a"), { policy: "fixture" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("fixture deployment root must be private and owned");
+    expect(existsSync(eventLog)).toBe(false);
+  });
+
   it.each([
     ["extra service", (model: any) => { model.services.attacker = { image: `registry.example.invalid/escape@${digest("e")}`, pull_policy: "always", labels: model.services.traefik.labels, networks: ["proxy"] }; }],
     ["mutable image", (model: any) => { model.services.db.image = "postgres:15-alpine"; }],
+    ["wrong service repository", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/attacker@${digest("a")}`; }],
+    ["wrong service digest", (model: any) => { model.services["legacy-tunes"].image = `127.0.0.1:5001/explorers-tunes@${digest("e")}`; }],
     ["ambient pull", (model: any) => { model.services.traefik.pull_policy = "missing"; }],
     ["external network", (model: any) => { model.networks.proxy = { external: true, name: "production" }; }],
     ["unbounded volume", (model: any) => { model.services.db.volumes.push("/opt/explorers:/production"); }],
+    ["empty database mounts", (model: any) => { model.services.db.volumes = []; }],
+    ["empty migration-gate mounts", (model: any) => { model.services["tunes-gate"].volumes = []; }],
+    ["raw root bind mount", (model: any) => { model.services.db.volumes.push(`${shellPath(root)}/secrets:/run/escape:ro`); }],
+    ["added SYS_ADMIN capability", (model: any) => { model.services["legacy-tunes"].cap_add = ["SYS_ADMIN"]; }],
+    ["capability-drop deviation", (model: any) => { model.services["legacy-tunes"].cap_drop = ["ALL"]; }],
+    ["security option", (model: any) => { model.services["legacy-tunes"].security_opt = ["seccomp=unconfined"]; }],
+    ["sysctl", (model: any) => { model.services["legacy-tunes"].sysctls = { "net.ipv4.ip_forward": "1" }; }],
+    ["extra host", (model: any) => { model.services["legacy-tunes"].extra_hosts = ["host.docker.internal:host-gateway"]; }],
+    ["environment file", (model: any) => { model.services["legacy-tunes"].env_file = ["production.env"]; }],
+    ["user namespace", (model: any) => { model.services["legacy-tunes"].userns_mode = "host"; }],
+    ["host user", (model: any) => { model.services["legacy-tunes"].user = "0:0"; }],
+    ["entrypoint deviation", (model: any) => { model.services["legacy-tunes"].entrypoint = ["sh"]; }],
+    ["command deviation", (model: any) => { model.services["legacy-tunes"].command = ["sleep", "infinity"]; }],
+    ["healthcheck deviation", (model: any) => { model.services.db.healthcheck = { test: ["NONE"] }; }],
+    ["dependency deviation", (model: any) => { model.services["tunes-gate"].depends_on = {}; }],
   ])("rejects a fixture Compose model with %s before image materialization", (_name, mutate) => {
     const modelFile = join(sandbox, "compose-model.json");
     const model = JSON.parse(readFileSync(modelFile, "utf8"));
@@ -965,7 +1083,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       expect(events.join("\n")).not.toContain("refusing to replace the currently public slot");
       expect(existsSync(join(root, "deployment-transactions/current"))).toBe(false);
     },
-    20_000,
+    deploymentProcessRecoveryTimeoutMs,
   );
 
   it("resumes after a crash immediately after the durable commit without touching the public slot", () => {
@@ -1006,7 +1124,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const events = readFileSync(eventLog, "utf8");
     expect(events).toContain("stop tunes-green | route=http://tunes-blue:5000");
     expect(failed.stderr).not.toContain(publicResponseSentinel);
-  }, 20_000);
+  }, deploymentProcessRecoveryTimeoutMs);
 
   it("keeps the HMAC key out of helper argv and environment while producing stable MACs", () => {
     // Production break caught: openssl -hmac places the authority key in a

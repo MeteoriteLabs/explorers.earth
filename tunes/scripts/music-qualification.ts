@@ -93,6 +93,7 @@ export function qualificationTaskEnvironment(taskId: string): Record<string, str
   if (taskId === "fixture-fullstack-browser") {
     return { PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173" };
   }
+  if (taskId === "release-rehearsal") return { MUSIC_C3_TRAEFIK_TEST: "1" };
   if (!["postgres-integration", "tunes-repository-coverage", "tunes-identity-repository-coverage", "load-postgres", "chaos-postgres", "real-docker-evidence"].includes(taskId)) return {};
   return {
     MUSIC_C3_POSTGRES_TEST: "1",
@@ -104,6 +105,16 @@ export function qualificationTaskEnvironment(taskId: string): Record<string, str
     MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1",
     MUSIC_C10_POSTGRES_TEST: "1",
   };
+}
+
+export function qualificationTaskOutputFailure(taskId: string, stdout: string, stderr: string): string | undefined {
+  if (taskId !== "release-rehearsal") return undefined;
+  const output = `${stdout}\n${stderr}`.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
+  const summary = output.match(/Test Files\s+(\d+) passed(?:\s*\|\s*(\d+) skipped)?\s*\((\d+)\)/);
+  if (!summary || Number(summary[1]) !== 11 || Number(summary[2] ?? 0) !== 0 || Number(summary[3]) !== 11) {
+    return "release rehearsal must execute all 11 deployment test files without a file-level skip";
+  }
+  return undefined;
 }
 
 const FIXTURE_ENVIRONMENT_TASK_IDS = new Set([

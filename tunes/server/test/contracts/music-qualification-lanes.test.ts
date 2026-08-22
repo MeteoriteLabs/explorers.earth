@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import * as musicCli from "../../../scripts/music-cli";
+import * as musicQualification from "../../../scripts/music-qualification";
 import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
 import {
   attestC10StandalonePostgresAuthority,
@@ -313,10 +315,35 @@ describe("portable Music qualification lanes", () => {
     expect(deploymentContracts.every((path) => releaseArgs.includes(path))).toBe(true);
     expect(releaseArgs.filter((value) => value.startsWith("server/test/deployment/")))
       .toEqual(deploymentContracts);
+    expect(qualificationTaskEnvironment("release-rehearsal")).toEqual({ MUSIC_C3_TRAEFIK_TEST: "1" });
+    const outputFailure = (musicQualification as unknown as {
+      qualificationTaskOutputFailure?: (taskId: string, stdout: string, stderr: string) => string | undefined;
+    }).qualificationTaskOutputFailure;
+    expect(outputFailure?.(
+      "release-rehearsal",
+      "Test Files  10 passed | 1 skipped (11)\nTests 172 passed | 3 skipped (175)",
+      "",
+    )).toContain("all 11 deployment test files");
+    expect(outputFailure?.(
+      "release-rehearsal",
+      "Test Files  11 passed (11)\nTests 175 passed (175)",
+      "",
+    )).toBeUndefined();
     expect(MUSIC_QUALIFICATION_TASKS["isolated-cli-contract"].npmArgs)
       .toContain("tunes/scripts/music-isolated-cli-contract.ts");
     expect(MUSIC_QUALIFICATION_LANES.pr.stages.flatMap((stage) => stage.taskIds))
       .toContain("isolated-cli-contract");
+  });
+
+  it("gives only multi-process deployment recovery checks bounded Windows scheduling headroom", () => {
+    const source = readFileSync(resolve(
+      import.meta.dirname,
+      "../deployment/music-deploy-executable.test.ts",
+    ), "utf8");
+    expect(source).toContain(
+      'const deploymentProcessRecoveryTimeoutMs = process.platform === "win32" ? 30_000 : 20_000;',
+    );
+    expect(source.match(/deploymentProcessRecoveryTimeoutMs/g)).toHaveLength(3);
   });
 
   it("adds real five-service browser and Docker evidence to nightly and release", () => {
@@ -697,20 +724,78 @@ describe("portable Music qualification lanes", () => {
     expect(checkpoint).toContain("NODE_ENV=production");
   });
 
+  it("redacts generic cryptographic authority keys across text, structured data, and value collection", () => {
+    const publicationKey = "fixture-publication-current-key-material";
+    const gateKey = "fixture-gate-attestation-key-material";
+    const signingKey = "fixture-signing-key-material";
+    const encryptionCredential = "fixture-encryption-credential-material";
+    const text = sanitizeMusicCliText([
+      `MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=${publicationKey}`,
+      `music_gate_attestation_key=${gateKey}`,
+      `signingKey=${signingKey}`,
+      `encryption_credential=${encryptionCredential}`,
+      `--publication-response-key ${publicationKey}`,
+    ].join(" "));
+    for (const value of [publicationKey, gateKey, signingKey, encryptionCredential]) {
+      expect(text).not.toContain(value);
+    }
+
+    const structured = JSON.stringify(sanitizeMusicCheckpointData({
+      Config: {
+        Env: [
+          `MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=${publicationKey}`,
+          `Music_Gate_Attestation_Key=${gateKey}`,
+        ],
+      },
+      nested: {
+        privateKey: publicationKey,
+        SIGNING_SECRET: signingKey,
+        encryptionToken: encryptionCredential,
+      },
+      measurements: { invalidTokensRejected: 200, monkeyCount: 7 },
+    }));
+    for (const value of [publicationKey, gateKey, signingKey, encryptionCredential]) {
+      expect(structured).not.toContain(value);
+    }
+    expect(structured).toContain('"invalidTokensRejected":200');
+    expect(structured).toContain('"monkeyCount":7');
+
+    const collect = (musicCli as unknown as {
+      musicSensitiveEnvironmentValues?: (environment: Record<string, string>) => string[];
+    }).musicSensitiveEnvironmentValues;
+    expect(collect?.({
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: publicationKey,
+      music_gate_attestation_key: gateKey,
+      SIGNING_PRIVATE_KEY: signingKey,
+      ENCRYPTION_CREDENTIAL: encryptionCredential,
+      MUSIC_METRIC_KEY_COUNT: "8",
+    })).toEqual([publicationKey, gateKey, signingKey, encryptionCredential]);
+  });
+
   it("preserves bounded numeric telemetry while redacting adjacent secret-shaped fields", () => {
     const persisted = sanitizeMusicCheckpointData({
       measurements: {
         load: [{
           schemaVersion: "music-load/v1",
-          metric: "owner",
+          metric: "telemetry-labels",
           ownerCalls: 200,
           invalidTokensRejected: 200,
+          distinctMetricKeySets: 1,
+          maxMetricKeys: 8,
+          forbiddenMetricKeys: 0,
+          metricKeySet: "cache,circuit,conflict,latencyMs,outcome,retryCount,singleFlight,upstreamCallCount",
           apiToken: "must-not-persist",
         }],
       },
     }) as { measurements: { load: Array<Record<string, unknown>> } };
 
     expect(persisted.measurements.load[0]?.invalidTokensRejected).toBe(200);
+    expect(persisted.measurements.load[0]?.distinctMetricKeySets).toBe(1);
+    expect(persisted.measurements.load[0]?.maxMetricKeys).toBe(8);
+    expect(persisted.measurements.load[0]?.forbiddenMetricKeys).toBe(0);
+    expect(persisted.measurements.load[0]?.metricKeySet).toBe(
+      "cache,circuit,conflict,latencyMs,outcome,retryCount,singleFlight,upstreamCallCount",
+    );
     expect(persisted.measurements.load[0]?.apiToken).toBe("[REDACTED]");
   });
 

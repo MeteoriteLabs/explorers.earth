@@ -33,6 +33,7 @@ import {
   qualificationTelemetryIsBounded,
   qualificationReportMatchesAuthority,
   qualificationTaskEnvironment,
+  qualificationTaskOutputFailure,
   qualificationTaskUsesFixtureEnvironment,
   qualificationTaskUsesStandalonePostgres,
   runMusicQualificationLane,
@@ -233,27 +234,53 @@ export function sanitizeMusicCliText(value: string, exactSensitiveValues: readon
   const exactRedacted = Array.from(new Set(exactSensitiveValues.filter((candidate) => candidate.length >= 8)))
     .sort((left, right) => right.length - left.length)
     .reduce((output, candidate) => output.split(candidate).join("[REDACTED]"), value);
+  const redactAssignment = (match: string, key: string): string => isSensitiveMusicAuthorityKey(key)
+    ? `${key}=[REDACTED]`
+    : match;
+  const redactArgument = (match: string, flag: string): string => isSensitiveMusicAuthorityKey(flag.replace(/^-+/, ""))
+    ? `${flag} [REDACTED]`
+    : match;
   return exactRedacted
     .split(root).join("<repository-root>")
     .split(root.replaceAll("\\", "/")).join("<repository-root>")
     .replace(/[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"',}]+/gi, "<developer-home>")
     .replace(/\/(?:home|Users)\/[^/\s"',}]+/g, "<developer-home>")
     .replace(/(postgres(?:ql)?:\/\/)[^:@/\s]+:[^@/\s]+@/gi, "$1[REDACTED]@")
-    .replace(/\b([A-Z][A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|AUTHORIZATION|CREDENTIAL|API_KEY)[A-Z0-9_]*)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/gi, "$1=[REDACTED]")
-    .replace(/\b(password|secret|token|api[_-]?key|authorization)\b\s*[:=]\s*[^\s,}]+/gi, "$1=[REDACTED]")
+    .replace(/\b([A-Za-z][A-Za-z0-9_-]*)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/g, redactAssignment)
+    .replace(/\b([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/g, redactAssignment)
+    .replace(/(--?[A-Za-z][A-Za-z0-9_-]*)\s+(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/g, redactArgument)
     .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [REDACTED]");
 }
 const sanitize = sanitizeMusicCliText;
-const sensitiveStructuredKey = /(?:password|secret|token|authorization|api[_-]?key|credential)/i;
+export function isSensitiveMusicAuthorityKey(key: string): boolean {
+  const segments = key
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return segments.some((segment) => [
+    "password", "passwords", "secret", "secrets", "token", "tokens", "authorization",
+    "credential", "credentials", "private", "signing", "encryption", "key", "keys",
+  ].includes(segment));
+}
+export function musicSensitiveEnvironmentValues(environment: Record<string, string>): string[] {
+  return Object.entries(environment)
+    .filter(([key, value]) => isSensitiveMusicAuthorityKey(key) && value.length >= 8)
+    .map(([, value]) => value);
+}
 export function redactStructuredData(value: unknown, exactSensitiveValues: readonly string[] = []): unknown {
   if (Array.isArray(value)) return value.map((entry) => redactStructuredData(entry, exactSensitiveValues));
   if (value && typeof value === "object") return Object.fromEntries(
     Object.entries(value).map(([key, nested]) => {
-      const safeNumericTelemetry = key === "invalidTokensRejected"
-        && typeof nested === "number" && Number.isFinite(nested) && nested >= 0;
+      const safeNumericTelemetry = [
+        "invalidTokensRejected", "distinctMetricKeySets", "maxMetricKeys", "forbiddenMetricKeys",
+      ].includes(key) && typeof nested === "number" && Number.isFinite(nested) && nested >= 0;
+      const safeMetricKeySet = key === "metricKeySet"
+        && nested === "cache,circuit,conflict,latencyMs,outcome,retryCount,singleFlight,upstreamCallCount";
       return [
         key,
-        sensitiveStructuredKey.test(key) && !safeNumericTelemetry
+        isSensitiveMusicAuthorityKey(key) && !safeNumericTelemetry && !safeMetricKeySet
           ? "[REDACTED]"
           : redactStructuredData(nested, exactSensitiveValues),
       ];
@@ -280,9 +307,7 @@ function redactedError(value: unknown): string { return sanitize(value instanceo
 function runId(): string { return `${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomBytes(4).toString("hex")}`; }
 function runDirectory(id: string): string { const directory = join(artifactRoot, id); mkdirSync(directory, { recursive: true }); return directory; }
 function currentSensitiveValues(): string[] {
-  return Object.entries(activeFixtureEnvironment)
-    .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
-    .map(([, value]) => value);
+  return musicSensitiveEnvironmentValues(activeFixtureEnvironment);
 }
 function writeArtifact(id: string, name: string, content: string): string {
   const target = join(runDirectory(id), name);
@@ -875,6 +900,10 @@ async function runQualificationTask(
         }, Math.max(1, remainingBudgetMs));
       });
       result = await Promise.race([completion, timeout]) ?? await completion;
+      const outputFailure = result.exitCode === 0
+        ? qualificationTaskOutputFailure(task.id, result.stdout, result.stderr)
+        : undefined;
+      if (outputFailure) result = { ...result, exitCode: 1, stderr: `${result.stderr}\n${outputFailure}`.trim() };
     } else if (qualificationInterruptionRequested) {
       result = { exitCode: EXIT.interrupted, stdout: "", stderr: "qualification interrupted before child start" };
     }
@@ -899,9 +928,7 @@ async function runQualificationTask(
 }
 
 async function qualificationSensitiveValues(environment: Record<string, string>): Promise<string[]> {
-  const values = Object.entries(environment)
-    .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
-    .map(([, value]) => value);
+  const values = musicSensitiveEnvironmentValues(environment);
   for (const key of [
     "MUSIC_TOKEN_SECRET_FILE_HOST",
     "MUSIC_DB_MIGRATOR_SECRET_FILE_HOST",

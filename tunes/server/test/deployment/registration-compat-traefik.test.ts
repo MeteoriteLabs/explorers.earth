@@ -97,6 +97,7 @@ describeTraefik("production registration compatibility route through Traefik", (
     if (heredocStart < 0 || heredocEnd < 0) throw new Error("production compatibility route template missing");
     const template = deploySource.slice(deploySource.indexOf("\n", heredocStart) + 1, heredocEnd)
       .replaceAll("\\`", "`")
+      .replaceAll("${router_security}", "      tls:\n        certResolver: letsencrypt")
       .replace("http://tunes-register-compat:5100", `http://host.docker.internal:${compatPort}`)
       .replace("http://${service}:5000", `http://host.docker.internal:${generalPort}`);
     const dynamic = yaml.load(template);

@@ -23,7 +23,7 @@ const resourceScope = "music-c10-release";
 const project = `music-c10-release-${randomBytes(4).toString("hex")}`;
 const registryContainer = `${project}-registry`;
 const secretVolume = `${project}-secrets`;
-const root = mkdtempSync(join(tmpdir(), `${project}-`));
+const root = privateTemporaryDirectory(join(tmpdir(), `${project}-`));
 const composeFile = join(root, "docker-compose.yml");
 const environmentFile = join(root, "production.env");
 const requestFile = join(root, "request.txt");
@@ -39,6 +39,27 @@ let labelsVerified = false;
 let secretVolumeCreated = false;
 let dockerAuthorityValidated = false;
 let dockerEndpoint = "";
+
+function privateTemporaryDirectory(prefix: string): string {
+  const directory = mkdtempSync(prefix);
+  if (process.platform !== "win32") {
+    chmodSync(directory, 0o700);
+    return directory;
+  }
+  const identity = spawnSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  const sid = identity.stdout.match(/,"([^"]+)"\s*$/)?.[1];
+  assert(identity.status === 0 && sid !== undefined, "Windows fixture identity is unavailable");
+  const hardened = spawnSync("icacls.exe", [directory, "/inheritance:r", "/grant:r",
+    `*${sid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert(hardened.status === 0, "Windows fixture root hardening failed");
+  return directory;
+}
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
