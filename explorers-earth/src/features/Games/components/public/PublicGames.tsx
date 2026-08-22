@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Gamepad2, Share2 } from "lucide-react";
 import { PUBLIC_GAME_DATA } from "../../api/query";
 import { deduplicateGames } from "../../utils/gameHelpers";
@@ -14,22 +14,7 @@ import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
 const PublicGames = () => {
   const { username } = useParams<{ username: string }>();
@@ -39,13 +24,9 @@ const PublicGames = () => {
     game: null,
   });
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
+  const creatorName = account.Account_Name || username;
 
   const { data, loading: gamesLoading, error: gamesError, refetch: refetchGames } = useQuery(PUBLIC_GAME_DATA, {
     variables: { accountDocumentId },
@@ -53,21 +34,20 @@ const PublicGames = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || gamesLoading;
+  const loading = gamesLoading;
 
   const lists: GameList[] = data?.gameLists ?? [];
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchGames();
-  }, [accountDocumentId, refetchGames, refetchUser]);
+    await refetchGames();
+  }, [refetchGames]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? gamesError,
+    error: gamesError,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !gamesError && lists.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !gamesError && lists.length === 0,
   });
 
   // Initialize analytics — auto-tracks the page view once accountId resolves
@@ -127,7 +107,7 @@ const PublicGames = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && (
         <SEO
           title={pageTitle}
           description={metaDescription}

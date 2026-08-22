@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
 import { GET_PUBLIC_GUIDE_BY_ID_QUERY, GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
-import { getPublicAccountBasicQuery } from "../api/query";
+import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import JourneyIcon from "../../../assets/icons/JourneyIcon";
 import TransportationIcon from "../../../assets/icons/TransportationIcon";
 import StayIcon from "../../../assets/icons/StayIcon";
@@ -27,6 +27,8 @@ import { toUrlSlug } from "../../../utils/formatAddress";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { PublicProfileFallbackRedirect } from "../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../routes/publicRouteResourceState";
 
 const PublicGuideDetailPage = memo(() => {
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
@@ -51,24 +53,7 @@ const PublicGuideDetailPage = memo(() => {
   };
 
 
-  // First, get account data to get account documentId
-  const {
-    data: accountData,
-    loading: accountLoading,
-    error: accountError,
-    refetch: refetchAccount,
-  } = useQuery(getPublicAccountBasicQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-  });
-
-  const accountDocumentId = accountData?.accounts?.[0]?.documentId;
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
   // Fetch all public guides to find the one matching the slug
   const {
@@ -121,14 +106,13 @@ const PublicGuideDetailPage = memo(() => {
   });
 
   const guide = data?.guide;
-  const loadingState = accountLoading || guidesLoading || loading;
-  const routeError = accountError ?? guidesError ?? error;
+  const loadingState = guidesLoading || loading;
+  const routeError = guidesError ?? error;
 
   const retry = useCallback(async () => {
-    await refetchAccount();
-    if (accountDocumentId) await refetchGuides();
+    await refetchGuides();
     if (foundGuide?.documentId) await refetchGuide();
-  }, [accountDocumentId, foundGuide?.documentId, refetchAccount, refetchGuide, refetchGuides]);
+  }, [foundGuide?.documentId, refetchGuide, refetchGuides]);
 
   usePublicRouteLifecycle({
     loading: loadingState,
@@ -136,6 +120,12 @@ const PublicGuideDetailPage = memo(() => {
     retry,
     hasUsableData: Boolean(guide),
     empty: !loadingState && !routeError && !guide,
+  });
+
+  const missingResource = shouldRedirectMissingPublicResource({
+    loading: loadingState,
+    error: routeError,
+    resource: guide,
   });
 
   // Scroll detection for sticky tabs and header visibility
@@ -662,6 +652,8 @@ const PublicGuideDetailPage = memo(() => {
       coordinates: guideCoords,
     });
   }, [guide, locationNames, username, sections, seoDescription, guideCoords]);
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   if (loadingState) {
     return (

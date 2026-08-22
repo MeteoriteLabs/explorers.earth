@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { RecommendedMovie } from "../../types";
@@ -13,16 +12,9 @@ import { PUBLIC_MOVIE_DATA } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForGenre($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      accounts {
-        documentId
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 
 
@@ -34,18 +26,14 @@ const PublicMovieGenre = () => {
 
   const genreName = slugToGenreName(genreSlug ?? "");
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
   const { data: moviesData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = useQuery(PUBLIC_MOVIE_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
 
-  const loading = userLoading || moviesLoading;
+  const loading = moviesLoading;
 
   const allMovies: RecommendedMovie[] = useMemo(() => {
     return deduplicateMovies((moviesData?.movieLists ?? []).flatMap((l: any) => l.recommended_movies ?? []));
@@ -59,17 +47,24 @@ const PublicMovieGenre = () => {
   }, [allMovies, genreSlug]);
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchMovies();
-  }, [accountDocumentId, refetchMovies, refetchUser]);
+    await refetchMovies();
+  }, [refetchMovies]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? moviesError,
+    error: moviesError,
     retry,
-    hasUsableData: Boolean(userLookup && moviesData),
-    empty: !loading && !userError && !moviesError && filteredMovies.length === 0,
+    hasUsableData: Boolean(moviesData),
+    empty: !loading && !moviesError && filteredMovies.length === 0,
   });
+
+  if (shouldRedirectMissingPublicResource({
+    loading,
+    error: moviesError,
+    resource: filteredMovies.length > 0 ? filteredMovies : null,
+  })) {
+    return <PublicProfileFallbackRedirect />;
+  }
 
   const handleMovieClick = (movie: RecommendedMovie) => {
     setSelectedMovie(movie);

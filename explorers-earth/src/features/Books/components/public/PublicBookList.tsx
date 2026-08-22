@@ -12,6 +12,8 @@ import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -51,6 +53,8 @@ const PublicBookList = () => {
     empty: !loading && !error && !rawList,
   });
 
+  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: rawList });
+
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
   }, []);
@@ -70,6 +74,8 @@ const PublicBookList = () => {
     : ["book list", "explorers"];
 
   const listImage = rawList?.cover_image?.url || (books[0]?.cover_url ? books[0].cover_url : undefined);
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   return (
     <>

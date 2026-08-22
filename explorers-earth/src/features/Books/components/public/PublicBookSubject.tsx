@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { BOOKS_BY_SUBJECT } from "../../api/query";
@@ -11,30 +11,15 @@ import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
   const subjectName = slugToSubjectName(subjectSlug ?? "");
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
@@ -47,7 +32,7 @@ const PublicBookSubject = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || booksLoading;
+  const loading = booksLoading;
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -72,16 +57,21 @@ const PublicBookSubject = () => {
   );
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchBooks();
-  }, [accountDocumentId, refetchBooks, refetchUser]);
+    await refetchBooks();
+  }, [refetchBooks]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? booksError,
+    error: booksError,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !booksError && subjectBooks.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !booksError && subjectBooks.length === 0,
+  });
+
+  const missingResource = shouldRedirectMissingPublicResource({
+    loading,
+    error: booksError,
+    resource: subjectBooks.length > 0 ? subjectBooks : null,
   });
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
@@ -91,6 +81,8 @@ const PublicBookSubject = () => {
   const pageTitle = `${subjectName} Books | ${username}'s Book List | explorers`;
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
   const seoKeywords = [subjectName, "books", `${username} books`, "explorers"];
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   return (
     <>

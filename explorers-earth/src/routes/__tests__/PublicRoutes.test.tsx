@@ -7,8 +7,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublicRouteReadinessContext } from "../../layouts/PublicRouteReadinessContext";
 import { publicRouteContract, publicRoutePath } from "../publicRouteContract";
 
+const publicRouteSources = import.meta.glob(
+  [
+    "../../layouts/*.{ts,tsx}",
+    "../../components/PublicNav.tsx",
+    "../../features/**/components/public/*.tsx",
+    "../../features/PublicHome/components/*.tsx",
+    "../../pages/public/*.tsx",
+    "../validators/*.tsx",
+  ],
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
 // 1. Hoisted state MUST be defined before vi.mock calls that reference it
-const { profileMock, readyLeaf, dummyFeature, queryState, defaultEmptyQueryResult, defaultRefetch } = vi.hoisted(() => {
+const { profileMock, readyLeaf, dummyFeature, queryState, queryOperations, defaultEmptyQueryResult, defaultRefetch } = vi.hoisted(() => {
   const refetch = vi.fn();
   const emptyResult = { data: undefined as any, loading: false, error: undefined as any, refetch };
   const state = {
@@ -29,7 +41,7 @@ const { profileMock, readyLeaf, dummyFeature, queryState, defaultEmptyQueryResul
       if (profileState.loading) {
         markLoading?.(generation);
       } else if (profileState.error) {
-        markError?.(generation, "profile", profileState.refetch);
+        markError?.(generation, "profile", profileState.refetch, false);
       } else if (profileState.data) {
         if (!profileState.data.accounts?.[0]) {
           markNotFound?.(generation);
@@ -63,6 +75,7 @@ const { profileMock, readyLeaf, dummyFeature, queryState, defaultEmptyQueryResul
     defaultRefetch: refetch,
     defaultEmptyQueryResult: emptyResult,
     queryState: state,
+    queryOperations: [] as string[],
   };
 });
 
@@ -154,11 +167,13 @@ vi.mock("@apollo/client", () => ({
       (def: any) => def.kind === "OperationDefinition"
     )?.name?.value;
 
+    if (operation) queryOperations.push(operation);
+
     if (options?.skip) {
       return defaultEmptyQueryResult;
     }
 
-    if (operation === "CheckUsername") {
+    if (operation === "PublicProfileBootstrap") {
       return queryState.username;
     }
 
@@ -216,6 +231,7 @@ describe("PublicRoutes orchestration and readiness", () => {
   beforeEach(() => {
     queryState.username = stateLoadingUsername;
     queryState.profile = stateLoadingProfile;
+    queryOperations.length = 0;
   });
 
   afterEach(() => {
@@ -230,7 +246,18 @@ describe("PublicRoutes orchestration and readiness", () => {
     render(<PublicRouteRunner initialEntries={["/alice"]} />);
 
     expect(screen.getByRole("status", { name: "Loading public profile" })).toBeInTheDocument();
-    expect(screen.queryByTestId("public-profile-shell")).toBeNull();
+    expect(screen.queryByTestId("public-route-skeleton-profile-root")).toBeNull();
+  });
+
+  it("has no legacy public-route readiness signals in route source", () => {
+    const source = Object.entries(publicRouteSources)
+      .filter(([path]) => !path.includes("PublicMusic.tsx"))
+      .map(([, contents]) => contents)
+      .join("\n");
+
+    expect(source).not.toContain("window.__publicProfileLoaded");
+    expect(source).not.toContain("ReadyOnMount");
+    expect(source).not.toContain("setIsPageLoaded");
   });
 
   it("replaces Earth with one route skeleton after username bootstrap succeeds", async () => {
@@ -241,7 +268,7 @@ describe("PublicRoutes orchestration and readiness", () => {
 
     await waitFor(() => {
       expect(screen.queryByRole("status", { name: "Loading public profile" })).toBeNull();
-      expect(screen.getAllByTestId("public-profile-shell")).toHaveLength(1);
+      expect(screen.getAllByTestId("public-route-skeleton-profile-root")).toHaveLength(1);
     });
   });
 
@@ -252,7 +279,7 @@ describe("PublicRoutes orchestration and readiness", () => {
     render(<PublicRouteRunner initialEntries={["/alice"]} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId("public-profile-shell")).toBeNull();
+      expect(screen.queryByTestId("public-route-skeleton-profile-root")).toBeNull();
     });
   });
 
@@ -357,8 +384,20 @@ describe("PublicRoutes orchestration and readiness", () => {
     render(<PublicRouteRunner initialEntries={[publicRoutePath(mapRoute, { username: "alice" })]} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId("public-profile-shell")).toBeNull();
+      expect(screen.queryByTestId("public-route-skeleton-map")).toBeNull();
     });
+  });
+
+  it("owns username bootstrap once when entering a category route directly", async () => {
+    queryState.username = stateSuccessUsername;
+
+    render(<PublicRouteRunner initialEntries={["/alice/movies"]} />);
+
+    await screen.findByText("Public route content");
+
+    expect(queryOperations.filter((operation) => operation === "PublicProfileBootstrap")).toHaveLength(1);
+    expect(queryOperations).not.toContain("PublicAccountBasic");
+    expect(queryOperations).not.toContain("CheckUsername");
   });
 
   it.each(publicRouteContract)("matches the declared $id route without a fallback", async (route) => {
@@ -502,7 +541,7 @@ describe("PublicRoutes orchestration and readiness", () => {
     const { unmount } = render(<PublicRouteRunner initialEntries={["/alice"]} />);
 
     // Shell present while profile is loading
-    expect(screen.getAllByTestId("public-profile-shell")).toHaveLength(1);
+    expect(screen.getAllByTestId("public-route-skeleton-profile-root")).toHaveLength(1);
 
     unmount();
 

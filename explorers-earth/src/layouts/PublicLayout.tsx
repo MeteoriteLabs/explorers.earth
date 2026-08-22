@@ -1,46 +1,95 @@
-import { useEffect, useCallback, useRef, useMemo, useReducer } from "react";
-import { Outlet, useLocation, useParams } from "react-router-dom";
-import PublicNav from "../components/PublicNav";
-import NotFound from "../pages/NotFound";
-import PublicProfileSkeleton from "../features/PublicHome/components/PublicProfileSkeleton";
-import PublicProfileFeedback from "../features/PublicHome/components/PublicProfileFeedback";
-import { EarthLoader } from "../components/EarthLoader";
 import {
-  PublicRouteReadinessContext,
-  type PublicRouteReadinessContextValue,
-} from "./PublicRouteReadinessContext";
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
+import { Outlet, useLocation, useMatches, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+
+import PublicNav from "../components/PublicNav";
+import { EarthLoader } from "../components/EarthLoader";
+import PublicProfileFeedback from "../features/PublicHome/components/PublicProfileFeedback";
+import { getThemeTokenStyles } from "../features/Profile/constants/themePresets";
+import { normalizeThemeSettings } from "../features/Profile/constants/recommendationsPresentation";
+import NotFound from "../pages/NotFound";
+import {
+  publicRouteContract,
+  type PublicRouteContractEntry,
+} from "../routes/publicRouteContract";
+import type { PublicProfileFallbackLocationState } from "../routes/PublicProfileFallbackRedirect";
+import {
+  PublicProfileBootstrapProvider,
+  usePublicProfileBootstrap,
+} from "./PublicProfileBootstrapContext";
+import { PublicRouteReadinessContext, type PublicRouteReadinessContextValue } from "./PublicRouteReadinessContext";
+import { PublicRouteSkeleton } from "./PublicRouteSkeleton";
 import {
   createGenerationBoundRouteActions,
   createInitialPublicRouteState,
   publicRouteReadinessReducer,
   type PublicRouteErrorSource,
+  type PublicRouteReadinessState,
 } from "./publicRouteReadiness";
-import { useTranslation } from "react-i18next";
 
-const PublicLayout = () => {
+function matchedPublicRoute(matches: ReturnType<typeof useMatches>): PublicRouteContractEntry | undefined {
+  const ids = new Set(matches.map((match) => match.id));
+  return publicRouteContract.find((route) => ids.has(route.id));
+}
+
+function focusFirstContentHeading() {
+  const heading = document.querySelector<HTMLElement>(
+    "main [data-public-route-content] h1, main [data-public-route-content] h2",
+  );
+  if (!heading) return;
+  if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+  heading.focus({ preventScroll: true });
+}
+
+function PublicLayoutContent() {
   const location = useLocation();
-  const { username } = useParams();
+  const matches = useMatches();
+  const { username } = useParams<{ username: string }>();
   const { t } = useTranslation();
-
-  const generation = useMemo(() => `${username || ""}:${location.key}`, [username, location.key]);
+  const bootstrap = usePublicProfileBootstrap();
+  const route = matchedPublicRoute(matches);
+  const generation = useMemo(
+    () => `${username ?? ""}:${location.key}`,
+    [location.key, username],
+  );
   const generationRef = useRef(generation);
   generationRef.current = generation;
-  const resetGenerationRef = useRef(generation);
+  const previousBootstrapKeyRef = useRef(bootstrap.bootstrapKey);
+  const retryRef = useRef<(() => Promise<unknown>) | null>(null);
 
   const [readiness, dispatch] = useReducer(
     publicRouteReadinessReducer,
     generation,
     createInitialPublicRouteState,
   );
-  const retryRef = useRef<(() => Promise<unknown>) | null>(null);
 
-  // Reset state on generation change
-  useEffect(() => {
-    if (resetGenerationRef.current === generation) return;
-    resetGenerationRef.current = generation;
-    retryRef.current = null;
-    dispatch({ type: "begin-bootstrap", generation });
-  }, [generation]);
+  useLayoutEffect(() => {
+    const bootstrapChanged = previousBootstrapKeyRef.current !== bootstrap.bootstrapKey;
+    if (bootstrapChanged) {
+      previousBootstrapKeyRef.current = bootstrap.bootstrapKey;
+      retryRef.current = null;
+      dispatch({ type: "begin-bootstrap", generation });
+      if (bootstrap.status === "ready") {
+        dispatch({ type: "begin-route", generation });
+      }
+      return;
+    }
+
+    if (
+      bootstrap.status === "ready" &&
+      (readiness.generation !== generation || readiness.status === "validating-bootstrap")
+    ) {
+      retryRef.current = null;
+      dispatch({ type: "begin-route", generation });
+    }
+  }, [bootstrap.bootstrapKey, bootstrap.status, generation, readiness.generation, readiness.status]);
 
   const actions = useMemo(
     () =>
@@ -52,39 +101,54 @@ const PublicLayout = () => {
     [generation],
   );
 
-  const markLoading = useCallback((gen: string) => {
-    dispatch({ type: "begin-route", generation: gen });
+  const markLoading = useCallback((eventGeneration: string) => {
+    dispatch({ type: "begin-route", generation: eventGeneration });
   }, []);
-
-  const markReady = useCallback((gen: string) => {
-    dispatch({ type: "ready", generation: gen });
+  const markReady = useCallback((eventGeneration: string) => {
+    dispatch({ type: "ready", generation: eventGeneration });
   }, []);
-
-  const markRefreshing = useCallback((gen: string) => {
-    dispatch({ type: "refreshing", generation: gen });
+  const markRefreshing = useCallback((eventGeneration: string) => {
+    dispatch({ type: "refreshing", generation: eventGeneration });
   }, []);
-
-  const markEmpty = useCallback((gen: string) => {
-    dispatch({ type: "empty", generation: gen });
+  const markEmpty = useCallback((eventGeneration: string) => {
+    dispatch({ type: "empty", generation: eventGeneration });
   }, []);
-
-  const markNotFound = useCallback((gen: string) => {
-    dispatch({ type: "not-found", generation: gen });
+  const markNotFound = useCallback((eventGeneration: string) => {
+    dispatch({ type: "not-found", generation: eventGeneration });
   }, []);
-
   const markError = useCallback(
-    (gen: string, source: PublicRouteErrorSource, retryFn: () => Promise<unknown>) => {
-      if (gen !== generationRef.current) return;
-      retryRef.current = retryFn;
-      dispatch({ type: "failed", generation: gen, source });
+    (
+      eventGeneration: string,
+      source: PublicRouteErrorSource,
+      retry: () => Promise<unknown>,
+      hasUsableContent: boolean,
+    ) => {
+      if (eventGeneration !== generationRef.current) return;
+      retryRef.current = retry;
+      dispatch({
+        type: "failed",
+        generation: eventGeneration,
+        source,
+        hasUsableContent,
+      });
     },
-    []
+    [],
   );
+
+  const effectiveReadiness = useMemo<PublicRouteReadinessState>(() => {
+    if (readiness.generation !== generation) {
+      return { generation, status: "initial-loading" };
+    }
+    if (bootstrap.status === "ready" && readiness.status === "validating-bootstrap") {
+      return { generation, status: "initial-loading" };
+    }
+    return readiness;
+  }, [bootstrap.status, generation, readiness]);
 
   const contextValue = useMemo<PublicRouteReadinessContextValue>(
     () => ({
       generation,
-      readiness,
+      readiness: effectiveReadiness,
       markLoading,
       markReady,
       markRefreshing,
@@ -92,59 +156,166 @@ const PublicLayout = () => {
       markNotFound,
       markError,
     }),
-    [generation, readiness, markLoading, markReady, markRefreshing, markEmpty, markNotFound, markError]
+    [effectiveReadiness, generation, markEmpty, markError, markLoading, markNotFound, markReady, markRefreshing],
   );
 
-  // Check if current route is a map route
-  const isMapRoute = location.pathname.includes("/map") || location.pathname.includes("/placesmap");
-  const isPageLoaded = readiness.status === "ready" || readiness.status === "empty" || readiness.status === "refreshing";
+  const previousReadinessRef = useRef<PublicRouteReadinessState>(effectiveReadiness);
+  const focusedFallbackKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = previousReadinessRef.current;
+    const isSettled = effectiveReadiness.status === "ready" || effectiveReadiness.status === "empty";
+    const recovered = previous.status === "error" && isSettled;
+    const fallbackState = location.state as PublicProfileFallbackLocationState | null;
+    const landedFromFallback =
+      route?.id === "profile" &&
+      fallbackState?.publicProfileFallback === true &&
+      focusedFallbackKeyRef.current !== location.key &&
+      isSettled;
+
+    if (recovered || landedFromFallback) {
+      if (landedFromFallback) focusedFallbackKeyRef.current = location.key;
+      window.requestAnimationFrame(focusFirstContentHeading);
+    }
+
+    previousReadinessRef.current = effectiveReadiness;
+  }, [effectiveReadiness, location.key, location.state, route?.id]);
+
+  if (bootstrap.status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <EarthLoader context="general" size="default" />
+      </div>
+    );
+  }
+
+  if (bootstrap.status === "not-found" || effectiveReadiness.status === "not-found") {
+    return <NotFound />;
+  }
+
+  if (bootstrap.status === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black px-4">
+        <PublicProfileFeedback
+          kind="all-error"
+          focusOnMount
+          title={t("publicProfile.error.verifyTitle", "Couldn’t verify this profile")}
+          description={t(
+            "publicProfile.error.description",
+            "Please check your connection and try again.",
+          )}
+          retrying={bootstrap.retrying}
+          onRetry={() => void bootstrap.retry().catch(() => undefined)}
+        />
+      </div>
+    );
+  }
+
+  const skeletonKind = route?.skeleton ?? "profile-root";
+  const isMapRoute = route?.shell === "map";
+  const showContent =
+    effectiveReadiness.status === "ready" ||
+    effectiveReadiness.status === "empty" ||
+    effectiveReadiness.status === "refreshing" ||
+    (effectiveReadiness.status === "error" && effectiveReadiness.hasUsableContent);
+  const isRefreshing = effectiveReadiness.status === "refreshing";
+  const leafRefreshFailed =
+    effectiveReadiness.status === "error" && effectiveReadiness.hasUsableContent;
+  const bootstrapRefreshFailed = Boolean(bootstrap.refreshError);
+  const refreshFailed = leafRefreshFailed || bootstrapRefreshFailed;
+  const themeSettings = normalizeThemeSettings(
+    (bootstrap.account.social_media as { theme_settings?: unknown } | null | undefined)
+      ?.theme_settings,
+  );
+
+  const retryLeaf = () => {
+    const retry = retryRef.current;
+    if (retry) void actions.retry(retry).catch(() => undefined);
+  };
 
   return (
     <PublicRouteReadinessContext.Provider value={contextValue}>
-      {readiness.status === "not-found" ? (
-        <NotFound />
-      ) : readiness.status === "validating-bootstrap" ? (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <EarthLoader context="general" size="default" />
-          <div className="hidden" aria-hidden="true">
-            <Outlet />
+      <div
+        className="min-h-screen"
+        style={{
+          ...getThemeTokenStyles(themeSettings),
+          backgroundColor: "var(--bg-page)",
+          color: "var(--text-primary)",
+        }}
+      >
+        {!isMapRoute && <PublicNav />}
+
+        {(isRefreshing || bootstrap.refreshing) && (
+          <div
+            data-testid="public-route-refresh-progress"
+            aria-hidden="true"
+            className="fixed inset-x-0 top-0 z-[60] h-0.5 overflow-hidden bg-[var(--border-card)]"
+          >
+            <div className="h-full w-1/3 animate-pulse bg-[var(--accent-color)] motion-reduce:animate-none" />
           </div>
-        </div>
-      ) : isPageLoaded ? (
-        <>
-          {isPageLoaded && !isMapRoute && <PublicNav />}
-          <main>
-            <Outlet />
-          </main>
-        </>
-      ) : (
-        <>
-          <PublicProfileSkeleton />
-          {readiness.status === "error" && (
+        )}
+
+        <main aria-busy={isRefreshing || bootstrap.refreshing ? "true" : "false"}>
+          {effectiveReadiness.status === "initial-loading" && (
+            <PublicRouteSkeleton kind={skeletonKind} />
+          )}
+
+          {effectiveReadiness.status === "error" && !effectiveReadiness.hasUsableContent && (
             <PublicProfileFeedback
               kind="all-error"
+              focusOnMount
               title={
-                readiness.source === "username"
-                  ? t("publicProfile.error.verifyTitle", "Couldn’t verify this profile")
-                  : readiness.source === "profile"
-                    ? t("publicProfile.error.loadTitle", "Couldn’t load this profile")
-                    : t("publicProfile.error.sectionTitle", "Couldn’t load this section")
+                effectiveReadiness.source === "profile"
+                  ? t("publicProfile.error.loadTitle", "Couldn’t load this profile")
+                  : t("publicProfile.error.sectionTitle", "Couldn’t load this section")
               }
-              description={t("publicProfile.error.description", "Please check your connection and try again.")}
-              retrying={readiness.retrying}
-              onRetry={() => {
-                const retry = retryRef.current;
-                if (retry) void actions.retry(retry).catch(() => undefined);
-              }}
+              description={t(
+                "publicProfile.error.description",
+                "Please check your connection and try again.",
+              )}
+              retrying={effectiveReadiness.retrying}
+              onRetry={retryLeaf}
             />
           )}
-          <div className="hidden" aria-hidden="true">
+
+          <div
+            data-public-route-content
+            className={showContent ? undefined : "hidden"}
+            aria-hidden={showContent ? undefined : true}
+          >
             <Outlet />
           </div>
-        </>
-      )}
+
+          {refreshFailed && (
+            <PublicProfileFeedback
+              kind="partial-error"
+              title={t(
+                "publicProfile.error.refreshTitle",
+                "Couldn’t refresh this section",
+              )}
+              retrying={
+                bootstrapRefreshFailed
+                  ? bootstrap.retrying
+                  : effectiveReadiness.status === "error"
+                    ? effectiveReadiness.retrying
+                    : false
+              }
+              onRetry={
+                bootstrapRefreshFailed
+                  ? () => void bootstrap.retry().catch(() => undefined)
+                  : retryLeaf
+              }
+            />
+          )}
+        </main>
+      </div>
     </PublicRouteReadinessContext.Provider>
   );
-};
+}
 
-export default PublicLayout;
+export default function PublicLayout() {
+  return (
+    <PublicProfileBootstrapProvider>
+      <PublicLayoutContent />
+    </PublicProfileBootstrapProvider>
+  );
+}

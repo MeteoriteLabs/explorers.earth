@@ -10,6 +10,8 @@ import RecommendationCardSkeleton from "../../../components/ui/RecommendationCar
 import PublicPlaceCard from "./PublicPlaceCard";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { usePublicRouteLifecycle } from "../../../layouts/usePublicRouteLifecycle";
+import { PublicProfileFallbackRedirect } from "../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../routes/publicRouteResourceState";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import PlaceOverview from "./PlaceDetails/PlaceOverview";
@@ -335,14 +337,7 @@ const PublicHome = memo(() => {
           (list: City) =>
             toUrlSlug(list.List_Name || "") === placeSlug.toLowerCase()
         );
-        // If found city exists in published list, select it, otherwise select first published city
-        // Additional validation: ensure city is published before selecting
-        const cityToSelect = city || PublishedCities[0];
-        if (cityToSelect && cityToSelect.Visibility === true) {
-          setSelectedCity(cityToSelect);
-        } else if (PublishedCities[0]?.Visibility === true) {
-          setSelectedCity(PublishedCities[0]);
-        }
+        setSelectedCity(city?.Visibility === true ? city : undefined);
       } else {
         // Auto-select the first PUBLISHED city when no placeSlug is provided
         // Additional validation: ensure city is published
@@ -1004,6 +999,19 @@ const PublicHome = memo(() => {
       setActiveHeroIndex(0);
     }
   }, [heroSlides.length, activeHeroIndex]);
+
+  const matchedPlaceResource = !placeSlug
+    ? true
+    : PublishedCities.find(
+        (city: City) => toUrlSlug(city.List_Name || "") === placeSlug.toLowerCase(),
+      );
+  if (shouldRedirectMissingPublicResource({
+    loading,
+    error,
+    resource: matchedPlaceResource,
+  })) {
+    return <PublicProfileFallbackRedirect />;
+  }
 
   return (
     <>

@@ -6,7 +6,7 @@ import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
 import { GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
-import { getPublicAccountBasicQuery } from "../api/query";
+import { usePublicProfileBootstrapAccount } from "../../../layouts/PublicProfileBootstrapContext";
 import type { Guide } from "../../Guides/types";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
@@ -43,27 +43,8 @@ const PublicGuides = memo(() => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeHeroIndex, setActiveHeroIndex] = useState<number>(0);
 
-  // First, get account data to get account documentId
-  const {
-    data: accountData,
-    loading: accountLoading,
-    error: accountError,
-    refetch: refetchAccount,
-  } = useQuery(
-    getPublicAccountBasicQuery,
-    {
-      variables: {
-        filters: {
-          username: {
-            eq: username,
-          },
-        },
-      },
-      skip: !username,
-    }
-  );
-
-  const accountDocumentId = accountData?.accounts?.[0]?.documentId;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
 
   // Fetch public guides with account filter and visibility filter
   const {
@@ -98,14 +79,12 @@ const PublicGuides = memo(() => {
   });
 
   const allGuides: Guide[] = guidesData?.guides || [];
-  const account = accountData?.accounts?.[0];
-  const loading = accountLoading || guidesLoading;
-  const error = accountError ?? guidesError;
+  const loading = guidesLoading;
+  const error = guidesError;
 
   const retry = useCallback(async () => {
-    await refetchAccount();
-    if (accountDocumentId) await refetchGuides();
-  }, [accountDocumentId, refetchAccount, refetchGuides]);
+    await refetchGuides();
+  }, [refetchGuides]);
 
   usePublicRouteLifecycle({
     loading,
@@ -516,7 +495,7 @@ const PublicGuides = memo(() => {
         description={metaDescription}
         keywords={keywords}
         canonical={currentUrl}
-        image={profileImage}
+        image={profileImage ?? undefined}
         url={currentUrl}
         type="website"
         author={profileName}

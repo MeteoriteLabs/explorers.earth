@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { RecommendedGame } from "../../types";
@@ -12,16 +11,9 @@ import { PUBLIC_GAME_DATA } from "../../api/query";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForGenre($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      accounts {
-        documentId
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicGamesGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
@@ -31,18 +23,14 @@ const PublicGamesGenre = () => {
 
   const genreName = slugToGenreName(genreSlug ?? "");
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
+  const accountDocumentId = usePublicProfileBootstrapAccount().documentId;
 
   const { data: gamesData, loading: gamesLoading, error: gamesError, refetch: refetchGames } = useQuery(PUBLIC_GAME_DATA, {
     variables: { accountDocumentId },
     skip: !accountDocumentId,
   });
 
-  const loading = userLoading || gamesLoading;
+  const loading = gamesLoading;
 
   const allGames: RecommendedGame[] = useMemo(() => {
     return deduplicateGames((gamesData?.gameLists ?? []).flatMap((l: any) => l.recommended_games ?? []));
@@ -56,17 +44,24 @@ const PublicGamesGenre = () => {
   }, [allGames, genreSlug]);
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchGames();
-  }, [accountDocumentId, refetchGames, refetchUser]);
+    await refetchGames();
+  }, [refetchGames]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? gamesError,
+    error: gamesError,
     retry,
-    hasUsableData: Boolean(userLookup && gamesData),
-    empty: !loading && !userError && !gamesError && filteredGames.length === 0,
+    hasUsableData: Boolean(gamesData),
+    empty: !loading && !gamesError && filteredGames.length === 0,
   });
+
+  if (shouldRedirectMissingPublicResource({
+    loading,
+    error: gamesError,
+    resource: filteredGames.length > 0 ? filteredGames : null,
+  })) {
+    return <PublicProfileFallbackRedirect />;
+  }
 
   const handleGameClick = (game: RecommendedGame) => {
     setSelectedGame(game);

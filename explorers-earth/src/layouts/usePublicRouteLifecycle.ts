@@ -31,14 +31,14 @@ export function usePublicRouteLifecycle({
   useEffect(() => {
     if (!hasContext) return;
 
-    if (loading) {
-      if (hasUsableData) markRefreshing?.(generation);
-      else markLoading?.(generation);
+    if (error) {
+      markError?.(generation, "route", retry, hasUsableData);
       return;
     }
 
-    if (error && !hasUsableData) {
-      markError?.(generation, "route", retry);
+    if (loading) {
+      if (hasUsableData) markRefreshing?.(generation);
+      else markLoading?.(generation);
       return;
     }
 

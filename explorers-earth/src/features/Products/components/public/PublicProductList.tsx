@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { ShoppingBag, Share2, ArrowLeft } from "lucide-react";
 import { PRODUCT_LIST_BY_SLUG } from "../../api/query";
 import { deduplicateProducts, buildImageUrl, formatPrice } from "../../utils/productHelpers";
@@ -10,29 +10,16 @@ import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForProductList($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicProductList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const account = usePublicProfileBootstrapAccount();
 
   const { data, loading, error, refetch } = useQuery<{ productLists: ProductList[] }>(PRODUCT_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
@@ -42,7 +29,7 @@ const PublicProductList = () => {
 
   const list = data?.productLists?.[0];
   const products = deduplicateProducts<RecommendedProduct>(list?.recommended_products ?? []);
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const creatorName = account.Account_Name || username;
 
   usePublicRouteLifecycle({
     loading,
@@ -51,6 +38,8 @@ const PublicProductList = () => {
     hasUsableData: Boolean(data),
     empty: !loading && !error && !list,
   });
+
+  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setSelectedProduct(product);
@@ -78,6 +67,8 @@ const PublicProductList = () => {
     : ["product list", "explorers"];
 
   const listImage = list?.cover_image?.url || (products[0]?.logo_url ? buildImageUrl(products[0].logo_url) : undefined);
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   return (
     <>

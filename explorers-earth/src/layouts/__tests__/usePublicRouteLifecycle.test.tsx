@@ -79,6 +79,32 @@ describe("usePublicRouteLifecycle", () => {
       "alice:key-a",
       "route",
       retry,
+      false,
+    );
+    expect(context.markReady).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh failure without discarding usable route data", () => {
+    const context = makeContext();
+    const retry = vi.fn().mockResolvedValue(undefined);
+    const error = new Error("refresh failed");
+
+    renderHook(
+      () =>
+        usePublicRouteLifecycle({
+          loading: false,
+          error,
+          retry,
+          hasUsableData: true,
+        }),
+      { wrapper: wrapperFor(context) },
+    );
+
+    expect(context.markError).toHaveBeenCalledWith(
+      "alice:key-a",
+      "route",
+      retry,
+      true,
     );
     expect(context.markReady).not.toHaveBeenCalled();
   });

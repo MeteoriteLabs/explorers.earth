@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { ShoppingBag, Share2 } from "lucide-react";
 import { PUBLIC_PRODUCT_DATA } from "../../api/query";
 import { deduplicateProducts } from "../../utils/productHelpers";
@@ -14,22 +14,7 @@ import ProductTopPicksHero from "./ProductTopPicksHero";
 import ProductTopPicksMobileHero from "./ProductTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameProducts($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
 const PublicProducts = () => {
   const { username } = useParams<{ username: string }>();
@@ -39,13 +24,9 @@ const PublicProducts = () => {
     product: null,
   });
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
+  const creatorName = account.Account_Name || username;
 
   const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PUBLIC_PRODUCT_DATA, {
     variables: { accountDocumentId },
@@ -53,21 +34,20 @@ const PublicProducts = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || productsLoading;
+  const loading = productsLoading;
 
   const lists: ProductList[] = data?.productLists ?? [];
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchProducts();
-  }, [accountDocumentId, refetchProducts, refetchUser]);
+    await refetchProducts();
+  }, [refetchProducts]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? productsError,
+    error: productsError,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !productsError && lists.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !productsError && lists.length === 0,
   });
 
   const allProducts = useMemo(() => {
@@ -117,7 +97,7 @@ const PublicProducts = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && (
         <SEO
           title={pageTitle}
           description={metaDescription}

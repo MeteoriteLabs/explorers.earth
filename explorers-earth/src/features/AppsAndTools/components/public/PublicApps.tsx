@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Smartphone, Share2 } from "lucide-react";
 import { PUBLIC_APP_DATA } from "../../api/query";
 import { deduplicateApps } from "../../utils/appHelpers";
@@ -14,22 +14,7 @@ import AppTopPicksHero from "./AppTopPicksHero";
 import AppTopPicksMobileHero from "./AppTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameApps($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
 const PublicApps = () => {
   const { username } = useParams<{ username: string }>();
@@ -39,13 +24,9 @@ const PublicApps = () => {
     app: null,
   });
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
+  const creatorName = account.Account_Name || username;
 
   const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = useQuery(PUBLIC_APP_DATA, {
     variables: { accountDocumentId },
@@ -53,21 +34,20 @@ const PublicApps = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || appsLoading;
+  const loading = appsLoading;
 
   const lists: AppList[] = data?.appLists ?? [];
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchApps();
-  }, [accountDocumentId, refetchApps, refetchUser]);
+    await refetchApps();
+  }, [refetchApps]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? appsError,
+    error: appsError,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !appsError && lists.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !appsError && lists.length === 0,
   });
 
   const allApps = useMemo(() => {
@@ -117,7 +97,7 @@ const PublicApps = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && (
         <SEO
           title={pageTitle}
           description={metaDescription}

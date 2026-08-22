@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { PUBLIC_BOOK_DATA } from "../../api/query";
@@ -17,29 +17,13 @@ import useDeviceDetection from "../../../../hooks/useDeviceDetection";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
 const PublicBooks = () => {
   const { username } = useParams<{ username: string }>();
   const { isDesktop } = useDeviceDetection();
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
 
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
@@ -52,7 +36,7 @@ const PublicBooks = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || booksLoading;
+  const loading = booksLoading;
 
   // Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
@@ -65,16 +49,15 @@ const PublicBooks = () => {
   }));
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchBooks();
-  }, [accountDocumentId, refetchBooks, refetchUser]);
+    await refetchBooks();
+  }, [refetchBooks]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? booksError,
+    error: booksError,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !booksError && lists.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !booksError && lists.length === 0,
   });
 
   // Collect all pinned books across all lists (Top Reads)
@@ -112,7 +95,7 @@ const PublicBooks = () => {
 
   const hasContent = lists.length > 0;
 
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username || "User";
+  const creatorName = account.Account_Name || username || "User";
   const profileName = creatorName;
   const bookCount = allBooks.length;
   const listCount = lists.length;
@@ -134,7 +117,7 @@ const PublicBooks = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && (
         <SEO
           title={pageTitle}
           description={metaDescription}

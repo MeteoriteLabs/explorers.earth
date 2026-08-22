@@ -11,6 +11,8 @@ import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -33,6 +35,10 @@ const PublicMovieList = () => {
     hasUsableData: Boolean(data),
     empty: !loading && !error && !list,
   });
+
+  if (shouldRedirectMissingPublicResource({ loading, error, resource: list })) {
+    return <PublicProfileFallbackRedirect />;
+  }
 
   const handleMovieClick = (movie: RecommendedMovie) => {
     setSelectedMovie(movie);

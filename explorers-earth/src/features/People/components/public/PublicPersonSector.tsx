@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PUBLIC_PEOPLE_DATA } from "../../api/query";
 import {
@@ -16,19 +16,9 @@ import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForPersonSector($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
@@ -37,13 +27,9 @@ const PublicPersonSector = () => {
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
+  const creatorName = account.Account_Name || username;
 
   const { data, loading: peopleLoading, error, refetch: refetchPeople } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
     variables: { accountDocumentId },
@@ -51,7 +37,7 @@ const PublicPersonSector = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || peopleLoading;
+  const loading = peopleLoading;
 
   const lists = data?.personLists ?? [];
 
@@ -69,16 +55,21 @@ const PublicPersonSector = () => {
   }, [allPeople, sectorSlug]);
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchPeople();
-  }, [accountDocumentId, refetchPeople, refetchUser]);
+    await refetchPeople();
+  }, [refetchPeople]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? error,
+    error,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !error && sectorPeople.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !error && sectorPeople.length === 0,
+  });
+
+  const missingResource = shouldRedirectMissingPublicResource({
+    loading,
+    error,
+    resource: sectorPeople.length > 0 ? sectorPeople : null,
   });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
@@ -102,6 +93,8 @@ const PublicPersonSector = () => {
   const pageTitle = `${sectorName} | ${creatorName}'s People Sector | explorers`;
   const metaDescription = `Explore ${sectorPeople.length} people in ${sectorName} recommended by ${creatorName} on explorers.`;
   const seoKeywords = [sectorName, `${creatorName} people`, "people list", "explorers"];
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   return (
     <>

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import { Gamepad2, ArrowLeft, Star, Share2 } from "lucide-react";
+import { ArrowLeft, Star, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { GAME_LIST_BY_SLUG } from "../../api/query";
 import { deduplicateGames, buildCoverUrl } from "../../utils/gameHelpers";
@@ -11,6 +11,8 @@ import GameCoverCard from "./GameCoverCard";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -38,6 +40,8 @@ const PublicGamesList = () => {
     empty: !loading && !error && !list,
   });
 
+  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
+
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -64,18 +68,8 @@ const PublicGamesList = () => {
     );
   }
 
-  if (!list) {
-    return (
-      <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center px-4 text-center">
-        <Gamepad2 size={64} className="text-white/10 mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">List not found</h2>
-        <p className="text-white/50 mb-6">This game list doesn't exist or is private.</p>
-        <button onClick={() => navigate(`/${username}/games`)} className="text-amber-500 font-semibold hover:underline">
-          Back to Games
-        </button>
-      </div>
-    );
-  }
+  if (missingResource) return <PublicProfileFallbackRedirect />;
+  if (!list) return null;
 
   const coverUrl = buildCoverUrl(list.cover_image?.url);
 

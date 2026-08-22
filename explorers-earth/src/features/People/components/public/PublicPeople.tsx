@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Users, Share2 } from "lucide-react";
 import { PUBLIC_PEOPLE_DATA } from "../../api/query";
 import { deduplicatePeople, extractUniqueCategories } from "../../utils/personHelpers";
@@ -14,22 +14,7 @@ import PersonTopPicksHero from "./PersonTopPicksHero";
 import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernamePeople($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
 const PublicPeople = () => {
   const { username } = useParams<{ username: string }>();
@@ -39,13 +24,9 @@ const PublicPeople = () => {
     person: null,
   });
 
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
+  const creatorName = account.Account_Name || username;
 
   const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = useQuery(PUBLIC_PEOPLE_DATA, {
     variables: { accountDocumentId },
@@ -53,21 +34,20 @@ const PublicPeople = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const loading = userLoading || peopleLoading;
+  const loading = peopleLoading;
 
   const lists: PersonList[] = data?.personLists ?? [];
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchPeople();
-  }, [accountDocumentId, refetchPeople, refetchUser]);
+    await refetchPeople();
+  }, [refetchPeople]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? peopleError,
+    error: peopleError,
     retry,
-    hasUsableData: Boolean(userLookup && data),
-    empty: !loading && !userError && !peopleError && lists.length === 0,
+    hasUsableData: Boolean(data),
+    empty: !loading && !peopleError && lists.length === 0,
   });
 
   const allPeople = useMemo(() => {
@@ -116,7 +96,7 @@ const PublicPeople = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && (
         <SEO
           title={pageTitle}
           description={metaDescription}

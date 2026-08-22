@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Smartphone, Share2, ArrowLeft } from "lucide-react";
 import { APP_LIST_BY_SLUG } from "../../api/query";
 import { deduplicateApps, buildLogoUrl, getPriceTierColor } from "../../utils/appHelpers";
@@ -10,29 +10,16 @@ import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForAppList($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicAppList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
   const [selectedApp, setSelectedApp] = useState<RecommendedApp | null>(null);
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const account = usePublicProfileBootstrapAccount();
 
   const { data, loading, error, refetch } = useQuery<{ appLists: AppList[] }>(APP_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
@@ -42,7 +29,7 @@ const PublicAppList = () => {
 
   const list = data?.appLists?.[0];
   const apps = deduplicateApps<RecommendedApp>(list?.recommended_apps ?? []);
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const creatorName = account.Account_Name || username;
 
   usePublicRouteLifecycle({
     loading,
@@ -51,6 +38,8 @@ const PublicAppList = () => {
     hasUsableData: Boolean(data),
     empty: !loading && !error && !list,
   });
+
+  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setSelectedApp(app);
@@ -78,6 +67,8 @@ const PublicAppList = () => {
     : ["app list", "explorers"];
 
   const listImage = list?.cover_image?.url || (apps[0]?.logo_url ? buildLogoUrl(apps[0].logo_url) : undefined);
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   return (
     <>

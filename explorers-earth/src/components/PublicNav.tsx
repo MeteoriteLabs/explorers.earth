@@ -7,38 +7,18 @@ import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
-import {
-  getPublicAccountBasicQuery,
-  getPublicCategoryListCountsQuery,
-} from "../features/PublicHome/api/query";
+import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
 import { computePinnedNavTabIds } from "../utils/navPinning";
+import { usePublicProfileBootstrap } from "../layouts/PublicProfileBootstrapContext";
 
 const PublicNav = memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const { username } = useParams();
+  const bootstrap = usePublicProfileBootstrap();
+  const accountData = bootstrap.status === "ready" ? bootstrap.account : undefined;
 
-  // Query to get account data for tab visibility
-  const { data, loading } = useQuery(getPublicAccountBasicQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-    // Revalidate on mount so "View Public Page" reflects the owner's latest
-    // visibility/pin config. Account isn't normalized in apolloCache, so a hub
-    // edit to pinned_nav_tabs/visibility doesn't patch this separate cache-first
-    // query; without this it would show stale config until a hard reload.
-    fetchPolicy: "cache-and-network",
-  });
-
-  const accountData = data?.accounts[0];
-
-  // Second query: fetch published list counts per category (for smart auto-fill ranking).
-  // Only runs after the account document ID is available from the first query.
+  // Fetch published list counts for smart auto-fill ranking after bootstrap resolves.
   const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
     variables: {
       accountDocumentId: accountData?.documentId,
@@ -145,7 +125,7 @@ const PublicNav = memo(() => {
   }), [listCountsData]);
 
   // Don't render tabs until account data is loaded to prevent flash of default tabs
-  if (loading || !accountData) {
+  if (!accountData) {
     return (
       <div className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center p-1  shadow-md">
         <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">

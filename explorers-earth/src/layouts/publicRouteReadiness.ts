@@ -11,6 +11,7 @@ export type PublicRouteReadinessState =
       generation: string;
       status: "error";
       source: PublicRouteErrorSource;
+      hasUsableContent: boolean;
       retrying: boolean;
     };
 
@@ -21,7 +22,12 @@ export type PublicRouteReadinessEvent =
   | { type: "empty"; generation: string }
   | { type: "refreshing"; generation: string }
   | { type: "not-found"; generation: string }
-  | { type: "failed"; generation: string; source: PublicRouteErrorSource }
+  | {
+      type: "failed";
+      generation: string;
+      source: PublicRouteErrorSource;
+      hasUsableContent: boolean;
+    }
   | { type: "retry-started"; generation: string }
   | { type: "retry-finished"; generation: string };
 
@@ -37,6 +43,10 @@ export function publicRouteReadinessReducer(
 ): PublicRouteReadinessState {
   if (event.type === "begin-bootstrap") {
     return createInitialPublicRouteState(event.generation);
+  }
+
+  if (event.type === "begin-route" && event.generation !== state.generation) {
+    return { generation: event.generation, status: "initial-loading" };
   }
 
   if (event.generation !== state.generation) {
@@ -65,11 +75,18 @@ export function publicRouteReadinessReducer(
         ? state
         : { generation: event.generation, status: "not-found" };
     case "failed":
-      if (state.status === "error" && state.source === event.source) return state;
+      if (
+        state.status === "error" &&
+        state.source === event.source &&
+        state.hasUsableContent === event.hasUsableContent
+      ) {
+        return state;
+      }
       return {
         generation: event.generation,
         status: "error",
         source: event.source,
+        hasUsableContent: event.hasUsableContent,
         retrying: false,
       };
     case "retry-started":
@@ -102,8 +119,8 @@ export function createGenerationBoundRouteActions({
     empty: () => emit({ type: "empty", generation }),
     refreshing: () => emit({ type: "refreshing", generation }),
     notFound: () => emit({ type: "not-found", generation }),
-    fail: (source: PublicRouteErrorSource) =>
-      emit({ type: "failed", generation, source }),
+    fail: (source: PublicRouteErrorSource, hasUsableContent: boolean) =>
+      emit({ type: "failed", generation, source, hasUsableContent }),
     retry: async (operation: () => Promise<unknown>) => {
       if (retryInFlight || !isCurrent()) return;
 

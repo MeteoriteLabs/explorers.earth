@@ -13,40 +13,19 @@ import GenreBrowse from "./GenreBrowse";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
-import { gql } from "@apollo/client";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
 
 const PublicMovies = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  // Step 1: Resolve account documentId from username
-  const { data: userLookup, loading: userLoading, error: userError, refetch: refetchUser } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const account = usePublicProfileBootstrapAccount();
+  const accountDocumentId = account.documentId;
+  const creatorName = account.Account_Name || username;
 
   // Step 2: Fetch movie data
   const { data: movieData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = useQuery(PUBLIC_MOVIE_DATA, {
@@ -54,21 +33,20 @@ const PublicMovies = () => {
     skip: !accountDocumentId,
   });
 
-  const loading = userLoading || moviesLoading;
+  const loading = moviesLoading;
 
   const lists: MovieList[] = movieData?.movieLists ?? [];
 
   const retry = useCallback(async () => {
-    await refetchUser();
-    if (accountDocumentId) await refetchMovies();
-  }, [accountDocumentId, refetchMovies, refetchUser]);
+    await refetchMovies();
+  }, [refetchMovies]);
 
   usePublicRouteLifecycle({
     loading,
-    error: userError ?? moviesError,
+    error: moviesError,
     retry,
-    hasUsableData: Boolean(userLookup && movieData),
-    empty: !loading && !userError && !moviesError && lists.length === 0,
+    hasUsableData: Boolean(movieData),
+    empty: !loading && !moviesError && lists.length === 0,
   });
 
   // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves
@@ -133,7 +111,7 @@ const PublicMovies = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && (
         <SEO
           title={pageTitle}
           description={metaDescription}

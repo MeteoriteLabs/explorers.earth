@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Users, Share2, ArrowLeft } from "lucide-react";
 import { PERSON_LIST_BY_SLUG } from "../../api/query";
 import { deduplicatePeople, buildImageUrl } from "../../utils/personHelpers";
@@ -11,29 +11,16 @@ import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicRouteLifecycle } from "../../../../layouts/usePublicRouteLifecycle";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForPersonList($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { usePublicProfileBootstrapAccount } from "../../../../layouts/PublicProfileBootstrapContext";
+import { PublicProfileFallbackRedirect } from "../../../../routes/PublicProfileFallbackRedirect";
+import { shouldRedirectMissingPublicResource } from "../../../../routes/publicRouteResourceState";
 
 const PublicPersonList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const account = usePublicProfileBootstrapAccount();
 
   const { data, loading, error, refetch } = useQuery<{ personLists: PersonList[] }>(PERSON_LIST_BY_SLUG, {
     variables: { slug: listSlug, username },
@@ -43,7 +30,7 @@ const PublicPersonList = () => {
 
   const list = data?.personLists?.[0];
   const people = deduplicatePeople<RecommendedPerson>(list?.recommended_people ?? []);
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const creatorName = account.Account_Name || username;
 
   usePublicRouteLifecycle({
     loading,
@@ -52,6 +39,8 @@ const PublicPersonList = () => {
     hasUsableData: Boolean(data),
     empty: !loading && !error && !list,
   });
+
+  const missingResource = shouldRedirectMissingPublicResource({ loading, error, resource: list });
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);
@@ -77,6 +66,8 @@ const PublicPersonList = () => {
   const seoKeywords = list
     ? [`${list.List_Name}`, `${creatorName} people`, `${list.slug}`, "people list", "explorers"]
     : ["people list", "explorers"];
+
+  if (missingResource) return <PublicProfileFallbackRedirect />;
 
   return (
     <>
