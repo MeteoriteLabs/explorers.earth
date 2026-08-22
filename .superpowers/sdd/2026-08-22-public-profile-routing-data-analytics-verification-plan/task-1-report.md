@@ -56,3 +56,25 @@ The full suite emits its pre-existing expected test-generated console output for
 - Removing `replace`, search/hash forwarding, the fallback state, any contract entry, or any exhaustive element-map key fails the focused router/TypeScript checks.
 - Task 2 still owns the planned visibility-bootstrap consolidation and hidden-category fallback migration. This task deliberately leaves `TabVisibilityGuard` behavior untouched.
 - No Tunes, Local Tunes, user-sync, real environment, credential, or Task 0 capability script changed.
+
+## Fix round 1 — preserve unguarded Places maps
+
+Review found that the initial route contract assigned `public_recommendations` to the three pre-existing unguarded Places map routes. The generic renderer consequently added `TabVisibilityGuard`, changing their hidden-category behavior and issuing the guard query. The contract now has explicit `visibility: "guarded" | "always-visible"` metadata. The three map route IDs (`places-map`, `places-detail-map`, and `places-map-detail`) are `always-visible` and carry no visibility field; Places index/detail remain `guarded` with `public_recommendations`.
+
+RED/GREEN evidence:
+
+```text
+npm test -- --run src/routes/__tests__/PublicRoutes.test.tsx
+RED: 3 failures; each map route rendered inside the visible visibility-guard test double
+
+npm test -- --run src/routes/__tests__/PublicRoutes.test.tsx src/routes/__tests__/PublicProfileFallbackRedirect.test.tsx
+GREEN: Test Files 2 passed; Tests 48 passed
+
+npx tsc -b
+GREEN: exit 0
+
+npm run test:unit
+GREEN: Test Files 146 passed; Tests 1130 passed; exit 0
+```
+
+The parity test uses the real `PublicRoutes` assembly and a deliberately visible guard double: it proves Places index/detail are wrapped and all three map IDs are not. The unsupported-child redirect/history assertions remain in the same focused suite. The full suite retains only its expected test-generated console output.

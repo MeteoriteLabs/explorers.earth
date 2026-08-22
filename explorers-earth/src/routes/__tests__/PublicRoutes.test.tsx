@@ -86,8 +86,16 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
-vi.mock("../validators/TabVisibilityGuard", () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
-vi.mock("./validators/TabVisibilityGuard", () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
+vi.mock("../validators/TabVisibilityGuard", () => ({
+  default: ({ children, tabField }: { children: React.ReactNode; tabField: string }) => (
+    <div data-testid="public-route-visibility-guard" data-tab-field={tabField}>{children}</div>
+  ),
+}));
+vi.mock("./validators/TabVisibilityGuard", () => ({
+  default: ({ children, tabField }: { children: React.ReactNode; tabField: string }) => (
+    <div data-testid="public-route-visibility-guard" data-tab-field={tabField}>{children}</div>
+  ),
+}));
 
 vi.mock("../features/PublicHome/components/PublicProfile", () => ({ default: profileMock }));
 vi.mock("../../features/PublicHome/components/PublicProfile", () => ({ default: profileMock }));
@@ -378,6 +386,26 @@ describe("PublicRoutes orchestration and readiness", () => {
     expect(route.skeleton).toBeDefined();
     expect(route.marker).toBeTruthy();
     expect(route.analytics).toBeDefined();
+  });
+
+  it.each([
+    ["places-index", true],
+    ["places-detail", true],
+    ["places-map", false],
+    ["places-detail-map", false],
+    ["places-map-detail", false],
+  ] as const)("preserves the visibility-guard boundary for %s", async (routeId, shouldGuard) => {
+    queryState.username = stateSuccessUsername;
+    queryState.profile = defaultEmptyQueryResult;
+    const route = publicRouteContract.find((entry) => entry.id === routeId);
+
+    if (!route) throw new Error(`${routeId} route missing from public route contract`);
+
+    render(<PublicRouteRunner initialEntries={[publicRoutePath(route, { username: "alice" })]} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("public-route-visibility-guard") !== null).toBe(shouldGuard);
+    });
   });
 
   it("does not redirect a canonical profile-root entry", async () => {
