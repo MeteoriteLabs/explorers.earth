@@ -1381,9 +1381,32 @@
     }
   },
   "publicProfile": {
+    "avatar": {
+      "imageAlt": "{{name}}'s profile photo",
+      "viewPhoto": "View {{name}}'s profile photo"
+    },
     "bio": {
       "showLess": "Show less",
       "showMore": "Show more"
+    },
+    "empty": {
+      "description": "Check back later for new recommendations.",
+      "title": "Nothing has been shared here yet"
+    },
+    "error": {
+      "description": "Please check your connection and try again.",
+      "loadTitle": "Couldn’t load this profile",
+      "refreshTitle": "Couldn’t refresh this section",
+      "retry": "Retry",
+      "retrying": "Retrying...",
+      "sectionTitle": "Couldn’t load this section",
+      "verifyTitle": "Couldn’t verify this profile"
+    },
+    "loading": {
+      "section": "Loading profile section"
+    },
+    "status": {
+      "refreshing": "Refreshing profile content"
     }
   },
   "reactivateAccount": {

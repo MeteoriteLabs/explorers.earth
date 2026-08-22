@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
@@ -6,6 +6,10 @@ import Home from "../assets/icons/Home";
 
 const PageNotFound = memo(() => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "Page Not Found | explorers";
+  }, []);
 
   return (
     <div className="min-h-screen flex font-poppins items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white px-4 sm:px-6 py-6 sm:py-10">
@@ -16,23 +20,24 @@ const PageNotFound = memo(() => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <motion.h1
+          <motion.div
+            aria-hidden="true"
             className="text-6xl sm:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple to-purple-500 mb-4"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             404
-          </motion.h1>
+          </motion.div>
 
-          <motion.h2
+          <motion.h1
             className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple to-purple-500 mb-4"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
             Page Not Found
-          </motion.h2>
+          </motion.h1>
 
           <motion.p
             className="text-sm sm:text-base text-gray-400 mt-2 sm:mt-3 mb-6 sm:mb-8"
