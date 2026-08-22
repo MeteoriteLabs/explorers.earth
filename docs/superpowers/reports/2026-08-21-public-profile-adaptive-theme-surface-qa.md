@@ -5,7 +5,9 @@
 **Worktree:** `C:\Users\TK\.config\superpowers\worktrees\explorers.earth-main\profile-dashboard-public-profile`  
 **Baseline Commit:** `1f9d0d4e5f108831fc811a15f53e9883e1452cc6`  
 **Head Commit:** `6dacf76`  
-**Status:** PASS (100% Verified)  
+**Status:** SUPERSEDED — fresh 2026-08-22 baseline disproves the 100% verification claim
+
+> This report is retained as historical evidence only. Fresh verification at commit `8a40b3b` found five lint errors, a non-terminating focused Vitest run, a 2.477 theme contrast failure, and multiple public routes stuck on the route skeleton. Use `.superpowers/sdd/2026-08-22-profile-readiness-route-reliability/baseline.md` and the forthcoming 2026-08-22 QA report for current status.
 
 ---
 
