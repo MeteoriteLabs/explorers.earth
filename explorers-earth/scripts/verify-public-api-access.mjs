@@ -23,17 +23,45 @@ function sourceFor(env, name, legacy = "VITE_PUBLIC_ACCESS_TOKEN") {
   return "missing";
 }
 
+function parseUrlOrigin(value) {
+  if (typeof value !== "string" || value.length === 0) return null;
+  try {
+    const url = new URL(value);
+    const placeholder = /(?:^|\.)(?:invalid|test|example)$|(?:^|\.)example\.(?:com|org|net)$|placeholder|your-origin/i.test(url.hostname);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.pathname !== "/" || url.search || url.hash || placeholder) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function capabilitySeparation(env) {
+  const publicRead = env.VITE_PUBLIC_READ_ACCESS_TOKEN;
+  const analyticsWrite = env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN;
+  if (env.VITE_PUBLIC_ACCESS_TOKEN && (!publicRead || !analyticsWrite)) return "invalid";
+  if (publicRead && analyticsWrite) return publicRead === analyticsWrite ? "invalid" : "valid";
+  return "unproven";
+}
+
 function policyEvidence(env) {
   try {
     const origin = JSON.parse(env.PUBLIC_API_ORIGIN_POLICY ?? "");
     const rate = JSON.parse(env.PUBLIC_API_RATE_LIMIT_POLICY ?? "");
-    const originValid = typeof env.PUBLIC_API_EXPECTED_ORIGIN === "string" && origin.allowOrigins?.includes(env.PUBLIC_API_EXPECTED_ORIGIN);
+    const expectedOrigin = parseUrlOrigin(env.PUBLIC_API_EXPECTED_ORIGIN);
+    const allowOrigins = Array.isArray(origin.allowOrigins) ? origin.allowOrigins.map(parseUrlOrigin) : [];
+    const originValid = expectedOrigin !== null
+      && allowOrigins.length > 0
+      && allowOrigins.every((value) => value !== null)
+      && new Set(allowOrigins).size === allowOrigins.length
+      && allowOrigins.includes(expectedOrigin);
     const rateValid = rate.environment === "non-production" && Number.isInteger(rate.limit) && rate.limit > 0 && Number.isInteger(rate.windowSeconds) && rate.windowSeconds > 0;
     return { capabilityScope: env.PUBLIC_API_CAPABILITY_SCOPE === "published-read-only" ? "valid" : "invalid", originPolicy: originValid ? "valid" : "invalid", rateLimitPolicy: rateValid ? "valid" : "invalid" };
   } catch { return { capabilityScope: env.PUBLIC_API_CAPABILITY_SCOPE === "published-read-only" ? "valid" : "invalid", originPolicy: "invalid", rateLimitPolicy: "invalid" }; }
 }
 
-async function requestOperation({ endpoint, token, operation, variables, fetchImpl, timeoutMs, retries }) {
+const INVALID_SHAPE_PROBE_IDS = new Set(["analytics-unknown-field", "analytics-invalid-account", "analytics-unsupported-event"]);
+
+export async function requestOperation({ endpoint, token, operation, variables, fetchImpl, timeoutMs, retries }) {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -48,11 +76,20 @@ async function requestOperation({ endpoint, token, operation, variables, fetchIm
       if (response.status === 403) { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "forbidden", "http-403") }; }
       if (!response.ok) { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "transport-error", `http-${response.status}`) }; }
       let body;
-      try { body = await response.json(); } catch { clearTimeout(timeout); return { diagnostic: diagnostic(operation.id, "malformed", "invalid-json") }; }
+      try { body = await response.json(); } catch (error) {
+        if (error?.name === "AbortError") throw error;
+        clearTimeout(timeout);
+        return { diagnostic: diagnostic(operation.id, "malformed", "invalid-json") };
+      }
       clearTimeout(timeout);
       if (body?.errors?.some((error) => /forbidden/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "forbidden", "graphql-forbidden") };
       if (body?.errors?.some((error) => /unauthorized/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "unauthorized", "graphql-unauthorized") };
-      if (body?.errors?.some((error) => /validation|unknown field|invalid input|unsupported/i.test(error?.message ?? ""))) return { diagnostic: diagnostic(operation.id, "validation-rejected", "graphql-validation-denied") };
+      if (body?.errors?.some((error) => /validation|unknown field|invalid input|unsupported/i.test(error?.message ?? ""))) {
+        return { diagnostic: INVALID_SHAPE_PROBE_IDS.has(operation.id)
+          ? diagnostic(operation.id, "validation-rejected", "graphql-validation-denied")
+          : diagnostic(operation.id, "malformed", "graphql-errors") };
+      }
+      if (Array.isArray(body?.errors) && body.errors.length > 0) return { diagnostic: diagnostic(operation.id, "malformed", "graphql-errors") };
       const value = operation.path.reduce((current, key) => current?.[key], body?.data);
       if (!Array.isArray(value)) return { diagnostic: diagnostic(operation.id, "malformed", "missing-data") };
       return { diagnostic: diagnostic(operation.id, value.length === 0 ? "empty" : "ready", "http-200"), value };
@@ -146,13 +183,14 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
   const configuration = {
     publicReadSource,
     analyticsWriteSource: sourceFor(env, "VITE_ANALYTICS_WRITE_ACCESS_TOKEN"),
+    capabilitySeparation: capabilitySeparation(env),
     ...policyEvidence(env),
   };
   if (!username || !endpoint || !token) {
     const operation = diagnostic("account-bootstrap", "unauthorized", "credential-or-endpoint-missing");
     return { code: operation.code, username: username ? "provided" : "missing", configuration, operations: [operation] };
   }
-  if (Object.values(configuration).slice(2).some((value) => value !== "valid")) {
+  if (configuration.capabilitySeparation === "invalid" || [configuration.capabilityScope, configuration.originPolicy, configuration.rateLimitPolicy].some((value) => value !== "valid")) {
     const operation = {
       operation: "security-proof", classification: "malformed", code: "SECURITY_PROOF_MISSING",
       observedStatus: "scope-origin-rate-limit-invalid", likelyCause: "Required server-side capability evidence is missing or invalid.",

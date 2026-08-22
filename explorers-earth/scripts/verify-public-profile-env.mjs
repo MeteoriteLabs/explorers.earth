@@ -3,14 +3,56 @@ import { createVerificationResult, exitCodeFor, formatVerificationResult } from 
 
 export const MUTATION_ACCOUNT_MARKER = "public-profile-mutation-fixture";
 
+export const PUBLIC_PROFILE_ENVIRONMENT_TIERS = Object.freeze({
+  fixture: Object.freeze([]),
+  "read-only": Object.freeze([
+    "VITE_API_URL",
+    "VITE_PUBLIC_READ_ACCESS_TOKEN",
+    "VITE_PUBLIC_ACCESS_TOKEN",
+    "PUBLIC_API_CAPABILITY_SCOPE",
+    "PUBLIC_API_EXPECTED_ORIGIN",
+    "PUBLIC_API_ORIGIN_POLICY",
+    "PUBLIC_API_RATE_LIMIT_POLICY",
+  ]),
+  mutation: Object.freeze([
+    "VITE_ANALYTICS_WRITE_ACCESS_TOKEN",
+    "PUBLIC_API_CONTROLLED_FIXTURE",
+    "PUBLIC_API_PRIVATE_ACCOUNT_ID",
+    "PUBLIC_API_PRIVATE_LIST_ID",
+    "PUBLIC_API_PRIVATE_ITEM_ID",
+    "PUBLIC_API_PRIVATE_LIST_SLUG",
+    "PUBLIC_API_RUN_ID",
+    "PUBLIC_PROFILE_MUTATION_APPROVED",
+    "PUBLIC_PROFILE_TEST_ACCOUNT_MARKER",
+    "PUBLIC_API_ANALYTICS_QA_SINK",
+    "PUBLIC_API_ANALYTICS_CANARY_MUTATION",
+    "PUBLIC_API_ANALYTICS_CLEANUP_MUTATION",
+    "PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY",
+  ]),
+});
+
+export function classifyPublicProfileEnvironment(env = {}) {
+  return Object.fromEntries(Object.entries(PUBLIC_PROFILE_ENVIRONMENT_TIERS).flatMap(([tier, names]) => names.map((name) => {
+    const presence = env[name] ? "present" : "missing";
+    let classification = presence === "present" ? "configured" : "missing";
+    if (name === "VITE_PUBLIC_READ_ACCESS_TOKEN" || name === "VITE_ANALYTICS_WRITE_ACCESS_TOKEN") classification = presence === "present" ? "dedicated" : "missing";
+    if (name === "VITE_PUBLIC_ACCESS_TOKEN") classification = presence === "present" ? "legacy-local" : "missing";
+    if (name === "PUBLIC_PROFILE_MUTATION_APPROVED") classification = env[name] === "true" ? "approved" : "not-approved";
+    if (name === "PUBLIC_PROFILE_TEST_ACCOUNT_MARKER") classification = presence === "missing" ? "missing" : env[name] === MUTATION_ACCOUNT_MARKER ? "matched" : "mismatch";
+    return [name, { tier, presence, classification }];
+  })));
+}
+
 export function capabilitySources(env) {
+  const classified = classifyPublicProfileEnvironment(env);
   return {
-    publicRead: env.VITE_PUBLIC_READ_ACCESS_TOKEN ? "dedicated" : env.VITE_PUBLIC_ACCESS_TOKEN ? "legacy-local" : "missing",
-    analyticsWrite: env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN ? "dedicated" : env.VITE_PUBLIC_ACCESS_TOKEN ? "legacy-local" : "missing",
+    publicRead: classified.VITE_PUBLIC_READ_ACCESS_TOKEN.presence === "present" ? "dedicated" : classified.VITE_PUBLIC_ACCESS_TOKEN.classification,
+    analyticsWrite: classified.VITE_ANALYTICS_WRITE_ACCESS_TOKEN.presence === "present" ? "dedicated" : classified.VITE_PUBLIC_ACCESS_TOKEN.classification,
   };
 }
 
 export function verifyPublicProfileEnvironment({ mode = "fixture", env = process.env } = {}) {
+  const classified = classifyPublicProfileEnvironment(env);
   const sources = capabilitySources(env);
   const baseContext = { mode, publicReadSource: sources.publicRead, analyticsWriteSource: sources.analyticsWrite };
 
@@ -23,7 +65,7 @@ export function verifyPublicProfileEnvironment({ mode = "fixture", env = process
     });
   }
 
-  if (!env.VITE_API_URL || sources.publicRead === "missing") {
+  if (classified.VITE_API_URL.presence === "missing" || sources.publicRead === "missing") {
     return createVerificationResult({
       code: "ENV_MISSING",
       summary: "Live public-read verification is missing required configuration.",

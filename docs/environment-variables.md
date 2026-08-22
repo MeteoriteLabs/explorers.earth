@@ -48,15 +48,28 @@ All commands in this section run from `explorers-earth/`. Node `>=22.12` is requ
 | Deterministic fixture | None | No | `not-required` | Runs unit and fixture checks without live credentials. |
 | Live read-only | `VITE_API_URL` | Yes | `present` / `missing` | GraphQL endpoint for the public capability preflight. |
 | Live read-only | `VITE_PUBLIC_READ_ACCESS_TOKEN` | Yes | `dedicated` / `missing` | Published-read-only browser capability. |
+| Live read-only | `VITE_PUBLIC_ACCESS_TOKEN` | No | `legacy-local` / `missing` | Deprecated local compatibility only; it cannot prove release capability separation. |
+| Live read-only | `PUBLIC_API_CAPABILITY_SCOPE` | Yes for release | `valid` / `invalid` | Must be exactly `published-read-only`. |
+| Live read-only | `PUBLIC_API_EXPECTED_ORIGIN` | Yes for release | `valid` / `invalid` | Exact non-placeholder HTTP(S) origin expected in the allowlist. |
+| Live read-only | `PUBLIC_API_ORIGIN_POLICY` | Yes for release | `valid` / `invalid` | JSON with a unique array of syntactically valid URL origins and no path, query, hash, credentials, or placeholders. |
+| Live read-only | `PUBLIC_API_RATE_LIMIT_POLICY` | Yes for release | `valid` / `invalid` | JSON `{"environment":"non-production","limit":positive-int,"windowSeconds":positive-int}`. |
 | Protected mutation | `VITE_ANALYTICS_WRITE_ACCESS_TOKEN` | Yes | `dedicated` / `missing` | Analytics-write-only browser capability; it must not read or perform other mutations. |
-| Protected capability proof | `PUBLIC_API_CAPABILITY_SCOPE` | Yes | `valid` / `invalid` | Must be exactly `published-read-only`. |
-| Protected capability proof | `PUBLIC_API_EXPECTED_ORIGIN` and `PUBLIC_API_ORIGIN_POLICY` | Yes | `valid` / `invalid` | Expected non-production origin and JSON `{"allowOrigins":["…"]}` containing it. |
-| Protected capability proof | `PUBLIC_API_RATE_LIMIT_POLICY` | Yes | `valid` / `invalid` | JSON `{"environment":"non-production","limit":positive-int,"windowSeconds":positive-int}`. |
-| Controlled negative fixture | `PUBLIC_API_CONTROLLED_FIXTURE` plus the four `PUBLIC_API_PRIVATE_*` IDs/slugs | Yes for release | `configured` / `missing` | Non-production private account/list/item/slug probes only. Never point these at production data. |
 | Protected mutation | `PUBLIC_PROFILE_MUTATION_APPROVED` | Yes | `true` / `missing` | Explicit non-production mutation opt-in. |
 | Protected mutation | `PUBLIC_PROFILE_TEST_ACCOUNT_MARKER` | Yes | `matched` / `mismatch` | Must be exactly `public-profile-mutation-fixture`. |
+| Protected mutation | `PUBLIC_API_CONTROLLED_FIXTURE` | Yes for release | `configured` / `missing` | Enables the complete controlled non-production boundary proof. |
+| Protected mutation | `PUBLIC_API_PRIVATE_ACCOUNT_ID` | Yes for release | `configured` / `missing` | Private account fixture identifier; never production data. |
+| Protected mutation | `PUBLIC_API_PRIVATE_LIST_ID` | Yes for release | `configured` / `missing` | Private list fixture identifier; never production data. |
+| Protected mutation | `PUBLIC_API_PRIVATE_ITEM_ID` | Yes for release | `configured` / `missing` | Private item fixture identifier; never production data. |
+| Protected mutation | `PUBLIC_API_PRIVATE_LIST_SLUG` | Yes for release | `configured` / `missing` | Private list fixture slug; never production data. |
+| Protected mutation | `PUBLIC_API_RUN_ID` | Yes for release | `configured` / `missing` | Run-scopes every mutation canary and cleanup. |
+| Protected mutation | `PUBLIC_API_ANALYTICS_QA_SINK` | Yes for release | `configured` / `missing` | Dedicated non-production analytics sink. |
+| Protected mutation | `PUBLIC_API_ANALYTICS_CANARY_MUTATION` | Yes for release | `configured` / `missing` | Approved run-scoped analytics canary write. |
+| Protected mutation | `PUBLIC_API_ANALYTICS_CLEANUP_MUTATION` | Yes for release | `configured` / `missing` | Cleanup for the exact created canary. |
+| Protected mutation | `PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY` | Yes for release | `configured` / `missing` | Read-back proving the run-scoped sink is empty. |
 
-`VITE_PUBLIC_ACCESS_TOKEN` is a deprecated **local-only** compatibility fallback. It is never valid when protected release verification would use it for both public reads and analytics writes.
+`VITE_PUBLIC_ACCESS_TOKEN` is a deprecated **local-only** compatibility fallback. It is never valid when protected release verification would use it for both public reads and analytics writes. Dedicated public-read and analytics-write values must also be different.
+
+`allowOrigins` must be an actual JSON array. Every entry and `PUBLIC_API_EXPECTED_ORIGIN` must be a syntactically valid HTTP(S) origin without a path, query, hash, credentials, duplicate, or placeholder hostname, and the normalized expected origin must be present in the array. The `.env.example` `.invalid` value is deliberately non-usable and must be replaced in the protected environment.
 
 The protected analytics proof is deliberately blocked unless explicit approval, the dedicated marker, non-production QA sink, run ID, canary write, cleanup, and cleanup-verification contract are all present. It must never use an ordinary list or production analytics target.
 

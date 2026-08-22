@@ -1,7 +1,54 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { verifyPublicProfileEnvironment } from "../verify-public-profile-env.mjs";
+import { classifyPublicProfileEnvironment, PUBLIC_PROFILE_ENVIRONMENT_TIERS, verifyPublicProfileEnvironment } from "../verify-public-profile-env.mjs";
+
+const expectedEnvironmentTiers = {
+  fixture: [],
+  "read-only": [
+    "VITE_API_URL",
+    "VITE_PUBLIC_READ_ACCESS_TOKEN",
+    "VITE_PUBLIC_ACCESS_TOKEN",
+    "PUBLIC_API_CAPABILITY_SCOPE",
+    "PUBLIC_API_EXPECTED_ORIGIN",
+    "PUBLIC_API_ORIGIN_POLICY",
+    "PUBLIC_API_RATE_LIMIT_POLICY",
+  ],
+  mutation: [
+    "VITE_ANALYTICS_WRITE_ACCESS_TOKEN",
+    "PUBLIC_API_CONTROLLED_FIXTURE",
+    "PUBLIC_API_PRIVATE_ACCOUNT_ID",
+    "PUBLIC_API_PRIVATE_LIST_ID",
+    "PUBLIC_API_PRIVATE_ITEM_ID",
+    "PUBLIC_API_PRIVATE_LIST_SLUG",
+    "PUBLIC_API_RUN_ID",
+    "PUBLIC_PROFILE_MUTATION_APPROVED",
+    "PUBLIC_PROFILE_TEST_ACCOUNT_MARKER",
+    "PUBLIC_API_ANALYTICS_QA_SINK",
+    "PUBLIC_API_ANALYTICS_CANARY_MUTATION",
+    "PUBLIC_API_ANALYTICS_CLEANUP_MUTATION",
+    "PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY",
+  ],
+};
+
+test("every verification environment variable belongs to exactly one safety tier", () => {
+  assert.deepEqual(PUBLIC_PROFILE_ENVIRONMENT_TIERS, expectedEnvironmentTiers);
+  const variables = Object.values(PUBLIC_PROFILE_ENVIRONMENT_TIERS).flat();
+  assert.equal(new Set(variables).size, variables.length);
+});
+
+test("environment classifier reports tier and presence without values", () => {
+  const env = Object.fromEntries(Object.values(expectedEnvironmentTiers).flat().map((name) => [name, `private-${name}`]));
+  env.PUBLIC_PROFILE_TEST_ACCOUNT_MARKER = "wrong-marker";
+  env.PUBLIC_PROFILE_MUTATION_APPROVED = "true";
+  const classified = classifyPublicProfileEnvironment(env);
+
+  assert.deepEqual(classified.VITE_API_URL, { tier: "read-only", presence: "present", classification: "configured" });
+  assert.deepEqual(classified.VITE_PUBLIC_READ_ACCESS_TOKEN, { tier: "read-only", presence: "present", classification: "dedicated" });
+  assert.deepEqual(classified.PUBLIC_PROFILE_MUTATION_APPROVED, { tier: "mutation", presence: "present", classification: "approved" });
+  assert.deepEqual(classified.PUBLIC_PROFILE_TEST_ACCOUNT_MARKER, { tier: "mutation", presence: "present", classification: "mismatch" });
+  assert.doesNotMatch(JSON.stringify(classified), /private-/);
+});
 
 test("fixture verification passes without live credentials", () => {
   const result = verifyPublicProfileEnvironment({ mode: "fixture", env: {} });
