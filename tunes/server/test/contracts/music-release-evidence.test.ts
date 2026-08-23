@@ -18,7 +18,9 @@ describe("Music release evidence template", () => {
   });
 
   it("keeps evidence non-deploying, secret-free, and independently reviewable", () => {
-    expect(template).toContain("npm run music:test:release");
+    expect(template).toContain("music-release-launcher.ps1 -Mode qualification");
+    expect(template).toContain("music-release-launcher.sh qualification");
+    expect(template).toContain("npm/tsx entrypoint is intentionally unsupported");
     expect(template).toContain("This template does not authorize deployment");
     expect(template).toContain("one diagnostic rerun never changes the original result");
     expect(template).toMatch(/sanitized artifact inventory/i);

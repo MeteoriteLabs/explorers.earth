@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { completeMusicAccount } from "./setup/music";
 import { installMusicAuthTriggerHarness } from "./setup/music-auth-trigger";
 
+test.describe.configure({ mode: "parallel" });
+
 test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status !== testInfo.expectedStatus && !page.isClosed()) {
     await testInfo.attach("sanitized-auth-trigger-page", { body: await page.screenshot(), contentType: "image/png" });

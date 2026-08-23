@@ -48,8 +48,13 @@ diagnostics; one diagnostic rerun never changes the original result.
 | Stable original failure codes | `{{failure_codes}}` |
 | Documentation-contract failures | `{{documentation_failures}}` |
 
-Release command: `npm run music:test:release`. A green diagnostic rerun must
-be recorded as flaky evidence while the lane remains failed.
+Release command (Windows):
+`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification`.
+Release command (POSIX):
+`/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification`.
+The npm/tsx entrypoint is intentionally unsupported because Node startup
+authority would run before the release guard. A green diagnostic rerun must be
+recorded as flaky evidence while the lane remains failed.
 
 ## Correctness, authorization, and critical coverage
 

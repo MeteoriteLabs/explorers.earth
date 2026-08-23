@@ -49,6 +49,7 @@ import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
 } from "./music-qualification-postgres.ts";
+import { requireNativeMusicReleaseLauncher } from "./music-release-channel.mjs";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -565,7 +566,7 @@ const commandGuidance: Record<string, { success: string; failure: string; recove
   "test:fast": { success: "npm run music:test:pr", failure: "npm run music:test:fast", recovery: "inspect the sanitized qualification report" },
   "test:pr": { success: "npm run music:test:nightly", failure: "npm run music:test:pr", recovery: "inspect the sanitized qualification report" },
   "test:nightly": { success: "review the nightly qualification evidence", failure: "npm run music:test:nightly", recovery: "inspect the sanitized qualification report" },
-  "test:release": { success: "review the release evidence; no deployment was performed", failure: "npm run music:test:release", recovery: "inspect the sanitized qualification report" },
+  "test:release": { success: "review the release evidence; no deployment was performed", failure: "use the native Music release launcher for this platform", recovery: "inspect the sanitized qualification report" },
   down: { success: "npm run music:doctor", failure: "npm run music:doctor", recovery: "inspect the checkpoint; no cleanup was attempted" },
   "db:status": { success: "review the runtime manifest", failure: "npm run music:doctor", recovery: "npm run music:down" },
   "db:migrate": { success: "npm run music:db:status", failure: "implement reviewed C3 migrations", recovery: "npm run music:db:status" },
@@ -814,6 +815,24 @@ export function resolveC10IsolatedNpmExecutable(
 export function resolveC10StandalonePostgresPort(environment: NodeJS.ProcessEnv): number | undefined {
   return parseC10StandalonePostgresAuthority(environment)?.port;
 }
+export function resolveNativeMusicReleaseLauncher(
+  mode: "rehearsal",
+  platform: NodeJS.Platform = process.platform,
+): { file: string; args: string[] } {
+  if (platform === "win32") {
+    return {
+      file: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      args: [
+        "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        "-File", join(root, "tunes", "scripts", "music-release-launcher.ps1"), "-Mode", mode,
+      ],
+    };
+  }
+  return {
+    file: "/bin/sh",
+    args: [join(root, "tunes", "scripts", "music-release-launcher.sh"), mode],
+  };
+}
 function executable(command: "npm" | "docker" | "node"): { file: string; args: string[] } {
   if (command === "npm") return resolveC10IsolatedNpmExecutable(process.env)
     ?? resolveNpmCommand({ npmExecPath: process.env.npm_execpath, nodeExecPath: process.execPath, platform: process.platform });
@@ -842,7 +861,9 @@ async function runQualificationTask(
   const started = Date.now();
   const taskRunner = new OwnedProcessRunner();
   qualificationRunners.add(taskRunner);
-  const resolved = executable("npm");
+  const resolved = task.nativeReleaseMode
+    ? resolveNativeMusicReleaseLauncher(task.nativeReleaseMode)
+    : executable("npm");
   const taskEnvironment = qualificationTaskEnvironment(task.id);
   let playwrightPort: number | undefined;
   let timedOut = remainingBudgetMs <= 0;
@@ -1363,4 +1384,7 @@ export async function terminateBeforeCheckpoint(terminate: () => Promise<void>, 
 process.once("SIGINT", () => { void interrupted(); });
 process.once("SIGTERM", () => { void interrupted(); });
 
-if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-cli.ts")) void main().then((code) => { process.exitCode = code; });
+if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-cli.ts")) {
+  if (process.argv[2] === "test:release") requireNativeMusicReleaseLauncher("qualification");
+  void main().then((code) => { process.exitCode = code; });
+}

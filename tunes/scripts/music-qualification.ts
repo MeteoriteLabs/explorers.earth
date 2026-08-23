@@ -78,6 +78,7 @@ export interface MusicQualificationTask {
   title: string;
   npmArgs: string[];
   requirements: MusicQualificationRequirement[];
+  nativeReleaseMode?: "rehearsal";
 }
 
 export function preferredQualificationPort(taskId: string): number {
@@ -173,7 +174,9 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "run", "test:unit", "--prefix", "explorers-earth",
   ], ["refresh-rename-sharing", "lifecycle"]),
   "music-types-baseline": task("music-types-baseline", "Music TypeScript baseline", ["run", "music:types:baseline"], ["timing-evidence"]),
-  "tunes-critical-coverage": task("tunes-critical-coverage", "Tunes critical-module coverage", ["run", "test:music-critical-coverage", "--prefix", "tunes"], ["critical-coverage"]),
+  "tunes-critical-coverage": task("tunes-critical-coverage", "Tunes critical-module coverage", [
+    "run", "test:music-critical-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false",
+  ], ["critical-coverage"]),
   "tunes-repository-coverage": task("tunes-repository-coverage", "Tunes PostgreSQL repository coverage", ["run", "test:music-c8:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
   "tunes-identity-repository-coverage": task("tunes-identity-repository-coverage", "Tunes identity PostgreSQL repository coverage", ["run", "test:music-c45:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
   "explorer-critical-coverage": task("explorer-critical-coverage", "Explorer critical-module coverage", ["run", "test:music-critical-coverage", "--prefix", "explorers-earth"], ["critical-coverage"]),
@@ -253,9 +256,12 @@ export const MUSIC_QUALIFICATION_TASKS = {
   "real-docker-evidence": task("real-docker-evidence", "Disposable real-Docker fixture identity and recovery evidence", [
     "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-fixture-runtime.ts",
   ], ["portable-harness", "postgres-repositories", "owner-predicates", "strapi-db-outage", "secret-free-evidence"]),
-  "real-docker-release": task("real-docker-release", "Shared-engine local-registry migration, rollback, and floor rehearsal", [
-    "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-docker-release-rehearsal.ts",
-  ], ["migration-readiness-failure", "rollback-exact-digest", "kill-switch-secure-floor", "compatibility-route", "typed-recovery", "secret-free-evidence"]),
+  "real-docker-release": {
+    ...task("real-docker-release", "Shared-engine local-registry migration, rollback, and floor rehearsal", [], [
+      "migration-readiness-failure", "rollback-exact-digest", "kill-switch-secure-floor", "compatibility-route", "typed-recovery", "secret-free-evidence",
+    ]),
+    nativeReleaseMode: "rehearsal",
+  },
   "interrupt-resume": task("interrupt-resume", "Owned child interrupt cleanup and bounded resume", [
     "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-interrupt-rehearsal.ts",
   ], ["portable-harness", "timing-evidence", "typed-recovery"]),
@@ -313,6 +319,18 @@ export const MUSIC_QUALIFICATION_LANES: Record<MusicQualificationLaneName, Music
     ],
   },
 };
+
+export function qualificationStageConcurrency(
+  laneName: MusicQualificationLaneName,
+  stage: MusicQualificationStage,
+  platform: NodeJS.Platform = process.platform,
+): number {
+  if (!stage.parallel) return 1;
+  if (laneName === "nightly" || laneName === "release") {
+    return platform === "win32" ? 1 : Math.min(2, stage.taskIds.length);
+  }
+  return stage.taskIds.length;
+}
 
 export interface MusicQualificationExecutionResult {
   exitCode: number;
@@ -647,12 +665,15 @@ export async function runMusicQualificationLane(
     pending.forEach((id) => seen.add(id));
     if (pending.length === 0) continue;
     const stageEvidence: MusicQualificationTaskEvidence[] = [];
-    if (stage.parallel) stageEvidence.push(...await Promise.all(pending.map(runTask)));
-    else for (const id of pending) stageEvidence.push(await runTask(id));
+    const concurrency = qualificationStageConcurrency(laneName, stage);
+    let stageDurationMs = 0;
+    for (let index = 0; index < pending.length; index += concurrency) {
+      const batch = await Promise.all(pending.slice(index, index + concurrency).map(runTask));
+      stageEvidence.push(...batch);
+      stageDurationMs += Math.max(...batch.map(({ durationMs }) => durationMs));
+    }
     evidence.push(...stageEvidence);
-    wallClockMs += stage.parallel
-      ? Math.max(...stageEvidence.map(({ durationMs }) => durationMs))
-      : stageEvidence.reduce((total, value) => total + value.durationMs, 0);
+    wallClockMs += stageDurationMs;
     if (wallClockMs > lane.budgetMs) break;
   }
 

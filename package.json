@@ -21,7 +21,6 @@
     "music:test:fast": "npm run --silent music-cli -- test:fast",
     "music:test:pr": "npm run --silent music-cli -- test:pr",
     "music:test:nightly": "npm run --silent music-cli -- test:nightly",
-    "music:test:release": "npm run --silent music-cli -- test:release",
     "music:down": "npm run --silent music-cli -- down",
     "music:db:status": "npm run --silent music-cli -- db:status",
     "music:db:migrate": "npm run --silent music-cli -- db:migrate",

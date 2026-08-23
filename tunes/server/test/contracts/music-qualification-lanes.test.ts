@@ -17,6 +17,7 @@ import {
   resolveC10IsolatedDockerExecutable,
   resolveC10IsolatedNpmExecutable,
   resolveC10StandalonePostgresPort,
+  resolveNativeMusicReleaseLauncher,
   sanitizeMusicCheckpointData,
   sanitizeMusicChildArtifactOutput,
   sanitizeMusicCliText,
@@ -31,6 +32,7 @@ import {
   parseMusicQualificationOperationalMeasurements,
   percentile,
   preferredQualificationPort,
+  qualificationStageConcurrency,
   qualificationTaskUsesFixtureEnvironment,
   qualificationTaskEnvironment,
   runMusicQualificationLane,
@@ -41,6 +43,18 @@ import {
 } from "../../../scripts/music-qualification";
 
 describe("portable Music qualification lanes", () => {
+  it("dispatches release rehearsal through the canonical native launcher", () => {
+    const windows = resolveNativeMusicReleaseLauncher("rehearsal", "win32");
+    expect(windows.file).toBe("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+    expect(windows.args).toContain("-NoProfile");
+    expect(windows.args.some((value) => value.endsWith("music-release-launcher.ps1"))).toBe(true);
+    expect(windows.args.at(-1)).toBe("rehearsal");
+    const linux = resolveNativeMusicReleaseLauncher("rehearsal", "linux");
+    expect(linux.file).toBe("/bin/sh");
+    expect(linux.args[0]).toMatch(/music-release-launcher\.sh$/);
+    expect(linux.args[1]).toBe("rehearsal");
+  });
+
   it("creates and verifies the documented canonical evidence manifest bytes", () => {
     // Production break caught: copied evidence has only an unverifiable digest,
     // or a platform-specific path/order/newline encoding changes its identity.
@@ -292,9 +306,10 @@ describe("portable Music qualification lanes", () => {
     const rootPackage = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../package.json"), "utf8")) as {
       scripts: Record<string, string>;
     };
-    for (const lane of ["fast", "pr", "nightly", "release"] as const) {
+    for (const lane of ["fast", "pr", "nightly"] as const) {
       expect(rootPackage.scripts[`music:test:${lane}`]).toBe(`npm run --silent music-cli -- test:${lane}`);
     }
+    expect(rootPackage.scripts["music:test:release"]).toBeUndefined();
   });
 
   it("publishes explicit 100% critical-module coverage gates in both applications", () => {
@@ -408,8 +423,8 @@ describe("portable Music qualification lanes", () => {
       .toContain("music-fixture-fullstack.spec.ts");
     expect(MUSIC_QUALIFICATION_TASKS["real-docker-evidence"].npmArgs)
       .toContain("tunes/scripts/music-fixture-runtime.ts");
-    expect(MUSIC_QUALIFICATION_TASKS["real-docker-release"].npmArgs)
-      .toContain("tunes/scripts/music-docker-release-rehearsal.ts");
+    expect(MUSIC_QUALIFICATION_TASKS["real-docker-release"].npmArgs).toEqual([]);
+    expect(MUSIC_QUALIFICATION_TASKS["real-docker-release"].nativeReleaseMode).toBe("rehearsal");
     expect(MUSIC_QUALIFICATION_TASKS["interrupt-resume"].npmArgs)
       .toContain("tunes/scripts/music-interrupt-rehearsal.ts");
     const nightly = MUSIC_QUALIFICATION_LANES.nightly.stages.flatMap((stage) => stage.taskIds);
@@ -526,6 +541,47 @@ describe("portable Music qualification lanes", () => {
       .not.toContain("tunes-critical-coverage");
     expect(stages.slice(1).flatMap((stage) => stage.parallel ? stage.taskIds : []))
       .not.toContain("explorer-critical-coverage");
+    expect(MUSIC_QUALIFICATION_TASKS["tunes-critical-coverage"].npmArgs)
+      .toEqual(expect.arrayContaining(["--maxWorkers=1", "--fileParallelism=false"]));
+  });
+
+  it("caps the complete nightly and release scheduler instead of raising task timeouts", () => {
+    for (const lane of ["nightly", "release"] as const) {
+      for (const stage of [
+        ...MUSIC_QUALIFICATION_LANES.fast.stages,
+        ...MUSIC_QUALIFICATION_LANES.pr.stages,
+        ...MUSIC_QUALIFICATION_LANES[lane].stages,
+      ]) {
+        expect(qualificationStageConcurrency(lane, stage, "win32")).toBe(1);
+        expect(qualificationStageConcurrency(lane, stage, "linux")).toBeLessThanOrEqual(2);
+      }
+    }
+    expect(qualificationStageConcurrency("pr", MUSIC_QUALIFICATION_LANES.pr.stages[1], "win32")).toBe(4);
+  });
+
+  it("enforces the nightly concurrency cap in the executable scheduler", async () => {
+    let active = 0;
+    let peak = 0;
+    const report = await runMusicQualificationLane("nightly", {
+      artifactDirectory: "unused",
+      execute: async (task) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        active -= 1;
+        return {
+          exitCode: 0,
+          stdout: "ok",
+          stderr: "",
+          durationMs: 2,
+          artifact: `artifact-${task.id}`,
+        };
+      },
+      writeReport: async () => "qualification-report.json",
+    });
+
+    expect(report.status).toBe("success");
+    expect(peak).toBe(process.platform === "win32" ? 1 : 2);
   });
 
   it("caps shared PostgreSQL and release rehearsal file parallelism", () => {
