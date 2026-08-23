@@ -777,7 +777,8 @@ describe("Music documentation publication contract", () => {
       expect(source).not.toMatch(/^DATABASE_URL=/m);
       expect(source).not.toMatch(/postgresql:\/\/[^\r\n]*@(?!127\.0\.0\.1)/);
     }
-    expect(read(".env.music.example")).toContain("LIVE_STRAPI_READ_ONLY_CREDENTIAL=\n");
+    const source = read(".env.music.example").replaceAll("\r\n", "\n");
+    expect(source).toContain("LIVE_STRAPI_READ_ONLY_CREDENTIAL=\n");
   });
 });
 
