@@ -41,7 +41,9 @@
     "0010_least_privilege_runtime_role",
     "0011_durable_publication_idempotency",
     "0012_publication_replay_expiry_guard",
-    "0013_publication_operation_database_clock"
+    "0013_publication_operation_database_clock",
+    "0014_durable_reactivation_authority",
+    "0015_publication_operation_archive"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

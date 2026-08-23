@@ -3,6 +3,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
+import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { MusicPublicationOperationRepository } from "../repositories/musicPublicationOperationRepository";
 import {
   MusicPublicationResponseCipher,
@@ -120,6 +121,21 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     await admin?.end();
   });
 
+  it("includes a canonical public publication command in sitemap discovery", async () => {
+    // Break caught: public mode revokes an unlisted capability and the sitemap mistakes that independent axis for non-discoverability.
+    const owner = await identities.ensureIdentity(identityInput("sitemap-command"));
+    const domain = new MusicDomainRepository(pool, repository());
+    const playlist = await domain.createPlaylist(owner.id, { name: "Sitemap", description: null }) as { id: number };
+    await expect(domain.setPlaylistVisibility(owner.id, playlist.id, true)).resolves.toBe(true);
+
+    await expect(domain.executePublicationCommand(owner.id, "sitemap-public-command", "public"))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+    await expect(domain.listPublishedMusicPlaylists()).resolves.toContainEqual({
+      guestUrl: "c9-publication-public-sitemap-command",
+      updatedAt: expect.any(Date),
+    });
+  });
+
   it("replays one exact capability across concurrent instances, restart, eviction, and a lost response", async () => {
     clock = baseTime;
     const owner = await identities.ensureIdentity(identityInput("same"));
@@ -215,6 +231,29 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     expect(user.guest_discoverable).toBe(winningMode === "public");
   });
 
+  it("admits only one concurrent fresh command at the 100-operation owner quota", async () => {
+    const owner = await identities.ensureIdentity(identityInput("quota-race"));
+    await pool.query(`INSERT INTO music_publication_operations(
+      music_user_id,idempotency_key_hash,request_fingerprint,request_mode,operation_state,
+      created_at,completed_at,expires_at,updated_at,response_key_id,response_nonce,response_ciphertext,response_tag
+    ) SELECT $1,lpad(to_hex(value),64,'0'),repeat('a',64),'public','completed',
+             clock_timestamp(),clock_timestamp(),clock_timestamp()+interval '24 hours',clock_timestamp(),
+             'publication-current-v1',decode(repeat('00',12),'hex'),decode('01','hex'),decode(repeat('00',16),'hex')
+        FROM generate_series(1,99) AS value`, [owner.id]);
+
+    const [left, right] = await Promise.all([
+      repository().execute(owner.id, "quota-race-left", "public"),
+      repository().execute(owner.id, "quota-race-right", "public"),
+    ]);
+    expect([left, right].filter(({ status }) => status === "completed")).toHaveLength(1);
+    const limited = [left, right].find(({ status }) => status === "rate_limited");
+    expect(limited).toMatchObject({ status: "rate_limited", retryAfterSeconds: expect.any(Number) });
+    expect((await pool.query(
+      "SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1 AND expires_at>clock_timestamp()",
+      [owner.id],
+    )).rows[0]).toEqual({ count: 100 });
+  });
+
   it.each(["publication", "operation"] as const)("rolls back a real failure after the %s write", async (phase) => {
     clock = baseTime + (phase === "publication" ? 2_000 : 3_000);
     const owner = await identities.ensureIdentity(identityInput(`rollback-${phase}`));
@@ -261,6 +300,17 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       operation_state: "replay_expired", response_key_id: null, response_nonce: null,
       response_ciphertext: null, response_tag: null, shredded: true,
     });
+    expect(await durable.compactExpiredOperations(100)).toBeGreaterThanOrEqual(1);
+    expect((await pool.query(
+      "SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1",
+      [owner.id],
+    )).rows[0]).toEqual({ count: 0 });
+    expect((await pool.query(
+      "SELECT request_mode FROM music_publication_operation_archive WHERE music_user_id=$1",
+      [owner.id],
+    )).rows[0]).toEqual({ request_mode: "unlisted" });
+    expect(await repository().execute(owner.id, "expired-operation-key", "unlisted")).toEqual({ status: "expired" });
+    expect(await repository().execute(owner.id, "expired-operation-key", "public")).toEqual({ status: "conflict" });
   });
 
   it("compares a previous-key deadline to the exact PostgreSQL microsecond expiry", async () => {
@@ -398,9 +448,24 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       has_table_privilege('music_runtime','music_publication_operations','DELETE') AS can_delete,
       has_table_privilege('music_runtime','music_publication_operations','TRUNCATE') AS can_truncate`)).rows[0];
     expect(privileges).toEqual({ can_select: true, can_insert: true, can_update: true, can_delete: false, can_truncate: false });
+    const archivePrivileges = (await pool.query(`SELECT
+      has_table_privilege('music_runtime','music_publication_operation_archive','SELECT') AS can_select_archive,
+      has_table_privilege('music_runtime','music_publication_operation_archive','INSERT') AS can_insert_archive,
+      has_table_privilege('music_runtime','music_publication_operation_archive','UPDATE') AS can_update_archive,
+      has_table_privilege('music_runtime','music_publication_operation_archive','DELETE') AS can_delete_archive,
+      has_function_privilege('music_runtime','music_lookup_publication_operation_archive(integer,text)','EXECUTE') AS can_lookup_archive,
+      has_function_privilege('music_runtime','music_compact_publication_operations(integer)','EXECUTE') AS can_compact_archive`)).rows[0];
+    expect(archivePrivileges).toEqual({
+      can_select_archive: false,
+      can_insert_archive: false,
+      can_update_archive: false,
+      can_delete_archive: false,
+      can_lookup_archive: true,
+      can_compact_archive: true,
+    });
     const row = (await pool.query("SELECT music_user_id,idempotency_key_hash FROM music_publication_operations LIMIT 1")).rows[0];
     await expect(pool.query(
-      "UPDATE music_publication_operations SET request_mode='public' WHERE music_user_id=$1 AND idempotency_key_hash=$2",
+      "UPDATE music_publication_operations SET request_mode=CASE request_mode WHEN 'public' THEN 'private' ELSE 'public' END WHERE music_user_id=$1 AND idempotency_key_hash=$2",
       [row.music_user_id, row.idempotency_key_hash],
     )).rejects.toThrow(/publication operation identity is immutable/i);
     await expect(pool.query(

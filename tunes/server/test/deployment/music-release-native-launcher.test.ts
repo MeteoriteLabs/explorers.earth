@@ -104,6 +104,28 @@ afterEach(() => {
 });
 
 describe("native Music release launch boundary", () => {
+  const installedWindowsNodeVersion = process.platform === "win32"
+    ? spawnSync("C:/Program Files/nodejs/node.exe", ["--version"], { encoding: "utf8", windowsHide: true }).stdout.trim()
+    : "";
+
+  it.skipIf(process.platform !== "win32" || installedWindowsNodeVersion === "v22.12.0")(
+    "rejects a signed host Node that is not exact v22.12.0 before reaching the target",
+    () => {
+      const launcher = nativeLauncher();
+      const result = spawnSync(launcher.file, launcher.args, {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        env: withoutNodeStartupAuthority({
+          PSModulePath: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Modules",
+        }),
+        windowsHide: true,
+      });
+      expect(result.status, result.stderr).toBe(78);
+      expect(result.stderr).toContain("trusted native Node version must be exactly v22.12.0");
+      expect(result.stderr).not.toContain("native release source checkout must be clean");
+    },
+  );
+
   it.skipIf(!existsSync(posixShell))("accepts a complete protected npm and Chromium preflight", () => {
     const fixture = protectedPreflightFixture();
     const helper = join(tunesRoot, "scripts", "music-linux-qualification-preflight.sh");

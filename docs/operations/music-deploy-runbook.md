@@ -40,10 +40,10 @@ absent or different, or `main` is not protected.
 
 ## C3-C9 same-image migration gate
 
-`0013_publication_operation_database_clock` is the exact expected migration ID. The
+`0015_publication_operation_archive` is the exact expected migration ID. The
 C5-C9 chain appends durable, exact-operation credential-revocation authority,
 immutable revocation history, the least-privilege runtime boundary, and durable
-publication-command replay authority without changing the immutable
+reactivation and bounded publication-command replay authority without changing the immutable
 user/selected-Account ownership tuple. Credential-revocation operations bind a
 lowercase UUIDv4, numeric Music resource, immutable Explorer user/Account tuple,
 closed internal reason, and expected/result session version. Publication operations
@@ -64,7 +64,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0013_publication_operation_database_clock` and the
+`0015_publication_operation_archive` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -311,6 +311,14 @@ key, so Explorer account deletion does not authorize idempotency-key reuse.
 Publication mutation, capability-hash rotation/revocation, encrypted response
 recording, and operation claim/replay occur within one owner-locked PostgreSQL
 transaction.
+
+Migration `0015` adds the immutable `music_publication_operation_archive` and
+database-owned lookup/compaction functions. A Music owner may hold at most 100
+replayable publication operations in the rolling 24-hour replay window. Runtime
+can invoke the bounded functions but has no direct archive-table privileges.
+Compaction first records an expired, ciphertext-shredded tombstone in the archive
+and then deletes only the exact matching live row, preserving key-reuse conflict
+and expired-replay semantics without unbounded live-table growth.
 
 Migration `0012` replaces only that trigger function and is append-only; do not
 rewrite applied `0011`. It permits completed-to-replay-expired ciphertext shredding
@@ -573,7 +581,9 @@ still apply.
 The server controls default closed:
 
 - `MUSIC_NEW_ENTRY_KILL_SWITCH=true` disables the new Music entry.
-- `MUSIC_COHORT_ENABLED=true` narrows enablement to the server cohort.
+- `MUSIC_COHORT_ENABLED=true` narrows enablement to the exact comma-separated
+  Explorer document IDs in `MUSIC_COHORT_USER_DOCUMENT_IDS` (maximum 100).
+  An enabled but empty cohort admits nobody.
 - Neither can re-enable the legacy Music entry; C1 containment remains active.
 
 For an identity or ownership incident, set the server kill switch, verify

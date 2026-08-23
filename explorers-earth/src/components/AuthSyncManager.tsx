@@ -48,17 +48,24 @@ const AuthSyncManager = () => {
     broadcastChange: boolean;
     force: boolean;
   }) => {
-    if (!isAuthenticated || !user || !authoritative || authoritative.documentId !== user.documentId || authoritative.blocked === true) return;
+    if (!isAuthenticated || !user || !authoritative || authoritative.documentId !== user.documentId) return;
+    const clearActiveScope = () => {
+      const previous = activeScope.current;
+      if (!previous) return;
+      activeScope.current = undefined;
+      musicApi.setAuthority(undefined);
+      musicIdentityCoordinator.reset();
+      clearMusicPublicationCommands(previous);
+      void clearMusicWorkspaceScope(queryClient, previous);
+      if (options.broadcastChange) musicSessionBoundary.publish("account-generation");
+    };
+    if (authoritative.blocked === true) {
+      clearActiveScope();
+      return;
+    }
     const selection = selectExplorerAccountState(authoritative.accounts, { authoritative: true });
     if (selection.kind !== "selected") {
-      if (activeScope.current) {
-        clearMusicPublicationCommands(activeScope.current);
-        void clearMusicWorkspaceScope(queryClient, activeScope.current);
-        musicApi.setAuthority(undefined);
-        musicIdentityCoordinator.reset();
-        if (options.broadcastChange) musicSessionBoundary.publish("account-generation");
-        activeScope.current = undefined;
-      }
+      clearActiveScope();
       return;
     }
     const account = selection.account;

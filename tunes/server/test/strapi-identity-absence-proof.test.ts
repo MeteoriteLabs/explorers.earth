@@ -5,6 +5,25 @@ import { StrapiIdentityAbsenceProof } from "../services/strapiIdentityAbsencePro
 const identity = { userDocumentId: "user-document-a", accountDocumentId: "account-document-a" };
 
 describe("Strapi identity absence proof", () => {
+  it("cancels non-success and oversized streams before returning", async () => {
+    for (const fixture of [
+      { status: 503, chunks: [new Uint8Array([1])], expected: "outage" },
+      { status: 200, chunks: [new Uint8Array(64 * 1024), new Uint8Array([1])], expected: "unknown" },
+    ] as const) {
+      let cancelled = false;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) { for (const chunk of fixture.chunks) controller.enqueue(chunk); },
+        cancel() { cancelled = true; },
+      });
+      const proof = new StrapiIdentityAbsenceProof({
+        baseUrl: "https://strapi.example", accessToken: "read-only-service-token",
+        fetchImpl: async () => new Response(body, { status: fixture.status }), timeoutMs: 1_000,
+      });
+      await expect(proof.prove(identity)).resolves.toBe(fixture.expected);
+      expect(cancelled).toBe(true);
+    }
+  });
+
   it("proves absence only when both immutable identifiers are authoritatively missing", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
       data: { usersPermissionsUser: null, account: null },

@@ -425,7 +425,6 @@ export class MusicDomainRepository {
         WHERE u.identity_status='active'
           AND u.guest_url IS NOT NULL
           AND u.guest_discoverable=true
-          AND u.guest_capability_revoked_at IS NULL
           AND EXISTS (
             SELECT 1 FROM playlists p
              WHERE p.user_id=u.id AND p.is_visible_to_guests=true

@@ -8,6 +8,10 @@ const setAuthority = vi.hoisted(() => vi.fn());
 const reconcile = vi.hoisted(() => vi.fn(async () => undefined));
 const reset = vi.hoisted(() => vi.fn());
 const publish = vi.hoisted(() => vi.fn());
+const clearWorkspaceScope = vi.hoisted(() => vi.fn(async () => undefined));
+const clearAllWorkspaceQueries = vi.hoisted(() => vi.fn(async () => undefined));
+const clearPublicationCommands = vi.hoisted(() => vi.fn());
+const queryClientStub = vi.hoisted(() => ({ id: "query-client" }));
 const sessionListeners = vi.hoisted(() => new Set<() => void>());
 const sessionSnapshot = vi.hoisted(() => ({ value: 0 }));
 
@@ -16,6 +20,14 @@ vi.mock("../../store/store", () => ({ default: vi.fn() }));
 vi.mock("../../features/music/musicApi", () => ({
   musicApi: { setAuthority },
   musicIdentityCoordinator: { reconcile, reset },
+}));
+vi.mock("../../hooks/useTunesDashboard", () => ({
+  clearMusicWorkspaceScope: clearWorkspaceScope,
+  clearAllMusicWorkspaceQueries: clearAllWorkspaceQueries,
+}));
+vi.mock("../../lib/queryClient", () => ({ queryClient: queryClientStub }));
+vi.mock("../../features/music/musicPublicationCommandRegistry", () => ({
+  clearMusicPublicationCommands: clearPublicationCommands,
 }));
 vi.mock("../../features/music/musicSessionBoundary", () => ({ musicSessionBoundary: {
   publish,
@@ -69,6 +81,31 @@ describe("AuthSyncManager immutable authority selection", () => {
     await Promise.resolve();
     expect(setAuthority).not.toHaveBeenCalled();
     expect(reconcile).not.toHaveBeenCalled();
+  });
+
+  it("clears an active Music scope and advances authority when the authoritative user becomes blocked", async () => {
+    const query = useQuery as unknown as ReturnType<typeof vi.fn>;
+    query.mockReturnValue({ data: { usersPermissionsUser: {
+      documentId: "user-document", provider: "local", confirmed: true, blocked: false,
+      accounts: [complete("account-a")],
+    } } });
+    const view = render(<AuthSyncManager />);
+    await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1));
+
+    query.mockReturnValue({ data: { usersPermissionsUser: {
+      documentId: "user-document", provider: "local", confirmed: true, blocked: true,
+      accounts: [complete("account-a")],
+    } } });
+    view.rerender(<AuthSyncManager />);
+
+    await waitFor(() => expect(setAuthority).toHaveBeenLastCalledWith(undefined));
+    const activeScope = { userDocumentId: "user-document", accountDocumentId: "account-a" };
+    expect(clearPublicationCommands).toHaveBeenCalledWith(activeScope);
+    expect(clearWorkspaceScope).toHaveBeenCalledWith(queryClientStub, activeScope);
+    expect(reset).toHaveBeenCalledTimes(2);
+    expect(publish).toHaveBeenCalledWith("account-generation");
+    expect(setAuthority.mock.invocationCallOrder.at(-1)).toBeLessThan(publish.mock.invocationCallOrder.at(-1)!);
+    expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
   it("immediately refetches and reconciles the current immutable scope after a remote account generation without rebroadcasting", async () => {

@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DeploymentController,
+  createMusicCohortEntryResolver,
   createGateAttestation,
+  parseMusicCohortConfiguration,
   resolveMusicEntryPolicy,
   type DeploymentRuntime,
   type DeploymentState,
@@ -21,7 +23,7 @@ const candidate: ImageCandidate = {
 const schemaCandidate: ImageCandidate = {
   digest: `sha256:${"4".repeat(64)}`,
   commit: "4444444444444444444444444444444444444444",
-  migrationMarker: "0013_publication_operation_database_clock",
+  migrationMarker: "0015_publication_operation_archive",
 };
 
 function initialState(): DeploymentState {
@@ -155,5 +157,65 @@ describe("server-owned Music entry controls", () => {
       .toEqual({ newMusicEntryEnabled: true, legacyMusicEntryEnabled: false });
     expect(resolveMusicEntryPolicy({ killSwitch: false, cohortEnabled: true, inCohort: false }))
       .toEqual({ newMusicEntryEnabled: false, legacyMusicEntryEnabled: false });
+  });
+
+  it("parses an exact bounded cohort without accepting malformed or duplicate identities", () => {
+    const cohort = parseMusicCohortConfiguration({
+      MUSIC_COHORT_ENABLED: "true",
+      MUSIC_COHORT_USER_DOCUMENT_IDS: "user-doc-a, user_doc-b",
+    });
+    expect(cohort.enabled).toBe(true);
+    expect([...cohort.userDocumentIds]).toEqual(["user-doc-a", "user_doc-b"]);
+    expect(parseMusicCohortConfiguration({ MUSIC_COHORT_ENABLED: "false" })).toMatchObject({ enabled: false });
+    expect(() => parseMusicCohortConfiguration({ MUSIC_COHORT_ENABLED: "yes" })).toThrow(/MUSIC_COHORT_ENABLED/);
+    expect(() => parseMusicCohortConfiguration({
+      MUSIC_COHORT_ENABLED: "true",
+      MUSIC_COHORT_USER_DOCUMENT_IDS: "user-doc-a,user-doc-a",
+    })).toThrow(/unique/);
+    expect(() => parseMusicCohortConfiguration({
+      MUSIC_COHORT_ENABLED: "true",
+      MUSIC_COHORT_USER_DOCUMENT_IDS: Array.from({ length: 101 }, (_, index) => `user-${index}`).join(","),
+    })).toThrow(/at most 100/);
+    expect(() => parseMusicCohortConfiguration({
+      MUSIC_COHORT_ENABLED: "true",
+      MUSIC_COHORT_USER_DOCUMENT_IDS: "user-doc-a,../../forged",
+    })).toThrow(/document ID/);
+  });
+
+  it("resolves authoritative cohort membership only when cohort admission is active", async () => {
+    const resolveIdentity = vi.fn(async (proof: string, requestId: string) => ({
+      userDocumentId: proof === "member-proof" ? "member-doc" : "outsider-doc",
+      requestId,
+    }));
+    const enabled = createMusicCohortEntryResolver({
+      killSwitch: () => false,
+      cohort: parseMusicCohortConfiguration({
+        MUSIC_COHORT_ENABLED: "true",
+        MUSIC_COHORT_USER_DOCUMENT_IDS: "member-doc",
+      }),
+      resolveIdentity,
+    });
+    await expect(enabled("member-proof", "request-member")).resolves.toBe(true);
+    await expect(enabled("outsider-proof", "request-outsider")).resolves.toBe(false);
+    expect(resolveIdentity).toHaveBeenCalledTimes(2);
+
+    const offResolver = createMusicCohortEntryResolver({
+      killSwitch: () => false,
+      cohort: parseMusicCohortConfiguration({ MUSIC_COHORT_ENABLED: "false" }),
+      resolveIdentity,
+    });
+    await expect(offResolver("unresolved-proof", "request-off")).resolves.toBe(true);
+    expect(resolveIdentity).toHaveBeenCalledTimes(2);
+
+    const killedResolver = createMusicCohortEntryResolver({
+      killSwitch: () => true,
+      cohort: parseMusicCohortConfiguration({
+        MUSIC_COHORT_ENABLED: "true",
+        MUSIC_COHORT_USER_DOCUMENT_IDS: "member-doc",
+      }),
+      resolveIdentity,
+    });
+    await expect(killedResolver("member-proof", "request-killed")).resolves.toBe(false);
+    expect(resolveIdentity).toHaveBeenCalledTimes(2);
   });
 });

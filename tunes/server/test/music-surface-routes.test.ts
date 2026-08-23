@@ -297,6 +297,21 @@ describe("canonical Music REST surfaces", () => {
     expect(repository.setPublicationMode).not.toHaveBeenCalled();
   });
 
+  it("maps the per-owner publication operation quota to a retryable 429", async () => {
+    const executePublicationCommand = vi.fn(async () => ({
+      status: "rate_limited" as const,
+      retryAfterSeconds: 37,
+    }));
+    const { app } = appFor({ executePublicationCommand });
+    const response = await request(app).post("/api/music/publication")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": "fresh-quota-command" })
+      .send({ mode: "public" });
+    expect(response.status).toBe(429);
+    expect(response.headers["retry-after"]).toBe("37");
+    expect(response.body.error).toMatchObject({ code: "RATE_LIMITED", retryable: true });
+    expect(executePublicationCommand).toHaveBeenCalledWith(11, "fresh-quota-command", "public");
+  });
+
   it("marks unlisted capability reads noindex and returns a distinct public-only 429", async () => {
     // Break caught: unlisted pages enter indexing or public throttling is disguised as resource existence.
     const unlisted = appFor({
@@ -313,6 +328,26 @@ describe("canonical Music REST surfaces", () => {
     expect(rejected.body.error.code).toBe("RATE_LIMITED");
     expect(rejected.headers["retry-after"]).toBe("60");
     expect(limitedLookup).not.toHaveBeenCalled();
+  });
+
+  it("passes source, resource, and optional capability dimensions to public limiting", async () => {
+    // Break caught: public limiting is keyed only by attacker-controlled slug cardinality.
+    const inputs: unknown[] = [];
+    const capability = "C".repeat(43);
+    const { app } = appFor({
+      resolveGuestResource: vi.fn(async () => ({ state: "public", playlist: { id: 2 } })),
+    }, {
+      publicRateLimited: (input: unknown) => { inputs.push(input); return false; },
+    });
+
+    const response = await request(app).get("/api/playlist/discoverable-slug")
+      .set("X-Music-Guest-Capability", capability);
+    expect(response.status).toBe(200);
+    expect(inputs).toEqual([{
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "discoverable-slug",
+      capability,
+    }]);
   });
 
   it("accepts unlisted capability only from the dedicated header, never the URL", async () => {

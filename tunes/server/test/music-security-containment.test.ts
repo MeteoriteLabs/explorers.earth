@@ -42,7 +42,11 @@ vi.mock("../repositories/musicPublicationOperationRepository", async (importOrig
 
 const { createValidatedApp } = await import("../config/music-startup");
 const { storage } = await import("../storage");
-const { resetContainmentLimiters } = await import("../security-containment");
+const {
+  consumeContainmentLimit,
+  consumePublicSurfaceLimit,
+  resetContainmentLimiters,
+} = await import("../security-containment");
 
 async function createApp() {
   const inheritedDatabaseUrl = process.env.DATABASE_URL;
@@ -374,6 +378,32 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     expect(response.status).toBe(429);
     expect(response.headers["retry-after"]).toBe("60");
     expectRequestBoundError(response, "RATE_LIMITED");
+  });
+
+  it("isolates limiter namespaces and fails closed instead of evicting live authority buckets", () => {
+    // Break caught: rotating public keys evict an exhausted authentication bucket from one shared map.
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      expect(consumeContainmentLimit("auth:trusted-source", 30, 60_000)).toBe(false);
+    }
+    for (let key = 0; key < 1_024; key += 1) {
+      expect(consumeContainmentLimit(`c6-public-resource:${key}`, 60, 60_000)).toBe(false);
+    }
+    expect(consumeContainmentLimit("c6-public-resource:saturated", 60, 60_000)).toBe(true);
+    expect(consumeContainmentLimit("auth:trusted-source", 30, 60_000)).toBe(true);
+  });
+
+  it("layers public global, source, and source-resource limits without sharing one slug budget", () => {
+    // Break caught: one visitor exhausts the shared slug bucket for every other legitimate visitor.
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      expect(consumePublicSurfaceLimit({ source: "visitor-a", resource: "shared-public-page" })).toBe(false);
+    }
+    expect(consumePublicSurfaceLimit({ source: "visitor-a", resource: "shared-public-page" })).toBe(true);
+    expect(consumePublicSurfaceLimit({ source: "visitor-b", resource: "shared-public-page" })).toBe(false);
+
+    for (let resource = 0; resource < 120; resource += 1) {
+      expect(consumePublicSurfaceLimit({ source: "rotating-visitor", resource: `missing-${resource}` })).toBe(false);
+    }
+    expect(consumePublicSurfaceLimit({ source: "rotating-visitor", resource: "missing-overflow" })).toBe(true);
   });
 
   it("does not advertise X-Username through CORS", async () => {

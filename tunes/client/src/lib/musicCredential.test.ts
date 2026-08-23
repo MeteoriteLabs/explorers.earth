@@ -12,24 +12,113 @@ import {
   musicPrincipalForRequest,
   setGuestMusicCapability,
 } from "./musicCredential";
+import { useAuthStore } from "../stores/authStore";
 
 const validToken = `${"a".repeat(30)}.${"b".repeat(30)}.${"c".repeat(30)}`;
-const credentialResponse = () => new Response(JSON.stringify({
+const credentialResponse = (token = validToken) => new Response(JSON.stringify({
   version: "music-identity/v1",
   identity: { musicUserId: 17, status: "active" },
-  credential: { token: validToken, expiresAt: Date.now() + 600_000 },
+  credential: { token, expiresAt: Date.now() + 600_000 },
 }), { status: 200, headers: { "Content-Type": "application/json" } });
 
 describe("C5 browser credential adapter", () => {
   beforeEach(() => {
     clearMusicCredential();
-    vi.stubGlobal("localStorage", { getItem: vi.fn((key: string) => key === "qrtoken" ? "authoritative-explorer-proof" : null) });
+    const localValues = new Map<string, string>([["qrtoken", "authoritative-explorer-proof"]]);
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) => localValues.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => localValues.set(key, value)),
+      removeItem: vi.fn((key: string) => localValues.delete(key)),
+    });
     const values = new Map<string, string>();
     vi.stubGlobal("sessionStorage", {
       getItem: vi.fn((key: string) => values.get(key) ?? null),
       setItem: vi.fn((key: string, value: string) => values.set(key, value)),
       removeItem: vi.fn((key: string) => values.delete(key)),
     });
+    useAuthStore.setState({ isAuthenticated: false, user: null, token: null });
+  });
+
+  it("does not reuse account A's Music credential after logout and account B login", async () => {
+    const tokenA = `${"d".repeat(30)}.${"e".repeat(30)}.${"f".repeat(30)}`;
+    const tokenB = `${"g".repeat(30)}.${"h".repeat(30)}.${"i".repeat(30)}`;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const proof = new Headers(init?.headers).get("Authorization");
+      return credentialResponse(proof === "Bearer proof-b" ? tokenB : tokenA);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    useAuthStore.getState().login({
+      id: "1", documentId: "account-a-user", username: "a", email: "a@example.com", blocked: false, token: "proof-a",
+    });
+    await expect(musicCredentialForRequest()).resolves.toBe(tokenA);
+
+    useAuthStore.getState().logout();
+    useAuthStore.getState().login({
+      id: "2", documentId: "account-b-user", username: "b", email: "b@example.com", blocked: false, token: "proof-b",
+    });
+
+    await expect(musicCredentialForRequest()).resolves.toBe(tokenB);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts and fences account A's in-flight mint when account B becomes authoritative", async () => {
+    const tokenA = `${"j".repeat(30)}.${"k".repeat(30)}.${"l".repeat(30)}`;
+    const tokenB = `${"m".repeat(30)}.${"n".repeat(30)}.${"o".repeat(30)}`;
+    let resolveA!: (response: Response) => void;
+    let accountASignal: AbortSignal | undefined;
+    const fetchMock = vi.fn((_url: string, init?: RequestInit): Promise<Response> => {
+      const proof = new Headers(init?.headers).get("Authorization");
+      if (proof === "Bearer proof-a") {
+        accountASignal = init?.signal as AbortSignal | undefined;
+        return new Promise((resolve) => { resolveA = resolve; });
+      }
+      return Promise.resolve(credentialResponse(tokenB));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    useAuthStore.getState().login({
+      id: "1", documentId: "account-a-user", username: "a", email: "a@example.com", blocked: false, token: "proof-a",
+    });
+    const accountARequest = musicCredentialForRequest();
+
+    useAuthStore.getState().logout();
+    useAuthStore.getState().login({
+      id: "2", documentId: "account-b-user", username: "b", email: "b@example.com", blocked: false, token: "proof-b",
+    });
+    await expect(musicCredentialForRequest()).resolves.toBe(tokenB);
+
+    resolveA(credentialResponse(tokenA));
+    await expect(accountARequest).rejects.toThrow("Music authorization is required");
+    await expect(musicCredentialForRequest()).resolves.toBe(tokenB);
+    expect(accountASignal?.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts a pending mint when the Explorer proof rotates outside the auth store", async () => {
+    const tokenA = `${"p".repeat(30)}.${"q".repeat(30)}.${"r".repeat(30)}`;
+    const tokenB = `${"s".repeat(30)}.${"t".repeat(30)}.${"u".repeat(30)}`;
+    let resolveA!: (response: Response) => void;
+    let accountASignal: AbortSignal | undefined;
+    const fetchMock = vi.fn((_url: string, init?: RequestInit): Promise<Response> => {
+      const proof = new Headers(init?.headers).get("Authorization");
+      if (proof === "Bearer authoritative-explorer-proof") {
+        accountASignal = init?.signal as AbortSignal | undefined;
+        return new Promise((resolve) => { resolveA = resolve; });
+      }
+      return Promise.resolve(credentialResponse(tokenB));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const accountARequest = musicCredentialForRequest();
+    localStorage.setItem("qrtoken", "proof-b");
+    const accountBRequest = musicCredentialForRequest();
+    resolveA(credentialResponse(tokenA));
+
+    await expect(accountARequest).rejects.toThrow("Music authorization is required");
+    await expect(accountBRequest).resolves.toBe(tokenB);
+    expect(accountASignal?.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("uses a bodyless Explorer proof once and returns only the minted Music credential", async () => {

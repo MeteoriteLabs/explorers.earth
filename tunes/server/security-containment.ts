@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { errorEnvelope, type ContainmentCode } from "./containment-error-contract";
@@ -51,35 +51,77 @@ export function rejectLegacyBearerOwner(): RejectedLegacyOwner {
 }
 
 const LIMITER_CAPACITY = 1024;
-const authAttempts = new Map<string, { count: number; resetAt: number }>();
+const limiterNamespaces = new Map<string, Map<string, { count: number; resetAt: number }>>();
 
-function evictLimiterEntries(now: number): void {
-  authAttempts.forEach((value, key) => {
-    if (value.resetAt <= now) authAttempts.delete(key);
+function limiterNamespace(key: string): string {
+  const separator = key.indexOf(":");
+  return separator < 1 ? "default" : key.slice(0, separator);
+}
+
+function entriesFor(key: string): Map<string, { count: number; resetAt: number }> {
+  const namespace = limiterNamespace(key);
+  let entries = limiterNamespaces.get(namespace);
+  if (!entries) {
+    entries = new Map();
+    limiterNamespaces.set(namespace, entries);
+  }
+  return entries;
+}
+
+function pruneLimiterEntries(entries: Map<string, { count: number; resetAt: number }>, now: number): void {
+  entries.forEach((value, key) => {
+    if (value.resetAt <= now) entries.delete(key);
   });
-  while (authAttempts.size >= LIMITER_CAPACITY) authAttempts.delete(authAttempts.keys().next().value!);
 }
 
 export function consumeContainmentLimit(key: string, limit: number, windowMs: number): boolean {
+  if (key.length < 1 || key.length > 1_024 || !Number.isSafeInteger(limit) || limit < 1
+      || !Number.isSafeInteger(windowMs) || windowMs < 1) return true;
   const now = Date.now();
-  const current = authAttempts.get(key);
+  const entries = entriesFor(key);
+  const current = entries.get(key);
   if (!current || current.resetAt <= now) {
-    evictLimiterEntries(now);
-    authAttempts.set(key, { count: 1, resetAt: now + windowMs });
+    if (current) entries.delete(key);
+    pruneLimiterEntries(entries, now);
+    if (entries.size >= LIMITER_CAPACITY) return true;
+    entries.set(key, { count: 1, resetAt: now + windowMs });
     return false;
   }
   current.count += 1;
   return current.count > limit;
 }
 
+export function consumePublicSurfaceLimit(input: {
+  source: string;
+  resource: string;
+  capability?: string;
+}): boolean {
+  if (input.source.length < 1 || input.source.length > 512
+      || input.resource.length < 1 || input.resource.length > 512
+      || input.capability !== undefined && !/^[A-Za-z0-9_-]{43}$/.test(input.capability)) return true;
+  const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+  const source = hash(input.source);
+  const resource = hash(input.resource);
+  const capability = input.capability ? hash(input.capability) : "public";
+  return consumeContainmentLimit("c6-public-global:all", 600, 60_000)
+    || consumeContainmentLimit(`c6-public-address:${source}`, 120, 60_000)
+    || consumeContainmentLimit(`c6-public-resource:${source}:${resource}:${capability}`, 60, 60_000);
+}
+
 export function containmentLimiterStats() {
-  evictLimiterEntries(Date.now());
-  return { size: authAttempts.size, capacity: LIMITER_CAPACITY };
+  const now = Date.now();
+  let size = 0;
+  limiterNamespaces.forEach((entries, namespace) => {
+    pruneLimiterEntries(entries, now);
+    if (entries.size === 0) limiterNamespaces.delete(namespace);
+    else size += entries.size;
+  });
+  return { size, capacity: limiterNamespaces.size * LIMITER_CAPACITY };
 }
 
 export function resetContainmentLimiters(): void {
   if (process.env.NODE_ENV === "production") throw new Error("Limiter reset is unavailable in production");
-  authAttempts.clear();
+  limiterNamespaces.clear();
 }
 
 function clientAddress(req: Request): string {

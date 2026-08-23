@@ -252,7 +252,7 @@ describe("bounded Music load qualification", () => {
         Account_Name: "Load",
         Account_Type: "Venue",
         mobile_number: "+15555550111",
-      }] }), { status: 200 }));
+      }], meta: { pagination: { page: 1, pageSize: 50, pageCount: 1, total: 1 } } }), { status: 200 }));
     const gateway = loadGateway(fetchImpl);
     const ensureIdentity = vi.fn(async () => {
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 5));

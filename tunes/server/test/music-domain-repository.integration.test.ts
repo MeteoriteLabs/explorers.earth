@@ -324,7 +324,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
   });
 
   it("lists only active explicitly discoverable users with a visible playlist for the sitemap", async () => {
-    // Break caught: lifecycle, unlisted, revoked, and zero-visible Music pages entered discovery.
+    // Break caught: lifecycle, unlisted, and zero-visible pages entered discovery, or capability revocation hid a public page.
     const suffixes = ["sitemap-live", "sitemap-suspended", "sitemap-pending", "sitemap-private", "sitemap-unlisted", "sitemap-revoked", "sitemap-zero"];
     const rows = new Map<string, Awaited<ReturnType<MusicIdentityRepository["ensureIdentity"]>>>();
     for (const suffix of suffixes) rows.set(suffix, await identities.ensureIdentity(identityInput(suffix)));
@@ -351,6 +351,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
 
     expect(await domain.listPublishedMusicPlaylists()).toEqual([
       expect.objectContaining({ guestUrl: "c6-public-sitemap-live", updatedAt: expect.any(Date) }),
+      expect.objectContaining({ guestUrl: "c6-public-sitemap-revoked", updatedAt: expect.any(Date) }),
     ]);
   });
 });

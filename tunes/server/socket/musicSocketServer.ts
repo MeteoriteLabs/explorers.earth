@@ -65,12 +65,55 @@ export interface MusicSocketDependencies {
   } | undefined>;
   eventLimit?: number;
   eventWindowMs?: number;
+  eventRateMaxEntries?: number;
   ownerRegistry?: MusicOwnerSocketRegistry;
 }
 
 type SocketAuthority =
   | { role: "owner"; musicUserId: number; owner: MusicSocketCredentialContext; rateKey: string }
   | { role: "guest"; musicUserId: number; capability: string; rateKey: string };
+
+export class BoundedSocketEventLimiter {
+  private readonly entries = new Map<string, { count: number; resetAt: number }>();
+
+  constructor(private readonly configuration: {
+    eventLimit: number;
+    eventWindowMs: number;
+    maxEntries: number;
+    now?: () => number;
+  }) {
+    if (!Number.isSafeInteger(configuration.eventLimit) || configuration.eventLimit < 1 || configuration.eventLimit > 10_000
+        || !Number.isSafeInteger(configuration.eventWindowMs) || configuration.eventWindowMs < 1 || configuration.eventWindowMs > 3_600_000
+        || !Number.isSafeInteger(configuration.maxEntries) || configuration.maxEntries < 1 || configuration.maxEntries > 100_000) {
+      throw new Error("Music socket limiter configuration is invalid");
+    }
+  }
+
+  consume(key: string): boolean {
+    const now = (this.configuration.now ?? Date.now)();
+    const current = this.entries.get(key);
+    if (current && current.resetAt > now) {
+      current.count += 1;
+      return current.count > this.configuration.eventLimit;
+    }
+    if (current) this.entries.delete(key);
+    this.prune(now);
+    if (this.entries.size >= this.configuration.maxEntries) return true;
+    this.entries.set(key, { count: 1, resetAt: now + this.configuration.eventWindowMs });
+    return false;
+  }
+
+  stats(): { size: number; capacity: number } {
+    this.prune((this.configuration.now ?? Date.now)());
+    return { size: this.entries.size, capacity: this.configuration.maxEntries };
+  }
+
+  private prune(now: number): void {
+    this.entries.forEach((entry, key) => {
+      if (entry.resetAt <= now) this.entries.delete(key);
+    });
+  }
+}
 
 export function createMusicSocketServer(app: Express, dependencies: MusicSocketDependencies): Server {
   const server = createServer(app);
@@ -97,22 +140,26 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
     },
     async () => { io.disconnectSockets(true); },
   );
-  const limiter = new Map<string, { count: number; resetAt: number }>();
   const eventLimit = dependencies.eventLimit ?? 10;
   const eventWindowMs = dependencies.eventWindowMs ?? 60_000;
+  const limiter = new BoundedSocketEventLimiter({
+    eventLimit,
+    eventWindowMs,
+    maxEntries: dependencies.eventRateMaxEntries ?? 1_024,
+  });
 
   const authorityIsCurrent = async (authority: SocketAuthority, expectedRole: SocketAuthority["role"]): Promise<boolean> => {
     if (authority.role !== expectedRole) return false;
-    if (authority.role === "owner") {
-      try {
+    try {
+      if (authority.role === "owner") {
         const principal = await dependencies.ownerCredentials.recheck(authority.owner);
         return principal.musicUserId === authority.musicUserId;
-      } catch {
-        return false;
       }
+      const guest = await dependencies.resolveGuestCapability(authority.capability);
+      return guest?.active === true && guest.musicUserId === authority.musicUserId;
+    } catch {
+      return false;
     }
-    const guest = await dependencies.resolveGuestCapability(authority.capability);
-    return guest?.active === true && guest.musicUserId === authority.musicUserId;
   };
 
   const emitToAuthorizedRecipients = async (
@@ -177,7 +224,8 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
     }
   });
 
-  io.on("connection", async (socket: Socket) => {
+  io.on("connection", (socket: Socket) => {
+    void (async () => {
     const authority = socket.data.musicAuthority as SocketAuthority;
     const admissionEpoch = socket.data.musicAdmissionEpoch as number | undefined;
     const admissionIsCurrent = () => admissionEpoch === undefined
@@ -218,15 +266,8 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       let bytes: number;
       try { bytes = Buffer.byteLength(JSON.stringify(payload), "utf8"); } catch { fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid.")); return false; }
       if (bytes > 2_048) { fail(routeError("PAYLOAD_TOO_LARGE", 400, "The socket payload is too large.")); return false; }
-      const now = Date.now();
       const key = `${authority.rateKey}:${socket.handshake.address}`;
-      const current = limiter.get(key);
-      if (!current || current.resetAt <= now) {
-        limiter.set(key, { count: 1, resetAt: now + eventWindowMs });
-        return true;
-      }
-      current.count += 1;
-      if (current.count > eventLimit) { fail(routeError("RATE_LIMITED", 429, "Too many Music socket events.")); return false; }
+      if (limiter.consume(key)) { fail(routeError("RATE_LIMITED", 429, "Too many Music socket events.")); return false; }
       return true;
     };
 
@@ -236,29 +277,38 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       }
     });
 
-    socket.on("player_state", async (payload: unknown) => {
-      if (authority.role !== "owner") return fail(routeError("SOCKET_EVENT_FORBIDDEN", 403, "The socket event is not allowed."));
-      if (!accept(payload)) return;
-      try {
-        const principal = await dependencies.ownerCredentials.recheck(authority.owner);
-        if (principal.musicUserId !== authority.musicUserId) throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
-      } catch (cause) { return evict(cause); }
-      if (!validPlayerState(payload)) return fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid."));
-      await emitToAuthorizedRecipients(`music-guest:${authority.musicUserId}`, "guest", "player_state", payload);
+    socket.on("player_state", (payload: unknown) => {
+      void (async () => {
+        if (authority.role !== "owner") return fail(routeError("SOCKET_EVENT_FORBIDDEN", 403, "The socket event is not allowed."));
+        if (!accept(payload)) return;
+        try {
+          const principal = await dependencies.ownerCredentials.recheck(authority.owner);
+          if (principal.musicUserId !== authority.musicUserId) throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+        } catch (cause) { return evict(cause); }
+        if (!validPlayerState(payload)) return fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid."));
+        await emitToAuthorizedRecipients(`music-guest:${authority.musicUserId}`, "guest", "player_state", payload);
+      })().catch(evict);
     });
 
-    socket.on("guest_request", async (payload: unknown) => {
-      if (authority.role !== "guest") return fail(routeError("SOCKET_EVENT_FORBIDDEN", 403, "The socket event is not allowed."));
-      if (!accept(payload)) return;
-      try {
-        const guest = await dependencies.resolveGuestCapability(authority.capability);
-        if (!guest?.active || guest.musicUserId !== authority.musicUserId || !guest.allowSongRequests) throw guestInvalid();
-      } catch (cause) { return evict(cause); }
-      if (!validGuestRequest(payload)) return fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid."));
-      const requestId = randomUUID();
-      const event = payload as { type: "song"; externalId: string };
-      await emitToAuthorizedRecipients(`music-owner:${authority.musicUserId}`, "owner", "guest_request", { ...event, requestId });
-      socket.emit("guest_request_status", { status: "accepted", requestId });
+    socket.on("guest_request", (payload: unknown) => {
+      void (async () => {
+        if (authority.role !== "guest") return fail(routeError("SOCKET_EVENT_FORBIDDEN", 403, "The socket event is not allowed."));
+        if (!accept(payload)) return;
+        try {
+          const guest = await dependencies.resolveGuestCapability(authority.capability);
+          if (!guest?.active || guest.musicUserId !== authority.musicUserId || !guest.allowSongRequests) throw guestInvalid();
+        } catch (cause) { return evict(cause); }
+        if (!validGuestRequest(payload)) return fail(routeError("REQUEST_INVALID", 400, "The socket payload is invalid."));
+        const requestId = randomUUID();
+        const event = payload as { type: "song"; externalId: string };
+        await emitToAuthorizedRecipients(`music-owner:${authority.musicUserId}`, "owner", "guest_request", { ...event, requestId });
+        socket.emit("guest_request_status", { status: "accepted", requestId });
+      })().catch(evict);
+    });
+    })().catch((cause) => {
+      const error = safeSocketError(cause);
+      socket.emit("music_error", musicErrorEnvelope(error, randomUUID()));
+      socket.disconnect(true);
     });
   });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AuthoritativeAbsence } from "../workers/musicLifecycleWorker";
+import { cancelResponseBody, readBoundedResponseBody } from "./strapiIdentityGateway";
 
 const documentId = z.string().trim().min(1).max(512);
 const record = z.object({ documentId }).strict();
@@ -56,9 +57,13 @@ export class StrapiIdentityAbsenceProof {
         }),
         signal: controller.signal,
       });
-      if (!response.ok) return "outage";
-      const body = await response.text();
-      if (body.length > 64 * 1024) return "unknown";
+      if (!response.ok) {
+        await cancelResponseBody(response);
+        return "outage";
+      }
+      let body: string;
+      try { body = await readBoundedResponseBody(response, 64 * 1024, this.options.timeoutMs, controller); }
+      catch (error) { return error instanceof RangeError ? "unknown" : "outage"; }
       let decoded: unknown;
       try { decoded = JSON.parse(body); }
       catch { return "unknown"; }

@@ -174,6 +174,60 @@ export function resolveMusicEntryPolicy(input: { killSwitch: boolean; cohortEnab
   } as const;
 }
 
+export const MUSIC_COHORT_MAX_IDENTITIES = 100;
+const MUSIC_COHORT_DOCUMENT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const MUSIC_COHORT_MAX_CONFIGURATION_BYTES = MUSIC_COHORT_MAX_IDENTITIES * 129;
+
+export interface MusicCohortConfiguration {
+  enabled: boolean;
+  userDocumentIds: ReadonlySet<string>;
+}
+
+export function parseMusicCohortConfiguration(environment: NodeJS.ProcessEnv): MusicCohortConfiguration {
+  const rawEnabled = environment.MUSIC_COHORT_ENABLED;
+  if (rawEnabled !== undefined && rawEnabled !== "true" && rawEnabled !== "false") {
+    throw new Error("MUSIC_COHORT_ENABLED must be exactly true or false");
+  }
+  const enabled = rawEnabled === "true";
+  if (!enabled) return { enabled: false, userDocumentIds: new Set() };
+
+  const rawIdentities = environment.MUSIC_COHORT_USER_DOCUMENT_IDS ?? "";
+  if (Buffer.byteLength(rawIdentities, "utf8") > MUSIC_COHORT_MAX_CONFIGURATION_BYTES) {
+    throw new Error(`MUSIC_COHORT_USER_DOCUMENT_IDS must contain at most ${MUSIC_COHORT_MAX_IDENTITIES} document IDs`);
+  }
+  if (!rawIdentities.trim()) return { enabled: true, userDocumentIds: new Set() };
+  const identities = rawIdentities.split(",").map((value) => value.trim());
+  if (identities.length > MUSIC_COHORT_MAX_IDENTITIES) {
+    throw new Error(`MUSIC_COHORT_USER_DOCUMENT_IDS must contain at most ${MUSIC_COHORT_MAX_IDENTITIES} document IDs`);
+  }
+  if (identities.some((value) => !MUSIC_COHORT_DOCUMENT_ID.test(value))) {
+    throw new Error("MUSIC_COHORT_USER_DOCUMENT_IDS contains an invalid document ID");
+  }
+  const unique = new Set(identities);
+  if (unique.size !== identities.length) {
+    throw new Error("MUSIC_COHORT_USER_DOCUMENT_IDS must contain unique document IDs");
+  }
+  return { enabled: true, userDocumentIds: unique };
+}
+
+export function createMusicCohortEntryResolver(input: {
+  killSwitch: () => boolean;
+  cohort: MusicCohortConfiguration;
+  resolveIdentity: (proof: string, requestId: string) => Promise<{ userDocumentId: string }>;
+}): (proof: string, requestId: string) => Promise<boolean> {
+  return async (proof, requestId) => {
+    if (input.killSwitch()) return false;
+    if (!input.cohort.enabled) return true;
+    if (input.cohort.userDocumentIds.size === 0) return false;
+    const identity = await input.resolveIdentity(proof, requestId);
+    return resolveMusicEntryPolicy({
+      killSwitch: false,
+      cohortEnabled: true,
+      inCohort: input.cohort.userDocumentIds.has(identity.userDocumentId),
+    }).newMusicEntryEnabled;
+  };
+}
+
 export function livenessStatus() {
   return { live: true as const };
 }

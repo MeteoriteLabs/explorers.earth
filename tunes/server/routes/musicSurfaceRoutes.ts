@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError";
 import { createMusicPrincipalMiddleware, MusicPrincipalError, type MusicPrincipal } from "../middleware/musicPrincipal";
-import { consumeContainmentLimit, safeMusicRequestError } from "../security-containment";
+import { consumeContainmentLimit, consumePublicSurfaceLimit, safeMusicRequestError } from "../security-containment";
 import {
   entitlementDecision,
   hashGuestCapability,
@@ -32,6 +32,7 @@ interface CanonicalMusicRepository {
   setPublicationMode(ownerId: number, mode: "private" | "unlisted" | "public", capabilityHash?: string): Promise<{ mode: "private" | "unlisted" | "public"; publicSlug: string } | undefined>;
   executePublicationCommand(ownerId: number, idempotencyKey: string, mode: "private" | "unlisted" | "public"): Promise<
     | { status: "completed"; replayed: boolean; response: { version: "music-publication/v1"; publication: { mode: "private" | "unlisted" | "public"; publicSlug: string }; capability?: string } }
+    | { status: "rate_limited"; retryAfterSeconds: number }
     | { status: "conflict" | "expired" | "not_found" }
   >;
   rotateGuestCapability(ownerId: number, capabilityHash: string): Promise<unknown>;
@@ -49,7 +50,9 @@ export interface CanonicalMusicRouteDependencies {
   requestIdFactory?: () => string;
   now?: () => Date;
   allowedOrigins: string[];
-  publicRateLimited?: (anonymousKeyHash: string) => boolean;
+  trustedProxyHops?: 0 | 1;
+  isTrustedProxy?: (peerAddress: string | undefined) => boolean;
+  publicRateLimited?: (input: { source: string; resource: string; capability?: string }) => boolean;
   youtube?: {
     search(input: { query: string; pageToken?: string }): Promise<unknown>;
     videoFromUrl(url: string): Promise<unknown | undefined>;
@@ -272,6 +275,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         if (result.status === "expired") {
           throw new MusicIdentityError("PUBLICATION_REPLAY_EXPIRED", 409, "The publication replay window has expired.", "none", false);
         }
+        if (result.status === "rate_limited") {
+          throw new MusicIdentityError("RATE_LIMITED", 429, "Too many publication commands.", "retry", true, result.retryAfterSeconds);
+        }
         throw notFound();
       }
       res.status(200).json(result.response);
@@ -306,16 +312,19 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.get("/api/playlist/:guestUrl", identify, async (req, res, next) => {
     try {
-      const anonymousKeyHash = hashGuestCapability(req.params.guestUrl);
-      const limited = dependencies.publicRateLimited?.(anonymousKeyHash)
-        ?? consumeContainmentLimit(`c6-public:${anonymousKeyHash}`, 60, 60_000);
-      if (limited) throw new MusicIdentityError(
-        "RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60,
-      );
       const suppliedCapability = req.get("x-music-guest-capability");
       const capability = suppliedCapability && /^[A-Za-z0-9_-]{43}$/.test(suppliedCapability)
         ? suppliedCapability
         : undefined;
+      const peerAddress = req.socket.remoteAddress;
+      const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+        ? (req.ip ?? peerAddress ?? "unknown")
+        : (peerAddress ?? "unknown");
+      const rateInput = { source, resource: req.params.guestUrl, ...(capability ? { capability } : {}) };
+      const limited = dependencies.publicRateLimited?.(rateInput) ?? consumePublicSurfaceLimit(rateInput);
+      if (limited) throw new MusicIdentityError(
+        "RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60,
+      );
       const resource = await dependencies.repository.resolveGuestResource(req.params.guestUrl, capability);
       if (!resource || !["unlisted", "public"].includes(resource.state) || !resource.playlist) throw notFound();
       if (resource.noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow");

@@ -72,6 +72,41 @@ describe("POST /api/music/identity/ensure", () => {
     expect(ensure).not.toHaveBeenCalled();
   });
 
+  it("awaits proof-bound cohort admission before provisioning an identity", async () => {
+    const app = express();
+    const ensure = vi.fn(async () => ({
+      id: 41,
+      strapiUserDocumentId: "member-doc",
+      strapiAccountDocumentId: "account-doc",
+      identityStatus: "active" as const,
+      sessionVersion: 1,
+    }));
+    const entryEnabled = vi.fn(async (proof: string, requestId: string) => {
+      await Promise.resolve();
+      return proof === "member-proof-with-entropy" && requestId === "cohort-request";
+    });
+    setupMusicIdentityRoutes(app, {
+      ...routeCredentialDependencies,
+      ensure,
+      entryEnabled,
+      limiter: new BoundedIdentityRateLimiter({ limit: 20, windowMs: 1_000, maxEntries: 100 }),
+    });
+
+    const rejected = await request(app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer outsider-proof-with-entropy")
+      .set("x-request-id", "cohort-request");
+    expect(rejected.status).toBe(503);
+    expect(rejected.body.error.code).toBe("ENTRY_DISABLED");
+    expect(ensure).not.toHaveBeenCalled();
+    expect(entryEnabled).toHaveBeenCalledWith("outsider-proof-with-entropy", "cohort-request");
+
+    const admitted = await request(app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer member-proof-with-entropy")
+      .set("x-request-id", "cohort-request");
+    expect(admitted.status).toBe(200);
+    expect(ensure).toHaveBeenCalledOnce();
+  });
+
   it("accepts only one strict bearer and an absent body/query/owner identity", async () => {
     const { app, ensure } = appFor();
     const ok = await request(app)
@@ -234,7 +269,7 @@ describe("POST /api/music/identity/ensure", () => {
       })
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: [{
         documentId: "load-account", Account_Name: "Load", Account_Type: "Venue", mobile_number: "+15555550111",
-      }] }), { status: 200 }));
+      }], meta: { pagination: { page: 1, pageSize: 50, pageCount: 1, total: 1 } } }), { status: 200 }));
     const gateway = new StrapiIdentityGateway({
       baseUrl: "https://strapi.invalid", fetchImpl, maxConcurrency: 2, retries: 0,
       maxPending: 4,

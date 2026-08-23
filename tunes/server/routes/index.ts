@@ -15,7 +15,7 @@ import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { StrapiIdentityGateway } from "../services/strapiIdentityGateway";
 import { MusicProjectionService } from "../services/musicProjectionService";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
-import { resolveMusicEntryPolicy } from "../deployment/music-deployment";
+import { createMusicCohortEntryResolver, parseMusicCohortConfiguration } from "../deployment/music-deployment";
 import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
 import { MusicTokenService } from "../services/musicTokenService";
 import { createMusicSocketCredentialVerifier, MusicPrincipalService } from "../middleware/musicPrincipal";
@@ -70,6 +70,11 @@ export async function registerRoutes(
   });
   const identityRepository = new MusicIdentityRepository(pool);
   const identityProjection = new MusicProjectionService(identityGateway, identityRepository, musicConfig.maxInflight);
+  const cohortEntryEnabled = createMusicCohortEntryResolver({
+    killSwitch: () => process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
+    cohort: parseMusicCohortConfiguration(process.env),
+    resolveIdentity: (proof, requestId) => identityGateway.resolve(proof, requestId),
+  });
   const musicTokens = new MusicTokenService(musicConfig.musicToken);
   const musicPrincipals = new MusicPrincipalService(musicTokens, identityRepository);
   const ownerSocketRegistry = new MusicOwnerSocketRegistry();
@@ -85,11 +90,7 @@ export async function registerRoutes(
       try { musicTokens.verify(token); return true; }
       catch { return false; }
     },
-    entryEnabled: () => resolveMusicEntryPolicy({
-      killSwitch: process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
-      cohortEnabled: process.env.MUSIC_COHORT_ENABLED === "true",
-      inCohort: false,
-    }).newMusicEntryEnabled,
+    entryEnabled: cohortEntryEnabled,
     trustedProxyHops: musicConfig.trustedProxyHops,
     isTrustedProxy: musicConfig.isTrustedProxy,
     telemetry: () => ({ ...identityGateway.stats(), coalesced: identityProjection.stats().coalesced }),
@@ -111,6 +112,8 @@ export async function registerRoutes(
     repository: musicDomain,
     resolvePrincipal: (token: string) => musicPrincipals.resolve(token),
     allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean) ?? ["http://localhost:5173"],
+    trustedProxyHops: musicConfig.trustedProxyHops,
+    isTrustedProxy: musicConfig.isTrustedProxy,
     youtube: createYouTubeReadService(process.env.YOUTUBE_API_KEY),
   };
   setupCanonicalMusicRoutes(app, canonicalDependencies);
@@ -166,9 +169,11 @@ export async function registerRoutes(
     },
   });
   const publicationShredTimer = setInterval(() => {
-    void publicationOperations.shredExpiredResponses(100).catch(() => {
+    void publicationOperations.shredExpiredResponses(100)
+      .then(() => publicationOperations.compactExpiredOperations(100))
+      .catch(() => {
       console.error("music_publication_response_shred_failed");
-    });
+      });
   }, 60 * 60 * 1_000);
   publicationShredTimer.unref();
   server.once("close", () => {

@@ -21,7 +21,20 @@ const strapiAccountSchema = z.object({
 
 const strapiAccountsSchema = z.object({
   data: z.array(strapiAccountSchema).max(50),
+  meta: z.object({
+    pagination: z.object({
+      page: z.number().int().min(1),
+      pageSize: z.number().int().min(1).max(50),
+      pageCount: z.number().int().min(0).max(10),
+      total: z.number().int().min(0).max(500),
+    }).strict(),
+  }).strict(),
 }).passthrough();
+
+const ACCOUNT_PAGE_SIZE = 50;
+const MAX_ACCOUNT_PAGES = 10;
+const MAX_ACCOUNT_TOTAL = ACCOUNT_PAGE_SIZE * MAX_ACCOUNT_PAGES;
+const MAX_JSON_BODY_BYTES = 128 * 1024;
 
 export interface ResolvedStrapiIdentity {
   userDocumentId: string;
@@ -263,14 +276,40 @@ export class StrapiIdentityGateway {
     const deadline = this.now() + this.options.overallTimeoutMs;
     const user = await this.resolveEligibleUser(proof, requestId, deadline, admission);
 
-    const params = new URLSearchParams({
-      "filters[users_permissions_user][documentId][$eq]": user.documentId,
-      "pagination[pageSize]": "50",
-    });
-    const accountBody = await this.requestJson(`/api/accounts?${params.toString()}`, proof, requestId, deadline, admission);
-    const parsedAccounts = strapiAccountsSchema.safeParse(accountBody);
-    if (!parsedAccounts.success) throw malformed();
-    const completed = parsedAccounts.data.data.filter((account) =>
+    const accounts: Array<z.infer<typeof strapiAccountSchema>> = [];
+    const documentIds = new Set<string>();
+    let authoritative: { pageCount: number; total: number } | undefined;
+    for (let page = 1; page <= (authoritative?.pageCount || 1); page += 1) {
+      const params = new URLSearchParams({
+        "filters[users_permissions_user][documentId][$eq]": user.documentId,
+        "sort[0]": "documentId:asc",
+        "pagination[page]": String(page),
+        "pagination[pageSize]": String(ACCOUNT_PAGE_SIZE),
+        "pagination[withCount]": "true",
+      });
+      const accountBody = await this.requestJson(`/api/accounts?${params.toString()}`, proof, requestId, deadline, admission);
+      const parsedAccounts = strapiAccountsSchema.safeParse(accountBody);
+      if (!parsedAccounts.success) throw malformed();
+      const { data, meta: { pagination } } = parsedAccounts.data;
+      const expectedPageCount = pagination.total === 0 ? 0 : Math.ceil(pagination.total / ACCOUNT_PAGE_SIZE);
+      const expectedRows = pagination.total === 0 ? 0
+        : page < pagination.pageCount ? ACCOUNT_PAGE_SIZE
+          : pagination.total - (pagination.pageCount - 1) * ACCOUNT_PAGE_SIZE;
+      if (pagination.page !== page || pagination.pageSize !== ACCOUNT_PAGE_SIZE
+          || pagination.total > MAX_ACCOUNT_TOTAL || pagination.pageCount > MAX_ACCOUNT_PAGES
+          || pagination.pageCount !== expectedPageCount || data.length !== expectedRows
+          || (authoritative && (pagination.pageCount !== authoritative.pageCount || pagination.total !== authoritative.total))) {
+        throw malformed();
+      }
+      authoritative ??= { pageCount: pagination.pageCount, total: pagination.total };
+      for (const account of data) {
+        if (documentIds.has(account.documentId)) throw malformed();
+        documentIds.add(account.documentId);
+        accounts.push(account);
+      }
+    }
+    if (!authoritative || accounts.length !== authoritative.total) throw malformed();
+    const completed = accounts.filter((account) =>
       Boolean(account.Account_Name && account.Account_Type && account.mobile_number));
     if (completed.length === 0) {
       throw new MusicIdentityError("ONBOARDING_INCOMPLETE", 409, "Complete Explorer onboarding before using Music.", "complete_onboarding", false);
@@ -338,9 +377,13 @@ export class StrapiIdentityGateway {
             Math.min(remaining, this.options.connectTimeoutMs),
             controller,
           );
-          if (response.status >= 400) return { response, body: undefined };
-          const body = await withDeadline(
-            response.text(),
+          if (response.status >= 400) {
+            await cancelResponseBody(response);
+            return { response, body: undefined };
+          }
+          const body = await readBoundedResponseBody(
+            response,
+            MAX_JSON_BODY_BYTES,
             Math.min(this.options.readTimeoutMs, Math.max(1, deadline - this.now())),
             controller,
           );
@@ -360,11 +403,11 @@ export class StrapiIdentityGateway {
           throw unavailable(clientRetryAfterSeconds(parseRetryAfterMs(response.headers.get("retry-after"), this.now())), true);
         }
         const body = result.body ?? "";
-        if (body.length > 128 * 1024) throw malformed();
         try { return JSON.parse(body); }
         catch { throw malformed(); }
       } catch (error) {
         if (error instanceof MusicIdentityError) throw error;
+        if (error instanceof RangeError || error instanceof TypeError) throw malformed();
         if (error instanceof AdmissionLimitError) throw unavailable(1, false);
         if (attempt < this.options.retries) {
           this.retries += 1;
@@ -478,6 +521,46 @@ async function withDeadline<T>(operation: Promise<T>, timeoutMs: number, control
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+export async function cancelResponseBody(response: Response): Promise<void> {
+  if (!response.body || response.body.locked) return;
+  try { await response.body.cancel(); }
+  catch { /* the connection is already unusable; there is nothing left to drain */ }
+}
+
+export async function readBoundedResponseBody(
+  response: Response,
+  maximumBytes: number,
+  timeoutMs: number,
+  controller: AbortController,
+): Promise<string> {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  const startedAt = Date.now();
+  try {
+    while (true) {
+      const remaining = timeoutMs - (Date.now() - startedAt);
+      if (remaining <= 0) throw new Error("deadline exceeded");
+      const next = await withDeadline(reader.read(), remaining, controller);
+      if (next.done) break;
+      length += next.value.byteLength;
+      if (length > maximumBytes) throw new RangeError("bounded response body exceeded");
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    try { await reader.cancel(); } catch { /* already aborted */ }
+    throw error;
+  }
+  const body = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8", { fatal: true }).decode(body);
 }
 
 export function parseRetryAfterMs(value: string | null, now: number): number | undefined {

@@ -29,7 +29,11 @@ function harness(
       if (normalized.startsWith("SELECT transaction_timestamp()::text AS operation_time")) {
         return { rows: [{ operation_time: operationTime }], rowCount: 1 };
       }
-      return { rows: [], rowCount: 0, ...handler(normalized, values) };
+      const handled = { rows: [], rowCount: 0, ...handler(normalized, values) };
+      if (normalized.includes("AS active_count") && handled.rows.length === 0) {
+        return { rows: [{ active_count: 0, retry_after_seconds: 1 }], rowCount: 1 };
+      }
+      return handled;
     },
     release: vi.fn(),
   };
@@ -125,6 +129,45 @@ describe("durable publication operation repository", () => {
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
     await expect(repository.execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "conflict" });
     expect(db.calls.some(({ text }) => /UPDATE users|INSERT INTO music_publication_operations/.test(text))).toBe(false);
+  });
+
+  it("rate-limits fresh keys at the per-owner replayable-operation quota before publication mutation", async () => {
+    const db = harness((text) => {
+      if (text.includes("FROM music_publication_operations") && text.includes("idempotency_key_hash=$2")) return { rows: [] };
+      if (text.includes("music_lookup_publication_operation_archive")) return { rows: [] };
+      if (text.includes("active_count")) return { rows: [{ active_count: 100, retry_after_seconds: 37 }] };
+      return { rows: [] };
+    });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
+
+    await expect(repository.execute(41, "fresh-command-at-quota", "public")).resolves.toEqual({
+      status: "rate_limited",
+      retryAfterSeconds: 37,
+    });
+    expect(db.calls.some(({ text }) => text.includes("music_lookup_publication_operation_archive"))).toBe(true);
+    expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
+    expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
+    expect(db.calls.map(({ text }) => text)).toContain("COMMIT");
+  });
+
+  it("keeps compacted tombstones authoritative for exact expiry and conflicting reuse", async () => {
+    const archived = {
+      request_fingerprint: publicationRequestFingerprint("unlisted"),
+      request_mode: "unlisted",
+    };
+    const exactDb = harness((text) => text.includes("music_lookup_publication_operation_archive")
+      ? { rows: [archived] }
+      : { rows: [] });
+    await expect(new MusicPublicationOperationRepository(exactDb.pool as never, cipher)
+      .execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "expired" });
+    expect(exactDb.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
+
+    const conflictDb = harness((text) => text.includes("music_lookup_publication_operation_archive")
+      ? { rows: [{ ...archived, request_fingerprint: publicationRequestFingerprint("private"), request_mode: "private" }] }
+      : { rows: [] });
+    await expect(new MusicPublicationOperationRepository(conflictDb.pool as never, cipher)
+      .execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "conflict" });
+    expect(conflictDb.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
   });
 
   it("shreds an expired response, retains the tombstone, and never rotates publication", async () => {
@@ -277,6 +320,19 @@ describe("durable publication operation repository", () => {
     expect(db.calls.at(-1)?.text).toMatch(/LIMIT \$1[\s\S]*operation_state='replay_expired'/i);
     expect(db.calls.at(-1)?.values).toEqual([3]);
     expect(db.calls.at(-1)?.text).not.toMatch(/DELETE/i);
+  });
+
+  it("compacts a bounded batch only through the database-owned archive function", async () => {
+    const db = harness((text) => text.includes("music_compact_publication_operations")
+      ? { rows: [{ compacted_count: 7 }], rowCount: 1 }
+      : { rows: [] });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
+    await expect(repository.compactExpiredOperations(7)).resolves.toBe(7);
+    expect(db.calls.at(-1)).toMatchObject({ values: [7] });
+    expect(db.calls.at(-1)?.text).toMatch(/^SELECT music_compact_publication_operations\(\$1\)::integer AS compacted_count$/i);
+    for (const limit of [0, 1.5, 1_001]) {
+      await expect(repository.compactExpiredOperations(limit)).rejects.toThrow(/compaction limit is invalid/i);
+    }
   });
 
   it("uses default dependencies for a private command and returns not-found without operation history", async () => {

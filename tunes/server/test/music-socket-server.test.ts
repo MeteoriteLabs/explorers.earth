@@ -2,7 +2,34 @@ import express from "express";
 import { io as connectSocket, type Socket } from "socket.io-client";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MusicPrincipalError } from "../middleware/musicPrincipal";
-import { createMusicSocketServer, MusicOwnerSocketRegistry } from "../socket/musicSocketServer";
+import {
+  BoundedSocketEventLimiter,
+  createMusicSocketServer,
+  MusicOwnerSocketRegistry,
+} from "../socket/musicSocketServer";
+
+describe("bounded socket event limiter", () => {
+  it("fails closed at live-key saturation and admits a new key only after expired entries are pruned", () => {
+    // Break caught: attacker-controlled socket authorities evict live limiter state or grow the map without bound.
+    let now = 1_000;
+    const limiter = new BoundedSocketEventLimiter({
+      eventLimit: 1,
+      eventWindowMs: 100,
+      maxEntries: 2,
+      now: () => now,
+    });
+
+    expect(limiter.consume("authority-a")).toBe(false);
+    expect(limiter.consume("authority-b")).toBe(false);
+    expect(limiter.consume("authority-c")).toBe(true);
+    expect(limiter.consume("authority-a")).toBe(true);
+    expect(limiter.stats()).toEqual({ size: 2, capacity: 2 });
+
+    now += 101;
+    expect(limiter.consume("authority-c")).toBe(false);
+    expect(limiter.stats()).toEqual({ size: 1, capacity: 2 });
+  });
+});
 
 describe("canonical C5 owner and guest capability socket", () => {
   const sockets: Socket[] = [];
@@ -187,6 +214,25 @@ describe("canonical C5 owner and guest capability socket", () => {
       data: { error: { code: "GUEST_CAPABILITY_INVALID" } },
     });
     revoked = false;
+  });
+
+  it("contains recipient authority lookup failures inside the socket boundary", async () => {
+    // Break caught: a rejected capability lookup escapes an async Socket.IO callback as an unhandled rejection.
+    const owner = await connect({ token: "aaa.bbb.ccc" });
+    const guest = await connect({ guestCapability: capability });
+    const failed = new Promise<Record<string, any>>((resolve) => guest.once("music_error", resolve));
+    const disconnected = new Promise<void>((resolve) => guest.once("disconnect", () => resolve()));
+
+    internalFailure = true;
+    owner.emit("player_state", { playing: true, position: 11 });
+
+    await expect(failed).resolves.toEqual({
+      version: "music-error/v1",
+      error: expect.objectContaining({ code: "GUEST_CAPABILITY_INVALID", requestId: expect.any(String) }),
+    });
+    await expect(disconnected).resolves.toBeUndefined();
+    expect(owner.connected).toBe(true);
+    internalFailure = false;
   });
 
   it("evicts an expired owner before a valid guest broadcasts to owner recipients", async () => {

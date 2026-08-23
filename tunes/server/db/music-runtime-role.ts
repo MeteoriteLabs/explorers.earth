@@ -13,7 +13,9 @@ const expectedRuntimeTables = [
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
   "music_identity_tombstones",
+  "music_publication_operation_archive",
   "music_publication_operations",
+  "music_reactivation_tokens",
   "music_schema_migrations",
   "page_contents",
   "playback_states",
@@ -70,13 +72,17 @@ const expectedRuntimeFunctions = [
   "enforce_music_identity_insert()",
   "enforce_music_lifecycle_operation_state()",
   "enforce_music_publication_operation_immutability()",
+  "enforce_music_reactivation_token_identity()",
   "enforce_music_tombstone_immutability()",
   "enforce_music_tombstone_insert()",
   "finalize_music_identity_deletion(integer,text,text)",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",
+  "music_compact_publication_operations(integer)",
+  "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
   "reject_music_credential_revocation_history_mutation()",
+  "reject_music_publication_archive_mutation()",
   "reject_unauthorized_music_identity_delete()",
   "retain_music_identity_tombstone_on_delete()",
 ] as const;
@@ -513,6 +519,10 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_publication_operations FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT,UPDATE ON music_publication_operations TO ${capabilityRole}`);
+    await client.query(`REVOKE ALL PRIVILEGES ON music_publication_operation_archive FROM ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON music_identity_tombstones,music_reactivation_tokens FROM ${capabilityRole}`);
+    await client.query(`GRANT SELECT,INSERT,UPDATE ON music_reactivation_tokens TO ${capabilityRole}`);
     await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION provision_music_runtime_login(name,text) FROM ${capabilityRole}`);
     await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ${publicPrincipal}`);
     await client.query("COMMIT");
@@ -584,6 +594,12 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
     "DELETE FROM music_publication_operations WHERE false",
+    "SELECT * FROM music_publication_operation_archive LIMIT 0",
+    "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
+    "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
+    "DELETE FROM music_publication_operation_archive WHERE false",
+    "DELETE FROM music_identity_tombstones WHERE false",
+    "DELETE FROM music_reactivation_tokens WHERE false",
     "UPDATE music_schema_migrations SET checksum=checksum WHERE false",
     "DELETE FROM music_schema_migrations WHERE false",
     "INSERT INTO music_schema_migrations(id,checksum,schema_checksum) VALUES ('runtime_attestation_probe',repeat('0',64),repeat('0',64))",
@@ -619,9 +635,13 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || tableRows.some((row) => {
     const expected = row.object_name === "music_schema_migrations"
       ? [true, false, false, false]
+      : row.object_name === "music_publication_operation_archive"
+        ? [false, false, false, false]
       : row.object_name === "music_credential_revocation_operations"
         ? [true, true, false, false]
-        : row.object_name === "music_publication_operations"
+      : row.object_name === "music_publication_operations"
+          ? [true, true, true, false]
+        : row.object_name === "music_identity_tombstones" || row.object_name === "music_reactivation_tokens"
           ? [true, true, true, false]
         : [true, true, true, true];
     return JSON.stringify([row.can_select,row.can_insert,row.can_update,row.can_delete]) !== JSON.stringify(expected)

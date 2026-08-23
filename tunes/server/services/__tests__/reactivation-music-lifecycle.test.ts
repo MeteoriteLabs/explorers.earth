@@ -15,7 +15,10 @@ vi.mock("../../storage", () => ({
   },
 }));
 
-import { confirmReactivation, requestReactivation } from "../reactivation-service";
+import {
+  confirmReactivation as confirmReactivationWithAuthority,
+  requestReactivation as requestReactivationWithAuthority,
+} from "../reactivation-service";
 import { MusicIdentityError } from "../../../shared/musicError";
 
 const user = {
@@ -27,6 +30,70 @@ const user = {
   confirmed: true,
   accounts: [{ documentId: "reactivate-account-document" }],
 };
+
+type StoredToken = {
+  strapiUserId: number;
+  userDocumentId: string;
+  accountDocumentId: string;
+  operationId: string;
+  leaseOwner?: string;
+  consumed?: boolean;
+  revoked?: boolean;
+};
+
+class FakeDurableTokenAuthority {
+  readonly rows = new Map<string, StoredToken>();
+
+  async issueReactivationToken(input: StoredToken & { tokenHash: string }) {
+    this.rows.set(input.tokenHash, { ...input });
+  }
+
+  async claimReactivationToken(tokenHash: string, leaseOwner: string) {
+    const row = this.rows.get(tokenHash);
+    if (!row) return { disposition: "missing" as const };
+    if (row.consumed) return { disposition: "consumed" as const };
+    if (row.revoked) return { disposition: "revoked" as const };
+    if (row.leaseOwner) return { disposition: "busy" as const };
+    row.leaseOwner = leaseOwner;
+    return { disposition: "claimed" as const, ...row };
+  }
+
+  async releaseReactivationToken(tokenHash: string, leaseOwner: string) {
+    const row = this.rows.get(tokenHash);
+    if (!row || row.leaseOwner !== leaseOwner) return false;
+    delete row.leaseOwner;
+    return true;
+  }
+
+  async consumeReactivationToken(tokenHash: string, leaseOwner: string) {
+    const row = this.rows.get(tokenHash);
+    if (!row || row.leaseOwner !== leaseOwner || row.consumed) return false;
+    delete row.leaseOwner;
+    row.consumed = true;
+    return true;
+  }
+
+  async revokeReactivationToken(tokenHash: string) {
+    const row = this.rows.get(tokenHash);
+    if (!row || row.consumed || row.revoked) return false;
+    row.revoked = true;
+    delete row.leaseOwner;
+    return true;
+  }
+}
+
+let tokens: FakeDurableTokenAuthority;
+
+function requestReactivation(email: string): Promise<void> {
+  return requestReactivationWithAuthority(email, { tokens });
+}
+
+function confirmReactivation(
+  token: string,
+  dependencies: { reactivateMusic(input: { userDocumentId: string; accountDocumentId: string; operationId: string }): Promise<void> },
+) {
+  return confirmReactivationWithAuthority(token, { ...dependencies, tokens });
+}
 
 function fetchToken(): string {
   const variables = mocks.sendEmail.mock.calls.at(-1)?.[2] as { verificationLink: string };
@@ -41,6 +108,86 @@ describe("Explorer reactivation Music lifecycle composition", () => {
     mocks.getAppUrl.mockResolvedValue("https://explorers.example.invalid");
     mocks.getEmailTemplateByName.mockResolvedValue({ id: 9 });
     mocks.sendEmail.mockResolvedValue({ success: true });
+    tokens = new FakeDurableTokenAuthority();
+  });
+
+  it("shares hash-only token authority across service instances and admits one concurrent claimant", async () => {
+    let releaseMusic!: () => void;
+    const musicBlocked = new Promise<void>((resolve) => { releaseMusic = resolve; });
+    let blocked = true;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        blocked = false;
+        return Response.json({ ...user, blocked: false });
+      }
+      if (new URL(String(input)).pathname === `/api/users/${user.id}`) return Response.json({ ...user, blocked });
+      return Response.json([user]);
+    }));
+    await requestReactivation(user.email);
+    const rawToken = fetchToken();
+    expect([...tokens.rows.keys()]).toEqual([expect.stringMatching(/^[a-f0-9]{64}$/)]);
+    expect([...tokens.rows.keys()]).not.toContain(rawToken);
+    const reactivateMusic = vi.fn(async () => { await musicBlocked; });
+
+    const first = confirmReactivation(rawToken, { reactivateMusic });
+    while (reactivateMusic.mock.calls.length === 0) await new Promise((resolve) => setTimeout(resolve, 0));
+    const second = await confirmReactivation(rawToken, { reactivateMusic });
+    releaseMusic();
+    await expect(first).resolves.toEqual({ success: true });
+    expect(second).toMatchObject({ success: false });
+    expect(reactivateMusic).toHaveBeenCalledOnce();
+  });
+
+  it("never logs email, raw token, reactivation link, response body, or provider error objects", async () => {
+    const providerError = { message: "sentinel-provider-error", email: user.email };
+    mocks.sendEmail.mockResolvedValue({ success: false, error: providerError });
+    const logs: unknown[][] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((...values) => { logs.push(values); });
+    const error = vi.spyOn(console, "error").mockImplementation((...values) => { logs.push(values); });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json([user])));
+    await requestReactivation(user.email);
+    const rawToken = fetchToken();
+    const rendered = JSON.stringify(logs);
+    expect(rendered).not.toContain(user.email);
+    expect(rendered).not.toContain(rawToken);
+    expect(rendered).not.toContain("reactivate-confirm");
+    expect(rendered).not.toContain("sentinel-provider-error");
+    log.mockRestore();
+    error.mockRestore();
+  });
+
+  it("uses manual redirects and cancels a redirect response before suppressing the request", async () => {
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull() {},
+      cancel() { cancelled = true; },
+    });
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      expect(init?.redirect).toBe("manual");
+      return new Response(body, { status: 302, headers: { location: "https://attacker.invalid" } });
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+
+    await requestReactivation(user.email);
+    expect(cancelled).toBe(true);
+    expect(tokens.rows.size).toBe(0);
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("aborts a stalled Strapi connection without issuing a token", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("fetch", ((_input: string | URL | Request, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      })) as typeof fetch);
+      const operation = requestReactivation(user.email);
+      await vi.advanceTimersByTimeAsync(2_000);
+      await operation;
+      expect(tokens.rows.size).toBe(0);
+      expect(mocks.sendEmail).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reactivates the immutable Music binding before unblocking Strapi and consumes the token only after both converge", async () => {

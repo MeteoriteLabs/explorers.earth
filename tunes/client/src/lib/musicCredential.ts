@@ -1,7 +1,19 @@
-interface CachedMusicCredential { token: string; expiresAt: number; }
+interface CredentialAuthority {
+  generation: number;
+  subject: string | undefined;
+  explorerProof: string;
+}
+
+interface CachedMusicCredential extends CredentialAuthority { token: string; expiresAt: number; }
+interface MusicCredentialFlight extends CredentialAuthority {
+  controller: AbortController;
+  promise: Promise<{ token: string; expiresAt: number }>;
+}
 
 let current: CachedMusicCredential | undefined;
-let inflight: Promise<CachedMusicCredential> | undefined;
+let inflight: MusicCredentialFlight | undefined;
+let authoritySubject: string | undefined;
+let authorityGeneration = 0;
 const GUEST_CAPABILITY_KEY_PREFIX = "musicGuestCapability:";
 const GUEST_CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const GUEST_SLUG_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -12,8 +24,15 @@ function guestCapabilityKey(guestUrl: string): string {
 }
 
 export function clearMusicCredential(): void {
+  authorityGeneration += 1;
   current = undefined;
+  inflight?.controller.abort();
   inflight = undefined;
+}
+
+export function setMusicCredentialAuthority(subject: string | undefined): void {
+  authoritySubject = subject;
+  clearMusicCredential();
 }
 
 /** Accepts an out-of-band capability after the guest explicitly supplies it. */
@@ -78,10 +97,34 @@ export function importGuestMusicCapability(handoff: string, expectedGuestUrl: st
 }
 
 export async function musicCredentialForRequest(now = Date.now()): Promise<string> {
-  if (current && current.expiresAt - now > 5_000) return current.token;
-  if (!inflight) inflight = mintMusicCredential().finally(() => { inflight = undefined; });
-  current = await inflight;
-  return current.token;
+  const explorerProof = localStorage.getItem("qrtoken");
+  if (!explorerProof) throw new Error("Explorer authentication is required before Music access.");
+  const authority = { generation: authorityGeneration, subject: authoritySubject, explorerProof };
+  if (current && authorityMatches(current, authority) && current.expiresAt - now > 5_000) return current.token;
+  if (inflight && !authorityMatches(inflight, authority)) {
+    inflight.controller.abort();
+    inflight = undefined;
+  }
+  if (!inflight) {
+    const controller = new AbortController();
+    inflight = {
+      ...authority,
+      controller,
+      promise: mintMusicCredential(explorerProof, controller.signal),
+    };
+  }
+  const flight = inflight;
+  try {
+    const credential = await flight.promise;
+    if (!authorityIsCurrent(flight) || flight.controller.signal.aborted) throw staleMusicAuthority();
+    current = { ...credential, generation: flight.generation, subject: flight.subject, explorerProof: flight.explorerProof };
+    return credential.token;
+  } catch (cause) {
+    if (!authorityIsCurrent(flight) || flight.controller.signal.aborted) throw staleMusicAuthority();
+    throw cause;
+  } finally {
+    if (inflight === flight) inflight = undefined;
+  }
 }
 
 export async function musicPrincipalForRequest(): Promise<{ musicUserId: number; status: "active" }> {
@@ -98,14 +141,13 @@ export async function musicPrincipalForRequest(): Promise<{ musicUserId: number;
   return body.identity;
 }
 
-async function mintMusicCredential(): Promise<CachedMusicCredential> {
-  const explorerProof = localStorage.getItem("qrtoken");
-  if (!explorerProof) throw new Error("Explorer authentication is required before Music access.");
+async function mintMusicCredential(explorerProof: string, signal: AbortSignal): Promise<{ token: string; expiresAt: number }> {
   const response = await fetch("/api/music/identity/ensure", {
     method: "POST",
     headers: { Accept: "application/json", Authorization: `Bearer ${explorerProof}` },
     body: undefined,
     credentials: "include",
+    signal,
   });
   const body = await response.json();
   if (!response.ok) throw new Error(body?.error?.message || "Music authentication failed.");
@@ -117,6 +159,22 @@ async function mintMusicCredential(): Promise<CachedMusicCredential> {
     throw new Error("Music authentication returned an invalid credential.");
   }
   return { token, expiresAt };
+}
+
+function authorityMatches(left: CredentialAuthority, right: CredentialAuthority): boolean {
+  return left.generation === right.generation
+    && left.subject === right.subject
+    && left.explorerProof === right.explorerProof;
+}
+
+function authorityIsCurrent(authority: CredentialAuthority): boolean {
+  return authority.generation === authorityGeneration
+    && authority.subject === authoritySubject
+    && localStorage.getItem("qrtoken") === authority.explorerProof;
+}
+
+function staleMusicAuthority(): Error {
+  return new Error("Music authorization is required.");
 }
 
 export function isMusicOwnerRequest(url: string): boolean {

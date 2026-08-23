@@ -40,7 +40,7 @@ export interface MusicIdentityRouteDependencies {
   logger?: (entry: Record<string, unknown>) => void;
   fingerprint?: (proof: string) => string;
   requestIdFactory?: () => string;
-  entryEnabled?: () => boolean;
+  entryEnabled?: (proof: string, requestId: string) => boolean | Promise<boolean>;
   trustedProxyHops?: 0 | 1;
   isTrustedProxy?: (peerAddress: string | undefined) => boolean;
   telemetry?: () => {
@@ -91,9 +91,6 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
     try {
       assertBodylessOwnershipRequest(req);
       const proof = strictBearer(req);
-      if (dependencies.entryEnabled?.() === false) {
-        throw new MusicIdentityError("ENTRY_DISABLED", 503, "Music identity entry is temporarily disabled.", "retry", true, 60);
-      }
       const peerAddress = req.socket.remoteAddress;
       const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
         ? (req.ip ?? peerAddress ?? "unknown")
@@ -101,6 +98,9 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
       const rate = dependencies.limiter.check(source, fingerprint(proof));
       if (!rate.allowed) {
         throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music identity attempts.", "retry", true, rate.retryAfterSeconds ?? 1);
+      }
+      if (dependencies.entryEnabled && !await dependencies.entryEnabled(proof, requestId)) {
+        throw new MusicIdentityError("ENTRY_DISABLED", 503, "Music identity entry is temporarily disabled.", "retry", true, 60);
       }
       const projection = await dependencies.ensure(proof, requestId);
       if (projection.identityStatus === "suspended") {
@@ -169,15 +169,15 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
           if (dependencies.isMusicCredential?.(proof)) {
             throw new MusicIdentityError("AUTH_INVALID", 401, "An Explorer bearer proof is required.", "authenticate", false);
           }
-          if (action === "prepare" && dependencies.entryEnabled?.() === false) {
-            throw new MusicIdentityError("ENTRY_DISABLED", 503, "Music identity entry is temporarily disabled.", "retry", true, 60);
-          }
           const peerAddress = req.socket.remoteAddress;
           const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
             ? (req.ip ?? peerAddress ?? "unknown") : (peerAddress ?? "unknown");
           const rate = dependencies.limiter.check(source, fingerprint(proof));
           if (!rate.allowed) {
             throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music lifecycle attempts.", "retry", true, rate.retryAfterSeconds ?? 1);
+          }
+          if (action === "prepare" && dependencies.entryEnabled && !await dependencies.entryEnabled(proof, requestId)) {
+            throw new MusicIdentityError("ENTRY_DISABLED", 503, "Music identity entry is temporarily disabled.", "retry", true, 60);
           }
           const value = await operation(proof, requestId);
           status = 200;

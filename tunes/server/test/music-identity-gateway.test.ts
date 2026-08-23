@@ -36,6 +36,13 @@ function response(body: unknown, status = 200, headers?: Record<string, string>)
   });
 }
 
+function accountsResponse(accounts: unknown[]): Response {
+  return response({
+    data: accounts,
+    meta: { pagination: { page: 1, pageSize: 50, pageCount: accounts.length === 0 ? 0 : 1, total: accounts.length } },
+  });
+}
+
 function gateway(fetchImpl: typeof fetch, overrides: Partial<ConstructorParameters<typeof StrapiIdentityGateway>[0]> = {}) {
   return new StrapiIdentityGateway({
     baseUrl: "https://strapi.invalid",
@@ -54,6 +61,83 @@ function gateway(fetchImpl: typeof fetch, overrides: Partial<ConstructorParamete
 }
 
 describe("Strapi identity gateway", () => {
+  it("reads every authoritative Account page before selecting a sole completed identity", async () => {
+    const incomplete = { ...completeAccount, documentId: "account-doc-incomplete", mobile_number: null };
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({ ...incomplete, documentId: `incomplete-${index}` }));
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/api/users/me") return response(user);
+      const page = Number(url.searchParams.get("pagination[page]"));
+      expect(url.searchParams.get("sort[0]")).toBe("documentId:asc");
+      if (page === 1) return response({
+        data: firstPage,
+        meta: { pagination: { page: 1, pageSize: 50, pageCount: 2, total: 51 } },
+      });
+      return response({
+        data: [completeAccount],
+        meta: { pagination: { page: 2, pageSize: 50, pageCount: 2, total: 51 } },
+      });
+    });
+
+    await expect(gateway(fetchImpl).resolve("all-pages-proof-with-entropy", "all-pages-request"))
+      .resolves.toMatchObject({ accountDocumentId: completeAccount.documentId });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects cross-page ambiguity and incoherent pagination metadata", async () => {
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ...completeAccount,
+      documentId: `account-doc-${index}`,
+      ...(index === 0 ? {} : { mobile_number: null }),
+    }));
+    for (const secondPage of [
+      {
+        data: [{ ...completeAccount, documentId: "account-doc-second-page" }],
+        meta: { pagination: { page: 2, pageSize: 50, pageCount: 2, total: 51 } },
+      },
+      {
+        data: [completeAccount],
+        meta: { pagination: { page: 2, pageSize: 50, pageCount: 3, total: 101 } },
+      },
+    ]) {
+      const fetchImpl = vi.fn<typeof fetch>()
+        .mockResolvedValueOnce(response(user))
+        .mockResolvedValueOnce(response({
+          data: firstPage,
+          meta: { pagination: { page: 1, pageSize: 50, pageCount: 2, total: 51 } },
+        }))
+        .mockResolvedValueOnce(response(secondPage));
+      const failure = gateway(fetchImpl).resolve("ambiguous-pages-proof", "ambiguous-pages-request");
+      if (secondPage.meta.pagination.total === 51) await expect(failure).rejects.toMatchObject({ code: "ACCOUNT_AMBIGUOUS" });
+      else await expect(failure).rejects.toMatchObject({ code: "UPSTREAM_MALFORMED" });
+    }
+  });
+
+  it("settles error and oversized response streams before returning", async () => {
+    let errorCancelled = false;
+    const errorBody = new ReadableStream<Uint8Array>({
+      pull() {},
+      cancel() { errorCancelled = true; },
+    });
+    const errorFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(errorBody, { status: 503 }));
+    await expect(gateway(errorFetch, { retries: 0 }).resolve("error-body-proof", "error-body-request"))
+      .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+    expect(errorCancelled).toBe(true);
+
+    let oversizedCancelled = false;
+    const oversizedBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(128 * 1024));
+        controller.enqueue(new Uint8Array([1]));
+      },
+      cancel() { oversizedCancelled = true; },
+    });
+    const oversizedFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(oversizedBody, { status: 200 }));
+    await expect(gateway(oversizedFetch, { retries: 0 }).resolve("oversized-body-proof", "oversized-body-request"))
+      .rejects.toMatchObject({ code: "UPSTREAM_MALFORMED" });
+    expect(oversizedCancelled).toBe(true);
+  });
+
   it.each([
     [{ ...user, confirmed: false }, "IDENTITY_INELIGIBLE"],
     [{ ...user, provider: "password" }, "IDENTITY_INELIGIBLE"],
@@ -62,7 +146,7 @@ describe("Strapi identity gateway", () => {
   ])("enforces authoritative provider eligibility", async (candidate, expectedCode) => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response(candidate))
-      .mockResolvedValueOnce(response({ data: [completeAccount] }));
+      .mockResolvedValueOnce(accountsResponse([completeAccount]));
     const operation = gateway(fetchImpl).resolve("proof-with-enough-entropy", "request-1");
     if (expectedCode) await expect(operation).rejects.toMatchObject({ code: expectedCode });
     else await expect(operation).resolves.toMatchObject({ provider: "google" });
@@ -73,7 +157,7 @@ describe("Strapi identity gateway", () => {
     for (const accounts of [[incomplete, completeAccount], [completeAccount, incomplete]]) {
       const fetchImpl = vi.fn<typeof fetch>()
         .mockResolvedValueOnce(response(user))
-        .mockResolvedValueOnce(response({ data: accounts }));
+        .mockResolvedValueOnce(accountsResponse(accounts));
       await expect(gateway(fetchImpl).resolve("proof-with-enough-entropy", "request-2"))
         .resolves.toMatchObject({ accountDocumentId: "account-doc-1" });
     }
@@ -86,7 +170,7 @@ describe("Strapi identity gateway", () => {
   ])("fails closed for zero, ambiguous, or malformed Accounts", async (accounts, code) => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: accounts }));
+      .mockResolvedValueOnce(accountsResponse(accounts));
     await expect(gateway(fetchImpl).resolve("proof-with-enough-entropy", "request-3"))
       .rejects.toMatchObject({ code });
   });
@@ -95,7 +179,7 @@ describe("Strapi identity gateway", () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response({}, 503, { "retry-after": "0" }))
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [completeAccount] }));
+      .mockResolvedValueOnce(accountsResponse([completeAccount]));
     await gateway(fetchImpl).resolve("sentinel-bearer-proof", "safe-request-id");
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     for (const [url, init] of fetchImpl.mock.calls) {
@@ -114,7 +198,7 @@ describe("Strapi identity gateway", () => {
 
     const valid = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [completeAccount] }));
+      .mockResolvedValueOnce(accountsResponse([completeAccount]));
     const cachedGateway = gateway(valid);
     const first = await cachedGateway.resolve("valid-proof-with-entropy", "request-6");
     const second = await cachedGateway.resolve("valid-proof-with-entropy", "request-7");
@@ -131,11 +215,10 @@ describe("Strapi identity gateway", () => {
       .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
 
     const sentinelBody = "sentinel-upstream-body";
-    const slowBody = gateway((async () => ({
+    const slowBody = gateway((async () => new Response(new ReadableStream<Uint8Array>({ pull() {} }), {
       status: 200,
-      headers: new Headers({ "content-type": "application/json" }),
-      text: () => new Promise<string>(() => sentinelBody),
-    }) as Response) as typeof fetch, { retries: 0, readTimeoutMs: 10, overallTimeoutMs: 30 });
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch, { retries: 0, readTimeoutMs: 10, overallTimeoutMs: 30 });
     const failure = await slowBody.resolve("read-timeout-proof-with-entropy", "request-read-timeout").catch((error) => error);
     expect(failure).toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
     expect(JSON.stringify(failure)).not.toContain(sentinelBody);
@@ -217,12 +300,17 @@ describe("Strapi identity gateway", () => {
 
   it("keeps an opened circuit generation closed to stale success and stale failure races", async () => {
     let releaseLateBody!: (body: string) => void;
-    const lateBody = new Promise<string>((resolve) => { releaseLateBody = resolve; });
+    let lateController!: ReadableStreamDefaultController<Uint8Array>;
+    const lateBody = new ReadableStream<Uint8Array>({ start(controller) { lateController = controller; } });
+    releaseLateBody = (body) => {
+      lateController.enqueue(new TextEncoder().encode(body));
+      lateController.close();
+    };
     const raceFetch = vi.fn<typeof fetch>(async (url, init) => {
       const proof = new Headers(init?.headers).get("authorization") ?? "";
       if (proof.includes("late-success")) {
         if (String(url).includes("/users/me")) return response(user);
-        return { status: 200, headers: new Headers(), text: () => lateBody } as Response;
+        return new Response(lateBody, { status: 200 });
       }
       return response({}, 503);
     });
@@ -240,7 +328,9 @@ describe("Strapi identity gateway", () => {
       raced.resolve("threshold-failure-two", "failure-2"),
     ]);
     expect(raced.stats().circuitState).toBe("open");
-    releaseLateBody(JSON.stringify({ data: [completeAccount] }));
+    releaseLateBody(JSON.stringify({ data: [completeAccount], meta: {
+      pagination: { page: 1, pageSize: 50, pageCount: 1, total: 1 },
+    } }));
     await late;
     expect(raced.stats().circuitState).toBe("open");
 
@@ -251,7 +341,7 @@ describe("Strapi identity gateway", () => {
       const proof = new Headers(init?.headers).get("authorization") ?? "";
       if (proof.includes("stale-failure")) return staleFailure;
       if (proof.includes("open-now")) return response({}, 503);
-      return String(url).includes("/users/me") ? response(user) : response({ data: [completeAccount] });
+      return String(url).includes("/users/me") ? response(user) : accountsResponse([completeAccount]);
     });
     const generations = gateway(staleFetch, {
       maxConcurrency: 4,
@@ -310,7 +400,7 @@ describe("Strapi identity gateway", () => {
         const fetchImpl = vi.fn<typeof fetch>(async (url) => {
           calls.push(Date.now());
           if (calls.length === 1) return response({}, 503, { "retry-after": retryAfter });
-          return String(url).includes("/users/me") ? response(user) : response({ data: [completeAccount] });
+          return String(url).includes("/users/me") ? response(user) : accountsResponse([completeAccount]);
         });
         const operation = gateway(fetchImpl, { overallTimeoutMs: 5_000, connectTimeoutMs: 500 }).resolve("retry-proof-with-entropy", "retry-request");
         await vi.advanceTimersByTimeAsync(1_999);
@@ -348,7 +438,7 @@ describe("Strapi identity gateway", () => {
     const fetchImpl = vi.fn<typeof fetch>(async (url) => {
       callTimes.push(now);
       if (callTimes.length === 1) return response({}, 503, { "retry-after": "2" });
-      return String(url).includes("/users/me") ? response(user) : response({ data: [completeAccount] });
+      return String(url).includes("/users/me") ? response(user) : accountsResponse([completeAccount]);
     });
     await gateway(fetchImpl, {
       now: () => now,

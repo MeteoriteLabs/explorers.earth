@@ -11,9 +11,11 @@ import {
 
 type QueryPool = Pick<Pool, "query" | "connect">;
 const PUBLICATION_LOCK = 0x4d50;
+export const PUBLICATION_ACTIVE_OPERATION_QUOTA = 100;
 
 export type MusicPublicationCommandResult =
   | { status: "completed"; replayed: boolean; response: MusicPublicationCommandResponse }
+  | { status: "rate_limited"; retryAfterSeconds: number }
   | { status: "conflict" | "expired" | "not_found" };
 
 export interface MusicPublicationOperationDependencies {
@@ -93,6 +95,41 @@ export class MusicPublicationOperationRepository {
         });
         await client.query("COMMIT");
         return { status: "completed", replayed: true, response };
+      }
+
+      const archived = (await client.query<Pick<StoredPublicationOperation, "request_fingerprint" | "request_mode">>(
+        `SELECT request_fingerprint,request_mode
+           FROM music_lookup_publication_operation_archive($1,$2)`,
+        [musicUserId, idempotencyKeyHash],
+      )).rows[0];
+      if (archived) {
+        await client.query("COMMIT");
+        return archived.request_fingerprint === requestFingerprint && archived.request_mode === mode
+          ? { status: "expired" }
+          : { status: "conflict" };
+      }
+
+      const quota = (await client.query<{ active_count: number; retry_after_seconds: number }>(
+        `SELECT count(*)::integer AS active_count,
+                COALESCE(GREATEST(1,LEAST(86400,
+                  ceil(extract(epoch FROM (min(expires_at)-clock_timestamp())))::integer)),1)::integer
+                  AS retry_after_seconds
+           FROM music_publication_operations
+          WHERE music_user_id=$1
+            AND operation_state='completed'
+            AND expires_at>clock_timestamp()`,
+        [musicUserId],
+      )).rows[0];
+      if (!quota || !Number.isSafeInteger(quota.active_count) || quota.active_count < 0) {
+        throw new Error("Publication operation quota authority is unavailable.");
+      }
+      if (quota.active_count >= PUBLICATION_ACTIVE_OPERATION_QUOTA) {
+        if (!Number.isSafeInteger(quota.retry_after_seconds)
+            || quota.retry_after_seconds < 1 || quota.retry_after_seconds > 86_400) {
+          throw new Error("Publication operation quota authority is unavailable.");
+        }
+        await client.query("COMMIT");
+        return { status: "rate_limited", retryAfterSeconds: quota.retry_after_seconds };
       }
 
       const operationTime = (await client.query<{ operation_time: string }>(
@@ -230,5 +267,19 @@ export class MusicPublicationOperationRepository {
       [limit],
     );
     return result.rowCount ?? 0;
+  }
+
+  async compactExpiredOperations(limit = 100): Promise<number> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+      throw new Error("Publication operation compaction limit is invalid.");
+    }
+    const row = (await this.pool.query<{ compacted_count: number }>(
+      "SELECT music_compact_publication_operations($1)::integer AS compacted_count",
+      [limit],
+    )).rows[0];
+    if (!row || !Number.isSafeInteger(row.compacted_count) || row.compacted_count < 0 || row.compacted_count > limit) {
+      throw new Error("Publication operation compaction authority is unavailable.");
+    }
+    return row.compacted_count;
   }
 }

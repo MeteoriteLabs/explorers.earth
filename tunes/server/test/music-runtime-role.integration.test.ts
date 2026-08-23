@@ -202,13 +202,20 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       expectedSessionVersion: 1,
       reason: "logout_all",
     })).resolves.toMatchObject({ resultSessionVersion: 2 });
-    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(13);
+    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(15);
 
     for (const statement of [
       "SET session_replication_role='replica'",
       "UPDATE music_credential_revocation_operations SET reason='credential_compromise'",
       "DELETE FROM music_credential_revocation_operations",
       "DELETE FROM music_publication_operations",
+      "SELECT * FROM music_publication_operation_archive LIMIT 0",
+      "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
+      "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
+      "DELETE FROM music_publication_operation_archive WHERE false",
+      "DELETE FROM music_identity_tombstones",
+      "DELETE FROM music_reactivation_tokens",
+      "CREATE TABLE music_identity_tombstones_recreated(id integer)",
       "UPDATE music_schema_migrations SET checksum=repeat('0',64)",
       "DELETE FROM music_schema_migrations",
       "INSERT INTO music_schema_migrations(id,checksum,schema_checksum) VALUES ('9999_forged',repeat('0',64),repeat('0',64))",
@@ -599,7 +606,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
           MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: runtimePasswordPath,
           MUSIC_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
           MUSIC_IMAGE_COMMIT: "a".repeat(40),
-          MUSIC_MIGRATION_MARKER: "0013_publication_operation_database_clock",
+          MUSIC_MIGRATION_MARKER: "0015_publication_operation_archive",
           MUSIC_GATE_ATTESTATION_KEY: "hostile-gate-key-at-least-32-characters",
           MUSIC_GATE_ATTESTATION_PATH: attestation,
         },

@@ -10,6 +10,10 @@ import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config"
 import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
 import { StrapiIdentityAbsenceProof } from "./services/strapiIdentityAbsenceProof";
 
+export function sanitizedRequestLogTarget(request: Pick<Request, "path">): string {
+  return request.path;
+}
+
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
  * alongside the http.Server that registerRoutes() creates (Socket.IO is attached
@@ -121,7 +125,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
     // Detailed request logging for API routes
     if (isApiRoute || isPost) {
       console.log(`\n🟦 ============================================`);
-      console.log(`🟦 [Request Logger] ${req.method} ${req.originalUrl}`);
+      console.log(`🟦 [Request Logger] ${req.method} ${sanitizedRequestLogTarget(req)}`);
       console.log(`🟦 Path: ${path}`);
       console.log(`🟦 Content-Type: ${req.headers['content-type']}`);
       console.log(`🟦 ============================================\n`);

@@ -1,4 +1,5 @@
 import { MusicIdentityError } from "../../shared/musicError";
+import { cancelResponseBody, readBoundedResponseBody } from "./strapiIdentityGateway";
 
 interface SearchInput { query: string; pageToken?: string; }
 
@@ -8,18 +9,41 @@ export function createYouTubeReadService(apiKey: string | undefined, fetchImpl: 
     if (!key) throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "YouTube search is temporarily unavailable.", "retry", true, 30);
     const query = new URLSearchParams({ part: "snippet", key, ...parameters });
     let response: Response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+    timeout.unref?.();
     try {
       response = await fetchImpl(`https://www.googleapis.com/youtube/v3/${path}?${query}`, {
         headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(5_000),
+        redirect: "manual",
+        signal: controller.signal,
       });
     } catch {
+      clearTimeout(timeout);
       throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "YouTube search is temporarily unavailable.", "retry", true, 30);
     }
-    if (!response.ok) throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 502, "YouTube search is temporarily unavailable.", "retry", true);
-    const value = await response.json().catch(() => undefined);
-    if (!value || !Array.isArray(value.items)) throw new MusicIdentityError("UPSTREAM_MALFORMED", 502, "YouTube returned an invalid response.", "retry", true);
-    return value;
+    try {
+      if (!response.ok) {
+        await cancelResponseBody(response);
+        throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 502, "YouTube search is temporarily unavailable.", "retry", true);
+      }
+      let value: any;
+      const body = await readBoundedResponseBody(response, 128 * 1024, 5_000, controller);
+      try { value = JSON.parse(body); }
+      catch { value = undefined; }
+      if (!value || !Array.isArray(value.items)) {
+        throw new MusicIdentityError("UPSTREAM_MALFORMED", 502, "YouTube returned an invalid response.", "retry", true);
+      }
+      return value;
+    } catch (error) {
+      if (error instanceof MusicIdentityError) throw error;
+      if (!(error instanceof RangeError || error instanceof SyntaxError || error instanceof TypeError)) {
+        throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "YouTube search is temporarily unavailable.", "retry", true, 30);
+      }
+      throw new MusicIdentityError("UPSTREAM_MALFORMED", 502, "YouTube returned an invalid response.", "retry", true);
+    } finally {
+      clearTimeout(timeout);
+    }
   };
 
   return {

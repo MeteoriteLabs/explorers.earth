@@ -74,6 +74,27 @@ export interface RevokeMusicCredentialsInput {
   reason: "logout_all" | "entitlement_security_revocation" | "credential_compromise";
 }
 
+export interface IssueReactivationTokenInput {
+  tokenHash: string;
+  strapiUserId: number;
+  userDocumentId: string;
+  accountDocumentId: string;
+  operationId: string;
+  expiresInSeconds?: number;
+}
+
+export interface ClaimedReactivationToken {
+  disposition: "claimed";
+  strapiUserId: number;
+  userDocumentId: string;
+  accountDocumentId: string;
+  operationId: string;
+}
+
+export type ReactivationTokenClaim = ClaimedReactivationToken | {
+  disposition: "missing" | "busy" | "expired" | "consumed" | "revoked";
+};
+
 export interface MusicCredentialRevocationResult extends RevokeMusicCredentialsInput {
   strapiUserDocumentId: string;
   strapiAccountDocumentId: string;
@@ -140,6 +161,28 @@ function validateEnsureInput(input: EnsureMusicIdentityInput): void {
   }
 }
 
+function validateTokenHash(tokenHash: string): void {
+  if (!/^[a-f0-9]{64}$/.test(tokenHash)) throw new Error("reactivation token hash is invalid");
+}
+
+function validateUuid(value: string, label: string): void {
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value)) {
+    throw new Error(`${label} is invalid`);
+  }
+}
+
+function validateReactivationTokenIssue(input: IssueReactivationTokenInput): void {
+  validateTokenHash(input.tokenHash);
+  validateUuid(input.operationId, "reactivation operation ID");
+  const expiresInSeconds = input.expiresInSeconds ?? 24 * 60 * 60;
+  if (!Number.isSafeInteger(input.strapiUserId) || input.strapiUserId < 1
+      || !input.userDocumentId || input.userDocumentId.length > 512
+      || !input.accountDocumentId || input.accountDocumentId.length > 512
+      || !Number.isSafeInteger(expiresInSeconds) || expiresInSeconds < 1 || expiresInSeconds > 24 * 60 * 60) {
+    throw new Error("reactivation token authority is invalid");
+  }
+}
+
 export class MusicIdentityRepository {
   constructor(
     private readonly pool: TransactionPool,
@@ -149,6 +192,98 @@ export class MusicIdentityRepository {
       afterRetentionCleanup?: () => Promise<void>;
     } = {},
   ) {}
+
+  async issueReactivationToken(input: IssueReactivationTokenInput): Promise<void> {
+    validateReactivationTokenIssue(input);
+    await this.pool.query(`INSERT INTO music_reactivation_tokens(
+      token_hash,strapi_user_id,strapi_user_document_id,strapi_account_document_id,
+      operation_id,expires_at
+    ) VALUES ($1,$2,$3,$4,$5,clock_timestamp()+make_interval(secs=>$6))`, [
+      input.tokenHash,
+      input.strapiUserId,
+      input.userDocumentId,
+      input.accountDocumentId,
+      input.operationId,
+      input.expiresInSeconds ?? 24 * 60 * 60,
+    ]);
+  }
+
+  async claimReactivationToken(tokenHash: string, leaseOwner: string, leaseSeconds = 30): Promise<ReactivationTokenClaim> {
+    validateTokenHash(tokenHash);
+    validateUuid(leaseOwner, "reactivation lease owner");
+    if (!Number.isSafeInteger(leaseSeconds) || leaseSeconds < 1 || leaseSeconds > 300) {
+      throw new Error("reactivation lease duration is invalid");
+    }
+    const row = (await this.pool.query<{
+      disposition: ReactivationTokenClaim["disposition"];
+      strapi_user_id: string | null;
+      strapi_user_document_id: string | null;
+      strapi_account_document_id: string | null;
+      operation_id: string | null;
+    }>(`WITH claimed AS (
+        UPDATE music_reactivation_tokens
+        SET lease_owner=$2::uuid,lease_expires_at=clock_timestamp()+make_interval(secs=>$3)
+        WHERE token_hash=$1 AND consumed_at IS NULL AND revoked_at IS NULL
+          AND expires_at>clock_timestamp()
+          AND (lease_expires_at IS NULL OR lease_expires_at<=clock_timestamp())
+        RETURNING strapi_user_id,strapi_user_document_id,strapi_account_document_id,operation_id
+      ), classified AS (
+        SELECT 'claimed'::text AS disposition,strapi_user_id,strapi_user_document_id,
+          strapi_account_document_id,operation_id FROM claimed
+        UNION ALL
+        SELECT CASE
+            WHEN token.consumed_at IS NOT NULL THEN 'consumed'
+            WHEN token.revoked_at IS NOT NULL THEN 'revoked'
+            WHEN token.expires_at<=clock_timestamp() THEN 'expired'
+            ELSE 'busy'
+          END AS disposition,NULL::bigint,NULL::text,NULL::text,NULL::uuid
+        FROM music_reactivation_tokens token
+        WHERE token.token_hash=$1 AND NOT EXISTS (SELECT 1 FROM claimed)
+      )
+      SELECT disposition,strapi_user_id,strapi_user_document_id,strapi_account_document_id,operation_id
+      FROM classified LIMIT 1`, [tokenHash, leaseOwner, leaseSeconds])).rows[0];
+    if (!row) return { disposition: "missing" };
+    if (row.disposition !== "claimed") return { disposition: row.disposition };
+    const strapiUserId = Number(row.strapi_user_id);
+    if (!Number.isSafeInteger(strapiUserId) || strapiUserId < 1 || !row.strapi_user_document_id
+        || !row.strapi_account_document_id || !row.operation_id) {
+      throw new Error("durable reactivation token authority is malformed");
+    }
+    return {
+      disposition: "claimed",
+      strapiUserId,
+      userDocumentId: row.strapi_user_document_id,
+      accountDocumentId: row.strapi_account_document_id,
+      operationId: row.operation_id,
+    };
+  }
+
+  async releaseReactivationToken(tokenHash: string, leaseOwner: string): Promise<boolean> {
+    validateTokenHash(tokenHash);
+    validateUuid(leaseOwner, "reactivation lease owner");
+    const result = await this.pool.query(`UPDATE music_reactivation_tokens
+      SET lease_owner=NULL,lease_expires_at=NULL
+      WHERE token_hash=$1 AND lease_owner=$2::uuid AND consumed_at IS NULL AND revoked_at IS NULL`, [tokenHash, leaseOwner]);
+    return result.rowCount === 1;
+  }
+
+  async consumeReactivationToken(tokenHash: string, leaseOwner: string): Promise<boolean> {
+    validateTokenHash(tokenHash);
+    validateUuid(leaseOwner, "reactivation lease owner");
+    const result = await this.pool.query(`UPDATE music_reactivation_tokens
+      SET consumed_at=clock_timestamp(),lease_owner=NULL,lease_expires_at=NULL
+      WHERE token_hash=$1 AND lease_owner=$2::uuid AND consumed_at IS NULL AND revoked_at IS NULL
+        AND expires_at>clock_timestamp()`, [tokenHash, leaseOwner]);
+    return result.rowCount === 1;
+  }
+
+  async revokeReactivationToken(tokenHash: string): Promise<boolean> {
+    validateTokenHash(tokenHash);
+    const result = await this.pool.query(`UPDATE music_reactivation_tokens
+      SET revoked_at=clock_timestamp(),lease_owner=NULL,lease_expires_at=NULL
+      WHERE token_hash=$1 AND consumed_at IS NULL AND revoked_at IS NULL`, [tokenHash]);
+    return result.rowCount === 1;
+  }
 
   async ensureIdentity(input: EnsureMusicIdentityInput): Promise<MusicIdentityProjection> {
     validateEnsureInput(input);

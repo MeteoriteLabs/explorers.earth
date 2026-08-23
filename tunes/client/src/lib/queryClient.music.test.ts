@@ -8,7 +8,7 @@ vi.mock("./musicCredential", () => ({
   clearGuestMusicCapability: vi.fn(),
 }));
 
-import { apiRequest, getQueryFn } from "./queryClient";
+import { apiRequest, getQueryFn, queryClient } from "./queryClient";
 import { clearGuestMusicCapability, getGuestMusicCapability } from "./musicCredential";
 
 describe("apiRequest Music authority serialization", () => {
@@ -38,6 +38,80 @@ describe("apiRequest Music authority serialization", () => {
     await apiRequest("POST", "/api/login", { username: "native" });
     const [, init] = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String(init?.body))).toEqual({ username: "native", _csrf: "native-csrf" });
+  });
+
+  it("does not replay a non-idempotent POST after an ambiguous network failure", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn()
+        .mockRejectedValueOnce(new TypeError("fetch failed after the server may have committed"))
+        .mockResolvedValueOnce(new Response("{}", { status: 201 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = apiRequest("POST", "/api/playlist/songs", {
+        youtubeId: "video", title: "Song", artist: "Artist", thumbnailUrl: "https://example.com/song.jpg",
+      }, 0, 1);
+      const outcomePromise = result.then(
+        (response) => ({ status: "fulfilled" as const, response }),
+        (error: unknown) => ({ status: "rejected" as const, error }),
+      );
+      await vi.runAllTimersAsync();
+      const outcome = await outcomePromise;
+      expect(outcome.status).toBe("rejected");
+      if (outcome.status === "rejected") expect(outcome.error).toMatchObject({ message: "Unable to connect to the server. Please check your internet connection and try again." });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("retries the durable publication POST with the same idempotency key", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn()
+        .mockRejectedValueOnce(new TypeError("fetch failed before the response arrived"))
+        .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const outcomePromise = apiRequest("POST", "/api/music/publication", { mode: "unlisted" }, 0, 1, {
+        "Idempotency-Key": "publication-command-2",
+      }).then(
+        (response) => ({ status: "fulfilled" as const, response }),
+        (error: unknown) => ({ status: "rejected" as const, error }),
+      );
+      await vi.runAllTimersAsync();
+      const outcome = await outcomePromise;
+      expect(outcome.status).toBe("fulfilled");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      for (const [, init] of fetchMock.mock.calls) {
+        expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("publication-command-2");
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not let the global mutation policy replay a failed mutation", async () => {
+    vi.useFakeTimers();
+    try {
+      const ambiguousFailure = Object.assign(new Error("response lost after commit"), { status: 503 });
+      const mutationFn = vi.fn()
+        .mockRejectedValueOnce(ambiguousFailure)
+        .mockResolvedValueOnce({ duplicated: true });
+      const mutation = queryClient.getMutationCache().build(queryClient, { mutationFn });
+      const outcomePromise = mutation.execute(undefined).then(
+        (value) => ({ status: "fulfilled" as const, value }),
+        (error: unknown) => ({ status: "rejected" as const, error }),
+      );
+
+      await vi.runAllTimersAsync();
+      const outcome = await outcomePromise;
+      expect(outcome.status).toBe("rejected");
+      expect(mutationFn).toHaveBeenCalledTimes(1);
+    } finally {
+      queryClient.getMutationCache().clear();
+      vi.useRealTimers();
+    }
   });
 
   it("clears a rejected slug capability and waits for the visible import flow instead of prompting or retrying", async () => {

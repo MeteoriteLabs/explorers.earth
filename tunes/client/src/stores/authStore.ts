@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { setMusicCredentialAuthority } from '@/lib/musicCredential';
 import { clearPendingMusicPublicationCommands } from '@/lib/musicPublicationCommandRegistry';
 
 export interface AuthUser {
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       login: (data) => {
         const { token, ...user } = data;
+        setMusicCredentialAuthority(data.documentId);
         // Store token in localStorage under 'qrtoken' key (same as explorers.earth)
         localStorage.setItem('qrtoken', token);
         set({
@@ -41,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       logout: () => {
+        setMusicCredentialAuthority(undefined);
         clearPendingMusicPublicationCommands();
         // Clear all auth data
         localStorage.removeItem('qrtoken');

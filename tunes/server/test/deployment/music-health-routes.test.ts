@@ -79,4 +79,38 @@ describe("Music health endpoints", () => {
       ...image,
     });
   });
+
+  it("reports bounded cohort availability without exposing configured identities", async () => {
+    const app = await appWithAttestation(async () => ({ rows: [{ ok: 1 }] }), {
+      MUSIC_NEW_ENTRY_KILL_SWITCH: "false",
+      MUSIC_COHORT_ENABLED: "true",
+      MUSIC_COHORT_USER_DOCUMENT_IDS: "member-doc-a,member-doc-b",
+    });
+    const status = await request(app).get("/api/music-entry/status");
+    expect(status.status).toBe(200);
+    expect(status.body).toMatchObject({
+      newMusicEntryEnabled: true,
+      legacyMusicEntryEnabled: false,
+      killSwitch: false,
+      cohortEnabled: true,
+      cohortSize: 2,
+      cohortAdmissionConfigured: true,
+    });
+    expect(JSON.stringify(status.body)).not.toContain("member-doc");
+  });
+
+  it("fails closed when cohort mode has no configured identities", async () => {
+    const app = await appWithAttestation(async () => ({ rows: [{ ok: 1 }] }), {
+      MUSIC_NEW_ENTRY_KILL_SWITCH: "false",
+      MUSIC_COHORT_ENABLED: "true",
+      MUSIC_COHORT_USER_DOCUMENT_IDS: "",
+    });
+    const status = await request(app).get("/api/music-entry/status");
+    expect(status.body).toMatchObject({
+      newMusicEntryEnabled: false,
+      cohortEnabled: true,
+      cohortSize: 0,
+      cohortAdmissionConfigured: false,
+    });
+  });
 });

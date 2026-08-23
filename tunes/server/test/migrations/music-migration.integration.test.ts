@@ -64,7 +64,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await admin.end();
   });
 
-  it("migrates a fresh database, creates all 27 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
+  it("migrates a fresh database, creates all 28 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
     const pool = await freshDatabase("baseline");
     const first = await migrateMusicDatabase(pool);
     const second = await migrateMusicDatabase(pool);
@@ -73,9 +73,53 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const present = new Set(tables.rows.map(({ table_name }) => table_name));
     for (const table of manifest.tables) expect(present.has(table.name), table.name).toBe(true);
     expect(first.currentId).toBe(EXPECTED_MUSIC_MIGRATION_ID);
-    expect(first.appliedIds).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock"]);
+    expect(first.appliedIds).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive"]);
     expect(second.appliedIds).toEqual([]);
     expect(verified.ready).toBe(true);
+    await pool.end();
+  });
+
+  it("persists hash-only reactivation authority with recoverable leases and atomic single use", async () => {
+    const pool = await freshDatabase("reactivation_tokens");
+    await migrateMusicDatabase(pool);
+    const repository = new MusicIdentityRepository(pool);
+    const tokenHash = "a".repeat(64);
+    const token = {
+      tokenHash,
+      strapiUserId: 73,
+      userDocumentId: "durable-user-document",
+      accountDocumentId: "durable-account-document",
+      operationId: "10000000-0000-4000-8000-000000000073",
+    };
+    await repository.issueReactivationToken(token);
+    const [first, second] = await Promise.all([
+      repository.claimReactivationToken(tokenHash, "20000000-0000-4000-8000-000000000001"),
+      repository.claimReactivationToken(tokenHash, "20000000-0000-4000-8000-000000000002"),
+    ]);
+    const claimed = [first, second].filter((value) => value.disposition === "claimed");
+    const busy = [first, second].filter((value) => value.disposition === "busy");
+    expect(claimed).toHaveLength(1);
+    expect(busy).toHaveLength(1);
+    expect(claimed[0]).toMatchObject({
+      strapiUserId: 73,
+      userDocumentId: token.userDocumentId,
+      accountDocumentId: token.accountDocumentId,
+      operationId: token.operationId,
+    });
+    const firstOwner = first.disposition === "claimed"
+      ? "20000000-0000-4000-8000-000000000001"
+      : "20000000-0000-4000-8000-000000000002";
+    await expect(repository.releaseReactivationToken(tokenHash, firstOwner)).resolves.toBe(true);
+    const recoveryOwner = "20000000-0000-4000-8000-000000000003";
+    await expect(repository.claimReactivationToken(tokenHash, recoveryOwner)).resolves.toMatchObject({ disposition: "claimed" });
+    await expect(repository.consumeReactivationToken(tokenHash, recoveryOwner)).resolves.toBe(true);
+    await expect(repository.claimReactivationToken(tokenHash, "20000000-0000-4000-8000-000000000004"))
+      .resolves.toEqual({ disposition: "consumed" });
+    const columns = (await pool.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='music_reactivation_tokens' ORDER BY column_name`)).rows
+      .map(({ column_name }) => column_name);
+    expect(columns).not.toContain("email");
+    expect(JSON.stringify(await pool.query("SELECT * FROM music_reactivation_tokens"))).not.toContain("reactivation-token");
     await pool.end();
   });
 
@@ -508,20 +552,20 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const pool = await freshDatabase("concurrency");
     const secondPool = new pg.Pool({ connectionString: (pool as unknown as { options: { connectionString: string } }).options.connectionString, max: 2 });
     const [left, right] = await Promise.all([migrateMusicDatabase(pool), migrateMusicDatabase(secondPool)]);
-    expect([...left.appliedIds, ...right.appliedIds].sort()).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock"]);
-    const failure = createMigrationDefinition("0014_deliberate_failure", "CREATE TABLE must_rollback(id integer); SELECT missing_function();");
+    expect([...left.appliedIds, ...right.appliedIds].sort()).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive"]);
+    const failure = createMigrationDefinition("0016_deliberate_failure", "CREATE TABLE must_rollback(id integer); SELECT missing_function();");
     await expect(migrateMusicDatabase(pool, {
       migrations: [...loadMusicMigrations(), failure],
-      testOnlyExpectedIds: ["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_deliberate_failure"],
+      testOnlyExpectedIds: ["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive", "0016_deliberate_failure"],
     })).rejects.toThrow();
     expect((await pool.query("SELECT to_regclass('public.must_rollback') AS value")).rows[0].value).toBeNull();
-    expect((await pool.query("SELECT count(*)::int AS count FROM music_schema_migrations WHERE id='0014_deliberate_failure'")).rows[0].count).toBe(0);
+    expect((await pool.query("SELECT count(*)::int AS count FROM music_schema_migrations WHERE id='0016_deliberate_failure'")).rows[0].count).toBe(0);
     await secondPool.end();
     await pool.end();
   });
 
   it("rejects an appended production chain before any fresh or migrated database write", async () => {
-    const appended = createMigrationDefinition("0014_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
+    const appended = createMigrationDefinition("0016_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
     const chain = [...loadMusicMigrations(), appended];
     const fresh = await freshDatabase("appended_fresh");
     await expect(migrateMusicDatabase(fresh, { migrations: chain })).rejects.toThrow(/exact production migration chain/i);
@@ -543,8 +587,8 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await migrateMusicDatabase(pool);
     const chain = loadMusicMigrations();
     await expect(migrateMusicDatabase(pool, { migrations: [
-      createMigrationDefinition(chain[0].id, `${chain[0].sql}\n-- tampered`), chain[1], chain[2], chain[3], chain[4], chain[5], chain[6], chain[7], chain[8], chain[9], chain[10],
-      chain[11], chain[12],
+      createMigrationDefinition(chain[0].id, `${chain[0].sql}\n-- tampered`),
+      ...chain.slice(1),
     ] })).rejects.toThrow("checksum");
     await pool.query("ALTER TABLE users ADD COLUMN unreviewed_drift text");
     await expect(verifyMusicDatabase(pool)).rejects.toThrow("drift");

@@ -5,6 +5,7 @@ import {
   CURRENT_MIGRATION_MARKER,
   evaluateReadiness,
   livenessStatus,
+  parseMusicCohortConfiguration,
   resolveMusicEntryPolicy,
   type GateAttestation,
   type ImageCandidate,
@@ -37,6 +38,7 @@ export function setupMusicHealthRoutes(app: Express, input: {
 }): void {
   const env = input.env ?? process.env;
   const image = deploymentImageFromEnvironment(env);
+  const cohort = parseMusicCohortConfiguration(env);
 
   app.get("/health/live", (_req, res) => {
     res.status(200).json(livenessStatus());
@@ -67,11 +69,17 @@ export function setupMusicHealthRoutes(app: Express, input: {
 
   app.get("/api/music-entry/status", (_req, res) => {
     const killSwitch = env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false";
-    const cohortEnabled = env.MUSIC_COHORT_ENABLED === "true";
+    const cohortAdmissionConfigured = cohort.enabled && cohort.userDocumentIds.size > 0;
     res.status(200).json({
-      ...resolveMusicEntryPolicy({ killSwitch, cohortEnabled, inCohort: false }),
+      ...resolveMusicEntryPolicy({
+        killSwitch,
+        cohortEnabled: cohort.enabled,
+        inCohort: cohortAdmissionConfigured,
+      }),
       killSwitch,
-      cohortEnabled,
+      cohortEnabled: cohort.enabled,
+      cohortSize: cohort.userDocumentIds.size,
+      cohortAdmissionConfigured,
       ...image,
     });
   });

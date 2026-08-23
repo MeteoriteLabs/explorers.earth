@@ -287,4 +287,20 @@ describe("MusicDomainRepository owner predicates", () => {
       playlist: { songs: [], playlists: [] },
     });
   });
+
+  it("lists discoverable public playlists independently of revoked guest capabilities", async () => {
+    // Break caught: publishing publicly revokes an unlisted capability, but that must not remove the public URL from discovery.
+    const harness = recordingPool([{
+      guestUrl: "public-slug",
+      updatedAt: new Date("2026-08-23T00:00:00.000Z"),
+    }]);
+
+    await expect(new MusicDomainRepository(harness.pool).listPublishedMusicPlaylists()).resolves.toEqual([{
+      guestUrl: "public-slug",
+      updatedAt: new Date("2026-08-23T00:00:00.000Z"),
+    }]);
+    expect(harness.calls[0].text.toLowerCase()).toContain("u.guest_discoverable=true");
+    expect(harness.calls[0].text.toLowerCase()).toContain("u.identity_status='active'");
+    expect(harness.calls[0].text.toLowerCase()).not.toContain("guest_capability_revoked_at");
+  });
 });

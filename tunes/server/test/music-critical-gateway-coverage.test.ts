@@ -42,12 +42,19 @@ function response(body: unknown, status = 200, headers?: Record<string, string>)
   });
 }
 
+function accountResponse(): Response {
+  return response({
+    data: [account],
+    meta: { pagination: { page: 1, pageSize: 50, pageCount: 1, total: 1 } },
+  });
+}
+
 function options(overrides: Partial<StrapiIdentityGatewayOptions> = {}): StrapiIdentityGatewayOptions {
   return {
     baseUrl: "https://strapi.invalid",
     fetchImpl: vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [account] })),
+      .mockResolvedValueOnce(accountResponse()),
     maxConcurrency: 2,
     maxPending: 4,
     retries: 1,
@@ -121,11 +128,11 @@ describe("C4 authoritative gateway critical coverage", () => {
     let now = 1_000;
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [account] }))
+      .mockResolvedValueOnce(accountResponse())
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [account] }))
+      .mockResolvedValueOnce(accountResponse())
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [account] }));
+      .mockResolvedValueOnce(accountResponse());
     const cached = gateway({ fetchImpl, now: () => now, cacheTtlMs: 10 });
     await cached.resolve("proof-a-with-entropy", "request-a");
     now += 11;
@@ -206,7 +213,7 @@ describe("C4 authoritative gateway critical coverage", () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockRejectedValueOnce(new Error("network unavailable"))
       .mockResolvedValueOnce(response(user))
-      .mockResolvedValueOnce(response({ data: [account] }));
+      .mockResolvedValueOnce(accountResponse());
     await expect(gateway({
       fetchImpl,
       random: () => 0,
@@ -326,7 +333,7 @@ describe("C4 authoritative gateway critical coverage", () => {
       await expect(gateway({
         fetchImpl: vi.fn<typeof fetch>()
           .mockResolvedValueOnce(response(user))
-          .mockResolvedValueOnce(response({ data: [account] })),
+          .mockResolvedValueOnce(accountResponse()),
       }).resolve("timer-proof", "timer-request")).resolves.toEqual(resolvedIdentity);
     } finally {
       timer.mockRestore();

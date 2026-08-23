@@ -11,6 +11,9 @@ if (Get-ChildItem Env: | Where-Object { $_.Name -match '^NODE(?:_|$)' }) {
   exit 78
 }
 
+Import-Module -Name "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1" -Force
+Import-Module -Name "C:\Windows\System32\WindowsPowerShell\v1.0\Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1" -Force
+
 $scriptRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $scriptRoot "..\.."))
 $nodePath = "C:\Program Files\nodejs\node.exe"
@@ -53,6 +56,12 @@ $authorities = @(
   Get-NativeAuthority $resolverPath
   Get-NativeAuthority $targetPath
 )
+
+$nodeVersionLines = @(& $nodePath --version 2>$null)
+if ($LASTEXITCODE -ne 0 -or $nodeVersionLines.Count -ne 1 -or [string]$nodeVersionLines[0] -cne "v22.12.0") {
+  [Console]::Error.WriteLine("trusted native Node version must be exactly v22.12.0")
+  exit 78
+}
 
 $preserved = @{}
 foreach ($key in @(

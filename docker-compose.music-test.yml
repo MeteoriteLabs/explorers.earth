@@ -55,7 +55,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0013_publication_operation_database_clock
+      MUSIC_MIGRATION_MARKER: 0015_publication_operation_archive
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -123,7 +123,8 @@ services:
       MUSIC_PROVISIONING_COHORT: disabled
       MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
       MUSIC_COHORT_ENABLED: "false"
-      MUSIC_EXPECTED_MIGRATION_ID: 0013_publication_operation_database_clock
+      MUSIC_COHORT_USER_DOCUMENT_IDS: ""
+      MUSIC_EXPECTED_MIGRATION_ID: 0015_publication_operation_archive
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]

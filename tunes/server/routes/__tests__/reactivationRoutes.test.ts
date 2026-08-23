@@ -15,6 +15,9 @@ import {
   isValidReactivationEmail,
   reactivationGlobalLimiter,
   REACTIVATION_GLOBAL_MAX,
+  reactivationAddressLimiter,
+  reactivationAddressLimitKey,
+  REACTIVATION_ADDRESS_MAX,
 } from '../reactivationRoutes';
 import { confirmReactivation } from '../../services/reactivation-service';
 
@@ -36,13 +39,16 @@ it('passes the production Music reactivation transition into token confirmation'
   setupReactivationRoutes(app, { reactivateMusic });
 
   await request(app).get('/api/user/reactivate?token=valid-token').expect(200);
-  expect(confirmReactivation).toHaveBeenCalledWith('valid-token', { reactivateMusic });
+  expect(confirmReactivation).toHaveBeenCalledWith('valid-token', expect.objectContaining({ reactivateMusic }));
 });
 
 beforeEach(() => {
   // The global limiter uses a constant key shared across the whole module, so
   // reset it between tests (per-email tests already use distinct emails).
   reactivationGlobalLimiter.resetKey('reactivation:global');
+  for (const address of ['127.0.0.1', '::ffff:127.0.0.1', '::1']) {
+    reactivationAddressLimiter.resetKey(`reactivation-address:${address}`);
+  }
 });
 
 describe('reactivation route harness smoke test', () => {
@@ -107,6 +113,28 @@ describe('reactivationRateLimitKey', () => {
   });
 });
 
+describe('reactivation address and global abuse limits', () => {
+  it('keys the recovery limiter by normalized client address', () => {
+    expect(reactivationAddressLimitKey({ ip: '203.0.113.7' } as any)).toBe('reactivation-address:203.0.113.7');
+    expect(reactivationAddressLimitKey({ ip: undefined } as any)).toBe('reactivation-address:unknown');
+  });
+
+  it('allows more than the former 30/hour global bucket while bounding one address', async () => {
+    const app = buildApp();
+    for (let i = 0; i < REACTIVATION_ADDRESS_MAX; i++) {
+      const res = await request(app).post(REQ).set('X-Forwarded-For', '203.0.113.9').send({ email: `address-${i}@example.com` });
+      expect(res.status).toBe(200);
+    }
+    const limited = await request(app).post(REQ).set('X-Forwarded-For', '203.0.113.9').send({ email: 'address-overflow@example.com' });
+    expect(limited.status).toBe(429);
+
+    for (let i = 0; i < 31; i++) {
+      const res = await request(app).post(REQ).set('X-Forwarded-For', `198.51.100.${i + 1}`).send({ email: `legitimate-${i}@example.com` });
+      expect(res.status).toBe(200);
+    }
+  });
+});
+
 describe('reactivationRateLimitSkip', () => {
   it('skips when email is missing or blank', () => {
     expect(reactivationRateLimitSkip({ body: {} } as any)).toBe(true);
@@ -163,10 +191,10 @@ describe('reactivation limiter spray hardening', () => {
   it('caps total valid reactivation volume via the global backstop', async () => {
     const app = buildApp();
     for (let i = 0; i < REACTIVATION_GLOBAL_MAX; i++) {
-      const res = await request(app).post(REQ).send({ email: `spray-${i}@example.com` });
+      const res = await request(app).post(REQ).set('X-Forwarded-For', `192.0.${Math.floor(i / 250)}.${(i % 250) + 1}`).send({ email: `spray-${i}@example.com` });
       expect(res.status).toBe(200);
     }
-    const overflow = await request(app).post(REQ).send({ email: 'one-too-many@example.com' });
+    const overflow = await request(app).post(REQ).set('X-Forwarded-For', '198.18.0.1').send({ email: 'one-too-many@example.com' });
     expect(overflow.status).toBe(429);
     expect(overflow.body.message).toMatch(/temporarily busy/i);
   });

@@ -101,6 +101,16 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get).toLowerCase()).not.toContain("zero-visible resources share the same safe 404");
   });
 
+  it("documents the bounded publication command quota as a retryable 429", () => {
+    const publication = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/publication"].post;
+    const responses = publication.responses as Record<string, unknown>;
+    expect(responses["429"])
+      .toMatchObject({ headers: { "Retry-After": expect.any(Object) } });
+    const serialized = JSON.stringify(publication);
+    expect(serialized).toContain("RATE_LIMITED");
+    expect(serialized).toMatch(/100|quota/i);
+  });
+
   it("validates mounted success DTOs for every product family against resolved 3.1 schemas", async () => {
     // Break caught: syntax-valid documentation advertises camelCase/enum shapes that live route bodies do not return.
     const addedAt = new Date("2026-08-14T10:00:00.000Z");
