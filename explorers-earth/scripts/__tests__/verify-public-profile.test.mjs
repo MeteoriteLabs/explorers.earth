@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createVerificationPlan,
+  extractStableChildEvidence,
   parseVerificationArgs,
   runVerificationPlan,
 } from "../verify-public-profile.mjs";
@@ -75,4 +76,49 @@ test("passes JSON mode to every child runner so output can remain one safe envel
   assert.deepEqual(observed, [
     ["read-only-env", true], ["public-api", true], ["mutation-env", true], ["real-account", true],
   ]);
+});
+
+test("extracts only allowlisted structured blocker evidence and drops arbitrary output", () => {
+  const evidence = extractStableChildEvidence({
+    stdout: `private profile secret-value\n${JSON.stringify({ code: "ROUTE_FIXTURE_COVERAGE_MISMATCH", artifactPath: "test-results/playwright/real-account-redacted/summary.json", privatePayload: "secret-value" })}\n`,
+    stderr: "authorization=Bearer secret-value",
+  });
+  assert.deepEqual(evidence, {
+    code: "ROUTE_FIXTURE_COVERAGE_MISMATCH",
+    artifactPath: "test-results/playwright/real-account-redacted/summary.json",
+  });
+  assert.doesNotMatch(JSON.stringify(evidence), /secret-value|authorization|privatePayload/i);
+});
+
+test("preserves protected setup blockers from exit-one output without retaining secrets", async () => {
+  const result = await runVerificationPlan({
+    options: { mode: "release", username: "alice", headed: false, dryRun: false, json: true },
+    spawn: async (step) => step.id === "real-account"
+      ? {
+          status: 1,
+          stderr: "token=private-token",
+          protectedSummary: JSON.stringify({
+            code: "PROTECTED_RUN_COMPLETE",
+            tests: [{ code: "RESTORE_FAILED", privatePayload: "private-token" }],
+          }, null, 2),
+          artifactPath: "test-results/playwright/real-account-redacted/summary.json",
+        }
+      : { status: 0, stdout: '{"code":"READY"}' },
+  });
+  assert.equal(result.code, "RESTORE_FAILED");
+  assert.equal(result.safeContext.failedCommand, "real-account");
+  assert.match(result.safeContext.nextCommand, /recovery/i);
+  assert.equal(result.artifactPath, "test-results/playwright/real-account-redacted/summary.json");
+  assert.match(result.remediation, /recovery/i);
+  assert.doesNotMatch(JSON.stringify(result), /private-token/);
+});
+
+test("recognizes every protected prerequisite and cleanup blocker", () => {
+  for (const code of [
+    "CONTROLLED_FIXTURE_REQUIRED", "ANALYTICS_CANARY_REQUIRED",
+    "ROUTE_FIXTURE_COVERAGE_MISMATCH", "RESTORE_FAILED",
+    "ANALYTICS_CLEANUP_FAILED", "ANALYTICS_RUN_CLEANUP_UNAVAILABLE",
+  ]) {
+    assert.equal(extractStableChildEvidence({ stderr: `setup failed: ${code}` }).code, code);
+  }
 });

@@ -61,6 +61,7 @@ test("protected prerequisite validation reuses the full mutation environment doc
     E2E_PROFILE_STORAGE_STATE: "fixture-state.json",
     E2E_PROFILE_NON_OWNER_STORAGE_STATE: "fixture-non-owner-state.json",
     E2E_PROFILE_GALLERY_FILE: "fixture-gallery.png",
+    E2E_PROFILE_RUN_ID: "qa-run-id",
     E2E_PROFILE_LIVE_WRITES: "1",
     E2E_PROFILE_LIVE_WRITE_CONFIRMATION: "I_APPROVE_PROFILE_MUTATION_AND_RESTORE",
     E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown-fixture" }),
@@ -120,6 +121,7 @@ test("protected mutation setup cannot start callbacks before analytics cleanup a
   const complete = {
     E2E_PROFILE_USERNAME: "fixture-owner", E2E_PROFILE_STORAGE_STATE: "owner.json",
     E2E_PROFILE_NON_OWNER_STORAGE_STATE: "non-owner.json", E2E_PROFILE_GALLERY_FILE: "gallery.png",
+    E2E_PROFILE_RUN_ID: "qa-run",
     E2E_PROFILE_LIVE_WRITES: "1", E2E_PROFILE_LIVE_WRITE_CONFIRMATION: "I_APPROVE_PROFILE_MUTATION_AND_RESTORE",
     E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown" }),
     VITE_API_URL: "https://api.fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read", VITE_ANALYTICS_WRITE_ACCESS_TOKEN: "write",

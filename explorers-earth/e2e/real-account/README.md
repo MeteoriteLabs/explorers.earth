@@ -48,6 +48,19 @@ In addition to the read-only names, configure all names reported by
 - run-wide browser-event cleanup/remaining documents using aliases `cleanup`
   and `remaining`
 
+`PUBLIC_API_RUN_ID` and `E2E_PROFILE_RUN_ID` must be the same unique value
+starting with `qa-` or `qa_`. The protected GitHub Actions job derives both as
+`qa-ci-<workflow-run>-<attempt>`; a bare workflow run number is rejected.
+
+In protected GitHub Actions, store each Playwright storage state as the complete
+JSON object in `E2E_PROFILE_OWNER_STORAGE_STATE_JSON` and
+`E2E_PROFILE_NON_OWNER_STORAGE_STATE_JSON` secrets. Store the gallery fixture in
+`E2E_PROFILE_GALLERY_BASE64` as strict base64 for a PNG, JPEG, GIF, or WebP image
+of at most 10 MiB. CI validates those values, writes them to user-restricted
+files under the operating-system temporary directory, exposes only their paths
+to Playwright, and removes that directory in an `always()` step. Secret values
+must never be supplied directly as `E2E_PROFILE_*_STATE` or gallery path values.
+
 Before any browser/account callback, global setup writes a harmless isolated
 `qa-preflight-*` canary and proves the run-wide cleanup mutation and
 zero-remaining query. Failure is `ANALYTICS_RUN_CLEANUP_UNAVAILABLE`.

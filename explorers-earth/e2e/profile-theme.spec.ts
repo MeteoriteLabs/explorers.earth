@@ -179,12 +179,67 @@ test("bounded secondary settings cases cover every value and every factor pair",
 test.describe("Public Profile Theme & Customization E2E", () => {
   test("renders the branded bootstrap while authenticated profile navigation settles", async ({ context, page }) => {
     await setupMockAuthentication(context);
-    await page.goto("/");
-    await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator(".earth-loader")).toBeVisible();
-
+    await context.route("**/graphql", async (route) => {
+      const operationName = route.request().postDataJSON()?.operationName;
+      if (operationName === "CheckOnboardingStatus") {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      const account = {
+        documentId: "theme-fixture-account",
+        username: "testuser",
+        Account_Name: "Theme Fixture",
+        Account_Type: "personal",
+        mobile_number: "+10000000000",
+        mobile_number_visibility: false,
+        Bio: "Deterministic profile theme fixture.",
+        Addresss: {},
+        Primary_Address: { address: "Fixture City" },
+        Public_Profile_Address: {},
+        Feed_Data: [],
+        social_media: {},
+        profile_picture: null,
+        bg_picture: null,
+        public_profile: "Yes",
+        public_recommendations: "Yes",
+        public_music: "Yes",
+        public_movie: "Yes",
+        public_books: "Yes",
+        public_guides: "Yes",
+        public_games: "Yes",
+        public_apps: "Yes",
+        public_products: "Yes",
+        public_people: "Yes",
+        createdAt: "2026-08-20T00:00:00.000Z",
+        updatedAt: "2026-08-20T00:00:00.000Z",
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            usersPermissionsUser: {
+              documentId: "mock-user-123",
+              username: "testuser",
+              email: "test@explorers.earth",
+              mobile_number: "+10000000000",
+              mobile_number_visibility: false,
+              createdAt: "2026-08-20T00:00:00.000Z",
+              updatedAt: "2026-08-20T00:00:00.000Z",
+              accounts: [account],
+            },
+          },
+        }),
+      });
+    });
     await page.goto("/profile");
     await page.waitForLoadState("domcontentloaded");
+    await expect(page.locator(".earth-loader")).toBeVisible();
     await expect(page).toHaveURL(/\/profile$/);
+    await expect(
+      page.getByRole("tablist", { name: "Public profile editor" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "Appearance", exact: true }),
+    ).toBeVisible();
   });
 });

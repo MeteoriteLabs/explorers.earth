@@ -20,7 +20,7 @@ Commands ran from `explorers-earth/` on the final working tree unless noted.
 
 | Gate | Exact command | Result |
 |---|---|---|
-| Orchestrator/contract | `npm run test:public-profile-contract` | 76 passed, 0 failed, 1.45s |
+| Orchestrator/contract | `npm run test:public-profile-contract` | 84 passed, 0 failed |
 | Deterministic dry run | `npm run verify:public-profile -- --dry-run --json` | `DRY_RUN`; 11 child commands listed, none executed |
 | Protected dry run | `npm run verify:public-profile:release -- --username=tk2727 --dry-run --json` | `DRY_RUN`; 4 ordered preflight/journey commands listed, none executed |
 | Lint | `npm run lint -- --quiet` | 0 errors, 0 warnings |
@@ -28,14 +28,40 @@ Commands ran from `explorers-earth/` on the final working tree unless noted.
 | Unit-test TypeScript | `npm run typecheck:test` | exit 0 |
 | E2E TypeScript | `npm run typecheck:e2e` | exit 0 |
 | Translation parity | `npm run i18n:check` | all translation files synchronized |
-| Unit suite | `npm run test:unit -- --reporter=verbose` | 188 files, 1,533 passed, 0 failed, 22.67s |
+| Unit suite | `npm run test:unit -- --reporter=verbose` | 188 files, 1,533 passed, 0 failed, 39.71s |
 | Pure/state coverage | `npm run test:public-profile:coverage` | 132 tests; 100% statements/branches/functions/lines (123/123 branches) |
 | Legacy integration coverage | same command | 42 tests; 77.52% branches, reported separately and truthfully |
-| Build | `npm run build` | exit 0; 5,313 modules; Vite build 5.71s |
+| Build | `npm run build` | exit 0; 5,313 modules; Vite build 12.41s |
 
 The focused bootstrap regression suite also passed 6/6 after preserving the
 synchronous single-flight retry behavior and documenting its promise-identity
 assignment for ESLint.
+
+### Corrective harness review
+
+The independent Task 8 review found four release-harness defects and two test/
+baseline defects. The corrective pass now:
+
+- uses the exact run-cleanup prerequisite names and one matching unique
+  `qa-ci-<workflow-run>-<attempt>` run ID for API and browser evidence;
+- validates and materializes owner/non-owner storage JSON plus a base64 gallery
+  image into restrictive OS-temporary files, exposes paths only, and cleans up
+  in an unconditional CI step;
+- bounded-captures child output, emits only allowlisted blocker codes/artifact
+  paths in JSON mode, and recovers structured Playwright exit-one evidence;
+- requires deterministic HTML, JSON, and JUnit outputs and each protected JSON
+  summary independently while treating failure media as optional;
+- proves fake CI-shaped placeholders cannot be mistaken for a live capability;
+- retains the Earth bootstrap assertion and then proves the authenticated
+  `Public profile editor` tablist and `Appearance` tab actually settle.
+
+Fresh corrective evidence: targeted orchestrator/CI contracts 15/15, complete
+contracts 84/84, protected project discovery 10 tests (list-only), focused
+authenticated theme browser test 1/1, unit 1,533/1,533, pure coverage 123/123
+branches, legacy coverage 77.52%, lint, all three TypeScript gates, i18n, and
+build. Both orchestrator dry-runs passed. The live doctor still returned the
+same `ENV_MISSING`, so no protected callback or mutation ran. The sitemap hash
+is byte-identical to the pre-Task-8 baseline (`c8747103e7d16e2b8d466ecb20baa18d2819a115`).
 
 ### Independent deterministic browser files
 

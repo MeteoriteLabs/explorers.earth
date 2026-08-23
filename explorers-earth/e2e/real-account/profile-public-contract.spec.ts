@@ -14,7 +14,7 @@ import {
 } from "../support/liveProfileWriteSafety";
 
 const username = () => process.env.E2E_PROFILE_USERNAME!;
-const runId = () => process.env.PUBLIC_API_RUN_ID!;
+const runId = () => process.env.E2E_PROFILE_RUN_ID!;
 const storageState = () => process.env.E2E_PROFILE_STORAGE_STATE!;
 interface RouteFixtures {
   params: Record<string, string>;

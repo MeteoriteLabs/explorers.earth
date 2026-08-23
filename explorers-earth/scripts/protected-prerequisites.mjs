@@ -3,6 +3,7 @@ const REQUIRED = [
   "E2E_PROFILE_STORAGE_STATE",
   "E2E_PROFILE_NON_OWNER_STORAGE_STATE",
   "E2E_PROFILE_GALLERY_FILE",
+  "E2E_PROFILE_RUN_ID",
   "E2E_PROFILE_LIVE_WRITES",
   "E2E_PROFILE_LIVE_WRITE_CONFIRMATION",
   "PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION",
@@ -100,7 +101,10 @@ export function validateProtectedPrerequisites(env = process.env) {
     throw new Error(`ENV_MISSING: ${missing.join(", ")}`);
   }
   validateRouteFixtures(env);
-  if (!/^qa[-_]/i.test(env.PUBLIC_API_RUN_ID ?? "") || !/^qa[-_]/i.test(env.PUBLIC_API_ANALYTICS_QA_SINK ?? "")) {
+  if (!/^qa[-_]/i.test(env.PUBLIC_API_RUN_ID ?? "") ||
+      !/^qa[-_]/i.test(env.E2E_PROFILE_RUN_ID ?? "") ||
+      env.E2E_PROFILE_RUN_ID !== env.PUBLIC_API_RUN_ID ||
+      !/^qa[-_]/i.test(env.PUBLIC_API_ANALYTICS_QA_SINK ?? "")) {
     throw new Error("ANALYTICS_CANARY_REQUIRED");
   }
   if (!/\bcleanup\s*:/.test(env.PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION ?? "") ||

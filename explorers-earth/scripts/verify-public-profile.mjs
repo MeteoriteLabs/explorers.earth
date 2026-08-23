@@ -9,6 +9,16 @@ import { createVerificationResult, formatVerificationResult } from "./lib/verifi
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.dirname(SCRIPT_DIR);
 const SUMMARY_PATH = path.join(APP_ROOT, "test-results", "public-profile-verification", "verification-summary.json");
+const PROTECTED_SUMMARY_PATH = path.join(APP_ROOT, "test-results", "playwright", "real-account-redacted", "summary.json");
+const MAX_CHILD_OUTPUT = 256 * 1024;
+const STABLE_CODES = new Set([
+  "ENV_MISSING", "ACCOUNT_MARKER_MISMATCH", "PUBLIC_READ_UNAUTHORIZED",
+  "PUBLIC_READ_FORBIDDEN", "LIVE_WRITE_NOT_APPROVED", "RESTORE_FAILED",
+  "ANALYTICS_CLEANUP_FAILED", "ANALYTICS_RUN_CLEANUP_UNAVAILABLE",
+  "ANALYTICS_CANARY_REQUIRED", "CONTROLLED_FIXTURE_REQUIRED",
+  "ROUTE_FIXTURE_INVALID", "ROUTE_FIXTURE_COVERAGE_MISMATCH",
+  "RECOVERY_ARTIFACT_WRITE_FAILED", "PUBLIC_CAPABILITY_BOUNDARY_BROKEN",
+]);
 const STATUS_CODES = new Map([
   [20, "ENV_MISSING"],
   [21, "ACCOUNT_MARKER_MISMATCH"],
@@ -59,18 +69,94 @@ export function createVerificationPlan({ mode, username, headed }) {
   ];
 }
 
-function spawnStep(stepDefinition, options) {
+async function spawnStep(stepDefinition, options) {
   const command = createNpmSpawnPlan(process.platform, stepDefinition.args);
+  if (stepDefinition.id === "real-account") {
+    await fs.rm(PROTECTED_SUMMARY_PATH, { force: true });
+  }
   return new Promise((resolve) => {
     const child = spawn(command.command, command.args, {
       cwd: APP_ROOT,
       env: process.env,
       shell: false,
-      stdio: options.json ? "ignore" : "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
     });
-    child.once("error", () => resolve({ status: 1 }));
-    child.once("close", (status) => resolve({ status: status ?? 1 }));
+    let stdout = "";
+    let stderr = "";
+    const append = (current, chunk) => `${current}${chunk}`.slice(-MAX_CHILD_OUTPUT);
+    child.stdout.on("data", (chunk) => {
+      stdout = append(stdout, chunk);
+      if (!options.json) process.stdout.write(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr = append(stderr, chunk);
+      if (!options.json) process.stderr.write(chunk);
+    });
+    let settled = false;
+    child.once("error", () => {
+      if (!settled) resolve({ status: 1, stdout, stderr });
+      settled = true;
+    });
+    child.once("close", async (status) => {
+      if (settled) return;
+      settled = true;
+      const protectedSummary = stepDefinition.id === "real-account"
+        ? await fs.readFile(PROTECTED_SUMMARY_PATH, "utf8").catch(() => undefined)
+        : undefined;
+      resolve({
+        status: status ?? 1,
+        stdout,
+        stderr,
+        protectedSummary,
+        ...(protectedSummary ? { artifactPath: path.relative(APP_ROOT, PROTECTED_SUMMARY_PATH).replaceAll("\\", "/") } : {}),
+      });
+    });
   });
+}
+
+function safeArtifactPath(value) {
+  if (typeof value !== "string" || path.isAbsolute(value) || value.includes("..")) return undefined;
+  const normalized = value.replaceAll("\\", "/");
+  return /^test-results\/[a-zA-Z0-9._/-]+$/.test(normalized) ? normalized : undefined;
+}
+
+export function extractStableChildEvidence({ stdout = "", stderr = "", protectedSummary, code, artifactPath } = {}) {
+  let stableCode = STABLE_CODES.has(code) ? code : undefined;
+  let stableArtifact = safeArtifactPath(artifactPath);
+  const inspectStructured = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (!stableCode && STABLE_CODES.has(value.code)) stableCode = value.code;
+    stableArtifact ??= safeArtifactPath(value.artifactPath);
+    if (Array.isArray(value.tests)) value.tests.forEach(inspectStructured);
+  };
+  for (const line of stdout.split(/\r?\n/)) {
+    if (!line.trim().startsWith("{")) continue;
+    try {
+      inspectStructured(JSON.parse(line));
+    } catch {
+      // Arbitrary output is intentionally ignored.
+    }
+  }
+  if (protectedSummary) {
+    try {
+      inspectStructured(JSON.parse(protectedSummary));
+    } catch {
+      // A malformed report cannot become release evidence.
+    }
+  }
+  if (!stableCode) {
+    for (const candidate of STABLE_CODES) {
+      const pattern = new RegExp(`(?:^|\\n)[^\\n]{0,80}\\b${candidate}\\b(?:[:\\s]|$)`);
+      if (pattern.test(stderr)) {
+        stableCode = candidate;
+        break;
+      }
+    }
+  }
+  return {
+    ...(stableCode ? { code: stableCode } : {}),
+    ...(stableArtifact ? { artifactPath: stableArtifact } : {}),
+  };
 }
 
 async function persistResult(result) {
@@ -95,13 +181,20 @@ export async function runVerificationPlan({ options, spawn: spawnOverride = spaw
   for (const current of plan) {
     const outcome = await spawnOverride(current, options);
     if (outcome.status !== 0) {
-      const code = outcome.code ?? STATUS_CODES.get(outcome.status) ?? "CHILD_COMMAND_FAILED";
+      const evidence = extractStableChildEvidence(outcome);
+      const code = evidence.code ?? STATUS_CODES.get(outcome.status) ?? "CHILD_COMMAND_FAILED";
       const result = createVerificationResult({
         code,
         summary: `Public-profile verification stopped at ${current.id}.`,
-        safeContext: { mode: options.mode, failedCommand: current.id, exitStatus: outcome.status, completed },
+        safeContext: {
+          mode: options.mode,
+          failedCommand: current.id,
+          exitStatus: outcome.status,
+          completed,
+          ...(current.nextCommand ? { nextCommand: current.nextCommand } : {}),
+        },
         remediation: current.nextCommand ?? `Fix ${current.id}, then rerun the ${options.mode} verification command.`,
-        artifactPath: path.relative(APP_ROOT, SUMMARY_PATH).replaceAll("\\", "/"),
+        artifactPath: evidence.artifactPath ?? path.relative(APP_ROOT, SUMMARY_PATH).replaceAll("\\", "/"),
       });
       await persistResult(result);
       return result;
