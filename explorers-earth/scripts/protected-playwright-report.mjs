@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { PROTECTED_REPORT_CODES } from "./lib/stableVerificationCodes.mjs";
 
 const secretPatterns = [
   /Bearer\s+[A-Za-z0-9._~+\/-]+/gi,
@@ -38,12 +39,7 @@ export function redactProtectedValue(value, secrets = [], key = "") {
 }
 
 const SAFE_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
-const SAFE_CODES = new Set([
-  "PROTECTED_RUN_COMPLETE",
-  "PROTECTED_TEST_PASSED",
-  "PROTECTED_TEST_FAILED",
-  "PROTECTED_TEST_SKIPPED",
-]);
+const SAFE_CODES = new Set(PROTECTED_REPORT_CODES);
 const SAFE_OPERATIONS = new Set([
   "environment-prerequisite",
   "profile-save-restore",

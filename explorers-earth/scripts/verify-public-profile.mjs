@@ -5,20 +5,13 @@ import { fileURLToPath } from "node:url";
 
 import { createNpmSpawnPlan } from "./npm-spawn-plan.mjs";
 import { createVerificationResult, formatVerificationResult } from "./lib/verificationResult.mjs";
+import { STABLE_BLOCKER_CODES } from "./lib/stableVerificationCodes.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.dirname(SCRIPT_DIR);
 const SUMMARY_PATH = path.join(APP_ROOT, "test-results", "public-profile-verification", "verification-summary.json");
 const PROTECTED_SUMMARY_PATH = path.join(APP_ROOT, "test-results", "playwright", "real-account-redacted", "summary.json");
 const MAX_CHILD_OUTPUT = 256 * 1024;
-const STABLE_CODES = new Set([
-  "ENV_MISSING", "ACCOUNT_MARKER_MISMATCH", "PUBLIC_READ_UNAUTHORIZED",
-  "PUBLIC_READ_FORBIDDEN", "LIVE_WRITE_NOT_APPROVED", "RESTORE_FAILED",
-  "ANALYTICS_CLEANUP_FAILED", "ANALYTICS_RUN_CLEANUP_UNAVAILABLE",
-  "ANALYTICS_CANARY_REQUIRED", "CONTROLLED_FIXTURE_REQUIRED",
-  "ROUTE_FIXTURE_INVALID", "ROUTE_FIXTURE_COVERAGE_MISMATCH",
-  "RECOVERY_ARTIFACT_WRITE_FAILED", "PUBLIC_CAPABILITY_BOUNDARY_BROKEN",
-]);
 const STATUS_CODES = new Map([
   [20, "ENV_MISSING"],
   [21, "ACCOUNT_MARKER_MISMATCH"],
@@ -121,11 +114,11 @@ function safeArtifactPath(value) {
 }
 
 export function extractStableChildEvidence({ stdout = "", stderr = "", protectedSummary, code, artifactPath } = {}) {
-  let stableCode = STABLE_CODES.has(code) ? code : undefined;
+  let stableCode = STABLE_BLOCKER_CODES.has(code) ? code : undefined;
   let stableArtifact = safeArtifactPath(artifactPath);
   const inspectStructured = (value) => {
     if (!value || typeof value !== "object") return;
-    if (!stableCode && STABLE_CODES.has(value.code)) stableCode = value.code;
+    if (!stableCode && STABLE_BLOCKER_CODES.has(value.code)) stableCode = value.code;
     stableArtifact ??= safeArtifactPath(value.artifactPath);
     if (Array.isArray(value.tests)) value.tests.forEach(inspectStructured);
   };
@@ -145,7 +138,7 @@ export function extractStableChildEvidence({ stdout = "", stderr = "", protected
     }
   }
   if (!stableCode) {
-    for (const candidate of STABLE_CODES) {
+    for (const candidate of STABLE_BLOCKER_CODES) {
       const pattern = new RegExp(`(?:^|\\n)[^\\n]{0,80}\\b${candidate}\\b(?:[:\\s]|$)`);
       if (pattern.test(stderr)) {
         stableCode = candidate;

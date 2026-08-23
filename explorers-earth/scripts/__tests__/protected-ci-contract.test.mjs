@@ -13,6 +13,12 @@ import { validateProtectedPrerequisites } from "../protected-prerequisites.mjs";
 import { runPublicApiPreflight } from "../verify-public-api-access.mjs";
 
 const workflowPath = new URL("../../../.github/workflows/ci.yml", import.meta.url);
+const galleryCases = [
+  { extension: ".png", mimeType: "image/png", bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]) },
+  { extension: ".jpg", mimeType: "image/jpeg", bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1]) },
+  { extension: ".gif", mimeType: "image/gif", bytes: Buffer.from("GIF89a-fixture") },
+  { extension: ".webp", mimeType: "image/webp", bytes: Buffer.from("RIFF0000WEBPfixture") },
+];
 
 test("protected CI uses exact cleanup names, qa run IDs, and independent required artifacts", async () => {
   const workflow = await fs.readFile(workflowPath, "utf8");
@@ -33,21 +39,24 @@ test("protected CI uses exact cleanup names, qa run IDs, and independent require
 
 test("materializes restrictive validated fixture files and removes them", async () => {
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "protected-ci-contract-"));
-  const gallery = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-  const result = await materializeProtectedFixtures({
-    ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
-    nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
-    galleryBase64: gallery.toString("base64"),
-    tempRoot,
-  });
-  assert.equal(JSON.parse(await fs.readFile(result.ownerPath, "utf8")).cookies.length, 0);
-  assert.deepEqual(await fs.readFile(result.galleryPath), gallery);
-  if (process.platform !== "win32") {
-    assert.equal((await fs.stat(result.directory)).mode & 0o777, 0o700);
-    assert.equal((await fs.stat(result.ownerPath)).mode & 0o777, 0o600);
+  for (const gallery of galleryCases) {
+    const result = await materializeProtectedFixtures({
+      ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+      nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+      galleryBase64: gallery.bytes.toString("base64"),
+      tempRoot,
+    });
+    assert.equal(JSON.parse(await fs.readFile(result.ownerPath, "utf8")).cookies.length, 0);
+    assert.deepEqual(await fs.readFile(result.galleryPath), gallery.bytes);
+    assert.equal(path.extname(result.galleryPath), gallery.extension);
+    assert.equal(result.galleryMimeType, gallery.mimeType);
+    if (process.platform !== "win32") {
+      assert.equal((await fs.stat(result.directory)).mode & 0o777, 0o700);
+      assert.equal((await fs.stat(result.ownerPath)).mode & 0o777, 0o600);
+    }
+    await cleanupProtectedFixtures(result.directory, tempRoot);
+    await assert.rejects(fs.stat(result.directory), { code: "ENOENT" });
   }
-  await cleanupProtectedFixtures(result.directory, tempRoot);
-  await assert.rejects(fs.stat(result.directory), { code: "ENOENT" });
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 
@@ -59,6 +68,31 @@ test("rejects malformed storage JSON and non-image gallery content", async () =>
     galleryBase64: Buffer.from("not-an-image").toString("base64"),
     tempRoot,
   }), /PROTECTED_FIXTURE_INVALID/);
+  await assert.rejects(materializeProtectedFixtures({
+    ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    galleryBase64: Buffer.from("RIFF0000NOPEfixture").toString("base64"),
+    tempRoot,
+  }), /PROTECTED_FIXTURE_INVALID/);
+  await fs.rm(tempRoot, { recursive: true, force: true });
+});
+
+test("removes the temporary directory when permission hardening fails", async () => {
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "protected-ci-chmod-failure-"));
+  const fileSystem = {
+    mkdtemp: fs.mkdtemp,
+    chmod: async () => { throw new Error("injected chmod failure private-value"); },
+    writeFile: fs.writeFile,
+    rm: fs.rm,
+  };
+  await assert.rejects(materializeProtectedFixtures({
+    ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    galleryBase64: galleryCases[0].bytes.toString("base64"),
+    tempRoot,
+    fileSystem,
+  }), /injected chmod failure/);
+  assert.deepEqual(await fs.readdir(tempRoot), []);
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 

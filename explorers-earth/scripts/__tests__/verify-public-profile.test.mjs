@@ -7,6 +7,12 @@ import {
   parseVerificationArgs,
   runVerificationPlan,
 } from "../verify-public-profile.mjs";
+import {
+  PROTECTED_REPORT_CODES,
+  PROTECTED_SETUP_CODES,
+  STABLE_CHILD_CODES,
+  VERIFICATION_EXIT_CODES,
+} from "../lib/stableVerificationCodes.mjs";
 
 test("parses portable deterministic command options", () => {
   assert.deepEqual(
@@ -113,12 +119,38 @@ test("preserves protected setup blockers from exit-one output without retaining 
   assert.doesNotMatch(JSON.stringify(result), /private-token/);
 });
 
-test("recognizes every protected prerequisite and cleanup blocker", () => {
+test("single source enumerates every verification, protected-report, and setup code", () => {
+  assert.deepEqual([...STABLE_CHILD_CODES], [
+    ...Object.keys(VERIFICATION_EXIT_CODES),
+    ...PROTECTED_REPORT_CODES,
+    ...PROTECTED_SETUP_CODES,
+  ]);
   for (const code of [
-    "CONTROLLED_FIXTURE_REQUIRED", "ANALYTICS_CANARY_REQUIRED",
-    "ROUTE_FIXTURE_COVERAGE_MISMATCH", "RESTORE_FAILED",
-    "ANALYTICS_CLEANUP_FAILED", "ANALYTICS_RUN_CLEANUP_UNAVAILABLE",
-  ]) {
-    assert.equal(extractStableChildEvidence({ stderr: `setup failed: ${code}` }).code, code);
+    "PUBLIC_API_TRANSPORT_ERROR", "PUBLIC_API_MALFORMED",
+    "SECURITY_PROOF_MISSING", "PROTECTED_TEST_FAILED",
+  ]) assert.equal(STABLE_CHILD_CODES.has(code), true);
+});
+
+test("every source-defined failure code survives exit-one JSON or summary safely", async () => {
+  const nonFailures = new Set([
+    "PROTECTED_RUN_COMPLETE", "PROTECTED_TEST_PASSED", "PROTECTED_TEST_SKIPPED",
+  ]);
+  const failureCodes = [...STABLE_CHILD_CODES].filter((code) => !nonFailures.has(code));
+  for (const [index, code] of failureCodes.entries()) {
+    const artifactPath = "test-results/playwright/real-account-redacted/summary.json";
+    const structured = { code, artifactPath, privatePayload: `private-${code}` };
+    const result = await runVerificationPlan({
+      options: { mode: "release", username: "alice", headed: false, dryRun: false, json: true },
+      spawn: async (step) => step.id === "real-account"
+        ? index % 2 === 0
+          ? { status: 1, stdout: `${JSON.stringify(structured)}\nraw-private-value` }
+          : { status: 1, protectedSummary: JSON.stringify({ code: "PROTECTED_RUN_COMPLETE", tests: [structured] }), artifactPath }
+        : { status: 0, stdout: '{"code":"READY"}' },
+    });
+    assert.equal(result.code, code);
+    assert.equal(result.artifactPath, artifactPath);
+    assert.equal(result.safeContext.failedCommand, "real-account");
+    assert.match(result.safeContext.nextCommand, /recovery/i);
+    assert.doesNotMatch(JSON.stringify(result), /private-|raw-private-value|privatePayload/i);
   }
 });

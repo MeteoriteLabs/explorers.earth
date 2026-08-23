@@ -57,8 +57,10 @@ JSON object in `E2E_PROFILE_OWNER_STORAGE_STATE_JSON` and
 `E2E_PROFILE_NON_OWNER_STORAGE_STATE_JSON` secrets. Store the gallery fixture in
 `E2E_PROFILE_GALLERY_BASE64` as strict base64 for a PNG, JPEG, GIF, or WebP image
 of at most 10 MiB. CI validates those values, writes them to user-restricted
-files under the operating-system temporary directory, exposes only their paths
-to Playwright, and removes that directory in an `always()` step. Secret values
+files under the operating-system temporary directory, derives the gallery file
+extension from its validated PNG/JPEG/GIF/WebP signature so Playwright uploads
+the matching type, exposes only paths to Playwright, and removes that directory
+in an `always()` step. Secret values
 must never be supplied directly as `E2E_PROFILE_*_STATE` or gallery path values.
 
 Before any browser/account callback, global setup writes a harmless isolated

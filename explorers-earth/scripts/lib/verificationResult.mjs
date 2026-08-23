@@ -1,18 +1,4 @@
-const EXIT_CODES = {
-  ENV_MISSING: 20,
-  ACCOUNT_MARKER_MISMATCH: 21,
-  PUBLIC_READ_UNAUTHORIZED: 22,
-  LIVE_WRITE_NOT_APPROVED: 23,
-  RESTORE_FAILED: 24,
-  ANALYTICS_CLEANUP_FAILED: 25,
-  PUBLIC_API_TRANSPORT_ERROR: 30,
-  PUBLIC_READ_FORBIDDEN: 31,
-  PUBLIC_API_MALFORMED: 32,
-  CONTROLLED_FIXTURE_REQUIRED: 33,
-  PUBLIC_CAPABILITY_BOUNDARY_BROKEN: 34,
-  SECURITY_PROOF_MISSING: 35,
-  ANALYTICS_CANARY_REQUIRED: 36,
-};
+import { VERIFICATION_EXIT_CODES } from "./stableVerificationCodes.mjs";
 
 const SENSITIVE_KEY = /authorization|token|secret|password|payload|storage/i;
 
@@ -36,7 +22,7 @@ export function createVerificationResult({ code, summary, safeContext = {}, reme
 }
 
 export function exitCodeFor(code) {
-  return EXIT_CODES[code] ?? 1;
+  return VERIFICATION_EXIT_CODES[code] ?? 1;
 }
 
 export function formatVerificationResult(result, json = false) {

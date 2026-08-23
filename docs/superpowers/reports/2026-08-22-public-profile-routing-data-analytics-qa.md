@@ -63,6 +63,28 @@ build. Both orchestrator dry-runs passed. The live doctor still returned the
 same `ENV_MISSING`, so no protected callback or mutation ran. The sitemap hash
 is byte-identical to the pre-Task-8 baseline (`c8747103e7d16e2b8d466ecb20baa18d2819a115`).
 
+### Corrective harness review round 2
+
+The second review found two remaining Important gaps and one Minor cleanup gap.
+All verification-result exit codes, protected reporter codes, and global-setup
+blockers now share one source-defined catalog. Exit-one JSON and nested protected
+summaries preserve each failure code—including `PUBLIC_API_TRANSPORT_ERROR`,
+`PUBLIC_API_MALFORMED`, `SECURITY_PROOF_MISSING`, and
+`PROTECTED_TEST_FAILED`—plus the safe artifact and next command, without keeping
+private child output. A drift contract enumerates every producer category.
+
+Gallery base64 now has a validated PNG/JPEG/GIF/WebP signature and a matching
+`.png`, `.jpg`, `.gif`, or `.webp` OS-temporary upload path. Unsupported RIFF
+content is rejected. Temporary directory creation, permission hardening, file
+writes, and CI environment publication are cleanup-guarded; injected chmod and
+environment-publication failures both prove no secret directory remains.
+
+Fresh round-2 evidence: 34/34 focused harness/reporter contracts, 86/86 complete
+contracts, deterministic/protected no-process dry-runs, protected list-only 10
+tests, unit 188 files/1,533 tests (47.09s), lint, application/test/E2E TypeScript,
+i18n, and build (5,313 modules; 9.18s). The read-only doctor remains
+`ENV_MISSING`; protected execution and live mutations were not run.
+
 ### Independent deterministic browser files
 
 Each affected file ran independently before the complete project:

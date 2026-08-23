@@ -19,7 +19,7 @@ function storageState(value) {
   return `${JSON.stringify(parsed)}\n`;
 }
 
-function galleryBytes(value) {
+function galleryFixture(value) {
   if (typeof value !== "string" || value.length === 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
     throw new Error("PROTECTED_FIXTURE_INVALID: gallery content must be base64");
   }
@@ -27,12 +27,17 @@ function galleryBytes(value) {
   if (bytes.length === 0 || bytes.length > MAX_GALLERY_BYTES) {
     throw new Error("PROTECTED_FIXTURE_INVALID: gallery content size is invalid");
   }
-  const png = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-  const gif = bytes.subarray(0, 6).toString("ascii") === "GIF87a" || bytes.subarray(0, 6).toString("ascii") === "GIF89a";
-  const webp = bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
-  if (!png && !jpeg && !gif && !webp) throw new Error("PROTECTED_FIXTURE_INVALID: gallery content is not a supported image");
-  return bytes;
+  const kind = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    ? { extension: "png", mimeType: "image/png" }
+    : bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+      ? { extension: "jpg", mimeType: "image/jpeg" }
+      : ["GIF87a", "GIF89a"].includes(bytes.subarray(0, 6).toString("ascii"))
+        ? { extension: "gif", mimeType: "image/gif" }
+        : bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP"
+          ? { extension: "webp", mimeType: "image/webp" }
+          : null;
+  if (!kind) throw new Error("PROTECTED_FIXTURE_INVALID: gallery content is not a supported image");
+  return { bytes, ...kind };
 }
 
 export async function materializeProtectedFixtures({
@@ -40,23 +45,28 @@ export async function materializeProtectedFixtures({
   nonOwnerStorageStateJson,
   galleryBase64,
   tempRoot = os.tmpdir(),
+  fileSystem = fs,
 } = {}) {
   const owner = storageState(ownerStorageStateJson);
   const nonOwner = storageState(nonOwnerStorageStateJson);
-  const gallery = galleryBytes(galleryBase64);
-  const directory = await fs.mkdtemp(path.join(path.resolve(tempRoot), PREFIX));
-  await fs.chmod(directory, 0o700);
-  const ownerPath = path.join(directory, "owner-storage-state.json");
-  const nonOwnerPath = path.join(directory, "non-owner-storage-state.json");
-  const galleryPath = path.join(directory, "gallery-fixture.png");
+  const gallery = galleryFixture(galleryBase64);
+  let directory;
+  let complete = false;
   try {
-    await fs.writeFile(ownerPath, owner, { mode: 0o600, flag: "wx" });
-    await fs.writeFile(nonOwnerPath, nonOwner, { mode: 0o600, flag: "wx" });
-    await fs.writeFile(galleryPath, gallery, { mode: 0o600, flag: "wx" });
-    return { directory, ownerPath, nonOwnerPath, galleryPath };
-  } catch (error) {
-    await fs.rm(directory, { recursive: true, force: true });
-    throw error;
+    directory = await fileSystem.mkdtemp(path.join(path.resolve(tempRoot), PREFIX));
+    await fileSystem.chmod(directory, 0o700);
+    const ownerPath = path.join(directory, "owner-storage-state.json");
+    const nonOwnerPath = path.join(directory, "non-owner-storage-state.json");
+    const galleryPath = path.join(directory, `gallery-fixture.${gallery.extension}`);
+    await fileSystem.writeFile(ownerPath, owner, { mode: 0o600, flag: "wx" });
+    await fileSystem.writeFile(nonOwnerPath, nonOwner, { mode: 0o600, flag: "wx" });
+    await fileSystem.writeFile(galleryPath, gallery.bytes, { mode: 0o600, flag: "wx" });
+    complete = true;
+    return { directory, ownerPath, nonOwnerPath, galleryPath, galleryMimeType: gallery.mimeType };
+  } finally {
+    if (directory && !complete) {
+      await fileSystem.rm(directory, { recursive: true, force: true });
+    }
   }
 }
 
@@ -94,12 +104,13 @@ export async function materializeProtectedFixturesForCi({
     galleryBase64,
     tempRoot,
   });
+  let published = false;
   try {
     await appendEnvironment(output, envFile);
+    published = true;
     return output;
-  } catch (error) {
-    await cleanupProtectedFixtures(output.directory, tempRoot);
-    throw error;
+  } finally {
+    if (!published) await cleanupProtectedFixtures(output.directory, tempRoot);
   }
 }
 
