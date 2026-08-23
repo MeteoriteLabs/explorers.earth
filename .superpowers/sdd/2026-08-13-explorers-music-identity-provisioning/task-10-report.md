@@ -797,3 +797,136 @@ was not authoritative; it was not counted.
 Task 10 remains unapproved. The controller must dispatch an independent scoped
 rereview of tested code hash
 `ae573ac40709e2a9aca5073105560412cfb799fd`; this report is not self-approval.
+
+## External review fix round 4: exact-source fixture authority (2026-08-23)
+
+Tested code commit
+`33a90dd6a9e30b2671229e5876d4a663b9b746c1`
+(`fix(music): anchor fixture images to exact source`) closes the remaining
+round-3 Important finding. This section records evidence for that exact parent;
+the later documentation-only successor is not execution authority.
+
+### Design ruling and hostile RED
+
+The only available C0 trust anchor that is independent of caller-selected
+fixture material is the tracked program plus Git object database in the exact,
+clean checkout executing the rehearsal. A caller-owned expected-image map,
+Compose model, manifest MAC key, source root, or disposable root cannot be an
+authority: coherently replacing all of them merely lets the caller
+self-authenticate its own substitution. Adding a long-lived test secret would
+move, not remove, that trust problem and was rejected.
+
+Before edits, the coherent substitution RED replaced the expected image map,
+rendered Compose, MAC key, and recomputed MAC together; the old direct fixture
+wrapper exited 0. The direct wrapper is now retired and fails before Docker
+with one instruction to use the tracked no-input rehearsal. The shared engine
+also refuses direct use without its internal adapter. Hostile external
+`MUSIC_DEPLOY_*`, root/source, map, Compose, key, digest, PATH-tool, dirty
+tracked-source, hidden assume-unchanged/skip-worktree, native-identity swap,
+and same-byte TOCTOU probes all fail closed before mutation.
+
+### Minimal GREEN architecture
+
+- `music-docker-release-rehearsal.ts` accepts no caller inputs. It derives the
+  repository from its own tracked path, requires a clean exact 40-character
+  commit, verifies the executing script through Git's clean/smudge filter
+  against the exact commit object, captures `HEAD:tunes`, and revalidates that
+  source authority across mutation boundaries.
+- Fixed OS-protected Git, Docker, and curl executables are ACL/owner checked;
+  Docker is pinned to the inspected local engine. A private ACL-constrained
+  sibling root is internally created and native file identity, bytes, size,
+  link count, and digest are checked before and after each authority use.
+- The rehearsal builds Tunes from the captured Git archive, content-addresses
+  the fixed local base images, starts a loopback registry, pushes the exact
+  candidates, and accepts only registry-returned immutable digests. Compose,
+  environment, request, state key, image allowlist, and fixture policy adapter
+  exist only inside the tracked flow and are passed in memory to the exact Git
+  object of the shared engine. No external map, MAC key, Compose, source, or
+  root is accepted.
+- Production GHCR policy, workflow behavior, and `music-deploy.sh` remain
+  unchanged and fail closed. No production deployment, external push, schema,
+  migration, GATE, Task 11, or Task 12 action occurred.
+
+### Focused, exhaustive, and real-Docker proof
+
+- Authority/direct-wrapper/workflow focused verification passed 54/54 plus
+  scoped TypeScript. The protected production executable suite passed 69/69 in
+  662.62s. The broader deployment/security qualification passed 12 files plus
+  one intentionally platform-gated file, 202 tests plus two intentional skips,
+  in 665.57s. Both counted releases independently executed all 12 mandatory
+  deployment files, 165/165, with no file-level skip.
+- A direct current-hash loopback-registry rehearsal completed in about 52s and
+  emitted `compatibilityRouteUsage=0`, observed migration/readiness failures,
+  restored exact rollback, refused unknown and pre-floor rollback, verified
+  the kill switch, and cleaned its labeled Docker resources.
+- Real-Docker REDs found during implementation were retained and fixed at their
+  causes: pull the registry-returned digest before local inspection; accept OCI
+  index/manifest-list registry media types; compare the executing Windows file
+  through Git's filter rather than raw CRLF bytes; and include the new authority
+  suite in the mandatory 12-file release inventory.
+
+### Clean exact lifecycle, telemetry, and two release samples
+
+The final detached authority used fingerprint
+`57796704523a6f71b85a5d28452c9cf96df4ee2c2847141b541eb3fce6d0b0f7`
+and an attested `postgres:15-alpine` sidecar on loopback port 63520. Its exact
+supported lifecycle passed: bootstrap `20260822234318462-54fed960` in 83.715s,
+doctor `20260822234442874-2160b114` in 0.661s, five-service up
+`20260822234444129-7e729363` in 99.762s, and cold/warm smoke
+`20260822234624477-5559542e` / `20260822234626066-7187c84e` in
+0.981s / 0.954s. Nightly `20260822234635090-27418534` passed 23/23 on attempt 1
+in 413.399s with five bounded load measurements, 300 telemetry events, one
+exact eight-key set, zero forbidden keys, cardinality 8, 200 invalid-token
+rejections, and real PostgreSQL p50/p95 253.400/404.012ms.
+
+| Sample | Lane wall | Tasks | Deployment execution | Real local-registry rehearsal |
+| --- | --- | --- | --- | --- |
+| `20260822235335428-ecee6d7f` | 1,053.858s | 20/20, attempt 1, zero diagnostics | 652.235s; 12/12 files, 165/165 | 54.497s, attempt 1 |
+| `20260823003241997-ea564a06` | 1,005.616s | 20/20, attempt 1, zero diagnostics | 617.979s; 12/12 files, 165/165 | 50.330s, attempt 1 |
+
+Both samples remained below 60 minutes and persisted bounded telemetry,
+compatibility usage 0, observed migration/readiness failures, exact rollback,
+unknown/pre-floor refusal, and kill-switch verification. Cross-run release
+p50/p95 were 1,005.616s / 1,053.858s.
+
+The failure ledger was not promoted or erased. A pre-final 15/20 sample retained
+the original missing-standalone-PG repository failures and exposed the release
+inventory/CRLF issues. Run `20260822231739348-0a0fdcc8` then passed all 20 tasks
+in 1,156.987s but correctly failed measurement authority because lifecycle and
+telemetry had a different fingerprint. Cold setup retained an occupied-port
+doctor failure and a stale-volume credential failure; supported exact-project
+volume reset removed that cause. Initial second sample
+`20260823001126379-88d4ff3c` retained 17/20 after a security timing peak and
+PostgreSQL cleanup hook contention. The hook left 24 exact `music_c3_*` test
+databases; after exact-sidecar attestation they were removed, focused migration
+passed 16/16 twice in 18.50/15.83s, and only then was the final second sample
+run. No unchanged retry loop was used.
+
+### Evidence preservation, sanitation, and guarded cleanup
+
+- The final checkout and ignored copy match path-for-path and SHA-256-for-
+  SHA-256 across 277 files. Canonical manifest
+  `.artifacts/music-c10-evidence/33a90dd/music-runs.manifest.tsv` has exact
+  SHA-256
+  `55abb7deb84df24daffb84b3ec52bd31587fe01e5505d300d5d27dff852b9306`;
+  two independent verifies reproduced it.
+- Superseded round-4 ledgers are also preserved byte-identically under
+  `dfe28ba-r4-evidence` (68 files, manifest SHA-256
+  `6af0fdca933877b5112e64ae440df3b28004de716bc0211dd388530f52e033f6`)
+  and `dfe28ba-r4-samples` (43 files, manifest SHA-256
+  `0647e0c0cc415c4ee42eb633275d5a0a087d6df2db1d8d6a7349eae1e8dabdfd`).
+  Across all 388 new files, count-only sanitation found zero developer paths,
+  active-source paths, raw Docker `Config.Env`, or credential assignments.
+- Supported teardown `20260823005050436-2ffc7e9f` passed in 4.417s. The exact
+  sidecar was removed only after full ID, image, owner/commit labels, health,
+  and loopback port were re-attested. Final fixture/qualification/rehearsal/
+  registry containers, networks, volumes, and watched listeners were all zero.
+- Git deregistered all three exact/superseded proof worktrees. Windows long-path
+  failures left one verified self-junction in each dependency install and one
+  verified dependency junction in the sample checkout; each link was removed
+  without traversal before bounded exact-path deletion. Registrations and paths
+  are all absent, and the task worktree was clean before this documentation.
+
+Task 10 remains unapproved. The controller must dispatch independent round-4
+rereview of tested code hash
+`33a90dd6a9e30b2671229e5876d4a663b9b746c1`; this report is not self-approval.
