@@ -67,6 +67,22 @@ export interface DeferredRouteResponse {
   release: () => void;
 }
 
+interface ExpectedResponseDiagnostic {
+  surface: "graphql" | "playlist";
+  operation: string;
+  attempt: number;
+  method: string;
+  url: string;
+  status: number;
+}
+
+interface ObservedResponseDiagnostic {
+  operation: string | null;
+  method: string;
+  url: string;
+  status: number;
+}
+
 export interface RouteContractFixtureController {
   outcome: RouteContractFixtureOutcome;
   hiddenField?: string;
@@ -85,12 +101,17 @@ export interface RouteContractFixtureController {
     operationName: string,
     responseLabel: string,
   ) => DeferredRouteResponse;
+  expectApolloUseQueryOnErrorWarnings: (warningCount: number) => void;
   networkAudit: {
     consoleErrors: string[];
     expectedConsoleErrors: string[];
     consoleWarnings: string[];
     expectedConsoleWarnings: string[];
     unconsumedExpectedDiagnostics: string[];
+    unconsumedExpectedWarningDiagnostics: string[];
+    expectedResponseDiagnostics: ExpectedResponseDiagnostic[];
+    unconsumedExpectedResponseDiagnostics: ExpectedResponseDiagnostic[];
+    unexpectedResponses: ObservedResponseDiagnostic[];
     failedRequests: Array<{ method: string; url: string; failure: string }>;
     badResponses: Array<{ method: string; url: string; status: number }>;
     unknownRequests: Array<{ method: string; url: string; resourceType: string }>;
@@ -953,6 +974,11 @@ export async function installPublicRouteContractFixture(
     waitForRelease: Promise<void>;
   };
   let deferredResponse: InternalDeferredRouteResponse | undefined;
+  let expectedWarningSequence = 0;
+  const unconsumedExpectedWarningDiagnostics: string[] = [];
+  const expectedResponseDiagnostics: ExpectedResponseDiagnostic[] = [];
+  const unconsumedExpectedResponseDiagnostics: ExpectedResponseDiagnostic[] = [];
+  const unexpectedResponses: ObservedResponseDiagnostic[] = [];
   const controller: RouteContractFixtureController = {
     outcome: initial.outcome ?? "empty",
     hiddenField: initial.hiddenField,
@@ -987,12 +1013,27 @@ export async function installPublicRouteContractFixture(
       deferredResponse = barrier;
       return barrier;
     },
+    expectApolloUseQueryOnErrorWarnings: (warningCount) => {
+      if (!Number.isInteger(warningCount) || warningCount < 1 || warningCount > 2) {
+        throw new Error("Expected Apollo warning count must be between one and two");
+      }
+      for (let index = 0; index < warningCount; index += 1) {
+        expectedWarningSequence += 1;
+        unconsumedExpectedWarningDiagnostics.push(
+          `apollo-useQuery-onError-103:permit-${expectedWarningSequence}`,
+        );
+      }
+    },
     networkAudit: {
       consoleErrors: [],
       expectedConsoleErrors: [],
       consoleWarnings: [],
       expectedConsoleWarnings: [],
       unconsumedExpectedDiagnostics: [],
+      unconsumedExpectedWarningDiagnostics,
+      expectedResponseDiagnostics,
+      unconsumedExpectedResponseDiagnostics,
+      unexpectedResponses,
       failedRequests: [],
       badResponses: [],
       unknownRequests: [],
@@ -1032,6 +1073,23 @@ export async function installPublicRouteContractFixture(
     }
     const [token] = pending.splice(index, 1);
     controller.networkAudit.expectedConsoleErrors.push(token);
+  };
+
+  const armExpectedResponseDiagnostic = (
+    surface: ExpectedResponseDiagnostic["surface"],
+    operation: string,
+    method: string,
+    url: string,
+    status: number,
+  ) => {
+    unconsumedExpectedResponseDiagnostics.push({
+      surface,
+      operation,
+      attempt: controller.attempts[operation] ?? 0,
+      method,
+      url,
+      status,
+    });
   };
 
   await page.addInitScript(() => {
@@ -1093,30 +1151,23 @@ export async function installPublicRouteContractFixture(
     }
     if (message.type() === "warning") {
       const prefix = "An error occurred! For more details, see the full error text at ";
-      let expectedApolloDeprecation = false;
-      if (message.text().startsWith(prefix)) {
-        try {
-          const detailUrl = new URL(message.text().slice(prefix.length));
-          const payload = JSON.parse(decodeURIComponent(detailUrl.hash.slice(1))) as {
-            message?: number;
-            args?: string[];
-          };
-          expectedApolloDeprecation =
-            detailUrl.origin === "https://go.apollo.dev" &&
-            detailUrl.pathname === "/c/err" &&
-            payload.message === 103 &&
-            payload.args?.[0] === "useQuery" &&
-            payload.args?.[1] === "onError" &&
-            payload.args?.[2] ===
-              "If your `onError` callback sets local state, switch to use derived state using `data`, `error` or `errors` returned from the hook instead. Use `useEffect` if you need to perform side-effects as a result of updates to `data`, `error` or `errors`.";
-        } catch {
-          expectedApolloDeprecation = false;
-        }
-      }
-      if (expectedApolloDeprecation) {
-        controller.networkAudit.expectedConsoleWarnings.push(
-          "APOLLO_3_USEQUERY_ONERROR_DEPRECATION_103",
-        );
+      const expectedPayload = JSON.stringify({
+        version: "3.14.1",
+        message: 103,
+        args: [
+          "useQuery",
+          "onError",
+          "If your `onError` callback sets local state, switch to use derived state using `data`, `error` or `errors` returned from the hook instead. Use `useEffect` if you need to perform side-effects as a result of updates to `data`, `error` or `errors`.",
+        ],
+      });
+      const expectedWarning = `${prefix}https://go.apollo.dev/c/err#${encodeURIComponent(expectedPayload)}`;
+      if (message.text() === expectedWarning) {
+        const token = unconsumedExpectedWarningDiagnostics.shift();
+        if (token) controller.networkAudit.expectedConsoleWarnings.push(token);
+        else controller.networkAudit.consoleWarnings.push("UNARMED_APOLLO_WARNING");
+      } else if (message.text().startsWith(prefix)) {
+        // Apollo-lookalike text can contain credentials or query secrets. Record only a stable code.
+        controller.networkAudit.consoleWarnings.push("UNEXPECTED_APOLLO_WARNING");
       } else {
         controller.networkAudit.consoleWarnings.push(message.text());
       }
@@ -1132,11 +1183,37 @@ export async function installPublicRouteContractFixture(
   });
   page.on("response", (response) => {
     if (response.status() >= 400) {
-      controller.networkAudit.badResponses.push({
-        method: response.request().method(),
-        url: response.url(),
-        status: response.status(),
-      });
+      const request = response.request();
+      const method = request.method();
+      const url = response.url();
+      const status = response.status();
+      controller.networkAudit.badResponses.push({ method, url, status });
+      let operation: string | null = null;
+      try {
+        const parsed = new URL(url);
+        if (parsed.pathname === "/api/playlist/route-fixture-playlist") {
+          operation = "PublicMusicPlaylist";
+        } else if (parsed.pathname === "/graphql") {
+          const payload = request.postDataJSON() as { operationName?: string; query?: string } | undefined;
+          operation = payload?.operationName
+            ?? payload?.query?.match(/(?:query|mutation)\s+(\w+)/)?.[1]
+            ?? null;
+        }
+      } catch {
+        operation = null;
+      }
+      const tokenIndex = unconsumedExpectedResponseDiagnostics.findIndex((token) =>
+        token.operation === operation &&
+        token.method === method &&
+        token.url === url &&
+        token.status === status,
+      );
+      if (tokenIndex >= 0) {
+        const [token] = unconsumedExpectedResponseDiagnostics.splice(tokenIndex, 1);
+        expectedResponseDiagnostics.push(token);
+      } else {
+        unexpectedResponses.push({ operation, method, url, status });
+      }
     }
   });
 
@@ -1169,10 +1246,22 @@ export async function installPublicRouteContractFixture(
       webSocket.connectToServer();
       return;
     }
+    const localTunesQueryKeys = [...parsed.searchParams.keys()].sort();
     const expected =
-      ["ws:", "wss:"].includes(parsed.protocol) &&
+      parsed.protocol === "ws:" &&
       parsed.hostname === "localtunes.earth" &&
+      parsed.port === "" &&
+      parsed.username === "" &&
+      parsed.password === "" &&
       parsed.pathname === "/socket.io/" &&
+      parsed.hash === "" &&
+      localTunesQueryKeys.length === 3 &&
+      localTunesQueryKeys[0] === "EIO" &&
+      localTunesQueryKeys[1] === "guestUrl" &&
+      localTunesQueryKeys[2] === "transport" &&
+      parsed.searchParams.getAll("EIO").length === 1 &&
+      parsed.searchParams.getAll("guestUrl").length === 1 &&
+      parsed.searchParams.getAll("transport").length === 1 &&
       parsed.searchParams.get("transport") === "websocket" &&
       parsed.searchParams.get("EIO") === "4" &&
       parsed.searchParams.get("guestUrl") === "route-fixture-playlist" &&
@@ -1252,6 +1341,13 @@ export async function installPublicRouteContractFixture(
     }
     if (targetedFailure) {
       controller.failedOperations.push(operation);
+      armExpectedResponseDiagnostic(
+        "playlist",
+        operation,
+        route.request().method(),
+        route.request().url(),
+        targetedFailure.status,
+      );
       if (targetedFailure.status === 500) {
         armExpectedFailureDiagnostics(
           "playlist",
@@ -1323,6 +1419,13 @@ export async function installPublicRouteContractFixture(
     const fulfillTargetedFailure = () => {
       if (!targetedFailure) return undefined;
       controller.failedOperations.push(operation);
+      armExpectedResponseDiagnostic(
+        "graphql",
+        operation,
+        route.request().method(),
+        route.request().url(),
+        targetedFailure.status,
+      );
       if (targetedFailure.status === 500) {
         armExpectedFailureDiagnostics(
           "graphql",

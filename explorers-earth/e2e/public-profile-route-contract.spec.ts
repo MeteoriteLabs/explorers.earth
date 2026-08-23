@@ -119,6 +119,24 @@ function assertDeclaredOperations(
   }
 }
 
+function armExpectedApolloUseQueryWarnings(
+  controller: RouteContractFixtureController,
+  count = 2,
+) {
+  const arm = (controller as RouteContractFixtureController & {
+    expectApolloUseQueryOnErrorWarnings?: (warningCount: number) => void;
+  }).expectApolloUseQueryOnErrorWarnings;
+  expect(typeof arm, "fixture exposes an explicit bounded Apollo-warning permit").toBe("function");
+  if (arm) arm(count);
+}
+
+function armMusicMountWarnings(
+  controller: RouteContractFixtureController,
+  routeId: string,
+) {
+  if (routeId === "music") armExpectedApolloUseQueryWarnings(controller);
+}
+
 test.describe("application-owned public route contract", () => {
   for (const route of publicRouteContract) {
     const routeCaseName = route.id === "music"
@@ -133,6 +151,7 @@ test.describe("application-owned public route contract", () => {
       });
       const path = publicRoutePath(route, routeParams);
 
+      armMusicMountWarnings(controller, route.id);
       const directNavigation = page.goto(path, { waitUntil: "domcontentloaded" });
       await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
       await directNavigation;
@@ -152,15 +171,27 @@ test.describe("application-owned public route contract", () => {
         const musicAudit = controller.networkAudit as typeof controller.networkAudit & {
           expectedConsoleErrors?: string[];
           consoleWarnings?: string[];
-          webSockets?: Array<{ url: string; closed: boolean }>;
+          webSockets?: Array<{ url: string; protocols: string[]; closed: boolean }>;
           unexpectedWebSockets?: string[];
         };
         // React StrictMode mounts the effect twice in development; the first socket
         // must close and exactly one deterministic LocalTunes socket stays active.
         await expect.poll(() => musicAudit.webSockets?.length ?? 0).toBe(2);
-        expect(musicAudit.webSockets?.every(({ url }) =>
-          url.includes("localtunes.earth/socket.io/"),
-        )).toBe(true);
+        expect(musicAudit.webSockets?.every(({ url, protocols }) => {
+          const parsed = new URL(url);
+          return parsed.protocol === "ws:" &&
+            parsed.hostname === "localtunes.earth" &&
+            parsed.port === "" &&
+            parsed.pathname === "/socket.io/" &&
+            [...parsed.searchParams.keys()].sort().join(",") === "EIO,guestUrl,transport" &&
+            parsed.searchParams.getAll("EIO").length === 1 &&
+            parsed.searchParams.getAll("guestUrl").length === 1 &&
+            parsed.searchParams.getAll("transport").length === 1 &&
+            parsed.searchParams.get("EIO") === "4" &&
+            parsed.searchParams.get("transport") === "websocket" &&
+            parsed.searchParams.get("guestUrl") === "route-fixture-playlist" &&
+            protocols.length === 0;
+        })).toBe(true);
         expect(musicAudit.webSockets?.filter(({ closed }) => !closed)).toHaveLength(1);
         expect(musicAudit.unexpectedWebSockets ?? []).toEqual([]);
         expect(musicAudit.consoleErrors, "successful Music console").toEqual([]);
@@ -181,6 +212,7 @@ test.describe("application-owned public route contract", () => {
       controller.failure = { operationName: failedOperation, status: 500 };
       const errorParams = { ...routeParams, username: `error-${route.id}` };
       const errorPath = publicRoutePath(route, errorParams);
+      armMusicMountWarnings(controller, route.id);
       const errorNavigation = page.goto(errorPath, { waitUntil: "domcontentloaded" });
       await expect(
         bootstrapOnlyRouteIds.has(route.id)
@@ -234,6 +266,7 @@ test.describe("application-owned public route contract", () => {
       await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toContainText(ROUTE_UI_TEXT[route.id]);
       await expect(page).toHaveURL(errorPath);
       await page.waitForLoadState("networkidle");
+      armMusicMountWarnings(controller, route.id);
       await page.goto(path);
       await page.waitForLoadState("networkidle");
 
@@ -243,6 +276,7 @@ test.describe("application-owned public route contract", () => {
       await page.goto(profilePath);
       await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
       await page.waitForLoadState("networkidle");
+      armMusicMountWarnings(controller, route.id);
       await page.evaluate((nextPath) => {
         window.history.pushState({}, "", nextPath);
         window.dispatchEvent(new PopStateEvent("popstate"));
@@ -251,6 +285,7 @@ test.describe("application-owned public route contract", () => {
       await expect(page.locator(".earth-loader-wrapper")).toHaveCount(0);
       await page.waitForLoadState("networkidle");
 
+      armMusicMountWarnings(controller, route.id);
       await page.reload();
       await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toBeVisible();
       await expect(page).toHaveURL(path);
@@ -300,6 +335,28 @@ test.describe("application-owned public route contract", () => {
         (controller.networkAudit as typeof controller.networkAudit & { unconsumedExpectedDiagnostics?: string[] })
           .unconsumedExpectedDiagnostics,
         `all failure diagnostics consumed for ${route.id}`,
+      ).toEqual([]);
+      expect(
+        (controller.networkAudit as typeof controller.networkAudit & {
+          unconsumedExpectedWarningDiagnostics?: string[];
+        }).unconsumedExpectedWarningDiagnostics,
+        `all expected warnings consumed for ${route.id}`,
+      ).toEqual([]);
+      if (route.id === "music") {
+        expect(controller.networkAudit.expectedConsoleWarnings).toHaveLength(10);
+      }
+      expect(
+        (controller.networkAudit as typeof controller.networkAudit & {
+          unconsumedExpectedResponseDiagnostics?: unknown[];
+          unexpectedResponses?: unknown[];
+        }).unconsumedExpectedResponseDiagnostics,
+        `all expected HTTP responses consumed for ${route.id}`,
+      ).toEqual([]);
+      expect(
+        (controller.networkAudit as typeof controller.networkAudit & {
+          unexpectedResponses?: unknown[];
+        }).unexpectedResponses,
+        `no unarmed HTTP responses for ${route.id}`,
       ).toEqual([]);
       expect(controller.networkAudit.badResponses.filter(({ status }) => status === 500)).toHaveLength(
         route.id === "music" ? 3 : 1,
@@ -390,18 +447,27 @@ test.describe("application-owned public route contract", () => {
       const firstPath = publicRoutePath(first, routeParams);
 
       if (scenario === "timing") {
-        await installPublicRouteContractFixture(page, {
+        const controller = await installPublicRouteContractFixture(page, {
           bootstrapDelayMs: 350,
           leafDelayMs: family === "profile" ? 350 : 0,
         });
+        armMusicMountWarnings(controller, first.id);
         const navigation = page.goto(firstPath, { waitUntil: "domcontentloaded" });
         await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
         await navigation;
         await expect(page.locator(`[data-public-route-leaf="${first.marker}"]`)).toBeVisible();
+        armMusicMountWarnings(controller, first.id);
         const refresh = page.reload({ waitUntil: "domcontentloaded" });
         await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
         await refresh;
         await expect(page.locator(`[data-public-route-leaf="${first.marker}"]`)).toBeVisible();
+        expect((controller.networkAudit as typeof controller.networkAudit & {
+          unconsumedExpectedWarningDiagnostics?: string[];
+        }).unconsumedExpectedWarningDiagnostics).toEqual([]);
+        if (first.id === "music") {
+          expect(controller.networkAudit.expectedConsoleWarnings).toHaveLength(4);
+        }
+        expect(controller.networkAudit.consoleWarnings).toEqual([]);
         return;
       }
 
@@ -557,6 +623,24 @@ test.describe("application-owned public route contract", () => {
 
       await expect(page).toHaveURL(failedTarget);
       await expect(page.locator('[data-public-route-leaf="public-books-page"]')).toBeVisible();
+      const audit = controller.networkAudit as typeof controller.networkAudit & {
+        expectedResponseDiagnostics?: Array<{
+          operation: string;
+          status: number;
+          method: string;
+          url: string;
+        }>;
+        unconsumedExpectedResponseDiagnostics?: unknown[];
+        unexpectedResponses?: unknown[];
+      };
+      expect(audit.expectedResponseDiagnostics).toContainEqual(expect.objectContaining({
+        operation: failureOperation,
+        status,
+        method: "POST",
+        url: expect.stringMatching(/\/graphql$/),
+      }));
+      expect(audit.unconsumedExpectedResponseDiagnostics).toEqual([]);
+      expect(audit.unexpectedResponses).toEqual([]);
     });
   }
 
@@ -584,11 +668,104 @@ test.describe("application-owned public route contract", () => {
 
     const audit = (controller as any).networkAudit;
     expect(audit.badResponses).toContainEqual(expect.objectContaining({ status: 418 }));
+    expect(audit.unexpectedResponses).toContainEqual(expect.objectContaining({ status: 418 }));
     expect(audit.unknownRequests).toContainEqual(expect.objectContaining({
       url: "https://unexpected.fixture.invalid/private",
     }));
     expect(audit.consoleErrors).toContain("TASK6_ARBITRARY_CONSOLE_ERROR");
     expect(audit.consoleWarnings).toContain("TASK6_ARBITRARY_CONSOLE_WARNING");
+  });
+
+  test("Apollo warning permits are exact, one-use, query-safe, and reject duplicate or changed payloads", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+    expect(() => controller.expectApolloUseQueryOnErrorWarnings(3)).toThrow(
+      "Expected Apollo warning count must be between one and two",
+    );
+    armExpectedApolloUseQueryWarnings(controller, 1);
+
+    const exactArgs = [
+      "useQuery",
+      "onError",
+      "If your `onError` callback sets local state, switch to use derived state using `data`, `error` or `errors` returned from the hook instead. Use `useEffect` if you need to perform side-effects as a result of updates to `data`, `error` or `errors`.",
+    ];
+    const exactPayload = { version: "3.14.1", message: 103, args: exactArgs };
+    const warning = (payload: Record<string, unknown>, search = "") =>
+      `An error occurred! For more details, see the full error text at https://go.apollo.dev/c/err${search}#${encodeURIComponent(JSON.stringify(payload))}`;
+    const exactWarning = warning(exactPayload);
+    const changedVersion = warning({ ...exactPayload, version: "3.14.2" });
+    const extraPayload = warning({ ...exactPayload, extra: "lookalike" });
+    const secretQuery = warning(exactPayload, "?token=TASK6_SECRET_SENTINEL");
+
+    await page.evaluate((messages) => {
+      for (const message of messages) console.warn(message);
+    }, [exactWarning, exactWarning, changedVersion, extraPayload, secretQuery]);
+
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      unconsumedExpectedWarningDiagnostics?: string[];
+    };
+    expect(audit.expectedConsoleWarnings).toHaveLength(1);
+    expect(audit.unconsumedExpectedWarningDiagnostics).toEqual([]);
+    expect(audit.consoleWarnings).toEqual([
+      "UNARMED_APOLLO_WARNING",
+      "UNEXPECTED_APOLLO_WARNING",
+      "UNEXPECTED_APOLLO_WARNING",
+      "UNEXPECTED_APOLLO_WARNING",
+    ]);
+    expect(JSON.stringify(audit)).not.toContain("TASK6_SECRET_SENTINEL");
+  });
+
+  test("every unarmed local HTTP failure is audited across API and asset status families", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+    await page.route("**/e2e-local-api-401", (route) =>
+      route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+    await page.route("**/e2e-local-api-429", (route) =>
+      route.fulfill({ status: 429, contentType: "application/json", body: "{}" }));
+    await page.route("**/e2e-local-asset-404.svg", (route) =>
+      route.fulfill({ status: 404, contentType: "image/svg+xml", body: "<svg/>" }));
+
+    await page.evaluate(async () => {
+      await fetch("/e2e-local-api-401");
+      await fetch("/e2e-local-api-429");
+      await new Promise<void>((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+        image.src = "/e2e-local-asset-404.svg";
+      });
+    });
+
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      unexpectedResponses?: Array<{ url: string; status: number }>;
+    };
+    await expect.poll(() => audit.unexpectedResponses?.length ?? 0).toBe(3);
+    expect(audit.unexpectedResponses).toEqual([
+      expect.objectContaining({ url: expect.stringMatching(/\/e2e-local-api-401$/), status: 401 }),
+      expect.objectContaining({ url: expect.stringMatching(/\/e2e-local-api-429$/), status: 429 }),
+      expect.objectContaining({ url: expect.stringMatching(/\/e2e-local-asset-404\.svg$/), status: 404 }),
+    ]);
+  });
+
+  test("LocalTunes WebSocket allowance rejects same-host lookalikes with query, port, scheme, or protocol drift", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+    const base = "ws://localtunes.earth/socket.io/?EIO=4&transport=websocket&guestUrl=route-fixture-playlist";
+    const lookalikes = [
+      `${base}&token=TASK6_SECRET_SENTINEL`,
+      "ws://localtunes.earth:444/socket.io/?EIO=4&transport=websocket&guestUrl=route-fixture-playlist",
+      "wss://localtunes.earth/socket.io/?EIO=4&transport=websocket&guestUrl=route-fixture-playlist",
+    ];
+    await page.evaluate(({ urls, protocolUrl }) => {
+      for (const url of urls) new WebSocket(url);
+      new WebSocket(protocolUrl, "graphql-ws");
+    }, { urls: lookalikes, protocolUrl: base });
+
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      unexpectedWebSockets?: string[];
+    };
+    await expect.poll(() => audit.unexpectedWebSockets?.length ?? 0).toBe(4);
+    expect(audit.unexpectedWebSockets).toEqual([...lookalikes, base]);
   });
 
   test("network audit records only the exact Vite HMR socket and blocks a localhost lookalike", async ({ page }) => {
@@ -642,9 +819,11 @@ test.describe("application-owned public route contract", () => {
   test("an additional unarmed playlist 500 cannot consume a prior expected diagnostic", async ({ page }) => {
     const controller = await installPublicRouteContractFixture(page);
     const musicRoute = publicRouteContract.find((route) => route.id === "music")!;
+    armExpectedApolloUseQueryWarnings(controller);
     await page.goto(publicRoutePath(musicRoute, routeParams));
     await expect(page.locator(`[data-public-route-leaf="${musicRoute.marker}"]`)).toBeVisible();
     controller.failure = { operationName: "PublicMusicPlaylist", status: 500 };
+    armExpectedApolloUseQueryWarnings(controller);
     await page.goto(publicRoutePath(musicRoute, {
       ...routeParams,
       username: "extra-playlist-diagnostic",
@@ -655,9 +834,15 @@ test.describe("application-owned public route contract", () => {
     ).length).toBe(3);
     const audit = controller.networkAudit as typeof controller.networkAudit & {
       unconsumedExpectedDiagnostics?: string[];
+      unconsumedExpectedWarningDiagnostics?: string[];
     };
     await expect.poll(() => audit.unconsumedExpectedDiagnostics).toEqual([]);
+    expect(audit.unconsumedExpectedWarningDiagnostics).toEqual([]);
+    expect(audit.consoleWarnings).toEqual([]);
     expect(audit.consoleErrors).toEqual([]);
+    expect(audit.expectedResponseDiagnostics).toHaveLength(3);
+    expect(audit.unconsumedExpectedResponseDiagnostics).toEqual([]);
+    expect(audit.unexpectedResponses).toEqual([]);
 
     controller.failure = undefined;
     await page.goto("/about");
@@ -672,6 +857,10 @@ test.describe("application-owned public route contract", () => {
     await expect.poll(() => audit.consoleErrors).toContain(
       "UNARMED_FAILURE_DIAGNOSTIC:playlist:RESOURCE",
     );
+    await expect.poll(() => audit.unexpectedResponses).toContainEqual(expect.objectContaining({
+      operation: "PublicMusicPlaylist",
+      status: 500,
+    }));
   });
 
   test("an additional unarmed GraphQL 500 cannot consume a prior expected diagnostic", async ({ page }) => {
@@ -685,6 +874,9 @@ test.describe("application-owned public route contract", () => {
     };
     await expect.poll(() => audit.unconsumedExpectedDiagnostics).toEqual([]);
     expect(audit.consoleErrors).toEqual([]);
+    expect(audit.expectedResponseDiagnostics).toHaveLength(1);
+    expect(audit.unconsumedExpectedResponseDiagnostics).toEqual([]);
+    expect(audit.unexpectedResponses).toEqual([]);
 
     await page.goto("/about");
     await page.waitForLoadState("networkidle");
@@ -703,6 +895,10 @@ test.describe("application-owned public route contract", () => {
     await expect.poll(() => audit.consoleErrors).toContain(
       "UNARMED_FAILURE_DIAGNOSTIC:graphql:RESOURCE",
     );
+    await expect.poll(() => audit.unexpectedResponses).toContainEqual(expect.objectContaining({
+      operation: "PublicProfileBootstrap",
+      status: 500,
+    }));
   });
 
   test("anonymous, malformed, and undeclared GraphQL operations fail closed", async ({ page }) => {
@@ -730,5 +926,7 @@ test.describe("application-owned public route contract", () => {
     expect(statuses).toEqual([400, 400, 400]);
     expect(controller.unknownOperations).toHaveLength(3);
     expect(controller.observedOperations).not.toContain("Unknown");
+    expect(controller.networkAudit.unexpectedResponses).toHaveLength(3);
+    expect(controller.networkAudit.unexpectedResponses.every(({ status }) => status === 400)).toBe(true);
   });
 });
