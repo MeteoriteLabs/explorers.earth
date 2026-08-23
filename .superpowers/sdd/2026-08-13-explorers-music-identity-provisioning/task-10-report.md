@@ -1105,3 +1105,121 @@ unchanged retry was used to replace a failed qualification sample.
 Task 10 remains unapproved. The controller must dispatch independent round-5
 rereview of tested code hash
 `f7fe99bceca99ee2d7964d45527a9a473d02c184`; this report is not self-approval.
+
+## Final breaker ruling: pre-Node fixture authority
+
+Ruling: round-five's `NODE_OPTIONS` finding is real and load-bearing. The cost
+if this ruling were wrong is limited to the native launcher and its tests; the
+cost of ignoring a correct finding is much larger: caller preload code can
+mutate Docker or the filesystem before an in-process rejection, invalidating
+the claimed no-input exact-source release evidence.
+
+Tested code commit `b5150274f5763db7d633988d6562930dedb5e4ee`
+(`fix(music): gate fixture authority before node`) therefore makes the native
+Windows/PowerShell or POSIX launcher the only supported fixture release entry.
+It rejects Node loader/import/inspect/profiling variables before Node starts,
+uses canonical protected executables and a minimal environment, and passes a
+one-use 64-hex attestation through anonymous stdin plus argv. The module-private
+channel consumes that attestation; a caller-set environment flag cannot forge
+it. Direct Node invocation refuses `test:release` before deployment. The native
+TypeScript resolver/transform/register chain removes npm/tsx from this trust
+boundary. Existing Git/Docker/Bash/PATH sanitation, immutable image digests,
+private Docker config/endpoint, TOCTOU checks, and production policy remain in
+force; the production wrapper was not changed.
+
+Strict RED showed the old Node entrypoint executed a hostile preload marker
+before its rejection. GREEN proved the native launcher rejects before Node
+starts with no marker, and direct Node cannot reach mutation. The reviewer's
+disposable `%TEMP%\music-c10-r5-deps` root was inspected as task-owned, its one
+self-junction unlinked without traversal, and the bounded temp root removed;
+it was temporary-only and is not recoverable.
+
+### Scheduler and browser isolation RED/GREEN
+
+The first final-hash candidate `d165b00d201b658a59808f237fd4581995a6802a`
+retained nested `--maxWorkers=1 --fileParallelism=false`, but nightly
+`20260823110056536-b7884b7c` failed 19/23 with three diagnostic reruns. Critical
+coverage crossed an existing 15-second test bound, isolated CLI crossed two
+existing 5-second bounds, PostgreSQL observed a loaded-run timing race, and
+fullstack auth finished at `/home`. No timeout was increased.
+
+The lane scheduler RED failed 1/43 because no global concurrency authority
+existed. GREEN caps the complete inherited nightly/release scheduler at one
+task on Windows and batches at most two tasks elsewhere; batch maxima are
+summed so the 45/60-minute budgets remain honest. The executable peak contract
+passes 44/44. Candidate `e42a19af23829a45b279d59451c7d59d53ba2f65`
+then cleared every resource-related failure but nightly
+`20260823113330511-c0bea784` retained one deterministic fullstack failure on
+both attempts (22/23, 584.333s). The affected journey passed alone and after
+either predecessor, but failed when all three auth journeys shared one worker.
+Playwright parallel-mode worker scoping, with the configured global worker
+count still one, isolates those journeys without increasing concurrency or a
+timeout. RED was 2/3 in the complete auth file and 11/12 in the exact fullstack
+command; GREEN is 3/3 and 12/12.
+
+Final focused proof passed 68/68 authority/scheduler/workflow tests, isolated
+clean bootstrap 2/2, scoped TypeScript with zero diagnostics, exact fullstack
+12/12, and capped critical coverage 24 files with 519 tests plus one Windows
+skip and 100% per-file coverage.
+
+### Exact `b515027` lifecycle and eligible releases
+
+The final detached proof used exact labeled PG15 sidecar
+`b3e29a2a6624ae31b05c247bced13477ce6c48c1c300296fd2b8fba9c9de5ede`
+on loopback port 57232. Its literal `postgres:15-alpine` tag mapped to reviewed
+image ID `sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c`
+on `linux/amd64`; ID/name/image/labels/health/port and the required
+login/superuser/createdb/createrole role plus `music_fixture` were attested.
+
+- bootstrap `20260823115122112-5b6ae2ea`: 63.258s
+- doctor `20260823115315506-926f06e0`: 0.715s
+- five-service up `20260823115349442-b3536acf`: 129.323s
+- cold/warm smoke `20260823115614317-c3a68a99` /
+  `20260823115646701-e6e1b594`: 1.468/0.986s
+- nightly `20260823120155060-96083e34`: 23/23 original successes, zero
+  failures/timeouts/reruns, 549.061s
+
+| Native release sample | Lane wall | Deployment | Result |
+| --- | ---: | --- | --- |
+| `20260823121124689-11df7496` | 1,342.562s | 12/12 files, 205/205, 831.32s | 20/20 attempt 1 |
+| `20260823123435053-0a1b0dc5` | 1,360.215s | 12/12 files, 205/205, 841.11s | 20/20 attempt 1 |
+
+Both samples are below 60 minutes, have zero diagnostics, and record five
+bounded load measurements, 300 telemetry events, one exact eight-key set, zero
+forbidden keys, cardinality eight, 200 invalid-token rejections,
+interrupt/resume verified, compatibility use zero, migration/readiness failure
+observation, exact rollback restoration, unknown/pre-floor refusal, and kill
+switch verification. Cross-run release p50/p95 are 1,342.562/1,360.215s.
+
+The failure ledger was preserved without promotion. It includes the `d165`
+nightly, `e42` browser-only nightly, preload RED, earlier launcher/config/path/
+transform failures, and terminal-only operator errors: wrong teardown syntax;
+two fail-closed sidecar label/name expectations; reserved PowerShell `$Host`;
+clean-bootstrap inheriting an unrelated standalone-PG commit; and two
+ANSI-unaware deployment-summary validators. None mutated production or was
+substituted for an eligible release.
+
+### Final evidence and cleanup
+
+Final ignored evidence contains 144 files/964,227 bytes at
+`.artifacts/music-c10-evidence/breaker-b515027-final/music-runs`; its canonical
+manifest verifies twice with SHA-256
+`63b9166712ca9d45d0ed3d54d22a9b2d812dbedf879ca8df28b91f06e8c1c1ab`.
+The new `d165` and `e42` ledgers contain 74 and 69 files with verified manifest
+SHA-256 values `5fc66d50b883a651380a8ec3cf56df99ff2e54c40431aa8d600d6ba95cd9dee5`
+and `e9e4bfb9c59f528c1fd7e776fb59537ceabfedfb457ade8218789538ccb4baf9`.
+Across all 290 files/1,411,326 bytes, count-only sanitation found zero developer
+paths, proof paths, raw Docker `Config.Env`, or credential assignments.
+
+Supported teardown `20260823125848699-dcd61cc0` passed in 4.611s. The exact
+sidecar was removed only after full re-attestation. No schema, migration,
+production, external push, `GATE_PROD`, Task 11, or Task 12 action occurred.
+All nine bounded node-gate proof registrations and temp roots were removed
+after non-traversing reparse inspection and exact-root validation; the three
+self-junctions found targeted only their own proof roots and were unlinked
+before removal. The reviewer dependency temp root remains absent. A final scan
+through the explicit local npipe endpoint found zero Task 10 containers,
+networks, volumes, or watched listeners. The active source `.env.music.test`
+was neither directly read nor modified.
+Task 10 remains unapproved pending the controller's final scoped rereview of
+`b5150274f5763db7d633988d6562930dedb5e4ee`; this is not self-approval.
