@@ -9,7 +9,7 @@ import {
   rowSettingPairs,
   settingsArtifactName,
 } from "./support/publicProfileSettingsManifest";
-import { restoreWithEmergency } from "./support/liveProfileWriteSafety";
+import { restoreWithEmergency, runProtectedProfileMutation } from "./support/liveProfileWriteSafety";
 import * as liveSafety from "./support/liveProfileWriteSafety";
 import { evaluateCorePixelContrast } from "./support/publicProfileFixture";
 import * as publicFixture from "./support/publicProfileFixture";
@@ -46,6 +46,11 @@ test("protected mutation harness captures exact state and template, backs up, ve
   await expect(run({
     captureExactState: async () => (events.push("capture"), baseline),
     captureMutationTemplate: async () => (events.push("template"), template),
+    verifyRestoreReady: async (state: unknown, captured: unknown) => {
+      events.push("restore-ready");
+      expect(state).toEqual(baseline);
+      expect(captured).toEqual(template);
+    },
     backup: async (value: unknown) => {
       events.push("backup");
       expect(value).toEqual(baseline);
@@ -66,8 +71,24 @@ test("protected mutation harness captures exact state and template, backs up, ve
     },
   })).resolves.toBeUndefined();
   expect(events).toEqual([
-    "capture", "template", "backup", "mutate", "verify-mutation", "restore", "verify-restored",
+    "capture", "template", "restore-ready", "backup", "mutate", "verify-mutation", "restore", "verify-restored",
   ]);
+});
+
+test("protected mutation cannot begin when the restore plan is not independently ready", async () => {
+  const events: string[] = [];
+  await expect(runProtectedProfileMutation({
+    captureExactState: async () => (events.push("capture"), { Bio: "baseline" }),
+    captureMutationTemplate: async () => (events.push("template"), { operationName: "UpdateAccount" }),
+    verifyRestoreReady: async () => { events.push("restore-ready"); throw new Error("RESTORE_NOT_READY"); },
+    backup: async () => { events.push("backup"); },
+    mutate: async () => { events.push("mutate"); },
+    verifyMutation: async () => { events.push("verify-mutation"); },
+    normalRestore: async () => { events.push("restore"); },
+    emergencyRestore: async () => { events.push("emergency"); },
+    verifyRestored: async () => { events.push("verify-restored"); },
+  })).rejects.toThrow("RESTORE_NOT_READY");
+  expect(events).toEqual(["capture", "template", "restore-ready"]);
 });
 
 test("settings manifest declares 24 named theme and wallpaper cases", () => {

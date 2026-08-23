@@ -45,7 +45,9 @@ test("protected recovery artifact is versioned, OS-temporary, and removed only e
 test("protected backup projection excludes credentials and unrelated account data", () => {
   const projected = pickAllowlistedProfileState({
     Bio: "original",
-    background_picture: null,
+    bg_picture: null,
+    profile_picture: null,
+    Feed_Data: [],
     social_media: { theme_settings: { preset: "minimal-light" } },
     public_profile: "Yes",
     email: "private@example.com",

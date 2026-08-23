@@ -59,8 +59,11 @@ test("protected prerequisite validation reuses the full mutation environment doc
   const complete = {
     E2E_PROFILE_USERNAME: "fixture-owner",
     E2E_PROFILE_STORAGE_STATE: "fixture-state.json",
+    E2E_PROFILE_NON_OWNER_STORAGE_STATE: "fixture-non-owner-state.json",
+    E2E_PROFILE_GALLERY_FILE: "fixture-gallery.png",
     E2E_PROFILE_LIVE_WRITES: "1",
     E2E_PROFILE_LIVE_WRITE_CONFIRMATION: "I_APPROVE_PROFILE_MUTATION_AND_RESTORE",
+    E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown-fixture" }),
     VITE_API_URL: "https://api.fixture.invalid/graphql",
     VITE_PUBLIC_READ_ACCESS_TOKEN: "dedicated-read",
     VITE_ANALYTICS_WRITE_ACCESS_TOKEN: "dedicated-analytics",
@@ -80,6 +83,8 @@ test("protected prerequisite validation reuses the full mutation environment doc
     PUBLIC_API_ANALYTICS_CANARY_MUTATION: "canary",
     PUBLIC_API_ANALYTICS_CLEANUP_MUTATION: "cleanup",
     PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY: "verify",
+    PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION: "mutation { cleanup: deleteQaRun }",
+    PUBLIC_API_ANALYTICS_RUN_CLEANUP_VERIFY_QUERY: "query { remaining: qaRunEvents }",
   };
 
   assert.doesNotThrow(() => validateProtectedPrerequisites(complete));
@@ -108,13 +113,56 @@ test("protected global setup fails before any protected test callback can begin"
   assert.equal(laterTestStarted, false);
 });
 
+test("protected mutation setup cannot start callbacks before analytics cleanup and capability proof", async () => {
+  const { runProtectedGlobalSetup } = await import("../playwright-global-setup.mjs");
+  const { validateProtectedPrerequisites } = await import("../protected-prerequisites.mjs");
+  const complete = {
+    E2E_PROFILE_USERNAME: "fixture-owner", E2E_PROFILE_STORAGE_STATE: "owner.json",
+    E2E_PROFILE_NON_OWNER_STORAGE_STATE: "non-owner.json", E2E_PROFILE_GALLERY_FILE: "gallery.png",
+    E2E_PROFILE_LIVE_WRITES: "1", E2E_PROFILE_LIVE_WRITE_CONFIRMATION: "I_APPROVE_PROFILE_MUTATION_AND_RESTORE",
+    E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown" }),
+    VITE_API_URL: "https://api.fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read", VITE_ANALYTICS_WRITE_ACCESS_TOKEN: "write",
+    PUBLIC_API_CAPABILITY_SCOPE: "published-read-only", PUBLIC_API_EXPECTED_ORIGIN: "https://fixture.invalid",
+    PUBLIC_API_ORIGIN_POLICY: JSON.stringify({ allowOrigins: ["https://fixture.invalid"] }), PUBLIC_API_RATE_LIMIT_POLICY: JSON.stringify({ environment: "non-production", limit: 1, windowSeconds: 1 }),
+    PUBLIC_API_CONTROLLED_FIXTURE: "true", PUBLIC_API_PRIVATE_ACCOUNT_ID: "a", PUBLIC_API_PRIVATE_LIST_ID: "l", PUBLIC_API_PRIVATE_ITEM_ID: "i", PUBLIC_API_PRIVATE_LIST_SLUG: "s",
+    PUBLIC_API_RUN_ID: "qa-run", PUBLIC_PROFILE_MUTATION_APPROVED: "true", PUBLIC_PROFILE_TEST_ACCOUNT_MARKER: "public-profile-mutation-fixture",
+    PUBLIC_API_ANALYTICS_QA_SINK: "qa-sink", PUBLIC_API_ANALYTICS_CANARY_MUTATION: "mutation { canary: x }",
+    PUBLIC_API_ANALYTICS_CLEANUP_MUTATION: "mutation { cleanup: x }", PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY: "query { remaining: x }",
+    PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION: "mutation { cleanup: deleteQaRun }", PUBLIC_API_ANALYTICS_RUN_CLEANUP_VERIFY_QUERY: "query { remaining: qaRunEvents }",
+  };
+  assert.doesNotThrow(() => validateProtectedPrerequisites(complete));
+  let callback = false;
+  await assert.rejects(() => runProtectedGlobalSetup({
+    projectNames: ["real-account"], mode: "mutation", env: complete,
+    verifyReleasePrerequisites: async () => ({ code: "ANALYTICS_CLEANUP_FAILED" }),
+    onProtectedReady: () => { callback = true; },
+  }), /ANALYTICS_CLEANUP_FAILED/);
+  assert.equal(callback, false);
+});
+
+test("protected fixture and run-cleanup block paths are stable and named", async () => {
+  const { validateProtectedReadOnlyPrerequisites, validateProtectedPrerequisites } = await import("../protected-prerequisites.mjs");
+  assert.throws(() => validateProtectedReadOnlyPrerequisites({
+    VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read",
+    E2E_PROFILE_USERNAME: "fixture", E2E_PROFILE_ROUTE_FIXTURES: "{}",
+  }), /ROUTE_FIXTURE_INVALID/);
+  const source = ["protected-prerequisites.mjs", "verify-public-profile-env.mjs"]
+    .map((file) => fs.readFileSync(path.join(process.cwd(), "scripts", file), "utf8")).join("\n");
+  assert.match(source, /ANALYTICS_CLEANUP_FAILED/);
+  assert.match(source, /ANALYTICS_CANARY_REQUIRED/);
+  assert.match(source, /ACCOUNT_MARKER_MISMATCH/);
+  assert.match(source, /LIVE_WRITE_NOT_APPROVED/);
+  assert.equal(typeof validateProtectedPrerequisites, "function");
+});
+
 test("protected read-only setup requires only the dedicated public-read tier", async () => {
   const { runProtectedGlobalSetup } = await import("../playwright-global-setup.mjs");
   let ready = false;
   await runProtectedGlobalSetup({
     projectNames: ["real-account"],
     mode: "read-only",
-    env: { VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read-only", E2E_PROFILE_USERNAME: "published-fixture" },
+    env: { VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read-only", E2E_PROFILE_USERNAME: "published-fixture", E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown-fixture" }) },
+    verifyReadOnlyPrerequisites: async () => ({ code: "PUBLIC_API_READY" }),
     onProtectedReady: () => { ready = true; },
   });
   assert.equal(ready, true);

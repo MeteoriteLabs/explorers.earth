@@ -29,7 +29,7 @@ test("protected E2E discovery includes only the serialized real-account project"
   const result = list("test:e2e:real-account");
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[protected\] 5 test\(s\); arbitrary output suppressed/);
+  assert.match(result.stdout, /\[protected\] 10 test\(s\); arbitrary output suppressed/);
   assert.doesNotMatch(result.stdout, /real-account[\\/]/i);
   assert.doesNotMatch(result.stdout, /\[deterministic\]/);
 });

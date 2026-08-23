@@ -55,9 +55,14 @@ Run these commands from `explorers-earth/` with Node `>=22.12` after `npm ci`. I
 The protected browser journey is documented in
 [`explorers-earth/e2e/real-account/README.md`](../explorers-earth/e2e/real-account/README.md).
 Run `npm run test:e2e:real-account:read-only` for the non-mutating guest route
-audit. Run `npm run test:e2e:real-account` only after the mutation doctor,
+audit. It requires the complete `E2E_PROFILE_ROUTE_FIXTURES` contract and runs
+a query-only capability preflight before any page callback. Run
+`npm run test:e2e:real-account` only after the mutation doctor,
 dedicated-account marker, backup/restore, and analytics-cleanup gates are all
-ready. A blocked protected run is not a waived or skipped release check.
+ready, including browser-run cleanup and empty-remaining verification. The
+mutation harness proves the captured real Profile/Appearance controls can
+restore before it creates a backup or calls any mutation callback. A blocked
+protected run is not a waived or skipped release check.
 
 Use `npm run test:e2e -- --headed` for headed browser debugging and `PWDEBUG=1 npm run test:e2e` for Playwright step-through debugging. The normal policy is a clean browser console and no unexpected network failures; a named preflight failure is evidence of a release blocker, not a permitted empty-state fallback.
 

@@ -4,7 +4,9 @@ import path from "node:path";
 
 export const PROFILE_BACKUP_FIELDS = [
   "Bio",
-  "background_picture",
+  "bg_picture",
+  "profile_picture",
+  "Feed_Data",
   "social_media",
   "public_profile",
 ] as const;
@@ -74,6 +76,7 @@ export async function restoreWithEmergency({
 interface ProtectedProfileMutationOptions<State, Template> {
   captureExactState: () => Promise<State>;
   captureMutationTemplate: () => Promise<Template>;
+  verifyRestoreReady: (state: State, template: Template) => Promise<void>;
   backup: (state: State) => Promise<void>;
   mutate: (template: Template) => Promise<void>;
   verifyMutation: () => Promise<void>;
@@ -85,6 +88,7 @@ interface ProtectedProfileMutationOptions<State, Template> {
 export async function runProtectedProfileMutation<State, Template>({
   captureExactState,
   captureMutationTemplate,
+  verifyRestoreReady,
   backup,
   mutate,
   verifyMutation,
@@ -94,6 +98,7 @@ export async function runProtectedProfileMutation<State, Template>({
 }: ProtectedProfileMutationOptions<State, Template>) {
   const exactState = structuredClone(await captureExactState());
   const template = structuredClone(await captureMutationTemplate());
+  await verifyRestoreReady(exactState, template);
   await backup(exactState);
   let mutationStarted = false;
 

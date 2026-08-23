@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
-import useTrackAnalytics, { createAnalyticsOptions, getAccountIdFromUsername } from '../analyticsService';
+import useTrackAnalytics, { createAnalyticsOptions, getAccountIdFromUsername, protectedQaRunMetadata } from '../analyticsService';
 import useAuthStore from '../../store/store';
 import * as apollo from '@apollo/client';
 import * as urlHelpers from '../../utils/urlHelpers';
@@ -62,8 +62,16 @@ describe('analyticsService', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('stamps only a valid protected QA run ID and ignores ordinary environments', () => {
+    vi.stubEnv('VITE_PUBLIC_PROFILE_QA_RUN_ID', 'qa-release-17');
+    expect(protectedQaRunMetadata()).toEqual({ qaRunId: 'qa-release-17' });
+    vi.stubEnv('VITE_PUBLIC_PROFILE_QA_RUN_ID', 'production-run');
+    expect(protectedQaRunMetadata()).toEqual({});
   });
 
   // ── getAccountIdFromUsername ─────────────────────────────────────────────

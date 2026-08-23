@@ -7,6 +7,11 @@ import {
   resolveBrowserApolloCapabilities,
 } from "../lib/apolloTransport";
 
+export const protectedQaRunMetadata = (): Record<string, string> => {
+  const value = String(import.meta.env.VITE_PUBLIC_PROFILE_QA_RUN_ID ?? "");
+  return /^qa[-_][a-z0-9_-]{1,64}$/i.test(value) ? { qaRunId: value } : {};
+};
+
 const analyticsClient = new ApolloClient({
   link: createApolloTransport({
     uri: import.meta.env.VITE_API_URL,
@@ -217,6 +222,7 @@ export const useTrackAnalytics = (options: UseTrackAnalyticsOptions): UseTrackAn
       utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined, // Only include if UTM params exist
       metadata: {
         ...event.metadata,
+        ...protectedQaRunMetadata(),
         routeVariant,
         routePath: routePath || window.location.pathname,
       }

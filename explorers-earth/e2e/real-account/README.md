@@ -8,7 +8,10 @@ responses, or recovery JSON into test output or an issue.
 ## Read-only guest run
 
 Required names: `VITE_API_URL`, `VITE_PUBLIC_READ_ACCESS_TOKEN`, and
-`E2E_PROFILE_USERNAME`. The capability must expose published reads only.
+`E2E_PROFILE_USERNAME`. `E2E_PROFILE_ROUTE_FIXTURES` is a JSON contract with
+`params`, every `enabledRouteIds` entry, `hiddenPath`, `deletedPath`, and an
+`unknownUsername`; missing detail fixtures fail with `ROUTE_FIXTURE_INVALID`
+instead of silently reducing coverage. The capability must expose published reads only.
 
 ```text
 npm run verify:public-profile:env -- --mode=read-only --json
@@ -33,6 +36,9 @@ In addition to the read-only names, configure all names reported by
 - `PUBLIC_PROFILE_TEST_ACCOUNT_MARKER=public-profile-mutation-fixture`
 - independent `VITE_ANALYTICS_WRITE_ACCESS_TOKEN`
 - a `qa-`/`qa_` analytics sink, run ID, canary, cleanup, and cleanup verifier
+- `E2E_PROFILE_GALLERY_FILE` plus owner and non-owner storage states
+- run-wide browser-event cleanup/remaining documents using aliases `cleanup`
+  and `remaining`
 
 Run `npm run test:e2e:real-account`. Global setup fails before any test body if
 one prerequisite is absent. Groups run one at a time and stop on the first
@@ -40,15 +46,20 @@ restoration or analytics-cleanup failure.
 
 ## Backup and restoration contract
 
-Immediately before each group, the suite copies only `Bio`,
-`background_picture`, `social_media`, and `public_profile` into a versioned
+Immediately before each group, the suite copies only `Bio`, `bg_picture`,
+`profile_picture`, `Feed_Data`, `social_media`, and `public_profile` into a versioned
 JSON artifact below the operating-system temporary directory. Its directory
 and file permissions are restricted to the current user. It never contains
 credentials, identity/contact fields outside the mutable projection, storage
 state, headers, or raw responses.
 
-Normal restore replays the captured account state, then verifies exact state
-through the API and the public UI. The artifact is deleted only after both
+Before mutation, the suite captures actual Profile and Appearance control
+values and proves every restore control exists, is enabled, and accepts the
+captured value. Mutation never begins if that dry-run contract fails. Normal
+restore replays those captured values through the same visible controls; one
+emergency retry uses the same independently verified path. It then verifies
+the allowlisted account state through successful public GraphQL operations and
+the rendered public UI. The artifact is deleted only after both
 checks succeed. `RESTORE_FAILED` retains it and aborts every later mutation.
 Analytics events are stamped with `PUBLIC_API_RUN_ID`; cleanup or verified
 reporting exclusion is mandatory and `ANALYTICS_CLEANUP_FAILED` blocks release.
@@ -58,7 +69,7 @@ Crash recovery:
 1. Do not rerun mutation tests.
 2. Locate the newest `explorers-profile-recovery-*` directory under the OS
    temporary directory. Do not print or copy its contents.
-3. Restore only the four allowlisted fields through the authenticated Profile
+3. Restore only the six allowlisted fields through the authenticated Profile
    dashboard of the dedicated fixture account.
 4. Run the read-only verification below and visually compare the public root
    and enabled categories to the approved baseline:

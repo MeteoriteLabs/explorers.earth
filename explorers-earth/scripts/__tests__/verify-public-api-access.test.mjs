@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { requestOperation, runAnalyticsCanaryLifecycle, runControlledNegativeProbes, runPublicApiPreflight } from "../verify-public-api-access.mjs";
+import { requestOperation, runAnalyticsCanaryLifecycle, runControlledNegativeProbes, runPublicApiPreflight, runPublicReadOnlyPreflight } from "../verify-public-api-access.mjs";
 
 const scriptPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../verify-public-api-access.mjs");
 const testOperation = {
@@ -276,6 +276,25 @@ test("probes only enabled published collections after a successful bootstrap", a
     ["places", "empty"],
     ["controlled-negative-probes", "malformed"],
   ]);
+});
+
+test("read-only protected preflight proves enabled reads without any mutation or canary", async () => {
+  const requests = [];
+  const report = await runPublicReadOnlyPreflight({
+    username: "fixture-user",
+    env: validPolicyEnv(),
+    fetchImpl: async (_url, options) => {
+      const request = JSON.parse(options.body);
+      requests.push(request);
+      if (request.operationName === "PublicAccountBootstrap") {
+        return Response.json({ data: { accounts: [{ documentId: "account-1", public_profile: "Yes", public_books: "Yes" }] } });
+      }
+      return Response.json({ data: { bookLists: [] } });
+    },
+  });
+  assert.equal(report.code, "PUBLIC_API_READY");
+  assert.deepEqual(requests.map((request) => request.operationName), ["PublicAccountBootstrap", "PublicBooks"]);
+  assert.equal(requests.some((request) => /\bmutation\b/.test(request.query)), false);
 });
 
 test("controlled probes refuse every write until the approved QA canary and cleanup contract is present", async () => {

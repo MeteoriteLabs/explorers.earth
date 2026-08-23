@@ -70,8 +70,11 @@ export function installConsoleNetworkAudit(page: Page): ConsoleNetworkAudit {
   const operations = new WeakMap<Request, string>();
 
   const onRequest = (request: Request) => {
-    if (new URL(request.url()).pathname.endsWith("/graphql")) {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.endsWith("/graphql")) {
       operations.set(request, operationNameFromRequest(request.postData()));
+    } else if (/\/api\/playlist\//.test(pathname)) {
+      operations.set(request, "PublicMusicPlaylist");
     }
   };
   const onResponse = async (response: Response) => {

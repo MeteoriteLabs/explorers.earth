@@ -223,6 +223,28 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
   return { code: negative.code === "PUBLIC_API_READY" ? reportCode(operations) : negative.code, username: "provided", configuration, operations: [...operations, ...negative.operations] };
 }
 
+export async function runPublicReadOnlyPreflight({ username, env = process.env, fetchImpl = fetch, timeoutMs = 1500, retries = 1 } = {}) {
+  const endpoint = env.VITE_API_URL;
+  const token = env.VITE_PUBLIC_READ_ACCESS_TOKEN;
+  if (!username || !endpoint || !token) return { code: "ENV_MISSING", operations: [] };
+  const bootstrapResponse = await requestOperation({
+    endpoint, token, operation: ACCOUNT_BOOTSTRAP,
+    variables: ACCOUNT_BOOTSTRAP.variables(username), fetchImpl, timeoutMs, retries,
+  });
+  if (bootstrapResponse.diagnostic.classification !== "ready") {
+    return { code: bootstrapResponse.diagnostic.code, operations: [bootstrapResponse.diagnostic] };
+  }
+  const account = bootstrapResponse.value[0];
+  if (account.public_profile !== "Yes" && account.public_profile !== true) {
+    return { code: "PUBLIC_READ_FORBIDDEN", operations: [bootstrapResponse.diagnostic] };
+  }
+  const collections = await Promise.all(enabledPublicOperations(account).map((operation) => requestOperation({
+    endpoint, token, operation, variables: operation.variables(account.documentId), fetchImpl, timeoutMs, retries,
+  })));
+  const operations = [bootstrapResponse.diagnostic, ...collections.map((result) => result.diagnostic)];
+  return { code: reportCode(operations), operations };
+}
+
 function parseArgs(args) {
   return { username: args.find((arg) => arg.startsWith("--username="))?.slice(11), json: args.includes("--json") };
 }

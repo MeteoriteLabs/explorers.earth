@@ -64,7 +64,9 @@ if (!dryRun) {
     plan.args,
     {
       stdio: "inherit",
-      env: process.env,
+      env: project === "real-account"
+        ? { ...process.env, VITE_PUBLIC_PROFILE_QA_RUN_ID: process.env.PUBLIC_API_RUN_ID }
+        : process.env,
       shell: plan.shell,
     },
   );
