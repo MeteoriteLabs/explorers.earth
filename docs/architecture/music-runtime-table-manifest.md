@@ -10,7 +10,7 @@ authority, the immutable `0011_durable_publication_idempotency` authority, the
 append-only `0012_publication_replay_expiry_guard` correction, and the
 `0015_publication_operation_archive`, `0016_publication_operation_retention`, and
 `0017_publication_idempotency_key_retirement` authorities)
-chain, creating all 28 runtime tables on PostgreSQL 15. The migration-owned
+chain, creating all 27 runtime tables on PostgreSQL 15. The migration-owned
 `music_schema_migrations` journal, `music_identity_tombstones` durable
 identity-denial table, `music_identity_lifecycle_operations` lifecycle
 idempotency history, `music_credential_revocation_operations` durable

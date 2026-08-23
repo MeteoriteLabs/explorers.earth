@@ -84,7 +84,7 @@ describe("Music migration authority contracts", () => {
 
   it("declares every manifested runtime table and the durable identity tombstone", () => {
     const manifest = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { tables: Array<{ name: string }> };
-    expect(manifest.tables).toHaveLength(28);
+    expect(manifest.tables).toHaveLength(27);
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
       .migrationChain.controlTables).toContain("music_credential_revocation_operations");
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
