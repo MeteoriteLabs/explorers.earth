@@ -1223,3 +1223,25 @@ networks, volumes, or watched listeners. The active source `.env.music.test`
 was neither directly read nor modified.
 Task 10 remains unapproved pending the controller's final scoped rereview of
 `b5150274f5763db7d633988d6562930dedb5e4ee`; this is not self-approval.
+
+### Controller breaker adjudication
+
+The final scoped reviewer reported 0 Critical, 1 Important, and 1 Minor. The
+Important finding is parked: a direct Node caller can forge the in-process
+launcher channel, but that caller already controls arbitrary pre-import code
+under the same local OS user and Docker authority. Ruling: the supported trust
+boundary begins at the native launcher; preventing an unsupported same-user
+caller from exercising equivalent Docker authority requires a new privileged
+native broker or OS service outside C10. Cost if wrong: that caller could enter
+fixture rehearsal through unsupported direct Node invocation instead of
+calling Docker directly.
+
+The Minor finding is deferred: the POSIX launcher rejection regex does not
+match every `NODE_*` name, although `env -i` strips those variables before
+Node. Carry it to Task 11/final review.
+
+Task 10 is complete by controller breaker adjudication at tested code authority
+`b5150274f5763db7d633988d6562930dedb5e4ee`, with docs-only evidence successor
+`a19d493635a06f75be9fd45d3e236dfd9a406f04`. This is an explicit boundary
+ruling, not a claim of cryptographic launcher authentication or reviewer
+approval. Production, external push, and `GATE_PROD` remain closed.
