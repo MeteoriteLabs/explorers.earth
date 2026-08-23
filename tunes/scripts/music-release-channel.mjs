@@ -1,7 +1,7 @@
 import { fstatSync, readFileSync } from "node:fs";
 
 const CHANNEL_ARGUMENT = "--music-native-release-channel";
-const CHANNEL_MODES = new Set(["qualification", "rehearsal"]);
+const CHANNEL_MODES = new Set(["qualification", "nightly", "rehearsal"]);
 let nativeReleaseMode;
 
 const markerIndex = process.argv.lastIndexOf(CHANNEL_ARGUMENT);

@@ -8,7 +8,7 @@ if /usr/bin/env | /usr/bin/grep -Eq '^NODE(_.*)?='; then
 fi
 
 case "${1-}" in
-  qualification|rehearsal) mode=$1 ;;
+  qualification|nightly|rehearsal) mode=$1 ;;
   *) printf '%s\n' 'native Music release launcher mode is invalid' >&2; exit 64 ;;
 esac
 
@@ -16,7 +16,19 @@ script_root=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd -P)
 repository_root=$(CDPATH= cd -- "$script_root/../.." && pwd -P)
 node_path=/usr/bin/node
 git_path=/usr/bin/git
-if [ ! -x "$node_path" ] || [ -L "$node_path" ] || [ ! -x "$git_path" ] || [ -L "$git_path" ]; then
+sha256_path=/usr/bin/sha256sum
+stat_path=/usr/bin/stat
+if [ ! -x "$stat_path" ] || [ -L "$stat_path" ]; then
+  printf '%s\n' 'trusted native release executable is unavailable' >&2
+  exit 78
+fi
+for executable in "$node_path" "$git_path" "$sha256_path"; do
+  if [ ! -x "$executable" ] || [ -L "$executable" ] || [ "$("$stat_path" -c '%u:%g:%a' "$executable")" != 0:0:755 ]; then
+    printf '%s\n' 'trusted native release executable is unavailable' >&2
+    exit 78
+  fi
+done
+if [ "$("$node_path" --version)" != v22.12.0 ]; then
   printf '%s\n' 'trusted native release executable is unavailable' >&2
   exit 78
 fi
@@ -24,7 +36,7 @@ fi
 channel_path=$script_root/music-release-channel.mjs
 register_path=$script_root/music-native-typescript-register.mjs
 resolver_path=$script_root/music-native-typescript-loader.mjs
-if [ "$mode" = qualification ]; then
+if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
   target_path=$script_root/music-cli.ts
 else
   target_path=$script_root/music-docker-release-rehearsal.ts
@@ -37,7 +49,7 @@ for authority in "$channel_path" "$register_path" "$resolver_path" "$target_path
 done
 cd -- "$repository_root"
 
-before=$(/usr/bin/sha256sum "$node_path" "$git_path" "$channel_path" "$register_path" "$resolver_path" "$target_path")
+before=$("$sha256_path" "$node_path" "$git_path" "$sha256_path" "$channel_path" "$register_path" "$resolver_path" "$target_path")
 empty_global_npm_config=/etc/explorers-music-release-empty.npmrc
 if [ -e "$empty_global_npm_config" ]; then
   printf '%s\n' 'trusted empty npm global configuration authority is unavailable' >&2
@@ -73,10 +85,11 @@ set -- \
 channel_uri=file://$channel_path
 register_uri=file://$register_path
 set +e
-if [ "$mode" = qualification ]; then
+if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
+  if [ "$mode" = qualification ]; then lane=test:release; else lane=test:nightly; fi
   printf '%s\n' "$nonce" | /usr/bin/env -i "$@" "$node_path" \
     --no-warnings=ExperimentalWarning --experimental-transform-types \
-    --import "$channel_uri" --import "$register_uri" "$target_path" test:release --format json \
+    --import "$channel_uri" --import "$register_uri" "$target_path" "$lane" --format json \
     --music-native-release-channel "$mode" "$nonce"
 else
   printf '%s\n' "$nonce" | /usr/bin/env -i "$@" "$node_path" \
@@ -86,7 +99,7 @@ else
 fi
 exit_code=$?
 set -e
-after=$(/usr/bin/sha256sum "$node_path" "$git_path" "$channel_path" "$register_path" "$resolver_path" "$target_path")
+after=$("$sha256_path" "$node_path" "$git_path" "$sha256_path" "$channel_path" "$register_path" "$resolver_path" "$target_path")
 if [ "$before" != "$after" ]; then
   printf '%s\n' 'trusted native release authority changed during execution' >&2
   exit 78

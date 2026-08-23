@@ -1,38 +1,37 @@
 # ADR-002: Different Authentication Strategies Per App
 
 ## Status
-Superseded in part
+Accepted (superseded in part by [ADR-005](005-music-identity-migration-deployment-authority.md))
+
+> Historical record: the decision text below is preserved as accepted. ADR-005 is the current authority for embedded Music identity and credentials.
 
 ## Context
 The two apps have fundamentally different backend architectures:
 - **explorers-earth** is a frontend SPA backed by an external Strapi CMS
 - **tunes** is a full-stack app with its own Express.js backend
 
-Each app originally needed an authentication approach that matched its architecture and deployment model. The accepted standalone choices remain useful, but the embedded Music surface now requires one canonical identity across the boundary.
+Each app needed an authentication approach that matched its architecture and deployment model.
 
 ## Decision
 
-**explorers-earth**: JWT-based authentication is provided by Strapi CMS, with Google OAuth as an alternative sign-in method.
+**explorers-earth**: JWT-based authentication provided by Strapi CMS, with Google OAuth as an alternative sign-in method. Tokens stored in localStorage.
 
-**Standalone tunes**: Session-based authentication via Passport.js with `express-session`, backed by the PostgreSQL session store, remains the native-app boundary.
-
-**Embedded Music**: The original independent-account decision is superseded by the [canonical Music identity architecture](../architecture/music-identity.md). A verified Strapi identity is projected to one `Account` and one Music user. The Explorer bearer is forwarded only to `POST /api/music/identity/ensure` at the identity/lifecycle boundary and is never reused on canonical owner routes. The server completes a bodyless ensure operation, returns a short-lived Music credential, and resolves every owner predicate from the credential's numeric user ID. Caller-supplied display identifiers are not authorization authority. The detailed boundary is published in the [Music authentication model](../security/music-auth-model.md).
+**tunes**: Session-based authentication via Passport.js with express-session, backed by PostgreSQL session store. Enhanced with email verification and OTP support.
 
 ## Consequences
 
 **Easier**:
 - Each app uses the auth pattern that naturally fits its architecture
 - explorers-earth benefits from Strapi's built-in auth (no custom auth code needed)
-- standalone tunes retains server-side session invalidation and native session controls
-- embedded Music has one deterministic canonical identity and a narrowly scoped credential lifetime
+- tunes has full control over session management, enabling features like session tracking with geolocation and 7-day persistence
 
 **Harder**:
-- The projection and credential exchange add an explicit integration boundary that must stay covered by lifecycle, authorization, and redaction contracts
-- Standalone sessions and embedded credentials have different revocation and expiry behavior
-- Canonical identity reconciliation must preserve one numeric owner across email and public-name changes
+- No single sign-on across apps (users have separate accounts)
+- Different auth patterns mean different mental models for developers
+- Security considerations differ (JWT expiry vs session invalidation)
 
 ## Alternatives Considered
 
-**External centralized identity provider**: An additional service such as Auth0 or Keycloak was not required. Strapi remains the verified identity source and the projection contract keeps the integration narrow.
+**Shared auth service**: A centralized auth service (e.g., Auth0, Keycloak) could provide SSO. Not implemented because the apps serve different user bases and adding a third service increases complexity.
 
-**Reusing a browser or long-lived token in Tunes**: Rejected because it broadens bearer scope and couples Tunes to Strapi token semantics. The adopted exchange issues only the short-lived, audience-bound Music credential while native Tunes sessions remain server-revocable.
+**JWT for both**: tunes could use JWT like explorers-earth. Rejected because session-based auth is simpler for a full-stack app, provides server-side session revocation, and integrates naturally with Passport.js.

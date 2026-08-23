@@ -7,7 +7,6 @@ Use Node 22.12 or newer, npm, and Docker Compose v2. Run from the repository roo
 From a clean checkout:
 
 ```text
-nvm use
 npm ci
 npm ci --prefix tunes --legacy-peer-deps
 npm ci --prefix explorers-earth
@@ -31,13 +30,34 @@ npm run music:down -- --mode fixture
 
 `music:test:all` runs `npm test --prefix tunes`; it is the complete Tunes Vitest suite, but it does not run the Explorer, real PostgreSQL, browser, load/chaos, or release lanes. The full supported non-production progression is fast, PR, then nightly. Those lanes remain separate so their prerequisites, budgets, evidence, and recovery behavior stay explicit.
 
-Release has intentionally no root npm shortcut. Run the checked-in launcher from the repository root with the command for the host platform:
+Release has intentionally no root npm shortcut. Qualification is supported on
+Windows through the checked-in PowerShell launcher and on a narrowly defined
+Linux qualification host. macOS is not a supported release-qualification host;
+an nvm-managed or other user-writable Node is not qualification authority.
+
+The Linux host must provide regular, non-symlink `/usr/bin/node`, `/usr/bin/git`,
+and `/usr/bin/sha256sum` files owned by root with mode `0755`. Node must be exactly
+v22.12.0. The pinned workflow installs the official Linux x64 archive only after
+verifying SHA-256
+`22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f`,
+then copies the verified binary as root. Reproduce the prerequisite check before
+qualification:
+
+```sh
+test "$(/usr/bin/node --version)" = v22.12.0
+test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
+test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
+test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
+```
+
+Run the checked-in launcher from the repository root with the command for the
+supported host:
 
 ```text
 # Windows
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification
 
-# POSIX
+# Linux qualification host
 /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification
 ```
 

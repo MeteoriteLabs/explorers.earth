@@ -50,7 +50,7 @@ diagnostics; one diagnostic rerun never changes the original result.
 
 Release command (Windows):
 `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification`.
-Release command (POSIX):
+Release command (protected Linux qualification host; macOS unsupported):
 `/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification`.
 The npm/tsx entrypoint is intentionally unsupported because Node startup
 authority would run before the release guard. A green diagnostic rerun must be

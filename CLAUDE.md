@@ -55,7 +55,7 @@ npm run build:all
 - `explorers-earth/netlify.toml` — Deployment config
 
 ### tunes
-- `tunes/shared/schema.ts` — Drizzle ORM database schema (single source of truth)
+- `tunes/shared/schema.ts` — Drizzle ORM schema model; the append-only migration manifest/chain is deployment authority
 - `tunes/server/routes/` — Express API routes (auth, playlist, admin, youtube, payment, email, gemini, instagram, strapi, subscription, page)
 - `tunes/server/services/` — Business logic (email, gemini, spotify-import, strapi, system-settings, youtube-import, user-sync)
 - `tunes/server/auth.ts` — Passport.js authentication setup
@@ -87,7 +87,7 @@ npm run build:all
 
 Key tables: `users`, `playlists`, `playlist_songs`, `songs`, `played_songs`, `user_sessions`, `user_profiles`, `guest_interactions`, `activity_logs`, `analytics_snapshots`, `api_tokens`, `team_members`, `email_templates`, `email_logs`, `page_contents`, `seo_settings`, `system_settings`, `youtube_api_usage`, `user_activity`, `session`
 
-See `tunes/shared/schema.ts` for complete schema. See `docs/tunes/database.md` for documentation.
+See `tunes/shared/schema.ts` for the schema model and `tunes/shared/music-migration-contract.ts` for the append-only deployed chain. See `docs/tunes/database.md` for documentation.
 
 ## API
 

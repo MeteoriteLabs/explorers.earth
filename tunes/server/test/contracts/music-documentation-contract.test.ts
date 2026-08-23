@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
-import { posix, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, posix, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { musicErrorCodeSchema } from "../../../shared/musicError";
 import { EXPECTED_MUSIC_MIGRATION_CHAIN } from "../../../shared/music-migration-contract";
@@ -40,6 +41,19 @@ type StaleGuidanceCode = "node-18" | "db-push" | "x-username-ownership";
 type StaleGuidanceFinding = { path: string; line: number; code: StaleGuidanceCode };
 type DatabaseInvocationFinding = { path: string; line: number; command: string; code: "invalid-invocation" | "missing-test-target" | "unsafe-reset-arguments" };
 type ObsoleteAuthFinding = { path: string; line: number; code: "obsolete-auth-boundary" };
+
+const supersededHistoricalAdrs = new Map([
+  ["docs/adr/002-auth-strategies.md", "Accepted (superseded in part by [ADR-005](005-music-identity-migration-deployment-authority.md))"],
+  ["docs/adr/004-database-orm-choice.md", "Accepted (superseded in part by [ADR-005](005-music-identity-migration-deployment-authority.md))"],
+]);
+
+function isSupersededHistoricalAdr(path: string, source: string): boolean {
+  const status = supersededHistoricalAdrs.get(path);
+  const normalized = source.replaceAll("\r\n", "\n");
+  return status !== undefined
+    && normalized.includes(`## Status\n${status}`)
+    && normalized.includes("> Historical record: the decision text below is preserved as accepted.");
+}
 
 function markdownDocumentTargets(source: string): string[] {
   const inline = [...source.matchAll(/\]\(\s*(?:<([^>\r\n]+\.md(?:#[^>\r\n]*)?)>|([^\s)]+\.md(?:#[^\s)]*)?))(?:\s+(?:"[^"\r\n]*"|'[^'\r\n]*'|\([^()\r\n]*\)))?\s*\)/g)]
@@ -86,6 +100,7 @@ function publishedMarkdownDocuments(): string[] {
 function staleGuidanceFindings(sources: Record<string, string>): StaleGuidanceFinding[] {
   const findings: StaleGuidanceFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
+    if (isSupersededHistoricalAdr(path, source)) continue;
     source.split(/\r?\n/).forEach((line, index) => {
       if (/\bNode(?:\.?js)?(?:\s+version|\s*[:=])?\s*v?18(?:\.(?:\d+|x))*\+?/i.test(line)) {
         findings.push({ path, line: index + 1, code: "node-18" });
@@ -261,6 +276,7 @@ function validateDocumentedDatabaseInvocation(command: string, invocation: strin
 function databaseInvocationFindings(sources: Record<string, string>): DatabaseInvocationFinding[] {
   const findings: DatabaseInvocationFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
+    if (isSupersededHistoricalAdr(path, source)) continue;
     const replacementLines = new Set<number>();
     const physicalLines = source.split(/\r?\n/);
     let paragraphStart = 0;
@@ -293,6 +309,7 @@ function obsoleteAuthFindings(sources: Record<string, string>): ObsoleteAuthFind
   const canonicalBoundary = "Canonical owner routes authenticate only with the short-lived Music credential; neither a Tunes session cookie nor an Explorer/Strapi JWT or bearer is accepted.";
   const obsolete = /\/api\/auth\/(?:\*|[a-z][a-z-]*)|\bdual[- ]auth\b|\bmulti[- ]auth\s+fallback\b|\bcross-app\s+sso\b|\bbackground\s+sso\b|\bsso\s+flow\b|apiClient\s*\+\s*SSO|\bJWT\+REST\b[^\r\n]*\btunes\b/i;
   for (const [path, source] of Object.entries(sources)) {
+    if (isSupersededHistoricalAdr(path, source)) continue;
     const findingLines = new Set<number>();
     source.split(/\r?\n/).forEach((line, index) => {
       if (obsolete.test(line)) {
@@ -598,12 +615,9 @@ describe("Music documentation publication contract", () => {
     expect(testing).not.toMatch(/Manual API testing|Test WebSocket events by|Future Testing Improvements/);
 
     const authAdr = read("docs/adr/002-auth-strategies.md");
-    expect(authAdr).toMatch(/## Status\s+Superseded in part/i);
-    expect(authAdr).toContain("short-lived Music credential");
-    expect(authAdr).toContain("../architecture/music-identity.md");
-    expect(authAdr).toContain("Explorer bearer is forwarded only to `POST /api/music/identity/ensure`");
-    expect(authAdr).toContain("never reused on canonical owner routes");
-    expect(authAdr).not.toMatch(/No single sign-on across apps|users have separate accounts|JWT for both.*Rejected/is);
+    expect(authAdr).toMatch(/## Status\s+Accepted \(superseded in part by \[ADR-005\]/i);
+    expect(authAdr).toContain("No single sign-on across apps (users have separate accounts)");
+    expect(authAdr).toContain("**JWT for both**");
     expect(read("docs/adr/README.md")).toContain("| [002](002-auth-strategies.md) | Different auth strategies per app (JWT vs sessions) | Superseded in part |");
     expect(read("docs/adr/README.md")).toContain("| [004](004-database-orm-choice.md) | PostgreSQL with Drizzle ORM | Superseded in part |");
     const authModel = read("docs/security/music-auth-model.md");
@@ -612,9 +626,16 @@ describe("Music documentation publication contract", () => {
     expect(authModel).not.toMatch(/X-Username/i);
 
     const databaseAdr = read("docs/adr/004-database-orm-choice.md");
-    expect(databaseAdr).toMatch(/## Status\s+Superseded in part/i);
-    expect(databaseAdr).toContain("append-only SQL migrations");
-    expect(databaseAdr).not.toMatch(/db:push|push-based|no migration files/i);
+    expect(databaseAdr).toMatch(/## Status\s+Accepted \(superseded in part by \[ADR-005\]/i);
+    expect(databaseAdr).toContain("Drizzle Kit for schema synchronization (push-based, no migration files)");
+    expect(databaseAdr).toContain("`db:push` workflow is fast for development");
+    expect(staleGuidanceFindings({ "docs/adr/004-database-orm-choice.md": databaseAdr })).toEqual([]);
+    expect(staleGuidanceFindings({ "docs/active.md": databaseAdr }).some((finding) => finding.code === "db-push")).toBe(true);
+    const currentAdr = read("docs/adr/005-music-identity-migration-deployment-authority.md");
+    expect(currentAdr).toContain("short-lived Music credential");
+    expect(currentAdr).toContain("append-only SQL migrations");
+    expect(currentAdr).toContain("immutable image digest");
+    expect(read("docs/adr/README.md")).toContain("| [005](005-music-identity-migration-deployment-authority.md)");
 
     const deployment = read("docs/tunes/deployment.md");
     expect(deployment).toContain(".github/workflows/tunes.yml");
@@ -717,6 +738,36 @@ describe("Music documentation publication contract", () => {
     expect(deployRunbook).toContain("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\\scripts\\music-release-launcher.ps1 -Mode qualification");
     expect(deployRunbook).toContain("/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification");
     expect(deployRunbook).not.toMatch(/npm\s+exec[^\r\n]*\btsx\b/i);
+    expect(guide).toContain("Linux qualification host");
+    expect(guide).toContain("/usr/bin/node --version");
+    expect(guide).toContain("/usr/bin/sha256sum");
+    expect(guide).toContain("22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f");
+    expect(guide).toContain("macOS is not a supported release-qualification host");
+  });
+
+  it("publishes one executable fixture lifecycle and canonical identity journey", () => {
+    const guide = read("docs/getting-started.md");
+    for (const command of [
+      "npm run music:bootstrap -- --mode fixture",
+      "npm run music:doctor -- --mode fixture",
+      "npm run music:up -- --mode fixture --detach --wait",
+      "npm run music:test:smoke -- --mode fixture",
+      "npm run music:down -- --mode fixture",
+    ]) expect(guide).toContain(command);
+    expect(guide).toContain("http://127.0.0.1:55173");
+    expect(guide).toContain("http://127.0.0.1:55173/google-auth/callback?access_token=fixture-read-only-token");
+    expect(guide).toContain("http://127.0.0.1:55173/recommendations/music");
+    expect(guide).toContain("http://127.0.0.1:55000/api-docs");
+    expect(guide).toContain("POST /api/music/identity/ensure");
+    expect(guide).toContain("short-lived Music credential");
+    expect(guide).not.toMatch(/npm run dev|http:\/\/localhost:5000|POST \/api\/register|Register a new venue account/i);
+  });
+
+  it("publishes the schema model and append-only migration chain as split authorities", () => {
+    expect(read("CLAUDE.md")).toContain("schema model; the append-only migration manifest/chain is deployment authority");
+    expect(read("docs/tunes/database.md")).toContain("schema model; the append-only migration manifest/chain is deployment authority");
+    expect(read("CLAUDE.md")).not.toMatch(/schema\.ts[^\r\n]*single source of truth/i);
+    expect(read("docs/tunes/database.md")).not.toMatch(/schema\.ts[^\r\n]*single source of truth/i);
   });
 
   it("keeps examples disposable and production credentials unset", () => {
@@ -746,6 +797,22 @@ describe("Music CI publication order", () => {
     expect(workflow.jobs?.browser?.needs).toBe("frontend");
     expect(workflow.jobs?.["load-chaos"]?.needs).toBe("browser");
     expect(workflow.jobs?.["image-deploy-contract"]?.needs).toEqual(["browser", "load-chaos"]);
+  });
+
+  it("runs the authoritative native nightly lane and isolates concurrency by event and lane", () => {
+    const workflow = parseYaml(read(".github/workflows/test.yml"));
+    expect(workflow.concurrency).toEqual({
+      group: "music-test-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.lane || github.event_name == 'schedule' && 'nightly' || 'default' }}",
+      "cancel-in-progress": true,
+    });
+    const steps = JSON.stringify(workflow.jobs?.["load-chaos"]?.steps ?? []);
+    expect(steps).toContain("music-release-launcher.sh nightly");
+    expect(steps).toContain("node-v22.12.0-linux-x64.tar.xz");
+    expect(steps).toContain("22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f");
+    expect(steps).toContain("/usr/bin/sha256sum");
+    expect(steps).not.toContain("music-load-qualification.test.ts");
+    expect(read("tunes/scripts/music-release-launcher.sh")).toContain("lane=test:nightly");
+    expect(read("tunes/scripts/music-qualification.ts")).toMatch(/nightly:\s*\{[\s\S]*nightly-postgres[\s\S]*nightly-recovery[\s\S]*nightly-drift/);
   });
 
   it("uses only the explicit disposable database in every database-mutating CI step", () => {
@@ -799,5 +866,29 @@ describe("POSIX native launcher environment rejection", () => {
     // Windows CI may not expose a POSIX shell, so retain parity with the behavior test above.
     expect(read("tunes/scripts/music-release-launcher.sh"))
       .toContain("/usr/bin/grep -Eq '^NODE(_.*)?='");
+  });
+
+  it.skipIf(!existsSync(shell))("reaches protected dependency checks after the NODE guard", () => {
+    const directory = mkdtempSync(join(tmpdir(), "music-launcher-capability-"));
+    const launcher = join(directory, "music-release-launcher.sh");
+    copyFileSync(resolve(root, "tunes/scripts/music-release-launcher.sh"), launcher);
+    try {
+      const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^NODE(?:_|$)/i.test(name)));
+      const result = spawnSync(shell, [launcher, "qualification"], { encoding: "utf8", env, windowsHide: true });
+      expect(result.status, result.stderr).toBe(78);
+      expect(result.stderr).toMatch(/trusted native release (?:executable is|source authority is) unavailable/);
+      expect(result.stderr).not.toContain("rejected Node startup authority");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("pins protected Linux tool paths and a native nightly mode", () => {
+    const launcher = read("tunes/scripts/music-release-launcher.sh");
+    expect(launcher).toContain("node_path=/usr/bin/node");
+    expect(launcher).toContain("sha256_path=/usr/bin/sha256sum");
+    expect(launcher).toContain("0:0:755");
+    expect(launcher).toContain("qualification|nightly|rehearsal");
+    expect(read("tunes/scripts/music-release-channel.mjs")).toContain('["qualification", "nightly", "rehearsal"]');
   });
 });

@@ -614,7 +614,7 @@ Git, Docker, and curl are resolved only from fixed system installation paths;
 the rehearsal verifies that their native files are protected by the host OS
 ownership/ACL boundary and never selects them from the caller's `PATH`. This
 existing host-tool boundary is outside the disposable root, is not
-caller-selectable, works on the supported Windows/macOS/Linux paths, and never
+caller-selectable, works on the supported Windows and protected Linux qualification paths, and never
 reads or changes the active source `.env.music.test`.
 
 The same process starts a disposable loopback registry, builds the exact Tunes
@@ -634,7 +634,7 @@ On Windows, use the native launcher:
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification
 ```
 
-On POSIX, use the native launcher with its minimal environment:
+On the protected Linux qualification host, use the native launcher with its minimal environment. macOS and user-writable/nvm Node installations are not qualification authority:
 
 ```text
 /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification

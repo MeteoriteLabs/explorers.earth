@@ -7,7 +7,7 @@
 - **Validation**: `drizzle-zod` generates Zod schemas from table definitions
 - **Migrations**: reviewed, ordered SQL in `tunes/migrations/`, enforced by the Music migration contract
 - **Config**: `tunes/drizzle.config.ts`
-- **Schema**: `tunes/shared/schema.ts` (single source of truth)
+- **Schema**: `tunes/shared/schema.ts` is the schema model; the append-only migration manifest/chain is deployment authority
 
 ## Commands
 

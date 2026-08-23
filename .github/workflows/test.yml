@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: music-test-${{ github.ref }}
+  group: "music-test-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.lane || github.event_name == 'schedule' && 'nightly' || 'default' }}"
   cancel-in-progress: true
 
 jobs:
@@ -177,7 +177,7 @@ jobs:
     needs: browser
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.lane == 'nightly')
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -185,8 +185,25 @@ jobs:
           node-version: "22.12.0"
           cache: npm
           cache-dependency-path: tunes/package-lock.json
-      - run: npm ci --prefix tunes --legacy-peer-deps
-      - run: npm test --prefix tunes -- --run server/test/load/music-load-qualification.test.ts server/test/integration/music-chaos-qualification.test.ts server/test/music-identity-gateway.test.ts server/test/music-token-service.test.ts server/test/music-reconciler.test.ts
+      - run: npm ci
+      - name: Provision the protected Linux qualification Node
+        env:
+          NODE_ARCHIVE_SHA256: 22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/node-v22.12.0-linux-x64.tar.xz"
+          root="$RUNNER_TEMP/node-v22.12.0-linux-x64"
+          curl --fail --location --proto '=https' --tlsv1.2 https://nodejs.org/download/release/v22.12.0/node-v22.12.0-linux-x64.tar.xz --output "$archive"
+          printf '%s  %s\n' "$NODE_ARCHIVE_SHA256" "$archive" | /usr/bin/sha256sum --check --strict
+          tar --extract --xz --file "$archive" --directory "$RUNNER_TEMP"
+          sudo install -o root -g root -m 0755 "$root/bin/node" /usr/bin/node
+          test "$(/usr/bin/node --version)" = v22.12.0
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
+      - run: npm run music:bootstrap -- --mode fixture
+      - name: Run the authoritative native nightly qualification lane
+        run: /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh nightly
 
   image-deploy-contract:
     needs: [browser, load-chaos]
