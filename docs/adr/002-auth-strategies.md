@@ -16,7 +16,7 @@ Each app originally needed an authentication approach that matched its architect
 
 **Standalone tunes**: Session-based authentication via Passport.js with `express-session`, backed by the PostgreSQL session store, remains the native-app boundary.
 
-**Embedded Music**: The original independent-account decision is superseded by the [canonical Music identity architecture](../architecture/music-identity.md). A verified Strapi identity is projected to one `Account` and one Music user. The server completes a bodyless ensure operation, returns a short-lived Music credential, and resolves every owner predicate from the credential's numeric user ID. The browser's Strapi token is not forwarded to Tunes and caller-supplied display identifiers are not authorization authority. The detailed boundary is published in the [Music authentication model](../security/music-auth-model.md).
+**Embedded Music**: The original independent-account decision is superseded by the [canonical Music identity architecture](../architecture/music-identity.md). A verified Strapi identity is projected to one `Account` and one Music user. The Explorer bearer is forwarded only to `POST /api/music/identity/ensure` at the identity/lifecycle boundary and is never reused on canonical owner routes. The server completes a bodyless ensure operation, returns a short-lived Music credential, and resolves every owner predicate from the credential's numeric user ID. Caller-supplied display identifiers are not authorization authority. The detailed boundary is published in the [Music authentication model](../security/music-auth-model.md).
 
 ## Consequences
 

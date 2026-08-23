@@ -169,7 +169,7 @@ Single sign-on via Google accounts.
 6. `MusicDashboard` renders Account-scoped playlist management; logout or Account change clears credential and cached state
 
 **Authentication**:
-- Strapi bearer is accepted only at the identity/lifecycle boundary
+- the embedded Music client sends the Strapi bearer only to `POST /api/music/identity/ensure` at the identity/lifecycle boundary
 - short-lived Music bearer authorizes canonical owner REST and Socket.IO operations
 - browser usernames, emails, owner IDs, and Account IDs are not authorization authority
 - the Music credential is kept in memory, refreshed single-flight, and cleared on logout or Account change

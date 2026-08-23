@@ -102,7 +102,7 @@ External APIs:
 
 **Real-time**: Socket.IO manages WebSocket connections. Each authenticated user joins a "room" keyed by their user ID. Playlist changes, song status updates, and guest activity are broadcast to all connected clients in the room.
 
-**Authentication boundaries**: Embedded Explorer Music sends the Strapi bearer only to the identity/lifecycle boundary, then uses the ten-minute Music credential for canonical owner REST and Socket.IO operations. A separately opened native Tunes experience uses Passport.js with a PostgreSQL-backed session only for its explicit login/logout/check/CSRF endpoints.
+**Authentication boundaries**: Embedded Explorer Music sends the Strapi bearer only to `POST /api/music/identity/ensure` at the identity/lifecycle boundary, then uses the ten-minute Music credential for canonical owner REST and Socket.IO operations. A separately opened native Tunes experience uses Passport.js with a PostgreSQL-backed session only for its explicit login/logout/check/CSRF endpoints.
 
 ## Authentication Comparison
 

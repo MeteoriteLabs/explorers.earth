@@ -31,11 +31,12 @@ const publicCommands = [
 
 type StaleGuidanceCode = "node-18" | "db-push" | "x-username-ownership";
 type StaleGuidanceFinding = { path: string; line: number; code: StaleGuidanceCode };
-type DatabaseInvocationFinding = { path: string; line: number; command: string; code: "missing-test-target" | "unsafe-reset-arguments" };
+type DatabaseInvocationFinding = { path: string; line: number; command: string; code: "invalid-invocation" | "missing-test-target" | "unsafe-reset-arguments" };
 type ObsoleteAuthFinding = { path: string; line: number; code: "obsolete-auth-boundary" };
 
 function markdownDocumentTargets(source: string): string[] {
-  const inline = [...source.matchAll(/\]\(([^)#?]+\.md)(?:#[^)]*)?\)/g)].map(([, target]) => target!);
+  const inline = [...source.matchAll(/\]\(\s*(?:<([^>\r\n]+\.md(?:#[^>\r\n]*)?)>|([^\s)]+\.md(?:#[^\s)]*)?))(?:\s+(?:"[^"\r\n]*"|'[^'\r\n]*'|\([^()\r\n]*\)))?\s*\)/g)]
+    .map(([, bracketed, bare]) => (bracketed ?? bare)!.replace(/#.*$/, ""));
   const references = [...source.matchAll(/^\s{0,3}\[[^\]]+\]:\s*(?:<([^>\r\n]+\.md(?:#[^>\r\n]*)?)>|([^\s]+\.md(?:#[^\s]*)?))/gim)]
     .map(([, bracketed, bare]) => (bracketed ?? bare)!.replace(/#.*$/, ""));
   return [...new Set([...inline, ...references])];
@@ -72,64 +73,44 @@ function indexedMarkdownDocuments(
 function staleGuidanceFindings(sources: Record<string, string>): StaleGuidanceFinding[] {
   const findings: StaleGuidanceFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
-    const lines = source.split(/\r?\n/);
-    lines.forEach((line, index) => {
-      if (/\bNode(?:\.js)?\s+18(?:\.\d+)?\+?/i.test(line)) {
+    source.split(/\r?\n/).forEach((line, index) => {
+      if (/\bNode(?:\.?js)?\s+v?18(?:\.\d+)*\+?/i.test(line)) {
         findings.push({ path, line: index + 1, code: "node-18" });
       }
-      if (/\bnpm\s+run\s+db:push\b/i.test(line)) {
+      if (/\bnpm\s+run\s+(?:(?:--silent|-s)\s+)?db:push\b/i.test(line)
+        || /\bnpx\s+(?:--yes\s+)?drizzle-kit(?:@[^\s]+)?\s+push\b/i.test(line)) {
         findings.push({ path, line: index + 1, code: "db-push" });
       }
-    });
-
-    let paragraphStart = 0;
-    while (paragraphStart < lines.length) {
-      while (paragraphStart < lines.length && lines[paragraphStart]!.trim() === "") paragraphStart += 1;
-      if (paragraphStart >= lines.length) break;
-      let paragraphEnd = paragraphStart + 1;
-      while (paragraphEnd < lines.length && lines[paragraphEnd]!.trim() !== "") paragraphEnd += 1;
-      const paragraphLines = lines.slice(paragraphStart, paragraphEnd);
-      const paragraph = paragraphLines.join(" ");
-      const explicitlyRetired = /\bno authorization decision may use\s+`?X-Username`?\b/i.test(paragraph)
-        || /\b`?X-Username`?\b[^.;]{0,160}\b(?:is|are)\s+not\s+(?:an?\s+)?(?:owner|ownership|authorization)\s+authority\b/i.test(paragraph)
-        || /\b`?X-Username`?\b\s+(?:support\s+)?(?:is|was|has been)\s+(?:removed|retired)\s+from\s+(?:canonical|embedded)\s+Music\b/i.test(paragraph);
-      const authoritySubject = "(?:(?:the\\s+)?(?:server|legacy\\s+bridge|bridge|middleware|header|client|caller)|it)";
-      const authorityVerb = "(?:accepts?|sends?|maps?|looks?\\s*up|resolves?|establishes?|authorizes?|supports?|uses?|trusts?)";
-      const authorityObject = "(?:owner|ownership|authoriz(?:ation|ed)?|principal|users?)";
-      const affirmativeBeforeMention = new RegExp(
-        `\\b${authoritySubject}\\b\\s+(?!(?:(?:does|do|did|will|must|may|can)\\s+not|never)\\b)[^.?!]{0,80}\\b${authorityVerb}\\w*\\b[^.?!]{0,80}\\bX-Username\\b[^.?!]{0,160}\\b${authorityObject}\\b`,
-        "i",
-      ).test(paragraph);
-      const affirmativeAfterMention = new RegExp(
-        `\\bX-Username\\b[\\s\\S]{0,500}\\b${authoritySubject}\\s+(?:still\\s+)?${authorityVerb}\\w*[^.?!]{0,160}\\b${authorityObject}\\b`,
-        "i",
-      ).test(paragraph);
-      const contradictsRetirement = affirmativeBeforeMention || affirmativeAfterMention;
-      if (!explicitlyRetired || contradictsRetirement) {
-        paragraphLines.forEach((line, index) => {
-          if (/\bX-Username\b/i.test(line)) {
-            findings.push({ path, line: paragraphStart + index + 1, code: "x-username-ownership" });
-          }
-        });
+      if (/\bX-Username\b/i.test(line)
+        && line.trim() !== "X-Username support was removed from canonical Music routes.") {
+        findings.push({ path, line: index + 1, code: "x-username-ownership" });
       }
-      paragraphStart = paragraphEnd + 1;
-    }
+    });
   }
   return findings;
 }
 
-function shellWords(source: string): string[] {
+type ShellWords = { words: string[]; valid: boolean };
+
+function shellWords(source: string): ShellWords {
   const words: string[] = [];
   let word = "";
   let quote: "\"" | "'" | undefined;
+  let valid = true;
   for (let index = 0; index < source.length; index += 1) {
     const character = source[index]!;
     if (quote) {
       if (character === quote) quote = undefined;
-      else if (character === "\\" && source[index + 1] !== undefined) word += source[++index]!;
+      else if (character === "\\" && quote === "\"" && source[index + 1] !== undefined) word += source[++index]!;
       else word += character;
     } else if (character === "\"" || character === "'") {
       quote = character;
+    } else if (character === "#" && word === "") {
+      valid = false;
+      break;
+    } else if (character === "\\") {
+      if (source[index + 1] === undefined) valid = false;
+      else word += source[++index]!;
     } else if (/\s/.test(character)) {
       if (word) words.push(word);
       word = "";
@@ -138,50 +119,123 @@ function shellWords(source: string): string[] {
     }
   }
   if (word) words.push(word);
-  return words;
+  return { words, valid: valid && quote === undefined };
+}
+
+type LogicalShellLine = { text: string; line: number; complete: boolean };
+
+function hasPosixLineContinuation(line: string): boolean {
+  const trailingSlashes = line.match(/\\+$/)?.[0].length ?? 0;
+  if (trailingSlashes % 2 !== 1) return false;
+  let quote: "\"" | "'" | undefined;
+  const prefix = line.slice(0, -trailingSlashes);
+  for (let index = 0; index < prefix.length; index += 1) {
+    const character = prefix[index]!;
+    if (quote === "'") {
+      if (character === "'") quote = undefined;
+    } else if (quote === "\"") {
+      if (character === "\"") quote = undefined;
+      else if (character === "\\") index += 1;
+    } else if (character === "\"" || character === "'") {
+      quote = character;
+    } else if (character === "\\") {
+      index += 1;
+    }
+  }
+  return quote !== "'";
+}
+
+function logicalShellLines(source: string): LogicalShellLine[] {
+  const logical: LogicalShellLine[] = [];
+  const physical = source.split(/\r?\n/);
+  let text = "";
+  let startLine = 1;
+  physical.forEach((line, index) => {
+    if (!text) startLine = index + 1;
+    const continued = hasPosixLineContinuation(line);
+    text += continued ? `${line.slice(0, -1)} ` : line;
+    if (!continued) {
+      logical.push({ text, line: startLine, complete: true });
+      text = "";
+    } else if (index === physical.length - 1) {
+      logical.push({ text, line: startLine, complete: false });
+      text = "";
+    }
+  });
+  return logical;
 }
 
 function documentedDatabaseInvocations(line: string): Array<{ command: string; invocation: string }> {
-  const commandPattern = /\bnpm\s+run\s+(?:(?:--silent|-s)\s+)?(music:db:(?:status|migrate|verify|reset))\b/gi;
+  const commandPattern = /\bnpm\s+run\b[^;&|`\r\n]*?\b(music:db:(?:status|migrate|verify|reset))\b/gi;
   const matches = [...line.matchAll(commandPattern)];
   return matches.map((match, index) => {
     const start = match.index!;
     const nextStart = matches[index + 1]?.index ?? line.length;
     const afterCommand = start + match[0].length;
-    const shellBoundary = line.slice(afterCommand, nextStart).search(/&&|\|\||[;|`]/);
-    const end = shellBoundary < 0 ? nextStart : afterCommand + shellBoundary;
+    let end = nextStart;
+    let quote: "\"" | "'" | undefined;
+    for (let cursor = afterCommand; cursor < nextStart; cursor += 1) {
+      const character = line[cursor]!;
+      if (quote) {
+        if (character === quote) quote = undefined;
+        else if (character === "\\" && quote === "\"") cursor += 1;
+        continue;
+      }
+      if (character === "\"" || character === "'") quote = character;
+      else if (character === "`" || character === ";" || character === "|"
+        || (character === "&" && line[cursor + 1] === "&")) {
+        end = cursor;
+        break;
+      }
+    }
     return { command: match[1]!, invocation: line.slice(start, end).trim() };
   });
 }
 
-function optionValues(argumentTokens: string[], option: string): Array<string | undefined> {
-  return argumentTokens.flatMap((token, index) => token === option ? [argumentTokens[index + 1]] : []);
+type DocumentedDatabaseValidation = { code?: DatabaseInvocationFinding["code"] };
+
+function validateDocumentedDatabaseInvocation(command: string, invocation: string, complete: boolean): DocumentedDatabaseValidation {
+  const parsed = shellWords(invocation);
+  if (!complete || !parsed.valid) return { code: "invalid-invocation" };
+  const words = parsed.words;
+  let index = 0;
+  if (words[index++] !== "npm" || words[index++] !== "run") return { code: "invalid-invocation" };
+  if (words[index] === "--silent" || words[index] === "-s") index += 1;
+  if (words[index++] !== command || words[index++] !== "--") return { code: "invalid-invocation" };
+
+  const allowed = new Set(["--mode", "--format", "--target"]);
+  if (command === "music:db:reset") {
+    allowed.add("--confirm-project");
+    allowed.add("--confirm-reset");
+  }
+  const values = new Map<string, string>();
+  while (index < words.length) {
+    const flag = words[index++]!;
+    const value = words[index++];
+    if (!allowed.has(flag) || value === undefined || value.startsWith("--") || values.has(flag)) {
+      return { code: "invalid-invocation" };
+    }
+    values.set(flag, value);
+  }
+  if (values.has("--mode") && values.get("--mode") !== "fixture") return { code: "invalid-invocation" };
+  if (values.has("--format") && !["human", "json"].includes(values.get("--format")!)) return { code: "invalid-invocation" };
+  if (values.get("--target") !== "test") return { code: "missing-test-target" };
+  if (command === "music:db:reset"
+    && (values.get("--mode") !== "fixture"
+      || values.get("--confirm-project") !== "explorers-music-fixture"
+      || values.get("--confirm-reset") !== "RESET explorers-music-fixture/music_fixture")) {
+    return { code: "unsafe-reset-arguments" };
+  }
+  return {};
 }
 
 function databaseInvocationFindings(sources: Record<string, string>): DatabaseInvocationFinding[] {
   const findings: DatabaseInvocationFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
-    source.split(/\r?\n/).forEach((line, index) => {
-      for (const { command, invocation } of documentedDatabaseInvocations(line)) {
-        const words = shellWords(invocation);
-        const commandIndex = words.indexOf(command);
-        const separatorIndex = words.indexOf("--", commandIndex + 1);
-        const argumentTokens = separatorIndex < 0 ? [] : words.slice(separatorIndex + 1);
-        const targets = optionValues(argumentTokens, "--target");
-        if (targets.length !== 1 || targets[0] !== "test") {
-          findings.push({ path, line: index + 1, command, code: "missing-test-target" });
-          continue;
-        }
-        if (command === "music:db:reset") {
-          const modes = optionValues(argumentTokens, "--mode");
-          const projects = optionValues(argumentTokens, "--confirm-project");
-          const confirmations = optionValues(argumentTokens, "--confirm-reset");
-          if (modes.length !== 1 || modes[0] !== "fixture"
-            || projects.length !== 1 || projects[0] !== "explorers-music-fixture"
-            || confirmations.length !== 1 || confirmations[0] !== "RESET explorers-music-fixture/music_fixture") {
-            findings.push({ path, line: index + 1, command, code: "unsafe-reset-arguments" });
-          }
-        }
+    logicalShellLines(source).forEach((line) => {
+      for (const { command, invocation } of documentedDatabaseInvocations(line.text)) {
+        const { code } = validateDocumentedDatabaseInvocation(command, invocation, line.complete);
+        if (code) findings.push({ path, line: line.line, command, code });
       }
     });
   }
@@ -193,7 +247,20 @@ function obsoleteAuthFindings(sources: Record<string, string>): ObsoleteAuthFind
   const obsolete = /\/api\/auth\/(?:\*|[a-z][a-z-]*)|\bdual[- ]auth\b|\bmulti[- ]auth\s+fallback\b|\bcross-app\s+sso\b|\bbackground\s+sso\b|\bsso\s+flow\b|apiClient\s*\+\s*SSO|\bJWT\+REST\b[^\r\n]*\btunes\b/i;
   for (const [path, source] of Object.entries(sources)) {
     source.split(/\r?\n/).forEach((line, index) => {
-      if (obsolete.test(line)) findings.push({ path, line: index + 1, code: "obsolete-auth-boundary" });
+      const sessionCredentialText = "(?:(?:Tunes|native Tunes)\\s+session(?:[- ]cookie)?|session[- ]cookie)";
+      const explorerBearerText = "(?:(?:Explorer|Strapi)(?:'s)?\\s+(?:JWT|bearer)|(?:JWT|bearer)\\s+(?:from|issued\\s+by)\\s+(?:Explorer|Strapi))";
+      const sessionCookie = new RegExp(`\\b${sessionCredentialText}\\b`, "i").test(line);
+      const explorerBearer = new RegExp(`\\b${explorerBearerText}\\b`, "i").test(line);
+      const directOrChoice = new RegExp(
+        `(?:${sessionCredentialText}[^.;]{0,80}\\bor\\b[^.;]{0,80}${explorerBearerText}|${explorerBearerText}[^.;]{0,80}\\bor\\b[^.;]{0,80}${sessionCredentialText})`,
+        "i",
+      ).test(line);
+      const fallbackTerm = /\b(?:fallback|falls?\s+back|falling\s+back)\b/i.test(line);
+      const negatedFallback = /\b(?:never|no|not|without)\b[^.;]{0,24}\b(?:fallback|falls?\s+back|falling\s+back)\b/i.test(line);
+      const fallbackChoice = /\beither\b/i.test(line) || directOrChoice || (fallbackTerm && !negatedFallback);
+      if (obsolete.test(line) || (sessionCookie && explorerBearer && fallbackChoice)) {
+        findings.push({ path, line: index + 1, code: "obsolete-auth-boundary" });
+      }
     });
   }
   return findings;
@@ -301,14 +368,42 @@ describe("Music documentation publication contract", () => {
     ]);
   });
 
+  it("detects current stale runtime and schema-mutation spellings", () => {
+    expect(staleGuidanceFindings({
+      "docs/stale-spellings.md": [
+        "Use Node v18.20+ for this project.",
+        "Run npx drizzle-kit push against production.",
+        "Run npm run --silent db:push before deployment.",
+        "Run npm run -s db:push before deployment.",
+      ].join("\n"),
+    })).toEqual([
+      { path: "docs/stale-spellings.md", line: 1, code: "node-18" },
+      { path: "docs/stale-spellings.md", line: 2, code: "db-push" },
+      { path: "docs/stale-spellings.md", line: 3, code: "db-push" },
+      { path: "docs/stale-spellings.md", line: 4, code: "db-push" },
+    ]);
+  });
+
   it("allows only precise explicit X-Username retirement statements", () => {
     expect(staleGuidanceFindings({
       "docs/retired.md": [
-        "No authorization decision may use X-Username as owner authority.",
-        "X-Username and public slugs are not owner authority.",
         "X-Username support was removed from canonical Music routes.",
+        "The signed Music credential establishes numeric owner authority.",
       ].join("\n"),
     })).toEqual([]);
+  });
+
+  it("rejects every noncanonical X-Username statement without flagging credential ownership", () => {
+    expect(staleGuidanceFindings({
+      "docs/noncanonical.md": [
+        "X-Username is not owner authority; the signed Music credential establishes the owner.",
+        "No authorization decision may use X-Username as owner authority.",
+        "The signed Music credential establishes numeric owner authority.",
+      ].join("\n"),
+    })).toEqual([
+      { path: "docs/noncanonical.md", line: 1, code: "x-username-ownership" },
+      { path: "docs/noncanonical.md", line: 2, code: "x-username-ownership" },
+    ]);
   });
 
   it("rejects an affirmative X-Username owner claim before a retirement sentence", () => {
@@ -319,7 +414,6 @@ describe("Music documentation publication contract", () => {
       ].join("\n"),
     })).toEqual([
       { path: "docs/contradictory.md", line: 1, code: "x-username-ownership" },
-      { path: "docs/contradictory.md", line: 2, code: "x-username-ownership" },
     ]);
   });
 
@@ -341,14 +435,56 @@ describe("Music documentation publication contract", () => {
         "`npm run music:db:reset -- --mode fixture --target test --target production --confirm-project explorers-music-fixture --confirm-reset \"RESET explorers-music-fixture/music_fixture\"`",
       ].join("\n"),
     })).toEqual([
-      { path: "docs/hostile.md", line: 1, command: "music:db:status", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 1, command: "music:db:status", code: "invalid-invocation" },
       { path: "docs/hostile.md", line: 2, command: "music:db:migrate", code: "missing-test-target" },
-      { path: "docs/hostile.md", line: 3, command: "music:db:verify", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 3, command: "music:db:verify", code: "invalid-invocation" },
       { path: "docs/hostile.md", line: 5, command: "music:db:migrate", code: "missing-test-target" },
-      { path: "docs/hostile.md", line: 6, command: "music:db:verify", code: "missing-test-target" },
-      { path: "docs/hostile.md", line: 7, command: "music:db:migrate", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 6, command: "music:db:verify", code: "invalid-invocation" },
+      { path: "docs/hostile.md", line: 7, command: "music:db:migrate", code: "invalid-invocation" },
       { path: "docs/hostile.md", line: 8, command: "music:db:reset", code: "unsafe-reset-arguments" },
-      { path: "docs/hostile.md", line: 10, command: "music:db:reset", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 10, command: "music:db:reset", code: "invalid-invocation" },
+    ]);
+  });
+
+  it("rejects malformed database grammar and accepts reordered and continued invocations", () => {
+    const malformed = [
+      "`npm run music:db:status -- --target test --force`",
+      "`npm run music:db:verify -- --target \"test`",
+      "`npm run music:db:migrate -- --target test # replace test with production`",
+      "`npm run music:db:status -- --mode fixture --mode fixture --target test`",
+      "`npm run music:db:verify -- --target test --format human --format json`",
+      "`npm run music:db:migrate -- --target test production`",
+      "`npm run music:db:reset -- --confirm-reset \"RESET explorers-music-fixture/music_fixture\" --target test --confirm-project explorers-music-fixture --mode fixture --force`",
+      "`npm run music:db:status -- --target test --target test`",
+      "`npm run music:db:verify -- --format json --target test --mode fixture`",
+      "`npm run music:db:reset -- --confirm-reset \"RESET explorers-music-fixture/music_fixture\" --format human --target test --confirm-project explorers-music-fixture --mode fixture`",
+      "`npm run --bogus music:db:status -- --target test`",
+    ].join("\n");
+    const continued = [
+      "npm run music:db:migrate -- \\",
+      "  --format human \\",
+      "  --target test \\",
+      "  --mode fixture",
+    ].join("\n");
+    const invalidContinuation = [
+      "npm run music:db:status -- --target test \\ ",
+      "  --mode fixture",
+    ].join("\n");
+    expect(databaseInvocationFindings({
+      "docs/malformed.md": malformed,
+      "docs/continued.md": continued,
+      "docs/invalid-continuation.md": invalidContinuation,
+    })).toEqual([
+      { path: "docs/malformed.md", line: 1, command: "music:db:status", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 2, command: "music:db:verify", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 3, command: "music:db:migrate", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 4, command: "music:db:status", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 5, command: "music:db:verify", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 6, command: "music:db:migrate", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 7, command: "music:db:reset", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 8, command: "music:db:status", code: "invalid-invocation" },
+      { path: "docs/malformed.md", line: 11, command: "music:db:status", code: "invalid-invocation" },
+      { path: "docs/invalid-continuation.md", line: 1, command: "music:db:status", code: "invalid-invocation" },
     ]);
   });
 
@@ -362,7 +498,13 @@ describe("Music documentation publication contract", () => {
     expect(authAdr).toMatch(/## Status\s+Superseded in part/i);
     expect(authAdr).toContain("short-lived Music credential");
     expect(authAdr).toContain("../architecture/music-identity.md");
+    expect(authAdr).toContain("Explorer bearer is forwarded only to `POST /api/music/identity/ensure`");
+    expect(authAdr).toContain("never reused on canonical owner routes");
     expect(authAdr).not.toMatch(/No single sign-on across apps|users have separate accounts|JWT for both.*Rejected/is);
+    const authModel = read("docs/security/music-auth-model.md");
+    expect(authModel).toContain("Canonical owner REST and Socket.IO routes accept that credential only.");
+    expect(authModel).toContain("A separately opened native Tunes session is confined to its documented login/logout/check/CSRF endpoints.");
+    expect(authModel).toContain("X-Username support was removed from canonical Music routes.");
 
     const databaseAdr = read("docs/adr/004-database-orm-choice.md");
     expect(databaseAdr).toMatch(/## Status\s+Superseded in part/i);
@@ -386,6 +528,15 @@ describe("Music documentation publication contract", () => {
       .toEqual(["docs/README.md", "docs/grandchild.md", "docs/nested/child.md"]);
   });
 
+  it("follows titled inline Markdown links recursively", () => {
+    const fixtureSources: Record<string, string> = {
+      "docs/README.md": "Read the [child contract](nested/child.md \"Child title\").",
+      "docs/nested/child.md": "# Child",
+    };
+    expect(indexedMarkdownDocuments(fixtureSources["docs/README.md"], (path: string) => fixtureSources[path]))
+      .toEqual(["docs/README.md", "docs/nested/child.md"]);
+  });
+
   it("detects obsolete canonical Music authentication boundary claims", () => {
     expect(obsoleteAuthFindings({
       "docs/hostile.md": [
@@ -393,13 +544,26 @@ describe("Music documentation publication contract", () => {
         "Tunes uses dual auth: session plus JWT.",
         "Legacy routes provide a multi-auth fallback.",
         "The embedded Music dashboard uses Cross-App SSO.",
+        "Embedded Music accepts either a Tunes session cookie or the Explorer JWT.",
+        "Owner routes use the Explorer JWT, falling back to the Tunes session cookie.",
       ].join("\n"),
     })).toEqual([
       { path: "docs/hostile.md", line: 1, code: "obsolete-auth-boundary" },
       { path: "docs/hostile.md", line: 2, code: "obsolete-auth-boundary" },
       { path: "docs/hostile.md", line: 3, code: "obsolete-auth-boundary" },
       { path: "docs/hostile.md", line: 4, code: "obsolete-auth-boundary" },
+      { path: "docs/hostile.md", line: 5, code: "obsolete-auth-boundary" },
+      { path: "docs/hostile.md", line: 6, code: "obsolete-auth-boundary" },
     ]);
+  });
+
+  it("allows the canonical standalone-session and embedded-credential separation", () => {
+    expect(obsoleteAuthFindings({
+      "docs/canonical.md": [
+        "Standalone Tunes sessions are confined to login, logout, check, and CSRF endpoints.",
+        "The Explorer bearer is forwarded only to POST /api/music/identity/ensure; canonical owner routes accept only the short-lived Music credential.",
+      ].join("\n"),
+    })).toEqual([]);
   });
 
   it("keeps every published or indexed Markdown document free of retired guidance", () => {

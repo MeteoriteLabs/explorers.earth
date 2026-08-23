@@ -24,7 +24,7 @@ After authoritative verification and completed onboarding, Explorers sends a bod
 
 Person ownership is fixed for this release. The selected Account ID is context only. Moving to workspace ownership requires a new ADR and data migration; it cannot reinterpret existing rows.
 
-Every owner SQL operation derives `musicUserId` from the verified local Music principal and includes it in the predicate. Route parameters such as playlist and song IDs narrow a resource; they never establish ownership. Browser username, email, user ID, Account ID, document ID, query parameters, request bodies, `X-Username`, and public slugs are not owner authority.
+Every owner SQL operation derives `musicUserId` from the verified local Music principal and includes it in the predicate. Route parameters such as playlist and song IDs narrow a resource; they never establish ownership. Browser username, email, user ID, Account ID, document ID, query parameters, request bodies, and public slugs are not owner authority.
 
 ## Credential boundary
 

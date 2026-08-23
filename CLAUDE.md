@@ -29,8 +29,10 @@ npm run dev:tunes           # tunes at http://localhost:5000
 npm run dev:explorers-earth # explorers-earth at http://localhost:5173
 
 # Database (tunes only)
-npm run music:db:migrate -- --mode fixture --target test # Apply the reviewed chain to the guarded fixture
-npm run music:db:verify -- --mode fixture --target test  # Verify journal, checksums, and catalog
+# Apply the reviewed chain to the guarded fixture
+npm run music:db:migrate -- --mode fixture --target test
+# Verify journal, checksums, and catalog
+npm run music:db:verify -- --mode fixture --target test
 
 # Build
 npm run build:all

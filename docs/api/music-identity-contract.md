@@ -24,7 +24,7 @@ The publication idempotency key is immutable per owner. Same key and same reques
 
 ## Token and capability lifecycle
 
-The Explorer bearer is accepted only by identity/lifecycle boundary routes and is never decoded without verification. Ensure returns a ten-minute, audience-scoped Music credential. The client stores it only in memory, refreshes through a single-flight bodyless ensure, clears it on logout/session change, and never falls back to username or native-session ownership. An unexpired credential may continue local owner operations during a Strapi outage; mint/refresh cannot.
+The embedded Music client forwards the Explorer bearer only to `POST /api/music/identity/ensure` at the identity/lifecycle boundary. Dedicated Account lifecycle requests use separately initiated authoritative Explorer proof on the lifecycle endpoints listed above. Neither proof is reused on canonical owner routes or decoded without verification. Ensure returns a ten-minute, audience-scoped Music credential. The client stores it only in memory, refreshes through a single-flight bodyless ensure, clears it on logout/session change, and never falls back to username or native-session ownership. An unexpired credential may continue local owner operations during a Strapi outage; mint/refresh cannot.
 
 Signing rotation is verifier-first: distribute current plus previous verification authority, begin minting with the new key, wait through maximum TTL and skew, then remove the old key. `sessionVersion` provides immediate logout-all/security revocation.
 

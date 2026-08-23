@@ -4,7 +4,9 @@
 
 Explorer identity and Account selection are verified at `POST /api/music/identity/ensure`. Tunes then mints a short-lived Music credential and derives a numeric principal locally. Canonical owner REST and Socket.IO routes accept that credential only. The guest boundary accepts a per-slug capability only for the explicit guest allowlist. A separately opened native Tunes session is confined to its documented login/logout/check/CSRF endpoints.
 
-No authorization decision may use `X-Username`, browser username or email, user/owner/Account/document IDs in a request, Account array order, a public slug, an unverified decoded JWT, a fallback signing secret, or an arbitrary GraphQL service-token proxy. Ambiguous credential combinations fail closed.
+X-Username support was removed from canonical Music routes.
+
+No authorization decision may use browser username or email, user/owner/Account/document IDs in a request, Account array order, a public slug, an unverified decoded JWT, a fallback signing secret, or an arbitrary GraphQL service-token proxy. Ambiguous credential combinations fail closed.
 
 ## Owner predicate
 
