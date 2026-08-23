@@ -56,7 +56,8 @@ In protected GitHub Actions, store each Playwright storage state as the complete
 JSON object in `E2E_PROFILE_OWNER_STORAGE_STATE_JSON` and
 `E2E_PROFILE_NON_OWNER_STORAGE_STATE_JSON` secrets. Store the gallery fixture in
 `E2E_PROFILE_GALLERY_BASE64` as strict base64 for a complete PNG, JPEG, GIF, or
-WebP image of at most 10 MiB. CI structurally validates dimensions, bounded
+WebP image of at most 10 MiB, at most 8,192 pixels on either axis, and at most
+33,554,432 total pixels. CI uses overflow-safe dimension checks and structurally validates bounded
 chunks/segments/blocks, and each format's required end marker before writing.
 PNG validation additionally checks critical-chunk order, non-empty IDAT data,
 and every chunk CRC. Only after validation are

@@ -160,6 +160,12 @@ test("producer AST cannot drift outside the stable child-code catalog", async ()
   assert.equal(emitted.has("PROTECTED_FIXTURE_CLEANUP_REFUSED"), true);
   assert.equal(emitted.has("RECOVERY_ARTIFACT_WRITE_FAILED"), true);
   assert.deepEqual([...STABLE_CHILD_CODES].filter((code) => !emitted.has(code)), []);
+  const publicApiSource = await fs.readFile(new URL("../verify-public-api-access.mjs", import.meta.url), "utf8");
+  const reportCodeSource = publicApiSource.slice(
+    publicApiSource.indexOf("function reportCode"),
+    publicApiSource.indexOf("function cleanupFailure"),
+  );
+  assert.equal(discoverStableProducerCodes(reportCodeSource, "reportCode.mjs").has("PUBLIC_API_READY"), true);
 });
 
 test("producer AST detects novel assignment-form codes without catalog seeding", () => {
@@ -172,6 +178,21 @@ test("producer AST detects novel assignment-form codes without catalog seeding",
   assert.deepEqual([...discovered].filter((code) => !STABLE_CHILD_CODES.has(code)).sort(), [
     "NOVEL_REASON_ASSIGNMENT", "NOVEL_RECOVERY_ASSIGNMENT",
   ]);
+});
+
+test("producer AST detects direct and fallback returns in code-producing functions", () => {
+  const discovered = discoverStableProducerCodes(`
+    function reportCode(input) {
+      if (input) return "NOVEL_DIRECT_RETURN";
+      return input?.reasonCode ?? "NOVEL_NULLISH_RETURN";
+    }
+    const safeStatus = (value) => value ? "NOVEL_CONDITIONAL_RETURN" : "NOVEL_FALLBACK_RETURN";
+    function unrelatedLabel() { return "UNRELATED_UPPERCASE_LITERAL"; }
+  `, "return-producer.mjs");
+  assert.deepEqual([...discovered].sort(), [
+    "NOVEL_CONDITIONAL_RETURN", "NOVEL_DIRECT_RETURN", "NOVEL_FALLBACK_RETURN", "NOVEL_NULLISH_RETURN",
+  ]);
+  assert.equal(discovered.has("UNRELATED_UPPERCASE_LITERAL"), false);
 });
 
 test("every source-defined failure code survives exit-one JSON or summary safely", async () => {

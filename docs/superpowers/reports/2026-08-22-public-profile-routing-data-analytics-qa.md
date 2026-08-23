@@ -222,3 +222,22 @@ catalog-only entry.
 Fresh safe verification: focused 20/20; full contracts 89/89; unit 188 files /
 1,533 tests; lint 0 errors; app/test/E2E TypeScript, i18n, and build pass;
 protected project list-only 10 tests. No live or protected callback ran.
+
+## Task 8 corrective round 5/5
+
+All supported gallery formats now share overflow-safe BigInt limits before
+dimension values are converted for reporting: 8,192 pixels per axis and
+33,554,432 total pixels, in addition to the 10 MiB encoded-file limit. Boundary
+dimensions pass while over-axis, over-total-pixel, and extreme dimensions fail
+for PNG, JPEG, GIF, and WebP; a CRC-valid PNG with `0xffffffff` width is rejected.
+
+AST producer discovery now inspects direct, conditional, logical, and nullish
+returns only inside code/reason/status/result-producing functions. Synthetic
+uncatalogued direct and fallback returns are detected, unrelated uppercase
+labels are ignored, assignment/property coverage remains, and the actual
+`reportCode` fallback discovers `PUBLIC_API_READY`.
+
+Fresh safe verification: focused 22/22; full contracts 91/91; unit 188 files /
+1,533 tests; lint 0 errors; app/test/E2E TypeScript, i18n, and build pass;
+protected project list-only 10 tests. Read-only preflight remains `ENV_MISSING`;
+no live/protected request, callback, mutation, cleanup, or restore ran.

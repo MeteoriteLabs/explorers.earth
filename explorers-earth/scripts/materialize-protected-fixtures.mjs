@@ -5,6 +5,17 @@ import { fileURLToPath } from "node:url";
 
 const PREFIX = "explorers-profile-ci-";
 const MAX_GALLERY_BYTES = 10 * 1024 * 1024;
+export const MAX_GALLERY_AXIS = 8192n;
+export const MAX_GALLERY_PIXELS = 32n * 1024n * 1024n;
+
+export function validateImageDimensions(width, height) {
+  const safeWidth = BigInt(width);
+  const safeHeight = BigInt(height);
+  if (safeWidth <= 0n || safeHeight <= 0n
+    || safeWidth > MAX_GALLERY_AXIS || safeHeight > MAX_GALLERY_AXIS
+    || safeWidth * safeHeight > MAX_GALLERY_PIXELS) invalidGallery();
+  return { width: Number(safeWidth), height: Number(safeHeight) };
+}
 
 function storageState(value) {
   let parsed;
@@ -58,8 +69,7 @@ function pngDimensions(bytes) {
       if (type !== "IHDR" || length !== 13) invalidGallery();
       const width = bytes.readUInt32BE(offset + 8);
       const height = bytes.readUInt32BE(offset + 12);
-      if (!width || !height) invalidGallery();
-      dimensions = { width, height };
+      dimensions = validateImageDimensions(width, height);
     } else if (type === "IHDR") {
       invalidGallery();
     }
@@ -104,8 +114,7 @@ function jpegDimensions(bytes) {
       if (length < 8) invalidGallery();
       const height = bytes.readUInt16BE(offset + 3);
       const width = bytes.readUInt16BE(offset + 5);
-      if (!width || !height) invalidGallery();
-      dimensions = { width, height };
+      dimensions = validateImageDimensions(width, height);
     }
     if (marker !== 0xda) {
       offset += length;
@@ -143,7 +152,7 @@ function gifDimensions(bytes) {
   if (bytes.length < 14) invalidGallery();
   const width = bytes.readUInt16LE(6);
   const height = bytes.readUInt16LE(8);
-  if (!width || !height) invalidGallery();
+  const dimensions = validateImageDimensions(width, height);
   const packed = bytes[10];
   let offset = 13 + ((packed & 0x80) ? 3 * (2 ** ((packed & 0x07) + 1)) : 0);
   if (offset > bytes.length) invalidGallery();
@@ -152,7 +161,7 @@ function gifDimensions(bytes) {
     const introducer = bytes[offset++];
     if (introducer === 0x3b) {
       if (!sawImage || offset !== bytes.length) invalidGallery();
-      return { width, height };
+      return dimensions;
     }
     if (introducer === 0x21) {
       if (offset >= bytes.length) invalidGallery();
@@ -164,7 +173,7 @@ function gifDimensions(bytes) {
     const imageWidth = bytes.readUInt16LE(offset + 4);
     const imageHeight = bytes.readUInt16LE(offset + 6);
     const imagePacked = bytes[offset + 8];
-    if (!imageWidth || !imageHeight) invalidGallery();
+    validateImageDimensions(imageWidth, imageHeight);
     offset += 9 + ((imagePacked & 0x80) ? 3 * (2 ** ((imagePacked & 0x07) + 1)) : 0);
     if (offset >= bytes.length || bytes[offset++] === 0) invalidGallery();
     offset = skipGifSubBlocks(bytes, offset);
@@ -187,16 +196,15 @@ function webpDimensions(bytes) {
     if (end > bytes.length) invalidGallery();
     if (type === "VP8X") {
       if (length !== 10) invalidGallery();
-      dimensions = { width: bytes.readUIntLE(data + 4, 3) + 1, height: bytes.readUIntLE(data + 7, 3) + 1 };
+      dimensions = validateImageDimensions(BigInt(bytes.readUIntLE(data + 4, 3)) + 1n, BigInt(bytes.readUIntLE(data + 7, 3)) + 1n);
     } else if (type === "VP8L") {
       if (length < 5 || bytes[data] !== 0x2f) invalidGallery();
       const bits = bytes.readUInt32LE(data + 1);
-      dimensions = { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+      dimensions = validateImageDimensions(BigInt((bits & 0x3fff) + 1), BigInt(((bits >>> 14) & 0x3fff) + 1));
       sawImage = true;
     } else if (type === "VP8 ") {
       if (length < 10 || !bytes.subarray(data + 3, data + 6).equals(Buffer.from([0x9d, 0x01, 0x2a]))) invalidGallery();
-      dimensions = { width: bytes.readUInt16LE(data + 6) & 0x3fff, height: bytes.readUInt16LE(data + 8) & 0x3fff };
-      if (!dimensions.width || !dimensions.height) invalidGallery();
+      dimensions = validateImageDimensions(bytes.readUInt16LE(data + 6) & 0x3fff, bytes.readUInt16LE(data + 8) & 0x3fff);
       sawImage = true;
     }
     offset = end + (length % 2);

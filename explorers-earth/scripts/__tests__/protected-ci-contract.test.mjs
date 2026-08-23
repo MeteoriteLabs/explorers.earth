@@ -7,8 +7,11 @@ import test from "node:test";
 
 import {
   cleanupProtectedFixtures,
+  MAX_GALLERY_AXIS,
+  MAX_GALLERY_PIXELS,
   materializeProtectedFixtures,
   materializeProtectedFixturesForCi,
+  validateImageDimensions,
 } from "../materialize-protected-fixtures.mjs";
 import { validateProtectedPrerequisites } from "../protected-prerequisites.mjs";
 import { runPublicApiPreflight } from "../verify-public-api-access.mjs";
@@ -98,6 +101,16 @@ test("materializes restrictive validated fixture files and removes them", async 
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 
+test("every gallery format shares overflow-safe axis and total-pixel limits", () => {
+  for (const format of ["png", "jpeg", "gif", "webp"]) {
+    assert.deepEqual(validateImageDimensions(MAX_GALLERY_AXIS, 1n), { width: 8192, height: 1 }, format);
+    assert.deepEqual(validateImageDimensions(4096n, MAX_GALLERY_PIXELS / 4096n), { width: 4096, height: 8192 }, format);
+    assert.throws(() => validateImageDimensions(MAX_GALLERY_AXIS + 1n, 1n), /PROTECTED_FIXTURE_INVALID/, format);
+    assert.throws(() => validateImageDimensions(4097n, 8192n), /PROTECTED_FIXTURE_INVALID/, format);
+    assert.throws(() => validateImageDimensions(0xffffffffn, 0xffffffffn), /PROTECTED_FIXTURE_INVALID/, format);
+  }
+});
+
 test("rejects malformed storage JSON and non-image gallery content", async () => {
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "protected-ci-invalid-"));
   await assert.rejects(materializeProtectedFixtures({
@@ -127,6 +140,33 @@ test("rejects malformed storage JSON and non-image gallery content", async () =>
     galleryBase64: zeroWidthPng.toString("base64"),
     tempRoot,
   }), /PROTECTED_FIXTURE_INVALID/);
+  const extremePng = Buffer.from(galleryCases[0].bytes);
+  extremePng.writeUInt32BE(0xffffffff, 16);
+  const extremeIhdrLength = extremePng.readUInt32BE(8);
+  extremePng.writeUInt32BE(pngCrc32(extremePng.subarray(12, 16 + extremeIhdrLength)), 16 + extremeIhdrLength);
+  await assert.rejects(materializeProtectedFixtures({
+    ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    galleryBase64: extremePng.toString("base64"),
+    tempRoot,
+  }), /PROTECTED_FIXTURE_INVALID/);
+  const extremeJpeg = Buffer.from(galleryCases[1].bytes);
+  const sofOffset = extremeJpeg.findIndex((byte, index) => byte === 0xff && [0xc0, 0xc1, 0xc2].includes(extremeJpeg[index + 1]));
+  extremeJpeg.writeUInt16BE(0xffff, sofOffset + 7);
+  const extremeGif = Buffer.from(galleryCases[2].bytes);
+  extremeGif.writeUInt16LE(0xffff, 6);
+  const extremeWebp = Buffer.from(galleryCases[3].bytes);
+  const vp8lOffset = extremeWebp.indexOf(Buffer.from("VP8L"));
+  const vp8lBitsOffset = vp8lOffset + 9;
+  extremeWebp.writeUInt32LE((extremeWebp.readUInt32LE(vp8lBitsOffset) & ~0x3fff) | 0x3fff, vp8lBitsOffset);
+  for (const extreme of [extremeJpeg, extremeGif, extremeWebp]) {
+    await assert.rejects(materializeProtectedFixtures({
+      ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+      nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+      galleryBase64: extreme.toString("base64"),
+      tempRoot,
+    }), /PROTECTED_FIXTURE_INVALID/);
+  }
   const { signature, chunks } = splitPng(galleryCases[0].bytes);
   const ihdr = chunks.find((chunk) => chunk.subarray(4, 8).toString("ascii") === "IHDR");
   const idat = chunks.find((chunk) => chunk.subarray(4, 8).toString("ascii") === "IDAT");
