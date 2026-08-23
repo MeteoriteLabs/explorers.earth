@@ -30,6 +30,7 @@
     "test:e2e": "playwright test --project=deterministic",
     "test:e2e:ui": "playwright test --project=deterministic --ui",
     "test:e2e:real-account": "playwright test --project=real-account",
+    "test:e2e:real-account:read-only": "node scripts/run-protected-read-only.mjs",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "verify:public-api": "node scripts/verify-public-api-access.mjs",

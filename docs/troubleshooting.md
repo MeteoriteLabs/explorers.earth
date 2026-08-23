@@ -137,6 +137,12 @@ Run these commands from `explorers-earth/` after `npm ci` with Node `>=22.12` an
 
 Use `npm run verify:public-profile:env -- --mode=fixture --json` for deterministic setup and `npm run verify:public-api -- --username=<published-username> --json` for live read-only diagnosis. The human output starts with the failing condition; JSON is redacted and suitable for CI artifacts.
 
+For a retained recovery artifact or interrupted protected run, follow the
+allowlisted recovery sequence in
+[`explorers-earth/e2e/real-account/README.md`](../explorers-earth/e2e/real-account/README.md).
+Do not rerun mutations until both the read-only API command and protected guest
+browser command pass against the restored public profile.
+
 ## Getting Help
 
 If your issue isn't listed here:

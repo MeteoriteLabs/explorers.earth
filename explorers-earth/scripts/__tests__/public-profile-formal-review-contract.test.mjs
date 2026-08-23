@@ -108,6 +108,22 @@ test("protected global setup fails before any protected test callback can begin"
   assert.equal(laterTestStarted, false);
 });
 
+test("protected read-only setup requires only the dedicated public-read tier", async () => {
+  const { runProtectedGlobalSetup } = await import("../playwright-global-setup.mjs");
+  let ready = false;
+  await runProtectedGlobalSetup({
+    projectNames: ["real-account"],
+    mode: "read-only",
+    env: { VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read-only", E2E_PROFILE_USERNAME: "published-fixture" },
+    onProtectedReady: () => { ready = true; },
+  });
+  assert.equal(ready, true);
+  await assert.rejects(
+    () => runProtectedGlobalSetup({ projectNames: ["real-account"], mode: "read-only", env: {} }),
+    /ENV_MISSING/,
+  );
+});
+
 test("Task 0 capabilities own every runtime GraphQL operation identity", async () => {
   const capabilities = await import("../public-api-capabilities.mjs");
   const all = [capabilities.ACCOUNT_BOOTSTRAP, ...capabilities.PUBLIC_COLLECTION_OPERATIONS];
