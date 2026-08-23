@@ -24,8 +24,9 @@ owns the immutable completion timestamp and exact 24-hour expiry boundary. At
 most 100 responses per owner remain replayable; expired ciphertext is shredded
 before a database-owned function atomically archives the tombstone and removes
 the larger live row. Archive rows expire after 30 days; versioned keys embed their
-issuance timestamp and PostgreSQL permanently rejects keys older than that window
-before any owner lookup or mutation. Archive purge and live compaction consume one
+issuance timestamp and PostgreSQL permanently rejects history-free keys older than
+that window after bounded history lookup but before any owner mutation. Existing
+history preserves the full 24-hour replay window. Archive purge and live compaction consume one
 shared bounded batch limit. Catalog fingerprints include
 tables, columns, constraints, indexes, trigger definitions,
 public function bodies, and complete sequence properties/ownership.

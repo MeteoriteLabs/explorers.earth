@@ -323,7 +323,9 @@ and expired-replay semantics without unbounded live-table growth.
 Migration `0016` adds indexed, bounded 30-day archive retention. Publication keys
 carry their issuance time in the exact versioned UUIDv4 format; the repository
 uses PostgreSQL's clock to permanently reject keys older than the retention window
-before any owner lookup or mutation. Migration `0017` preserves the append-only
+after bounded history lookup but before any owner mutation. Existing history owns
+the full 24-hour replay window, including the one-day route overlap. Migration
+`0017` preserves the append-only
 chain while making archive purge and live compaction share the caller's single
 batch limit, so a successful call can never commit more than the reported limit.
 

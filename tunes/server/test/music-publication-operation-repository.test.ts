@@ -57,8 +57,8 @@ function harness(
   };
 }
 
-function storedResponse() {
-  const idempotencyKeyHash = hashPublicationIdempotencyKey(publicationKey("publication-command-1"));
+function storedResponse(idempotencyKey = publicationKey("publication-command-1")) {
+  const idempotencyKeyHash = hashPublicationIdempotencyKey(idempotencyKey);
   const requestFingerprint = publicationRequestFingerprint("unlisted");
   const encrypted = cipher.encrypt({ musicUserId: 41, idempotencyKeyHash, requestFingerprint }, {
     version: "music-publication/v1",
@@ -135,6 +135,18 @@ describe("durable publication operation repository", () => {
     });
     expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
     expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
+  });
+
+  it("preserves the full live replay window when an admitted key crosses its issuance cutoff", async () => {
+    const crossingKey = publicationKey("cutoff-crossing-command", now - 30 * 24 * 60 * 60 * 1_000 - 60 * 60 * 1_000);
+    const stored = storedResponse(crossingKey);
+    const db = harness((text) => text.includes("FROM music_publication_operations") ? { rows: [stored] } : { rows: [] });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
+
+    await expect(repository.execute(41, crossingKey, "unlisted")).resolves.toMatchObject({
+      status: "completed", replayed: true,
+    });
+    expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
   });
 
   it("returns conflict before mutation when the same hashed key has another fingerprint", async () => {

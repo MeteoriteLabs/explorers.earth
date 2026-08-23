@@ -1,6 +1,7 @@
 export type MusicPublicationMode = "private" | "unlisted" | "public";
 
 export const MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
+export const MUSIC_PUBLICATION_REPLAY_WINDOW_MS = 24 * 60 * 60 * 1_000;
 export const MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS = 5 * 60 * 1_000;
 
 const PUBLICATION_IDEMPOTENCY_KEY_PATTERN =
@@ -24,7 +25,7 @@ export function isMusicPublicationIdempotencyKeyCurrent(value: string, authority
   const issuedAtMs = parseMusicPublicationIdempotencyKey(value);
   return issuedAtMs !== undefined
     && Number.isSafeInteger(authorityNowMs)
-    && issuedAtMs > authorityNowMs - MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS
+    && issuedAtMs > authorityNowMs - MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS - MUSIC_PUBLICATION_REPLAY_WINDOW_MS
     && issuedAtMs <= authorityNowMs + MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS;
 }
 

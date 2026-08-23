@@ -24,9 +24,11 @@ The publication idempotency key is immutable per owner and has the exact form
 `tunes-share-v1-<13-digit issued-at epoch milliseconds>-<UUIDv4>`. Same key and
 same request replays the byte-equivalent protected response for 24 hours. A
 different request conflicts while its tombstone is retained. PostgreSQL's clock
-rejects keys older than 30 days before any owner lookup or mutation, so a key is
-permanently retired even after its bounded archive tombstone is purged. Keys more
-than five minutes in the future and malformed or legacy key shapes are invalid.
+rejects history-free keys older than 30 days before any owner mutation, so a key
+is permanently retired even after its bounded archive tombstone is purged. Live
+or archived history is checked first, preserving every admitted command's full
+24-hour replay window; the route permits that one-day overlap. Keys more than five
+minutes in the future and malformed or legacy key shapes are invalid.
 
 ## Token and capability lifecycle
 

@@ -316,6 +316,29 @@ describe("canonical Music REST surfaces", () => {
     expect(executePublicationCommand).toHaveBeenCalledWith(11, publicationKey, "public");
   });
 
+  it("admits the one-day issuance-cutoff overlap only for repository replay authority", async () => {
+    const overlapKey = createMusicPublicationIdempotencyKey(
+      routeNow - 30 * 24 * 60 * 60 * 1_000 - 60 * 60 * 1_000,
+      "11111111-2222-4333-8444-555555555556",
+    );
+    const accepted = appFor();
+    const response = await request(accepted.app).post("/api/music/publication")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": overlapKey })
+      .send({ mode: "private" });
+    expect(response.status).toBe(200);
+    expect(accepted.repository.executePublicationCommand).toHaveBeenCalledWith(11, overlapKey, "private");
+
+    const beyondReplayKey = createMusicPublicationIdempotencyKey(
+      routeNow - 31 * 24 * 60 * 60 * 1_000 - 1,
+      "11111111-2222-4333-8444-555555555557",
+    );
+    const rejected = appFor();
+    expect((await request(rejected.app).post("/api/music/publication")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": beyondReplayKey })
+      .send({ mode: "private" })).status).toBe(400);
+    expect(rejected.repository.executePublicationCommand).not.toHaveBeenCalled();
+  });
+
   it("marks unlisted capability reads noindex and returns a distinct public-only 429", async () => {
     // Break caught: unlisted pages enter indexing or public throttling is disguised as resource existence.
     const unlisted = appFor({

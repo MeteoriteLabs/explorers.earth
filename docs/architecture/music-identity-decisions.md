@@ -63,10 +63,12 @@ key ID. Plaintext capabilities and raw idempotency keys are never persisted. Aft
 24 hours the response is unavailable and the encrypted fields are shredded. The
 live tombstone is compacted into an immutable archive, and archive rows older than
 30 days are purged in bounded batches. Permanent retirement does not depend on
-unbounded tombstone storage: before any owner lookup or mutation, the repository
-uses PostgreSQL's clock to reject an issued-at timestamp older than 30 days. A key
-more than five minutes in the future is invalid. Owner deletion does not authorize
-key reuse. Append-only corrective migration
+unbounded tombstone storage: after checking bounded live/archive history but before
+any owner mutation, the repository uses PostgreSQL's clock to reject a history-free
+issued-at timestamp older than 30 days. Existing history remains authoritative for
+the full 24-hour replay window, and the route admits the one-day cutoff overlap. A
+key more than five minutes in the future is invalid. Owner deletion does not
+authorize key reuse. Append-only corrective migration
 `0012_publication_replay_expiry_guard` makes PostgreSQL's `clock_timestamp()` the
 sole expiry authority for the completed-to-expired transition; application time
 cannot authorize early shredding. Append-only `0013_publication_operation_database_clock`

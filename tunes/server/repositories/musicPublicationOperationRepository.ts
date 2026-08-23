@@ -76,14 +76,6 @@ export class MusicPublicationOperationRepository {
       if (!Number.isFinite(authorityNowMs)) {
         throw new Error("Publication idempotency clock authority is unavailable.");
       }
-      if (issuedAtMs > authorityNowMs + MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS) {
-        await client.query("COMMIT");
-        return { status: "invalid" };
-      }
-      if (issuedAtMs <= authorityNowMs - MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS) {
-        await client.query("COMMIT");
-        return { status: "expired" };
-      }
       const prior = (await client.query<StoredPublicationOperation>(
         `SELECT request_fingerprint,request_mode,operation_state,expires_at,
                 expires_at<=clock_timestamp() AS response_expired,
@@ -134,6 +126,15 @@ export class MusicPublicationOperationRepository {
         return archived.request_fingerprint === requestFingerprint && archived.request_mode === mode
           ? { status: "expired" }
           : { status: "conflict" };
+      }
+
+      if (issuedAtMs > authorityNowMs + MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS) {
+        await client.query("COMMIT");
+        return { status: "invalid" };
+      }
+      if (issuedAtMs <= authorityNowMs - MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS) {
+        await client.query("COMMIT");
+        return { status: "expired" };
       }
 
       const globalQuota = (await client.query<{ global_active_count: number; retry_after_seconds: number }>(
