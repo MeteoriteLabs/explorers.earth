@@ -19,7 +19,7 @@ Preserve the request/run ID, exact commit and image digest, current/previous mig
 
 Locate sanitized logs/metrics with the request/run ID and stable code. Verify the generated route/policy inventory, owner predicate, lifecycle/session version, entitlement freshness, publication mode, and exact migration marker. Compare aggregate reconciliation evidence only; never export identity rows as a shortcut.
 
-For database or migration symptoms, run the read-only preflight and `music:db:status`/`music:db:verify` through their authorized environment. Confirm the private target, backup timestamp, completed restore proof, expected catalog fingerprint, migration attestation, runtime/migrator role separation, and readiness. A missing/partial/future journal entry or catalog drift is a hard stop.
+For disposable fixture reproduction, run `npm run music:db:status -- --mode fixture --target test` and `npm run music:db:verify -- --mode fixture --target test`; those commands refuse every non-test target and never authorize production access. For a production database incident, use only the approved same-image migration/readiness and private operator evidence from the deployment runbook—never point the fixture CLI at production. Confirm the private target, backup timestamp, completed restore proof, expected catalog fingerprint, migration attestation, runtime/migrator role separation, and readiness. A missing/partial/future journal entry or catalog drift is a hard stop.
 
 For upstream symptoms, confirm exact HTTPS origin, certificate/pinning policy, bounded pagination totals/checksum/snapshot, dedicated read-only token permissions, circuit state, and retry budget. One incomplete scan must never suspend identities.
 

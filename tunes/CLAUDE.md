@@ -37,7 +37,7 @@ client/src/
 server/
 ├── index.ts            # Express app entry point, Vite middleware, server startup
 ├── auth.ts             # Passport.js config, session setup, login/register logic
-├── jwt-auth-middleware.ts # JWT validation middleware (dual auth: session + JWT)
+├── middleware/musicPrincipal.ts # Music credential verification and numeric principal derivation
 ├── routes/musicSurfaceRoutes.ts # Canonical C5 Music owner/guest routes
 ├── storage.ts          # Database access layer (all DB queries)
 ├── db.ts               # Drizzle + Neon connection setup
@@ -95,8 +95,8 @@ shared/
 **Commands**:
 ```bash
 # Run from the repository root; these commands accept only the guarded fixture target
-npm run music:db:migrate -- --mode fixture
-npm run music:db:verify -- --mode fixture
+npm run music:db:migrate -- --mode fixture --target test
+npm run music:db:verify -- --mode fixture --target test
 ```
 
 ## Authentication
@@ -135,7 +135,7 @@ npm run music:db:verify -- --mode fixture
 1. Define table + insert schema in `shared/schema.ts`
 2. Export types at bottom of schema file
 3. Add the next append-only SQL file and update `shared/music-migration-contract.ts`
-4. Run `npm run music:db:migrate -- --mode fixture` and `npm run music:db:verify -- --mode fixture` from the repository root
+4. Run `npm run music:db:migrate -- --mode fixture --target test` and `npm run music:db:verify -- --mode fixture --target test` from the repository root
 5. Add storage methods in `server/storage.ts`
 
 **Add a WebSocket event:**

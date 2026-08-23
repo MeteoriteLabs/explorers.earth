@@ -13,8 +13,8 @@
 
 ```bash
 # From the repository root: apply and verify the reviewed chain on the guarded fixture only
-npm run music:db:migrate -- --mode fixture
-npm run music:db:verify -- --mode fixture
+npm run music:db:migrate -- --mode fixture --target test
+npm run music:db:verify -- --mode fixture --target test
 
 # Type check the schema
 npm run check
@@ -197,5 +197,5 @@ users ──┬── playlists ── playlist_songs
 2. Add/update Zod insert schemas and export types
 3. Add the next reviewed, append-only SQL file under `tunes/migrations/` and update `tunes/shared/music-migration-contract.ts`
 4. Update `server/storage.ts` with new query methods if needed
-5. From the repository root, run `npm run music:db:migrate -- --mode fixture` and `npm run music:db:verify -- --mode fixture`
+5. From the repository root, run `npm run music:db:migrate -- --mode fixture --target test` and `npm run music:db:verify -- --mode fixture --target test`
 6. Commit the migration and contract together; application startup and production deployment never infer or push a schema diff

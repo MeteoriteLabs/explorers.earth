@@ -30,8 +30,8 @@ explorers.earth-main/
 │   │   ├── routes/              # API route handlers
 │   │   ├── services/            # Business logic services
 │   │   ├── auth.ts              # Passport.js authentication
-│   │   ├── jwt-auth-middleware.ts # JWT validation for cross-app SSO
-│   │   ├── legacy-routes.ts     # Legacy routes with multi-auth fallback
+│   │   ├── routes/musicIdentityRoutes.ts # Explorer proof boundary and credential issuance
+│   │   ├── middleware/musicPrincipal.ts  # Music credential verification and principal derivation
 │   │   ├── storage.ts           # Database access layer
 │   │   └── swagger.ts           # OpenAPI spec
 │   ├── shared/
@@ -102,18 +102,18 @@ External APIs:
 
 **Real-time**: Socket.IO manages WebSocket connections. Each authenticated user joins a "room" keyed by their user ID. Playlist changes, song status updates, and guest activity are broadcast to all connected clients in the room.
 
-**Session-based auth**: Unlike explorers-earth's JWT approach, tunes uses Passport.js with express-session backed by PostgreSQL. Sessions persist for 7 days via cookies.
+**Authentication boundaries**: Embedded Explorer Music sends the Strapi bearer only to the identity/lifecycle boundary, then uses the ten-minute Music credential for canonical owner REST and Socket.IO operations. A separately opened native Tunes experience uses Passport.js with a PostgreSQL-backed session only for its explicit login/logout/check/CSRF endpoints.
 
 ## Authentication Comparison
 
 | Aspect | explorers-earth | tunes |
 |--------|----------------|-------|
-| Strategy | JWT (stateless) | Session (stateful) |
-| Storage | localStorage | PostgreSQL + cookie |
-| Provider | Strapi CMS | Passport.js local |
-| Social login | Google OAuth | N/A (email verification + OTP) |
-| Session duration | Token expiry | 7-day cookie |
-| Protected routes | `ProtectedRoute` component | `requireAuth` middleware |
+| Strategy | Verified Strapi identity | Short-lived Music credential for canonical embedded routes; session only for standalone native endpoints |
+| Storage | Explorer bearer follows the Strapi client policy | Music credential in Explorer module memory; standalone session in PostgreSQL + secure cookie |
+| Provider | Strapi CMS | Verified Explorer identity projection; Passport.js local is the standalone exception |
+| Social login | Google OAuth | Inherited only through verified Explorer identity; no embedded native login |
+| Session duration | Strapi token policy | Music credential 10 minutes; standalone native cookie 7 days |
+| Protected routes | `ProtectedRoute` component | `musicPrincipal` for canonical routes; session middleware for explicit native endpoints |
 
 ## Shared Patterns
 

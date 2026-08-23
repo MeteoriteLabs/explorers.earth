@@ -143,7 +143,7 @@ Single sign-on via Google accounts.
 
 **Usage**: Client-side Razorpay checkout integration for subscription payments. Payment verification is handled server-side.
 
-## Local Tunes Integration (Cross-App SSO)
+## Local Tunes Integration (Music identity boundary)
 
 **Purpose**: Deep cross-app integration connecting explorers-earth with the tunes music platform. Users get an embedded music dashboard within explorers-earth.
 
@@ -160,7 +160,7 @@ Single sign-on via Google accounts.
 - `src/components/MusicDashboard.tsx` — Embedded music player dashboard
 - `src/hooks/useTunesDashboard.ts` — Account-scoped Music data fetching
 
-**SSO Flow**:
+**Identity and credential flow**:
 1. User logs in to explorers-earth (Strapi JWT)
 2. `AuthSyncManager` verifies the authoritative user and completed Account selection
 3. `musicIdentityCoordinator` makes one bodyless identity ensure request using the Strapi bearer
@@ -190,5 +190,5 @@ explorers-earth Client
   ├── IGDB (via Twitch OAuth) ─────────── IGDB API (game search)
   ├── Instagram Graph API ─────────────── Meta (social integration)
   ├── Razorpay SDK (dev + prod keys) ───── Razorpay (payments)
-  └── apiClient + SSO ──── JWT+REST ───── tunes API (music, playlists, SSO)
+  └── localTunesApiClient ─ Music bearer ─ tunes API (identity, playlists, publication)
 ```

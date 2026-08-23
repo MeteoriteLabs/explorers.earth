@@ -49,9 +49,7 @@ the Explorers -> Tunes path.
    --confirm-project explorers-music-fixture` only for the labeled project.
 4. Before C12 production mutation, obtain TK's separate explicit approval and
    a signed preflight. A local empty database is not proof.
-5. On the disposable PostgreSQL 15 target, run `npm run music:db:status --
-   --target test`, `npm run music:db:migrate -- --target test`, then `npm run
-   music:db:verify -- --target test`. These commands reject ambient
+5. On the disposable PostgreSQL 15 target, run `npm run music:db:status -- --target test`, `npm run music:db:migrate -- --target test`, then `npm run music:db:verify -- --target test`. These commands reject ambient
    `DATABASE_URL`; schema push is not a migration substitute.
 
 ## Incident recovery

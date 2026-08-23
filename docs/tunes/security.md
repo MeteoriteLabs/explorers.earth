@@ -80,7 +80,7 @@ For accounts that have been deactivated (the `blocked` flag is set to `true` on 
 
 ### Logout
 
-1. Client calls `POST /api/auth/logout`
+1. Client calls `POST /api/logout`
 2. Server destroys the session in PostgreSQL
 3. Session cookie is cleared from the browser
 4. Client clears auth state in Zustand store
@@ -149,7 +149,7 @@ API endpoints are protected with rate limiting middleware to prevent abuse. Rate
 
 ### Server-side
 
-The `requireAuth` middleware checks for valid session on protected API routes. Unauthenticated requests receive a 401 response.
+The standalone native endpoints use their explicit session middleware and return 401 when the session is absent. Canonical embedded Music routes instead verify the short-lived Music credential with `musicPrincipal` and derive the numeric owner server-side.
 
 Admin routes additionally check `user.isAdmin` for super admin access.
 

@@ -6,8 +6,7 @@ command. JSON is a single final object with `schemaVersion`, `command`,
 `runId`, `status`, `phase`, `durationMs`, `artifacts`, `checkpoint`, and a
 redacted `error` when present.
 
-The documented public JSON invocation is `npm run --silent <music-command> --
---format json`. Run root `npm ci` first: the root lockfile supplies `tsx` and the
+The documented public JSON invocation is `npm run --silent <music-command> -- --format json`. Run root `npm ci` first: the root lockfile supplies `tsx` and the
 CLI's typed configuration dependency before either child dependency tree
 exists. `music:bootstrap` then installs Tunes and Explorers. This is supported
 at the pinned minimum Node 22.12.0; do not invoke the TypeScript entrypoint with

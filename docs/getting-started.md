@@ -55,8 +55,8 @@ For the supported isolated local Music environment:
 ```bash
 npm run music:bootstrap -- --mode fixture
 npm run music:up -- --mode fixture --detach --wait
-npm run music:db:migrate -- --mode fixture
-npm run music:db:verify -- --mode fixture
+npm run music:db:migrate -- --mode fixture --target test
+npm run music:db:verify -- --mode fixture --target test
 ```
 
 These commands accept only the isolated `music_migrator@127.0.0.1:55432/music_fixture` target. Application startup does not synchronize schemas, and production changes must use the reviewed immutable migration/deployment process in the [Music deployment runbook](operations/music-deploy-runbook.md).

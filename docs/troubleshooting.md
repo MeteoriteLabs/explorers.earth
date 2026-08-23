@@ -32,12 +32,12 @@ netstat -ano | findstr :5000
 
 ### Fixture Migration Fails (tunes)
 
-**Symptom**: `npm run music:db:migrate -- --mode fixture` fails with errors
+**Symptom**: `npm run music:db:migrate -- --mode fixture --target test` fails with errors
 
 **Common causes**:
 - Bootstrap has not created the disposable Compose database — run `npm run music:bootstrap -- --mode fixture`
 - `DATABASE_URL_TEST` does not resolve exactly to `music_migrator@127.0.0.1:55432/music_fixture` — remove the conflicting override and rerun bootstrap
-- The migration journal, checksum, or catalog differs from the reviewed chain — do not force it; run `npm run music:db:verify -- --mode fixture` and inspect the typed recovery action
+- The migration journal, checksum, or catalog differs from the reviewed chain — do not force it; run `npm run music:db:verify -- --mode fixture --target test` and inspect the typed recovery action
 
 ### Missing Environment Variables
 
