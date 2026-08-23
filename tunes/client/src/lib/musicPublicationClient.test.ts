@@ -11,8 +11,10 @@ import {
 
 describe("Music publication client", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.mocked(apiRequest).mockReset();
     vi.stubGlobal("crypto", { randomUUID: () => "11111111-2222-4333-8444-555555555555" });
+    vi.spyOn(Date, "now").mockReturnValue(1_777_500_000_000);
     clearPendingMusicPublicationCommands();
   });
 
@@ -25,7 +27,7 @@ describe("Music publication client", () => {
 
     await expect(requestUnlistedShareCapability(41)).resolves.toBe("C".repeat(43));
     expect(apiRequest).toHaveBeenCalledWith("POST", "/api/music/publication", { mode: "unlisted" }, 0, 3, {
-      "Idempotency-Key": "tunes-share-11111111-2222-4333-8444-555555555555",
+      "Idempotency-Key": "tunes-share-v1-1777500000000-11111111-2222-4333-8444-555555555555",
     });
   });
 

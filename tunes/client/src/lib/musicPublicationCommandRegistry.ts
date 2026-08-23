@@ -1,4 +1,7 @@
-import type { MusicPublicationMode } from "../../../shared/musicPublicationContract";
+import {
+  createMusicPublicationIdempotencyKey,
+  type MusicPublicationMode,
+} from "../../../shared/musicPublicationContract";
 
 interface PendingPublicationCommand {
   ownerId: number;
@@ -21,7 +24,12 @@ export function getOrCreatePendingMusicPublicationCommand(ownerId: number, mode:
   const key = index(ownerId, mode);
   const current = pending.get(key);
   if (current) return current;
-  const created = { ownerId, mode, requestFingerprint: fingerprint(mode), key: `tunes-share-${crypto.randomUUID()}` };
+  const created = {
+    ownerId,
+    mode,
+    requestFingerprint: fingerprint(mode),
+    key: createMusicPublicationIdempotencyKey(Date.now(), crypto.randomUUID()),
+  };
   pending.set(key, created);
   return created;
 }

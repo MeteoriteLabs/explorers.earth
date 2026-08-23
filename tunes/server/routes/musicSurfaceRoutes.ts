@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError";
+import { isMusicPublicationIdempotencyKeyCurrent } from "../../shared/musicPublicationContract";
 import { createMusicPrincipalMiddleware, MusicPrincipalError, type MusicPrincipal } from "../middleware/musicPrincipal";
 import { consumeContainmentLimit, consumePublicSurfaceLimit, safeMusicRequestError } from "../security-containment";
 import {
@@ -33,7 +34,7 @@ interface CanonicalMusicRepository {
   executePublicationCommand(ownerId: number, idempotencyKey: string, mode: "private" | "unlisted" | "public"): Promise<
     | { status: "completed"; replayed: boolean; response: { version: "music-publication/v1"; publication: { mode: "private" | "unlisted" | "public"; publicSlug: string }; capability?: string } }
     | { status: "rate_limited"; retryAfterSeconds: number }
-    | { status: "conflict" | "expired" | "not_found" }
+    | { status: "conflict" | "expired" | "invalid" | "not_found" }
   >;
   rotateGuestCapability(ownerId: number, capabilityHash: string): Promise<unknown>;
   revokeGuestCapability(ownerId: number): Promise<void>;
@@ -260,7 +261,8 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       const idempotencyKey = req.get("idempotency-key");
       if (!req.body || Object.keys(req.body).some((key) => key !== "mode")
           || !["private", "unlisted", "public"].includes(mode)
-          || !idempotencyKey || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(idempotencyKey)) {
+          || !idempotencyKey
+          || !isMusicPublicationIdempotencyKeyCurrent(idempotencyKey, (dependencies.now?.() ?? new Date()).getTime())) {
         throw new MusicIdentityError("REQUEST_INVALID", 400, "The publication command is invalid.", "none", false);
       }
       const result = await dependencies.repository.executePublicationCommand(
@@ -269,6 +271,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         mode,
       );
       if (result.status !== "completed") {
+        if (result.status === "invalid") {
+          throw new MusicIdentityError("REQUEST_INVALID", 400, "The publication command is invalid.", "none", false);
+        }
         if (result.status === "conflict") {
           throw new MusicIdentityError("IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false);
         }

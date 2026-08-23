@@ -92,7 +92,7 @@ export const reactivationGlobalLimiter = rateLimit({
 });
 
 function reactivationConfirmationLimitSkip(req: Request): boolean {
-  return typeof req.query.token !== 'string' || !/^[a-f0-9]{64}$/.test(req.query.token);
+  return typeof req.query.token !== 'string' || !/^[a-f0-9]{64}$/i.test(req.query.token);
 }
 
 const reactivationConfirmationAddressLimiter = rateLimit({

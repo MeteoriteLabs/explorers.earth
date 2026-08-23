@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3-C9 same-image migration gate
 
-`0016_publication_operation_retention` is the exact expected migration ID. The
+`0017_publication_idempotency_key_retirement` is the exact expected migration ID. The
 C5-C9 chain appends durable, exact-operation credential-revocation authority,
 immutable revocation history, the least-privilege runtime boundary, and durable
 reactivation and bounded publication-command replay authority without changing the immutable
@@ -64,7 +64,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0016_publication_operation_retention` and the
+`0017_publication_idempotency_key_retirement` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
@@ -319,6 +319,13 @@ can invoke the bounded functions but has no direct archive-table privileges.
 Compaction first records an expired, ciphertext-shredded tombstone in the archive
 and then deletes only the exact matching live row, preserving key-reuse conflict
 and expired-replay semantics without unbounded live-table growth.
+
+Migration `0016` adds indexed, bounded 30-day archive retention. Publication keys
+carry their issuance time in the exact versioned UUIDv4 format; the repository
+uses PostgreSQL's clock to permanently reject keys older than the retention window
+before any owner lookup or mutation. Migration `0017` preserves the append-only
+chain while making archive purge and live compaction share the caller's single
+batch limit, so a successful call can never commit more than the reported limit.
 
 Migration `0012` replaces only that trigger function and is append-only; do not
 rewrite applied `0011`. It permits completed-to-replay-expired ciphertext shredding

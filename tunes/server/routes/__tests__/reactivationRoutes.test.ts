@@ -157,6 +157,19 @@ describe('reactivation address and global abuse limits', () => {
     const overflow = await request(app).get(`/api/user/reactivate?token=${'f'.repeat(64)}`).set('X-Forwarded-For', source);
     expect(overflow.status).toBe(429);
   });
+
+  it('does not let uppercase hexadecimal confirmation tokens bypass admission', async () => {
+    // Break caught: confirmation accepted hex case-insensitively while the
+    // limiter skipped every uppercase token.
+    const app = buildApp();
+    const source = '203.0.113.203';
+    for (let i = 0; i < REACTIVATION_ADDRESS_MAX; i++) {
+      const response = await request(app).get(`/api/user/reactivate?token=${'A'.repeat(63)}${(i % 16).toString(16).toUpperCase()}`).set('X-Forwarded-For', source);
+      expect(response.status).toBe(503);
+    }
+    const overflow = await request(app).get(`/api/user/reactivate?token=${'B'.repeat(64)}`).set('X-Forwarded-For', source);
+    expect(overflow.status).toBe(429);
+  });
 });
 
 describe('reactivationRateLimitSkip', () => {

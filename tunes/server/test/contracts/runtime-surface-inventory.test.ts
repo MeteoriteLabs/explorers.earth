@@ -43,7 +43,7 @@ describe("runtime route/event/job inventory", () => {
       "handler-authorization-unknown", "owner-handler-review-required", "admin-handler-review-required", "service-token-proxy",
     ].includes(route.classification))).toBe(false);
     expect(inventory.events.every((event) => event.classification !== "unclassified")).toBe(true);
-    expect(inventory.jobs).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "setInterval", lifecycle: "reactivation-token-cleanup" })]));
+    expect(inventory.jobs).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "setTimeout", lifecycle: "reactivation-token-cleanup" })]));
   });
 
   it("fails closed on an unclassified admin or owner surface", () => {

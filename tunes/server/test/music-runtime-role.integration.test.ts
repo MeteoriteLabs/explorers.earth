@@ -202,7 +202,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       expectedSessionVersion: 1,
       reason: "logout_all",
     })).resolves.toMatchObject({ resultSessionVersion: 2 });
-    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(16);
+    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(17);
 
     for (const statement of [
       "SET session_replication_role='replica'",
@@ -606,7 +606,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
           MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: runtimePasswordPath,
           MUSIC_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
           MUSIC_IMAGE_COMMIT: "a".repeat(40),
-          MUSIC_MIGRATION_MARKER: "0016_publication_operation_retention",
+          MUSIC_MIGRATION_MARKER: "0017_publication_idempotency_key_retirement",
           MUSIC_GATE_ATTESTATION_KEY: "hostile-gate-key-at-least-32-characters",
           MUSIC_GATE_ATTESTATION_PATH: attestation,
         },

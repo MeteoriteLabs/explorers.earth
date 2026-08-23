@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createMusicPublicationIdempotencyKey } from "../../shared/musicPublicationContract";
 import { migrateMusicDatabase } from "../db/migrate";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { MusicDomainRepository } from "../repositories/musicDomainRepository";
@@ -27,6 +28,12 @@ let runtimePool: pg.Pool;
 let identities: MusicIdentityRepository;
 const runtimeUser = `music_publication_runtime_${process.pid}`;
 const runtimePassword = Buffer.alloc(32, 0x70).toString("base64url");
+
+function publicationKey(label: string, issuedAtMs = databaseNow): string {
+  const hex = createHash("sha256").update(label).digest("hex");
+  const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+  return createMusicPublicationIdempotencyKey(issuedAtMs, uuid);
+}
 
 const currentKey = { kid: "publication-current-v1", key: Buffer.alloc(32, 0x61) };
 const previousKey = { kid: "publication-previous-v1", key: Buffer.alloc(32, 0x62) };
@@ -141,7 +148,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     const playlist = await domain.createPlaylist(owner.id, { name: "Sitemap", description: null }) as { id: number };
     await expect(domain.setPlaylistVisibility(owner.id, playlist.id, true)).resolves.toBe(true);
 
-    await expect(domain.executePublicationCommand(owner.id, "sitemap-public-command", "public"))
+    await expect(domain.executePublicationCommand(owner.id, publicationKey("sitemap-public-command"), "public"))
       .resolves.toMatchObject({ status: "completed", replayed: false });
     await expect(domain.listPublishedMusicPlaylists()).resolves.toContainEqual({
       guestUrl: "c9-publication-public-sitemap-command",
@@ -173,7 +180,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     const instanceA = repository(cipher(), {}, roleAuditedPool as never);
     const instanceB = repository(cipher(), {}, roleAuditedPool as never);
     const results = await Promise.all(Array.from({ length: 20 }, (_, index) =>
-      (index % 2 ? instanceA : instanceB).execute(owner.id, "same-operation-key", "unlisted")));
+      (index % 2 ? instanceA : instanceB).execute(owner.id, publicationKey("same-operation-key"), "unlisted")));
     expect(results.every((result) => result.status === "completed")).toBe(true);
     expect(transactionRoles).toHaveLength(20);
     expect(new Set(transactionRoles)).toEqual(new Set(["music_runtime"]));
@@ -186,12 +193,12 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       .toBe(hashGuestCapability(response.capability!));
 
     // The first response is deliberately discarded to model a connection loss after COMMIT.
-    await instanceA.execute(owner.id, "lost-response-key", "unlisted");
+    await instanceA.execute(owner.id, publicationKey("lost-response-key"), "unlisted");
     const afterRestart = repository();
-    expect(await afterRestart.execute(owner.id, "same-operation-key", "unlisted")).toMatchObject({
+    expect(await afterRestart.execute(owner.id, publicationKey("same-operation-key"), "unlisted")).toMatchObject({
       status: "completed", replayed: true, response,
     });
-    const recovered = await afterRestart.execute(owner.id, "lost-response-key", "unlisted");
+    const recovered = await afterRestart.execute(owner.id, publicationKey("lost-response-key"), "unlisted");
     expect(recovered).toMatchObject({ status: "completed", replayed: true });
     expect((await pool.query("SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1", [owner.id])).rows[0].count).toBe(2);
   });
@@ -203,7 +210,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     clock = databaseNow + skew;
     const owner = await identities.ensureIdentity(identityInput(`database-clock-${suffix}`));
     const before = new Date((await pool.query("SELECT clock_timestamp() AS value")).rows[0].value).getTime();
-    await expect(repository().execute(owner.id, `database-clock-${suffix}-key`, "unlisted"))
+    await expect(repository().execute(owner.id, publicationKey(`database-clock-${suffix}-key`), "unlisted"))
       .resolves.toMatchObject({ status: "completed", replayed: false });
     const after = new Date((await pool.query("SELECT clock_timestamp() AS value")).rows[0].value).getTime();
     const row = (await pool.query(`SELECT operation.created_at,operation.completed_at,operation.expires_at,
@@ -227,8 +234,8 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     clock = baseTime + 1_000;
     const owner = await identities.ensureIdentity(identityInput("different"));
     const [left, right] = await Promise.all([
-      repository().execute(owner.id, "competing-operation-key", "public"),
-      repository().execute(owner.id, "competing-operation-key", "private"),
+      repository().execute(owner.id, publicationKey("competing-operation-key"), "public"),
+      repository().execute(owner.id, publicationKey("competing-operation-key"), "private"),
     ]);
     const completed = [left, right].filter((result) => result.status === "completed");
     const conflicts = [left, right].filter((result) => result.status === "conflict");
@@ -255,8 +262,8 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
         FROM generate_series(1,99) AS value`, [owner.id]);
 
     const [left, right] = await Promise.all([
-      repository().execute(owner.id, "quota-race-left", "public"),
-      repository().execute(owner.id, "quota-race-right", "public"),
+      repository().execute(owner.id, publicationKey("quota-race-left"), "public"),
+      repository().execute(owner.id, publicationKey("quota-race-right"), "public"),
     ]);
     expect([left, right].filter(({ status }) => status === "completed")).toHaveLength(1);
     const limited = [left, right].find(({ status }) => status === "rate_limited");
@@ -277,7 +284,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     const failing = repository(cipher(), {
       afterWrite: (completed) => { if (completed === phase) throw new Error(`real ${phase} failure`); },
     });
-    await expect(failing.execute(owner.id, `rollback-${phase}-key`, "unlisted")).rejects.toThrow(`real ${phase} failure`);
+    await expect(failing.execute(owner.id, publicationKey(`rollback-${phase}-key`), "unlisted")).rejects.toThrow(`real ${phase} failure`);
     expect((await pool.query(
       "SELECT guest_discoverable,guest_capability_hash,guest_capability_revoked_at FROM users WHERE id=$1",
       [owner.id],
@@ -294,13 +301,14 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       guest_capability_rotated_at=clock_timestamp(),guest_capability_revoked_at=NULL WHERE id=$1`, [owner.id, hashGuestCapability(capability)]);
     const response = { version: "music-publication/v1" as const,
       publication: { mode: "unlisted" as const, publicSlug: `c9-publication-public-expired` }, capability };
-    await insertExpiredOperation(owner.id, "expired-operation-key", response);
+    const expiredOperationKey = publicationKey("expired-operation-key");
+    await insertExpiredOperation(owner.id, expiredOperationKey, response);
     const publicationBefore = (await pool.query(
       "SELECT guest_discoverable,guest_capability_hash,guest_capability_rotated_at,guest_capability_revoked_at FROM users WHERE id=$1",
       [owner.id],
     )).rows[0];
-    expect(await repository().execute(owner.id, "expired-operation-key", "unlisted")).toEqual({ status: "expired" });
-    expect(await repository().execute(owner.id, "expired-operation-key", "public")).toEqual({ status: "conflict" });
+    expect(await repository().execute(owner.id, expiredOperationKey, "unlisted")).toEqual({ status: "expired" });
+    expect(await repository().execute(owner.id, expiredOperationKey, "public")).toEqual({ status: "conflict" });
     expect((await pool.query(
       "SELECT guest_discoverable,guest_capability_hash,guest_capability_rotated_at,guest_capability_revoked_at FROM users WHERE id=$1",
       [owner.id],
@@ -323,8 +331,8 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       "SELECT request_mode FROM music_publication_operation_archive WHERE music_user_id=$1",
       [owner.id],
     )).rows[0]).toEqual({ request_mode: "unlisted" });
-    expect(await repository().execute(owner.id, "expired-operation-key", "unlisted")).toEqual({ status: "expired" });
-    expect(await repository().execute(owner.id, "expired-operation-key", "public")).toEqual({ status: "conflict" });
+    expect(await repository().execute(owner.id, expiredOperationKey, "unlisted")).toEqual({ status: "expired" });
+    expect(await repository().execute(owner.id, expiredOperationKey, "public")).toEqual({ status: "conflict" });
 
     const client = await pool.connect();
     try {
@@ -344,11 +352,36 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     } finally {
       client.release();
     }
-    expect(await runtimeDurable.compactExpiredOperations(1_000)).toBeGreaterThanOrEqual(1);
+    const queuedOwner = await identities.ensureIdentity(identityInput("mixed-compaction-limit"));
+    const queuedKey = publicationKey("mixed-compaction-limit");
+    const queuedResponse = { version: "music-publication/v1" as const,
+      publication: { mode: "public" as const, publicSlug: "c9-publication-public-mixed-compaction-limit" } };
+    await insertExpiredOperation(queuedOwner.id, queuedKey, queuedResponse);
+    expect(await repository().execute(queuedOwner.id, queuedKey, "public")).toEqual({ status: "expired" });
+
+    // Break caught: the archive purge and live compaction each consumed p_limit,
+    // so the function returned 2*p_limit after committing and the repository failed.
+    expect(await runtimeDurable.compactExpiredOperations(1)).toBe(1);
     expect((await pool.query(
       "SELECT count(*)::int AS count FROM music_publication_operation_archive WHERE music_user_id=$1",
       [owner.id],
     )).rows[0]).toEqual({ count: 0 });
+    expect(await runtimeDurable.compactExpiredOperations(1)).toBe(1);
+    expect((await pool.query(
+      "SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1",
+      [queuedOwner.id],
+    )).rows[0]).toEqual({ count: 0 });
+
+    const retiredKey = publicationKey("purged-retired-key", databaseNow - 31 * 24 * 60 * 60 * 1_000);
+    const publicationAfterPurge = (await pool.query(
+      "SELECT guest_discoverable,guest_capability_hash,guest_capability_rotated_at,guest_capability_revoked_at FROM users WHERE id=$1",
+      [owner.id],
+    )).rows[0];
+    expect(await repository().execute(owner.id, retiredKey, "public")).toEqual({ status: "expired" });
+    expect((await pool.query(
+      "SELECT guest_discoverable,guest_capability_hash,guest_capability_rotated_at,guest_capability_revoked_at FROM users WHERE id=$1",
+      [owner.id],
+    )).rows[0]).toEqual(publicationAfterPurge);
   });
 
   it("indexes the replay-expired compaction queue and archive retention queue", async () => {
@@ -368,7 +401,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
   it("compares a previous-key deadline to the exact PostgreSQL microsecond expiry", async () => {
     const submillisecondKey = { kid: "publication-submillisecond-v1", key: Buffer.alloc(32, 0x63) };
     const owner = await identities.ensureIdentity(identityInput("readiness-microseconds"));
-    await expect(repository(cipher(submillisecondKey)).execute(owner.id, "microsecond-operation-key", "public"))
+    await expect(repository(cipher(submillisecondKey)).execute(owner.id, publicationKey("microsecond-operation-key"), "public"))
       .resolves.toMatchObject({ status: "completed", replayed: false });
     const client = await pool.connect();
     let expiry: { expiry_text: string; deadline_ms: string };
@@ -415,7 +448,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     clock = baseTime + 5_000;
     const owner = await identities.ensureIdentity(identityInput("rotation"));
     const oldWriter = repository(cipher(previousKey));
-    const original = await oldWriter.execute(owner.id, "old-key-operation", "unlisted");
+    const original = await oldWriter.execute(owner.id, publicationKey("old-key-operation"), "unlisted");
     expect(original.status).toBe("completed");
     const acceptUntil = Number((await pool.query(
       `SELECT ceil(date_part('epoch',expires_at)*1000)::bigint AS deadline_ms
@@ -424,8 +457,8 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     )).rows[0].deadline_ms);
     const rotated = repository(cipher(currentKey, { ...previousKey, acceptUntil }));
     await expect(rotated.verifyReplayReadiness()).resolves.toBeUndefined();
-    expect(await rotated.execute(owner.id, "old-key-operation", "unlisted")).toMatchObject({ status: "completed", replayed: true });
-    await rotated.execute(owner.id, "new-key-operation", "private");
+    expect(await rotated.execute(owner.id, publicationKey("old-key-operation"), "unlisted")).toMatchObject({ status: "completed", replayed: true });
+    await rotated.execute(owner.id, publicationKey("new-key-operation"), "private");
     expect((await pool.query(
       "SELECT request_mode,response_key_id FROM music_publication_operations WHERE music_user_id=$1 ORDER BY request_mode",
       [owner.id],

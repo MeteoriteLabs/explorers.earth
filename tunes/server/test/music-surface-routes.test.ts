@@ -1,7 +1,11 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
+import { createMusicPublicationIdempotencyKey } from "../../shared/musicPublicationContract";
 import { setupCanonicalMusicRoutes } from "../routes/musicSurfaceRoutes";
+
+const routeNow = Date.parse("2026-08-14T10:00:00.000Z");
+const publicationKey = createMusicPublicationIdempotencyKey(routeNow, "11111111-2222-4333-8444-555555555555");
 
 function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<string, unknown> = {}) {
   const calls: unknown[][] = [];
@@ -57,7 +61,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
       if (token !== "aaa.bbb.ccc") throw new Error("invalid");
       return { musicUserId: 11, subject: "subject", accountDocumentId: "account", sessionVersion: 3 };
     },
-    now: () => new Date("2026-08-14T10:00:00.000Z"),
+    now: () => new Date(routeNow),
     requestIdFactory: () => "route-request-id",
     allowedOrigins: ["https://explorers.example"],
     youtube: {
@@ -248,23 +252,23 @@ describe("canonical Music REST surfaces", () => {
     const { app, repository } = appFor();
     const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
     const first = await request(app).post("/api/music/publication").set(headers)
-      .set("Idempotency-Key", "publication-command-1").send({ mode: "unlisted" });
+      .set("Idempotency-Key", publicationKey).send({ mode: "unlisted" });
     const replay = await request(app).post("/api/music/publication").set(headers)
-      .set("Idempotency-Key", "publication-command-1").send({ mode: "unlisted" });
+      .set("Idempotency-Key", publicationKey).send({ mode: "unlisted" });
     expect(first.status).toBe(200);
     expect(first.body).toMatchObject({ version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "private-slug" } });
     expect(first.body.capability).toBe("C".repeat(43));
     expect(replay.body).toEqual(first.body);
     expect(repository.executePublicationCommand).toHaveBeenCalledTimes(2);
-    expect(repository.executePublicationCommand).toHaveBeenNthCalledWith(1, 11, "publication-command-1", "unlisted");
-    expect(repository.executePublicationCommand).toHaveBeenNthCalledWith(2, 11, "publication-command-1", "unlisted");
+    expect(repository.executePublicationCommand).toHaveBeenNthCalledWith(1, 11, publicationKey, "unlisted");
+    expect(repository.executePublicationCommand).toHaveBeenNthCalledWith(2, 11, publicationKey, "unlisted");
     expect(repository.setPublicationMode).not.toHaveBeenCalled();
     expect(repository.rotateGuestCapability).not.toHaveBeenCalled();
     expect(repository.revokeGuestCapability).not.toHaveBeenCalled();
     expect(repository.setDiscoverable).not.toHaveBeenCalled();
 
     const conflict = await request(app).post("/api/music/publication").set(headers)
-      .set("Idempotency-Key", "publication-command-1").send({ mode: "public" });
+      .set("Idempotency-Key", publicationKey).send({ mode: "public" });
     expect(conflict.status).toBe(409);
     expect(conflict.body.error.code).toBe("IDEMPOTENCY_CONFLICT");
   });
@@ -278,7 +282,7 @@ describe("canonical Music REST surfaces", () => {
     }));
     const { app, repository } = appFor({}, { resolvePrincipal });
     const write = (token: string) => request(app).post("/api/music/publication")
-      .set({ Authorization: `Bearer ${token}`, Origin: "https://explorers.example", "Idempotency-Key": "same-command-key" })
+      .set({ Authorization: `Bearer ${token}`, Origin: "https://explorers.example", "Idempotency-Key": publicationKey })
       .send({ mode: "private" });
     expect((await write("aaa.bbb.ccc")).status).toBe(200);
     expect((await write("ddd.eee.fff")).status).toBe(200);
@@ -289,11 +293,11 @@ describe("canonical Music REST surfaces", () => {
     const executePublicationCommand = vi.fn(async () => ({ status: "expired" as const }));
     const { app, repository } = appFor({ executePublicationCommand });
     const response = await request(app).post("/api/music/publication")
-      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": "expired-command-key" })
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": publicationKey })
       .send({ mode: "unlisted" });
     expect(response.status).toBe(409);
     expect(response.body.error).toMatchObject({ code: "PUBLICATION_REPLAY_EXPIRED", retryable: false });
-    expect(executePublicationCommand).toHaveBeenCalledWith(11, "expired-command-key", "unlisted");
+    expect(executePublicationCommand).toHaveBeenCalledWith(11, publicationKey, "unlisted");
     expect(repository.setPublicationMode).not.toHaveBeenCalled();
   });
 
@@ -304,12 +308,12 @@ describe("canonical Music REST surfaces", () => {
     }));
     const { app } = appFor({ executePublicationCommand });
     const response = await request(app).post("/api/music/publication")
-      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": "fresh-quota-command" })
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": publicationKey })
       .send({ mode: "public" });
     expect(response.status).toBe(429);
     expect(response.headers["retry-after"]).toBe("37");
     expect(response.body.error).toMatchObject({ code: "RATE_LIMITED", retryable: true });
-    expect(executePublicationCommand).toHaveBeenCalledWith(11, "fresh-quota-command", "public");
+    expect(executePublicationCommand).toHaveBeenCalledWith(11, publicationKey, "public");
   });
 
   it("marks unlisted capability reads noindex and returns a distinct public-only 429", async () => {

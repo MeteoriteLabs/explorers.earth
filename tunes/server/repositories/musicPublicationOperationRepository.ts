@@ -1,4 +1,9 @@
 import type { Pool, PoolClient } from "pg";
+import {
+  MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS,
+  MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS,
+  parseMusicPublicationIdempotencyKey,
+} from "../../shared/musicPublicationContract";
 import { createGuestCapability, hashGuestCapability } from "../policies/musicSurfacePolicy";
 import {
   MUSIC_PUBLICATION_RESPONSE_VERSION,
@@ -18,7 +23,7 @@ const PUBLICATION_GLOBAL_LOCK = 0x4d5047;
 export type MusicPublicationCommandResult =
   | { status: "completed"; replayed: boolean; response: MusicPublicationCommandResponse }
   | { status: "rate_limited"; retryAfterSeconds: number }
-  | { status: "conflict" | "expired" | "not_found" };
+  | { status: "conflict" | "expired" | "invalid" | "not_found" };
 
 export interface MusicPublicationOperationDependencies {
   createCapability?: () => string;
@@ -53,6 +58,8 @@ export class MusicPublicationOperationRepository {
     idempotencyKey: string,
     mode: MusicPublicationMode,
   ): Promise<MusicPublicationCommandResult> {
+    const issuedAtMs = parseMusicPublicationIdempotencyKey(idempotencyKey);
+    if (issuedAtMs === undefined) return { status: "invalid" };
     const idempotencyKeyHash = hashPublicationIdempotencyKey(idempotencyKey);
     const requestFingerprint = publicationRequestFingerprint(mode);
     const client = await this.pool.connect();
@@ -60,6 +67,23 @@ export class MusicPublicationOperationRepository {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock($1)", [PUBLICATION_GLOBAL_LOCK]);
       await client.query("SELECT pg_advisory_xact_lock($1,$2)", [PUBLICATION_LOCK, musicUserId]);
+      const idempotencyAuthorityTime = (await client.query<{ idempotency_authority_time: string }>(
+        "SELECT clock_timestamp()::text AS idempotency_authority_time",
+      )).rows[0]?.idempotency_authority_time;
+      const authorityNowMs = typeof idempotencyAuthorityTime === "string"
+        ? Date.parse(idempotencyAuthorityTime)
+        : Number.NaN;
+      if (!Number.isFinite(authorityNowMs)) {
+        throw new Error("Publication idempotency clock authority is unavailable.");
+      }
+      if (issuedAtMs > authorityNowMs + MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS) {
+        await client.query("COMMIT");
+        return { status: "invalid" };
+      }
+      if (issuedAtMs <= authorityNowMs - MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS) {
+        await client.query("COMMIT");
+        return { status: "expired" };
+      }
       const prior = (await client.query<StoredPublicationOperation>(
         `SELECT request_fingerprint,request_mode,operation_state,expires_at,
                 expires_at<=clock_timestamp() AS response_expired,

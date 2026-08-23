@@ -97,8 +97,13 @@ const songId = pathParameter("songId", "Owner-predicated song identifier");
 const guestUrl = pathParameter("guestUrl", "Public playlist slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
 const idempotencyKeyParameter = {
   name: "Idempotency-Key", in: "header" as const, required: true,
-  description: "Owner-scoped replay key for one atomic publication command",
-  schema: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+  description: "Owner-scoped, issuance-timestamped UUIDv4 replay key for one atomic publication command. Keys older than 30 days are permanently retired.",
+  schema: {
+    type: "string",
+    minLength: 65,
+    maxLength: 65,
+    pattern: "^tunes-share-v1-[0-9]{13}-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-4[0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+  },
 };
 
 const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleResponse") => ({

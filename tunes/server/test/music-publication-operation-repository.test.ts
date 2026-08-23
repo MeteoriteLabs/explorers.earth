@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+import { createMusicPublicationIdempotencyKey } from "../../shared/musicPublicationContract";
 import { MusicPublicationOperationRepository } from "../repositories/musicPublicationOperationRepository";
 import {
   MusicPublicationResponseCipher,
@@ -14,6 +16,12 @@ const cipher = new MusicPublicationResponseCipher({
   retentionSeconds: 86_400,
 }, { now: () => now, randomBytes: (size) => Buffer.alloc(size, 0x42) });
 
+function publicationKey(label: string, issuedAtMs = now): string {
+  const hex = createHash("sha256").update(label).digest("hex");
+  const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+  return createMusicPublicationIdempotencyKey(issuedAtMs, uuid);
+}
+
 function harness(
   handler: (text: string, values: unknown[]) => { rows?: unknown[]; rowCount?: number },
   operationTime: unknown = databaseOperationTime,
@@ -28,6 +36,9 @@ function harness(
       }
       if (normalized.startsWith("SELECT transaction_timestamp()::text AS operation_time")) {
         return { rows: [{ operation_time: operationTime }], rowCount: 1 };
+      }
+      if (normalized.startsWith("SELECT clock_timestamp()::text AS idempotency_authority_time")) {
+        return { rows: [{ idempotency_authority_time: databaseOperationTime }], rowCount: 1 };
       }
       const handled = { rows: [], rowCount: 0, ...handler(normalized, values) };
       if (normalized.includes("AS global_active_count") && handled.rows.length === 0) {
@@ -47,7 +58,7 @@ function harness(
 }
 
 function storedResponse() {
-  const idempotencyKeyHash = hashPublicationIdempotencyKey("publication-command-1");
+  const idempotencyKeyHash = hashPublicationIdempotencyKey(publicationKey("publication-command-1"));
   const requestFingerprint = publicationRequestFingerprint("unlisted");
   const encrypted = cipher.encrypt({ musicUserId: 41, idempotencyKeyHash, requestFingerprint }, {
     version: "music-publication/v1",
@@ -80,7 +91,7 @@ describe("durable publication operation repository", () => {
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher, {
       createCapability: () => capability,
     });
-    await expect(repository.execute(41, "publication-command-1", "unlisted")).resolves.toEqual({
+    await expect(repository.execute(41, publicationKey("publication-command-1"), "unlisted")).resolves.toEqual({
       status: "completed", replayed: false,
       response: {
         version: "music-publication/v1",
@@ -100,15 +111,15 @@ describe("durable publication operation repository", () => {
     expect(ownerWrite?.values).toHaveLength(3);
     expect(operationWrite?.values).toContain(databaseOperationTime);
     const serialized = JSON.stringify(db.calls);
-    expect(serialized).not.toContain("publication-command-1");
+    expect(serialized).not.toContain(publicationKey("publication-command-1"));
     expect(serialized).not.toContain(capability);
-    expect(serialized).toContain(hashPublicationIdempotencyKey("publication-command-1"));
+    expect(serialized).toContain(hashPublicationIdempotencyKey(publicationKey("publication-command-1")));
   });
 
   it("fails closed before publication mutation when the database transaction clock is unavailable", async () => {
     const db = harness((text) => text.includes("FROM music_publication_operations") ? { rows: [] } : { rows: [] }, null);
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
-    await expect(repository.execute(41, "publication-command-clock-unavailable", "public"))
+    await expect(repository.execute(41, publicationKey("publication-command-clock-unavailable"), "public"))
       .rejects.toThrow(/database clock authority is unavailable/i);
     expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
     expect(db.calls.map(({ text }) => text)).toContain("ROLLBACK");
@@ -118,7 +129,7 @@ describe("durable publication operation repository", () => {
     const stored = storedResponse();
     const db = harness((text) => text.includes("FROM music_publication_operations") ? { rows: [stored] } : { rows: [] });
     const restarted = new MusicPublicationOperationRepository(db.pool as never, cipher);
-    await expect(restarted.execute(41, "publication-command-1", "unlisted")).resolves.toEqual({
+    await expect(restarted.execute(41, publicationKey("publication-command-1"), "unlisted")).resolves.toEqual({
       status: "completed", replayed: true,
       response: { version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "owner-public-slug" }, capability },
     });
@@ -130,7 +141,7 @@ describe("durable publication operation repository", () => {
     const stored = { ...storedResponse(), request_fingerprint: publicationRequestFingerprint("private"), request_mode: "private" };
     const db = harness((text) => text.includes("FROM music_publication_operations") ? { rows: [stored] } : { rows: [] });
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
-    await expect(repository.execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "conflict" });
+    await expect(repository.execute(41, publicationKey("publication-command-1"), "unlisted")).resolves.toEqual({ status: "conflict" });
     expect(db.calls.some(({ text }) => /UPDATE users|INSERT INTO music_publication_operations/.test(text))).toBe(false);
   });
 
@@ -143,7 +154,7 @@ describe("durable publication operation repository", () => {
     });
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
 
-    await expect(repository.execute(41, "fresh-command-at-quota", "public")).resolves.toEqual({
+    await expect(repository.execute(41, publicationKey("fresh-command-at-quota"), "public")).resolves.toEqual({
       status: "rate_limited",
       retryAfterSeconds: 37,
     });
@@ -164,11 +175,27 @@ describe("durable publication operation repository", () => {
     });
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
 
-    await expect(repository.execute(41, "fresh-command-at-global-quota", "public")).resolves.toEqual({
+    await expect(repository.execute(41, publicationKey("fresh-command-at-global-quota"), "public")).resolves.toEqual({
       status: "rate_limited",
       retryAfterSeconds: 19,
     });
     expect(db.calls.filter(({ text }) => text.startsWith("SELECT pg_advisory_xact_lock"))).toHaveLength(2);
+    expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
+    expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
+  });
+
+  it("rejects a retired timestamped key after its bounded archive row is gone", async () => {
+    // Break caught: retention deleted the only tombstone, so the exact old key
+    // became a fresh publication mutation again.
+    const oldIssuedAt = now - 31 * 24 * 60 * 60 * 1_000;
+    const retiredKey = `tunes-share-v1-${oldIssuedAt}-11111111-2222-4333-8444-555555555555`;
+    const db = harness((text) => text.includes("FROM music_publication_operations")
+      || text.includes("music_lookup_publication_operation_archive")
+      ? { rows: [] }
+      : { rows: [], rowCount: text.startsWith("UPDATE users") ? 1 : 0 });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
+
+    await expect(repository.execute(41, retiredKey, "public")).resolves.toEqual({ status: "expired" });
     expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
     expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
   });
@@ -182,14 +209,14 @@ describe("durable publication operation repository", () => {
       ? { rows: [archived] }
       : { rows: [] });
     await expect(new MusicPublicationOperationRepository(exactDb.pool as never, cipher)
-      .execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "expired" });
+      .execute(41, publicationKey("publication-command-1"), "unlisted")).resolves.toEqual({ status: "expired" });
     expect(exactDb.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
 
     const conflictDb = harness((text) => text.includes("music_lookup_publication_operation_archive")
       ? { rows: [{ ...archived, request_fingerprint: publicationRequestFingerprint("private"), request_mode: "private" }] }
       : { rows: [] });
     await expect(new MusicPublicationOperationRepository(conflictDb.pool as never, cipher)
-      .execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "conflict" });
+      .execute(41, publicationKey("publication-command-1"), "unlisted")).resolves.toEqual({ status: "conflict" });
     expect(conflictDb.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
   });
 
@@ -199,7 +226,7 @@ describe("durable publication operation repository", () => {
       ? { rows: [stored] }
       : { rows: [], rowCount: text.startsWith("UPDATE music_publication_operations") ? 1 : 0 });
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
-    await expect(repository.execute(41, "publication-command-1", "unlisted")).resolves.toEqual({ status: "expired" });
+    await expect(repository.execute(41, publicationKey("publication-command-1"), "unlisted")).resolves.toEqual({ status: "expired" });
     const shred = db.calls.find(({ text }) => text.startsWith("UPDATE music_publication_operations"));
     expect(shred?.text).toMatch(/operation_state='replay_expired'.*response_ciphertext=NULL/i);
     expect(db.calls.some(({ text }) => text.startsWith("DELETE"))).toBe(false);
@@ -216,7 +243,7 @@ describe("durable publication operation repository", () => {
       createCapability: () => capability,
       afterWrite: (completedPhase) => { if (completedPhase === phase) throw new Error(`injected ${phase} failure`); },
     });
-    await expect(repository.execute(41, "publication-command-1", "unlisted")).rejects.toThrow(`injected ${phase} failure`);
+    await expect(repository.execute(41, publicationKey("publication-command-1"), "unlisted")).rejects.toThrow(`injected ${phase} failure`);
     expect(db.calls.map(({ text }) => text)).toContain("ROLLBACK");
     expect(db.calls.map(({ text }) => text)).not.toContain("COMMIT");
   });
@@ -363,7 +390,7 @@ describe("durable publication operation repository", () => {
       ? { rows: [] }
       : text.startsWith("UPDATE users") ? { rows: [], rowCount: 0 } : { rows: [] });
     const missingRepository = new MusicPublicationOperationRepository(missing.pool as never, cipher);
-    await expect(missingRepository.execute(41, "publication-command-missing", "private"))
+    await expect(missingRepository.execute(41, publicationKey("publication-command-missing"), "private"))
       .resolves.toEqual({ status: "not_found" });
     expect(missing.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
 
@@ -372,7 +399,7 @@ describe("durable publication operation repository", () => {
       : text.startsWith("UPDATE users") ? { rows: [{ guest_url: "private-owner" }], rowCount: 1 }
         : { rows: [], rowCount: 1 });
     const foundRepository = new MusicPublicationOperationRepository(found.pool as never, cipher);
-    await expect(foundRepository.execute(41, "publication-command-private", "private")).resolves.toMatchObject({
+    await expect(foundRepository.execute(41, publicationKey("publication-command-private"), "private")).resolves.toMatchObject({
       status: "completed",
       replayed: false,
       response: { publication: { mode: "private", publicSlug: "private-owner" } },
@@ -386,7 +413,7 @@ describe("durable publication operation repository", () => {
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher, {
       createCapability: () => "short",
     });
-    await expect(repository.execute(41, "publication-command-invalid-capability", "unlisted"))
+    await expect(repository.execute(41, publicationKey("publication-command-invalid-capability"), "unlisted"))
       .rejects.toThrow(/capability generation failed/i);
     expect(db.calls.map(({ text }) => text)).toContain("ROLLBACK");
     expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
@@ -396,7 +423,7 @@ describe("durable publication operation repository", () => {
     const tombstone = { ...storedResponse(), operation_state: "replay_expired" as const };
     const tombstoneDb = harness((text) => text.includes("FROM music_publication_operations") ? { rows: [tombstone] } : { rows: [] });
     const tombstoneRepository = new MusicPublicationOperationRepository(tombstoneDb.pool as never, cipher);
-    await expect(tombstoneRepository.execute(41, "publication-command-1", "unlisted"))
+    await expect(tombstoneRepository.execute(41, publicationKey("publication-command-1"), "unlisted"))
       .resolves.toEqual({ status: "expired" });
     expect(tombstoneDb.calls.filter(({ text }) => text.startsWith("UPDATE music_publication_operations"))).toHaveLength(0);
 
@@ -404,7 +431,7 @@ describe("durable publication operation repository", () => {
       const incomplete = { ...storedResponse(), [field]: null };
       const db = harness((text) => text.includes("FROM music_publication_operations") ? { rows: [incomplete] } : { rows: [] });
       const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
-      await expect(repository.execute(41, "publication-command-1", "unlisted"))
+      await expect(repository.execute(41, publicationKey("publication-command-1"), "unlisted"))
         .rejects.toThrow(/response authority is incomplete/i);
       expect(db.calls.map(({ text }) => text)).toContain("ROLLBACK");
     }

@@ -41,9 +41,10 @@ The Task 9 page may show a nonblocking checking status for `unknown`; the other 
 
 ### Publication command idempotency
 
-Changing publication mode is one owner-derived server transaction. The immutable
-numeric Music owner and a domain-separated SHA-256 hash of the client idempotency
-key identify an append-only operation; the exact requested mode is bound by a
+Changing publication mode is one owner-derived server transaction. The client key
+has the exact form `tunes-share-v1-<13-digit issued-at epoch milliseconds>-<UUIDv4>`.
+The immutable numeric Music owner and a domain-separated SHA-256 hash of that key
+identify an append-only operation; the exact requested mode is bound by a
 separate request fingerprint. The owner advisory lock and the database primary key
 serialize multiple application instances. A matching retry within exactly 24 hours
 returns the byte-equivalent logical response without rotating publication authority;
@@ -59,9 +60,13 @@ guest authority remains only its hash on the owner row. The response needed for 
 lost-response replay is encrypted in the same transaction with AES-256-GCM; its AAD
 binds the response schema version, owner, operation hash, request fingerprint, and
 key ID. Plaintext capabilities and raw idempotency keys are never persisted. After
-24 hours the response is unavailable, the encrypted fields are shredded, and the
-immutable operation tombstone permanently prevents key reuse or another rotation.
-Owner deletion does not delete this tombstone. Append-only corrective migration
+24 hours the response is unavailable and the encrypted fields are shredded. The
+live tombstone is compacted into an immutable archive, and archive rows older than
+30 days are purged in bounded batches. Permanent retirement does not depend on
+unbounded tombstone storage: before any owner lookup or mutation, the repository
+uses PostgreSQL's clock to reject an issued-at timestamp older than 30 days. A key
+more than five minutes in the future is invalid. Owner deletion does not authorize
+key reuse. Append-only corrective migration
 `0012_publication_replay_expiry_guard` makes PostgreSQL's `clock_timestamp()` the
 sole expiry authority for the completed-to-expired transition; application time
 cannot authorize early shredding. Append-only `0013_publication_operation_database_clock`
@@ -70,6 +75,10 @@ also makes PostgreSQL's transaction clock the immutable completion authority:
 `expires_at` is exactly 24 hours later. The repository obtains that same database
 timestamp before encrypting the response, so application clock skew cannot create
 an early or late replay window and the stored AAD inputs remain exact.
+Append-only `0016_publication_operation_retention` bounds archive storage, and
+`0017_publication_idempotency_key_retirement` caps archive purge plus live
+compaction to one shared batch limit while the timestamped-key contract preserves
+permanent retirement after purge.
 
 Live response-encryption keys come only from dedicated secure files. The current
 key is used for new writes; one previous key may be accepted only through an exact

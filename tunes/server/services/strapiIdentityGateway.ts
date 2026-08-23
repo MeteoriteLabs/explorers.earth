@@ -83,7 +83,7 @@ class AdmissionLimitError extends Error {
   }
 }
 
-class MalformedUpstreamBodyError extends Error {
+class MalformedUpstreamBodyError extends RangeError {
   constructor() {
     super("bounded upstream response is malformed");
     this.name = "MalformedUpstreamBodyError";

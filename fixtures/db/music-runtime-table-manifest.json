@@ -2,8 +2,8 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0016_publication_operation_retention",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql"],
+    "expectedId": "0017_publication_idempotency_key_retirement",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql"],
     "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations", "music_publication_operations", "music_publication_operation_archive", "music_reactivation_tokens"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/server/**/*.ts"],
@@ -14,7 +14,6 @@
     { "name": "email_logs", "managedBy": "drizzle", "family": "pii", "lifecycle": "anonymize-retain-policy" },
     { "name": "email_templates", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-owner-policy" },
     { "name": "guest_interactions", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },
-    { "name": "music_reactivation_tokens", "managedBy": "migration", "family": "security-audit", "lifecycle": "expire-retain-hash-only" },
     { "name": "page_contents", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-owner-policy" },
     { "name": "playback_states", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
     { "name": "played_songs", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },

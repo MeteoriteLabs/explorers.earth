@@ -5,6 +5,7 @@ import express from "express";
 import request from "supertest";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createMusicPublicationIdempotencyKey } from "../../../shared/musicPublicationContract";
 import { inventoryRuntimeSurfaces } from "../../../scripts/inventory-runtime-surfaces";
 import { MUSIC_OPENAPI_DOCUMENT } from "../../routes/musicOpenApiRoutes";
 import { setupCanonicalMusicRoutes } from "../../routes/musicSurfaceRoutes";
@@ -198,7 +199,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       ["post", "/api/youtube/video-from-url", "/api/youtube/video-from-url", 200, { url: "https://youtu.be/abcdefghijk" }, ownerWrite],
       ["post", "/api/playlist/{guestUrl}/youtube/search", "/api/playlist/public-owner/youtube/search", 200, { query: "video" }, guestWrite],
       ["post", "/api/playlist/{guestUrl}/youtube/video-from-url", "/api/playlist/public-owner/youtube/video-from-url", 200, { url: "https://youtu.be/abcdefghijk" }, guestWrite],
-      ["post", "/api/music/publication", "/api/music/publication", 200, { mode: "public" }, { ...ownerWrite, "Idempotency-Key": "openapi-publication-1" }],
+      ["post", "/api/music/publication", "/api/music/publication", 200, { mode: "public" }, { ...ownerWrite, "Idempotency-Key": createMusicPublicationIdempotencyKey(Date.parse("2026-08-14T10:00:01.000Z"), "11111111-2222-4333-8444-555555555555") }],
       ["get", "/api/music/entitlement", "/api/music/entitlement", 200, undefined, ownerRead],
       ["get", "/api/playlist/{guestUrl}", "/api/playlist/public-owner", 200, undefined, {}],
       ["post", "/api/playlist/{guestUrl}/requests", "/api/playlist/public-owner/requests", 201, songInput, guestWrite],

@@ -20,7 +20,13 @@ All REST errors use `music-error/v1`, return `X-Request-Id`, and contain `code`,
 | Entitlement | `GET /api/music/entitlement`; `POST /api/music/paid/import` | current server-derived freshness; included core Music remains available; paid import is currently a typed retired boundary |
 | Public/guest | `GET /api/playlist/{guestUrl}` and bounded request/YouTube children | explicit public discovery or a capability header bound to that slug; never URL capability authority |
 
-The publication idempotency key is immutable per owner. Same key and same request replays the byte-equivalent protected response for 24 hours. A different request conflicts; an expired key is permanently retired and cannot rotate authority again.
+The publication idempotency key is immutable per owner and has the exact form
+`tunes-share-v1-<13-digit issued-at epoch milliseconds>-<UUIDv4>`. Same key and
+same request replays the byte-equivalent protected response for 24 hours. A
+different request conflicts while its tombstone is retained. PostgreSQL's clock
+rejects keys older than 30 days before any owner lookup or mutation, so a key is
+permanently retired even after its bounded archive tombstone is purged. Keys more
+than five minutes in the future and malformed or legacy key shapes are invalid.
 
 ## Token and capability lifecycle
 
