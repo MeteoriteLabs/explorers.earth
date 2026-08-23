@@ -14,14 +14,14 @@ export async function runProtectedGlobalSetup({ projectNames, mode, env, onProte
     validateProtectedReadOnlyPrerequisites(selectedEnv);
     const release = await verifyReadOnlyPrerequisites({ username: selectedEnv.E2E_PROFILE_USERNAME, env: selectedEnv });
     if (release.code !== "PUBLIC_API_READY") throw new Error(`${release.code}: protected read-only preflight blocked`);
-    validateRouteFixtureCoverage(selectedEnv.E2E_PROFILE_ROUTE_FIXTURES, release.accountVisibility);
+    validateRouteFixtureCoverage(selectedEnv.E2E_PROFILE_ROUTE_FIXTURES, release.accountVisibility, release.fixtureIdentities);
   }
   else if (selectedMode === "mutation") {
     const selectedEnv = env ?? process.env;
     validateProtectedPrerequisites(selectedEnv);
     const release = await verifyReleasePrerequisites({ username: selectedEnv.E2E_PROFILE_USERNAME, env: selectedEnv });
     if (release.code !== "PUBLIC_API_READY") throw new Error(`${release.code}: protected release preflight blocked`);
-    validateRouteFixtureCoverage(selectedEnv.E2E_PROFILE_ROUTE_FIXTURES, release.accountVisibility);
+    validateRouteFixtureCoverage(selectedEnv.E2E_PROFILE_ROUTE_FIXTURES, release.accountVisibility, release.fixtureIdentities);
   }
   else throw new Error("ENV_MISSING: E2E_PROFILE_PROTECTED_MODE must be read-only or mutation");
   onProtectedReady?.();

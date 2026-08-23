@@ -146,7 +146,9 @@ browser command pass against the restored public profile.
 `ROUTE_FIXTURE_INVALID` means the protected fixture contract is incomplete;
 do not reduce the route list to make the suite pass.
 `ROUTE_FIXTURE_COVERAGE_MISMATCH` means the declared IDs do not exactly match
-live bootstrap visibility and required route/detail contracts.
+live bootstrap visibility and required route/detail contracts, or a typed
+detail/per-category list identifier is missing, stale, duplicated, or belongs
+to another category response.
 `ANALYTICS_RUN_CLEANUP_UNAVAILABLE` means the isolated preflight canary could
 not prove the run-wide cleanup mutation and zero-remaining query.
 `ANALYTICS_CLEANUP_FAILED`

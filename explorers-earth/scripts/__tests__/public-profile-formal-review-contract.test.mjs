@@ -155,7 +155,13 @@ test("protected fixture and run-cleanup block paths are stable and named", async
   assert.equal(typeof validateProtectedPrerequisites, "function");
   assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: ["profile"] }, { public_profile: true }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
   assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: ["profile", "places-map", "places-detail-map", "places-map-detail", "community", "books-index"] }, { public_profile: true }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
-  assert.doesNotThrow(() => validateRouteFixtureCoverage({ enabledRouteIds: ["profile", "places-index", "places-detail", "places-map", "places-detail-map", "places-map-detail", "community"] }, { public_profile: true, public_recommendations: true }));
+  const placesRoutes = ["profile", "places-index", "places-detail", "places-map", "places-detail-map", "places-map-detail", "community"];
+  assert.doesNotThrow(() => validateRouteFixtureCoverage({ enabledRouteIds: placesRoutes, params: { placeSlug: "place-1" } }, { public_profile: true, public_recommendations: true }, { placeSlugs: ["place-1"] }));
+  assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: placesRoutes, params: {} }, { public_profile: true, public_recommendations: true }, { placeSlugs: ["place-1"] }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
+  assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: placesRoutes, params: { placeSlug: "stale" } }, { public_profile: true, public_recommendations: true }, { placeSlugs: ["place-1"] }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
+  const movieRoutes = ["profile", "places-map", "places-detail-map", "places-map-detail", "community", "movies-index", "movies-genre", "movies-list"];
+  assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: movieRoutes, params: { movieGenreSlug: "movie-list-1", movieListSlug: "movie-list-1", placeSlug: "place-1" } }, { public_profile: true, public_movie: true }, { placeSlugs: ["place-1"], movieGenreSlugs: ["movie-genre-1"], movieListSlugs: ["movie-list-1"] }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
+  assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: movieRoutes, params: { movieGenreSlug: "same", movieListSlug: "same", placeSlug: "place-1" } }, { public_profile: true, public_movie: true }, { placeSlugs: ["place-1"], movieGenreSlugs: ["same"], movieListSlugs: ["same"] }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
 });
 
 test("protected read-only setup requires only the dedicated public-read tier", async () => {
@@ -165,7 +171,7 @@ test("protected read-only setup requires only the dedicated public-read tier", a
     projectNames: ["real-account"],
     mode: "read-only",
     env: { VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read-only", E2E_PROFILE_USERNAME: "published-fixture", E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile", "places-map", "places-detail-map", "places-map-detail", "community"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown-fixture" }) },
-    verifyReadOnlyPrerequisites: async () => ({ code: "PUBLIC_API_READY", accountVisibility: { public_profile: true } }),
+    verifyReadOnlyPrerequisites: async () => ({ code: "PUBLIC_API_READY", accountVisibility: { public_profile: true }, fixtureIdentities: { placeSlugs: ["p"] } }),
     onProtectedReady: () => { ready = true; },
   });
   assert.equal(ready, true);
@@ -173,6 +179,15 @@ test("protected read-only setup requires only the dedicated public-read tier", a
     () => runProtectedGlobalSetup({ projectNames: ["real-account"], mode: "read-only", env: {} }),
     /ENV_MISSING/,
   );
+});
+
+test("protected public parity binds accent and recommendations layout to production markers", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "e2e", "real-account", "profile-public-contract.spec.ts"), "utf8");
+  assert.match(source, /data-accent-color/);
+  assert.match(source, /recommendations-\$\{snapshot\.layout\}/);
+  assert.match(source, /public accent must match the saved dashboard swatch/);
+  assert.match(source, /assertPublicSnapshot\(publicPage, mutatedSnapshot\)/);
+  assert.match(source, /assertPublicSnapshot\(publicPage, baselineSnapshot\)/);
 });
 
 test("Task 0 capabilities own every runtime GraphQL operation identity", async () => {

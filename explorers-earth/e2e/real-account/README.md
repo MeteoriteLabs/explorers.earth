@@ -15,6 +15,11 @@ instead of silently reducing coverage. After bootstrap, the declared IDs must
 exactly match every live enabled and always-visible contract route, including
 details; missing, extra, duplicate, or stale IDs fail with
 `ROUTE_FIXTURE_COVERAGE_MISMATCH`. The capability must expose published reads only.
+Detail parameters are typed: `placeSlug`, `guideSlug`, `movieGenreSlug`,
+`bookSubjectSlug`, `gameGenreSlug`, `peopleSectorSlug`, and separate
+`movieListSlug`, `bookListSlug`, `gameListSlug`, `appListSlug`,
+`productListSlug`, and `peopleListSlug`. Global setup proves each identifier
+exists in its matching published collection response; shared `listSlug` is rejected.
 
 ```text
 npm run verify:public-profile:env -- --mode=read-only --json
@@ -46,6 +51,9 @@ In addition to the read-only names, configure all names reported by
 Before any browser/account callback, global setup writes a harmless isolated
 `qa-preflight-*` canary and proves the run-wide cleanup mutation and
 zero-remaining query. Failure is `ANALYTICS_RUN_CLEANUP_UNAVAILABLE`.
+Cleanup and verification are retried from `finally` after a canary write. A
+primary cleanup failure retains a restrictive OS-temporary recovery artifact
+with redacted identifiers and a truthful residual-unverified flag.
 
 Run `npm run test:e2e:real-account`. Global setup fails before any test body if
 one prerequisite is absent. Groups run one at a time and stop on the first

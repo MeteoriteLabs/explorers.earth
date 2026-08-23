@@ -5,6 +5,7 @@ import { expect, test, type Browser, type BrowserContext, type Locator, type Pag
 import { publicRouteContract, publicRoutePath, type PublicRouteContractEntry } from "../../src/routes/publicRouteContract";
 import { PUBLIC_COLLECTION_OPERATIONS, PUBLIC_RUNTIME_OPERATION_CAPABILITIES } from "../../scripts/public-api-capabilities.mjs";
 import { installConsoleNetworkAudit } from "../support/consoleNetworkAudit";
+import { assertRetryRecoveryEvidence } from "../support/retryRecoveryEvidence";
 import {
   pickAllowlistedProfileState,
   removeVerifiedProfileBackup,
@@ -32,7 +33,15 @@ const routeFixtures = (): RouteFixtures => {
     throw new Error("ROUTE_FIXTURE_INVALID");
   }
 };
-const routeParams = () => ({ username: username(), ...routeFixtures().params });
+const routeParams = (route: PublicRouteContractEntry) => {
+  const params = routeFixtures().params;
+  const lists: Record<string, string> = { movies: params.movieListSlug, books: params.bookListSlug, games: params.gameListSlug, apps: params.appListSlug, products: params.productListSlug, people: params.peopleListSlug };
+  return {
+    username: username(), placeSlug: params.placeSlug, place: params.placeSlug, guideSlug: params.guideSlug,
+    genreSlug: route.family === "movies" ? params.movieGenreSlug : params.gameGenreSlug,
+    subjectSlug: params.bookSubjectSlug, sectorSlug: params.peopleSectorSlug, listSlug: lists[route.family],
+  };
+};
 
 async function verifyPublicRoute(page: Page, path: string, route: PublicRouteContractEntry = publicRouteContract[0]) {
   const observed = new Set<string>();
@@ -87,7 +96,7 @@ test("@read-only clean guest opens every enabled public route at mobile and desk
       await verifyPublicRoute(page, `/${encodeURIComponent(username())}`, publicRouteContract[0]);
       const fixtures = routeFixtures();
       for (const route of publicRouteContract) {
-        const path = publicRoutePath(route, routeParams());
+        const path = publicRoutePath(route, routeParams(route));
         if (!fixtures.enabledRouteIds.includes(route.id)) continue;
         const before = audit.entries.length;
         await verifyPublicRoute(page, path, route);
@@ -148,7 +157,7 @@ for (const status of [401, 403, 429, 500]) {
     const route = publicRouteContract.find((candidate) =>
       candidate.id !== "profile" && routeFixtures().enabledRouteIds.includes(candidate.id));
     if (!route) throw new Error("ROUTE_FIXTURE_INVALID:no-enabled-leaf");
-    const path = publicRoutePath(route, routeParams());
+    const path = publicRoutePath(route, routeParams(route));
     const leafCapability = route.requiredOperations.find((operation) => operation !== "account-bootstrap");
     const operationNames = PUBLIC_COLLECTION_OPERATIONS.find((operation) => operation.id === leafCapability)?.runtimeOperationNames ?? [];
     if (!leafCapability || operationNames.length === 0) throw new Error("ROUTE_FIXTURE_INVALID:no-targetable-leaf");
@@ -163,12 +172,35 @@ for (const status of [401, 403, 429, 500]) {
     await page.goto(path, { waitUntil: "domcontentloaded" });
     expect(failed, `HTTP ${status} must target ${leafCapability}, not bootstrap`).toBe(true);
     await expect(page).toHaveURL(new URL(path, page.url()).href);
+    await page.evaluate(() => { (window as typeof window & { __retryDocumentSentinel?: string }).__retryDocumentSentinel = "same-document-retry"; });
     const leaf = page.locator(`[data-public-route-leaf="${route.marker}"]`);
     const retry = leaf.getByRole("button", { name: /retry/i });
     await expect(retry).toBeVisible();
     await page.unroute("**/graphql");
+    let recoveryRequests = 0;
+    const observeRecovery = (request: import("@playwright/test").Request) => {
+      try { if (operationNames.includes((request.postDataJSON() as { operationName?: string }).operationName ?? "")) recoveryRequests += 1; } catch { /* ignore */ }
+    };
+    page.on("request", observeRecovery);
+    const recoveryResponse = page.waitForResponse((response) => {
+      try { return response.request().postDataJSON().operationName && operationNames.includes(response.request().postDataJSON().operationName); } catch { return false; }
+    });
     await retry.click();
-    await verifyPublicRoute(page, path, route);
+    const recovered = await recoveryResponse;
+    expect(recovered.ok(), "Retry leaf operation must recover successfully").toBe(true);
+    const recoveryPayload = await recovered.json() as { errors?: unknown[] };
+    expect(recoveryPayload.errors ?? []).toEqual([]);
+    await expect(page).toHaveURL(new URL(path, page.url()).href);
+    await expect(leaf).toBeVisible();
+    await expect(retry).toHaveCount(0);
+    const hasRecoveredContent = await leaf.locator("a, button, img, video, [data-category-id], [data-testid]").count() > 0 || (await leaf.innerText()).trim().length > 0;
+    assertRetryRecoveryEvidence({
+      documentSentinel: await page.evaluate(() => (window as typeof window & { __retryDocumentSentinel?: string }).__retryDocumentSentinel),
+      expectedSentinel: "same-document-retry", actualUrl: page.url(), expectedUrl: new URL(path, page.url()).href,
+      markerVisible: await leaf.isVisible(), retryGone: await retry.count() === 0, recoveryRequests,
+      responseOk: recovered.ok(), responseHasErrors: Boolean(recoveryPayload.errors?.length), hasContent: hasRecoveredContent,
+    });
+    page.off("request", observeRecovery);
   });
 }
 
@@ -186,6 +218,7 @@ const HIGH_RISK_GROUPS = [
 interface EditorSnapshot {
   preset: string;
   accent: string;
+  accentValue: string;
   wallpaper: string;
   firstView: string;
   footer: string;
@@ -216,11 +249,14 @@ async function captureEditorSnapshot(page: Page): Promise<EditorSnapshot> {
   const wallpaper = await page.locator("#theme-wallpaper-mode").inputValue();
   const firstView = await page.locator("#theme-first-view").inputValue();
   const footer = await page.locator("#theme-footer-branding").inputValue();
-  const accent = await page.locator('section[aria-labelledby="accent-color-title"] button[aria-pressed=true]').getAttribute("aria-label");
+  const activeAccent = page.locator('section[aria-labelledby="accent-color-title"] button[aria-pressed=true]');
+  const accent = await activeAccent.getAttribute("aria-label");
+  const accentValue = await activeAccent.evaluate((element) => getComputedStyle(element).backgroundColor);
   const layout = await page.locator('input[name="recommendations-layout"]:checked').inputValue();
   const visibleTabs = await page.locator('fieldset:has(legend:text("Public sections")) input[type="checkbox"]').evaluateAll((nodes) =>
     nodes.map((node) => (node as HTMLInputElement).checked));
   if (!accent || visibleTabs.length !== 3) throw new Error("RESTORE_PLAN_INCOMPLETE:appearance-fields");
+  if (!visibleTabs[0]) throw new Error("RESTORE_PLAN_INCOMPLETE:recommendations-public-parity");
   await openEditorWorkspace(page, "Profile");
   const bio = page.locator('[data-field="bio"] [contenteditable=true]');
   await expect(bio).toBeVisible();
@@ -232,6 +268,7 @@ async function captureEditorSnapshot(page: Page): Promise<EditorSnapshot> {
   return {
     preset,
     accent,
+    accentValue,
     wallpaper,
     firstView,
     footer,
@@ -334,11 +371,20 @@ async function restoreEditorSnapshot(page: Page, snapshot: EditorSnapshot) {
 async function assertPublicSnapshot(page: Page, snapshot: EditorSnapshot) {
   const shell = page.getByTestId("public-profile-route-shell");
   await expect(shell).toHaveAttribute("data-theme-preset", snapshot.preset);
+  const shellAccent = await shell.getAttribute("data-accent-color");
+  const normalizeColor = (value: string) => {
+    if (value.startsWith("#")) return value.toLowerCase();
+    const channels = value.match(/\d+/g)?.slice(0, 3).map(Number);
+    return channels?.length === 3 ? `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}` : value.toLowerCase();
+  };
+  expect(normalizeColor(shellAccent ?? ""), "public accent must match the saved dashboard swatch").toBe(normalizeColor(snapshot.accentValue));
   await expect(shell).toHaveAttribute("data-wallpaper-mode", snapshot.wallpaper);
   await expect(shell).toHaveAttribute("data-footer-branding", snapshot.footer);
   await expect(shell).toHaveAttribute("data-first-view", snapshot.firstView);
   const visibleNames = ["recommendations", "gallery", "business"].filter((_name, index) => snapshot.visibleTabs[index]).join(",");
   await expect(shell).toHaveAttribute("data-visible-tabs", visibleNames);
+  await page.getByRole("tab", { name: "Recommendations", exact: true }).click();
+  await expect(page.getByTestId(`recommendations-${snapshot.layout}`), "public recommendations layout marker").toHaveCount(1);
   const bioText = snapshot.bioHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   if (bioText) await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toContainText(bioText);
   const publicCategories = await page.locator("[data-category-id]").evaluateAll((nodes) => [...new Set(nodes.map((node) => node.getAttribute("data-category-id")).filter((id): id is string => Boolean(id)))]);
@@ -501,7 +547,7 @@ test("@mutation serialized dashboard-to-public groups always restore their allow
           const categoryRoute = publicRouteContract.find((route) =>
             route.id !== "profile" && routeFixtures().enabledRouteIds.includes(route.id));
           if (!categoryRoute) throw new Error("ROUTE_FIXTURE_INVALID:no-category-route");
-          await verifyPublicRoute(publicPage, publicRoutePath(categoryRoute, routeParams()), categoryRoute);
+          await verifyPublicRoute(publicPage, publicRoutePath(categoryRoute, routeParams(categoryRoute)), categoryRoute);
           await expect(publicPage.locator(`[data-public-route-leaf="${categoryRoute.marker}"]`)).toBeVisible();
         },
         normalRestore: (_state, snapshot) => restoreEditorSnapshot(dashboard, snapshot),
@@ -577,7 +623,7 @@ test("@mutation guest, owner, and non-owner analytics remain run-scoped and clea
       const routes = [publicRouteContract[0], ...publicRouteContract.filter((route) => route.id !== "profile" && routeFixtures().enabledRouteIds.includes(route.id))];
       for (const route of routes) {
         routeId = route.id;
-        const path = publicRoutePath(route, routeParams());
+        const path = publicRoutePath(route, routeParams(route));
         await verifyPublicRoute(page, path, route);
         const pathname = new URL(page.url()).pathname;
         expect(await page.evaluate((expectedPath) => JSON.stringify((window as typeof window & { dataLayer?: unknown[] }).dataLayer ?? []).includes(expectedPath), pathname)).toBe(true);

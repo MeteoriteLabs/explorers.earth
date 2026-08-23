@@ -23,10 +23,19 @@ const ROUTE_VISIBILITY = new Map([
   ["products-index", "public_products"], ["products-list", "public_products"],
   ["people-index", "public_people"], ["people-sector", "public_people"], ["people-list", "public_people"],
 ]);
+const DETAIL_FIXTURES = new Map([
+  ["places-detail", ["placeSlug", "placeSlugs"]], ["places-detail-map", ["placeSlug", "placeSlugs"]], ["places-map-detail", ["placeSlug", "placeSlugs"]],
+  ["guides-detail", ["guideSlug", "guideSlugs"]],
+  ["movies-genre", ["movieGenreSlug", "movieGenreSlugs"]], ["movies-list", ["movieListSlug", "movieListSlugs"]],
+  ["books-subject", ["bookSubjectSlug", "bookSubjectSlugs"]], ["books-list", ["bookListSlug", "bookListSlugs"]],
+  ["games-genre", ["gameGenreSlug", "gameGenreSlugs"]], ["games-list", ["gameListSlug", "gameListSlugs"]],
+  ["apps-list", ["appListSlug", "appListSlugs"]], ["products-list", ["productListSlug", "productListSlugs"]],
+  ["people-sector", ["peopleSectorSlug", "peopleSectorSlugs"]], ["people-list", ["peopleListSlug", "peopleListSlugs"]],
+]);
 
 function enabled(value) { return value === true || value === "Yes"; }
 
-export function validateRouteFixtureCoverage(raw, accountVisibility) {
+export function validateRouteFixtureCoverage(raw, accountVisibility, fixtureIdentities) {
   const fixtures = typeof raw === "string" ? JSON.parse(raw) : raw;
   const actual = new Set(fixtures.enabledRouteIds);
   const expected = new Set([...ROUTE_VISIBILITY].filter(([, field]) => field === null || enabled(accountVisibility?.[field])).map(([id]) => id));
@@ -35,6 +44,19 @@ export function validateRouteFixtureCoverage(raw, accountVisibility) {
   if (missing.length || extra.length || actual.size !== fixtures.enabledRouteIds.length) {
     throw new Error("ROUTE_FIXTURE_COVERAGE_MISMATCH");
   }
+  const usedByParam = new Map();
+  for (const routeId of actual) {
+    const requirement = DETAIL_FIXTURES.get(routeId);
+    if (!requirement) continue;
+    const [param, identityKey] = requirement;
+    const value = fixtures.params?.[param];
+    if (typeof value !== "string" || value.length === 0 || !fixtureIdentities || !Array.isArray(fixtureIdentities[identityKey]) || !fixtureIdentities[identityKey].includes(value)) {
+      throw new Error("ROUTE_FIXTURE_COVERAGE_MISMATCH");
+    }
+    usedByParam.set(param, value);
+  }
+  const used = [...usedByParam.values()];
+  if (new Set(used).size !== used.length) throw new Error("ROUTE_FIXTURE_COVERAGE_MISMATCH");
   return fixtures;
 }
 
@@ -42,9 +64,7 @@ export function validateRouteFixtures(env) {
   if (!env.E2E_PROFILE_ROUTE_FIXTURES) throw new Error("ENV_MISSING: E2E_PROFILE_ROUTE_FIXTURES");
   try {
     const fixtures = JSON.parse(env.E2E_PROFILE_ROUTE_FIXTURES);
-    const requiredParams = ["placeSlug", "place", "guideSlug", "genreSlug", "subjectSlug", "sectorSlug", "listSlug"];
     if (!fixtures || typeof fixtures !== "object" || !fixtures.params ||
-      requiredParams.some((name) => typeof fixtures.params[name] !== "string" || fixtures.params[name].length === 0) ||
       !Array.isArray(fixtures.enabledRouteIds) || fixtures.enabledRouteIds.length === 0 ||
       fixtures.enabledRouteIds.some((id) => typeof id !== "string" || !ROUTE_VISIBILITY.has(id)) ||
       !fixtures.hiddenPath || !fixtures.deletedPath || !fixtures.unknownUsername) {

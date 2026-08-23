@@ -14,21 +14,21 @@ export const ACCOUNT_BOOTSTRAP = {
 };
 
 const COLLECTIONS = [
-  ["places", "recommendationLists", "public_recommendations", "Visibility", ["PublicPlacesLists", "GetPlacesLists", "PublicPlaceListBySlug", "PublicRecommendedPlacesConnection", "Account"]],
-  ["movies", "movieLists", "public_movie", "Visibility", ["PublicMovieData", "GetMoviesLists", "MovieListBySlug", "MoviesByGenre"]],
-  ["books", "bookLists", "public_books", "visibility", ["PublicBookData", "GetBooksLists", "PublicBookLists", "BookListBySlug", "BooksBySubject"]],
-  ["games", "gameLists", "public_games", "Visibility", ["PublicGameData", "GetGamesLists", "GameListBySlug", "GamesByGenre"]],
-  ["guides", "guides", "public_guides", "Visibility", ["GetPublicGuides", "GetGuidesLists", "GetPublicGuideBySlug"]],
-  ["apps", "appLists", "public_apps", "Visibility", ["PublicAppData", "GetAppsLists", "AppListBySlug"]],
-  ["products", "productLists", "public_products", "Visibility", ["PublicProductData", "GetProductsLists", "ProductListBySlug"]],
-  ["people", "personLists", "public_people", "Visibility", ["PublicPeopleData", "GetPeopleLists", "PersonListBySlug", "PeopleBySector"]],
+  ["places", "recommendationLists", "public_recommendations", "Visibility", "documentId slug", ["PublicPlacesLists", "GetPlacesLists", "PublicPlaceListBySlug", "PublicRecommendedPlacesConnection", "Account"]],
+  ["movies", "movieLists", "public_movie", "Visibility", "documentId slug recommended_movies(pagination: { limit: 10 }) { movie_categories(pagination: { limit: 10 }) { documentId } }", ["PublicMovieData", "GetMoviesLists", "MovieListBySlug", "MoviesByGenre"]],
+  ["books", "bookLists", "public_books", "visibility", "documentId slug recommended_books(pagination: { limit: 10 }) { book_categories(pagination: { limit: 10 }) { documentId } }", ["PublicBookData", "GetBooksLists", "PublicBookLists", "BookListBySlug", "BooksBySubject"]],
+  ["games", "gameLists", "public_games", "Visibility", "documentId slug recommended_games(pagination: { limit: 10 }) { game_categories(pagination: { limit: 10 }) { documentId } }", ["PublicGameData", "GetGamesLists", "GameListBySlug", "GamesByGenre"]],
+  ["guides", "guides", "public_guides", "Visibility", "documentId slug", ["GetPublicGuides", "GetGuidesLists", "GetPublicGuideBySlug"]],
+  ["apps", "appLists", "public_apps", "Visibility", "documentId slug", ["PublicAppData", "GetAppsLists", "AppListBySlug"]],
+  ["products", "productLists", "public_products", "Visibility", "documentId slug", ["PublicProductData", "GetProductsLists", "ProductListBySlug"]],
+  ["people", "personLists", "public_people", "Visibility", "documentId slug recommended_people(pagination: { limit: 10 }) { people_category { documentId } }", ["PublicPeopleData", "GetPeopleLists", "PersonListBySlug", "PeopleBySector"]],
 ];
 
-export const PUBLIC_COLLECTION_OPERATIONS = COLLECTIONS.map(([id, field, enabledField, visibilityField, runtimeOperationNames]) => ({
+export const PUBLIC_COLLECTION_OPERATIONS = COLLECTIONS.map(([id, field, enabledField, visibilityField, fixtureSelection, runtimeOperationNames]) => ({
   id,
   operationName: `Public${id[0].toUpperCase()}${id.slice(1)}`,
   enabledField,
-  query: `query Public${id[0].toUpperCase()}${id.slice(1)}($accountDocumentId: ID!) { ${field}(filters: { account: { documentId: { eq: $accountDocumentId } }, ${visibilityField}: { eq: true } }, pagination: { limit: 1 }) { documentId } }`,
+  query: `query Public${id[0].toUpperCase()}${id.slice(1)}($accountDocumentId: ID!) { ${field}(filters: { account: { documentId: { eq: $accountDocumentId } }, ${visibilityField}: { eq: true } }, pagination: { limit: 20 }) { ${fixtureSelection} } }`,
   variables: (accountDocumentId) => ({ accountDocumentId }),
   path: [field],
   runtimeOperationNames,

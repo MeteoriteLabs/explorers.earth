@@ -1,4 +1,8 @@
 import { config } from "dotenv";
+import { mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { ACCOUNT_BOOTSTRAP, enabledPublicOperations } from "./public-api-capabilities.mjs";
 import { exitCodeFor, formatVerificationResult } from "./lib/verificationResult.mjs";
 
@@ -132,7 +136,15 @@ export async function runAnalyticsCanaryLifecycle({ endpoint, token, runId, qaSi
   return { code: "PUBLIC_API_READY", operations: [{ operation: "analytics-canary", classification: "ready", code: "PUBLIC_API_READY", observedStatus: "cleanup-verified", likelyCause: "Approved QA analytics canary completed and was removed.", remediation: "Retain the redacted release artifact." }] };
 }
 
-export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRunId, qaSink, documents, fetchImpl = fetch, timeoutMs = 1500 } = {}) {
+async function writeAnalyticsCleanupRecoveryArtifact({ residualUnverified }) {
+  const directory = path.join(tmpdir(), `explorers-analytics-recovery-${randomUUID()}`);
+  await mkdir(directory, { recursive: false, mode: 0o700 });
+  const artifactPath = path.join(directory, "recovery.json");
+  await writeFile(artifactPath, JSON.stringify({ version: 1, code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", residualUnverified: Boolean(residualUnverified), runId: "[REDACTED]", qaSink: "[REDACTED]" }), { encoding: "utf8", mode: 0o600, flag: "wx" });
+  return artifactPath;
+}
+
+export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRunId, qaSink, documents, fetchImpl = fetch, timeoutMs = 1500, writeRecoveryArtifact = writeAnalyticsCleanupRecoveryArtifact } = {}) {
   const runId = /^qa[-_]/i.test(baseRunId ?? "") ? `qa-preflight-${baseRunId.slice(3)}` : "";
   if (!endpoint || !token || !runId || !/^qa[-_]/i.test(qaSink ?? "") ||
       !/\bcanary\s*:/.test(documents?.canary ?? "") || !/\bcleanup\s*:/.test(documents?.cleanupRun ?? "") ||
@@ -147,12 +159,33 @@ export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRun
       return response.ok && !body.errors ? body.data : null;
     } catch { return null; } finally { clearTimeout(timer); }
   };
-  const written = await send("PreflightQaBrowserRun", documents.canary);
-  if (!written?.canary?.documentId) return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "canary-write-failed")] };
-  const cleaned = await send("PreflightCleanupQaBrowserRun", documents.cleanupRun);
-  if (!cleaned?.cleanup) return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "cleanup-failed")] };
-  const verified = await send("PreflightVerifyQaBrowserRun", documents.remainingRun);
-  if (!Array.isArray(verified?.remaining) || verified.remaining.length !== 0) return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "cleanup-verification-failed")] };
+  let created = false;
+  let verifiedEmpty = false;
+  let primarySucceeded = false;
+  let failure = "canary-write-failed";
+  try {
+    const written = await send("PreflightQaBrowserRun", documents.canary);
+    created = Boolean(written?.canary?.documentId);
+    if (created) {
+      const cleaned = await send("PreflightCleanupQaBrowserRun", documents.cleanupRun);
+      failure = cleaned?.cleanup ? "cleanup-verification-failed" : "cleanup-failed";
+      if (cleaned?.cleanup) {
+        const verified = await send("PreflightVerifyQaBrowserRun", documents.remainingRun);
+        verifiedEmpty = Array.isArray(verified?.remaining) && verified.remaining.length === 0;
+        primarySucceeded = verifiedEmpty;
+      }
+    }
+  } finally {
+    if (created && !verifiedEmpty) {
+      await send("EmergencyCleanupQaBrowserRun", documents.cleanupRun);
+      const emergency = await send("EmergencyVerifyQaBrowserRun", documents.remainingRun);
+      verifiedEmpty = Array.isArray(emergency?.remaining) && emergency.remaining.length === 0;
+    }
+  }
+  if (!primarySucceeded) {
+    const artifactPath = created ? await writeRecoveryArtifact({ residualUnverified: !verifiedEmpty }) : undefined;
+    return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", artifactPath, operations: [diagnostic("analytics-run-cleanup", "malformed", !created ? "canary-write-failed" : failure)] };
+  }
   return { code: "PUBLIC_API_READY", operations: [{ ...diagnostic("analytics-run-cleanup", "ready", "cleanup-verified"), code: "PUBLIC_API_READY" }] };
 }
 
@@ -233,7 +266,8 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
     const privateAccount = { ...bootstrapOperation, classification: "forbidden", code: "PUBLIC_READ_FORBIDDEN", observedStatus: "private-account-returned", likelyCause: "The bootstrap query exposed an unpublished account.", remediation: "Require public_profile publication in the server query policy or use a BFF/server proxy." };
     return { code: privateAccount.code, username: "provided", configuration, operations: [privateAccount] };
   }
-  const collectionResponses = await Promise.all(enabledPublicOperations(account).map((operation) => requestOperation({ endpoint, token, operation, variables: operation.variables(account.documentId), fetchImpl, timeoutMs, retries })));
+  const enabledOperations = enabledPublicOperations(account);
+  const collectionResponses = await Promise.all(enabledOperations.map((operation) => requestOperation({ endpoint, token, operation, variables: operation.variables(account.documentId), fetchImpl, timeoutMs, retries })));
   const collectionResults = collectionResponses.map((response) => response.diagnostic);
   const operations = [bootstrapOperation, ...collectionResults];
   const negative = await runControlledNegativeProbes({ endpoint, env, fetchImpl, timeoutMs });
@@ -247,7 +281,7 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
     return { code: "CONTROLLED_FIXTURE_REQUIRED", username: "provided", configuration, operations: [...operations, prerequisite] };
   }
   const code = negative.code === "PUBLIC_API_READY" ? reportCode(operations) : negative.code;
-  return { code, username: "provided", configuration, operations: [...operations, ...negative.operations], accountVisibility: publicVisibility(account) };
+  return { code, username: "provided", configuration, operations: [...operations, ...negative.operations], accountVisibility: publicVisibility(account), fixtureIdentities: publicFixtureIdentities(enabledOperations, collectionResponses) };
 }
 
 export async function runPublicReadOnlyPreflight({ username, env = process.env, fetchImpl = fetch, timeoutMs = 1500, retries = 1 } = {}) {
@@ -265,15 +299,34 @@ export async function runPublicReadOnlyPreflight({ username, env = process.env, 
   if (account.public_profile !== "Yes" && account.public_profile !== true) {
     return { code: "PUBLIC_READ_FORBIDDEN", operations: [bootstrapResponse.diagnostic] };
   }
-  const collections = await Promise.all(enabledPublicOperations(account).map((operation) => requestOperation({
+  const enabledOperations = enabledPublicOperations(account);
+  const collections = await Promise.all(enabledOperations.map((operation) => requestOperation({
     endpoint, token, operation, variables: operation.variables(account.documentId), fetchImpl, timeoutMs, retries,
   })));
   const operations = [bootstrapResponse.diagnostic, ...collections.map((result) => result.diagnostic)];
-  return { code: reportCode(operations), operations, accountVisibility: publicVisibility(account) };
+  return { code: reportCode(operations), operations, accountVisibility: publicVisibility(account), fixtureIdentities: publicFixtureIdentities(enabledOperations, collections) };
 }
 
 function publicVisibility(account) {
   return Object.fromEntries(["public_profile", "public_recommendations", "public_music", "public_movie", "public_books", "public_guides", "public_games", "public_apps", "public_products", "public_people"].map((field) => [field, account[field] === true || account[field] === "Yes"]));
+}
+
+function publicFixtureIdentities(operations, responses) {
+  const values = Object.fromEntries(operations.map((operation, index) => [operation.id, responses[index]?.value ?? []]));
+  const ids = (items) => [...new Set((items ?? []).flatMap((item) => [item?.documentId, item?.slug]).filter((value) => typeof value === "string" && value.length > 0))];
+  const nestedIds = (items, itemField, categoryField) => [...new Set((items ?? []).flatMap((list) => list?.[itemField] ?? []).flatMap((item) => {
+    const categories = item?.[categoryField];
+    return (Array.isArray(categories) ? categories : categories ? [categories] : []).map((category) => category?.documentId);
+  }).filter((value) => typeof value === "string" && value.length > 0))];
+  return {
+    placeSlugs: ids(values.places), guideSlugs: ids(values.guides),
+    movieListSlugs: ids(values.movies), bookListSlugs: ids(values.books), gameListSlugs: ids(values.games),
+    appListSlugs: ids(values.apps), productListSlugs: ids(values.products), peopleListSlugs: ids(values.people),
+    movieGenreSlugs: nestedIds(values.movies, "recommended_movies", "movie_categories"),
+    bookSubjectSlugs: nestedIds(values.books, "recommended_books", "book_categories"),
+    gameGenreSlugs: nestedIds(values.games, "recommended_games", "game_categories"),
+    peopleSectorSlugs: nestedIds(values.people, "recommended_people", "people_category"),
+  };
 }
 
 function parseArgs(args) {

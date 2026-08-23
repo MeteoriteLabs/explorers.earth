@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -198,18 +198,49 @@ test("run-wide analytics cleanup is functionally proven with a harmless isolated
   assert.deepEqual(operations, ["PreflightQaBrowserRun", "PreflightCleanupQaBrowserRun", "PreflightVerifyQaBrowserRun"]);
 });
 
-test("run-wide cleanup failure uses a stable blocker before later probes", async () => {
-  let calls = 0;
+for (const failure of ["cleanup-fails", "query-fails", "transport-throws"]) {
+  test(`run-wide ${failure} attempts emergency cleanup and retains truthful redacted recovery evidence`, async () => {
+    const operations = []; const artifacts = [];
+    const result = await runAnalyticsRunCleanupPreflight({
+      endpoint: "https://fixture.invalid/graphql", token: "analytics-write-token", baseRunId: "qa-browser-run", qaSink: "qa-sink",
+      documents: { canary: analyticsDocuments().canary, cleanupRun: "mutation { cleanup: deleteQaRun }", remainingRun: "query { remaining: qaRunEvents }" },
+      writeRecoveryArtifact: async (value) => { artifacts.push(value); return "/redacted/recovery.json"; },
+      fetchImpl: async (_url, options) => {
+        const { operationName } = JSON.parse(options.body); operations.push(operationName);
+        if (operationName === "PreflightQaBrowserRun") return Response.json({ data: { canary: { documentId: "created" } } });
+        if (failure === "transport-throws") throw new Error("private transport detail");
+        if (operationName === "PreflightCleanupQaBrowserRun") return Response.json({ data: { cleanup: failure !== "cleanup-fails" ? { documentId: "created" } : null } });
+        if (operationName === "PreflightVerifyQaBrowserRun") return Response.json({ data: { remaining: failure === "query-fails" ? [{ documentId: "residual" }] : [] } });
+        if (operationName === "EmergencyCleanupQaBrowserRun") return Response.json({ data: { cleanup: { documentId: "created" } } });
+        return Response.json({ data: { remaining: [] } });
+      },
+    });
+    assert.equal(result.code, "ANALYTICS_RUN_CLEANUP_UNAVAILABLE");
+    assert.equal(result.artifactPath, "/redacted/recovery.json");
+    assert.ok(operations.includes("EmergencyCleanupQaBrowserRun"));
+    assert.ok(operations.includes("EmergencyVerifyQaBrowserRun"));
+    assert.deepEqual(artifacts, [{ residualUnverified: failure === "transport-throws" }]);
+    assert.doesNotMatch(JSON.stringify(result), /private transport detail|analytics-write-token|qa-browser-run|qa-sink/);
+  });
+}
+
+test("unresolved run cleanup writes only restrictive redacted recovery evidence", async () => {
   const result = await runAnalyticsRunCleanupPreflight({
-    endpoint: "https://fixture.invalid/graphql", token: "analytics-write-token", baseRunId: "qa-browser-run", qaSink: "qa-sink",
+    endpoint: "https://fixture.invalid/graphql", token: "private-analytics-token", baseRunId: "qa-private-run", qaSink: "qa-private-sink",
     documents: { canary: analyticsDocuments().canary, cleanupRun: "mutation { cleanup: deleteQaRun }", remainingRun: "query { remaining: qaRunEvents }" },
     fetchImpl: async (_url, options) => {
-      calls += 1; const { operationName } = JSON.parse(options.body);
-      return operationName === "PreflightQaBrowserRun" ? Response.json({ data: { canary: { documentId: "created" } } }) : Response.json({ data: { cleanup: null } });
+      const { operationName } = JSON.parse(options.body);
+      if (operationName === "PreflightQaBrowserRun") return Response.json({ data: { canary: { documentId: "created" } } });
+      throw new Error("private cleanup failure");
     },
   });
-  assert.equal(calls, 2);
-  assert.equal(result.code, "ANALYTICS_RUN_CLEANUP_UNAVAILABLE");
+  try {
+    assert.equal(result.code, "ANALYTICS_RUN_CLEANUP_UNAVAILABLE");
+    const saved = await readFile(result.artifactPath, "utf8");
+    assert.doesNotMatch(saved, /private-analytics-token|qa-private-run|qa-private-sink|private cleanup failure/);
+    assert.deepEqual(JSON.parse(saved), { version: 1, code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", residualUnverified: true, runId: "[REDACTED]", qaSink: "[REDACTED]" });
+    if (process.platform !== "win32") assert.equal((await stat(result.artifactPath)).mode & 0o077, 0);
+  } finally { if (result.artifactPath) await rm(path.dirname(result.artifactPath), { recursive: true, force: true }); }
 });
 
 test("analytics canary cleanup runs in finally before cleanup verification", async () => {
@@ -323,12 +354,14 @@ test("read-only protected preflight proves enabled reads without any mutation or
       if (request.operationName === "PublicAccountBootstrap") {
         return Response.json({ data: { accounts: [{ documentId: "account-1", public_profile: "Yes", public_books: "Yes" }] } });
       }
-      return Response.json({ data: { bookLists: [] } });
+      return Response.json({ data: { bookLists: [{ documentId: "book-list-doc", slug: "book-list", recommended_books: [{ book_categories: [{ documentId: "subject-doc" }] }] }] } });
     },
   });
   assert.equal(report.code, "PUBLIC_API_READY");
   assert.deepEqual(requests.map((request) => request.operationName), ["PublicAccountBootstrap", "PublicBooks"]);
   assert.equal(requests.some((request) => /\bmutation\b/.test(request.query)), false);
+  assert.deepEqual(report.fixtureIdentities.bookListSlugs, ["book-list-doc", "book-list"]);
+  assert.deepEqual(report.fixtureIdentities.bookSubjectSlugs, ["subject-doc"]);
 });
 
 test("controlled probes refuse every write until the approved QA canary and cleanup contract is present", async () => {

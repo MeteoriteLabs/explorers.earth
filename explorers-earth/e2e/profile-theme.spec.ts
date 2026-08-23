@@ -13,6 +13,7 @@ import { restoreWithEmergency, runProtectedProfileMutation } from "./support/liv
 import * as liveSafety from "./support/liveProfileWriteSafety";
 import { evaluateCorePixelContrast } from "./support/publicProfileFixture";
 import * as publicFixture from "./support/publicProfileFixture";
+import { assertRetryRecoveryEvidence } from "./support/retryRecoveryEvidence";
 
 test("restore guard uses one emergency cleanup and preserves the original failure", async () => {
   const originalFailure = new Error("normal restore failed");
@@ -89,6 +90,15 @@ test("protected mutation cannot begin when the restore plan is not independently
     verifyRestored: async () => { events.push("verify-restored"); },
   })).rejects.toThrow("RESTORE_NOT_READY");
   expect(events).toEqual(["capture", "template", "restore-ready"]);
+});
+
+test("same-document Retry evidence rejects a no-op control", () => {
+  expect(() => assertRetryRecoveryEvidence({
+    documentSentinel: "same-document-retry", expectedSentinel: "same-document-retry",
+    actualUrl: "http://fixture.test/alice/books", expectedUrl: "http://fixture.test/alice/books",
+    markerVisible: true, retryGone: false, recoveryRequests: 0, responseOk: false,
+    responseHasErrors: false, hasContent: false,
+  })).toThrow("RETRY_RECOVERY_UI_INCOMPLETE");
 });
 
 test("settings manifest declares 24 named theme and wallpaper cases", () => {

@@ -59,12 +59,16 @@ audit. It requires the complete `E2E_PROFILE_ROUTE_FIXTURES` contract and runs
 a query-only capability preflight before any page callback. Route IDs are
 reconciled exactly against bootstrap visibility and the route contract;
 profile-only, missing-detail, duplicate, extra, and stale fixtures fail with
-`ROUTE_FIXTURE_COVERAGE_MISMATCH`. Run
+`ROUTE_FIXTURE_COVERAGE_MISMATCH`. Typed detail identifiers and per-category
+list slugs are checked against their matching published collection responses;
+the legacy shared `listSlug` cannot satisfy the gate. Run
 `npm run test:e2e:real-account` only after the mutation doctor,
 dedicated-account marker, backup/restore, and analytics-cleanup gates are all
 ready, including browser-run cleanup and empty-remaining verification. The
 run-wide cleanup/query operations are functionally proven with an isolated
 preflight canary; `ANALYTICS_RUN_CLEANUP_UNAVAILABLE` blocks callbacks. The
+preflight always attempts emergency cleanup after a written canary and retains
+redacted restrictive recovery evidence when primary cleanup is not proven. The
 mutation harness proves the captured real Profile/Appearance controls can
 restore before it creates a backup or calls any mutation callback. A blocked
 protected run is not a waived or skipped release check.
