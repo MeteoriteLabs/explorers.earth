@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import sharp from "sharp";
 import test from "node:test";
 
 import {
@@ -13,12 +14,19 @@ import { validateProtectedPrerequisites } from "../protected-prerequisites.mjs";
 import { runPublicApiPreflight } from "../verify-public-api-access.mjs";
 
 const workflowPath = new URL("../../../.github/workflows/ci.yml", import.meta.url);
-const galleryCases = [
-  { extension: ".png", mimeType: "image/png", bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]) },
-  { extension: ".jpg", mimeType: "image/jpeg", bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1]) },
-  { extension: ".gif", mimeType: "image/gif", bytes: Buffer.from("GIF89a-fixture") },
-  { extension: ".webp", mimeType: "image/webp", bytes: Buffer.from("RIFF0000WEBPfixture") },
-];
+const sourceImage = () => sharp({
+  create: { width: 1, height: 1, channels: 4, background: { r: 1, g: 2, b: 3, alpha: 1 } },
+});
+const galleryCases = await Promise.all([
+  [".png", "image/png", "png"],
+  [".jpg", "image/jpeg", "jpeg"],
+  [".gif", "image/gif", "gif"],
+  [".webp", "image/webp", "webp"],
+].map(async ([extension, mimeType, format]) => ({
+  extension,
+  mimeType,
+  bytes: await sourceImage()[format]().toBuffer(),
+})));
 
 test("protected CI uses exact cleanup names, qa run IDs, and independent required artifacts", async () => {
   const workflow = await fs.readFile(workflowPath, "utf8");
@@ -68,6 +76,27 @@ test("rejects malformed storage JSON and non-image gallery content", async () =>
     galleryBase64: Buffer.from("not-an-image").toString("base64"),
     tempRoot,
   }), /PROTECTED_FIXTURE_INVALID/);
+  for (const gallery of galleryCases) {
+    for (const invalid of [
+      gallery.bytes.subarray(0, Math.min(12, gallery.bytes.length)),
+      gallery.bytes.subarray(0, gallery.bytes.length - 1),
+    ]) {
+      await assert.rejects(materializeProtectedFixtures({
+        ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+        nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+        galleryBase64: invalid.toString("base64"),
+        tempRoot,
+      }), /PROTECTED_FIXTURE_INVALID/);
+    }
+  }
+  const zeroWidthPng = Buffer.from(galleryCases[0].bytes);
+  zeroWidthPng.writeUInt32BE(0, 16);
+  await assert.rejects(materializeProtectedFixtures({
+    ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    galleryBase64: zeroWidthPng.toString("base64"),
+    tempRoot,
+  }), /PROTECTED_FIXTURE_INVALID/);
   await assert.rejects(materializeProtectedFixtures({
     ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
     nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
@@ -91,14 +120,38 @@ test("removes the temporary directory when permission hardening fails", async ()
     galleryBase64: galleryCases[0].bytes.toString("base64"),
     tempRoot,
     fileSystem,
-  }), /injected chmod failure/);
+  }), /PROTECTED_FIXTURE_INVALID/);
+  assert.deepEqual(await fs.readdir(tempRoot), []);
+  await fs.rm(tempRoot, { recursive: true, force: true });
+});
+
+test("removes the temporary directory and emits a stable code when a fixture write fails", async () => {
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "protected-ci-write-failure-"));
+  let writes = 0;
+  const fileSystem = {
+    mkdtemp: fs.mkdtemp,
+    chmod: fs.chmod,
+    writeFile: async (...args) => {
+      writes += 1;
+      if (writes === 2) throw new Error("injected private write failure");
+      return fs.writeFile(...args);
+    },
+    rm: fs.rm,
+  };
+  await assert.rejects(materializeProtectedFixtures({
+    ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+    galleryBase64: galleryCases[0].bytes.toString("base64"),
+    tempRoot,
+    fileSystem,
+  }), /^Error: PROTECTED_FIXTURE_INVALID/);
   assert.deepEqual(await fs.readdir(tempRoot), []);
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 
 test("removes materialized secrets if CI environment publication fails", async () => {
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "protected-ci-publish-failure-"));
-  const gallery = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const gallery = galleryCases[0].bytes;
   await assert.rejects(materializeProtectedFixturesForCi({
     ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
     nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),

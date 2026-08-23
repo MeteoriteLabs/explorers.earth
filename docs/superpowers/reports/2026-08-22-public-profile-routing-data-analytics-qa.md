@@ -177,3 +177,29 @@ state, private response, or mutable account snapshot.
 - Owner/non-owner analytics behavior and exact save/restore remain deterministic-contract proof only until protected UAT completes.
 - The production bundle remains large and emits existing chunk/dynamic-import warnings; the build succeeds, but performance optimization is separate work.
 - Deterministic legacy fixtures emit substantial expected console noise, which can make human log review slower even though strict public-route audit cases fail closed.
+
+## Task 8 corrective round 3
+
+The protected harness now uses one complete stable-code catalog, including
+`PROTECTED_FIXTURE_INVALID` and `PROTECTED_FIXTURE_CLEANUP_REFUSED`. A producer-
+drift contract scans the actual verification-result, prerequisite, reporter,
+materializer, global-setup, and public-API producers and fails if an emitted
+stable code is absent. Exit-one and nested-summary propagation is exercised for
+the fixture codes with output redaction and stable artifact/next-command data.
+
+Gallery fixtures are no longer accepted from a magic-byte prefix alone. Strict
+base64 payloads must be structurally complete PNG, JPEG, GIF, or WebP images
+with non-zero dimensions, bounded chunks/segments/blocks, correct container
+lengths, and valid end markers. Genuine minimal images pass; header-only,
+truncated, zero-dimension, unsupported, and RIFF-mismatch adversaries fail
+closed. Injected chmod, file-write, and environment-publication failures prove
+the temporary fixture root is removed and return a stable redacted code.
+
+Fresh safe verification: focused contracts 19/19; full public-profile contracts
+88/88; unit 188 files / 1,533 tests; lint 0 errors (existing warnings only);
+application TypeScript (`npx tsc -b`), E2E TypeScript, i18n, and production build
+pass; protected project lists 10 tests without execution. Read-only preflight
+remains `ENV_MISSING` (API URL present, public-read capability missing), so no
+live/protected callback, API/account/analytics mutation, cleanup, or restore was
+executed. Sitemap bytes were restored and verified against the pre-Task-8 blob
+`c8747103e7d16e2b8d466ecb20baa18d2819a115`.

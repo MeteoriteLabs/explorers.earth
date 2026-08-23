@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -10,6 +11,7 @@ import {
 import {
   PROTECTED_REPORT_CODES,
   PROTECTED_SETUP_CODES,
+  PUBLIC_API_RESULT_CODES,
   STABLE_CHILD_CODES,
   VERIFICATION_EXIT_CODES,
 } from "../lib/stableVerificationCodes.mjs";
@@ -124,6 +126,7 @@ test("single source enumerates every verification, protected-report, and setup c
     ...Object.keys(VERIFICATION_EXIT_CODES),
     ...PROTECTED_REPORT_CODES,
     ...PROTECTED_SETUP_CODES,
+    ...PUBLIC_API_RESULT_CODES,
   ]);
   for (const code of [
     "PUBLIC_API_TRANSPORT_ERROR", "PUBLIC_API_MALFORMED",
@@ -131,9 +134,39 @@ test("single source enumerates every verification, protected-report, and setup c
   ]) assert.equal(STABLE_CHILD_CODES.has(code), true);
 });
 
+test("producer literals cannot drift outside the stable child-code catalog", async () => {
+  const producers = [
+    "../lib/verificationResult.mjs",
+    "../protected-prerequisites.mjs",
+    "../protected-playwright-report.mjs",
+    "../materialize-protected-fixtures.mjs",
+    "../playwright-global-setup.mjs",
+    "../verify-public-api-access.mjs",
+  ];
+  const emitted = new Set([
+    ...Object.keys(VERIFICATION_EXIT_CODES),
+    ...PROTECTED_REPORT_CODES,
+  ]);
+  for (const producer of producers) {
+    const source = await fs.readFile(new URL(producer, import.meta.url), "utf8");
+    for (const pattern of [
+      /code\s*:\s*["'`]([A-Z][A-Z0-9_]+)/g,
+      /(?:throw\s+)?new Error\(\s*["'`]([A-Z][A-Z0-9_]+)/g,
+      /:\s*\[\s*["'`]([A-Z][A-Z0-9_]+)/g,
+    ]) {
+      for (const match of source.matchAll(pattern)) emitted.add(match[1]);
+    }
+  }
+  const missing = [...emitted].filter((code) => !STABLE_CHILD_CODES.has(code));
+  assert.deepEqual(missing, []);
+  assert.equal(emitted.has("PROTECTED_FIXTURE_INVALID"), true);
+  assert.equal(emitted.has("PROTECTED_FIXTURE_CLEANUP_REFUSED"), true);
+});
+
 test("every source-defined failure code survives exit-one JSON or summary safely", async () => {
   const nonFailures = new Set([
     "PROTECTED_RUN_COMPLETE", "PROTECTED_TEST_PASSED", "PROTECTED_TEST_SKIPPED",
+    "PUBLIC_API_READY", "PUBLIC_API_EMPTY", "PUBLIC_API_VALIDATION_REJECTED",
   ]);
   const failureCodes = [...STABLE_CHILD_CODES].filter((code) => !nonFailures.has(code));
   for (const [index, code] of failureCodes.entries()) {
