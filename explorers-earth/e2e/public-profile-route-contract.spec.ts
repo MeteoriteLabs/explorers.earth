@@ -151,6 +151,7 @@ test.describe("application-owned public route contract", () => {
       if (route.id === "music") {
         const musicAudit = controller.networkAudit as typeof controller.networkAudit & {
           expectedConsoleErrors?: string[];
+          consoleWarnings?: string[];
           webSockets?: Array<{ url: string; closed: boolean }>;
           unexpectedWebSockets?: string[];
         };
@@ -163,6 +164,7 @@ test.describe("application-owned public route contract", () => {
         expect(musicAudit.webSockets?.filter(({ closed }) => !closed)).toHaveLength(1);
         expect(musicAudit.unexpectedWebSockets ?? []).toEqual([]);
         expect(musicAudit.consoleErrors, "successful Music console").toEqual([]);
+        expect(musicAudit.consoleWarnings, "successful Music warnings").toEqual([]);
         expect(musicAudit.failedRequests, "successful Music requests").toEqual([]);
       }
 
@@ -198,6 +200,7 @@ test.describe("application-owned public route contract", () => {
       if (route.id === "music") {
         const musicAudit = controller.networkAudit as typeof controller.networkAudit & {
           expectedConsoleErrors?: string[];
+          unconsumedExpectedDiagnostics?: string[];
           unexpectedWebSockets?: string[];
         };
         const failedMusicAttempts = () => controller.failedOperations.filter(
@@ -210,6 +213,10 @@ test.describe("application-owned public route contract", () => {
           musicAudit.expectedConsoleErrors,
           "two exact Axios diagnostics and one exact browser resource diagnostic per failed attempt",
         ).toHaveLength(9);
+        expect(
+          musicAudit.unconsumedExpectedDiagnostics,
+          "each armed playlist diagnostic is consumed once",
+        ).toEqual([]);
         expect(musicAudit.consoleErrors, "persistent Music failure console").toEqual([]);
         expect(musicAudit.failedRequests, "persistent Music failure requests").toEqual([]);
         expect(musicAudit.unexpectedWebSockets ?? []).toEqual([]);
@@ -278,13 +285,25 @@ test.describe("application-owned public route contract", () => {
       expect(controller.unknownOperations, `declared GraphQL operations for ${route.id}`).toEqual([]);
       expect(controller.networkAudit.unknownRequests, `known network surface for ${route.id}`).toEqual([]);
       expect(controller.networkAudit.consoleErrors, `clean console for ${route.id}`).toEqual([]);
+      expect(
+        (controller.networkAudit as typeof controller.networkAudit & { consoleWarnings?: string[] })
+          .consoleWarnings,
+        `clean warnings for ${route.id}`,
+      ).toEqual([]);
       expect(controller.networkAudit.failedRequests, `clean failed requests for ${route.id}`).toEqual([]);
       expect(
         (controller.networkAudit as typeof controller.networkAudit & { unexpectedWebSockets?: string[] })
           .unexpectedWebSockets ?? [],
         `known WebSocket surface for ${route.id}`,
       ).toEqual([]);
-      expect(controller.networkAudit.badResponses).toContainEqual(expect.objectContaining({ status: 500 }));
+      expect(
+        (controller.networkAudit as typeof controller.networkAudit & { unconsumedExpectedDiagnostics?: string[] })
+          .unconsumedExpectedDiagnostics,
+        `all failure diagnostics consumed for ${route.id}`,
+      ).toEqual([]);
+      expect(controller.networkAudit.badResponses.filter(({ status }) => status === 500)).toHaveLength(
+        route.id === "music" ? 3 : 1,
+      );
     });
   }
 
@@ -560,6 +579,7 @@ test.describe("application-owned public route contract", () => {
       await fetch("/e2e-418").catch(() => undefined);
       await fetch("https://unexpected.fixture.invalid/private").catch(() => undefined);
       console.error("TASK6_ARBITRARY_CONSOLE_ERROR");
+      console.warn("TASK6_ARBITRARY_CONSOLE_WARNING");
     });
 
     const audit = (controller as any).networkAudit;
@@ -568,6 +588,37 @@ test.describe("application-owned public route contract", () => {
       url: "https://unexpected.fixture.invalid/private",
     }));
     expect(audit.consoleErrors).toContain("TASK6_ARBITRARY_CONSOLE_ERROR");
+    expect(audit.consoleWarnings).toContain("TASK6_ARBITRARY_CONSOLE_WARNING");
+  });
+
+  test("network audit records only the exact Vite HMR socket and blocks a localhost lookalike", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      viteWebSockets?: Array<{ url: string; protocols: string[] }>;
+      unexpectedWebSockets?: string[];
+    };
+    await expect.poll(() => audit.viteWebSockets?.length ?? 0).toBe(1);
+    const appUrl = new URL(page.url());
+    const viteUrl = new URL(audit.viteWebSockets![0].url);
+    expect(viteUrl.hostname).toBe(appUrl.hostname);
+    expect(viteUrl.port).toBe(appUrl.port);
+    expect(viteUrl.pathname).toBe("/");
+    expect([...viteUrl.searchParams.keys()]).toEqual(["token"]);
+    expect(viteUrl.searchParams.get("token")).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(audit.viteWebSockets![0].protocols).toEqual(["vite-hmr"]);
+
+    const unexpectedLocalUrl = await page.evaluate(() => {
+      const target = new URL(window.location.href);
+      target.protocol = target.protocol === "https:" ? "wss:" : "ws:";
+      target.pathname = "/unexpected-local-socket";
+      target.search = "";
+      new WebSocket(target.href);
+      return target.href;
+    });
+    await expect.poll(() => audit.unexpectedWebSockets ?? []).toContain(unexpectedLocalUrl);
+    expect(audit.consoleErrors).toEqual([]);
   });
 
   test("network audit blocks and reports an unexpected WebSocket", async ({ page }) => {
@@ -586,6 +637,72 @@ test.describe("application-owned public route contract", () => {
     );
     expect(audit.failedRequests).toEqual([]);
     expect(audit.consoleErrors).toEqual([]);
+  });
+
+  test("an additional unarmed playlist 500 cannot consume a prior expected diagnostic", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    const musicRoute = publicRouteContract.find((route) => route.id === "music")!;
+    await page.goto(publicRoutePath(musicRoute, routeParams));
+    await expect(page.locator(`[data-public-route-leaf="${musicRoute.marker}"]`)).toBeVisible();
+    controller.failure = { operationName: "PublicMusicPlaylist", status: 500 };
+    await page.goto(publicRoutePath(musicRoute, {
+      ...routeParams,
+      username: "extra-playlist-diagnostic",
+    }));
+    await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
+    await expect.poll(() => controller.failedOperations.filter(
+      (operation) => operation === "PublicMusicPlaylist",
+    ).length).toBe(3);
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      unconsumedExpectedDiagnostics?: string[];
+    };
+    await expect.poll(() => audit.unconsumedExpectedDiagnostics).toEqual([]);
+    expect(audit.consoleErrors).toEqual([]);
+
+    controller.failure = undefined;
+    await page.goto("/about");
+    await page.waitForLoadState("networkidle");
+    await page.route("http://localhost:5000/api/playlist/route-fixture-playlist", (route) =>
+      route.fulfill({ status: 500, contentType: "application/json", body: "{}" }),
+    );
+    await page.evaluate(() => fetch(
+      "http://localhost:5000/api/playlist/route-fixture-playlist",
+    ).catch(() => undefined));
+
+    await expect.poll(() => audit.consoleErrors).toContain(
+      "UNARMED_FAILURE_DIAGNOSTIC:playlist:RESOURCE",
+    );
+  });
+
+  test("an additional unarmed GraphQL 500 cannot consume a prior expected diagnostic", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page, {
+      failure: { operationName: "PublicProfileBootstrap", status: 500 },
+    });
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+    await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      unconsumedExpectedDiagnostics?: string[];
+    };
+    await expect.poll(() => audit.unconsumedExpectedDiagnostics).toEqual([]);
+    expect(audit.consoleErrors).toEqual([]);
+
+    await page.goto("/about");
+    await page.waitForLoadState("networkidle");
+    await page.route("**/graphql", (route) =>
+      route.fulfill({ status: 500, contentType: "application/json", body: "{}" }),
+    );
+    await page.evaluate(() => fetch("/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        operationName: "PublicProfileBootstrap",
+        query: "query PublicProfileBootstrap { __typename }",
+      }),
+    }).catch(() => undefined));
+
+    await expect.poll(() => audit.consoleErrors).toContain(
+      "UNARMED_FAILURE_DIAGNOSTIC:graphql:RESOURCE",
+    );
   });
 
   test("anonymous, malformed, and undeclared GraphQL operations fail closed", async ({ page }) => {

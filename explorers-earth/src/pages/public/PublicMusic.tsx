@@ -29,6 +29,10 @@ const POLLING_INTERVAL = 1000;
 export const shouldRetryPublicMusicPlaylist = (failureCount: number): boolean =>
   failureCount < 2;
 
+export const publicMusicPollingInterval = (query: {
+  state: { status: string };
+}): number | false => query.state.status === "error" ? false : POLLING_INTERVAL;
+
 const GET_USER_BY_USERNAME_QUERY = gql`
   query UsersPermissionsUser($filters: UsersPermissionsUserFiltersInput) {
     usersPermissionsUsers(filters: $filters) {
@@ -234,7 +238,7 @@ export default function PublicMusic() {
   } = useQuery<PlaylistResponse>({
     queryKey: [`/api/playlist/${guestUrl}`],
     queryFn: () => apiRequest("GET", `/api/playlist/${guestUrl}`),
-    refetchInterval: POLLING_INTERVAL,
+    refetchInterval: publicMusicPollingInterval,
     staleTime: 0,
     retry: shouldRetryPublicMusicPlaylist,
     retryDelay: 1000,

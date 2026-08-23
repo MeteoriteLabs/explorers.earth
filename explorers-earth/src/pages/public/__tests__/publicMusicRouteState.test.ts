@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldRetryPublicMusicPlaylist } from "../PublicMusic";
+import {
+  publicMusicPollingInterval,
+  shouldRetryPublicMusicPlaylist,
+} from "../PublicMusic";
 import { derivePublicMusicRouteState } from "../publicMusicRouteState";
 
 describe("public music playlist retry policy", () => {
@@ -11,6 +14,12 @@ describe("public music playlist retry policy", () => {
       false,
       false,
     ]);
+  });
+
+  it("polls successful playlists but stops scheduled polling after an error", () => {
+    expect(publicMusicPollingInterval({ state: { status: "success" } })).toBe(1_000);
+    expect(publicMusicPollingInterval({ state: { status: "pending" } })).toBe(1_000);
+    expect(publicMusicPollingInterval({ state: { status: "error" } })).toBe(false);
   });
 });
 

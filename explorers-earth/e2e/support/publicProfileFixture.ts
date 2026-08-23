@@ -88,10 +88,14 @@ export interface RouteContractFixtureController {
   networkAudit: {
     consoleErrors: string[];
     expectedConsoleErrors: string[];
+    consoleWarnings: string[];
+    expectedConsoleWarnings: string[];
+    unconsumedExpectedDiagnostics: string[];
     failedRequests: Array<{ method: string; url: string; failure: string }>;
     badResponses: Array<{ method: string; url: string; status: number }>;
     unknownRequests: Array<{ method: string; url: string; resourceType: string }>;
-    webSockets: Array<{ url: string; messages: string[]; closed: boolean }>;
+    viteWebSockets: Array<{ url: string; protocols: string[] }>;
+    webSockets: Array<{ url: string; protocols: string[]; messages: string[]; closed: boolean }>;
     unexpectedWebSockets: string[];
   };
 }
@@ -986,12 +990,48 @@ export async function installPublicRouteContractFixture(
     networkAudit: {
       consoleErrors: [],
       expectedConsoleErrors: [],
+      consoleWarnings: [],
+      expectedConsoleWarnings: [],
+      unconsumedExpectedDiagnostics: [],
       failedRequests: [],
       badResponses: [],
       unknownRequests: [],
+      viteWebSockets: [],
       webSockets: [],
       unexpectedWebSockets: [],
     },
+  };
+
+  const armExpectedFailureDiagnostics = (
+    surface: "graphql" | "playlist",
+    operation: string,
+    status: number,
+    kinds: string[],
+  ) => {
+    const attempt = controller.attempts[operation] ?? 0;
+    for (const kind of kinds) {
+      controller.networkAudit.unconsumedExpectedDiagnostics.push(
+        `${surface}:${operation}:attempt-${attempt}:status-${status}:${kind}`,
+      );
+    }
+  };
+
+  const consumeExpectedFailureDiagnostic = (
+    surface: "graphql" | "playlist",
+    kind: string,
+  ) => {
+    const pending = controller.networkAudit.unconsumedExpectedDiagnostics;
+    const index = pending.findIndex((token) =>
+      token.startsWith(`${surface}:`) && token.endsWith(`:${kind}`),
+    );
+    if (index === -1) {
+      controller.networkAudit.consoleErrors.push(
+        `UNARMED_FAILURE_DIAGNOSTIC:${surface}:${kind}`,
+      );
+      return;
+    }
+    const [token] = pending.splice(index, 1);
+    controller.networkAudit.expectedConsoleErrors.push(token);
   };
 
   await page.addInitScript(() => {
@@ -1029,20 +1069,16 @@ export async function installPublicRouteContractFixture(
     const isExact500ResourceDiagnostic =
       message.type() === "error" &&
       message.text() === "Failed to load resource: the server responded with a status of 500 (Internal Server Error)";
-    const expectedPlaylistResourceFailure =
+    const playlistResourceFailure =
       isExact500ResourceDiagnostic &&
       locationUrl === "http://localhost:5000/api/playlist/route-fixture-playlist";
-    const expectedGraphqlResourceFailure =
+    const graphqlResourceFailure =
       isExact500ResourceDiagnostic &&
-      locationPathname === "/graphql" &&
-      controller.failure?.status === 500 &&
-      controller.failedOperations.includes(controller.failure.operationName);
-    if (expectedPlaylistResourceFailure) {
-      controller.networkAudit.expectedConsoleErrors.push("TASK6_EXPECTED_PLAYLIST_500:RESOURCE");
-    } else if (expectedGraphqlResourceFailure) {
-      controller.networkAudit.expectedConsoleErrors.push(
-        `TASK6_EXPECTED_GRAPHQL_500:${controller.failure!.operationName}`,
-      );
+      locationPathname === "/graphql";
+    if (playlistResourceFailure) {
+      consumeExpectedFailureDiagnostic("playlist", "RESOURCE");
+    } else if (graphqlResourceFailure) {
+      consumeExpectedFailureDiagnostic("graphql", "RESOURCE");
     } else if (message.type() === "error") {
       controller.networkAudit.consoleErrors.push(message.text());
     }
@@ -1050,7 +1086,40 @@ export async function installPublicRouteContractFixture(
       message.type() === "debug" &&
       message.text().startsWith("TASK6_EXPECTED_PLAYLIST_500:")
     ) {
-      controller.networkAudit.expectedConsoleErrors.push(message.text());
+      consumeExpectedFailureDiagnostic(
+        "playlist",
+        message.text().slice("TASK6_EXPECTED_PLAYLIST_500:".length),
+      );
+    }
+    if (message.type() === "warning") {
+      const prefix = "An error occurred! For more details, see the full error text at ";
+      let expectedApolloDeprecation = false;
+      if (message.text().startsWith(prefix)) {
+        try {
+          const detailUrl = new URL(message.text().slice(prefix.length));
+          const payload = JSON.parse(decodeURIComponent(detailUrl.hash.slice(1))) as {
+            message?: number;
+            args?: string[];
+          };
+          expectedApolloDeprecation =
+            detailUrl.origin === "https://go.apollo.dev" &&
+            detailUrl.pathname === "/c/err" &&
+            payload.message === 103 &&
+            payload.args?.[0] === "useQuery" &&
+            payload.args?.[1] === "onError" &&
+            payload.args?.[2] ===
+              "If your `onError` callback sets local state, switch to use derived state using `data`, `error` or `errors` returned from the hook instead. Use `useEffect` if you need to perform side-effects as a result of updates to `data`, `error` or `errors`.";
+        } catch {
+          expectedApolloDeprecation = false;
+        }
+      }
+      if (expectedApolloDeprecation) {
+        controller.networkAudit.expectedConsoleWarnings.push(
+          "APOLLO_3_USEQUERY_ONERROR_DEPRECATION_103",
+        );
+      } else {
+        controller.networkAudit.consoleWarnings.push(message.text());
+      }
     }
   });
   page.on("pageerror", (error) => controller.networkAudit.consoleErrors.push(error.message));
@@ -1074,7 +1143,29 @@ export async function installPublicRouteContractFixture(
   await page.routeWebSocket(/.*/, async (webSocket) => {
     const url = webSocket.url();
     const parsed = new URL(url);
-    if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {
+    const protocols = webSocket.protocols();
+    let appUrl: URL | undefined;
+    try {
+      appUrl = new URL(page.url());
+    } catch {
+      appUrl = undefined;
+    }
+    const queryKeys = [...parsed.searchParams.keys()];
+    const viteToken = parsed.searchParams.get("token");
+    const expectedViteHmr =
+      appUrl !== undefined &&
+      parsed.protocol === (appUrl.protocol === "https:" ? "wss:" : "ws:") &&
+      parsed.hostname === appUrl.hostname &&
+      parsed.port === appUrl.port &&
+      parsed.pathname === "/" &&
+      queryKeys.length === 1 &&
+      queryKeys[0] === "token" &&
+      typeof viteToken === "string" &&
+      /^[A-Za-z0-9_-]+$/.test(viteToken) &&
+      protocols.length === 1 &&
+      protocols[0] === "vite-hmr";
+    if (expectedViteHmr) {
+      controller.networkAudit.viteWebSockets.push({ url, protocols: [...protocols] });
       webSocket.connectToServer();
       return;
     }
@@ -1084,14 +1175,15 @@ export async function installPublicRouteContractFixture(
       parsed.pathname === "/socket.io/" &&
       parsed.searchParams.get("transport") === "websocket" &&
       parsed.searchParams.get("EIO") === "4" &&
-      parsed.searchParams.get("guestUrl") === "route-fixture-playlist";
+      parsed.searchParams.get("guestUrl") === "route-fixture-playlist" &&
+      protocols.length === 0;
     if (!expected) {
       controller.networkAudit.unexpectedWebSockets.push(url);
       await webSocket.close({ code: 1008, reason: "Unexpected deterministic WebSocket" });
       return;
     }
 
-    const socketAudit = { url, messages: [] as string[], closed: false };
+    const socketAudit = { url, protocols: [...protocols], messages: [] as string[], closed: false };
     controller.networkAudit.webSockets.push(socketAudit);
     webSocket.onMessage((message) => {
       const text = typeof message === "string" ? message : `binary:${message.byteLength}`;
@@ -1160,6 +1252,14 @@ export async function installPublicRouteContractFixture(
     }
     if (targetedFailure) {
       controller.failedOperations.push(operation);
+      if (targetedFailure.status === 500) {
+        armExpectedFailureDiagnostics(
+          "playlist",
+          operation,
+          targetedFailure.status,
+          ["INTERCEPTOR", "REQUEST", "RESOURCE"],
+        );
+      }
       return route.fulfill({
         status: targetedFailure.status,
         contentType: "application/json",
@@ -1223,6 +1323,14 @@ export async function installPublicRouteContractFixture(
     const fulfillTargetedFailure = () => {
       if (!targetedFailure) return undefined;
       controller.failedOperations.push(operation);
+      if (targetedFailure.status === 500) {
+        armExpectedFailureDiagnostics(
+          "graphql",
+          operation,
+          targetedFailure.status,
+          ["RESOURCE"],
+        );
+      }
       return route.fulfill({
         status: targetedFailure.status,
         contentType: "application/json",
