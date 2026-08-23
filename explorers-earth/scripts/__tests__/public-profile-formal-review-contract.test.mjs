@@ -158,6 +158,23 @@ test("protected mutation setup cannot start callbacks before analytics cleanup a
   }), /ANALYTICS_RUN_CLEANUP_UNAVAILABLE/);
   assert.deepEqual(operations, ["PreflightQaBrowserRun", "EmergencyCleanupQaBrowserRun", "EmergencyVerifyQaBrowserRun"]);
   assert.equal(callback, false);
+
+  await assert.rejects(() => runProtectedGlobalSetup({
+    projectNames: ["real-account"], mode: "mutation", env: complete,
+    verifyReleasePrerequisites: async () => runAnalyticsRunCleanupPreflight({
+      endpoint: "https://fixture.invalid/graphql", token: "write", baseRunId: "qa-run", qaSink: "qa-sink",
+      documents: { canary: "mutation { canary: x }", cleanupRun: "mutation { cleanup: x }", remainingRun: "query { remaining: x }" },
+      writeRecoveryArtifact: async () => { throw new Error("private disk path"); },
+      fetchImpl: async (_url, options) => {
+        const { operationName } = JSON.parse(options.body);
+        if (operationName === "PreflightQaBrowserRun") throw new Error("lost acknowledgement");
+        if (operationName === "EmergencyCleanupQaBrowserRun") return Response.json({ data: { cleanup: true } });
+        return Response.json({ data: { remaining: [] } });
+      },
+    }),
+    onProtectedReady: () => { callback = true; },
+  }), /ANALYTICS_RUN_CLEANUP_UNAVAILABLE/);
+  assert.equal(callback, false);
 });
 
 test("protected fixture and run-cleanup block paths are stable and named", async () => {

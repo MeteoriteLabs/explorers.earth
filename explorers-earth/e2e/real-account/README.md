@@ -57,6 +57,9 @@ acknowledgement is treated as a possible server-side commit: the run-ID-scoped
 emergency cleanup and zero-remaining query still run, the primary failure still
 blocks every browser callback, and a restrictive OS-temporary recovery artifact
 is retained with redacted identifiers and a truthful residual-unverified flag.
+If permission or disk failure prevents that artifact from being written, setup
+still returns the redacted blocker with `RECOVERY_ARTIFACT_WRITE_FAILED`, omits
+an artifact path, and truthfully reports that recovery evidence is unavailable.
 
 Run `npm run test:e2e:real-account`. Global setup fails before any test body if
 one prerequisite is absent. Groups run one at a time and stop on the first

@@ -185,8 +185,21 @@ export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRun
     }
   }
   if (!primarySucceeded) {
-    const artifactPath = canaryAttempted ? await writeRecoveryArtifact({ residualUnverified: !verifiedEmpty }) : undefined;
-    return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", artifactPath, operations: [diagnostic("analytics-run-cleanup", "malformed", !created ? "canary-write-ambiguous" : failure)] };
+    let artifactPath;
+    let recoveryEvidenceCode;
+    if (canaryAttempted) {
+      try {
+        artifactPath = await writeRecoveryArtifact({ residualUnverified: !verifiedEmpty });
+      } catch {
+        recoveryEvidenceCode = "RECOVERY_ARTIFACT_WRITE_FAILED";
+      }
+    }
+    return {
+      code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE",
+      ...(artifactPath ? { artifactPath } : {}),
+      ...(recoveryEvidenceCode ? { recoveryEvidenceCode } : {}),
+      operations: [diagnostic("analytics-run-cleanup", "malformed", !created ? "canary-write-ambiguous" : failure)],
+    };
   }
   return { code: "PUBLIC_API_READY", operations: [{ ...diagnostic("analytics-run-cleanup", "ready", "cleanup-verified"), code: "PUBLIC_API_READY" }] };
 }
