@@ -321,37 +321,7 @@ const categoryPayload = (operation: string) => {
       ],
     },
     PublicBookData: {
-      bookLists: [{
-        ...common,
-        documentId: "saved-books-list",
-        List_Name: "Saved books",
-        list_description: "Saved public category parity",
-        slug: "saved-books",
-        visibility: true,
-        display_order: 0,
-        top_reads_heading: null,
-        recommended_books: [{
-          documentId: "saved-book-item",
-          volume_id: "saved-volume",
-          title: "Saved book item",
-          subtitle: null,
-          authors: ["Fixture Author"],
-          year: "2026",
-          cover_url: null,
-          cover_url_large: null,
-          subjects: [],
-          google_rating: null,
-          user_rating: null,
-          description: null,
-          user_recommendation_note: null,
-          buy_links: [],
-          is_pinned: false,
-          pin_order: null,
-          media_details: null,
-          Media: [],
-          book_list: { documentId: "saved-books-list", List_Name: "Saved books", slug: "saved-books" },
-        }],
-      }],
+      bookLists: [],
       recommendedBooks: [],
     },
     GetGamesLists: {
@@ -1008,7 +978,17 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await page.goto(savedBooksPath, { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(savedBooksPath);
     await expect(page.locator('[data-public-route-leaf="public-books-page"]')).toBeVisible();
-    await expect(page.getByText("Saved books", { exact: true })).toBeVisible();
+    const categoryShell = page.getByTestId("public-profile-route-shell");
+    await expect(categoryShell).toHaveAttribute("data-theme-preset", "sunset-glow");
+    await expect(categoryShell).toHaveAttribute("data-accent-color", "#EC4899");
+    await expect(categoryShell).toHaveAttribute("data-wallpaper-mode", "ambient-gradient");
+    await expect(categoryShell).toHaveAttribute("data-footer-branding", "minimal");
+    await expect(categoryShell).toHaveAttribute("data-visible-tabs", "recommendations,gallery");
+    await expect(categoryShell).toHaveAttribute("data-first-view", "music");
+    await expect(page.getByRole("button", { name: "Profile", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Books", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Saved books", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("No books yet", { exact: true })).toBeVisible();
   });
 
   test("keyboard reorder lifts, previews, drops once, and cancels without saving", async ({

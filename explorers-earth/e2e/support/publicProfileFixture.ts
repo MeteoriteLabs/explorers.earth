@@ -61,11 +61,15 @@ export type RouteContractFixtureOutcome =
 export interface RouteContractFixtureController {
   outcome: RouteContractFixtureOutcome;
   hiddenField?: string;
-  httpStatus?: 401 | 403 | 429 | 500;
+  failure?: {
+    operationName: string;
+    status: 401 | 403 | 429 | 500;
+  };
   bootstrapDelayMs: number;
   leafDelayMs: number;
   responseLabel?: string;
   observedOperations: string[];
+  failedOperations: string[];
   unknownOperations: string[];
   attempts: Record<string, number>;
   networkAudit: {
@@ -828,7 +832,29 @@ function routeContractResponse(
         mobile_number_visibility: false,
       },
     },
-    PublicAccountBasic: { accounts: [] },
+    PublicAccountBasic: {
+      accounts: [{
+        documentId: "fixture-account",
+        Account_Name: "Route Fixture",
+        Account_Type: "personal",
+        Primary_Address: { address: "Fixture City" },
+        bg_picture: null,
+        profile_picture: null,
+        localtunes_public: "https://localtunes.earth/playlist/route-fixture-playlist",
+        public_profile: "Yes",
+        public_recommendations: "Yes",
+        public_music: "Yes",
+        public_movie: "Yes",
+        public_books: "Yes",
+        public_guides: "Yes",
+        public_games: "Yes",
+        public_apps: "Yes",
+        public_products: "Yes",
+        public_people: "Yes",
+        pinned_nav_tabs: [],
+        auto_pinning: false,
+      }],
+    },
     UsersPermissionsUser: { usersPermissionsUsers: [] },
     GetPlacesLists: { recommendationLists: [] },
     GetBooksLists: { bookLists: [] },
@@ -901,15 +927,16 @@ function routeContractResponse(
 
 export async function installPublicRouteContractFixture(
   page: Page,
-  initial: Partial<Pick<RouteContractFixtureController, "outcome" | "hiddenField" | "httpStatus" | "bootstrapDelayMs" | "leafDelayMs">> = {},
+  initial: Partial<Pick<RouteContractFixtureController, "outcome" | "hiddenField" | "failure" | "bootstrapDelayMs" | "leafDelayMs">> = {},
 ): Promise<RouteContractFixtureController> {
   const controller: RouteContractFixtureController = {
     outcome: initial.outcome ?? "empty",
     hiddenField: initial.hiddenField,
-    httpStatus: initial.httpStatus,
+    failure: initial.failure,
     bootstrapDelayMs: initial.bootstrapDelayMs ?? 0,
     leafDelayMs: initial.leafDelayMs ?? 0,
     observedOperations: [],
+    failedOperations: [],
     unknownOperations: [],
     attempts: {},
     networkAudit: {
@@ -979,6 +1006,46 @@ export async function installPublicRouteContractFixture(
     contentType: "application/json",
     body: JSON.stringify({ success: true, data: [], count: 0 }),
   }));
+  await page.route("**/api/playlist/route-fixture-playlist", async (route) => {
+    const operation = "PublicMusicPlaylist";
+    controller.observedOperations.push(operation);
+    controller.attempts[operation] = (controller.attempts[operation] ?? 0) + 1;
+    const leafDelayMs = controller.leafDelayMs;
+    const targetedFailure = controller.failure?.operationName === operation
+      ? { ...controller.failure }
+      : undefined;
+    if (leafDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, leafDelayMs));
+    }
+    if (targetedFailure) {
+      controller.failedOperations.push(operation);
+      return route.fulfill({
+        status: targetedFailure.status,
+        contentType: "application/json",
+        body: JSON.stringify({ message: `Fixture HTTP ${targetedFailure.status}` }),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        songs: [],
+        currentlyPlaying: null,
+        playedSongs: [],
+        allowGuestPlayOnDevice: false,
+        playlists: [],
+        user: {
+          id: 1,
+          venueName: "Route Fixture",
+          theme: { primary: "#10B981" },
+          allowSongRequests: false,
+          allowGuestPlayOnDevice: false,
+          allowPlaylistSharing: false,
+          allowRecentlyPlayedVisibility: true,
+        },
+      }),
+    });
+  });
   await page.route("**/graphql", async (route) => {
     const operation = operationName(route);
     if (!operation || (!routeContractOperations.has(operation) && !PUBLIC_ANALYTICS_OPERATION_NAMES.has(operation))) {
@@ -992,18 +1059,30 @@ export async function installPublicRouteContractFixture(
     controller.observedOperations.push(operation);
     controller.attempts[operation] = (controller.attempts[operation] ?? 0) + 1;
 
-    if (controller.httpStatus && operation !== "CreatePublicPageAnalytic") {
+    const targetedFailure =
+      controller.failure?.operationName === operation
+        ? { ...controller.failure }
+        : undefined;
+    const bootstrapDelayMs = controller.bootstrapDelayMs;
+    const leafDelayMs = controller.leafDelayMs;
+    const responseLabel = controller.responseLabel;
+
+    const fulfillTargetedFailure = () => {
+      if (!targetedFailure) return undefined;
+      controller.failedOperations.push(operation);
       return route.fulfill({
-        status: controller.httpStatus,
+        status: targetedFailure.status,
         contentType: "application/json",
-        body: JSON.stringify({ errors: [{ message: `Fixture HTTP ${controller.httpStatus}` }] }),
+        body: JSON.stringify({ errors: [{ message: `Fixture HTTP ${targetedFailure.status}` }] }),
       });
-    }
+    };
 
     if (operation === "PublicProfileBootstrap") {
-      if (controller.bootstrapDelayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, controller.bootstrapDelayMs));
+      if (bootstrapDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, bootstrapDelayMs));
       }
+      const failed = fulfillTargetedFailure();
+      if (failed) return failed;
       if (controller.outcome === "unknown-user") {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { accounts: [] } }) });
       }
@@ -1017,7 +1096,7 @@ export async function installPublicRouteContractFixture(
         bg_picture: null,
         profile_picture: null,
         social_media: { theme_settings: { preset: "cinematic-dark", wallpaperMode: "solid-color" } },
-        localtunes_public: null,
+        localtunes_public: "https://localtunes.earth/playlist/route-fixture-playlist",
         public_profile: visibility("public_profile"),
         public_recommendations: visibility("public_recommendations"),
         public_music: visibility("public_music"),
@@ -1034,10 +1113,12 @@ export async function installPublicRouteContractFixture(
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { accounts: [account] } }) });
     }
 
-    const responseLabel = controller.responseLabel;
-    if (controller.leafDelayMs > 0 && operation !== "CreatePublicPageAnalytic") {
-      await new Promise((resolve) => setTimeout(resolve, controller.leafDelayMs));
+    if (leafDelayMs > 0 && operation !== "CreatePublicPageAnalytic") {
+      await new Promise((resolve) => setTimeout(resolve, leafDelayMs));
     }
+
+    const failed = fulfillTargetedFailure();
+    if (failed) return failed;
 
     return route.fulfill({
       status: 200,

@@ -26,6 +26,9 @@ import "./PublicMusic.css";
 
 const POLLING_INTERVAL = 1000;
 
+export const shouldRetryPublicMusicPlaylist = (failureCount: number): boolean =>
+  failureCount < 2;
+
 const GET_USER_BY_USERNAME_QUERY = gql`
   query UsersPermissionsUser($filters: UsersPermissionsUserFiltersInput) {
     usersPermissionsUsers(filters: $filters) {
@@ -229,7 +232,7 @@ export default function PublicMusic() {
     queryFn: () => apiRequest("GET", `/api/playlist/${guestUrl}`),
     refetchInterval: POLLING_INTERVAL,
     staleTime: 0,
-    retry: true,
+    retry: shouldRetryPublicMusicPlaylist,
     retryDelay: 1000,
     enabled: !!guestUrl, // Only run when we have guestUrl
   });

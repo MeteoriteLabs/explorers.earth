@@ -250,6 +250,17 @@ function PublicLayoutContent() {
   return (
     <PublicRouteReadinessContext.Provider value={contextValue}>
       <div
+        data-testid="public-profile-route-shell"
+        data-theme-preset={themeSettings.preset}
+        data-accent-color={themeSettings.accentColor}
+        data-wallpaper-mode={themeSettings.wallpaperMode}
+        data-footer-branding={themeSettings.footerBranding}
+        data-visible-tabs={[
+          themeSettings.visibleTabs.recommendations ? "recommendations" : null,
+          themeSettings.visibleTabs.gallery ? "gallery" : null,
+          themeSettings.visibleTabs.business ? "business" : null,
+        ].filter(Boolean).join(",")}
+        data-first-view={themeSettings.landingTab}
         className="min-h-screen"
         style={{
           ...getThemeTokenStyles(themeSettings),

@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
+import { shouldRetryPublicMusicPlaylist } from "../PublicMusic";
 import { derivePublicMusicRouteState } from "../publicMusicRouteState";
+
+describe("public music playlist retry policy", () => {
+  it("retries two transient failures and stops before a third retry", () => {
+    expect([0, 1, 2, 3].map(shouldRetryPublicMusicPlaylist)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+});
 
 describe("derivePublicMusicRouteState", () => {
   it("settles as empty when the account has no Local Tunes URL", () => {

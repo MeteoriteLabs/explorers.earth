@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { PUBLIC_RUNTIME_OPERATION_CAPABILITIES } from "../scripts/public-api-capabilities.mjs";
 import { publicRouteContract, publicRoutePath, type PublicRouteOperation } from "../src/routes/publicRouteContract";
@@ -22,9 +22,54 @@ const profileRoute = publicRouteContract.find((route) => route.id === "profile")
 if (!profileRoute) throw new Error("profile route missing from contract");
 const profilePath = publicRoutePath(profileRoute, routeParams);
 
+const bootstrapOnlyRouteIds = new Set(["community"]);
+const shellOperationNames = new Set([
+  "PublicProfileBootstrap",
+  "PublicCategoryListCounts",
+  "CreatePublicPageAnalytic",
+]);
+
+function leafFailureOperation(
+  route: (typeof publicRouteContract)[number],
+  observedOperations: readonly string[],
+): string | undefined {
+  if (bootstrapOnlyRouteIds.has(route.id)) return undefined;
+  const accountLeafOperation = route.id === "profile"
+    ? "PublicProfileContent"
+    : route.id === "music"
+      ? "PublicMusicPlaylist"
+      : undefined;
+  if (accountLeafOperation) {
+    return observedOperations.find((operation) => operation === accountLeafOperation);
+  }
+  const leafCapability = route.requiredOperations.find(
+    (operation) => operation !== "account-bootstrap",
+  ) ?? "account-bootstrap";
+
+  return observedOperations.find(
+    (operation) =>
+      !shellOperationNames.has(operation) &&
+      PUBLIC_RUNTIME_OPERATION_CAPABILITIES.get(operation) === leafCapability,
+  );
+}
+
+async function preserveGraphqlRaceResponses(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/graphql") && init?.signal) {
+        const { signal: _ignoredForStaleRace, ...uncancelledInit } = init;
+        return nativeFetch(input, uncancelledInit);
+      }
+      return nativeFetch(input, init);
+    };
+  });
+}
+
 const ROUTE_UI_TEXT: Record<(typeof publicRouteContract)[number]["id"], RegExp> = {
   profile: /Route Fixture/,
-  music: /Playlist Not Found/,
+  music: /No song playing/,
   "places-index": /No locations available/,
   "places-detail": /Fixture list/,
   "places-map": /No categories available/,
@@ -76,7 +121,10 @@ function assertDeclaredOperations(
 
 test.describe("application-owned public route contract", () => {
   for (const route of publicRouteContract) {
-    test(`${route.id}: real leaf direct/internal/refresh/content/error and settled redirect semantics`, async ({ page }) => {
+    const routeCaseName = route.id === "music"
+      ? "music: PUBLIC_MUSIC_UNBOUNDED_RETRY regression is bounded and Retry recovers"
+      : `${route.id}: real leaf direct/internal/refresh/content/error and settled redirect semantics`;
+    test(routeCaseName, async ({ page }) => {
       const controller = await installPublicRouteContractFixture(page, {
         // Keep the fixture pending across multiple browser locator polls. This proves the
         // real request-driven Earth state without adding a minimum duration to the app.
@@ -88,7 +136,7 @@ test.describe("application-owned public route contract", () => {
       const directNavigation = page.goto(path, { waitUntil: "domcontentloaded" });
       await expect(page.locator(".earth-loader-wrapper")).toBeVisible();
       await directNavigation;
-      if (route.family === "profile" || route.requiredOperations.length > 1) {
+      if (route.family === "profile" || route.family === "music" || route.requiredOperations.length > 1) {
         await expect(page.getByTestId(`public-route-skeleton-${route.skeleton}`)).toBeVisible();
       }
       const assembledRoute = page.locator(`[data-public-route-leaf="${route.marker}"]`);
@@ -101,16 +149,52 @@ test.describe("application-owned public route contract", () => {
       assertDeclaredOperations(route, controller);
       await page.waitForLoadState("networkidle");
 
-      controller.bootstrapDelayMs = 0;
-      controller.leafDelayMs = 0;
-      controller.httpStatus = 500;
+      const selectedLeafOperation = leafFailureOperation(route, controller.observedOperations);
+      if (bootstrapOnlyRouteIds.has(route.id)) {
+        expect(selectedLeafOperation, `${route.id} is explicitly bootstrap-only`).toBeUndefined();
+      } else {
+        expect(selectedLeafOperation, `${route.id} must expose a leaf operation`).toBeTruthy();
+      }
+      const failedOperation = selectedLeafOperation ?? "PublicProfileBootstrap";
+      const bootstrapAttemptsBeforeFailure = controller.attempts.PublicProfileBootstrap ?? 0;
+      controller.bootstrapDelayMs = bootstrapOnlyRouteIds.has(route.id) ? 800 : 0;
+      controller.leafDelayMs = bootstrapOnlyRouteIds.has(route.id) ? 0 : 800;
+      controller.failure = { operationName: failedOperation, status: 500 };
       const errorParams = { ...routeParams, username: `error-${route.id}` };
       const errorPath = publicRoutePath(route, errorParams);
-      await page.goto(errorPath, { waitUntil: "domcontentloaded" });
+      const errorNavigation = page.goto(errorPath, { waitUntil: "domcontentloaded" });
+      await expect(
+        bootstrapOnlyRouteIds.has(route.id)
+          ? page.locator(".earth-loader-wrapper")
+          : page.getByTestId(`public-route-skeleton-${route.skeleton}`),
+      ).toBeVisible();
+      await errorNavigation;
       await expect(page).toHaveURL(errorPath);
       const retry = page.getByRole("button", { name: /retry/i });
       await expect(retry).toBeVisible();
-      controller.httpStatus = undefined;
+      await expect(page.getByRole("heading", {
+        name: bootstrapOnlyRouteIds.has(route.id)
+          ? "Couldn’t verify this profile"
+          : "Couldn’t load this section",
+      })).toBeVisible();
+      expect(controller.failedOperations).toContain(failedOperation);
+      if (route.id === "music") {
+        const failedMusicAttempts = () => controller.failedOperations.filter(
+          (operationName) => operationName === failedOperation,
+        ).length;
+        expect(failedMusicAttempts(), "initial request plus two bounded retries").toBe(3);
+        await page.waitForTimeout(1_200);
+        expect(failedMusicAttempts(), "persistent failure must stop network churn").toBe(3);
+      }
+      expect(controller.attempts.PublicProfileBootstrap ?? 0).toBeGreaterThan(
+        bootstrapAttemptsBeforeFailure,
+      );
+      if (!bootstrapOnlyRouteIds.has(route.id)) {
+        expect(failedOperation).not.toBe("PublicProfileBootstrap");
+      }
+      controller.failure = undefined;
+      controller.bootstrapDelayMs = 0;
+      controller.leafDelayMs = 0;
       await retry.click();
       await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toContainText(ROUTE_UI_TEXT[route.id]);
       await expect(page).toHaveURL(errorPath);
@@ -165,19 +249,47 @@ test.describe("application-owned public route contract", () => {
   }
 
   test("books-list stale response is distinguishable and the newest route generation wins", async ({ page }) => {
-    const controller = await installPublicRouteContractFixture(page, { leafDelayMs: 350 });
+    const controller = await installPublicRouteContractFixture(page);
+    await preserveGraphqlRaceResponses(page);
     const booksList = publicRouteContract.find((route) => route.id === "books-list")!;
-    const booksPath = publicRoutePath(booksList, routeParams);
+    const oldPath = publicRoutePath(booksList, { ...routeParams, listSlug: "old-list" });
+    const currentPath = publicRoutePath(booksList, { ...routeParams, listSlug: "current-list" });
+    await page.goto(profilePath, { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
+    await page.evaluate(() => {
+      (window as typeof window & { __task6DocumentSentinel?: string }).__task6DocumentSentinel =
+        "same-document-stale-race";
+    });
+
     controller.responseLabel = "Old books-list content";
-    const oldNavigation = page.goto(booksPath, { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("public-route-skeleton-detail")).toBeVisible();
+    controller.leafDelayMs = 1_000;
+    const oldResponse = page.waitForResponse(async (response) => {
+      if (!response.url().endsWith("/graphql")) return false;
+      return (await response.text()).includes("Old books-list content");
+    });
+    const oldAttempts = controller.attempts.BookListBySlug ?? 0;
+    await page.evaluate((nextPath) => {
+      window.history.pushState({}, "", nextPath);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }, oldPath);
+    await expect.poll(() => controller.attempts.BookListBySlug ?? 0).toBeGreaterThan(oldAttempts);
+    await expect(page.getByText("Old books-list content", { exact: true })).toHaveCount(0);
+
     controller.responseLabel = "Current books-list content";
     controller.leafDelayMs = 0;
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.evaluate((nextPath) => {
+      window.history.pushState({}, "", nextPath);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }, currentPath);
     await expect(page.getByText("Current books-list content", { exact: true })).toBeVisible();
-    await oldNavigation.catch(() => undefined);
+    expect(await page.evaluate(() =>
+      (window as typeof window & { __task6DocumentSentinel?: string }).__task6DocumentSentinel,
+    )).toBe("same-document-stale-race");
+    await oldResponse;
+    expect(controller.networkAudit.failedRequests).toEqual([]);
     await expect(page.getByText("Old books-list content", { exact: true })).toHaveCount(0);
-    await expect(page).toHaveURL(booksPath);
+    await expect(page.getByText("Current books-list content", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(currentPath);
   });
 
   const familyScenarios = [
@@ -217,39 +329,69 @@ test.describe("application-owned public route contract", () => {
       }
 
       if (scenario === "failure") {
-        const controller = await installPublicRouteContractFixture(page, { httpStatus: 500 });
+        const controller = await installPublicRouteContractFixture(page);
         await page.goto(firstPath);
-        await expect(page).toHaveURL(firstPath);
+        const failureOperation = leafFailureOperation(first, controller.observedOperations);
+        if (!failureOperation) throw new Error(`${first.id} needs an observed leaf operation`);
+        controller.failure = { operationName: failureOperation, status: 500 };
+        const failedPath = publicRoutePath(first, {
+          ...routeParams,
+          username: `${family}-failure-fixture`,
+        });
+        await page.goto(failedPath);
+        await expect(page).toHaveURL(failedPath);
         const retry = page.getByRole("button", { name: /retry/i });
         await expect(retry).toBeVisible();
-        controller.httpStatus = undefined;
+        expect(controller.failedOperations).toContain(failureOperation);
+        controller.failure = undefined;
         await retry.click();
         await expect(page.locator(`[data-public-route-leaf="${first.marker}"]`)).toBeVisible();
-        await expect(page).toHaveURL(firstPath);
+        await expect(page).toHaveURL(failedPath);
         return;
       }
 
-      const second = familyRoutes[1];
-      if (!second) throw new Error(`${family} stale representative needs two routes`);
-      const controller = await installPublicRouteContractFixture(page, { leafDelayMs: 300 });
+      const staleRoute = familyRoutes.find((candidate) => candidate.id.endsWith("-list"))
+        ?? familyRoutes.find((candidate) => candidate.resourceKind === "child" && candidate.shell === "detail");
+      if (!staleRoute) throw new Error(`${family} stale representative needs a detail/list route`);
+      const controller = await installPublicRouteContractFixture(page);
+      await preserveGraphqlRaceResponses(page);
       await page.goto(profilePath);
-      controller.observedOperations.length = 0;
-      await page.evaluate((nextPath) => {
-        window.history.pushState({}, "", nextPath);
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      }, firstPath);
-      await expect.poll(() => controller.observedOperations.length).toBeGreaterThan(0);
+      const oldLabel = `Old ${family} content`;
+      const currentLabel = `Current ${family} content`;
+      const oldPath = publicRoutePath(staleRoute, {
+        ...routeParams,
+        placeSlug: "old-place",
+        listSlug: "old-list",
+      });
+      const currentPath = publicRoutePath(staleRoute, {
+        ...routeParams,
+        placeSlug: "current-place",
+        listSlug: "current-list",
+      });
+      controller.responseLabel = oldLabel;
       controller.leafDelayMs = 900;
-      const secondPath = publicRoutePath(second, routeParams);
+      const oldResponse = page.waitForResponse(async (response) =>
+        response.url().endsWith("/graphql") && (await response.text()).includes(oldLabel),
+      );
+      const operationCount = controller.observedOperations.length;
       await page.evaluate((nextPath) => {
         window.history.pushState({}, "", nextPath);
         window.dispatchEvent(new PopStateEvent("popstate"));
-      }, secondPath);
-      await page.waitForTimeout(400);
-      await expect(page.getByTestId(`public-route-skeleton-${second.skeleton}`)).toBeVisible();
-      await expect(page).toHaveURL(secondPath);
-      await expect(page.locator(`[data-public-route-leaf="${second.marker}"]`)).toBeVisible();
-      await expect(page).toHaveURL(secondPath);
+      }, oldPath);
+      await expect.poll(() => controller.observedOperations.length).toBeGreaterThan(operationCount);
+      await expect(page.getByText(oldLabel, { exact: true })).toHaveCount(0);
+      controller.responseLabel = currentLabel;
+      controller.leafDelayMs = 0;
+      await page.evaluate((nextPath) => {
+        window.history.pushState({}, "", nextPath);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, currentPath);
+      await expect(page.getByText(currentLabel, { exact: true })).toBeVisible();
+      await oldResponse;
+      await expect(page.getByText(oldLabel, { exact: true })).toHaveCount(0);
+      await expect(page.getByText(currentLabel, { exact: true })).toBeVisible();
+      await expect(page.locator(`[data-public-route-leaf="${staleRoute.marker}"]`)).toBeVisible();
+      await expect(page).toHaveURL(currentPath);
     });
   }
 
@@ -319,18 +461,24 @@ test.describe("application-owned public route contract", () => {
 
   for (const status of [401, 403, 429, 500] as const) {
     test(`HTTP ${status} remains on the requested route and Retry recovers`, async ({ page }) => {
-      const controller = await installPublicRouteContractFixture(page, { httpStatus: status });
+      const controller = await installPublicRouteContractFixture(page);
       const booksRoute = publicRouteContract.find((route) => route.id === "books-index")!;
+      await page.goto(publicRoutePath(booksRoute, routeParams));
+      const failureOperation = leafFailureOperation(booksRoute, controller.observedOperations);
+      if (!failureOperation) throw new Error("books-index needs an observed leaf operation");
+      controller.failure = { operationName: failureOperation, status };
       const target = `${publicRoutePath(booksRoute, routeParams)}?status=${status}#retry`;
-      await page.goto(target);
+      const failedTarget = target.replace(routeParams.username, `status-${status}-fixture`);
+      await page.goto(failedTarget);
 
-      await expect(page).toHaveURL(target);
+      await expect(page).toHaveURL(failedTarget);
       const retry = page.getByRole("button", { name: /retry/i });
       await expect(retry).toBeVisible();
-      controller.httpStatus = undefined;
+      expect(controller.failedOperations).toContain(failureOperation);
+      controller.failure = undefined;
       await retry.click();
 
-      await expect(page).toHaveURL(target);
+      await expect(page).toHaveURL(failedTarget);
       await expect(page.locator('[data-public-route-leaf="public-books-page"]')).toBeVisible();
     });
   }

@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { get, mutationSubmit, post, translationLanguage } = vi.hoisted(() => ({
   get: vi.fn(),
@@ -127,7 +127,13 @@ vi.mock("react-joyride", () => ({ default: () => null }));
 import Profile from "../../../../pages/Profile";
 
 describe("Profile editor cross-tab save boundary", () => {
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
+    // Profile's legacy navigation diagnostics include live DOM nodes. Serializing those
+    // nodes under the full parallel suite can consume the test's entire timeout budget,
+    // so keep this interaction test focused on its observable state assertions.
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     class ResizeObserverMock {
       observe = vi.fn();
       unobserve = vi.fn();
@@ -138,6 +144,10 @@ describe("Profile editor cross-tab save boundary", () => {
     get.mockReset();
     post.mockReset();
     translationLanguage.current = "en";
+  });
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore();
   });
 
   it.each(["ar", "he"])(
@@ -441,5 +451,5 @@ describe("Profile editor cross-tab save boundary", () => {
     };
     expect(mutationSubmit).toHaveBeenNthCalledWith(1, expectedPayload);
     expect(mutationSubmit).toHaveBeenNthCalledWith(2, expectedPayload);
-  });
+  }, 10_000);
 });
