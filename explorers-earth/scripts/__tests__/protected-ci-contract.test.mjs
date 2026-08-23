@@ -28,6 +28,36 @@ const galleryCases = await Promise.all([
   bytes: await sourceImage()[format]().toBuffer(),
 })));
 
+function pngCrc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data = Buffer.alloc(0)) {
+  const name = Buffer.from(type, "ascii");
+  const result = Buffer.alloc(12 + data.length);
+  result.writeUInt32BE(data.length, 0);
+  name.copy(result, 4);
+  data.copy(result, 8);
+  result.writeUInt32BE(pngCrc32(Buffer.concat([name, data])), 8 + data.length);
+  return result;
+}
+
+function splitPng(bytes) {
+  const chunks = [];
+  let offset = 8;
+  while (offset < bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    chunks.push(bytes.subarray(offset, offset + 12 + length));
+    offset += 12 + length;
+  }
+  return { signature: bytes.subarray(0, 8), chunks };
+}
+
 test("protected CI uses exact cleanup names, qa run IDs, and independent required artifacts", async () => {
   const workflow = await fs.readFile(workflowPath, "utf8");
   assert.match(workflow, /PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION:/);
@@ -97,6 +127,27 @@ test("rejects malformed storage JSON and non-image gallery content", async () =>
     galleryBase64: zeroWidthPng.toString("base64"),
     tempRoot,
   }), /PROTECTED_FIXTURE_INVALID/);
+  const { signature, chunks } = splitPng(galleryCases[0].bytes);
+  const ihdr = chunks.find((chunk) => chunk.subarray(4, 8).toString("ascii") === "IHDR");
+  const idat = chunks.find((chunk) => chunk.subarray(4, 8).toString("ascii") === "IDAT");
+  const iend = chunks.find((chunk) => chunk.subarray(4, 8).toString("ascii") === "IEND");
+  const corruptCrc = Buffer.from(galleryCases[0].bytes);
+  corruptCrc[corruptCrc.length - 1] ^= 0xff;
+  for (const invalidPng of [
+    Buffer.concat([signature, ihdr, iend]),
+    Buffer.concat([signature, ihdr, pngChunk("IDAT"), iend]),
+    corruptCrc,
+    Buffer.concat([signature, idat, ihdr, iend]),
+    Buffer.concat([signature, ihdr, ihdr, idat, iend]),
+    Buffer.concat([galleryCases[0].bytes, Buffer.from([0])]),
+  ]) {
+    await assert.rejects(materializeProtectedFixtures({
+      ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+      nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
+      galleryBase64: invalidPng.toString("base64"),
+      tempRoot,
+    }), /PROTECTED_FIXTURE_INVALID/);
+  }
   await assert.rejects(materializeProtectedFixtures({
     ownerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),
     nonOwnerStorageStateJson: JSON.stringify({ cookies: [], origins: [] }),

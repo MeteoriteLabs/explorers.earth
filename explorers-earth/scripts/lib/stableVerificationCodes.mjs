@@ -36,11 +36,19 @@ export const PUBLIC_API_RESULT_CODES = Object.freeze([
   "PUBLIC_API_VALIDATION_REJECTED",
 ]);
 
+export const ORCHESTRATOR_RESULT_CODES = Object.freeze([
+  "READY",
+  "DRY_RUN",
+  "INVALID_USERNAME",
+  "CHILD_COMMAND_FAILED",
+]);
+
 export const STABLE_CHILD_CODES = new Set([
   ...Object.keys(VERIFICATION_EXIT_CODES),
   ...PROTECTED_REPORT_CODES,
   ...PROTECTED_SETUP_CODES,
   ...PUBLIC_API_RESULT_CODES,
+  ...ORCHESTRATOR_RESULT_CODES,
 ]);
 
 export const STABLE_BLOCKER_CODES = new Set(
@@ -51,5 +59,7 @@ export const STABLE_BLOCKER_CODES = new Set(
     "PUBLIC_API_READY",
     "PUBLIC_API_EMPTY",
     "PUBLIC_API_VALIDATION_REJECTED",
+    "READY",
+    "DRY_RUN",
   ].includes(code)),
 );

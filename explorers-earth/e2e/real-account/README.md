@@ -57,8 +57,10 @@ JSON object in `E2E_PROFILE_OWNER_STORAGE_STATE_JSON` and
 `E2E_PROFILE_NON_OWNER_STORAGE_STATE_JSON` secrets. Store the gallery fixture in
 `E2E_PROFILE_GALLERY_BASE64` as strict base64 for a complete PNG, JPEG, GIF, or
 WebP image of at most 10 MiB. CI structurally validates dimensions, bounded
-chunks/segments/blocks, and each format's required end marker before writing
-those values to user-restricted
+chunks/segments/blocks, and each format's required end marker before writing.
+PNG validation additionally checks critical-chunk order, non-empty IDAT data,
+and every chunk CRC. Only after validation are
+those values written to user-restricted
 files under the operating-system temporary directory, derives the gallery file
 extension from its validated PNG/JPEG/GIF/WebP signature so Playwright uploads
 the matching type, exposes only paths to Playwright, and removes that directory

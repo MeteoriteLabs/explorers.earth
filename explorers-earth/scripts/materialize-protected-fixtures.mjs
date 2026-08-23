@@ -23,26 +23,58 @@ function invalidGallery() {
   throw new Error("PROTECTED_FIXTURE_INVALID: gallery content is not a complete supported image");
 }
 
+function pngCrc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 function pngDimensions(bytes) {
   const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   if (!bytes.subarray(0, 8).equals(signature)) return null;
   let offset = 8;
   let dimensions;
+  let chunkCount = 0;
+  let sawIdat = false;
+  let idatEnded = false;
+  let sawPlte = false;
   while (offset + 12 <= bytes.length) {
+    chunkCount += 1;
+    if (chunkCount > 4096) invalidGallery();
     const length = bytes.readUInt32BE(offset);
     const type = bytes.subarray(offset + 4, offset + 8).toString("ascii");
     const end = offset + 12 + length;
     if (end > bytes.length) invalidGallery();
-    if (!dimensions) {
+    const chunkDataEnd = offset + 8 + length;
+    const expectedCrc = bytes.readUInt32BE(chunkDataEnd);
+    if (pngCrc32(bytes.subarray(offset + 4, chunkDataEnd)) !== expectedCrc) invalidGallery();
+    if (!/^[A-Za-z]{4}$/.test(type)) invalidGallery();
+    const critical = (bytes[offset + 4] & 0x20) === 0;
+    if (critical && !["IHDR", "PLTE", "IDAT", "IEND"].includes(type)) invalidGallery();
+    if (chunkCount === 1) {
       if (type !== "IHDR" || length !== 13) invalidGallery();
       const width = bytes.readUInt32BE(offset + 8);
       const height = bytes.readUInt32BE(offset + 12);
       if (!width || !height) invalidGallery();
       dimensions = { width, height };
+    } else if (type === "IHDR") {
+      invalidGallery();
+    }
+    if (type === "PLTE") {
+      if (sawPlte || sawIdat || length === 0 || length % 3 !== 0 || length > 768) invalidGallery();
+      sawPlte = true;
+    } else if (type === "IDAT") {
+      if (!dimensions || idatEnded || length === 0) invalidGallery();
+      sawIdat = true;
+    } else if (sawIdat && type !== "IEND") {
+      idatEnded = true;
     }
     offset = end;
     if (type === "IEND") {
-      if (length !== 0 || offset !== bytes.length) invalidGallery();
+      if (length !== 0 || !sawIdat || offset !== bytes.length) invalidGallery();
       return dimensions;
     }
   }

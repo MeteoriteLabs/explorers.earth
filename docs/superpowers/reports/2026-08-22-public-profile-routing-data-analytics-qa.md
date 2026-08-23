@@ -203,3 +203,22 @@ remains `ENV_MISSING` (API URL present, public-read capability missing), so no
 live/protected callback, API/account/analytics mutation, cleanup, or restore was
 executed. Sitemap bytes were restored and verified against the pre-Task-8 blob
 `c8747103e7d16e2b8d466ecb20baa18d2819a115`.
+
+## Task 8 corrective round 4
+
+PNG validation now requires a single first 13-byte IHDR with non-zero dimensions,
+at least one non-empty IDAT, valid CRCs for every chunk, known critical chunks in
+valid order, and a final zero-byte IEND with no trailing data. Bounded parsing
+rejects missing/empty IDAT, corrupt CRC, IDAT-before-IHDR, duplicate IHDR, and
+trailing-byte adversaries while a genuine generated PNG passes.
+
+Stable-code drift checking now uses the installed TypeScript parser to walk real
+producer syntax, including code properties, recovery-evidence assignments, named
+code collections, reporter summaries, and error constructors. It is not seeded
+from the catalog: a synthetic assignment-form novel code is proven detectable,
+and every discovered producer code maps to the shared catalog with no unexplained
+catalog-only entry.
+
+Fresh safe verification: focused 20/20; full contracts 89/89; unit 188 files /
+1,533 tests; lint 0 errors; app/test/E2E TypeScript, i18n, and build pass;
+protected project list-only 10 tests. No live or protected callback ran.
