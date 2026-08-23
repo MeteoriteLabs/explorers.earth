@@ -83,6 +83,13 @@ class AdmissionLimitError extends Error {
   }
 }
 
+class MalformedUpstreamBodyError extends Error {
+  constructor() {
+    super("bounded upstream response is malformed");
+    this.name = "MalformedUpstreamBodyError";
+  }
+}
+
 interface Waiter {
   resolve: () => void;
   reject: (error: Error) => void;
@@ -407,7 +414,7 @@ export class StrapiIdentityGateway {
         catch { throw malformed(); }
       } catch (error) {
         if (error instanceof MusicIdentityError) throw error;
-        if (error instanceof RangeError || error instanceof TypeError) throw malformed();
+        if (error instanceof MalformedUpstreamBodyError) throw malformed();
         if (error instanceof AdmissionLimitError) throw unavailable(1, false);
         if (attempt < this.options.retries) {
           this.retries += 1;
@@ -547,7 +554,7 @@ export async function readBoundedResponseBody(
       const next = await withDeadline(reader.read(), remaining, controller);
       if (next.done) break;
       length += next.value.byteLength;
-      if (length > maximumBytes) throw new RangeError("bounded response body exceeded");
+      if (length > maximumBytes) throw new MalformedUpstreamBodyError();
       chunks.push(next.value);
     }
   } catch (error) {
@@ -560,7 +567,11 @@ export async function readBoundedResponseBody(
     body.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new TextDecoder("utf-8", { fatal: true }).decode(body);
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(body);
+  } catch {
+    throw new MalformedUpstreamBodyError();
+  }
 }
 
 export function parseRetryAfterMs(value: string | null, now: number): number | undefined {

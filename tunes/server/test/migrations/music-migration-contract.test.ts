@@ -21,7 +21,7 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
   it("retains the append-only database-owned publication clock before durable reactivation and archive authority", () => {
-    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0015_publication_operation_archive");
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0016_publication_operation_retention");
     const migration = loadMusicMigrations().find(({ id }) => id === "0013_publication_operation_database_clock");
     expect(migration?.id).toBe("0013_publication_operation_database_clock");
     expect(migration?.sql).toMatch(/CREATE OR REPLACE FUNCTION enforce_music_publication_operation_immutability/i);
@@ -50,6 +50,7 @@ describe("Music migration authority contracts", () => {
       "0013_publication_operation_database_clock",
       "0014_durable_reactivation_authority",
       "0015_publication_operation_archive",
+      "0016_publication_operation_retention",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -73,8 +74,9 @@ describe("Music migration authority contracts", () => {
       "0013_publication_operation_database_clock",
       "0014_durable_reactivation_authority",
       "0015_publication_operation_archive",
+      "0016_publication_operation_retention",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
@@ -197,7 +199,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0016_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0017_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

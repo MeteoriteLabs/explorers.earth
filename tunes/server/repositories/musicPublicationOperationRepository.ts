@@ -12,6 +12,8 @@ import {
 type QueryPool = Pick<Pool, "query" | "connect">;
 const PUBLICATION_LOCK = 0x4d50;
 export const PUBLICATION_ACTIVE_OPERATION_QUOTA = 100;
+export const PUBLICATION_GLOBAL_ACTIVE_OPERATION_QUOTA = 10_000;
+const PUBLICATION_GLOBAL_LOCK = 0x4d5047;
 
 export type MusicPublicationCommandResult =
   | { status: "completed"; replayed: boolean; response: MusicPublicationCommandResponse }
@@ -56,6 +58,7 @@ export class MusicPublicationOperationRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock($1)", [PUBLICATION_GLOBAL_LOCK]);
       await client.query("SELECT pg_advisory_xact_lock($1,$2)", [PUBLICATION_LOCK, musicUserId]);
       const prior = (await client.query<StoredPublicationOperation>(
         `SELECT request_fingerprint,request_mode,operation_state,expires_at,
@@ -107,6 +110,28 @@ export class MusicPublicationOperationRepository {
         return archived.request_fingerprint === requestFingerprint && archived.request_mode === mode
           ? { status: "expired" }
           : { status: "conflict" };
+      }
+
+      const globalQuota = (await client.query<{ global_active_count: number; retry_after_seconds: number }>(
+        `SELECT count(*)::integer AS global_active_count,
+                COALESCE(GREATEST(1,LEAST(86400,
+                  ceil(extract(epoch FROM (min(expires_at)-clock_timestamp())))::integer)),1)::integer
+                  AS retry_after_seconds
+           FROM music_publication_operations
+          WHERE operation_state='completed'
+            AND expires_at>clock_timestamp()`,
+      )).rows[0];
+      if (!globalQuota || !Number.isSafeInteger(globalQuota.global_active_count)
+          || globalQuota.global_active_count < 0) {
+        throw new Error("Publication global operation quota authority is unavailable.");
+      }
+      if (globalQuota.global_active_count >= PUBLICATION_GLOBAL_ACTIVE_OPERATION_QUOTA) {
+        if (!Number.isSafeInteger(globalQuota.retry_after_seconds)
+            || globalQuota.retry_after_seconds < 1 || globalQuota.retry_after_seconds > 86_400) {
+          throw new Error("Publication global operation quota authority is unavailable.");
+        }
+        await client.query("COMMIT");
+        return { status: "rate_limited", retryAfterSeconds: globalQuota.retry_after_seconds };
       }
 
       const quota = (await client.query<{ active_count: number; retry_after_seconds: number }>(

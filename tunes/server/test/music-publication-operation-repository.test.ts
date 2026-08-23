@@ -30,6 +30,9 @@ function harness(
         return { rows: [{ operation_time: operationTime }], rowCount: 1 };
       }
       const handled = { rows: [], rowCount: 0, ...handler(normalized, values) };
+      if (normalized.includes("AS global_active_count") && handled.rows.length === 0) {
+        return { rows: [{ global_active_count: 0, retry_after_seconds: 1 }], rowCount: 1 };
+      }
       if (normalized.includes("AS active_count") && handled.rows.length === 0) {
         return { rows: [{ active_count: 0, retry_after_seconds: 1 }], rowCount: 1 };
       }
@@ -135,7 +138,7 @@ describe("durable publication operation repository", () => {
     const db = harness((text) => {
       if (text.includes("FROM music_publication_operations") && text.includes("idempotency_key_hash=$2")) return { rows: [] };
       if (text.includes("music_lookup_publication_operation_archive")) return { rows: [] };
-      if (text.includes("active_count")) return { rows: [{ active_count: 100, retry_after_seconds: 37 }] };
+      if (text.includes("AS active_count")) return { rows: [{ active_count: 100, retry_after_seconds: 37 }] };
       return { rows: [] };
     });
     const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
@@ -148,6 +151,26 @@ describe("durable publication operation repository", () => {
     expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
     expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
     expect(db.calls.map(({ text }) => text)).toContain("COMMIT");
+  });
+
+  it("bounds globally admitted replayable operations before publication mutation", async () => {
+    // Break caught: per-owner quotas alone allow aggregate daily admission to
+    // exceed every finite cleanup worker and grow the live table forever.
+    const db = harness((text) => {
+      if (text.includes("FROM music_publication_operations") && text.includes("idempotency_key_hash=$2")) return { rows: [] };
+      if (text.includes("music_lookup_publication_operation_archive")) return { rows: [] };
+      if (text.includes("AS global_active_count")) return { rows: [{ global_active_count: 10_000, retry_after_seconds: 19 }] };
+      return { rows: [] };
+    });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
+
+    await expect(repository.execute(41, "fresh-command-at-global-quota", "public")).resolves.toEqual({
+      status: "rate_limited",
+      retryAfterSeconds: 19,
+    });
+    expect(db.calls.filter(({ text }) => text.startsWith("SELECT pg_advisory_xact_lock"))).toHaveLength(2);
+    expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
+    expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
   });
 
   it("keeps compacted tombstones authoritative for exact expiry and conflicting reuse", async () => {

@@ -103,9 +103,9 @@ export function consumePublicSurfaceLimit(input: {
   const source = hash(input.source);
   const resource = hash(input.resource);
   const capability = input.capability ? hash(input.capability) : "public";
-  return consumeContainmentLimit("c6-public-global:all", 600, 60_000)
-    || consumeContainmentLimit(`c6-public-address:${source}`, 120, 60_000)
-    || consumeContainmentLimit(`c6-public-resource:${source}:${resource}:${capability}`, 60, 60_000);
+  return consumeContainmentLimit(`c6-public-address:${source}`, 120, 60_000)
+    || consumeContainmentLimit(`c6-public-resource:${source}:${resource}:${capability}`, 60, 60_000)
+    || consumeContainmentLimit("c6-public-global:all", 600, 60_000);
 }
 
 export function containmentLimiterStats() {

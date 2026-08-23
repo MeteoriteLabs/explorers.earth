@@ -143,7 +143,7 @@ describe("checked-in production Music deploy executable", () => {
       `postgres=${fixturePostgresImage}`,
       `traefik=${fixtureTraefikImage}`,
       `commit=${commit("a")}`,
-      "migration=0015_publication_operation_archive",
+      "migration=0016_publication_operation_retention",
       "proxy_ip=172.18.0.2",
     ].join("\n");
     writeFileSync(join(root, ".music-c10-fixture-images"), `${imageAuthorityPayload}\nmac=${
@@ -187,7 +187,7 @@ describe("checked-in production Music deploy executable", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-current-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: "/run/music-secrets/music-publication-response/current",
       MUSIC_IMAGE_DIGEST: digest("a"), MUSIC_IMAGE_COMMIT: commit("a"),
-      MUSIC_MIGRATION_MARKER: "0015_publication_operation_archive",
+      MUSIC_MIGRATION_MARKER: "0016_publication_operation_retention",
       MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${digest("a")}.json`,
     });
     const fixtureTunesService = (slot: "blue" | "green") => ({
@@ -232,7 +232,7 @@ describe("checked-in production Music deploy executable", () => {
             MUSIC_RUNTIME_DATABASE_USER: "music_runtime_login",
             MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: "/run/music-secrets/database-runtime",
             MUSIC_IMAGE_DIGEST: digest("a"), MUSIC_IMAGE_COMMIT: commit("a"),
-            MUSIC_MIGRATION_MARKER: "0015_publication_operation_archive",
+            MUSIC_MIGRATION_MARKER: "0016_publication_operation_retention",
             MUSIC_GATE_ATTESTATION_KEY: "dedicated-gate-attestation-authority",
             MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${digest("a")}.json`,
           },
@@ -382,7 +382,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0015_publication_operation_archive",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0016_publication_operation_retention",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -419,7 +419,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0015_publication_operation_archive",
+          "migration=0016_publication_operation_retention",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -626,7 +626,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0015_publication_operation_archive\tpending\t");
+      .toContain("\t0016_publication_operation_retention\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -639,7 +639,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0015_publication_operation_archive\tcurrent\t");
+      .toContain("\t0016_publication_operation_retention\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -699,8 +699,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0015_publication_operation_archive", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0015_publication_operation_archive", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0016_publication_operation_retention", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0016_publication_operation_retention", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -708,9 +708,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0015_publication_operation_archive\tcurrent\t");
+      .toContain("\t0016_publication_operation_retention\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0015_publication_operation_archive\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0016_publication_operation_retention\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1076,7 +1076,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0015_publication_operation_archive", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0016_publication_operation_retention", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

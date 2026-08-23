@@ -406,6 +406,15 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     expect(consumePublicSurfaceLimit({ source: "rotating-visitor", resource: "missing-overflow" })).toBe(true);
   });
 
+  it("does not charge source-denied public requests to the global admission budget", () => {
+    // Break caught: the global limiter runs before the source limiter, so one
+    // denied source can make every other public playlist return 429.
+    for (let attempt = 0; attempt < 601; attempt += 1) {
+      consumePublicSurfaceLimit({ source: "hostile-source", resource: `rotating-${attempt}` });
+    }
+    expect(consumePublicSurfaceLimit({ source: "legitimate-source", resource: "public-playlist" })).toBe(false);
+  });
+
   it("does not advertise X-Username through CORS", async () => {
     const response = await request(app).options("/api/playlists")
       .set("Origin", "https://explorers.example.test")

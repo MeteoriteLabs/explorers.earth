@@ -40,7 +40,7 @@ absent or different, or `main` is not protected.
 
 ## C3-C9 same-image migration gate
 
-`0015_publication_operation_archive` is the exact expected migration ID. The
+`0016_publication_operation_retention` is the exact expected migration ID. The
 C5-C9 chain appends durable, exact-operation credential-revocation authority,
 immutable revocation history, the least-privilege runtime boundary, and durable
 reactivation and bounded publication-command replay authority without changing the immutable
@@ -64,7 +64,7 @@ Liveness remains process-only. The secure image ledger can retain historical
 `containment-no-schema-change` entries for audit and the permanent security
 floor, but they cease to be rollback targets as soon as the real C3 gate has
 migrated the database. All new images use
-`0015_publication_operation_archive` and the
+`0016_publication_operation_retention` and the
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production

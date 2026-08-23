@@ -43,7 +43,8 @@
     "0012_publication_replay_expiry_guard",
     "0013_publication_operation_database_clock",
     "0014_durable_reactivation_authority",
-    "0015_publication_operation_archive"
+    "0015_publication_operation_archive",
+    "0016_publication_operation_retention"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

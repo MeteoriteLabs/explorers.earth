@@ -91,6 +91,34 @@ export const reactivationGlobalLimiter = rateLimit({
   },
 });
 
+function reactivationConfirmationLimitSkip(req: Request): boolean {
+  return typeof req.query.token !== 'string' || !/^[a-f0-9]{64}$/.test(req.query.token);
+}
+
+const reactivationConfirmationAddressLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: REACTIVATION_ADDRESS_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `reactivation-confirm-address:${req.ip || 'unknown'}`,
+  skip: reactivationConfirmationLimitSkip,
+  message: {
+    message: 'Too many reactivation confirmations from this address. Please try again later.',
+  },
+});
+
+const reactivationConfirmationGlobalLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: REACTIVATION_GLOBAL_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: () => 'reactivation-confirm:global',
+  skip: reactivationConfirmationLimitSkip,
+  message: {
+    message: 'Reactivation confirmation is temporarily busy. Please try again later.',
+  },
+});
+
 export function setupReactivationRoutes(app: Express, dependencies?: {
   reactivateMusic(input: { userDocumentId: string; accountDocumentId: string; operationId: string }): Promise<void>;
 }): void {
@@ -103,7 +131,7 @@ export function setupReactivationRoutes(app: Express, dependencies?: {
    * Always returns 200 with a generic message (security best practice).
    * If the email belongs to a blocked account, a reactivation link is sent.
    */
-  app.post('/api/user/request-reactivation', reactivationGlobalLimiter, reactivationAddressLimiter, reactivationRequestLimiter, async (req: Request, res: Response) => {
+  app.post('/api/user/request-reactivation', reactivationAddressLimiter, reactivationRequestLimiter, reactivationGlobalLimiter, async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email || typeof email !== 'string') {
@@ -134,7 +162,7 @@ export function setupReactivationRoutes(app: Express, dependencies?: {
    * Validates the token and sets blocked = false on the Strapi user.
    * Returns JSON so the frontend can handle the result.
    */
-  app.get('/api/user/reactivate', async (req: Request, res: Response) => {
+  app.get('/api/user/reactivate', reactivationConfirmationAddressLimiter, reactivationConfirmationGlobalLimiter, async (req: Request, res: Response) => {
     const token = req.query.token as string | undefined;
 
     if (!token) {

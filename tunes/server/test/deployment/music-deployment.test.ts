@@ -23,7 +23,7 @@ const candidate: ImageCandidate = {
 const schemaCandidate: ImageCandidate = {
   digest: `sha256:${"4".repeat(64)}`,
   commit: "4444444444444444444444444444444444444444",
-  migrationMarker: "0015_publication_operation_archive",
+  migrationMarker: "0016_publication_operation_retention",
 };
 
 function initialState(): DeploymentState {

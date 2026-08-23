@@ -133,6 +133,30 @@ describe('reactivation address and global abuse limits', () => {
       expect(res.status).toBe(200);
     }
   });
+
+  it('does not charge address-denied requests to the global recovery budget', async () => {
+    // Break caught: global middleware ran first, so already-denied requests from
+    // one address could exhaust recovery for every legitimate address.
+    const app = buildApp();
+    for (let i = 0; i <= REACTIVATION_GLOBAL_MAX; i++) {
+      await request(app).post(REQ).set('X-Forwarded-For', '203.0.113.201').send({ email: `denied-${i}@example.com` });
+    }
+    const legitimate = await request(app).post(REQ).set('X-Forwarded-For', '198.51.100.201').send({ email: 'legitimate-after-denial@example.com' });
+    expect(legitimate.status).toBe(200);
+  });
+
+  it('bounds arbitrary public confirmation tokens by source before database work', async () => {
+    // Break caught: GET confirmation had no admission control, so every random
+    // token reached the durable PostgreSQL claim query.
+    const app = buildApp();
+    const source = '203.0.113.202';
+    for (let i = 0; i < REACTIVATION_ADDRESS_MAX; i++) {
+      const response = await request(app).get(`/api/user/reactivate?token=${i.toString(16).padStart(64, '0')}`).set('X-Forwarded-For', source);
+      expect(response.status).toBe(503);
+    }
+    const overflow = await request(app).get(`/api/user/reactivate?token=${'f'.repeat(64)}`).set('X-Forwarded-For', source);
+    expect(overflow.status).toBe(429);
+  });
 });
 
 describe('reactivationRateLimitSkip', () => {

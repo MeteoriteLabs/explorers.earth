@@ -169,12 +169,12 @@ export async function registerRoutes(
     },
   });
   const publicationShredTimer = setInterval(() => {
-    void publicationOperations.shredExpiredResponses(100)
-      .then(() => publicationOperations.compactExpiredOperations(100))
+    void publicationOperations.shredExpiredResponses(1_000)
+      .then(() => publicationOperations.compactExpiredOperations(1_000))
       .catch(() => {
       console.error("music_publication_response_shred_failed");
       });
-  }, 60 * 60 * 1_000);
+  }, 60 * 1_000);
   publicationShredTimer.unref();
   server.once("close", () => {
     lifecycleWorker.stop();

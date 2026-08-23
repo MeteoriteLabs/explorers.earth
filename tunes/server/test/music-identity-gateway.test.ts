@@ -189,6 +189,18 @@ describe("Strapi identity gateway", () => {
     }
   });
 
+  it("retries a transient fetch TypeError instead of classifying it as malformed JSON", async () => {
+    // Break caught: Node fetch reports DNS/TCP failures as TypeError, which the
+    // gateway confused with its bounded response decoder's malformed-body error.
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(accountsResponse([completeAccount]));
+    await expect(gateway(fetchImpl).resolve("network-retry-proof-with-entropy", "network-retry-request"))
+      .resolves.toMatchObject({ userDocumentId: user.documentId, accountDocumentId: completeAccount.documentId });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
   it("does not retry/cache invalid proofs and caches only complete successful resolutions", async () => {
     const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({}, 401));
     const badGateway = gateway(invalid);

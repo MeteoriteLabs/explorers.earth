@@ -32,7 +32,7 @@ const validEnvironment = {
   MUSIC_RATE_LIMIT_PER_MINUTE: "60",
   MUSIC_PROVISIONING_KILL_SWITCH: "true",
   MUSIC_PROVISIONING_COHORT: "disabled",
-  MUSIC_EXPECTED_MIGRATION_ID: "0015_publication_operation_archive",
+  MUSIC_EXPECTED_MIGRATION_ID: "0016_publication_operation_retention",
   MUSIC_RECONCILIATION_ENABLED: "false",
   MUSIC_RECONCILIATION_MAX_ROWS: "0",
 };
@@ -42,7 +42,7 @@ describe("server-side Music environment contract", () => {
     const productionExample = readFileSync(resolve(process.cwd(), "../.env.music.example"), "utf8");
     const fixtureExample = readFileSync(resolve(process.cwd(), "../.env.music.test.example"), "utf8");
     for (const example of [productionExample, fixtureExample]) {
-      expect(example).toContain("MUSIC_EXPECTED_MIGRATION_ID=0015_publication_operation_archive");
+      expect(example).toContain("MUSIC_EXPECTED_MIGRATION_ID=0016_publication_operation_retention");
       expect(example).toContain("MUSIC_COHORT_ENABLED=false");
       expect(example).toContain("MUSIC_COHORT_USER_DOCUMENT_IDS=");
     }

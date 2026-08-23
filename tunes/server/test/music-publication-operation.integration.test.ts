@@ -12,6 +12,7 @@ import {
   type MusicPublicationCommandResponse,
 } from "../services/musicPublicationResponseCrypto";
 import { hashGuestCapability } from "../policies/musicSurfacePolicy";
+import { provisionMusicRuntimeLogin } from "../db/music-runtime-role";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C9_PUBLICATION_POSTGRES_TEST === "1";
@@ -22,7 +23,10 @@ let clock = baseTime;
 let databaseNow = baseTime;
 let admin: pg.Pool;
 let pool: pg.Pool;
+let runtimePool: pg.Pool;
 let identities: MusicIdentityRepository;
+const runtimeUser = `music_publication_runtime_${process.pid}`;
+const runtimePassword = Buffer.alloc(32, 0x70).toString("base64url");
 
 const currentKey = { kid: "publication-current-v1", key: Buffer.alloc(32, 0x61) };
 const previousKey = { kid: "publication-previous-v1", key: Buffer.alloc(32, 0x62) };
@@ -110,14 +114,23 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     target.pathname = `/${databaseName}`;
     pool = new pg.Pool({ connectionString: target.toString(), max: 24 });
     await migrateMusicDatabase(pool);
+    await provisionMusicRuntimeLogin(pool, { loginRole: runtimeUser, password: runtimePassword });
+    const runtimeTarget = new URL(target);
+    runtimeTarget.username = runtimeUser;
+    runtimeTarget.password = runtimePassword;
+    runtimePool = new pg.Pool({ connectionString: runtimeTarget.toString(), max: 4 });
+    expect((await runtimePool.query("SELECT current_user,pg_has_role(current_user,'music_runtime','member') AS member")).rows[0])
+      .toEqual({ current_user: runtimeUser, member: true });
     databaseNow = new Date((await pool.query("SELECT clock_timestamp() AS value")).rows[0].value).getTime();
     identities = new MusicIdentityRepository(pool);
   });
 
   afterAll(async () => {
+    await runtimePool?.end();
     await pool?.end();
     await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
+    await admin?.query(`DROP ROLE IF EXISTS ${runtimeUser}`);
     await admin?.end();
   });
 
@@ -272,7 +285,7 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     expect((await pool.query("SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1", [owner.id])).rows[0].count).toBe(0);
   });
 
-  it("permanently retires an expired key, shreds its response, and never mutates publication again", async () => {
+  it("retires an expired key through retention, then purges it through the real runtime login", async () => {
     clock = baseTime + 4_000;
     const owner = await identities.ensureIdentity(identityInput("expired"));
     const durable = repository();
@@ -300,7 +313,8 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
       operation_state: "replay_expired", response_key_id: null, response_nonce: null,
       response_ciphertext: null, response_tag: null, shredded: true,
     });
-    expect(await durable.compactExpiredOperations(100)).toBeGreaterThanOrEqual(1);
+    const runtimeDurable = repository(cipher(), {}, runtimePool);
+    expect(await runtimeDurable.compactExpiredOperations(1_000)).toBeGreaterThanOrEqual(1);
     expect((await pool.query(
       "SELECT count(*)::int AS count FROM music_publication_operations WHERE music_user_id=$1",
       [owner.id],
@@ -311,6 +325,44 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
     )).rows[0]).toEqual({ request_mode: "unlisted" });
     expect(await repository().execute(owner.id, "expired-operation-key", "unlisted")).toEqual({ status: "expired" });
     expect(await repository().execute(owner.id, "expired-operation-key", "public")).toEqual({ status: "conflict" });
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("ALTER TABLE music_publication_operation_archive DISABLE TRIGGER music_publication_operation_archive_immutability");
+      await client.query(`WITH authority_clock AS (SELECT clock_timestamp() AS value)
+        UPDATE music_publication_operation_archive
+        SET completed_at=authority_clock.value-interval '32 days',
+            expires_at=authority_clock.value-interval '31 days',
+            archived_at=authority_clock.value-interval '30 days 1 second'
+        FROM authority_clock WHERE music_user_id=$1`, [owner.id]);
+      await client.query("ALTER TABLE music_publication_operation_archive ENABLE ALWAYS TRIGGER music_publication_operation_archive_immutability");
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+    expect(await runtimeDurable.compactExpiredOperations(1_000)).toBeGreaterThanOrEqual(1);
+    expect((await pool.query(
+      "SELECT count(*)::int AS count FROM music_publication_operation_archive WHERE music_user_id=$1",
+      [owner.id],
+    )).rows[0]).toEqual({ count: 0 });
+  });
+
+  it("indexes the replay-expired compaction queue and archive retention queue", async () => {
+    const indexes = (await pool.query<{ indexname: string; indexdef: string }>(
+      `SELECT indexname,indexdef FROM pg_indexes
+        WHERE schemaname='public' AND indexname IN (
+          'music_publication_operations_compaction_idx',
+          'music_publication_operation_archive_retention_idx'
+        ) ORDER BY indexname`,
+    )).rows;
+    expect(indexes).toHaveLength(2);
+    expect(indexes[0]?.indexdef).toMatch(/archived_at/i);
+    expect(indexes[1]?.indexdef).toMatch(/expires_at/i);
+    expect(indexes[1]?.indexdef).toMatch(/operation_state[\s\S]*replay_expired/i);
   });
 
   it("compares a previous-key deadline to the exact PostgreSQL microsecond expiry", async () => {
