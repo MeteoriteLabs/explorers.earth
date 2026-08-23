@@ -132,6 +132,30 @@ export async function runAnalyticsCanaryLifecycle({ endpoint, token, runId, qaSi
   return { code: "PUBLIC_API_READY", operations: [{ operation: "analytics-canary", classification: "ready", code: "PUBLIC_API_READY", observedStatus: "cleanup-verified", likelyCause: "Approved QA analytics canary completed and was removed.", remediation: "Retain the redacted release artifact." }] };
 }
 
+export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRunId, qaSink, documents, fetchImpl = fetch, timeoutMs = 1500 } = {}) {
+  const runId = /^qa[-_]/i.test(baseRunId ?? "") ? `qa-preflight-${baseRunId.slice(3)}` : "";
+  if (!endpoint || !token || !runId || !/^qa[-_]/i.test(qaSink ?? "") ||
+      !/\bcanary\s*:/.test(documents?.canary ?? "") || !/\bcleanup\s*:/.test(documents?.cleanupRun ?? "") ||
+      !/\bremaining\s*:/.test(documents?.remainingRun ?? "")) {
+    return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "contract-missing-or-invalid")] };
+  }
+  const send = async (operationName, query) => {
+    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetchImpl(endpoint, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ operationName, query, variables: { runId, qaSink } }), signal: controller.signal });
+      const body = await response.json();
+      return response.ok && !body.errors ? body.data : null;
+    } catch { return null; } finally { clearTimeout(timer); }
+  };
+  const written = await send("PreflightQaBrowserRun", documents.canary);
+  if (!written?.canary?.documentId) return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "canary-write-failed")] };
+  const cleaned = await send("PreflightCleanupQaBrowserRun", documents.cleanupRun);
+  if (!cleaned?.cleanup) return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "cleanup-failed")] };
+  const verified = await send("PreflightVerifyQaBrowserRun", documents.remainingRun);
+  if (!Array.isArray(verified?.remaining) || verified.remaining.length !== 0) return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", operations: [diagnostic("analytics-run-cleanup", "malformed", "cleanup-verification-failed")] };
+  return { code: "PUBLIC_API_READY", operations: [{ ...diagnostic("analytics-run-cleanup", "ready", "cleanup-verified"), code: "PUBLIC_API_READY" }] };
+}
+
 const NEGATIVE_PROBES = [
   ["private-account-direct-id", "CapabilityPrivateAccount", "query CapabilityPrivateAccount($id: ID!) { account(documentId: $id) { documentId } }", "public-read", (env) => ({ id: env.PUBLIC_API_PRIVATE_ACCOUNT_ID })],
   ["private-list-direct-id", "CapabilityPrivateList", "query CapabilityPrivateList($id: ID!) { recommendationList(documentId: $id) { documentId } }", "public-read", (env) => ({ id: env.PUBLIC_API_PRIVATE_LIST_ID })],
@@ -159,6 +183,8 @@ export async function runControlledNegativeProbes({ endpoint, env = process.env,
   }
   const lifecycle = await runAnalyticsCanaryLifecycle({ endpoint, token: env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN, runId: env.PUBLIC_API_RUN_ID, qaSink: env.PUBLIC_API_ANALYTICS_QA_SINK, documents: { canary: env.PUBLIC_API_ANALYTICS_CANARY_MUTATION, cleanup: env.PUBLIC_API_ANALYTICS_CLEANUP_MUTATION, remaining: env.PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY }, fetchImpl, timeoutMs });
   if (lifecycle.code !== "PUBLIC_API_READY") return lifecycle;
+  const runCleanup = await runAnalyticsRunCleanupPreflight({ endpoint, token: env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN, baseRunId: env.PUBLIC_API_RUN_ID, qaSink: env.PUBLIC_API_ANALYTICS_QA_SINK, documents: { canary: env.PUBLIC_API_ANALYTICS_CANARY_MUTATION, cleanupRun: env.PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION, remainingRun: env.PUBLIC_API_ANALYTICS_RUN_CLEANUP_VERIFY_QUERY }, fetchImpl, timeoutMs });
+  if (runCleanup.code !== "PUBLIC_API_READY") return runCleanup;
   const results = [];
   for (const [id, operationName, query, capability, variablesFor] of NEGATIVE_PROBES) {
     const variables = variablesFor(env);
@@ -220,7 +246,8 @@ export async function runPublicApiPreflight({ username, env = process.env, fetch
     };
     return { code: "CONTROLLED_FIXTURE_REQUIRED", username: "provided", configuration, operations: [...operations, prerequisite] };
   }
-  return { code: negative.code === "PUBLIC_API_READY" ? reportCode(operations) : negative.code, username: "provided", configuration, operations: [...operations, ...negative.operations] };
+  const code = negative.code === "PUBLIC_API_READY" ? reportCode(operations) : negative.code;
+  return { code, username: "provided", configuration, operations: [...operations, ...negative.operations], accountVisibility: publicVisibility(account) };
 }
 
 export async function runPublicReadOnlyPreflight({ username, env = process.env, fetchImpl = fetch, timeoutMs = 1500, retries = 1 } = {}) {
@@ -242,7 +269,11 @@ export async function runPublicReadOnlyPreflight({ username, env = process.env, 
     endpoint, token, operation, variables: operation.variables(account.documentId), fetchImpl, timeoutMs, retries,
   })));
   const operations = [bootstrapResponse.diagnostic, ...collections.map((result) => result.diagnostic)];
-  return { code: reportCode(operations), operations };
+  return { code: reportCode(operations), operations, accountVisibility: publicVisibility(account) };
+}
+
+function publicVisibility(account) {
+  return Object.fromEntries(["public_profile", "public_recommendations", "public_music", "public_movie", "public_books", "public_guides", "public_games", "public_apps", "public_products", "public_people"].map((field) => [field, account[field] === true || account[field] === "Yes"]));
 }
 
 function parseArgs(args) {

@@ -141,7 +141,7 @@ test("protected mutation setup cannot start callbacks before analytics cleanup a
 });
 
 test("protected fixture and run-cleanup block paths are stable and named", async () => {
-  const { validateProtectedReadOnlyPrerequisites, validateProtectedPrerequisites } = await import("../protected-prerequisites.mjs");
+  const { validateProtectedReadOnlyPrerequisites, validateProtectedPrerequisites, validateRouteFixtureCoverage } = await import("../protected-prerequisites.mjs");
   assert.throws(() => validateProtectedReadOnlyPrerequisites({
     VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read",
     E2E_PROFILE_USERNAME: "fixture", E2E_PROFILE_ROUTE_FIXTURES: "{}",
@@ -153,6 +153,9 @@ test("protected fixture and run-cleanup block paths are stable and named", async
   assert.match(source, /ACCOUNT_MARKER_MISMATCH/);
   assert.match(source, /LIVE_WRITE_NOT_APPROVED/);
   assert.equal(typeof validateProtectedPrerequisites, "function");
+  assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: ["profile"] }, { public_profile: true }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
+  assert.throws(() => validateRouteFixtureCoverage({ enabledRouteIds: ["profile", "places-map", "places-detail-map", "places-map-detail", "community", "books-index"] }, { public_profile: true }), /ROUTE_FIXTURE_COVERAGE_MISMATCH/);
+  assert.doesNotThrow(() => validateRouteFixtureCoverage({ enabledRouteIds: ["profile", "places-index", "places-detail", "places-map", "places-detail-map", "places-map-detail", "community"] }, { public_profile: true, public_recommendations: true }));
 });
 
 test("protected read-only setup requires only the dedicated public-read tier", async () => {
@@ -161,8 +164,8 @@ test("protected read-only setup requires only the dedicated public-read tier", a
   await runProtectedGlobalSetup({
     projectNames: ["real-account"],
     mode: "read-only",
-    env: { VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read-only", E2E_PROFILE_USERNAME: "published-fixture", E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown-fixture" }) },
-    verifyReadOnlyPrerequisites: async () => ({ code: "PUBLIC_API_READY" }),
+    env: { VITE_API_URL: "https://fixture.invalid/graphql", VITE_PUBLIC_READ_ACCESS_TOKEN: "read-only", E2E_PROFILE_USERNAME: "published-fixture", E2E_PROFILE_ROUTE_FIXTURES: JSON.stringify({ params: { placeSlug: "p", place: "p", guideSlug: "g", genreSlug: "g", subjectSlug: "s", sectorSlug: "s", listSlug: "l" }, enabledRouteIds: ["profile", "places-map", "places-detail-map", "places-map-detail", "community"], hiddenPath: "/fixture/books", deletedPath: "/fixture/books/deleted", unknownUsername: "unknown-fixture" }) },
+    verifyReadOnlyPrerequisites: async () => ({ code: "PUBLIC_API_READY", accountVisibility: { public_profile: true } }),
     onProtectedReady: () => { ready = true; },
   });
   assert.equal(ready, true);

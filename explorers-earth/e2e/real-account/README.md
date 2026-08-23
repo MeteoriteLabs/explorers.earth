@@ -11,7 +11,10 @@ Required names: `VITE_API_URL`, `VITE_PUBLIC_READ_ACCESS_TOKEN`, and
 `E2E_PROFILE_USERNAME`. `E2E_PROFILE_ROUTE_FIXTURES` is a JSON contract with
 `params`, every `enabledRouteIds` entry, `hiddenPath`, `deletedPath`, and an
 `unknownUsername`; missing detail fixtures fail with `ROUTE_FIXTURE_INVALID`
-instead of silently reducing coverage. The capability must expose published reads only.
+instead of silently reducing coverage. After bootstrap, the declared IDs must
+exactly match every live enabled and always-visible contract route, including
+details; missing, extra, duplicate, or stale IDs fail with
+`ROUTE_FIXTURE_COVERAGE_MISMATCH`. The capability must expose published reads only.
 
 ```text
 npm run verify:public-profile:env -- --mode=read-only --json
@@ -39,6 +42,10 @@ In addition to the read-only names, configure all names reported by
 - `E2E_PROFILE_GALLERY_FILE` plus owner and non-owner storage states
 - run-wide browser-event cleanup/remaining documents using aliases `cleanup`
   and `remaining`
+
+Before any browser/account callback, global setup writes a harmless isolated
+`qa-preflight-*` canary and proves the run-wide cleanup mutation and
+zero-remaining query. Failure is `ANALYTICS_RUN_CLEANUP_UNAVAILABLE`.
 
 Run `npm run test:e2e:real-account`. Global setup fails before any test body if
 one prerequisite is absent. Groups run one at a time and stop on the first

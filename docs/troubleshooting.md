@@ -144,9 +144,14 @@ Do not rerun mutations until both the read-only API command and protected guest
 browser command pass against the restored public profile.
 
 `ROUTE_FIXTURE_INVALID` means the protected fixture contract is incomplete;
-do not reduce the route list to make the suite pass. `ANALYTICS_CLEANUP_FAILED`
+do not reduce the route list to make the suite pass.
+`ROUTE_FIXTURE_COVERAGE_MISMATCH` means the declared IDs do not exactly match
+live bootstrap visibility and required route/detail contracts.
+`ANALYTICS_RUN_CLEANUP_UNAVAILABLE` means the isolated preflight canary could
+not prove the run-wide cleanup mutation and zero-remaining query.
+`ANALYTICS_CLEANUP_FAILED`
 also covers a missing or unsuccessful browser-run cleanup/remaining query. In
-both cases global setup exits before any account-test callback.
+all of these cases global setup exits before any account-test callback.
 
 ## Getting Help
 

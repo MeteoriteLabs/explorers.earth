@@ -11,7 +11,34 @@ const REQUIRED = [
 
 export const LIVE_WRITE_CONFIRMATION = "I_APPROVE_PROFILE_MUTATION_AND_RESTORE";
 
-function validateRouteFixtures(env) {
+const ROUTE_VISIBILITY = new Map([
+  ["profile", "public_profile"], ["music", "public_music"],
+  ["places-index", "public_recommendations"], ["places-detail", "public_recommendations"],
+  ["places-map", null], ["places-detail-map", null], ["places-map-detail", null],
+  ["guides-index", "public_guides"], ["guides-detail", "public_guides"], ["community", null],
+  ["movies-index", "public_movie"], ["movies-genre", "public_movie"], ["movies-list", "public_movie"],
+  ["books-index", "public_books"], ["books-subject", "public_books"], ["books-list", "public_books"],
+  ["games-index", "public_games"], ["games-genre", "public_games"], ["games-list", "public_games"],
+  ["apps-index", "public_apps"], ["apps-list", "public_apps"],
+  ["products-index", "public_products"], ["products-list", "public_products"],
+  ["people-index", "public_people"], ["people-sector", "public_people"], ["people-list", "public_people"],
+]);
+
+function enabled(value) { return value === true || value === "Yes"; }
+
+export function validateRouteFixtureCoverage(raw, accountVisibility) {
+  const fixtures = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const actual = new Set(fixtures.enabledRouteIds);
+  const expected = new Set([...ROUTE_VISIBILITY].filter(([, field]) => field === null || enabled(accountVisibility?.[field])).map(([id]) => id));
+  const missing = [...expected].filter((id) => !actual.has(id));
+  const extra = [...actual].filter((id) => !expected.has(id) || !ROUTE_VISIBILITY.has(id));
+  if (missing.length || extra.length || actual.size !== fixtures.enabledRouteIds.length) {
+    throw new Error("ROUTE_FIXTURE_COVERAGE_MISMATCH");
+  }
+  return fixtures;
+}
+
+export function validateRouteFixtures(env) {
   if (!env.E2E_PROFILE_ROUTE_FIXTURES) throw new Error("ENV_MISSING: E2E_PROFILE_ROUTE_FIXTURES");
   try {
     const fixtures = JSON.parse(env.E2E_PROFILE_ROUTE_FIXTURES);
@@ -19,6 +46,7 @@ function validateRouteFixtures(env) {
     if (!fixtures || typeof fixtures !== "object" || !fixtures.params ||
       requiredParams.some((name) => typeof fixtures.params[name] !== "string" || fixtures.params[name].length === 0) ||
       !Array.isArray(fixtures.enabledRouteIds) || fixtures.enabledRouteIds.length === 0 ||
+      fixtures.enabledRouteIds.some((id) => typeof id !== "string" || !ROUTE_VISIBILITY.has(id)) ||
       !fixtures.hiddenPath || !fixtures.deletedPath || !fixtures.unknownUsername) {
       throw new Error("shape");
     }

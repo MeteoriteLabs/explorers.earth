@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { requestOperation, runAnalyticsCanaryLifecycle, runControlledNegativeProbes, runPublicApiPreflight, runPublicReadOnlyPreflight } from "../verify-public-api-access.mjs";
+import { requestOperation, runAnalyticsCanaryLifecycle, runAnalyticsRunCleanupPreflight, runControlledNegativeProbes, runPublicApiPreflight, runPublicReadOnlyPreflight } from "../verify-public-api-access.mjs";
 
 const scriptPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../verify-public-api-access.mjs");
 const testOperation = {
@@ -36,13 +36,15 @@ function protectedEnv(overrides = {}) {
     PUBLIC_API_PRIVATE_LIST_ID: "fixture-private-list",
     PUBLIC_API_PRIVATE_ITEM_ID: "fixture-private-item",
     PUBLIC_API_PRIVATE_LIST_SLUG: "fixture-private-slug",
-    PUBLIC_API_RUN_ID: "fixture-run-id",
+    PUBLIC_API_RUN_ID: "qa-fixture-run-id",
     PUBLIC_PROFILE_MUTATION_APPROVED: "true",
     PUBLIC_PROFILE_TEST_ACCOUNT_MARKER: "public-profile-mutation-fixture",
     PUBLIC_API_ANALYTICS_QA_SINK: "qa-public-profile-analytics",
     PUBLIC_API_ANALYTICS_CANARY_MUTATION: "mutation { canary: createAnalyticsCanary { documentId } }",
     PUBLIC_API_ANALYTICS_CLEANUP_MUTATION: "mutation { cleanup: deleteAnalyticsCanary { documentId } }",
     PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY: "query { remaining: analyticsCanaries { documentId } }",
+    PUBLIC_API_ANALYTICS_RUN_CLEANUP_MUTATION: "mutation { cleanup: deleteQaRun { documentId } }",
+    PUBLIC_API_ANALYTICS_RUN_CLEANUP_VERIFY_QUERY: "query { remaining: qaRunEvents { documentId } }",
     ...overrides,
   });
 }
@@ -67,6 +69,9 @@ function protectedResponse(operationName, options, { rateResponse = "429", succe
   if (operationName === "ApprovedAnalyticsCanary") return Response.json({ data: { canary: { documentId: "fixture-canary" } } });
   if (operationName === "CleanupAnalyticsCanary") return Response.json({ data: { cleanup: { documentId: "fixture-canary" } } });
   if (operationName === "VerifyAnalyticsCanaryCleanup") return Response.json({ data: { remaining: [] } });
+  if (operationName === "PreflightQaBrowserRun") return Response.json({ data: { canary: { documentId: "fixture-run-canary" } } });
+  if (operationName === "PreflightCleanupQaBrowserRun") return Response.json({ data: { cleanup: { documentId: "fixture-run-canary" } } });
+  if (operationName === "PreflightVerifyQaBrowserRun") return Response.json({ data: { remaining: [] } });
   if (operationName === "CapabilityRateLimitProbe") {
     if (rateResponse === "timeout") return waitForAbort(options.signal);
     if (rateResponse === "200") return Response.json({ data: { accounts: [] } });
@@ -176,6 +181,35 @@ test("analytics canary success writes, cleans up, and verifies an empty QA sink"
   });
   assert.equal(result.code, "PUBLIC_API_READY");
   assert.deepEqual(operations, ["ApprovedAnalyticsCanary", "CleanupAnalyticsCanary", "VerifyAnalyticsCanaryCleanup"]);
+});
+
+test("run-wide analytics cleanup is functionally proven with a harmless isolated run before callbacks", async () => {
+  const operations = [];
+  const result = await runAnalyticsRunCleanupPreflight({
+    endpoint: "https://fixture.invalid/graphql", token: "analytics-write-token", baseRunId: "qa-browser-run", qaSink: "qa-sink",
+    documents: { canary: analyticsDocuments().canary, cleanupRun: "mutation { cleanup: deleteQaRun }", remainingRun: "query { remaining: qaRunEvents }" },
+    fetchImpl: async (_url, options) => {
+      const { operationName, variables } = JSON.parse(options.body); operations.push(operationName);
+      assert.match(variables.runId, /^qa-preflight-/);
+      return protectedResponse(operationName, options);
+    },
+  });
+  assert.equal(result.code, "PUBLIC_API_READY");
+  assert.deepEqual(operations, ["PreflightQaBrowserRun", "PreflightCleanupQaBrowserRun", "PreflightVerifyQaBrowserRun"]);
+});
+
+test("run-wide cleanup failure uses a stable blocker before later probes", async () => {
+  let calls = 0;
+  const result = await runAnalyticsRunCleanupPreflight({
+    endpoint: "https://fixture.invalid/graphql", token: "analytics-write-token", baseRunId: "qa-browser-run", qaSink: "qa-sink",
+    documents: { canary: analyticsDocuments().canary, cleanupRun: "mutation { cleanup: deleteQaRun }", remainingRun: "query { remaining: qaRunEvents }" },
+    fetchImpl: async (_url, options) => {
+      calls += 1; const { operationName } = JSON.parse(options.body);
+      return operationName === "PreflightQaBrowserRun" ? Response.json({ data: { canary: { documentId: "created" } } }) : Response.json({ data: { cleanup: null } });
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.code, "ANALYTICS_RUN_CLEANUP_UNAVAILABLE");
 });
 
 test("analytics canary cleanup runs in finally before cleanup verification", async () => {
@@ -357,7 +391,7 @@ test("Authorization selects public-read versus analytics-write inside the fetch 
     env,
     fetchImpl: async (_url, options) => {
       const { operationName } = JSON.parse(options.body);
-      const analyticsOperation = /^(?:ApprovedAnalytics|CleanupAnalytics|VerifyAnalytics|CapabilityAnalytics|Analytics)/.test(operationName);
+      const analyticsOperation = /^(?:ApprovedAnalytics|CleanupAnalytics|VerifyAnalytics|Preflight|CapabilityAnalytics|Analytics)/.test(operationName);
       assert.equal(options.headers.authorization, `Bearer ${analyticsOperation ? env.VITE_ANALYTICS_WRITE_ACCESS_TOKEN : env.VITE_PUBLIC_READ_ACCESS_TOKEN}`);
       return protectedResponse(operationName, options);
     },
@@ -460,6 +494,9 @@ test("the complete protected happy path reaches PUBLIC_API_READY only after ever
     "ApprovedAnalyticsCanary",
     "CleanupAnalyticsCanary",
     "VerifyAnalyticsCanaryCleanup",
+    "PreflightQaBrowserRun",
+    "PreflightCleanupQaBrowserRun",
+    "PreflightVerifyQaBrowserRun",
     "CapabilityPrivateAccount",
     "CapabilityPrivateList",
     "CapabilityPrivateItem",

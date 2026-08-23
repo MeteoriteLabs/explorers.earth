@@ -56,10 +56,15 @@ The protected browser journey is documented in
 [`explorers-earth/e2e/real-account/README.md`](../explorers-earth/e2e/real-account/README.md).
 Run `npm run test:e2e:real-account:read-only` for the non-mutating guest route
 audit. It requires the complete `E2E_PROFILE_ROUTE_FIXTURES` contract and runs
-a query-only capability preflight before any page callback. Run
+a query-only capability preflight before any page callback. Route IDs are
+reconciled exactly against bootstrap visibility and the route contract;
+profile-only, missing-detail, duplicate, extra, and stale fixtures fail with
+`ROUTE_FIXTURE_COVERAGE_MISMATCH`. Run
 `npm run test:e2e:real-account` only after the mutation doctor,
 dedicated-account marker, backup/restore, and analytics-cleanup gates are all
 ready, including browser-run cleanup and empty-remaining verification. The
+run-wide cleanup/query operations are functionally proven with an isolated
+preflight canary; `ANALYTICS_RUN_CLEANUP_UNAVAILABLE` blocks callbacks. The
 mutation harness proves the captured real Profile/Appearance controls can
 restore before it creates a backup or calls any mutation callback. A blocked
 protected run is not a waived or skipped release check.
