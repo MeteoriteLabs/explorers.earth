@@ -172,7 +172,7 @@ test.describe("application-owned public route contract", () => {
           expectedConsoleErrors?: string[];
           consoleWarnings?: string[];
           webSockets?: Array<{ url: string; protocols: string[]; closed: boolean }>;
-          unexpectedWebSockets?: string[];
+          unexpectedWebSockets?: Array<{ code: string; url: string }>;
         };
         // React StrictMode mounts the effect twice in development; the first socket
         // must close and exactly one deterministic LocalTunes socket stays active.
@@ -207,15 +207,24 @@ test.describe("application-owned public route contract", () => {
       }
       const failedOperation = selectedLeafOperation ?? "PublicProfileBootstrap";
       const bootstrapAttemptsBeforeFailure = controller.attempts.PublicProfileBootstrap ?? 0;
-      controller.bootstrapDelayMs = bootstrapOnlyRouteIds.has(route.id) ? 800 : 0;
+      const provesPlacesRefreshError = route.id === "places-index";
+      controller.bootstrapDelayMs = bootstrapOnlyRouteIds.has(route.id) || provesPlacesRefreshError ? 800 : 0;
       controller.leafDelayMs = bootstrapOnlyRouteIds.has(route.id) ? 0 : 800;
       controller.failure = { operationName: failedOperation, status: 500 };
       const errorParams = { ...routeParams, username: `error-${route.id}` };
       const errorPath = publicRoutePath(route, errorParams);
       armMusicMountWarnings(controller, route.id);
-      const errorNavigation = page.goto(errorPath, { waitUntil: "domcontentloaded" });
+      const errorNavigation = provesPlacesRefreshError
+        ? undefined
+        : page.goto(errorPath, { waitUntil: "domcontentloaded" });
+      if (provesPlacesRefreshError) {
+        await page.evaluate((nextPath) => {
+          window.history.pushState({}, "", nextPath);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }, errorPath);
+      }
       await expect(
-        bootstrapOnlyRouteIds.has(route.id)
+        bootstrapOnlyRouteIds.has(route.id) || provesPlacesRefreshError
           ? page.locator(".earth-loader-wrapper")
           : page.getByTestId(`public-route-skeleton-${route.skeleton}`),
       ).toBeVisible();
@@ -226,14 +235,21 @@ test.describe("application-owned public route contract", () => {
       await expect(page.getByRole("heading", {
         name: bootstrapOnlyRouteIds.has(route.id)
           ? "Couldn’t verify this profile"
-          : "Couldn’t load this section",
+          : provesPlacesRefreshError
+            ? "Couldn’t refresh this section"
+            : "Couldn’t load this section",
       })).toBeVisible();
+      if (provesPlacesRefreshError) {
+        await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toContainText(
+          ROUTE_UI_TEXT[route.id],
+        );
+      }
       expect(controller.failedOperations).toContain(failedOperation);
       if (route.id === "music") {
         const musicAudit = controller.networkAudit as typeof controller.networkAudit & {
           expectedConsoleErrors?: string[];
           unconsumedExpectedDiagnostics?: string[];
-          unexpectedWebSockets?: string[];
+          unexpectedWebSockets?: Array<{ code: string; url: string }>;
         };
         const failedMusicAttempts = () => controller.failedOperations.filter(
           (operationName) => operationName === failedOperation,
@@ -327,7 +343,9 @@ test.describe("application-owned public route contract", () => {
       ).toEqual([]);
       expect(controller.networkAudit.failedRequests, `clean failed requests for ${route.id}`).toEqual([]);
       expect(
-        (controller.networkAudit as typeof controller.networkAudit & { unexpectedWebSockets?: string[] })
+        (controller.networkAudit as typeof controller.networkAudit & {
+          unexpectedWebSockets?: Array<{ code: string; url: string }>;
+        })
           .unexpectedWebSockets ?? [],
         `known WebSocket surface for ${route.id}`,
       ).toEqual([]);
@@ -644,6 +662,62 @@ test.describe("application-owned public route contract", () => {
     });
   }
 
+  test("an unarmed concurrent same-tuple response cannot consume the armed request permit", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page, {
+      failure: { operationName: "PublicProfileBootstrap", status: 429 },
+    });
+    controller.responseLabel = "armed-request";
+    const armedResponse = controller.deferNextResponse(
+      "PublicProfileBootstrap",
+      "armed-request",
+    );
+    await page.route("**/graphql", async (route) => {
+      if (route.request().headers()["x-task7-unarmed"] === "same-tuple") {
+        await route.fulfill({
+          status: 429,
+          contentType: "application/json",
+          body: JSON.stringify({ errors: [{ message: "Unarmed concurrent fixture response" }] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto(profilePath, { waitUntil: "domcontentloaded" });
+    await expect.poll(() => armedResponse.started).toBe(true);
+    expect(
+      controller.networkAudit.unconsumedExpectedResponseDiagnostics,
+      "the exact armed Request owns a pending response permit before its response is released",
+    ).toHaveLength(1);
+
+    const unarmedStatus = await page.evaluate(async () => fetch("/graphql", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-task7-unarmed": "same-tuple",
+      },
+      body: JSON.stringify({
+        operationName: "PublicProfileBootstrap",
+        query: "query PublicProfileBootstrap { __typename }",
+      }),
+    }).then((response) => response.status));
+    expect(unarmedStatus).toBe(429);
+    await expect.poll(() => controller.networkAudit.unexpectedResponses.length).toBe(1);
+    expect(
+      controller.networkAudit.unconsumedExpectedResponseDiagnostics,
+      "the unarmed same-tuple Request cannot steal the armed Request permit",
+    ).toHaveLength(1);
+    expect(controller.networkAudit.expectedResponseDiagnostics).toEqual([]);
+
+    armedResponse.release();
+    await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
+    await expect.poll(
+      () => controller.networkAudit.unconsumedExpectedResponseDiagnostics,
+    ).toEqual([]);
+    expect(controller.networkAudit.expectedResponseDiagnostics).toHaveLength(1);
+    expect(controller.networkAudit.unexpectedResponses).toHaveLength(1);
+  });
+
   test("unknown username renders Not Found without canonical fallback", async ({ page }) => {
     await installPublicRouteContractFixture(page, { outcome: "unknown-user" });
     const booksRoute = publicRouteContract.find((route) => route.id === "books-index")!;
@@ -696,10 +770,16 @@ test.describe("application-owned public route contract", () => {
     const changedVersion = warning({ ...exactPayload, version: "3.14.2" });
     const extraPayload = warning({ ...exactPayload, extra: "lookalike" });
     const secretQuery = warning(exactPayload, "?token=TASK6_SECRET_SENTINEL");
-
-    await page.evaluate((messages) => {
-      for (const message of messages) console.warn(message);
-    }, [exactWarning, exactWarning, changedVersion, extraPayload, secretQuery]);
+    const recordWarning = (controller as RouteContractFixtureController & {
+      recordConsoleWarningForTest?: (message: string) => void;
+    }).recordConsoleWarningForTest;
+    expect(
+      typeof recordWarning,
+      "fixture exposes a sanitized non-console path for warning-audit adversaries",
+    ).toBe("function");
+    for (const message of [exactWarning, exactWarning, changedVersion, extraPayload, secretQuery]) {
+      recordWarning?.(message);
+    }
 
     const audit = controller.networkAudit as typeof controller.networkAudit & {
       unconsumedExpectedWarningDiagnostics?: string[];
@@ -713,6 +793,84 @@ test.describe("application-owned public route contract", () => {
       "UNEXPECTED_APOLLO_WARNING",
     ]);
     expect(JSON.stringify(audit)).not.toContain("TASK6_SECRET_SENTINEL");
+  });
+
+  test("diagnostic helpers classify Apollo lookalikes and redact URL credentials, query, and hash", async () => {
+    const fixtureModule = await import("./support/publicProfileFixture");
+    const helpers = fixtureModule as typeof fixtureModule & {
+      classifyApolloUseQueryOnErrorWarning?: (message: string) => "expected" | "unexpected" | "other";
+      redactDiagnosticUrl?: (url: string) => string;
+      redactDiagnosticText?: (message: string) => string;
+    };
+    expect(typeof helpers.classifyApolloUseQueryOnErrorWarning).toBe("function");
+    expect(typeof helpers.redactDiagnosticUrl).toBe("function");
+    expect(typeof helpers.redactDiagnosticText).toBe("function");
+
+    const secret = "TASK7_PURE_HELPER_SECRET";
+    const rawUrl = `https://fixture-user:${secret}@fixture.invalid/path?token=${secret}#${secret}`;
+    expect(helpers.redactDiagnosticUrl!(rawUrl)).toBe("https://fixture.invalid/path");
+    expect(helpers.redactDiagnosticText!(`request failed at ${rawUrl}`)).toBe(
+      "request failed at https://fixture.invalid/path",
+    );
+
+    const payload = encodeURIComponent(JSON.stringify({
+      version: "3.14.1",
+      message: 103,
+      args: [
+        "useQuery",
+        "onError",
+        "If your `onError` callback sets local state, switch to use derived state using `data`, `error` or `errors` returned from the hook instead. Use `useEffect` if you need to perform side-effects as a result of updates to `data`, `error` or `errors`.",
+      ],
+    }));
+    const secretBearingLookalike =
+      `An error occurred! For more details, see the full error text at https://go.apollo.dev/c/err?token=${secret}#${payload}`;
+    expect(helpers.classifyApolloUseQueryOnErrorWarning!(secretBearingLookalike)).toBe("unexpected");
+  });
+
+  test("rejected browser diagnostics never retain URL secrets and keep stable redacted codes", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.route("**/e2e-secret-response*", (route) => route.fulfill({
+      status: 418,
+      contentType: "application/json",
+      body: "{}",
+    }));
+    await page.goto(profilePath);
+
+    const secret = "TASK7_BROWSER_DIAGNOSTIC_SECRET";
+    await page.evaluate(async (secretValue) => {
+      await fetch(`/e2e-secret-response?token=${secretValue}#${secretValue}`);
+      await fetch(`https://unexpected.fixture.invalid/private?token=${secretValue}#${secretValue}`)
+        .catch(() => undefined);
+      new WebSocket(`wss://unexpected.fixture.invalid/socket?token=${secretValue}`);
+    }, secret);
+
+    const audit = controller.networkAudit as unknown as {
+      unexpectedResponses: Array<{ code: string; url: string; status: number }>;
+      badResponses: Array<{ url: string; status: number }>;
+      unknownRequests: Array<{ code: string; url: string }>;
+      failedRequests: Array<{ code: string; url: string }>;
+      unexpectedWebSockets: Array<{ code: string; url: string }>;
+    };
+    await expect.poll(() => audit.unexpectedResponses.length).toBe(1);
+    await expect.poll(() => audit.unexpectedWebSockets.length).toBe(1);
+    await expect.poll(() => audit.unknownRequests.length).toBe(1);
+    expect(
+      JSON.stringify(controller.networkAudit).includes(secret),
+      "no in-memory diagnostic may retain the raw URL secret",
+    ).toBe(false);
+    expect(audit.unexpectedResponses).toContainEqual(expect.objectContaining({
+      code: "UNEXPECTED_HTTP_RESPONSE",
+      url: expect.stringMatching(/\/e2e-secret-response$/),
+      status: 418,
+    }));
+    expect(audit.unknownRequests).toContainEqual(expect.objectContaining({
+      code: "UNKNOWN_REQUEST",
+      url: "https://unexpected.fixture.invalid/private",
+    }));
+    expect(audit.unexpectedWebSockets).toContainEqual({
+      code: "UNEXPECTED_WEBSOCKET",
+      url: "wss://unexpected.fixture.invalid/socket",
+    });
   });
 
   test("every unarmed local HTTP failure is audited across API and asset status families", async ({ page }) => {
@@ -762,10 +920,15 @@ test.describe("application-owned public route contract", () => {
     }, { urls: lookalikes, protocolUrl: base });
 
     const audit = controller.networkAudit as typeof controller.networkAudit & {
-      unexpectedWebSockets?: string[];
+      unexpectedWebSockets?: Array<{ code: string; url: string }>;
     };
     await expect.poll(() => audit.unexpectedWebSockets?.length ?? 0).toBe(4);
-    expect(audit.unexpectedWebSockets).toEqual([...lookalikes, base]);
+    expect(audit.unexpectedWebSockets).toEqual([
+      { code: "UNEXPECTED_WEBSOCKET", url: "ws://localtunes.earth/socket.io/" },
+      { code: "UNEXPECTED_WEBSOCKET", url: "ws://localtunes.earth:444/socket.io/" },
+      { code: "UNEXPECTED_WEBSOCKET", url: "wss://localtunes.earth/socket.io/" },
+      { code: "UNEXPECTED_WEBSOCKET", url: "ws://localtunes.earth/socket.io/" },
+    ]);
   });
 
   test("network audit records only the exact Vite HMR socket and blocks a localhost lookalike", async ({ page }) => {
@@ -774,7 +937,7 @@ test.describe("application-owned public route contract", () => {
 
     const audit = controller.networkAudit as typeof controller.networkAudit & {
       viteWebSockets?: Array<{ url: string; protocols: string[] }>;
-      unexpectedWebSockets?: string[];
+      unexpectedWebSockets?: Array<{ code: string; url: string }>;
     };
     await expect.poll(() => audit.viteWebSockets?.length ?? 0).toBe(1);
     const appUrl = new URL(page.url());
@@ -794,7 +957,10 @@ test.describe("application-owned public route contract", () => {
       new WebSocket(target.href);
       return target.href;
     });
-    await expect.poll(() => audit.unexpectedWebSockets ?? []).toContain(unexpectedLocalUrl);
+    await expect.poll(() => audit.unexpectedWebSockets ?? []).toContainEqual({
+      code: "UNEXPECTED_WEBSOCKET",
+      url: unexpectedLocalUrl,
+    });
     expect(audit.consoleErrors).toEqual([]);
   });
 
@@ -807,11 +973,12 @@ test.describe("application-owned public route contract", () => {
     });
 
     const audit = controller.networkAudit as typeof controller.networkAudit & {
-      unexpectedWebSockets?: string[];
+      unexpectedWebSockets?: Array<{ code: string; url: string }>;
     };
-    await expect.poll(() => audit.unexpectedWebSockets ?? []).toContain(
-      "wss://unexpected.fixture.invalid/socket",
-    );
+    await expect.poll(() => audit.unexpectedWebSockets ?? []).toContainEqual({
+      code: "UNEXPECTED_WEBSOCKET",
+      url: "wss://unexpected.fixture.invalid/socket",
+    });
     expect(audit.failedRequests).toEqual([]);
     expect(audit.consoleErrors).toEqual([]);
   });
