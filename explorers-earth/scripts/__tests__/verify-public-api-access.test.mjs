@@ -224,6 +224,34 @@ for (const failure of ["cleanup-fails", "query-fails", "transport-throws"]) {
   });
 }
 
+for (const ambiguousWrite of ["throw-after-commit", "null-response", "unparseable-response"]) {
+  test(`ambiguous canary ${ambiguousWrite} still performs run cleanup, verifies zero, and blocks`, async () => {
+    const operations = []; const artifacts = [];
+    const result = await runAnalyticsRunCleanupPreflight({
+      endpoint: "https://fixture.invalid/graphql", token: "analytics-write-token", baseRunId: "qa-browser-run", qaSink: "qa-sink",
+      documents: { canary: analyticsDocuments().canary, cleanupRun: "mutation { cleanup: deleteQaRun }", remainingRun: "query { remaining: qaRunEvents }" },
+      writeRecoveryArtifact: async (value) => { artifacts.push(value); return "/redacted/ambiguous-recovery.json"; },
+      fetchImpl: async (_url, options) => {
+        const { operationName } = JSON.parse(options.body); operations.push(operationName);
+        if (operationName === "PreflightQaBrowserRun") {
+          if (ambiguousWrite === "throw-after-commit") throw new Error("acknowledgement lost after server commit");
+          if (ambiguousWrite === "null-response") return Response.json(null);
+          return new Response("not-json", { status: 200 });
+        }
+        if (operationName === "EmergencyCleanupQaBrowserRun") return Response.json({ data: { cleanup: { documentId: "removed" } } });
+        if (operationName === "EmergencyVerifyQaBrowserRun") return Response.json({ data: { remaining: [] } });
+        throw new Error("unexpected operation");
+      },
+    });
+    assert.equal(result.code, "ANALYTICS_RUN_CLEANUP_UNAVAILABLE");
+    assert.equal(result.operations[0].observedStatus, "canary-write-ambiguous");
+    assert.equal(result.artifactPath, "/redacted/ambiguous-recovery.json");
+    assert.deepEqual(operations, ["PreflightQaBrowserRun", "EmergencyCleanupQaBrowserRun", "EmergencyVerifyQaBrowserRun"]);
+    assert.deepEqual(artifacts, [{ residualUnverified: false }]);
+    assert.doesNotMatch(JSON.stringify(result), /acknowledgement lost|analytics-write-token|qa-browser-run|qa-sink/);
+  });
+}
+
 test("unresolved run cleanup writes only restrictive redacted recovery evidence", async () => {
   const result = await runAnalyticsRunCleanupPreflight({
     endpoint: "https://fixture.invalid/graphql", token: "private-analytics-token", baseRunId: "qa-private-run", qaSink: "qa-private-sink",

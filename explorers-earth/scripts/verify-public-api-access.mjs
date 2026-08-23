@@ -159,11 +159,13 @@ export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRun
       return response.ok && !body.errors ? body.data : null;
     } catch { return null; } finally { clearTimeout(timer); }
   };
+  let canaryAttempted = false;
   let created = false;
   let verifiedEmpty = false;
   let primarySucceeded = false;
   let failure = "canary-write-failed";
   try {
+    canaryAttempted = true;
     const written = await send("PreflightQaBrowserRun", documents.canary);
     created = Boolean(written?.canary?.documentId);
     if (created) {
@@ -176,15 +178,15 @@ export async function runAnalyticsRunCleanupPreflight({ endpoint, token, baseRun
       }
     }
   } finally {
-    if (created && !verifiedEmpty) {
+    if (canaryAttempted && !verifiedEmpty) {
       await send("EmergencyCleanupQaBrowserRun", documents.cleanupRun);
       const emergency = await send("EmergencyVerifyQaBrowserRun", documents.remainingRun);
       verifiedEmpty = Array.isArray(emergency?.remaining) && emergency.remaining.length === 0;
     }
   }
   if (!primarySucceeded) {
-    const artifactPath = created ? await writeRecoveryArtifact({ residualUnverified: !verifiedEmpty }) : undefined;
-    return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", artifactPath, operations: [diagnostic("analytics-run-cleanup", "malformed", !created ? "canary-write-failed" : failure)] };
+    const artifactPath = canaryAttempted ? await writeRecoveryArtifact({ residualUnverified: !verifiedEmpty }) : undefined;
+    return { code: "ANALYTICS_RUN_CLEANUP_UNAVAILABLE", artifactPath, operations: [diagnostic("analytics-run-cleanup", "malformed", !created ? "canary-write-ambiguous" : failure)] };
   }
   return { code: "PUBLIC_API_READY", operations: [{ ...diagnostic("analytics-run-cleanup", "ready", "cleanup-verified"), code: "PUBLIC_API_READY" }] };
 }

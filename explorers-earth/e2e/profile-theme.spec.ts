@@ -96,9 +96,9 @@ test("same-document Retry evidence rejects a no-op control", () => {
   expect(() => assertRetryRecoveryEvidence({
     documentSentinel: "same-document-retry", expectedSentinel: "same-document-retry",
     actualUrl: "http://fixture.test/alice/books", expectedUrl: "http://fixture.test/alice/books",
-    markerVisible: true, retryGone: false, recoveryRequests: 0, responseOk: false,
-    responseHasErrors: false, hasContent: false,
-  })).toThrow("RETRY_RECOVERY_UI_INCOMPLETE");
+    markerVisible: true, retryGone: true, recoveryRequests: 0, responseOk: true,
+    responseHasErrors: false, hasContent: true,
+  })).toThrow("RETRY_RECOVERY_NO_OP");
 });
 
 test("settings manifest declares 24 named theme and wallpaper cases", () => {

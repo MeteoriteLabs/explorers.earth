@@ -116,6 +116,7 @@ test("protected global setup fails before any protected test callback can begin"
 test("protected mutation setup cannot start callbacks before analytics cleanup and capability proof", async () => {
   const { runProtectedGlobalSetup } = await import("../playwright-global-setup.mjs");
   const { validateProtectedPrerequisites } = await import("../protected-prerequisites.mjs");
+  const { runAnalyticsRunCleanupPreflight } = await import("../verify-public-api-access.mjs");
   const complete = {
     E2E_PROFILE_USERNAME: "fixture-owner", E2E_PROFILE_STORAGE_STATE: "owner.json",
     E2E_PROFILE_NON_OWNER_STORAGE_STATE: "non-owner.json", E2E_PROFILE_GALLERY_FILE: "gallery.png",
@@ -137,6 +138,25 @@ test("protected mutation setup cannot start callbacks before analytics cleanup a
     verifyReleasePrerequisites: async () => ({ code: "ANALYTICS_CLEANUP_FAILED" }),
     onProtectedReady: () => { callback = true; },
   }), /ANALYTICS_CLEANUP_FAILED/);
+  assert.equal(callback, false);
+
+  const operations = [];
+  await assert.rejects(() => runProtectedGlobalSetup({
+    projectNames: ["real-account"], mode: "mutation", env: complete,
+    verifyReleasePrerequisites: async () => runAnalyticsRunCleanupPreflight({
+      endpoint: "https://fixture.invalid/graphql", token: "write", baseRunId: "qa-run", qaSink: "qa-sink",
+      documents: { canary: "mutation { canary: x }", cleanupRun: "mutation { cleanup: x }", remainingRun: "query { remaining: x }" },
+      writeRecoveryArtifact: async () => "/redacted/recovery.json",
+      fetchImpl: async (_url, options) => {
+        const { operationName } = JSON.parse(options.body); operations.push(operationName);
+        if (operationName === "PreflightQaBrowserRun") throw new Error("lost acknowledgement");
+        if (operationName === "EmergencyCleanupQaBrowserRun") return Response.json({ data: { cleanup: true } });
+        return Response.json({ data: { remaining: [] } });
+      },
+    }),
+    onProtectedReady: () => { callback = true; },
+  }), /ANALYTICS_RUN_CLEANUP_UNAVAILABLE/);
+  assert.deepEqual(operations, ["PreflightQaBrowserRun", "EmergencyCleanupQaBrowserRun", "EmergencyVerifyQaBrowserRun"]);
   assert.equal(callback, false);
 });
 
