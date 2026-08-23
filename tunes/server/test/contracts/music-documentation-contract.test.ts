@@ -31,7 +31,7 @@ const publicCommands = [
 
 type StaleGuidanceCode = "node-18" | "db-push" | "x-username-ownership";
 type StaleGuidanceFinding = { path: string; line: number; code: StaleGuidanceCode };
-type DatabaseInvocationFinding = { path: string; line: number; command: string; code: "missing-test-target" };
+type DatabaseInvocationFinding = { path: string; line: number; command: string; code: "missing-test-target" | "unsafe-reset-arguments" };
 type ObsoleteAuthFinding = { path: string; line: number; code: "obsolete-auth-boundary" };
 
 function markdownDocumentTargets(source: string): string[] {
@@ -72,38 +72,115 @@ function indexedMarkdownDocuments(
 function staleGuidanceFindings(sources: Record<string, string>): StaleGuidanceFinding[] {
   const findings: StaleGuidanceFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
-    source.split(/\r?\n/).forEach((line, index) => {
+    const lines = source.split(/\r?\n/);
+    lines.forEach((line, index) => {
       if (/\bNode(?:\.js)?\s+18(?:\.\d+)?\+?/i.test(line)) {
         findings.push({ path, line: index + 1, code: "node-18" });
       }
       if (/\bnpm\s+run\s+db:push\b/i.test(line)) {
         findings.push({ path, line: index + 1, code: "db-push" });
       }
-      const explicitlyRetired = /\bno authorization decision may use\s+`?X-Username`?\b/i.test(line)
-        || /\b`?X-Username`?\b[^.;]{0,160}\b(?:is|are)\s+not\s+(?:an?\s+)?(?:owner|ownership|authorization)\s+authority\b/i.test(line)
-        || /\b`?X-Username`?\b\s+(?:support\s+)?(?:is|was|has been)\s+(?:removed|retired)\s+from\s+(?:canonical|embedded)\s+Music\b/i.test(line);
-      const contradictsRetirement = /\b(?:but|however)\b[^.;]*(?:accept|send|map|look\s*up|establish|authoriz|support|use)\w*[^.;]*(?:owner|ownership|authoriz|user)/i.test(line);
-      if (/\bX-Username\b/i.test(line) && (!explicitlyRetired || contradictsRetirement)) {
-        findings.push({ path, line: index + 1, code: "x-username-ownership" });
-      }
     });
+
+    let paragraphStart = 0;
+    while (paragraphStart < lines.length) {
+      while (paragraphStart < lines.length && lines[paragraphStart]!.trim() === "") paragraphStart += 1;
+      if (paragraphStart >= lines.length) break;
+      let paragraphEnd = paragraphStart + 1;
+      while (paragraphEnd < lines.length && lines[paragraphEnd]!.trim() !== "") paragraphEnd += 1;
+      const paragraphLines = lines.slice(paragraphStart, paragraphEnd);
+      const paragraph = paragraphLines.join(" ");
+      const explicitlyRetired = /\bno authorization decision may use\s+`?X-Username`?\b/i.test(paragraph)
+        || /\b`?X-Username`?\b[^.;]{0,160}\b(?:is|are)\s+not\s+(?:an?\s+)?(?:owner|ownership|authorization)\s+authority\b/i.test(paragraph)
+        || /\b`?X-Username`?\b\s+(?:support\s+)?(?:is|was|has been)\s+(?:removed|retired)\s+from\s+(?:canonical|embedded)\s+Music\b/i.test(paragraph);
+      const authoritySubject = "(?:(?:the\\s+)?(?:server|legacy\\s+bridge|bridge|middleware|header|client|caller)|it)";
+      const authorityVerb = "(?:accepts?|sends?|maps?|looks?\\s*up|resolves?|establishes?|authorizes?|supports?|uses?|trusts?)";
+      const authorityObject = "(?:owner|ownership|authoriz(?:ation|ed)?|principal|users?)";
+      const affirmativeBeforeMention = new RegExp(
+        `\\b${authoritySubject}\\b\\s+(?!(?:(?:does|do|did|will|must|may|can)\\s+not|never)\\b)[^.?!]{0,80}\\b${authorityVerb}\\w*\\b[^.?!]{0,80}\\bX-Username\\b[^.?!]{0,160}\\b${authorityObject}\\b`,
+        "i",
+      ).test(paragraph);
+      const affirmativeAfterMention = new RegExp(
+        `\\bX-Username\\b[\\s\\S]{0,500}\\b${authoritySubject}\\s+(?:still\\s+)?${authorityVerb}\\w*[^.?!]{0,160}\\b${authorityObject}\\b`,
+        "i",
+      ).test(paragraph);
+      const contradictsRetirement = affirmativeBeforeMention || affirmativeAfterMention;
+      if (!explicitlyRetired || contradictsRetirement) {
+        paragraphLines.forEach((line, index) => {
+          if (/\bX-Username\b/i.test(line)) {
+            findings.push({ path, line: paragraphStart + index + 1, code: "x-username-ownership" });
+          }
+        });
+      }
+      paragraphStart = paragraphEnd + 1;
+    }
   }
   return findings;
+}
+
+function shellWords(source: string): string[] {
+  const words: string[] = [];
+  let word = "";
+  let quote: "\"" | "'" | undefined;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]!;
+    if (quote) {
+      if (character === quote) quote = undefined;
+      else if (character === "\\" && source[index + 1] !== undefined) word += source[++index]!;
+      else word += character;
+    } else if (character === "\"" || character === "'") {
+      quote = character;
+    } else if (/\s/.test(character)) {
+      if (word) words.push(word);
+      word = "";
+    } else {
+      word += character;
+    }
+  }
+  if (word) words.push(word);
+  return words;
+}
+
+function documentedDatabaseInvocations(line: string): Array<{ command: string; invocation: string }> {
+  const commandPattern = /\bnpm\s+run\s+(?:(?:--silent|-s)\s+)?(music:db:(?:status|migrate|verify|reset))\b/gi;
+  const matches = [...line.matchAll(commandPattern)];
+  return matches.map((match, index) => {
+    const start = match.index!;
+    const nextStart = matches[index + 1]?.index ?? line.length;
+    const afterCommand = start + match[0].length;
+    const shellBoundary = line.slice(afterCommand, nextStart).search(/&&|\|\||[;|`]/);
+    const end = shellBoundary < 0 ? nextStart : afterCommand + shellBoundary;
+    return { command: match[1]!, invocation: line.slice(start, end).trim() };
+  });
+}
+
+function optionValues(argumentTokens: string[], option: string): Array<string | undefined> {
+  return argumentTokens.flatMap((token, index) => token === option ? [argumentTokens[index + 1]] : []);
 }
 
 function databaseInvocationFindings(sources: Record<string, string>): DatabaseInvocationFinding[] {
   const findings: DatabaseInvocationFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
     source.split(/\r?\n/).forEach((line, index) => {
-      for (const match of line.matchAll(/\bnpm\s+run\s+(music:db:(?:status|migrate|verify))\b([^`\r\n]*)/gi)) {
-        const command = match[1]!;
-        const invocation = match[0].trim();
-        const separator = invocation.indexOf(" -- ");
-        const argumentTokens = separator < 0 ? [] : invocation.slice(separator + 4).trim().split(/\s+/);
-        const targetIndexes = argumentTokens.flatMap((token, tokenIndex) => token === "--target" ? [tokenIndex] : []);
-        const targetIndex = targetIndexes[0];
-        if (targetIndexes.length !== 1 || targetIndex === undefined || argumentTokens[targetIndex + 1] !== "test") {
+      for (const { command, invocation } of documentedDatabaseInvocations(line)) {
+        const words = shellWords(invocation);
+        const commandIndex = words.indexOf(command);
+        const separatorIndex = words.indexOf("--", commandIndex + 1);
+        const argumentTokens = separatorIndex < 0 ? [] : words.slice(separatorIndex + 1);
+        const targets = optionValues(argumentTokens, "--target");
+        if (targets.length !== 1 || targets[0] !== "test") {
           findings.push({ path, line: index + 1, command, code: "missing-test-target" });
+          continue;
+        }
+        if (command === "music:db:reset") {
+          const modes = optionValues(argumentTokens, "--mode");
+          const projects = optionValues(argumentTokens, "--confirm-project");
+          const confirmations = optionValues(argumentTokens, "--confirm-reset");
+          if (modes.length !== 1 || modes[0] !== "fixture"
+            || projects.length !== 1 || projects[0] !== "explorers-music-fixture"
+            || confirmations.length !== 1 || confirmations[0] !== "RESET explorers-music-fixture/music_fixture") {
+            findings.push({ path, line: index + 1, command, code: "unsafe-reset-arguments" });
+          }
         }
       }
     });
@@ -205,6 +282,10 @@ describe("Music documentation publication contract", () => {
         "The removed fallback accepts X-Username and maps it to the owner.",
         "X-Username is not owner authority, but the server maps it to the owner.",
         "No authorization decision may use X-Username, but it still maps users to owners.",
+        "X-Username is not owner authority. Yet the server maps it to the owner.",
+        "X-Username support was removed from canonical Music routes. The legacy bridge still accepts it for owner lookup.",
+        "No authorization decision may use X-Username.",
+        "The server still maps it to the owner.",
       ].join("\n"),
     })).toEqual([
       { path: "docs/hostile.md", line: 1, code: "node-18" },
@@ -214,6 +295,9 @@ describe("Music documentation publication contract", () => {
       { path: "docs/hostile.md", line: 5, code: "x-username-ownership" },
       { path: "docs/hostile.md", line: 6, code: "x-username-ownership" },
       { path: "docs/hostile.md", line: 7, code: "x-username-ownership" },
+      { path: "docs/hostile.md", line: 8, code: "x-username-ownership" },
+      { path: "docs/hostile.md", line: 9, code: "x-username-ownership" },
+      { path: "docs/hostile.md", line: 10, code: "x-username-ownership" },
     ]);
   });
 
@@ -227,6 +311,18 @@ describe("Music documentation publication contract", () => {
     })).toEqual([]);
   });
 
+  it("rejects an affirmative X-Username owner claim before a retirement sentence", () => {
+    expect(staleGuidanceFindings({
+      "docs/contradictory.md": [
+        "The legacy bridge accepts X-Username for owner lookup.",
+        "X-Username support was removed from canonical Music routes.",
+      ].join("\n"),
+    })).toEqual([
+      { path: "docs/contradictory.md", line: 1, code: "x-username-ownership" },
+      { path: "docs/contradictory.md", line: 2, code: "x-username-ownership" },
+    ]);
+  });
+
   it("rejects incomplete or mis-targeted documented fixture database invocations", () => {
     const cli = read("tunes/scripts/music-cli.ts");
     expect(cli).toContain('if (["db:status", "db:migrate", "db:verify"].includes(parsed.command))');
@@ -237,12 +333,47 @@ describe("Music documentation publication contract", () => {
         "`npm run music:db:migrate -- --target production`",
         "`npm run music:db:verify --target test`",
         "`npm run music:db:status -- --mode fixture --target test`",
+        "`npm run --silent music:db:migrate -- --target production`",
+        "`npm run music:db:status -- --target test && npm run music:db:verify`",
+        "`npm run music:db:migrate && npm run music:db:status -- --target test`",
+        "`npm run music:db:reset -- --mode fixture --target test`",
+        "`npm run music:db:reset -- --mode fixture --target test --confirm-project explorers-music-fixture --confirm-reset \"RESET explorers-music-fixture/music_fixture\"`",
+        "`npm run music:db:reset -- --mode fixture --target test --target production --confirm-project explorers-music-fixture --confirm-reset \"RESET explorers-music-fixture/music_fixture\"`",
       ].join("\n"),
     })).toEqual([
       { path: "docs/hostile.md", line: 1, command: "music:db:status", code: "missing-test-target" },
       { path: "docs/hostile.md", line: 2, command: "music:db:migrate", code: "missing-test-target" },
       { path: "docs/hostile.md", line: 3, command: "music:db:verify", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 5, command: "music:db:migrate", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 6, command: "music:db:verify", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 7, command: "music:db:migrate", code: "missing-test-target" },
+      { path: "docs/hostile.md", line: 8, command: "music:db:reset", code: "unsafe-reset-arguments" },
+      { path: "docs/hostile.md", line: 10, command: "music:db:reset", code: "missing-test-target" },
     ]);
+  });
+
+  it("supersedes manual-only testing, authentication, migration, and mutable deployment guidance", () => {
+    const testing = read("docs/testing.md");
+    expect(testing).toContain("[Music identity testing guide](testing/music-identity-testing.md)");
+    expect(testing).toContain("npm run music:test:pr -- --mode fixture");
+    expect(testing).not.toMatch(/Manual API testing|Test WebSocket events by|Future Testing Improvements/);
+
+    const authAdr = read("docs/adr/002-auth-strategies.md");
+    expect(authAdr).toMatch(/## Status\s+Superseded in part/i);
+    expect(authAdr).toContain("short-lived Music credential");
+    expect(authAdr).toContain("../architecture/music-identity.md");
+    expect(authAdr).not.toMatch(/No single sign-on across apps|users have separate accounts|JWT for both.*Rejected/is);
+
+    const databaseAdr = read("docs/adr/004-database-orm-choice.md");
+    expect(databaseAdr).toMatch(/## Status\s+Superseded in part/i);
+    expect(databaseAdr).toContain("append-only SQL migrations");
+    expect(databaseAdr).not.toMatch(/db:push|push-based|no migration files/i);
+
+    const deployment = read("docs/tunes/deployment.md");
+    expect(deployment).toContain(".github/workflows/tunes.yml");
+    expect(deployment).toContain("[immutable deployment runbook](../operations/music-deploy-runbook.md)");
+    expect(deployment).toContain("full-commit tag");
+    expect(deployment).not.toMatch(/Jenkins|drizzle-kit push|docker-compose build|Update ECS service/i);
   });
 
   it("follows reference-style Markdown links recursively", () => {

@@ -71,17 +71,23 @@ Global test setup is in `src/test/setup.ts`. Vitest is configured in `vite.confi
 
 | Tool | Purpose |
 |------|---------|
-| TypeScript (`tsc`) | Static type checking |
-| Swagger UI | Manual API testing at `/api-docs` |
+| Vitest and Supertest | Unit, route, API, security, and executable contract tests |
+| Playwright | Browser smoke, end-to-end, and accessibility coverage |
+| PostgreSQL 15 and Docker Compose | Disposable migration and real-repository integration coverage |
+| TypeScript (`tsc`) | Scoped type gate and normalized legacy baseline |
 
 ```bash
-# Type check
-cd tunes
-npm run check
+# From the repository root: focused local feedback
+npm run music:test:fast -- --mode fixture
 
-# Manual API testing
-# Start dev server, then visit http://localhost:5000/api-docs
+# Required PR lane: contracts, security, real database, and browser smoke
+npm run music:test:pr -- --mode fixture
+
+# Scheduled full-stack, accessibility, load, and chaos lane
+npm run music:test:nightly -- --mode fixture
 ```
+
+The [Music identity testing guide](testing/music-identity-testing.md) is the canonical clean-checkout, lane, release-evidence, and recovery contract. `music:test:all` is the complete Tunes Vitest suite only; it does not replace the Explorer, real PostgreSQL, browser, load/chaos, or release lanes.
 
 ---
 
@@ -108,18 +114,11 @@ Run `npm run check` (tunes) or `npx tsc -b` (explorers-earth) before committing.
 
 ### API Testing (tunes)
 
-The Swagger UI at `/api-docs` provides an interactive API explorer for:
-- Testing endpoints with real requests
-- Viewing request/response schemas
-- Trying different parameter combinations
+Vitest/Supertest route and OpenAPI contracts exercise supported request and response shapes, stable error codes, authorization policy coverage, and database-backed behavior. The PR lane runs those contracts together with disposable PostgreSQL integration tests. `/api-docs` remains a read-only discovery aid, not test evidence.
 
 ### WebSocket Testing (tunes)
 
-Test WebSocket events by:
-1. Opening the app in two browser tabs (host + guest)
-2. Performing actions in one tab
-3. Verifying real-time updates appear in the other
-4. Using browser DevTools Network tab → WS filter to inspect Socket.IO messages
+Socket.IO contract and security suites verify connection authorization, room ownership, event behavior, and error handling. Browser lanes exercise the host/guest journey; nightly adds full-stack, interruption, load, and chaos coverage.
 
 ### What Should Be Tested
 
@@ -127,13 +126,13 @@ Test WebSocket events by:
 - Unit tests pass: `npm run test:unit`
 - TypeScript compiles without errors: `npx tsc -b`
 - ESLint passes without warnings: `npm run lint`
-- Manual smoke test of affected features
-- Cross-browser check for UI changes
+- Tunes changes pass `npm run music:test:fast -- --mode fixture`
+- Identity, API, database, security, or browser changes pass `npm run music:test:pr -- --mode fixture`
 
 **For API changes (tunes)**:
-- Test endpoints via Swagger UI or curl
-- Verify WebSocket events if playlist/player logic changed
-- Check database state after operations
+- Add or update executable route/OpenAPI/error-code contracts
+- Add Socket.IO contract coverage when playlist/player behavior changes
+- Exercise repository behavior against the disposable PostgreSQL target
 
 **For UI changes (both apps)**:
 - Mobile and desktop viewport testing
@@ -142,10 +141,9 @@ Test WebSocket events by:
 
 ---
 
-## Future Testing Improvements
+## Additional Testing Opportunities
 
 - **Component tests**: React Testing Library for complex multi-step component interaction flows
-- **E2E tests**: Playwright or Cypress for critical user flows (login, QR generation, list creation)
-- **WebSocket tests**: Socket.IO client testing for real-time tunes event handling
-- **Visual regression**: Screenshot testing for UI components
-- **API tests (tunes)**: Supertest for Express route handlers with an isolated test database
+- **Browser breadth**: extend Playwright journeys beyond the release-critical Music paths
+- **Visual regression**: reviewed screenshot baselines for stable UI components
+- **Property and fuzz tests**: expand hostile-input coverage for parsers and protocol boundaries

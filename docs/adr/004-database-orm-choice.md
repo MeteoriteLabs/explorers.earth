@@ -1,7 +1,7 @@
 # ADR-004: PostgreSQL with Drizzle ORM
 
 ## Status
-Accepted
+Superseded in part
 
 ## Context
 tunes needs a relational database for structured data (users, playlists, songs, sessions) with support for complex queries (analytics, aggregations, regional statistics). The ORM choice affects developer experience, type safety, and query performance.
@@ -11,24 +11,25 @@ Use **PostgreSQL** as the database with **Drizzle ORM** for type-safe database o
 
 - PostgreSQL via `@neondatabase/serverless` (supports both Neon cloud and standard PostgreSQL)
 - Drizzle ORM 0.39 for query building and schema definition
-- Drizzle Kit for schema synchronization (push-based, no migration files)
 - `drizzle-zod` for automatic Zod validation schema generation from table definitions
+
+The PostgreSQL and Drizzle choices remain accepted. The original implicit schema-synchronization decision is superseded: schema evolution uses reviewed, append-only SQL migrations checked into `tunes/migrations/`, bound to the executable migration chain, and applied by the same immutable image that is being promoted. See the [Tunes database guide](../tunes/database.md) and [immutable deployment runbook](../operations/music-deploy-runbook.md).
 
 ## Consequences
 
 **Easier**:
 - Full TypeScript type safety from schema definition through to query results
-- Schema defined in code (`shared/schema.ts`) serves as single source of truth
+- Schema definitions in `shared/schema.ts` keep query and result types aligned with the reviewed migration state
 - Drizzle's SQL-like API is intuitive for developers familiar with SQL
 - `drizzle-zod` eliminates manual validation schema maintenance
-- `db:push` workflow is fast for development (no migration file management)
 - PostgreSQL's JSONB support handles flexible data (themes, device info, geo data)
+- Checked-in migration bytes and a monotonic journal make schema state reproducible and auditable
 
 **Harder**:
-- Push-based migrations (`db:push`) don't generate reversible migration files — harder to roll back in production
 - Drizzle is newer than Prisma/TypeORM — smaller ecosystem and community
-- Schema changes require manual coordination for production deployments
 - Neon serverless driver has connection pooling considerations
+- Schema changes require expand/contract compatibility and forward recovery; applied migration bytes are immutable
+- Deployment rollback cannot move below the authenticated schema and security floors
 
 ## Alternatives Considered
 
