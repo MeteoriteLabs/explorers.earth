@@ -628,8 +628,16 @@ a remote registry, `GATE_PROD`, a production endpoint, or the active source
 
 Run the bounded local proof with:
 
-```bash
-npm exec --silent --prefix tunes -- tsx tunes/scripts/music-docker-release-rehearsal.ts
+On Windows, use the native launcher:
+
+```text
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification
+```
+
+On POSIX, use the native launcher with its minimal environment:
+
+```text
+/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification
 ```
 
 Only the sanitized `music-operation/v1` result is release evidence. Generated

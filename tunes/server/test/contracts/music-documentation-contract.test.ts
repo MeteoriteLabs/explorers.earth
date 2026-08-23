@@ -29,6 +29,13 @@ const publicCommands = [
   "music:reconcile", "music:types:scoped", "music:types:baseline",
 ] as const;
 
+const publishedMarkdownRoots = [
+  "docs/README.md",
+  "tunes/README.md",
+  "explorers-earth/README.md",
+  "tunes/docker-documentation.md",
+] as const;
+
 type StaleGuidanceCode = "node-18" | "db-push" | "x-username-ownership";
 type StaleGuidanceFinding = { path: string; line: number; code: StaleGuidanceCode };
 type DatabaseInvocationFinding = { path: string; line: number; command: string; code: "invalid-invocation" | "missing-test-target" | "unsafe-reset-arguments" };
@@ -45,10 +52,11 @@ function markdownDocumentTargets(source: string): string[] {
 function indexedMarkdownDocuments(
   indexSource = read("docs/README.md"),
   sourceFor: (path: string) => string | undefined = (path) => existsSync(resolve(root, path)) ? read(path) : undefined,
+  rootPath = "docs/README.md",
 ): string[] {
-  const paths = new Set(["docs/README.md"]);
-  const pending = ["docs/README.md"];
-  const supplied = new Map([["docs/README.md", indexSource]]);
+  const paths = new Set([rootPath]);
+  const pending = [rootPath];
+  const supplied = new Map([[rootPath, indexSource]]);
 
   while (pending.length > 0) {
     const path = pending.shift()!;
@@ -70,11 +78,16 @@ function indexedMarkdownDocuments(
   return [...paths].sort();
 }
 
+function publishedMarkdownDocuments(): string[] {
+  return [...new Set(publishedMarkdownRoots.flatMap((path) =>
+    indexedMarkdownDocuments(read(path), undefined, path)))].sort();
+}
+
 function staleGuidanceFindings(sources: Record<string, string>): StaleGuidanceFinding[] {
   const findings: StaleGuidanceFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
     source.split(/\r?\n/).forEach((line, index) => {
-      if (/\bNode(?:\.?js)?(?:\s+version|\s*[:=])?\s+v?18(?:\.(?:\d+|x))*\+?/i.test(line)) {
+      if (/\bNode(?:\.?js)?(?:\s+version|\s*[:=])?\s*v?18(?:\.(?:\d+|x))*\+?/i.test(line)) {
         findings.push({ path, line: index + 1, code: "node-18" });
       }
       if (/\bdrizzle-kit(?:@[^\s]+)?\s+push\b|\bdb:push\b/i.test(line)) {
@@ -164,7 +177,7 @@ function logicalShellLines(source: string): LogicalShellLine[] {
 }
 
 function documentedDatabaseInvocations(line: string): Array<{ command: string; invocation: string }> {
-  const commandPattern = /(?:(?:\b[A-Za-z_][A-Za-z\d_]*=[^\s;&|`]+\s+)*)\bnpm\s+(?:(?:--silent|-s)\s+)?run\b[^;&|`\r\n]*?\b(music:db:(?:status|migrate|verify|reset))\b/gi;
+  const commandPattern = /(?:(?:\b[A-Za-z_][A-Za-z\d_]*=[^\s;&|`]+\s+)*)\bnpm\b[^;&|`\r\n]*?\brun\b[^;&|`\r\n]*?\b(music:db:(?:status|migrate|verify|reset))\b/gi;
   const matches = [...line.matchAll(commandPattern)];
   return matches.map((match, index) => {
     const start = match.index!;
@@ -198,14 +211,23 @@ function validateDocumentedDatabaseInvocation(command: string, invocation: strin
   const words = parsed.words;
   let index = 0;
   if (words[index++] !== "npm") return { code: "invalid-invocation" };
-  let silent = false;
-  if (words[index] === "--silent" || words[index] === "-s") {
-    silent = true;
-    index += 1;
+  const npmOptions = new Set<string>();
+  const valueOptions = new Set(["--prefix", "-C", "--workspace", "-w", "--registry", "--cache", "--userconfig", "--loglevel", "--otp"]);
+  const booleanOptions = new Set(["--silent", "-s", "--yes", "--no", "--global", "--ignore-scripts", "--foreground-scripts", "--audit", "--fund"]);
+  while (words[index] !== "run") {
+    const option = words[index++];
+    if (option === undefined || npmOptions.has(option)) return { code: "invalid-invocation" };
+    npmOptions.add(option);
+    if (valueOptions.has(option)) {
+      const value = words[index++];
+      if (value === undefined || value.startsWith("-")) return { code: "invalid-invocation" };
+    } else if (!booleanOptions.has(option) && !/^--[a-z][a-z\d-]*=.+$/i.test(option)) {
+      return { code: "invalid-invocation" };
+    }
   }
   if (words[index++] !== "run") return { code: "invalid-invocation" };
   if (words[index] === "--silent" || words[index] === "-s") {
-    if (silent) return { code: "invalid-invocation" };
+    if (npmOptions.has(words[index]!)) return { code: "invalid-invocation" };
     index += 1;
   }
   if (words[index++] !== command || words[index++] !== "--") return { code: "invalid-invocation" };
@@ -245,9 +267,8 @@ function databaseInvocationFindings(sources: Record<string, string>): DatabaseIn
     for (let index = 0; index <= physicalLines.length; index += 1) {
       if (index < physicalLines.length && physicalLines[index]!.trim() !== "") continue;
       const paragraph = physicalLines.slice(paragraphStart, index).join("\n");
-      const replacementProse = paragraph.split(/\r?\n/).some((line) =>
-        !/\bmusic:db:(?:status|migrate|verify|reset)\b/i.test(line)
-        && /\breplace\b[^.\r\n]{0,100}\b(?:test\b[^.\r\n]{0,40}\bwith\s+)?production\b/i.test(line));
+      const prose = paragraph.replace(/`[^`\r\n]*\bmusic:db:(?:status|migrate|verify|reset)\b[^`\r\n]*`/gi, "");
+      const replacementProse = /\breplace\b[^.\r\n]{0,100}\b(?:test\b[^.\r\n]{0,40}\bwith\s+)?production\b/i.test(prose);
       if (/\bmusic:db:(?:status|migrate|verify|reset)\b/i.test(paragraph) && replacementProse) {
         for (let line = paragraphStart + 1; line <= index; line += 1) replacementLines.add(line);
       }
@@ -416,6 +437,7 @@ describe("Music documentation publication contract", () => {
         "Run drizzle-kit push --config drizzle.config.ts.",
         "Run npm exec -- drizzle-kit push before deployment.",
         "Run yarn db:push before deployment.",
+        "Build the image FROM node:18-alpine.",
       ].join("\n"),
     })).toEqual([
       { path: "docs/stale-spellings.md", line: 1, code: "node-18" },
@@ -427,6 +449,7 @@ describe("Music documentation publication contract", () => {
       { path: "docs/stale-spellings.md", line: 7, code: "db-push" },
       { path: "docs/stale-spellings.md", line: 8, code: "db-push" },
       { path: "docs/stale-spellings.md", line: 9, code: "db-push" },
+      { path: "docs/stale-spellings.md", line: 10, code: "node-18" },
     ]);
   });
 
@@ -549,11 +572,22 @@ describe("Music documentation publication contract", () => {
         "`npm run music:db:verify -- --target test`",
         "Replace test with production before running.",
       ].join("\n"),
+      "docs/npm-prefix.md": [
+        "`npm --prefix . run music:db:verify -- --target production`",
+        "`npm -C . run music:db:migrate -- --mode fixture --target test`",
+        "`npm --workspace tunes run music:db:status -- --target test`",
+        "`npm -w tunes run music:db:verify -- --target test`",
+        "`npm --yes run music:db:status -- --target test`",
+        "`npm --registry https://registry.npmjs.org run music:db:verify -- --target test`",
+      ].join("\n"),
+      "docs/inline-replacement.md": "`npm run music:db:verify -- --target test` — replace test with production before running.",
     })).toEqual([
       { path: "docs/pre-run.md", line: 1, command: "music:db:status", code: "missing-test-target" },
       { path: "docs/pre-run.md", line: 2, command: "music:db:verify", code: "invalid-invocation" },
       { path: "docs/pre-run.md", line: 4, command: "music:db:status", code: "invalid-invocation" },
       { path: "docs/replacement.md", line: 1, command: "music:db:verify", code: "invalid-invocation" },
+      { path: "docs/npm-prefix.md", line: 1, command: "music:db:verify", code: "missing-test-target" },
+      { path: "docs/inline-replacement.md", line: 1, command: "music:db:verify", code: "invalid-invocation" },
     ]);
   });
 
@@ -571,6 +605,7 @@ describe("Music documentation publication contract", () => {
     expect(authAdr).toContain("never reused on canonical owner routes");
     expect(authAdr).not.toMatch(/No single sign-on across apps|users have separate accounts|JWT for both.*Rejected/is);
     expect(read("docs/adr/README.md")).toContain("| [002](002-auth-strategies.md) | Different auth strategies per app (JWT vs sessions) | Superseded in part |");
+    expect(read("docs/adr/README.md")).toContain("| [004](004-database-orm-choice.md) | PostgreSQL with Drizzle ORM | Superseded in part |");
     const authModel = read("docs/security/music-auth-model.md");
     expect(authModel).toContain("Canonical owner REST and Socket.IO routes accept that credential only.");
     expect(authModel).toContain("A separately opened native Tunes session is confined to its documented login/logout/check/CSRF endpoints.");
@@ -649,7 +684,7 @@ describe("Music documentation publication contract", () => {
 
   it("keeps every published or indexed Markdown document free of retired guidance", () => {
     // Break caught: an indexed guide or agent context revives Node 18, db:push, or caller-owned usernames.
-    const paths = indexedMarkdownDocuments();
+    const paths = publishedMarkdownDocuments();
     expect(paths).toEqual(expect.arrayContaining([
       "CLAUDE.md",
       "tunes/CLAUDE.md",
@@ -658,6 +693,10 @@ describe("Music documentation publication contract", () => {
       "docs/tunes/database.md",
       "docs/tunes/security.md",
       "docs/explorers-earth/integrations.md",
+      "docs/README.md",
+      "tunes/README.md",
+      "explorers-earth/README.md",
+      "tunes/docker-documentation.md",
     ]));
     expect(paths.filter((path) => !existsSync(resolve(root, path)))).toEqual([]);
     const sources = Object.fromEntries(paths.map((path) => [path, read(path)]));
@@ -674,6 +713,10 @@ describe("Music documentation publication contract", () => {
     expect(guide).toContain("`music:test:all` runs `npm test --prefix tunes`");
     expect(guide).toContain("does not run the Explorer, real PostgreSQL, browser, load/chaos, or release lanes");
     expect(guide).toContain("[release evidence template](music-release-evidence-template.md)");
+    const deployRunbook = read("docs/operations/music-deploy-runbook.md");
+    expect(deployRunbook).toContain("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\\scripts\\music-release-launcher.ps1 -Mode qualification");
+    expect(deployRunbook).toContain("/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification");
+    expect(deployRunbook).not.toMatch(/npm\s+exec[^\r\n]*\btsx\b/i);
   });
 
   it("keeps examples disposable and production credentials unset", () => {
