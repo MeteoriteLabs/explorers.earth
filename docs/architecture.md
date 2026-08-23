@@ -47,7 +47,7 @@ The two apps are **independent** — they have separate codebases, separate tech
 
 - A monorepo root with `concurrently` to run both dev servers
 - Similar frontend technology choices (React 18, TypeScript, Zustand, Tailwind CSS, Vite)
-- A **deep cross-app SSO integration**: explorers-earth embeds a full music dashboard from tunes, using JWT-based SSO to authenticate users across apps. The flow uses Strapi JWT tokens + `X-Username` header mapping to link Strapi users to tunes Neon DB users. Key files: `explorers-earth/src/lib/apiClient.ts`, `explorers-earth/src/services/ssoService.ts`, `tunes/server/jwt-auth-middleware.ts`
+- A **deep cross-app Music identity integration**: explorers-earth verifies the Strapi user and completed Account selection, performs a bodyless identity ensure, and keeps the returned short-lived Music credential in memory. tunes derives the numeric owner from that verified credential for every canonical owner operation. Key files: `explorers-earth/src/lib/localTunesApiClient.ts`, `explorers-earth/src/features/music/musicApi.ts`, `tunes/server/routes/musicIdentityRoutes.ts`, `tunes/server/middleware/musicPrincipal.ts`
 
 ## explorers-earth Architecture
 

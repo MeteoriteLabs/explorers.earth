@@ -29,7 +29,8 @@ npm run dev:tunes           # tunes at http://localhost:5000
 npm run dev:explorers-earth # explorers-earth at http://localhost:5173
 
 # Database (tunes only)
-npm run db:push             # Push schema changes to PostgreSQL
+npm run music:db:migrate -- --mode fixture # Apply the reviewed chain to the guarded fixture
+npm run music:db:verify -- --mode fixture  # Verify journal, checksums, and catalog
 
 # Build
 npm run build:all

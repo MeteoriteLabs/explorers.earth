@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js 18+** — [Download](https://nodejs.org/)
+- **Node.js 22.12+** — [Download](https://nodejs.org/)
 - **PostgreSQL 15+** — Required for tunes only. [Download](https://www.postgresql.org/download/)
 - **YouTube Data API key** — Required for tunes song search. [Get API Key](https://console.cloud.google.com/)
 - **Google Maps API key** — Required for explorers-earth. [Get API Key](https://console.cloud.google.com/)
@@ -37,25 +37,29 @@ VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
 ### tunes
 
-Create `tunes/.env`:
+Create `tunes/.env` for non-database service values. The fixture database authority is generated separately and must not be copied into this file:
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/tunes
 SESSION_SECRET=your-session-secret
 YOUTUBE_API_KEY=your-youtube-api-key
 ```
 
 ## Database Setup (tunes only)
 
-1. Ensure PostgreSQL is running and you have a database created
-2. Set `DATABASE_URL` in `tunes/.env`
-3. Push the schema:
+For the supported isolated local Music environment:
+
+1. Ensure Docker Compose v2 is available
+2. Do not set or export `DATABASE_URL`; the fixture commands create a guarded `DATABASE_URL_TEST` authority
+3. From the repository root, create, start, migrate, and verify the disposable fixture database:
 
 ```bash
-npm run db:push
+npm run music:bootstrap -- --mode fixture
+npm run music:up -- --mode fixture --detach --wait
+npm run music:db:migrate -- --mode fixture
+npm run music:db:verify -- --mode fixture
 ```
 
-This uses Drizzle Kit to synchronize the schema from `tunes/shared/schema.ts` to your database.
+These commands accept only the isolated `music_migrator@127.0.0.1:55432/music_fixture` target. Application startup does not synchronize schemas, and production changes must use the reviewed immutable migration/deployment process in the [Music deployment runbook](operations/music-deploy-runbook.md).
 
 ## Running the Applications
 

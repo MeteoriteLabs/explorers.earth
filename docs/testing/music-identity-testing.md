@@ -27,13 +27,25 @@ npm run music:down -- --mode fixture
 | fast | 3 minutes | `npm run music:test:fast -- --mode fixture` | scoped types plus focused Tunes and Explorer Music units |
 | PR | 15 minutes | `npm run music:test:pr -- --mode fixture` | critical 100% coverage, normalized diagnostics, full units/contracts/security, disposable migrations/real DB, browser smoke |
 | nightly | 45 minutes | `npm run music:test:nightly -- --mode fixture` | full-stack and accessibility browsers, load/chaos, interruption/resume, fixture drift |
-| release | 60 minutes | native launcher only | exact fixture/digest, real Docker migration/readiness/rollback/kill-switch rehearsal and sanitized evidence |
+| release | 60 minutes | platform-native launcher below | exact fixture/digest, real Docker migration/readiness/rollback/kill-switch rehearsal and sanitized evidence |
 
-`music:test:all` is the public non-production aggregate. Release has intentionally no root npm shortcut: use the checked-in native launcher through the approved release rehearsal. No test command opens `GATE_PROD`, deploys, pushes, or mutates a live service.
+`music:test:all` runs `npm test --prefix tunes`; it is the complete Tunes Vitest suite, but it does not run the Explorer, real PostgreSQL, browser, load/chaos, or release lanes. The full supported non-production progression is fast, PR, then nightly. Those lanes remain separate so their prerequisites, budgets, evidence, and recovery behavior stay explicit.
+
+Release has intentionally no root npm shortcut. Run the checked-in launcher from the repository root with the command for the host platform:
+
+```text
+# Windows
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification
+
+# POSIX
+/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification
+```
+
+Record the exact commit, image digest, migration marker, fixture version, timing, sanitized artifacts, recovery results, and independent review in the [release evidence template](music-release-evidence-template.md). Direct npm/tsx execution is unsupported because it would allow Node startup authority to run before the native guard. No test command opens `GATE_PROD`, deploys, pushes, or mutates a live service.
 
 ## Dependency order
 
-CI gates static baseline, unit and per-file critical coverage, documentation/API/route/environment/migration contracts, disposable migrations, real PostgreSQL repositories, REST/Socket.IO security, Explorer frontend, browser E2E/accessibility, scheduled load/chaos, and image/deployment contracts in that order. Documentation-only changes run the same contract authority rather than bypassing CI.
+The release dependency chain gates static baseline, unit and per-file critical coverage, API/route/environment/migration contracts, disposable migrations and real PostgreSQL repositories, REST/Socket.IO security, Explorer frontend, browser E2E/accessibility, scheduled load/chaos, and image/deployment contracts in that order. Documentation contracts run independently and remain triggerable for documentation-only changes rather than becoming the first release dependency.
 
 Contract tests fail when a stable Music route lacks policy/OpenAPI coverage, a runtime table is absent from the manifest, a migration ID/file diverges, a stable error code is not documented, a public command disappears, a required fixture environment value is missing, a new TypeScript diagnostic appears, or a forbidden owner/auth pattern returns.
 

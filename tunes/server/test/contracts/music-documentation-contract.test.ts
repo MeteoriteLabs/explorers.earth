@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { posix, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { musicErrorCodeSchema } from "../../../shared/musicError";
 import { EXPECTED_MUSIC_MIGRATION_CHAIN } from "../../../shared/music-migration-contract";
@@ -28,6 +28,48 @@ const publicCommands = [
   "music:db:migrate", "music:db:verify", "music:db:reset", "music:fixtures:capture",
   "music:reconcile", "music:types:scoped", "music:types:baseline",
 ] as const;
+
+type StaleGuidanceCode = "node-18" | "db-push" | "x-username-ownership";
+type StaleGuidanceFinding = { path: string; line: number; code: StaleGuidanceCode };
+
+function indexedMarkdownDocuments(indexSource = read("docs/README.md")): string[] {
+  const paths = new Set(["docs/README.md"]);
+  const pending = ["docs/README.md"];
+  const supplied = new Map([["docs/README.md", indexSource]]);
+
+  while (pending.length > 0) {
+    const path = pending.shift()!;
+    const source = supplied.get(path) ?? read(path);
+    for (const [, rawTarget] of source.matchAll(/\]\(([^)#?]+\.md)(?:#[^)]*)?\)/g)) {
+      if (/^[a-z][a-z\d+.-]*:/i.test(rawTarget)) continue;
+      const target = posix.normalize(posix.join(posix.dirname(path), rawTarget.replaceAll("\\", "/")));
+      if (target === ".." || target.startsWith("../") || paths.has(target)) continue;
+      paths.add(target);
+      if (existsSync(resolve(root, target))) pending.push(target);
+    }
+  }
+
+  return [...paths].sort();
+}
+
+function staleGuidanceFindings(sources: Record<string, string>): StaleGuidanceFinding[] {
+  const findings: StaleGuidanceFinding[] = [];
+  for (const [path, source] of Object.entries(sources)) {
+    source.split(/\r?\n/).forEach((line, index) => {
+      if (/\bNode(?:\.js)?\s+18(?:\.\d+)?\+?/i.test(line)) {
+        findings.push({ path, line: index + 1, code: "node-18" });
+      }
+      if (/\bnpm\s+run\s+db:push\b/i.test(line)) {
+        findings.push({ path, line: index + 1, code: "db-push" });
+      }
+      if (/\bX-Username\b/i.test(line)
+          && !/(?:^|\b)(?:no authorization|not owner authority|never|forbidden|prohibited|removed|retired|rejected)(?:\b|$)/i.test(line)) {
+        findings.push({ path, line: index + 1, code: "x-username-ownership" });
+      }
+    });
+  }
+  return findings;
+}
 
 type DocumentationCatalog = {
   schemaVersion?: string;
@@ -101,6 +143,47 @@ describe("Music documentation publication contract", () => {
     });
   });
 
+  it("detects stale setup and ownership guidance in a hostile Markdown fixture", () => {
+    // Break caught: the policy scanner accidentally stops recognizing one of the retired guidance forms.
+    expect(staleGuidanceFindings({
+      "docs/hostile.md": [
+        "Use Node.js 18+.",
+        "Run npm run db:push to synchronize production.",
+        "Send X-Username to establish the playlist owner.",
+      ].join("\n"),
+    })).toEqual([
+      { path: "docs/hostile.md", line: 1, code: "node-18" },
+      { path: "docs/hostile.md", line: 2, code: "db-push" },
+      { path: "docs/hostile.md", line: 3, code: "x-username-ownership" },
+    ]);
+  });
+
+  it("keeps every published or indexed Markdown document free of retired guidance", () => {
+    // Break caught: an indexed guide or agent context revives Node 18, db:push, or caller-owned usernames.
+    const paths = indexedMarkdownDocuments();
+    expect(paths).toEqual(expect.arrayContaining([
+      "CLAUDE.md",
+      "tunes/CLAUDE.md",
+      "docs/getting-started.md",
+      "docs/testing/music-release-evidence-template.md",
+      "docs/tunes/database.md",
+      "docs/tunes/security.md",
+      "docs/explorers-earth/integrations.md",
+    ]));
+    expect(paths.filter((path) => !existsSync(resolve(root, path)))).toEqual([]);
+    expect(staleGuidanceFindings(Object.fromEntries(paths.map((path) => [path, read(path)])))).toEqual([]);
+  });
+
+  it("publishes executable release launchers and describes test:all at its real scope", () => {
+    // Break caught: a clean checkout cannot reproduce release evidence, or test:all overclaims its coverage.
+    const guide = read("docs/testing/music-identity-testing.md");
+    expect(guide).toContain("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\\scripts\\music-release-launcher.ps1 -Mode qualification");
+    expect(guide).toContain("/usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification");
+    expect(guide).toContain("`music:test:all` runs `npm test --prefix tunes`");
+    expect(guide).toContain("does not run the Explorer, real PostgreSQL, browser, load/chaos, or release lanes");
+    expect(guide).toContain("[release evidence template](music-release-evidence-template.md)");
+  });
+
   it("keeps examples disposable and production credentials unset", () => {
     for (const path of [".env.music.example", ".env.music.test.example"]) {
       const source = read(path);
@@ -118,7 +201,8 @@ describe("Music CI publication order", () => {
     const workflow = existsSync(path) ? parseYaml(read(".github/workflows/test.yml")) : {};
     expect(workflow.on).toEqual(expect.objectContaining({ pull_request: expect.anything(), push: expect.anything() }));
     expect(workflow.on).not.toHaveProperty("paths-ignore");
-    expect(workflow.jobs?.static?.needs).toBe("docs-contracts");
+    expect(workflow.jobs?.["docs-contracts"]).not.toHaveProperty("needs");
+    expect(workflow.jobs?.static).not.toHaveProperty("needs");
     expect(workflow.jobs?.["unit-coverage"]?.needs).toBe("static");
     expect(workflow.jobs?.contracts?.needs).toBe("unit-coverage");
     expect(workflow.jobs?.database?.needs).toBe("contracts");

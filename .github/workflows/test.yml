@@ -38,7 +38,6 @@ jobs:
         run: npm test --prefix tunes -- --run server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts server/test/contracts/runtime-surface-inventory.test.ts server/test/contracts/runtime-table-manifest.test.ts server/test/contracts/music-environment-contract.test.ts server/test/contracts/music-forbidden-authority-search.test.ts
 
   static:
-    needs: docs-contracts
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
