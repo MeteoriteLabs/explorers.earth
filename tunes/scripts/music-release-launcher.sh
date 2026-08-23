@@ -2,7 +2,7 @@
 set -eu
 
 rejected_message='native Music release launcher rejected Node startup authority'
-if /usr/bin/env | /usr/bin/grep -Eq '^NODE(_|)='; then
+if /usr/bin/env | /usr/bin/grep -Eq '^NODE(_.*)?='; then
   printf '%s\n' "$rejected_message" >&2
   exit 78
 fi

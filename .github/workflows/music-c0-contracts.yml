@@ -9,8 +9,9 @@ on:
       - "docker-compose.music-test.yml"
       - ".env.music*.example"
       - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/test.yml"
       - ".github/workflows/music-reconcile.yml"
-      - "docs/operations/music-reconciliation-runbook.md"
+      - "docs/**"
   push:
     branches: [main, develop]
     paths:
@@ -20,8 +21,9 @@ on:
       - "docker-compose.music-test.yml"
       - ".env.music*.example"
       - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/test.yml"
       - ".github/workflows/music-reconcile.yml"
-      - "docs/operations/music-reconciliation-runbook.md"
+      - "docs/**"
 
 permissions:
   contents: read

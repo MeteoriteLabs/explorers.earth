@@ -1,0 +1,206 @@
+name: Music contract and qualification CI
+
+on:
+  pull_request: {}
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Highest non-production lane to exercise
+        type: choice
+        options: [pr, nightly]
+        default: pr
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: music-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Validate documentation, routes, errors, commands, environment, and migrations
+        run: npm test --prefix tunes -- --run server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts server/test/contracts/runtime-surface-inventory.test.ts server/test/contracts/runtime-table-manifest.test.ts server/test/contracts/music-environment-contract.test.ts server/test/contracts/music-forbidden-authority-search.test.ts
+
+  static:
+    needs: docs-contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm run music:types:scoped
+      - run: npm run music:types:baseline
+
+  unit-coverage:
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: |
+            tunes/package-lock.json
+            explorers-earth/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm ci --prefix explorers-earth
+      - run: npm run test:music-critical-coverage --prefix tunes -- --maxWorkers=1 --fileParallelism=false
+      - run: npm run test:music-critical-coverage --prefix explorers-earth
+
+  contracts:
+    needs: unit-coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm test --prefix tunes -- --run server/test/contracts
+
+  database:
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: music_fixture
+          POSTGRES_USER: music_migrator
+          POSTGRES_PASSWORD: music
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U music_migrator -d music_fixture"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture
+      MUSIC_C3_POSTGRES_TEST: "1"
+      MUSIC_C4_POSTGRES_TEST: "1"
+      MUSIC_C5_POSTGRES_TEST: "1"
+      MUSIC_C6_POSTGRES_TEST: "1"
+      MUSIC_C7_POSTGRES_TEST: "1"
+      MUSIC_C8_POSTGRES_TEST: "1"
+      MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Refuse any non-disposable database target
+        run: node -e "const u=new URL(process.env.DATABASE_URL_TEST);if(u.protocol!=='postgresql:'||u.username!=='music_migrator'||u.hostname!=='127.0.0.1'||u.port!=='55432'||u.pathname!=='/music_fixture')process.exit(5)"
+      - name: Run migrations and real PostgreSQL owner/lifecycle/reconciliation contracts
+        run: npm run test:integration --prefix tunes -- server/test/migrations/music-migration.integration.test.ts server/test/music-identity-projection.integration.test.ts server/test/music-credential.integration.test.ts server/test/music-domain-repository.integration.test.ts server/test/musicLifecycle.integration.test.ts server/test/musicReconciler.integration.test.ts server/test/reconciliationRepository.integration.test.ts --maxWorkers=1 --fileParallelism=false
+
+  security:
+    needs: database
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm test --prefix tunes -- --run server/test/contracts/music-authorization-matrix.test.ts server/test/security/music-security-qualification.test.ts server/test/music-surface-policy.test.ts server/test/music-surface-routes.test.ts server/test/music-identity-route.test.ts server/test/music-socket-server.test.ts
+
+  frontend:
+    needs: security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci --prefix explorers-earth
+      - run: npm run test:unit --prefix explorers-earth -- src/features/music src/components/__tests__/MusicDashboard.test.tsx src/pages/__tests__/MusicPage.test.tsx src/pages/__tests__/PublicMusic.test.tsx src/services/__tests__/accountLifecycleService.test.ts
+
+  browser:
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci --prefix explorers-earth
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      - name: Run Music E2E and accessibility contracts
+        env:
+          VITE_API_URL: http://localhost:5173/graphql
+          VITE_GOOGLE_MAPS_API_KEY: fixture-placeholder
+          VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
+          VITE_LOCAL_TUNES_ENABLED: "true"
+          VITE_LOCAL_TUNES_API_URL: http://localhost:5173
+        run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium --retries=0
+
+  load-chaos:
+    needs: browser
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.lane == 'nightly')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm test --prefix tunes -- --run server/test/load/music-load-qualification.test.ts server/test/integration/music-chaos-qualification.test.ts server/test/music-identity-gateway.test.ts server/test/music-token-service.test.ts server/test/music-reconciler.test.ts
+
+  image-deploy-contract:
+    needs: [browser, load-chaos]
+    if: always() && needs.browser.result == 'success' && (needs.load-chaos.result == 'success' || needs.load-chaos.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Prove immutable image, migration, readiness, rollback floor, and kill-switch contracts
+        run: npm test --prefix tunes -- --run server/test/deployment --maxWorkers=1 --fileParallelism=false

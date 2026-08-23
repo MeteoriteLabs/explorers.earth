@@ -582,6 +582,12 @@ use only an allowed retained digest if rollback is necessary.
 
 ## Rehearsal evidence required before GATE_PROD
 
+### Authorized canary contract
+
+A canary is a separate production mutation and remains closed until `GATE_PROD` is explicitly authorized. When authorized, deploy only the already-attested candidate digest to the approved bounded cohort after preflight, backup/restore proof, migration attestation, readiness, permanent security floor, and schema-floor checks pass. Exercise one Google and one email identity, rename stability, owner content, private/unlisted/public publication, lifecycle suspension/reactivation, and report-only reconciliation. Monitor sanitized error codes, latency, rate/circuit state, compatibility usage, lifecycle/reconciliation anomalies, and database saturation for one full approved cycle.
+
+Abort the canary by setting the server kill switch, preserving the previous general route, and using only an authenticated retained digest at or above both floors. Do not roll back a schema marker, remove a tombstone, weaken an owner predicate, paste a capability, or convert reconciliation to production apply. Promotion requires recorded zero compatibility use, no unsafe error/identity leakage, stable readiness, and independent operator approval.
+
 The transactional state machine lives in
 `tunes/deployment/music-deploy-engine.sh`, but that file is not an entrypoint and
 refuses direct execution. Production continues to invoke only
