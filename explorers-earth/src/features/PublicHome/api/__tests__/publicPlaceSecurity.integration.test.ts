@@ -14,17 +14,17 @@ type SecuredEntity = Record<string, any> & {
 };
 
 function matchesScope(filters: any, entity: SecuredEntity): boolean {
-	if (filters.account?.documentId?.eq !== entity.__account) return false;
-	if (filters.Visibility?.eq !== entity.__visible) return false;
-	const linkedList = filters.recommendation_lists;
+	if (filters.or) return filters.or.some((choice: any) => matchesScope(choice, entity));
+	if (filters.account && filters.account.documentId?.eq !== entity.__account) return false;
+	if (filters.Visibility && filters.Visibility.eq !== entity.__visible) return false;
+	const linkedList = filters.recommendation_list;
 	if (linkedList) {
 		return entity.recommendation_lists.some((list: SecuredEntity) =>
-			matchesScope(linkedList, list)
-			&& (linkedList.or ?? []).some((choice: any) =>
-				choice.slug?.eq === list.slug || choice.documentId?.eq === list.documentId,
-			),
+			matchesScope(linkedList, list),
 		);
 	}
+	if (filters.slug?.eq && filters.slug.eq !== entity.slug) return false;
+	if (filters.documentId?.eq && filters.documentId.eq !== entity.documentId) return false;
 	return true;
 }
 

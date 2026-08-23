@@ -192,10 +192,19 @@ export const publicPlaceListBySlugQuery = gql`
         person_list: {
           account: { documentId: { eq: $accountDocumentId } }
           Visibility: { eq: true }
-          recommendation_lists: {
-            account: { documentId: { eq: $accountDocumentId } }
-            Visibility: { eq: true }
-            or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
+          recommendation_list: {
+            or: [
+              {
+                account: { documentId: { eq: $accountDocumentId } }
+                Visibility: { eq: true }
+                slug: { eq: $slug }
+              }
+              {
+                account: { documentId: { eq: $accountDocumentId } }
+                Visibility: { eq: true }
+                documentId: { eq: $documentId }
+              }
+            ]
           }
         }
       }
@@ -239,10 +248,19 @@ export const publicPlaceListBySlugQuery = gql`
         product_list: {
           account: { documentId: { eq: $accountDocumentId } }
           Visibility: { eq: true }
-          recommendation_lists: {
-            account: { documentId: { eq: $accountDocumentId } }
-            Visibility: { eq: true }
-            or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
+          recommendation_list: {
+            or: [
+              {
+                account: { documentId: { eq: $accountDocumentId } }
+                Visibility: { eq: true }
+                slug: { eq: $slug }
+              }
+              {
+                account: { documentId: { eq: $accountDocumentId } }
+                Visibility: { eq: true }
+                documentId: { eq: $documentId }
+              }
+            ]
           }
         }
       }

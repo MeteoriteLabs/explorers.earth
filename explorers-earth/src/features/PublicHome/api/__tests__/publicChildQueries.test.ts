@@ -24,8 +24,8 @@ describe("public place and guide child queries", () => {
 	it("filters every linked Place recommendation connection at the server boundary", () => {
 		const source = print(publicPlaceListBySlugQuery);
 
-		expect(source).toMatch(/recommendedPeople_connection[\s\S]*?person_list:[\s\S]*?account:[\s\S]*?\$accountDocumentId[\s\S]*?Visibility:[\s\S]*?true[\s\S]*?recommendation_lists:[\s\S]*?\$documentId/);
-		expect(source).toMatch(/recommendedProducts_connection[\s\S]*?product_list:[\s\S]*?account:[\s\S]*?\$accountDocumentId[\s\S]*?Visibility:[\s\S]*?true[\s\S]*?recommendation_lists:[\s\S]*?\$documentId/);
+		expect(source).toMatch(/recommendedPeople_connection[\s\S]*?person_list:[\s\S]*?account:[\s\S]*?\$accountDocumentId[\s\S]*?Visibility:[\s\S]*?true[\s\S]*?recommendation_list:[\s\S]*?\$documentId/);
+		expect(source).toMatch(/recommendedProducts_connection[\s\S]*?product_list:[\s\S]*?account:[\s\S]*?\$accountDocumentId[\s\S]*?Visibility:[\s\S]*?true[\s\S]*?recommendation_list:[\s\S]*?\$documentId/);
 		expect(source).not.toMatch(/pagination:\s*\{limit:\s*(50|100|200)\}/);
 	});
 
@@ -74,7 +74,7 @@ describe("public place and guide child queries", () => {
 
 		expect(source).toContain("$sectionPagination: PaginationArg!");
 		expect(source).toContain("guideSections_connection");
-		expect(source).toContain("guide: {account: {documentId: {eq: $accountDocumentId}}, Visibility: {eq: true}");
+		expect(source).toContain("guide: {or: [{account: {documentId: {eq: $accountDocumentId}}, Visibility: {eq: true}, slug: {eq: $slug}}");
 		expect(source).toContain('sort: ["Sequence:asc", "documentId:asc"]');
 		expect(source).toContain("pageInfo");
 		expect(source).not.toContain("guide_sections(pagination: {limit: 100}");

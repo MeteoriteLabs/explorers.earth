@@ -259,9 +259,18 @@ export const GET_PUBLIC_GUIDE_BY_SLUG_QUERY = gql`
     guideSections_connection(
       filters: {
         guide: {
-          account: { documentId: { eq: $accountDocumentId } }
-          Visibility: { eq: true }
-          or: [{ slug: { eq: $slug } }, { documentId: { eq: $documentId } }]
+          or: [
+            {
+              account: { documentId: { eq: $accountDocumentId } }
+              Visibility: { eq: true }
+              slug: { eq: $slug }
+            }
+            {
+              account: { documentId: { eq: $accountDocumentId } }
+              Visibility: { eq: true }
+              documentId: { eq: $documentId }
+            }
+          ]
         }
       }
       pagination: $sectionPagination

@@ -33,14 +33,14 @@ input PersonListFiltersInput { account: AccountFiltersInput, Visibility: Boolean
 input PersonListRelationFiltersInput {
   account: AccountFiltersInput
   Visibility: BooleanFilterInput
-  recommendation_lists: RecommendationListFiltersInput
+  recommendation_list: RecommendationListFiltersInput
 }
 input RecommendedPersonFiltersInput { person_list: PersonListRelationFiltersInput }
 input ProductListFiltersInput { account: AccountFiltersInput, Visibility: BooleanFilterInput }
 input ProductListRelationFiltersInput {
   account: AccountFiltersInput
   Visibility: BooleanFilterInput
-  recommendation_lists: RecommendationListFiltersInput
+  recommendation_list: RecommendationListFiltersInput
 }
 input RecommendedProductFiltersInput { product_list: ProductListRelationFiltersInput }
 
