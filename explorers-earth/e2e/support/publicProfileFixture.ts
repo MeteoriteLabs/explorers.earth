@@ -58,6 +58,15 @@ export type RouteContractFixtureOutcome =
   | "missing-child"
   | "unknown-user";
 
+export interface DeferredRouteResponse {
+  operationName: string;
+  responseLabel: string;
+  started: boolean;
+  released: boolean;
+  returned: boolean;
+  release: () => void;
+}
+
 export interface RouteContractFixtureController {
   outcome: RouteContractFixtureOutcome;
   hiddenField?: string;
@@ -72,11 +81,18 @@ export interface RouteContractFixtureController {
   failedOperations: string[];
   unknownOperations: string[];
   attempts: Record<string, number>;
+  deferNextResponse: (
+    operationName: string,
+    responseLabel: string,
+  ) => DeferredRouteResponse;
   networkAudit: {
     consoleErrors: string[];
+    expectedConsoleErrors: string[];
     failedRequests: Array<{ method: string; url: string; failure: string }>;
     badResponses: Array<{ method: string; url: string; status: number }>;
     unknownRequests: Array<{ method: string; url: string; resourceType: string }>;
+    webSockets: Array<{ url: string; messages: string[]; closed: boolean }>;
+    unexpectedWebSockets: string[];
   };
 }
 
@@ -929,6 +945,10 @@ export async function installPublicRouteContractFixture(
   page: Page,
   initial: Partial<Pick<RouteContractFixtureController, "outcome" | "hiddenField" | "failure" | "bootstrapDelayMs" | "leafDelayMs">> = {},
 ): Promise<RouteContractFixtureController> {
+  type InternalDeferredRouteResponse = DeferredRouteResponse & {
+    waitForRelease: Promise<void>;
+  };
+  let deferredResponse: InternalDeferredRouteResponse | undefined;
   const controller: RouteContractFixtureController = {
     outcome: initial.outcome ?? "empty",
     hiddenField: initial.hiddenField,
@@ -939,16 +959,99 @@ export async function installPublicRouteContractFixture(
     failedOperations: [],
     unknownOperations: [],
     attempts: {},
+    deferNextResponse: (operationName, responseLabel) => {
+      if (deferredResponse && !deferredResponse.returned) {
+        throw new Error("A deferred route response is already active");
+      }
+      let releaseResponse!: () => void;
+      const waitForRelease = new Promise<void>((resolve) => {
+        releaseResponse = resolve;
+      });
+      const barrier: InternalDeferredRouteResponse = {
+        operationName,
+        responseLabel,
+        started: false,
+        released: false,
+        returned: false,
+        waitForRelease,
+        release: () => {
+          if (barrier.released) return;
+          barrier.released = true;
+          releaseResponse();
+        },
+      };
+      deferredResponse = barrier;
+      return barrier;
+    },
     networkAudit: {
       consoleErrors: [],
+      expectedConsoleErrors: [],
       failedRequests: [],
       badResponses: [],
       unknownRequests: [],
+      webSockets: [],
+      unexpectedWebSockets: [],
     },
   };
 
+  await page.addInitScript(() => {
+    const originalConsoleError = console.error.bind(console);
+    console.error = (first?: unknown, ...rest: unknown[]) => {
+      const message = typeof first === "string" ? first : "";
+      const error = rest[0] as {
+        config?: { url?: string };
+        response?: { status?: number };
+      } | undefined;
+      const exactSyntheticPlaylistFailure =
+        error?.config?.url === "/api/playlist/route-fixture-playlist" &&
+        error?.response?.status === 500;
+      const stableCode = message === "Local Tunes API Error:"
+        ? "INTERCEPTOR"
+        : message === "Local Tunes API GET /api/playlist/route-fixture-playlist failed:"
+          ? "REQUEST"
+          : undefined;
+      if (exactSyntheticPlaylistFailure && stableCode) {
+        console.debug(`TASK6_EXPECTED_PLAYLIST_500:${stableCode}`);
+        return;
+      }
+      originalConsoleError(first, ...rest);
+    };
+  });
+
   page.on("console", (message) => {
-    if (message.type() === "error") controller.networkAudit.consoleErrors.push(message.text());
+    const locationUrl = message.location().url;
+    let locationPathname = "";
+    try {
+      locationPathname = new URL(locationUrl).pathname;
+    } catch {
+      // A missing/malformed console location is never an expected fixture diagnostic.
+    }
+    const isExact500ResourceDiagnostic =
+      message.type() === "error" &&
+      message.text() === "Failed to load resource: the server responded with a status of 500 (Internal Server Error)";
+    const expectedPlaylistResourceFailure =
+      isExact500ResourceDiagnostic &&
+      locationUrl === "http://localhost:5000/api/playlist/route-fixture-playlist";
+    const expectedGraphqlResourceFailure =
+      isExact500ResourceDiagnostic &&
+      locationPathname === "/graphql" &&
+      controller.failure?.status === 500 &&
+      controller.failedOperations.includes(controller.failure.operationName);
+    if (expectedPlaylistResourceFailure) {
+      controller.networkAudit.expectedConsoleErrors.push("TASK6_EXPECTED_PLAYLIST_500:RESOURCE");
+    } else if (expectedGraphqlResourceFailure) {
+      controller.networkAudit.expectedConsoleErrors.push(
+        `TASK6_EXPECTED_GRAPHQL_500:${controller.failure!.operationName}`,
+      );
+    } else if (message.type() === "error") {
+      controller.networkAudit.consoleErrors.push(message.text());
+    }
+    if (
+      message.type() === "debug" &&
+      message.text().startsWith("TASK6_EXPECTED_PLAYLIST_500:")
+    ) {
+      controller.networkAudit.expectedConsoleErrors.push(message.text());
+    }
   });
   page.on("pageerror", (error) => controller.networkAudit.consoleErrors.push(error.message));
   page.on("requestfailed", (request) => {
@@ -966,6 +1069,44 @@ export async function installPublicRouteContractFixture(
         status: response.status(),
       });
     }
+  });
+
+  await page.routeWebSocket(/.*/, async (webSocket) => {
+    const url = webSocket.url();
+    const parsed = new URL(url);
+    if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {
+      webSocket.connectToServer();
+      return;
+    }
+    const expected =
+      ["ws:", "wss:"].includes(parsed.protocol) &&
+      parsed.hostname === "localtunes.earth" &&
+      parsed.pathname === "/socket.io/" &&
+      parsed.searchParams.get("transport") === "websocket" &&
+      parsed.searchParams.get("EIO") === "4" &&
+      parsed.searchParams.get("guestUrl") === "route-fixture-playlist";
+    if (!expected) {
+      controller.networkAudit.unexpectedWebSockets.push(url);
+      await webSocket.close({ code: 1008, reason: "Unexpected deterministic WebSocket" });
+      return;
+    }
+
+    const socketAudit = { url, messages: [] as string[], closed: false };
+    controller.networkAudit.webSockets.push(socketAudit);
+    webSocket.onMessage((message) => {
+      const text = typeof message === "string" ? message : `binary:${message.byteLength}`;
+      socketAudit.messages.push(text);
+      if (text === "2") webSocket.send("3");
+      if (text === "40") {
+        webSocket.send('40{"sid":"task6-socket"}');
+      }
+    });
+    webSocket.onClose(() => {
+      socketAudit.closed = true;
+    });
+    webSocket.send(
+      '0{"sid":"task6-engine","upgrades":[],"pingInterval":60000,"pingTimeout":60000,"maxPayload":1000000}',
+    );
   });
 
   await page.route("**/*", async (route) => {
@@ -1066,6 +1207,18 @@ export async function installPublicRouteContractFixture(
     const bootstrapDelayMs = controller.bootstrapDelayMs;
     const leafDelayMs = controller.leafDelayMs;
     const responseLabel = controller.responseLabel;
+    const activeDeferredResponse =
+      deferredResponse &&
+      !deferredResponse.started &&
+      deferredResponse.operationName === operation &&
+      deferredResponse.responseLabel === responseLabel
+        ? deferredResponse
+        : undefined;
+
+    if (activeDeferredResponse) {
+      activeDeferredResponse.started = true;
+      await activeDeferredResponse.waitForRelease;
+    }
 
     const fulfillTargetedFailure = () => {
       if (!targetedFailure) return undefined;
@@ -1120,11 +1273,12 @@ export async function installPublicRouteContractFixture(
     const failed = fulfillTargetedFailure();
     if (failed) return failed;
 
-    return route.fulfill({
+    await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ data: routeContractResponse(operation, controller.outcome, responseLabel) }),
     });
+    if (activeDeferredResponse) activeDeferredResponse.returned = true;
   });
 
   return controller;

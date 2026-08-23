@@ -101,6 +101,10 @@ export default function PublicMusic() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { updateTheme } = useTheme();
+  const updateThemeRef = useRef(updateTheme);
+  useEffect(() => {
+    updateThemeRef.current = updateTheme;
+  }, [updateTheme]);
   const [themeUpdated, setThemeUpdated] = useState(false);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [accordionsOpen, setAccordionsOpen] = useState({
@@ -272,15 +276,15 @@ export default function PublicMusic() {
 
 
   // Handle WebSocket messages
-  const handleMessage = (message: { type: string; payload: any }) => {
+  const handleMessage = useCallback((message: { type: string; payload: any }) => {
     console.log('Received WebSocket message:', message);
 
     if (message.type === 'THEME_UPDATE' && message.payload?.theme?.primary) {
       console.log('Updating theme from WebSocket:', message.payload.theme.primary);
 
       // Force immediate theme update
-      if (updateTheme) {
-        updateTheme(message.payload.theme.primary);
+      if (updateThemeRef.current) {
+        updateThemeRef.current(message.payload.theme.primary);
       }
 
       // Update playlist cache with new theme
@@ -370,7 +374,7 @@ export default function PublicMusic() {
       console.log('Refreshing playlist data from WebSocket');
       queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] });
     }
-  };
+  }, [guestUrl, queryClient]);
 
   // Initialize WebSocket
   useWebSocket(guestUrl || '', handleMessage, {
@@ -1024,7 +1028,7 @@ export default function PublicMusic() {
                     Queue
                     <span className="acc-count">{(playlist?.songs || []).length} songs</span>
                   </div>
-                  <svg className={`acc-chevron ${accordionsOpen.queue ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg className={`acc-chevron ${accordionsOpen.queue ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </button>
@@ -1054,7 +1058,7 @@ export default function PublicMusic() {
                       Recently Played
                       <span className="acc-count">{(playlist?.playedSongs || []).length} songs</span>
                     </div>
-                    <svg className={`acc-chevron ${accordionsOpen.history ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg className={`acc-chevron ${accordionsOpen.history ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>
@@ -1092,7 +1096,7 @@ export default function PublicMusic() {
                       Playlists
                       <span className="acc-count">{playlist.playlists.filter(p => p.isVisibleToGuests).length} playlists</span>
                     </div>
-                    <svg className={`acc-chevron ${accordionsOpen.playlists ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg className={`acc-chevron ${accordionsOpen.playlists ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>
@@ -1166,7 +1170,7 @@ export default function PublicMusic() {
                       </div>
                       Play on Your Device
                     </div>
-                    <svg className={`acc-chevron ${accordionsOpen.device ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg className={`acc-chevron ${accordionsOpen.device ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>

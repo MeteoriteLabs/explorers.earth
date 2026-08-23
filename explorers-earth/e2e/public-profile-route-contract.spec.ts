@@ -148,6 +148,23 @@ test.describe("application-owned public route contract", () => {
       await expect(page).toHaveURL(path);
       assertDeclaredOperations(route, controller);
       await page.waitForLoadState("networkidle");
+      if (route.id === "music") {
+        const musicAudit = controller.networkAudit as typeof controller.networkAudit & {
+          expectedConsoleErrors?: string[];
+          webSockets?: Array<{ url: string; closed: boolean }>;
+          unexpectedWebSockets?: string[];
+        };
+        // React StrictMode mounts the effect twice in development; the first socket
+        // must close and exactly one deterministic LocalTunes socket stays active.
+        await expect.poll(() => musicAudit.webSockets?.length ?? 0).toBe(2);
+        expect(musicAudit.webSockets?.every(({ url }) =>
+          url.includes("localtunes.earth/socket.io/"),
+        )).toBe(true);
+        expect(musicAudit.webSockets?.filter(({ closed }) => !closed)).toHaveLength(1);
+        expect(musicAudit.unexpectedWebSockets ?? []).toEqual([]);
+        expect(musicAudit.consoleErrors, "successful Music console").toEqual([]);
+        expect(musicAudit.failedRequests, "successful Music requests").toEqual([]);
+      }
 
       const selectedLeafOperation = leafFailureOperation(route, controller.observedOperations);
       if (bootstrapOnlyRouteIds.has(route.id)) {
@@ -179,12 +196,23 @@ test.describe("application-owned public route contract", () => {
       })).toBeVisible();
       expect(controller.failedOperations).toContain(failedOperation);
       if (route.id === "music") {
+        const musicAudit = controller.networkAudit as typeof controller.networkAudit & {
+          expectedConsoleErrors?: string[];
+          unexpectedWebSockets?: string[];
+        };
         const failedMusicAttempts = () => controller.failedOperations.filter(
           (operationName) => operationName === failedOperation,
         ).length;
         expect(failedMusicAttempts(), "initial request plus two bounded retries").toBe(3);
         await page.waitForTimeout(1_200);
         expect(failedMusicAttempts(), "persistent failure must stop network churn").toBe(3);
+        expect(
+          musicAudit.expectedConsoleErrors,
+          "two exact Axios diagnostics and one exact browser resource diagnostic per failed attempt",
+        ).toHaveLength(9);
+        expect(musicAudit.consoleErrors, "persistent Music failure console").toEqual([]);
+        expect(musicAudit.failedRequests, "persistent Music failure requests").toEqual([]);
+        expect(musicAudit.unexpectedWebSockets ?? []).toEqual([]);
       }
       expect(controller.attempts.PublicProfileBootstrap ?? 0).toBeGreaterThan(
         bootstrapAttemptsBeforeFailure,
@@ -198,13 +226,16 @@ test.describe("application-owned public route contract", () => {
       await retry.click();
       await expect(page.locator(`[data-public-route-leaf="${route.marker}"]`)).toContainText(ROUTE_UI_TEXT[route.id]);
       await expect(page).toHaveURL(errorPath);
+      await page.waitForLoadState("networkidle");
       await page.goto(path);
+      await page.waitForLoadState("networkidle");
 
       controller.observedOperations.length = 0;
       controller.unknownOperations.length = 0;
 
       await page.goto(profilePath);
       await expect(page.locator('[data-public-route-leaf="public-profile-shell"]')).toBeVisible();
+      await page.waitForLoadState("networkidle");
       await page.evaluate((nextPath) => {
         window.history.pushState({}, "", nextPath);
         window.dispatchEvent(new PopStateEvent("popstate"));
@@ -224,6 +255,7 @@ test.describe("application-owned public route contract", () => {
         await page.goto(path, { waitUntil: "domcontentloaded" });
         await expect(page.getByTestId(`public-route-skeleton-${route.skeleton}`)).toBeVisible();
         await expect(page).toHaveURL(profilePath);
+        await page.waitForLoadState("networkidle");
         controller.outcome = "empty";
         controller.leafDelayMs = 0;
       }
@@ -238,12 +270,20 @@ test.describe("application-owned public route contract", () => {
         await expect(page).toHaveURL(hiddenPath);
         await hiddenNavigation;
         await expect(page).toHaveURL(hiddenProfilePath);
+        await page.waitForLoadState("networkidle");
         controller.hiddenField = undefined;
         controller.bootstrapDelayMs = 0;
       }
 
       expect(controller.unknownOperations, `declared GraphQL operations for ${route.id}`).toEqual([]);
       expect(controller.networkAudit.unknownRequests, `known network surface for ${route.id}`).toEqual([]);
+      expect(controller.networkAudit.consoleErrors, `clean console for ${route.id}`).toEqual([]);
+      expect(controller.networkAudit.failedRequests, `clean failed requests for ${route.id}`).toEqual([]);
+      expect(
+        (controller.networkAudit as typeof controller.networkAudit & { unexpectedWebSockets?: string[] })
+          .unexpectedWebSockets ?? [],
+        `known WebSocket surface for ${route.id}`,
+      ).toEqual([]);
       expect(controller.networkAudit.badResponses).toContainEqual(expect.objectContaining({ status: 500 }));
     });
   }
@@ -262,10 +302,20 @@ test.describe("application-owned public route contract", () => {
     });
 
     controller.responseLabel = "Old books-list content";
-    controller.leafDelayMs = 1_000;
-    const oldResponse = page.waitForResponse(async (response) => {
-      if (!response.url().endsWith("/graphql")) return false;
-      return (await response.text()).includes("Old books-list content");
+    const oldResponseBarrier = (controller as typeof controller & {
+      deferNextResponse: (
+        operationName: string,
+        responseLabel: string,
+      ) => { started: boolean; released: boolean; returned: boolean; release: () => void };
+    }).deferNextResponse("BookListBySlug", "Old books-list content");
+    await page.evaluate(() => {
+      const task6Window = window as typeof window & { __task6OldContentRendered?: boolean };
+      task6Window.__task6OldContentRendered = false;
+      new MutationObserver(() => {
+        if (document.body.textContent?.includes("Old books-list content")) {
+          task6Window.__task6OldContentRendered = true;
+        }
+      }).observe(document.body, { childList: true, subtree: true, characterData: true });
     });
     const oldAttempts = controller.attempts.BookListBySlug ?? 0;
     await page.evaluate((nextPath) => {
@@ -273,10 +323,12 @@ test.describe("application-owned public route contract", () => {
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, oldPath);
     await expect.poll(() => controller.attempts.BookListBySlug ?? 0).toBeGreaterThan(oldAttempts);
+    await expect.poll(() => oldResponseBarrier.started).toBe(true);
+    expect(oldResponseBarrier.released).toBe(false);
+    expect(oldResponseBarrier.returned, "old response is still held before current navigation").toBe(false);
     await expect(page.getByText("Old books-list content", { exact: true })).toHaveCount(0);
 
     controller.responseLabel = "Current books-list content";
-    controller.leafDelayMs = 0;
     await page.evaluate((nextPath) => {
       window.history.pushState({}, "", nextPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -285,10 +337,16 @@ test.describe("application-owned public route contract", () => {
     expect(await page.evaluate(() =>
       (window as typeof window & { __task6DocumentSentinel?: string }).__task6DocumentSentinel,
     )).toBe("same-document-stale-race");
-    await oldResponse;
+    expect(oldResponseBarrier.returned, "current content wins before old response is released").toBe(false);
+    oldResponseBarrier.release();
+    expect(oldResponseBarrier.released).toBe(true);
+    await expect.poll(() => oldResponseBarrier.returned).toBe(true);
     expect(controller.networkAudit.failedRequests).toEqual([]);
     await expect(page.getByText("Old books-list content", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Current books-list content", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() =>
+      (window as typeof window & { __task6OldContentRendered?: boolean }).__task6OldContentRendered,
+    )).toBe(false);
     await expect(page).toHaveURL(currentPath);
   });
 
@@ -501,6 +559,7 @@ test.describe("application-owned public route contract", () => {
     await page.evaluate(async () => {
       await fetch("/e2e-418").catch(() => undefined);
       await fetch("https://unexpected.fixture.invalid/private").catch(() => undefined);
+      console.error("TASK6_ARBITRARY_CONSOLE_ERROR");
     });
 
     const audit = (controller as any).networkAudit;
@@ -508,6 +567,25 @@ test.describe("application-owned public route contract", () => {
     expect(audit.unknownRequests).toContainEqual(expect.objectContaining({
       url: "https://unexpected.fixture.invalid/private",
     }));
+    expect(audit.consoleErrors).toContain("TASK6_ARBITRARY_CONSOLE_ERROR");
+  });
+
+  test("network audit blocks and reports an unexpected WebSocket", async ({ page }) => {
+    const controller = await installPublicRouteContractFixture(page);
+    await page.goto(publicRoutePath(profileRoute, routeParams));
+
+    await page.evaluate(() => {
+      new WebSocket("wss://unexpected.fixture.invalid/socket");
+    });
+
+    const audit = controller.networkAudit as typeof controller.networkAudit & {
+      unexpectedWebSockets?: string[];
+    };
+    await expect.poll(() => audit.unexpectedWebSockets ?? []).toContain(
+      "wss://unexpected.fixture.invalid/socket",
+    );
+    expect(audit.failedRequests).toEqual([]);
+    expect(audit.consoleErrors).toEqual([]);
   });
 
   test("anonymous, malformed, and undeclared GraphQL operations fail closed", async ({ page }) => {
