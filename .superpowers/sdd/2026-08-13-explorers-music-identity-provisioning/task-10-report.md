@@ -930,3 +930,178 @@ run. No unchanged retry loop was used.
 Task 10 remains unapproved. The controller must dispatch independent round-4
 rereview of tested code hash
 `33a90dd6a9e30b2671229e5876d4a663b9b746c1`; this report is not self-approval.
+
+## Round 5 final fixture-authority closeout
+
+Round-four I1 and I2 are addressed in tested code commit
+`f7fe99bceca99ee2d7964d45527a9a473d02c184`
+(`fix(music): eliminate ambient fixture authority`). The later evidence commit
+is documentation only and is not execution authority. Production
+`music-deploy.sh`, production workflow behavior, GHCR policy, schemas,
+migrations, historical markers, external registries, `GATE_PROD`, Task 11, and
+Task 12 were not changed or invoked.
+
+### I1: sanitized runtime boundary
+
+- The no-input rehearsal rejects non-empty Git repository/index/object/config/
+  executable/SSH/proxy variables, Docker variables, `BASH_ENV`, `ENV`,
+  `CDPATH`, `SHELLOPTS`, `BASHOPTS`, `IFS`, `PROMPT_COMMAND`, `PS4`, exported
+  shell functions, `NODE_OPTIONS`, `NODE_PATH`, and `LD_*`/`DYLD_*` before
+  source capture or Docker mutation. Git then runs with system/global config
+  disabled, no replace objects, no external diff/text conversion, a fixed
+  home, and a minimal allowlisted environment.
+- All Node, Git, Bash, Docker, Docker Compose, curl, identity, and ACL helpers
+  are canonical absolute protected executables. Their ACL/owner, native file
+  identity, link count, size, bytes, and SHA-256 are captured and revalidated
+  across use. The exact Windows authorities exercised by the final proof were:
+
+| Authority | Canonical executable | SHA-256 |
+| --- | --- | --- |
+| Git | `C:\Program Files\Git\cmd\git.exe` | `5db0e3a8e7b6cb0aa793b8f11b8caa2317c9da7189e4ab38c027f4fac0bc5a33` |
+| Docker | `C:\Program Files\Docker\Docker\resources\bin\docker.exe` | `e2e510d439845d873b8c979c19dda43347bcb5d5a52b2e3ec8f4a2fe0ac16208` |
+| Docker Compose | `C:\Program Files\Docker\cli-plugins\docker-compose.exe` | `d1fa4f80979ee9cb8454c6e2721764be5abbd31d3577f83595ea1b7bb02d72c5` |
+| Bash | `C:\Program Files\Git\bin\bash.exe` | `581414addd001643ccf6d0eba233a8c9c27b99ee703e74e702fb22ae4d47c724` |
+| curl | `C:\Program Files\Git\mingw64\bin\curl.exe` | `de7a1483e5e52e6b9714acbf0c5d588165cbe83c28fad3080cb8d7a49fb50c8d` |
+| Node | `C:\Program Files\nodejs\node.exe` | `63c259c81e5d472b5f11c8d506070130cb04a1ecf84b80377a34ed6ec9048088` |
+| whoami | `C:\Windows\System32\whoami.exe` | `23240ef9f8b0a9a324110b1c2331de31dc1b0e08f5359cb707e51a939af56cd3` |
+| icacls | `C:\Windows\System32\icacls.exe` | `cb9e55d4c02f4e55100724d2da9a1267f49e196bd39fcdf36cec6ea6314fad2a` |
+
+- Child `PATH` contains only protected Git Unix/MinGW, Node, and Windows system
+  directories. Bash is invoked with `--noprofile --norc`; the generated adapter
+  performs hashing and manifest parsing in the protected Node executable, not
+  ambient `sha256sum` or `awk`.
+- Docker is pinned to `npipe:////./pipe/dockerDesktopLinuxEngine`, and the
+  inspected server must be exactly `linux/amd64`. Every Docker call includes
+  that endpoint plus an ACL-constrained private config containing only
+  `{"auths":{}}`; caller contexts, hosts, configs, credentials, and helpers are
+  unavailable. Private source/Compose/request/key/adapter authorities retain
+  byte, digest, and native-identity checks through the shared engine.
+
+Strict RED preceded these changes. Twenty-four caller Git/shell/Docker/Node
+override cases reached old code; a hostile `BASH_ENV` with counterfeit
+`sha256sum`/`awk` let a tampered old adapter pass. The final override matrix
+rejects every case before mutation, while hardlink, inherited ACL, protected
+Compose-plugin, Windows command-size, manifest conversion, tag eviction, and
+TOCTOU tests remain fail closed. Focused authority, workflow-security, and lane
+contracts pass 96/96; scoped TypeScript passes; the six REST/GraphQL/socket
+security files pass 119/119. A direct exact-hash local-registry rehearsal also
+completed with compatibility use 0, observed migration/readiness failures,
+exact rollback restored, unknown/pre-floor rollback refused, and the kill
+switch verified.
+
+### I2: immutable prerequisite and build images
+
+Only one reviewed platform is admitted. A server that is not `linux/amd64`, an
+unsupported platform, a missing offline digest, or an inspected ID/OS/
+architecture/RepoDigest mismatch fails closed. No tag is pulled or substituted.
+Each digest is inspected before use, passed to create/build/Compose with
+pull-never semantics, and rechecked across loopback-registry transfer.
+
+| Image role | Reviewed immutable reference |
+| --- | --- |
+| loopback registry | `registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373` |
+| PostgreSQL 15 | `postgres@sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c` |
+| Traefik | `traefik@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56` |
+| Node/build base | `node@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd` |
+
+Before implementation, retagging each mutable prerequisite and changing the
+platform was accepted. The final substitution contracts reject each case
+before the first Docker mutation. The derived Dockerfile itself names the
+reviewed Node digest, and later registry-returned digests authenticate only
+content already anchored to these reviewed inputs and the captured exact Git
+archive.
+
+### Contention diagnosis and release scheduling
+
+The failure ledger was preserved instead of hidden by timeouts. At
+`7acde8c73e6dab974c3fb8f32c9bddcf44f14d95`, release sample
+`20260823043035679-a80c6a2b` passed 20/20 in 1,288.997s, but sample
+`20260823045220814-f2a0a78a` retained 17/20 in 2,284.621s: PostgreSQL
+integration and identity coverage hit their existing 10s `afterAll` bounds,
+and two deployment tests hit 30s while their diagnostic rerun passed. This was
+filesystem/database lane contention, not the previously observed `57P01`.
+
+Strict lane RED proved critical coverage still shared a six-way static stage
+and the nested PostgreSQL/deployment Vitest tasks lacked a file-worker cap.
+GREEN runs Tunes and Explorer critical coverage in a serial stage before the
+remaining parallel static tasks, and passes `--maxWorkers=1
+--fileParallelism=false` to PostgreSQL integration, both PostgreSQL coverage
+gates, PostgreSQL load/chaos, and the release rehearsal. No timeout increased.
+The lane contract passes 41/41; critical coverage passes 24 files with 519
+tests and one platform skip at 100% per-file thresholds. Both final releases
+then passed PostgreSQL integration and all deployment files on their first
+attempt with no cleanup or filesystem timeout.
+
+### Clean exact lifecycle and two eligible releases
+
+The final detached proof used commit `f7fe99b...d02c184`, environment
+fingerprint
+`de1937d3d70aad1fe5a2f0fafb950882acdfa47298d13749b9d3e406e4002ee6`,
+and exact labeled PostgreSQL sidecar ID
+`b37783cdb9976b09fa28445d4f4730dfb2fcef231d830074180135b94dd893a0`
+on loopback port 63523. The sidecar used the reviewed PostgreSQL digest and
+literal required image name; its owner/commit/name/image/health/port were
+attested before use. After the fingerprint-bearing bootstrap rotated the proof
+credential, the new secret was passed through a file, installed by a fixed
+in-container command, removed from staging, and verified over TCP without
+printing it.
+
+The same authority passed final bootstrap `20260823060054210-ef4b883a` in
+61.841s, doctor `20260823060257753-63eaddb1` in 0.728s, five-service up
+`20260823060303015-56b043d9` in 116.824s, and cold/warm smoke
+`20260823060505932-bfde4c48` / `20260823060507543-d9357ec7` in
+0.980/1.190s. Nightly `20260823060513674-73ed608f` passed 23/23 on attempt 1
+in 504.857s with zero diagnostics, p50/p95 9.184/65.753s, five bounded load
+records, 300 telemetry events, one exact eight-key set, zero forbidden keys,
+cardinality 8, 200 invalid-token rejections, and PostgreSQL p50/p95
+274.172/428.329ms.
+
+| Release sample | Lane wall | PostgreSQL integration | Deployment rehearsal | Real local-registry |
+| --- | --- | --- | --- | --- |
+| `20260823061350550-b9f83482` | 1,345.238s; 20/20, attempt 1, zero diagnostics | 10 files/119 tests, 32.75s | 12 files/205 tests, 833.58s | 91.517s, complete envelope |
+| `20260823063635972-5a15946d` | 1,281.117s; 20/20, attempt 1, zero diagnostics | 10 files/119 tests, 32.89s | 12 files/205 tests, 790.37s | 88.075s, complete envelope |
+
+Both are below 60 minutes; cross-run p50/p95 are 1,281.117/1,345.238s. Every
+task has original status success, one attempt, zero timeout, and no diagnostic
+rerun. Both registry measurements record compatibility use 0, observed
+migration/readiness failures, restored exact rollback, unknown/pre-floor
+refusal, and kill-switch verification. The earlier exact-hash green sample and
+every generated authority/lane failure artifact remain in the preserved
+ledgers. Terminal-only operator setup errors occurred before qualification
+sampling: one direct rehearsal clean check rejected before Docker mutation and
+then passed both isolated capture and the complete rehearsal; the first
+sidecar role-update command named a nonexistent default role before alteration;
+and two auth-probe invocations failed to compile/resolve before the final TCP
+probe returned only `sidecar-auth-ok`. None was promoted as evidence, and no
+unchanged retry was used to replace a failed qualification sample.
+
+### Final evidence, sanitation, and cleanup
+
+- The final source and ignored copy match at 148 files/478,770 bytes. Canonical
+  manifest `.artifacts/music-c10-evidence/round5-f7fe99b-final/music-runs.manifest.tsv`
+  verifies twice with SHA-256
+  `17b14fda7f24bc150116ddc178fe0d2a4160e1f814ea11e04a1cb078aa6761a5`.
+- Pre-scheduling evidence remains under `round5-aef0855-pre-scheduling` (359
+  files/1,094,616 bytes; manifest SHA-256
+  `2b6223ee7a7e6ea51018f92584b5819e4a13fe085e4961518f41c495054aa445`).
+  Pre-worker-cap evidence remains under `round5-7acde8c-pre-worker-cap` (169
+  files/616,940 bytes; manifest SHA-256
+  `981117855e16f03da17e75713a5f8ef2d080ff1264b991f36629aa7354e419b8`).
+  Across all 679 files/2,280,083 bytes, count-only sanitation found zero
+  developer paths, active proof/source paths, raw Docker `Config.Env`, or
+  credential assignments.
+- Supported teardown `20260823065819655-4059b4b9` passed in 4.654s. The exact
+  sidecar and four named volumes were removed only after literal ID/name/image,
+  digest, full commit/owner labels, health, loopback port, and Compose volume
+  labels were re-attested. Final fixture, qualification, rehearsal, registry
+  containers/networks/volumes and watched listeners are all zero.
+- The two final proof self-junctions were verified to target only their own
+  exact roots and unlinked without traversal. Git then removed the final f7,
+  pre-worker-cap 7ac, and superseded round-three registrations; the bounded
+  unregistered round-five residual and empty round-three parent were removed
+  after exact temp-parent/name checks. All Task 10 proof registrations and temp
+  roots are absent.
+
+Task 10 remains unapproved. The controller must dispatch independent round-5
+rereview of tested code hash
+`f7fe99bceca99ee2d7964d45527a9a473d02c184`; this report is not self-approval.
