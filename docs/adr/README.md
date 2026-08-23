@@ -9,7 +9,7 @@ Architecture Decision Records capture important architectural decisions made dur
 | ADR | Decision | Status |
 |-----|----------|--------|
 | [001](001-monorepo-structure.md) | Monorepo structure for explorers-earth and tunes | Accepted |
-| [002](002-auth-strategies.md) | Different auth strategies per app (JWT vs sessions) | Accepted |
+| [002](002-auth-strategies.md) | Different auth strategies per app (JWT vs sessions) | Superseded in part |
 | [003](003-realtime-websockets.md) | Socket.IO for real-time communication | Accepted |
 | [004](004-database-orm-choice.md) | PostgreSQL with Drizzle ORM | Accepted |
 

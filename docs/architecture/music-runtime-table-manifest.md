@@ -18,7 +18,7 @@ stores raw idempotency keys or plaintext guest capabilities. PostgreSQL's transa
 owns the immutable completion timestamp and exact 24-hour expiry boundary. Catalog fingerprints include
 tables, columns, constraints, indexes, trigger definitions,
 public function bodies, and complete sequence properties/ownership.
-`drizzle-kit push` remains forbidden.
+Implicit schema synchronization remains forbidden.
 
 The identity projection retains numeric `users.id` and owner FKs while adding
 immutable Strapi user/selected Account document IDs, mutable display/provider snapshots,
@@ -37,8 +37,7 @@ is invented; durable retention-stage fields are policy
 inputs for C8.
 
 Historical C0 evidence found no versioned migration
-directory; `drizzle-kit push` was the legacy schema path and is disabled by the
-C0 Music CLI. That absence was a
+directory; the legacy implicit schema path is disabled by the C0 Music CLI. That absence was a
 cutover blocker: the “fresh migrated database” check cannot become signed proof
 until a versioned migration baseline exists. The contract test nonetheless
 fails for any runtime reference missing here, or any manifest entry absent from

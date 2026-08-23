@@ -74,15 +74,13 @@ function staleGuidanceFindings(sources: Record<string, string>): StaleGuidanceFi
   const findings: StaleGuidanceFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
     source.split(/\r?\n/).forEach((line, index) => {
-      if (/\bNode(?:\.?js)?\s+v?18(?:\.\d+)*\+?/i.test(line)) {
+      if (/\bNode(?:\.?js)?(?:\s+version|\s*[:=])?\s+v?18(?:\.(?:\d+|x))*\+?/i.test(line)) {
         findings.push({ path, line: index + 1, code: "node-18" });
       }
-      if (/\bnpm\s+run\s+(?:(?:--silent|-s)\s+)?db:push\b/i.test(line)
-        || /\bnpx\s+(?:--yes\s+)?drizzle-kit(?:@[^\s]+)?\s+push\b/i.test(line)) {
+      if (/\bdrizzle-kit(?:@[^\s]+)?\s+push\b|\bdb:push\b/i.test(line)) {
         findings.push({ path, line: index + 1, code: "db-push" });
       }
-      if (/\bX-Username\b/i.test(line)
-        && line.trim() !== "X-Username support was removed from canonical Music routes.") {
+      if (/\bX-Username\b/i.test(line)) {
         findings.push({ path, line: index + 1, code: "x-username-ownership" });
       }
     });
@@ -166,7 +164,7 @@ function logicalShellLines(source: string): LogicalShellLine[] {
 }
 
 function documentedDatabaseInvocations(line: string): Array<{ command: string; invocation: string }> {
-  const commandPattern = /\bnpm\s+run\b[^;&|`\r\n]*?\b(music:db:(?:status|migrate|verify|reset))\b/gi;
+  const commandPattern = /(?:(?:\b[A-Za-z_][A-Za-z\d_]*=[^\s;&|`]+\s+)*)\bnpm\s+(?:(?:--silent|-s)\s+)?run\b[^;&|`\r\n]*?\b(music:db:(?:status|migrate|verify|reset))\b/gi;
   const matches = [...line.matchAll(commandPattern)];
   return matches.map((match, index) => {
     const start = match.index!;
@@ -199,8 +197,17 @@ function validateDocumentedDatabaseInvocation(command: string, invocation: strin
   if (!complete || !parsed.valid) return { code: "invalid-invocation" };
   const words = parsed.words;
   let index = 0;
-  if (words[index++] !== "npm" || words[index++] !== "run") return { code: "invalid-invocation" };
-  if (words[index] === "--silent" || words[index] === "-s") index += 1;
+  if (words[index++] !== "npm") return { code: "invalid-invocation" };
+  let silent = false;
+  if (words[index] === "--silent" || words[index] === "-s") {
+    silent = true;
+    index += 1;
+  }
+  if (words[index++] !== "run") return { code: "invalid-invocation" };
+  if (words[index] === "--silent" || words[index] === "-s") {
+    if (silent) return { code: "invalid-invocation" };
+    index += 1;
+  }
   if (words[index++] !== command || words[index++] !== "--") return { code: "invalid-invocation" };
 
   const allowed = new Set(["--mode", "--format", "--target"]);
@@ -232,8 +239,26 @@ function validateDocumentedDatabaseInvocation(command: string, invocation: strin
 function databaseInvocationFindings(sources: Record<string, string>): DatabaseInvocationFinding[] {
   const findings: DatabaseInvocationFinding[] = [];
   for (const [path, source] of Object.entries(sources)) {
+    const replacementLines = new Set<number>();
+    const physicalLines = source.split(/\r?\n/);
+    let paragraphStart = 0;
+    for (let index = 0; index <= physicalLines.length; index += 1) {
+      if (index < physicalLines.length && physicalLines[index]!.trim() !== "") continue;
+      const paragraph = physicalLines.slice(paragraphStart, index).join("\n");
+      const replacementProse = paragraph.split(/\r?\n/).some((line) =>
+        !/\bmusic:db:(?:status|migrate|verify|reset)\b/i.test(line)
+        && /\breplace\b[^.\r\n]{0,100}\b(?:test\b[^.\r\n]{0,40}\bwith\s+)?production\b/i.test(line));
+      if (/\bmusic:db:(?:status|migrate|verify|reset)\b/i.test(paragraph) && replacementProse) {
+        for (let line = paragraphStart + 1; line <= index; line += 1) replacementLines.add(line);
+      }
+      paragraphStart = index + 1;
+    }
     logicalShellLines(source).forEach((line) => {
       for (const { command, invocation } of documentedDatabaseInvocations(line.text)) {
+        if (replacementLines.has(line.line)) {
+          findings.push({ path, line: line.line, command, code: "invalid-invocation" });
+          continue;
+        }
         const { code } = validateDocumentedDatabaseInvocation(command, invocation, line.complete);
         if (code) findings.push({ path, line: line.line, command, code });
       }
@@ -244,24 +269,35 @@ function databaseInvocationFindings(sources: Record<string, string>): DatabaseIn
 
 function obsoleteAuthFindings(sources: Record<string, string>): ObsoleteAuthFinding[] {
   const findings: ObsoleteAuthFinding[] = [];
+  const canonicalBoundary = "Canonical owner routes authenticate only with the short-lived Music credential; neither a Tunes session cookie nor an Explorer/Strapi JWT or bearer is accepted.";
   const obsolete = /\/api\/auth\/(?:\*|[a-z][a-z-]*)|\bdual[- ]auth\b|\bmulti[- ]auth\s+fallback\b|\bcross-app\s+sso\b|\bbackground\s+sso\b|\bsso\s+flow\b|apiClient\s*\+\s*SSO|\bJWT\+REST\b[^\r\n]*\btunes\b/i;
   for (const [path, source] of Object.entries(sources)) {
+    const findingLines = new Set<number>();
     source.split(/\r?\n/).forEach((line, index) => {
-      const sessionCredentialText = "(?:(?:Tunes|native Tunes)\\s+session(?:[- ]cookie)?|session[- ]cookie)";
-      const explorerBearerText = "(?:(?:Explorer|Strapi)(?:'s)?\\s+(?:JWT|bearer)|(?:JWT|bearer)\\s+(?:from|issued\\s+by)\\s+(?:Explorer|Strapi))";
-      const sessionCookie = new RegExp(`\\b${sessionCredentialText}\\b`, "i").test(line);
-      const explorerBearer = new RegExp(`\\b${explorerBearerText}\\b`, "i").test(line);
-      const directOrChoice = new RegExp(
-        `(?:${sessionCredentialText}[^.;]{0,80}\\bor\\b[^.;]{0,80}${explorerBearerText}|${explorerBearerText}[^.;]{0,80}\\bor\\b[^.;]{0,80}${sessionCredentialText})`,
-        "i",
-      ).test(line);
-      const fallbackTerm = /\b(?:fallback|falls?\s+back|falling\s+back)\b/i.test(line);
-      const negatedFallback = /\b(?:never|no|not|without)\b[^.;]{0,24}\b(?:fallback|falls?\s+back|falling\s+back)\b/i.test(line);
-      const fallbackChoice = /\beither\b/i.test(line) || directOrChoice || (fallbackTerm && !negatedFallback);
-      if (obsolete.test(line) || (sessionCookie && explorerBearer && fallbackChoice)) {
+      if (obsolete.test(line)) {
         findings.push({ path, line: index + 1, code: "obsolete-auth-boundary" });
+        findingLines.add(index + 1);
+      }
+      const hasSessionCookie = /\b(?:Tunes\s+)?session[- ]cookie\b/i.test(line);
+      const hasExplorerBearer = /\b(?:Explorer|Strapi)(?:'s)?(?:\/Strapi)?\s+(?:JWT|bearer)\b|\bExplorer\/Strapi\s+JWT\s+or\s+bearer\b/i.test(line);
+      if (line.trim() !== canonicalBoundary && hasSessionCookie && hasExplorerBearer && !findingLines.has(index + 1)) {
+        findings.push({ path, line: index + 1, code: "obsolete-auth-boundary" });
+        findingLines.add(index + 1);
       }
     });
+    const lines = source.split(/\r?\n/);
+    let start = 0;
+    for (let index = 0; index <= lines.length; index += 1) {
+      if (index < lines.length && lines[index]!.trim() !== "") continue;
+      const paragraph = lines.slice(start, index).join("\n").trim();
+      const hasSessionCookie = /\b(?:Tunes\s+)?session[- ]cookie\b/i.test(paragraph);
+      const hasExplorerBearer = /\b(?:Explorer|Strapi)(?:'s)?(?:\/Strapi)?\s+(?:JWT|bearer)\b|\bExplorer\/Strapi\s+JWT\s+or\s+bearer\b/i.test(paragraph);
+      const line = start + 1;
+      if (paragraph && paragraph !== canonicalBoundary && hasSessionCookie && hasExplorerBearer && !findingLines.has(line)) {
+        findings.push({ path, line, code: "obsolete-auth-boundary" });
+      }
+      start = index + 1;
+    }
   }
   return findings;
 }
@@ -375,22 +411,34 @@ describe("Music documentation publication contract", () => {
         "Run npx drizzle-kit push against production.",
         "Run npm run --silent db:push before deployment.",
         "Run npm run -s db:push before deployment.",
+        "Use Node.js version 18.20.4 for this project.",
+        "Use NodeJS: v18.x for this project.",
+        "Run drizzle-kit push --config drizzle.config.ts.",
+        "Run npm exec -- drizzle-kit push before deployment.",
+        "Run yarn db:push before deployment.",
       ].join("\n"),
     })).toEqual([
       { path: "docs/stale-spellings.md", line: 1, code: "node-18" },
       { path: "docs/stale-spellings.md", line: 2, code: "db-push" },
       { path: "docs/stale-spellings.md", line: 3, code: "db-push" },
       { path: "docs/stale-spellings.md", line: 4, code: "db-push" },
+      { path: "docs/stale-spellings.md", line: 5, code: "node-18" },
+      { path: "docs/stale-spellings.md", line: 6, code: "node-18" },
+      { path: "docs/stale-spellings.md", line: 7, code: "db-push" },
+      { path: "docs/stale-spellings.md", line: 8, code: "db-push" },
+      { path: "docs/stale-spellings.md", line: 9, code: "db-push" },
     ]);
   });
 
-  it("allows only precise explicit X-Username retirement statements", () => {
+  it("rejects every X-Username token without flagging credential ownership", () => {
     expect(staleGuidanceFindings({
       "docs/retired.md": [
         "X-Username support was removed from canonical Music routes.",
         "The signed Music credential establishes numeric owner authority.",
       ].join("\n"),
-    })).toEqual([]);
+    })).toEqual([
+      { path: "docs/retired.md", line: 1, code: "x-username-ownership" },
+    ]);
   });
 
   it("rejects every noncanonical X-Username statement without flagging credential ownership", () => {
@@ -414,6 +462,7 @@ describe("Music documentation publication contract", () => {
       ].join("\n"),
     })).toEqual([
       { path: "docs/contradictory.md", line: 1, code: "x-username-ownership" },
+      { path: "docs/contradictory.md", line: 2, code: "x-username-ownership" },
     ]);
   });
 
@@ -488,6 +537,26 @@ describe("Music documentation publication contract", () => {
     ]);
   });
 
+  it("rejects pre-run npm ambiguity, environment overrides, and target-replacement prose", () => {
+    expect(databaseInvocationFindings({
+      "docs/pre-run.md": [
+        "`npm --silent run music:db:status -- --target production`",
+        "`npm -s run music:db:verify -- --target test --force`",
+        "`npm --silent run music:db:migrate -- --mode fixture --target test`",
+        "`DATABASE_URL=postgresql://prod npm run music:db:status -- --target test`",
+      ].join("\n"),
+      "docs/replacement.md": [
+        "`npm run music:db:verify -- --target test`",
+        "Replace test with production before running.",
+      ].join("\n"),
+    })).toEqual([
+      { path: "docs/pre-run.md", line: 1, command: "music:db:status", code: "missing-test-target" },
+      { path: "docs/pre-run.md", line: 2, command: "music:db:verify", code: "invalid-invocation" },
+      { path: "docs/pre-run.md", line: 4, command: "music:db:status", code: "invalid-invocation" },
+      { path: "docs/replacement.md", line: 1, command: "music:db:verify", code: "invalid-invocation" },
+    ]);
+  });
+
   it("supersedes manual-only testing, authentication, migration, and mutable deployment guidance", () => {
     const testing = read("docs/testing.md");
     expect(testing).toContain("[Music identity testing guide](testing/music-identity-testing.md)");
@@ -501,10 +570,11 @@ describe("Music documentation publication contract", () => {
     expect(authAdr).toContain("Explorer bearer is forwarded only to `POST /api/music/identity/ensure`");
     expect(authAdr).toContain("never reused on canonical owner routes");
     expect(authAdr).not.toMatch(/No single sign-on across apps|users have separate accounts|JWT for both.*Rejected/is);
+    expect(read("docs/adr/README.md")).toContain("| [002](002-auth-strategies.md) | Different auth strategies per app (JWT vs sessions) | Superseded in part |");
     const authModel = read("docs/security/music-auth-model.md");
     expect(authModel).toContain("Canonical owner REST and Socket.IO routes accept that credential only.");
     expect(authModel).toContain("A separately opened native Tunes session is confined to its documented login/logout/check/CSRF endpoints.");
-    expect(authModel).toContain("X-Username support was removed from canonical Music routes.");
+    expect(authModel).not.toMatch(/X-Username/i);
 
     const databaseAdr = read("docs/adr/004-database-orm-choice.md");
     expect(databaseAdr).toMatch(/## Status\s+Superseded in part/i);
@@ -559,11 +629,22 @@ describe("Music documentation publication contract", () => {
 
   it("allows the canonical standalone-session and embedded-credential separation", () => {
     expect(obsoleteAuthFindings({
-      "docs/canonical.md": [
-        "Standalone Tunes sessions are confined to login, logout, check, and CSRF endpoints.",
-        "The Explorer bearer is forwarded only to POST /api/music/identity/ensure; canonical owner routes accept only the short-lived Music credential.",
-      ].join("\n"),
+      "docs/canonical.md": "Canonical owner routes authenticate only with the short-lived Music credential; neither a Tunes session cookie nor an Explorer/Strapi JWT or bearer is accepted.",
     })).toEqual([]);
+  });
+
+  it("rejects combined session-cookie and Explorer bearer authority outside the exact canonical denial", () => {
+    expect(obsoleteAuthFindings({
+      "docs/same-line.md": "Canonical owner routes accept both a Tunes session cookie and the Explorer JWT.",
+      "docs/cross-line.md": [
+        "Canonical owner routes accept a Tunes session cookie.",
+        "They also accept the Strapi bearer.",
+      ].join("\n"),
+      "docs/canonical.md": "Canonical owner routes authenticate only with the short-lived Music credential; neither a Tunes session cookie nor an Explorer/Strapi JWT or bearer is accepted.",
+    })).toEqual([
+      { path: "docs/same-line.md", line: 1, code: "obsolete-auth-boundary" },
+      { path: "docs/cross-line.md", line: 1, code: "obsolete-auth-boundary" },
+    ]);
   });
 
   it("keeps every published or indexed Markdown document free of retired guidance", () => {
