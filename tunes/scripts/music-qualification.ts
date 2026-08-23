@@ -174,8 +174,8 @@ export const MUSIC_QUALIFICATION_TASKS = {
   ], ["refresh-rename-sharing", "lifecycle"]),
   "music-types-baseline": task("music-types-baseline", "Music TypeScript baseline", ["run", "music:types:baseline"], ["timing-evidence"]),
   "tunes-critical-coverage": task("tunes-critical-coverage", "Tunes critical-module coverage", ["run", "test:music-critical-coverage", "--prefix", "tunes"], ["critical-coverage"]),
-  "tunes-repository-coverage": task("tunes-repository-coverage", "Tunes PostgreSQL repository coverage", ["run", "test:music-c8:repository-coverage", "--prefix", "tunes"], ["critical-coverage", "postgres-repositories"]),
-  "tunes-identity-repository-coverage": task("tunes-identity-repository-coverage", "Tunes identity PostgreSQL repository coverage", ["run", "test:music-c45:repository-coverage", "--prefix", "tunes"], ["critical-coverage", "postgres-repositories"]),
+  "tunes-repository-coverage": task("tunes-repository-coverage", "Tunes PostgreSQL repository coverage", ["run", "test:music-c8:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
+  "tunes-identity-repository-coverage": task("tunes-identity-repository-coverage", "Tunes identity PostgreSQL repository coverage", ["run", "test:music-c45:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
   "explorer-critical-coverage": task("explorer-critical-coverage", "Explorer critical-module coverage", ["run", "test:music-critical-coverage", "--prefix", "explorers-earth"], ["critical-coverage"]),
   "security-matrices": task("security-matrices", "REST, GraphQL, and socket security matrices", [
     "test", "--prefix", "tunes", "--", "server/test/contracts/music-authorization-matrix.test.ts",
@@ -195,6 +195,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/musicReconciler.integration.test.ts",
     "server/test/reconciliationRepository.integration.test.ts",
     "server/test/load/music-load-postgres.integration.test.ts",
+    "--maxWorkers=1", "--fileParallelism=false",
   ], [
     "postgres-migrations", "postgres-repositories", "postgres-concurrency", "lifecycle", "reconciliation", "owner-predicates",
   ]),
@@ -217,6 +218,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
   "load-postgres": task("load-postgres", "Music PostgreSQL pool load", [
     "run", "test:integration", "--prefix", "tunes", "--",
     "server/test/load/music-load-http-postgres.integration.test.ts", "--disableConsoleIntercept", "--pool=threads",
+    "--maxWorkers=1", "--fileParallelism=false",
   ], ["load-db-pool", "postgres-concurrency", "timing-evidence"]),
   "chaos-unit": task("chaos-unit", "Music upstream and credential chaos", [
     "test", "--prefix", "tunes", "--", "server/test/integration/music-chaos-qualification.test.ts",
@@ -225,6 +227,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
   "chaos-postgres": task("chaos-postgres", "Music PostgreSQL transaction chaos", [
     "run", "test:integration", "--prefix", "tunes", "--", "server/test/migrations/music-migration.integration.test.ts",
     "server/test/musicLifecycle.integration.test.ts", "server/test/musicReconciler.integration.test.ts",
+    "--maxWorkers=1", "--fileParallelism=false",
   ], ["strapi-db-outage", "deadlock-partial-transaction", "duplicate-reconciliation", "migration-readiness-failure"]),
   "fixture-drift": task("fixture-drift", "Fixture and documentation drift contracts", [
     "test", "--prefix", "tunes", "--", "server/test/contracts/music-fixture-services.test.ts",
@@ -245,6 +248,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/deployment/music-readiness.test.ts",
     "server/test/deployment/registration-compat-process.test.ts",
     "server/test/deployment/registration-compat-traefik.test.ts",
+    "--maxWorkers=1", "--fileParallelism=false",
   ], ["migration-readiness-failure", "rollback-exact-digest", "kill-switch-secure-floor", "compatibility-route", "typed-recovery"]),
   "real-docker-evidence": task("real-docker-evidence", "Disposable real-Docker fixture identity and recovery evidence", [
     "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-fixture-runtime.ts",
@@ -279,7 +283,8 @@ export const MUSIC_QUALIFICATION_LANES: Record<MusicQualificationLaneName, Music
     budgetMs: 15 * 60_000,
     inherits: ["fast"],
     stages: [
-      { id: "pr-static", parallel: true, taskIds: ["music-types-baseline", "tunes-full-unit", "explorer-full-unit", "tunes-critical-coverage", "explorer-critical-coverage", "security-matrices"] },
+      { id: "pr-critical-coverage", parallel: false, taskIds: ["tunes-critical-coverage", "explorer-critical-coverage"] },
+      { id: "pr-static", parallel: true, taskIds: ["music-types-baseline", "tunes-full-unit", "explorer-full-unit", "security-matrices"] },
       { id: "pr-isolated-authority", parallel: false, taskIds: ["isolated-cli-contract"] },
       { id: "pr-postgres", parallel: false, taskIds: ["postgres-integration"] },
       { id: "pr-postgres-coverage", parallel: false, taskIds: ["tunes-repository-coverage", "tunes-identity-repository-coverage"] },

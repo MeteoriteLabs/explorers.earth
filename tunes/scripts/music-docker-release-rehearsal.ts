@@ -14,29 +14,68 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   assertNoExternalFixtureAuthority,
+  assertEquivalentLocalImageTransfer,
+  assertStableLocalImageTransfer,
   assertPrivateFixtureFileUnchanged,
+  assertTrustedSystemExecutableUnchanged,
   assertTrustedFixtureSourceUnchanged,
+  captureTrustedSystemExecutable,
   capturePrivateFixtureFile,
   captureTrustedFixtureSource,
+  createSanitizedFixtureEnvironment,
   createInternalFixturePolicyScript,
+  requireReviewedFixtureImage,
   requireRegistryReturnedDigest,
-  resolveTrustedSystemExecutable,
+  REVIEWED_FIXTURE_IMAGES,
+  resolveTrustedSystemDirectory,
   type PrivateFixtureFile,
+  type ReviewedFixtureImageName,
+  type TrustedSystemExecutable,
   type TrustedFixtureSource,
 } from "./music-docker-release-authority";
 
 let repoRoot = "";
-const docker = resolveTrustedSystemExecutable("Docker", process.platform === "win32"
+const dockerAuthority = captureTrustedSystemExecutable("Docker", process.platform === "win32"
   ? ["C:/Program Files/Docker/Docker/resources/bin/docker.exe"]
   : process.platform === "darwin"
     ? ["/Applications/Docker.app/Contents/Resources/bin/docker", "/usr/local/bin/docker"]
     : ["/usr/bin/docker", "/usr/local/bin/docker"]);
-const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
-const curl = resolveTrustedSystemExecutable("curl", process.platform === "win32"
+const bashAuthority = captureTrustedSystemExecutable("Bash", process.platform === "win32"
+  ? ["C:/Program Files/Git/bin/bash.exe"] : ["/bin/bash"]);
+const curlAuthority = captureTrustedSystemExecutable("curl", process.platform === "win32"
   ? ["C:/Program Files/Git/mingw64/bin/curl.exe", "C:/Windows/System32/curl.exe"]
   : ["/usr/bin/curl", "/usr/local/bin/curl"]);
-const whoami = process.platform === "win32" ? "C:/Windows/System32/whoami.exe" : "";
-const icacls = process.platform === "win32" ? "C:/Windows/System32/icacls.exe" : "";
+const nodeAuthority = captureTrustedSystemExecutable("Node", process.platform === "win32"
+  ? ["C:/Program Files/nodejs/node.exe"] : ["/usr/bin/node", "/usr/local/bin/node"]);
+const composeAuthority = captureTrustedSystemExecutable("Docker Compose", process.platform === "win32"
+  ? [
+      "C:/Program Files/Docker/cli-plugins/docker-compose.exe",
+      "C:/Program Files/Docker/Docker/resources/cli-plugins/docker-compose.exe",
+    ]
+  : process.platform === "darwin"
+    ? ["/Applications/Docker.app/Contents/Resources/cli-plugins/docker-compose"]
+    : [
+        "/usr/libexec/docker/cli-plugins/docker-compose",
+        "/usr/lib/docker/cli-plugins/docker-compose",
+        "/usr/local/lib/docker/cli-plugins/docker-compose",
+      ]);
+const whoamiAuthority = process.platform === "win32"
+  ? captureTrustedSystemExecutable("whoami", ["C:/Windows/System32/whoami.exe"]) : undefined;
+const icaclsAuthority = process.platform === "win32"
+  ? captureTrustedSystemExecutable("icacls", ["C:/Windows/System32/icacls.exe"]) : undefined;
+const docker = dockerAuthority.path;
+const bash = bashAuthority.path;
+const curl = curlAuthority.path;
+const trustedTools: TrustedSystemExecutable[] = [dockerAuthority, composeAuthority, bashAuthority, curlAuthority, nodeAuthority,
+  ...(whoamiAuthority ? [whoamiAuthority] : []), ...(icaclsAuthority ? [icaclsAuthority] : [])];
+const trustedPathEntries = process.platform === "win32"
+  ? [
+      resolveTrustedSystemDirectory("Git Unix tools", "C:/Program Files/Git/usr/bin"),
+      resolveTrustedSystemDirectory("Git MinGW tools", "C:/Program Files/Git/mingw64/bin"),
+      resolveTrustedSystemDirectory("Node tools", "C:/Program Files/nodejs"),
+      resolveTrustedSystemDirectory("Windows system tools", "C:/Windows/System32"),
+    ]
+  : [resolveTrustedSystemDirectory("system tools", "/usr/bin"), resolveTrustedSystemDirectory("base system tools", "/bin")];
 const source = "https://github.com/explorers-earth/explorers.earth";
 const containment = "d226f7e4dc5a54195a59804ec729f72b5e8f10d7";
 const marker = "0013_publication_operation_database_clock";
@@ -53,6 +92,10 @@ let curlShim = "";
 let publicProbeHeaders = "";
 let derivedDockerfile = "";
 let baseImage = "";
+let dockerConfigDirectory = "";
+let dockerConfigFile = "";
+let dockerConfigAuthority: PrivateFixtureFile | undefined;
+let childEnvironment: NodeJS.ProcessEnv | undefined;
 const localTags: string[] = [];
 let registryStarted = false;
 let composeCreated = false;
@@ -60,29 +103,37 @@ let labelsVerified = false;
 let secretVolumeCreated = false;
 let dockerAuthorityValidated = false;
 let dockerEndpoint = "";
+let dockerPlatform = "";
 let rootCreated = false;
 let trustedSource: TrustedFixtureSource | undefined;
 let trustedCode: PrivateFixtureFile[] = [];
 let approvedTunesImages: string[] = [];
 const internalAuthorityBytes = new Map<string, Buffer>();
 
-function privateTemporaryDirectory(prefix: string): string {
+function privateTemporaryDirectory(prefix: string, environment: NodeJS.ProcessEnv): string {
   const directory = mkdtempSync(prefix);
   if (process.platform !== "win32") {
     chmodSync(directory, 0o700);
     return directory;
   }
-  const identity = spawnSync(whoami, ["/user", "/fo", "csv", "/nh"], {
+  assert(whoamiAuthority !== undefined && icaclsAuthority !== undefined, "Windows fixture security tools are unavailable");
+  assertTrustedSystemExecutableUnchanged(whoamiAuthority);
+  const identity = spawnSync(whoamiAuthority.path, ["/user", "/fo", "csv", "/nh"], {
     encoding: "utf8",
+    env: environment,
     windowsHide: true,
   });
+  assertTrustedSystemExecutableUnchanged(whoamiAuthority);
   const sid = identity.stdout.match(/,"([^"]+)"\s*$/)?.[1];
   assert(identity.status === 0 && sid !== undefined, "Windows fixture identity is unavailable");
-  const hardened = spawnSync(icacls, [directory, "/inheritance:r", "/grant:r",
+  assertTrustedSystemExecutableUnchanged(icaclsAuthority);
+  const hardened = spawnSync(icaclsAuthority.path, [directory, "/inheritance:r", "/grant:r",
     `*${sid}:(OI)(CI)(F)`, "*S-1-5-18:(OI)(CI)(F)", "*S-1-5-32-544:(OI)(CI)(F)"], {
     encoding: "utf8",
+    env: environment,
     windowsHide: true,
   });
+  assertTrustedSystemExecutableUnchanged(icaclsAuthority);
   assert(hardened.status === 0, "Windows fixture root hardening failed");
   return directory;
 }
@@ -106,15 +157,20 @@ function run(
   args: string[],
   options: { cwd?: string; env?: NodeJS.ProcessEnv; timeoutMs?: number; allowFailure?: boolean; input?: string | Buffer } = {},
 ) {
+  const environment = options.env ?? childEnvironment;
+  assert(environment !== undefined, "sanitized child environment is unavailable");
+  const executableAuthority = trustedTools.find(({ path }) => path === file);
+  if (executableAuthority) assertTrustedSystemExecutableUnchanged(executableAuthority);
   const result = spawnSync(file, args, {
     cwd: options.cwd ?? repoRoot,
-    env: options.env ?? process.env,
+    env: environment,
     encoding: "utf8",
     timeout: options.timeoutMs ?? 120_000,
     maxBuffer: 20 * 1024 * 1024,
     windowsHide: true,
     input: options.input,
   });
+  if (executableAuthority) assertTrustedSystemExecutableUnchanged(executableAuthority);
   const status = result.status ?? (result.error ? 127 : 1);
   if (!options.allowFailure && status !== 0) {
     throw new Error(`${phase} failed with exit ${status}: ${sanitize(`${result.stdout ?? ""}\n${result.stderr ?? ""}`)}`);
@@ -123,41 +179,52 @@ function run(
 }
 
 function dockerRun(phase: string, args: string[], options: { timeoutMs?: number; allowFailure?: boolean; input?: string | Buffer } = {}) {
-  assert(dockerAuthorityValidated && dockerEndpoint !== "", "local Docker authority is not validated");
-  return run(phase, docker, ["--host", dockerEndpoint, ...args], {
+  assert(dockerAuthorityValidated && dockerEndpoint !== "" && dockerConfigAuthority !== undefined,
+    "local Docker authority is not validated");
+  assertPrivateFixtureFileUnchanged(dockerConfigAuthority);
+  if (args[0] === "compose") assertTrustedSystemExecutableUnchanged(composeAuthority);
+  const result = run(phase, docker, ["--config", dockerConfigDirectory, "--host", dockerEndpoint, ...args], {
     timeoutMs: options.timeoutMs,
     allowFailure: options.allowFailure,
     input: options.input,
   });
+  if (args[0] === "compose") assertTrustedSystemExecutableUnchanged(composeAuthority);
+  assertPrivateFixtureFileUnchanged(dockerConfigAuthority);
+  return result;
 }
 
 function validateLocalDockerAuthority(): void {
-  assert(process.env.DOCKER_HOST === undefined && process.env.DOCKER_CONTEXT === undefined,
-    "ambient Docker endpoint overrides are forbidden");
-  const selected = run("local Docker context selection", docker, ["context", "show"], { allowFailure: true });
-  const context = selected.stdout.trim();
-  assert(selected.status === 0 && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(context),
-    "effective Docker context is invalid");
-  const inspection = run("local Docker endpoint inspection", docker, [
-    "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", context,
+  assert(dockerConfigAuthority !== undefined, "private Docker configuration is unavailable");
+  const endpoint = process.platform === "win32"
+    ? "npipe:////./pipe/dockerDesktopLinuxEngine"
+    : "unix:///var/run/docker.sock";
+  assertTrustedSystemExecutableUnchanged(composeAuthority);
+  const composeInspection = run("protected Docker Compose plugin inspection", docker, [
+    "--config", dockerConfigDirectory, "--host", endpoint, "compose", "version", "--short",
   ], { allowFailure: true });
-  const endpoint = inspection.stdout.trim();
-  const pipePrefix = "npipe:////./pipe/";
-  const localNamedPipe = endpoint.startsWith(pipePrefix)
-    && /^[A-Za-z0-9_.-]+$/.test(endpoint.slice(pipePrefix.length));
-  const localUnixSocket = endpoint.startsWith("unix:///")
-    && endpoint.length > "unix:///".length
-    && !/\s/.test(endpoint);
-  assert(inspection.status === 0 && (localNamedPipe || localUnixSocket),
-    "effective Docker endpoint must be a local named pipe or Unix socket");
+  assertTrustedSystemExecutableUnchanged(composeAuthority);
+  assert(composeInspection.status === 0 && /^v?[0-9]+\.[0-9]+\.[0-9]+/.test(composeInspection.stdout.trim()),
+    "protected Docker Compose plugin is unavailable");
+  const inspection = run("fixed local Docker endpoint inspection", docker, [
+    "--config", dockerConfigDirectory, "--host", endpoint,
+    "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}",
+  ], { allowFailure: true });
+  assert(inspection.status === 0 && inspection.stdout.trim() === "linux/amd64",
+    "fixed local Docker endpoint must provide the reviewed linux/amd64 platform");
   dockerEndpoint = endpoint;
+  dockerPlatform = inspection.stdout.trim();
   dockerAuthorityValidated = true;
 }
 
-function requireLocalImage(image: string): string {
-  const inspection = dockerRun("local image prerequisite", ["image", "inspect", "--format", "{{.Id}}", image], { allowFailure: true });
-  assert(inspection.status === 0, `required preloaded image is unavailable: ${image}`);
-  return requireRegistryReturnedDigest(inspection.stdout.trim());
+function requireReviewedLocalImage(name: ReviewedFixtureImageName): string {
+  const manifest = REVIEWED_FIXTURE_IMAGES[dockerPlatform as keyof typeof REVIEWED_FIXTURE_IMAGES];
+  if (!manifest) return requireReviewedFixtureImage(name, dockerPlatform, {});
+  const reference = manifest[name];
+  const inspection = dockerRun(`reviewed ${name} image prerequisite`, ["image", "inspect", reference], { allowFailure: true });
+  assert(inspection.status === 0, `required reviewed image is unavailable offline: ${name}`);
+  const rows = JSON.parse(inspection.stdout) as Array<Record<string, unknown>>;
+  assert(rows.length === 1, `reviewed fixture image identity mismatch: ${name}`);
+  return requireReviewedFixtureImage(name, dockerPlatform, rows[0]!);
 }
 
 function shellPath(path: string): string {
@@ -274,10 +341,9 @@ function writeRequest(operation: "bootstrap" | "deploy" | "rollback", digest: st
 }
 
 function deploymentEnvironment(registryPort: number, traefikProxyIp: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
-  const environment = { ...process.env };
-  for (const name of Object.keys(environment)) if (name.startsWith("MUSIC_DEPLOY_")) delete environment[name];
+  assert(childEnvironment !== undefined, "sanitized child environment is unavailable");
   return {
-    ...environment,
+    ...childEnvironment,
     MUSIC_DEPLOY_MODE: "fixture",
     MUSIC_DEPLOY_TEST_MODE: "1",
     MUSIC_DEPLOY_FIXTURE_ACK: "C10_LOCAL_REGISTRY_DISPOSABLE_ONLY",
@@ -294,14 +360,19 @@ function deploymentEnvironment(registryPort: number, traefikProxyIp: string, ext
 }
 
 function deploy(registryPort: number, traefikProxyIp: string, extra: NodeJS.ProcessEnv = {}, allowFailure = false) {
-  assert(trustedSource !== undefined && trustedCode.length === 3, "trusted deployment code is unavailable");
+  assert(trustedSource !== undefined && trustedCode.length === 3 && dockerConfigAuthority !== undefined,
+    "trusted deployment code is unavailable");
   assertTrustedFixtureSourceUnchanged(trustedSource);
   const dynamicAuthorities = [composeFile, environmentFile, requestFile, hmacFile].map((path) => {
     const expected = internalAuthorityBytes.get(path);
     assert(expected !== undefined, "internal fixture authority bytes are unavailable");
     return capturePrivateFixtureFile(path, expected);
   });
-  const authorities = [...trustedCode, ...dynamicAuthorities];
+  assertTrustedSystemExecutableUnchanged(nodeAuthority);
+  assertTrustedSystemExecutableUnchanged(dockerAuthority);
+  assertTrustedSystemExecutableUnchanged(composeAuthority);
+  const privateAuthorities = [dockerConfigAuthority, ...trustedCode, ...dynamicAuthorities];
+  const authorities = [nodeAuthority, dockerAuthority, composeAuthority, ...privateAuthorities];
   const engine = trustedCode.find(({ path }) => basename(path) === "music-deploy-engine.sh");
   assert(engine !== undefined, "trusted deployment engine is unavailable");
   const adapter = createInternalFixturePolicyScript({
@@ -310,10 +381,14 @@ function deploy(registryPort: number, traefikProxyIp: string, extra: NodeJS.Proc
     repository: `127.0.0.1:${registryPort}/explorers-tunes`,
     source,
     composeProject: project,
+    nodeExecutable: shellPath(nodeAuthority.path),
     dockerExecutable: shellPath(docker),
+    dockerConfigDirectory: shellPath(dockerConfigDirectory),
     dockerEndpoint,
     approvedImages: approvedTunesImages,
-    authorities: authorities.map(({ path, digest }) => ({ path: shellPath(path), digest })),
+    authorities: authorities.map(({ path, digest, device, inode, links, size }) => ({
+      path: shellPath(path), digest, device, inode, links, size,
+    })),
   });
   const result = run("shared deployment engine", bash, ["--noprofile", "--norc", "-s"], {
     env: deploymentEnvironment(registryPort, traefikProxyIp, extra),
@@ -321,7 +396,10 @@ function deploy(registryPort: number, traefikProxyIp: string, extra: NodeJS.Proc
     allowFailure: true,
     input: adapter,
   });
-  for (const authority of authorities) assertPrivateFixtureFileUnchanged(authority);
+  for (const authority of privateAuthorities) assertPrivateFixtureFileUnchanged(authority);
+  assertTrustedSystemExecutableUnchanged(nodeAuthority);
+  assertTrustedSystemExecutableUnchanged(dockerAuthority);
+  assertTrustedSystemExecutableUnchanged(composeAuthority);
   if (!allowFailure && result.status !== 0) {
     throw new Error(`shared deployment engine failed with exit ${result.status}: ${sanitize(`${result.stdout}\n${result.stderr}`)}`);
   }
@@ -350,6 +428,8 @@ function activeState(): { slot: string; digest: string; commit: string } {
 
 function publicJson(path: string, method: "GET" | "POST" = "GET", expectedStatus = 200): Record<string, unknown> {
   privateFile(publicProbeHeaders, "");
+  const curlShimAuthority = capturePrivateFixtureFile(curlShim, internalAuthorityBytes.get(curlShim)!);
+  assertTrustedSystemExecutableUnchanged(curlAuthority);
   const result = run("public fixture probe", bash, [
     shellPath(curlShim), "--silent", "--show-error",
     ...(method === "POST" ? ["--request", "POST", "--data", "{}"] : []),
@@ -358,6 +438,8 @@ function publicJson(path: string, method: "GET" | "POST" = "GET", expectedStatus
   ], {
     timeoutMs: 15_000,
   });
+  assertPrivateFixtureFileUnchanged(curlShimAuthority);
+  assertTrustedSystemExecutableUnchanged(curlAuthority);
   const statusMatches = Array.from(readFileSync(publicProbeHeaders, "utf8").matchAll(/^HTTP\/\S+\s+(\d{3})/gm));
   const actualStatus = Number(statusMatches.at(-1)?.[1] ?? 0);
   assert(actualStatus === expectedStatus,
@@ -423,13 +505,14 @@ async function main(): Promise<void> {
   assertNoExternalFixtureAuthority(process.env);
   trustedSource = captureTrustedFixtureSource(fileURLToPath(import.meta.url));
   repoRoot = trustedSource.nativeRepoRoot;
-  validateLocalDockerAuthority();
+  const preRootEnvironment = createSanitizedFixtureEnvironment(repoRoot, trustedPathEntries);
   assertTrustedFixtureSourceUnchanged(trustedSource);
   project = `music-c10-release-${randomBytes(4).toString("hex")}`;
   registryContainer = `${project}-registry`;
   secretVolume = `${project}-secrets`;
-  root = privateTemporaryDirectory(join(dirname(repoRoot), `${project}-`));
+  root = privateTemporaryDirectory(join(dirname(repoRoot), `${project}-`), preRootEnvironment);
   rootCreated = true;
+  childEnvironment = createSanitizedFixtureEnvironment(root, trustedPathEntries);
   composeFile = join(root, "docker-compose.yml");
   environmentFile = join(root, "production.env");
   requestFile = join(root, "request.txt");
@@ -438,6 +521,12 @@ async function main(): Promise<void> {
   publicProbeHeaders = join(root, "public-probe.headers");
   derivedDockerfile = join(root, "Dockerfile.candidate");
   baseImage = `${project}-base:local`;
+  dockerConfigDirectory = join(root, ".docker-client");
+  dockerConfigFile = join(dockerConfigDirectory, "config.json");
+  mkdirSync(dockerConfigDirectory, { mode: 0o700 });
+  privateFile(dockerConfigFile, '{"auths":{}}\n');
+  dockerConfigAuthority = capturePrivateFixtureFile(dockerConfigFile, internalAuthorityBytes.get(dockerConfigFile)!);
+  validateLocalDockerAuthority();
   assert(basename(root).startsWith(`${project}-`), "unsafe fixture root");
   const commit = trustedSource.commit;
   const trustedCodeDirectory = join(root, ".tracked-deployment-code");
@@ -452,10 +541,12 @@ async function main(): Promise<void> {
   const repository = `127.0.0.1:${registryPort}/explorers-tunes`;
   const legacyService = `${project}-legacy`;
 
-  const prerequisiteImages = Object.fromEntries(
-    ["registry:2", "postgres:15-alpine", "traefik:v3.1", "node:22.12-alpine"]
-      .map((image) => [image, requireLocalImage(image)]),
-  );
+  const prerequisiteImages = {
+    registry: requireReviewedLocalImage("registry"),
+    postgres: requireReviewedLocalImage("postgres"),
+    traefik: requireReviewedLocalImage("traefik"),
+    node: requireReviewedLocalImage("node"),
+  };
   assertTrustedFixtureSourceUnchanged(trustedSource);
 
   const secretDirectory = join(root, "secrets");
@@ -522,7 +613,7 @@ exec ${shellLiteral(shellPath(curl))} --header "Host: localtunes.earth" "\${mapp
     "run", "--pull=never", "-d", "--name", registryContainer,
     "--label", `com.explorers.fixture.scope=${resourceScope}`,
     "--label", `com.explorers.fixture.project=${project}`,
-    "-p", `127.0.0.1:${registryPort}:5000`, prerequisiteImages["registry:2"]!,
+    "-p", `127.0.0.1:${registryPort}:5000`, prerequisiteImages.registry,
   ], { timeoutMs: 3 * 60_000 });
   registryStarted = true;
   let registryReady = false;
@@ -552,34 +643,67 @@ exec ${shellLiteral(shellPath(curl))} --header "Host: localtunes.earth" "\${mapp
     return requireRegistryReturnedDigest(response.headers.get("docker-content-digest") ?? undefined);
   };
 
-  const transferLocalImage = async (sourceImage: string, repositoryName: string): Promise<string> => {
+  const localImageId = (phase: string, reference: string): string => {
+    const id = dockerRun(phase, ["image", "inspect", "--format", "{{.Id}}", reference]).stdout.trim();
+    assert(/^sha256:[a-f0-9]{64}$/.test(id), `${phase} returned an invalid image identity`);
+    return id;
+  };
+
+  const localImageInspection = (phase: string, reference: string): Record<string, unknown> => {
+    const rows = JSON.parse(dockerRun(phase, ["image", "inspect", reference]).stdout) as Array<Record<string, unknown>>;
+    assert(rows.length === 1, `${phase} returned an invalid image inspection`);
+    return rows[0]!;
+  };
+
+  const transferLocalImage = async (
+    sourceImage: string,
+    repositoryName: string,
+    destinationTag = "fixture",
+  ): Promise<string> => {
     const repository = `127.0.0.1:${registryPort}/${repositoryName}`;
-    const tag = `${repository}:fixture`;
-    dockerRun(`${repositoryName} local tag`, ["image", "tag", sourceImage, tag]);
+    const tag = `${repository}:${destinationTag}`;
+    const sourceInspection = localImageInspection(`${repositoryName} source inspection`, sourceImage);
+    const sourceId = sourceInspection.Id;
+    assert(typeof sourceId === "string" && /^sha256:[a-f0-9]{64}$/.test(sourceId),
+      `${repositoryName} source inspection returned an invalid image identity`);
+    if (sourceImage !== tag) dockerRun(`${repositoryName} local tag`, ["image", "tag", sourceImage, tag]);
     localTags.push(tag);
+    assertStableLocalImageTransfer(repositoryName, sourceId, [
+      localImageId(`${repositoryName} source identity after tag`, sourceImage),
+      localImageId(`${repositoryName} destination identity after tag`, tag),
+    ]);
     dockerRun(`${repositoryName} loopback transfer`, ["push", tag], { timeoutMs: 3 * 60_000 });
-    const exactImage = `${repository}@${await registryDigest(repositoryName, "fixture")}`;
+    assertStableLocalImageTransfer(repositoryName, sourceId, [
+      localImageId(`${repositoryName} source identity after push`, sourceImage),
+      localImageId(`${repositoryName} destination identity after push`, tag),
+    ]);
+    const exactImage = `${repository}@${await registryDigest(repositoryName, destinationTag)}`;
     dockerRun(`${repositoryName} immutable registry pull`, ["pull", exactImage], { timeoutMs: 3 * 60_000 });
-    dockerRun(`${repositoryName} immutable local inspection`, ["image", "inspect", exactImage]);
+    assertStableLocalImageTransfer(repositoryName, sourceId, [
+      localImageId(`${repositoryName} source identity after immutable pull`, sourceImage),
+    ]);
+    assertEquivalentLocalImageTransfer(repositoryName, exactImage, sourceInspection,
+      localImageInspection(`${repositoryName} immutable local identity`, exactImage));
     localTags.push(exactImage);
     return exactImage;
   };
 
-  const traefikImage = await transferLocalImage(prerequisiteImages["traefik:v3.1"]!, "fixture-traefik");
-  const postgresImage = await transferLocalImage(prerequisiteImages["postgres:15-alpine"]!, "fixture-postgres");
+  const traefikImage = prerequisiteImages.traefik;
+  const postgresImage = prerequisiteImages.postgres;
 
   assertTrustedFixtureSourceUnchanged(trustedSource);
-  assert(requireLocalImage("node:22.12-alpine") === prerequisiteImages["node:22.12-alpine"],
+  assert(requireReviewedLocalImage("node") === prerequisiteImages.node,
     "preloaded Node build image identity changed");
   dockerRun("exact Tunes source image build", [
     "build", "--pull=false", "--file", "Dockerfile", "--tag", baseImage,
     "--build-arg", `BUILD_COMMIT=${commit}`, "--build-arg", `BUILD_SOURCE=${source}`,
     "-",
   ], { timeoutMs: 15 * 60_000, input: trustedSource.tunesArchive });
-  assert(requireLocalImage("node:22.12-alpine") === prerequisiteImages["node:22.12-alpine"],
+  assert(requireReviewedLocalImage("node") === prerequisiteImages.node,
     "preloaded Node build image identity changed");
+  const immutableBaseImage = await transferLocalImage(baseImage, "fixture-tunes-base");
   privateFile(derivedDockerfile, [
-    `FROM ${baseImage}`,
+    `FROM ${immutableBaseImage}`,
     "ARG CANDIDATE",
     `LABEL org.opencontainers.image.revision=${commit}`,
     `LABEL org.opencontainers.image.source=${source}`,
@@ -596,15 +720,13 @@ exec ${shellLiteral(shellPath(curl))} --header "Host: localtunes.earth" "\${mapp
     dockerRun(`candidate ${candidate} build`, [
       "build", "--pull=false", "--file", derivedDockerfile, "--tag", tag, "--build-arg", `CANDIDATE=${candidate}`, root,
     ], { timeoutMs: 3 * 60_000 });
-    dockerRun(`candidate ${candidate} loopback transfer`, ["push", tag], { timeoutMs: 3 * 60_000 });
-    digests.push(await registryDigest("explorers-tunes", `candidate-${candidate}`));
-    dockerRun(`candidate ${candidate} local eviction`, ["image", "rm", tag]);
+    const exactCandidate = await transferLocalImage(tag, "explorers-tunes", `candidate-${candidate}`);
+    digests.push(exactCandidate.slice(exactCandidate.lastIndexOf("@") + 1));
   }
   const [digestA, digestB] = digests;
   assert(digestA && digestB && digestA !== digestB, "local candidates must have distinct immutable digests");
   const initialImage = `${repository}@${digestA}`;
   approvedTunesImages = [`${repository}@${digestA}`, `${repository}@${digestB}`];
-  dockerRun("initial immutable candidate preload", ["pull", initialImage], { timeoutMs: 3 * 60_000 });
   localTags.push(initialImage, `${repository}@${digestB}`);
   privateFile(environmentFile, `${readFileSync(environmentFile, "utf8")}${[
     `TUNES_BLUE_IMAGE=${repository}@${digestA}`,
@@ -632,7 +754,7 @@ exec ${shellLiteral(shellPath(curl))} --header "Host: localtunes.earth" "\${mapp
   ]);
   secretVolumeCreated = true;
   const writeContainerSecrets = (databaseMigratorPassword: string) => dockerRun("private container secret provisioning", [
-    "run", "--pull=never", "--rm", "-i", "-v", `${secretVolume}:/secrets`, baseImage, "sh", "-c", [
+    "run", "--pull=never", "--rm", "-i", "-v", `${secretVolume}:/secrets`, immutableBaseImage, "sh", "-c", [
       "set -eu", "umask 077", "mkdir -p /secrets/music-token /secrets/music-publication-response",
       "IFS= read -r runtime", "IFS= read -r migrator", "IFS= read -r token", "IFS= read -r publication", "IFS= read -r lifecycle",
       "printf %s \"$runtime\" > /secrets/database-runtime",
@@ -757,7 +879,10 @@ exec ${shellLiteral(shellPath(curl))} --header "Host: localtunes.earth" "\${mapp
   writeRequest("bootstrap", digestA, commit, legacyService);
   const migrationFailure = deploy(registryPort, traefikProxyIp, {}, true);
   assert(migrationFailure.status !== 0, "migration credential fault unexpectedly promoted");
-  assert(readFileSync(join(root, "deployment-routing/music-router.yml"), "utf8").includes(`http://${legacyService}:5000`),
+  const routerFile = join(root, "deployment-routing/music-router.yml");
+  assert(existsSync(routerFile),
+    `migration fault stopped before stable routing: ${sanitize(migrationFailure.stderr)}`);
+  assert(readFileSync(routerFile, "utf8").includes(`http://${legacyService}:5000`),
     "migration failure changed the general-service target");
   writeContainerSecrets(migratorPassword);
   const bootstrap = deploy(registryPort, traefikProxyIp, {}, true);

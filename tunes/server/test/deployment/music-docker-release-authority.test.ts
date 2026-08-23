@@ -1,16 +1,19 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import * as releaseAuthority from "../../../scripts/music-docker-release-authority";
 import {
   assertNoExternalFixtureAuthority,
   assertPrivateFixtureFileUnchanged,
   assertTrustedFixtureSourceUnchanged,
   capturePrivateFixtureFile,
   captureTrustedFixtureSource,
+  createSanitizedFixtureEnvironment,
   createInternalFixturePolicyScript,
   requireRegistryReturnedDigest,
+  resolveTrustedSystemDirectory,
   resolveTrustedSystemExecutable,
 } from "../../../scripts/music-docker-release-authority";
 
@@ -25,6 +28,51 @@ const git = (root: string, ...args: string[]) => {
   if (result.status !== 0) throw new Error(`${args.join(" ")}: ${result.stderr}`);
   return result.stdout.trim();
 };
+
+const reviewedImages = [
+  ["registry", "registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"],
+  ["postgres", "postgres@sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c"],
+  ["traefik", "traefik@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56"],
+  ["node", "node@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd"],
+] as const;
+
+function requireReviewedImage(
+  name: string,
+  platform: string,
+  inspection: Record<string, unknown>,
+): string {
+  const candidate = (releaseAuthority as unknown as {
+    requireReviewedFixtureImage?: (imageName: string, imagePlatform: string, value: Record<string, unknown>) => string;
+  }).requireReviewedFixtureImage;
+  if (!candidate) throw new Error("reviewed fixture image API unavailable");
+  return candidate(name, platform, inspection);
+}
+
+function assertStableImageTransfer(name: string, expectedId: string, ...observedIds: string[]): void {
+  const candidate = (releaseAuthority as unknown as {
+    assertStableLocalImageTransfer?: (imageName: string, imageId: string, values: readonly string[]) => void;
+  }).assertStableLocalImageTransfer;
+  if (!candidate) throw new Error("stable local image transfer API unavailable");
+  candidate(name, expectedId, observedIds);
+}
+
+function assertEquivalentImageTransfer(
+  name: string,
+  exactReference: string,
+  expected: Record<string, unknown>,
+  observed: Record<string, unknown>,
+): void {
+  const candidate = (releaseAuthority as unknown as {
+    assertEquivalentLocalImageTransfer?: (
+      imageName: string,
+      reference: string,
+      expectedValue: Record<string, unknown>,
+      observedValue: Record<string, unknown>,
+    ) => void;
+  }).assertEquivalentLocalImageTransfer;
+  if (!candidate) throw new Error("equivalent local image transfer API unavailable");
+  candidate(name, exactReference, expected, observed);
+}
 
 function cleanFixtureRepository(crlfScript = false): { root: string; script: string; commit: string } {
   const root = mkdtempSync(join(tmpdir(), "music-c10-source-authority-"));
@@ -88,6 +136,57 @@ describe("Music Docker release source authority", () => {
       .toThrow("trusted system caller tool executable is unavailable");
   });
 
+  it.runIf(process.platform === "win32")("accepts an ACL-protected Windows system executable with native hardlinks", () => {
+    expect(resolveTrustedSystemExecutable("whoami", ["C:/Windows/System32/whoami.exe"]))
+      .toBe("C:\\Windows\\System32\\whoami.exe");
+  });
+
+  it.runIf(process.platform === "win32")("ignores inherit-only creator ACLs on protected tool directories", () => {
+    expect(resolveTrustedSystemDirectory("Git Unix tools", "C:/Program Files/Git/usr/bin"))
+      .toBe("C:\\Program Files\\Git\\usr\\bin");
+  });
+
+  it.runIf(process.platform === "win32")("retains only the fixed Windows root needed for protected Docker plugins", () => {
+    const root = mkdtempSync(join(tmpdir(), "music-c10-sanitized-env-"));
+    sandboxes.push(root);
+    const environment = createSanitizedFixtureEnvironment(root, ["C:/Windows/System32"]);
+    expect(environment.ProgramFiles).toBe("C:\\Program Files");
+    expect(environment.ProgramW6432).toBe("C:\\Program Files");
+    expect(environment.USERPROFILE).toBeUndefined();
+    expect(environment.DOCKER_CONFIG).toBeUndefined();
+  });
+
+  it.each([
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_CONFIG_COUNT",
+    "GIT_EXEC_PATH",
+    "BASH_ENV",
+    "ENV",
+    "CDPATH",
+    "SHELLOPTS",
+    "BASHOPTS",
+    "BASH_FUNC_sha256sum%%",
+    "DOCKER_CONFIG",
+    "DOCKER_CONTEXT",
+    "DOCKER_HOST",
+    "DOCKER_CERT_PATH",
+    "DOCKER_TLS_VERIFY",
+    "NODE_OPTIONS",
+    "NODE_PATH",
+    "LD_PRELOAD",
+    "DYLD_INSERT_LIBRARIES",
+  ])("rejects inherited execution authority %s before mutation", (name) => {
+    expect(() => assertNoExternalFixtureAuthority({ [name]: "caller-owned" })).toThrow(
+      `external fixture deployment authority is forbidden: ${name}`,
+    );
+  });
+
   it("captures exact Git-object bytes from the executing tracked script and fails on source changes", () => {
     const fixture = cleanFixtureRepository(true);
     const fakeBin = join(fixture.root, "caller-bin");
@@ -146,12 +245,92 @@ describe("Music Docker release source authority", () => {
     expect(() => assertPrivateFixtureFileUnchanged(authority)).toThrow("fixture authority native identity changed");
   });
 
+  it("keeps captured authority bytes out of the generated adapter argument manifest", () => {
+    const root = mkdtempSync(join(tmpdir(), "music-c10-compact-adapter-"));
+    sandboxes.push(root);
+    const engine = join(root, "engine.sh");
+    writeFileSync(engine, "#".repeat(128 * 1024), { mode: 0o600 });
+    const authority = capturePrivateFixtureFile(engine, readFileSync(engine));
+    const adapter = createInternalFixturePolicyScript({
+      engineFile: shellPath(engine),
+      root: shellPath(root),
+      repository: "127.0.0.1:55123/explorers-tunes",
+      source: "https://github.com/explorers-earth/explorers.earth",
+      composeProject: "music-c10-release-compact",
+      nodeExecutable: shellPath(process.execPath),
+      dockerExecutable: shellPath(process.execPath),
+      dockerConfigDirectory: shellPath(root),
+      dockerEndpoint: "unix:///var/run/docker.sock",
+      approvedImages: ["127.0.0.1:55123/explorers-tunes@sha256:" + "a".repeat(64)],
+      authorities: [{ ...authority, path: shellPath(authority.path) }],
+    });
+    expect(adapter.length).toBeLessThan(20_000);
+  });
+
   it("accepts only one immutable digest returned by the loopback registry", () => {
     const digest = `sha256:${"a".repeat(64)}`;
     expect(requireRegistryReturnedDigest(digest)).toBe(digest);
     for (const value of [undefined, "", `sha256:${"a".repeat(63)}`, `sha256:${"A".repeat(64)}`, `${digest}\n${digest}`]) {
       expect(() => requireRegistryReturnedDigest(value)).toThrow("loopback registry returned an invalid immutable digest");
     }
+  });
+
+  it.each(reviewedImages)("accepts only the reviewed immutable %s image on linux/amd64", (name, reference) => {
+    const digest = reference.slice(reference.indexOf("@") + 1);
+    expect(requireReviewedImage(name, "linux/amd64", {
+      Id: digest,
+      RepoDigests: [reference],
+      RepoTags: [],
+      Os: "linux",
+      Architecture: "amd64",
+    })).toBe(reference);
+  });
+
+  it.each(reviewedImages)("rejects a mutable-tag substitution for %s before Docker mutation", (name, reference) => {
+    expect(() => requireReviewedImage(name, "linux/amd64", {
+      Id: `sha256:${"e".repeat(64)}`,
+      RepoDigests: [reference.replace(/sha256:[a-f0-9]{64}/, `sha256:${"e".repeat(64)}`)],
+      RepoTags: [`${name}:caller-retagged`],
+      Os: "linux",
+      Architecture: "amd64",
+    })).toThrow(`reviewed fixture image identity mismatch: ${name}`);
+  });
+
+  it("fails closed when the Docker engine platform has no reviewed image manifest", () => {
+    expect(() => requireReviewedImage("node", "linux/arm64", {
+      Id: `sha256:${"a".repeat(64)}`,
+      RepoDigests: [],
+      Os: "linux",
+      Architecture: "arm64",
+    })).toThrow("reviewed fixture image platform is unavailable: linux/arm64");
+  });
+
+  it("rejects a mutable local tag substitution anywhere in an image transfer", () => {
+    const expected = `sha256:${"a".repeat(64)}`;
+    expect(() => assertStableImageTransfer("tunes-build-base", expected,
+      expected, `sha256:${"b".repeat(64)}`, expected,
+    )).toThrow("fixture image identity changed during transfer: tunes-build-base");
+  });
+
+  it("accepts a registry manifest-ID conversion only when immutable image content is equivalent", () => {
+    const exactReference = `127.0.0.1:55123/fixture@sha256:${"c".repeat(64)}`;
+    const content = {
+      Architecture: "amd64",
+      Os: "linux",
+      Variant: "",
+      Created: "2026-08-23T00:00:00Z",
+      Author: "",
+      Config: { Entrypoint: ["/entrypoint"], Labels: { fixture: "exact" } },
+      RootFS: { Type: "layers", Layers: [`sha256:${"d".repeat(64)}`] },
+    };
+    expect(() => assertEquivalentImageTransfer("fixture", exactReference,
+      { ...content, Id: `sha256:${"a".repeat(64)}` },
+      { ...content, Id: `sha256:${"b".repeat(64)}`, RepoDigests: [exactReference] },
+    )).not.toThrow();
+    expect(() => assertEquivalentImageTransfer("fixture", exactReference,
+      { ...content, Id: `sha256:${"a".repeat(64)}` },
+      { ...content, RootFS: { Type: "layers", Layers: [`sha256:${"e".repeat(64)}`] }, RepoDigests: [exactReference] },
+    )).toThrow("fixture image content changed during transfer: fixture");
   });
 
   it("executes only the internal exact-image policy adapter against the shared engine", () => {
@@ -163,6 +342,9 @@ describe("Music Docker release source authority", () => {
     const dockerShim = join(fakeBin, "docker");
     writeFileSync(dockerShim, `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> ${JSON.stringify(shellPath(dockerLog))}\n`);
     chmodSync(dockerShim, 0o700);
+    const dockerConfigDirectory = join(root, "docker-client");
+    mkdirSync(dockerConfigDirectory);
+    writeFileSync(join(dockerConfigDirectory, "config.json"), '{"auths":{}}\n', { mode: 0o600 });
     const digest = `sha256:${"a".repeat(64)}`;
     const repository = "127.0.0.1:55123/explorers-tunes";
     const approved = `${repository}@${digest}`;
@@ -181,10 +363,12 @@ describe("Music Docker release source authority", () => {
       repository,
       source: "https://github.com/explorers-earth/explorers.earth",
       composeProject: "music-c10-release-adapter",
+      nodeExecutable: shellPath(process.execPath),
       dockerExecutable: shellPath(dockerShim),
+      dockerConfigDirectory: shellPath(dockerConfigDirectory),
       dockerEndpoint: "unix:///var/run/docker.sock",
       approvedImages: [approved],
-      authorities: [{ path: shellPath(authority.path), digest: authority.digest }],
+      authorities: [{ ...authority, path: shellPath(authority.path) }],
     });
     const result = spawnSync(bash, ["--noprofile", "--norc", "-s"], {
       input: adapter,
@@ -193,7 +377,7 @@ describe("Music Docker release source authority", () => {
       windowsHide: true,
     });
     expect(result.status, result.stderr).toBe(0);
-    expect(readFileSync(dockerLog, "utf8")).toContain(`--host unix:///var/run/docker.sock --config ${shellPath(join(root, "auth"))} pull ${approved}`);
+    expect(readFileSync(dockerLog, "utf8")).toContain(`--config ${shellPath(dockerConfigDirectory)} --host unix:///var/run/docker.sock --config ${shellPath(join(root, "auth"))} pull ${approved}`);
 
     writeFileSync(engine, readFileSync(engine, "utf8").replace(approved, `${repository}@sha256:${"b".repeat(64)}`));
     const tampered = spawnSync(bash, ["--noprofile", "--norc", "-s"], {
@@ -204,5 +388,51 @@ describe("Music Docker release source authority", () => {
     });
     expect(tampered.status).not.toBe(0);
     expect(tampered.stderr).toContain("internal fixture authority changed");
+  });
+
+  it("does not let ambient sha256sum or awk bless a replaced internal engine", () => {
+    const root = mkdtempSync(join(tmpdir(), "music-c10-policy-hash-"));
+    sandboxes.push(root);
+    const fakeBin = join(root, "bin");
+    mkdirSync(fakeBin);
+    const dockerLog = join(root, "docker.log");
+    const dockerShim = join(fakeBin, "docker");
+    writeFileSync(dockerShim, `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> ${JSON.stringify(shellPath(dockerLog))}\n`);
+    chmodSync(dockerShim, 0o700);
+    const dockerConfigDirectory = join(root, "docker-client");
+    mkdirSync(dockerConfigDirectory);
+    writeFileSync(join(dockerConfigDirectory, "config.json"), '{"auths":{}}\n', { mode: 0o600 });
+    const engine = join(root, "music-deploy-engine.sh");
+    writeFileSync(engine, "printf 'trusted-engine\\n'\n", { mode: 0o600 });
+    const authority = capturePrivateFixtureFile(engine, readFileSync(engine));
+    const bashEnvironment = join(root, "hostile-bash-env");
+    writeFileSync(bashEnvironment, [
+      `sha256sum() { printf '%s  %s\\n' ${JSON.stringify(authority.digest)} "$1"; }`,
+      "awk() { while read -r first _; do printf '%s\\n' \"$first\"; done; }",
+      "",
+    ].join("\n"), { mode: 0o600 });
+    const adapter = createInternalFixturePolicyScript({
+      engineFile: shellPath(engine),
+      root: shellPath(root),
+      repository: "127.0.0.1:55123/explorers-tunes",
+      source: "https://github.com/explorers-earth/explorers.earth",
+      composeProject: "music-c10-release-hash",
+      nodeExecutable: shellPath(process.execPath),
+      dockerExecutable: shellPath(dockerShim),
+      dockerConfigDirectory: shellPath(dockerConfigDirectory),
+      dockerEndpoint: "unix:///var/run/docker.sock",
+      approvedImages: ["127.0.0.1:55123/explorers-tunes@sha256:" + "a".repeat(64)],
+      authorities: [{ ...authority, path: shellPath(authority.path) }],
+    });
+    writeFileSync(engine, "printf 'caller-engine\\n'\n", { mode: 0o600 });
+    const result = spawnSync(bash, ["--noprofile", "--norc", "-s"], {
+      input: adapter,
+      encoding: "utf8",
+      env: { BASH_ENV: shellPath(bashEnvironment), PATH: "/usr/bin" },
+      windowsHide: true,
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("internal fixture authority changed");
+    expect(existsSync(dockerLog)).toBe(false);
   });
 });

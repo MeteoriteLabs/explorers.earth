@@ -34,6 +34,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(executable).toContain("com.explorers.music.minimum-containment-commit");
     expect(dockerfile).toContain("org.opencontainers.image.source");
     expect(dockerfile).toContain("com.explorers.music.minimum-containment-commit");
+    expect(dockerfile).toContain("FROM node@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd AS base");
   });
 
   it("keeps the local OCI rehearsal outside every production authority", () => {
@@ -58,11 +59,16 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(rehearsal).toContain('const repository = `127.0.0.1:${registryPort}/explorers-tunes`');
     expect(rehearsal).toContain("loopback transfer");
     expect(rehearsal).toContain('["push", tag]');
-    expect(rehearsal).toContain('["registry:2", "postgres:15-alpine", "traefik:v3.1", "node:22.12-alpine"]');
+    expect(authority).toContain("REVIEWED_FIXTURE_IMAGES");
+    expect(rehearsal).toContain('requireReviewedLocalImage("registry")');
+    expect(rehearsal).toContain('requireReviewedLocalImage("postgres")');
+    expect(rehearsal).toContain('requireReviewedLocalImage("traefik")');
+    expect(rehearsal).toContain('requireReviewedLocalImage("node")');
+    expect(rehearsal).not.toMatch(/registry:2|postgres:15-alpine|traefik:v3\.1|node:22\.12-alpine/);
     expect(rehearsal.match(/"--pull=never"/g)).toHaveLength(2);
     expect(rehearsal.match(/pull_policy: "never"/g)).toHaveLength(6);
     expect(rehearsal.match(/"build", "--pull=false"/g)).toHaveLength(2);
-    expect(rehearsal).toContain('["--host", dockerEndpoint, ...args]');
+    expect(rehearsal).toContain('["--config", dockerConfigDirectory, "--host", dockerEndpoint, ...args]');
     expect(rehearsal).not.toContain("DOCKER_HOST: dockerEndpoint");
     expect(rehearsal).toContain("assertNoExternalFixtureAuthority(process.env)");
     expect(rehearsal).toContain("captureTrustedFixtureSource(fileURLToPath(import.meta.url))");
@@ -72,13 +78,17 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(rehearsal).toContain("application/vnd.oci.image.index.v1+json");
     expect(rehearsal).toContain("application/vnd.docker.distribution.manifest.list.v2+json");
     expect(rehearsal).toContain('response.headers.get("docker-content-digest")');
-    expect(rehearsal.indexOf("await registryDigest(repositoryName"))
+    expect(rehearsal.indexOf("await registryDigest(repositoryName, destinationTag"))
       .toBeLessThan(rehearsal.indexOf("immutable registry pull"));
     expect(rehearsal.indexOf("immutable registry pull"))
-      .toBeLessThan(rehearsal.indexOf("immutable local inspection"));
+      .toBeLessThan(rehearsal.indexOf("immutable local identity"));
+    expect(rehearsal).toContain("assertStableLocalImageTransfer(repositoryName, sourceId");
+    expect(rehearsal).not.toContain("candidate ${candidate} local eviction");
     expect(rehearsal).toContain("trustedSource.tunesArchive");
     expect(rehearsal).toContain("assertPrivateFixtureFileUnchanged(authority)");
-    expect(rehearsal).toContain('process.env.DOCKER_HOST === undefined && process.env.DOCKER_CONTEXT === undefined');
+    expect(rehearsal).toContain('"npipe:////./pipe/dockerDesktopLinuxEngine"');
+    expect(rehearsal).toContain("createSanitizedFixtureEnvironment");
+    expect(rehearsal).toContain("dockerConfigDirectory");
     expect(rehearsal).not.toContain("ghcr.io");
     expect(rehearsal).not.toContain("GATE_PROD");
     expect(rehearsal).not.toContain("--api.insecure=true");

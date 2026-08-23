@@ -515,6 +515,35 @@ describe("portable Music qualification lanes", () => {
     expect(MUSIC_QUALIFICATION_LANES.pr.stages.some((stage) => stage.parallel)).toBe(true);
   });
 
+  it("serializes filesystem-heavy critical coverage before the parallel PR workload", () => {
+    const stages = MUSIC_QUALIFICATION_LANES.pr.stages;
+    expect(stages[0]).toEqual({
+      id: "pr-critical-coverage",
+      parallel: false,
+      taskIds: ["tunes-critical-coverage", "explorer-critical-coverage"],
+    });
+    expect(stages.slice(1).flatMap((stage) => stage.parallel ? stage.taskIds : []))
+      .not.toContain("tunes-critical-coverage");
+    expect(stages.slice(1).flatMap((stage) => stage.parallel ? stage.taskIds : []))
+      .not.toContain("explorer-critical-coverage");
+  });
+
+  it("caps shared PostgreSQL and release rehearsal file parallelism", () => {
+    for (const id of [
+      "postgres-integration",
+      "tunes-repository-coverage",
+      "tunes-identity-repository-coverage",
+      "load-postgres",
+      "chaos-postgres",
+      "release-rehearsal",
+    ] as const) {
+      expect(MUSIC_QUALIFICATION_TASKS[id].npmArgs).toEqual(expect.arrayContaining([
+        "--maxWorkers=1",
+        "--fileParallelism=false",
+      ]));
+    }
+  });
+
   it("keeps an original failure red after one diagnostic rerun passes", async () => {
     const attempts = new Map<string, number>();
     const report = await runMusicQualificationLane("fast", {
