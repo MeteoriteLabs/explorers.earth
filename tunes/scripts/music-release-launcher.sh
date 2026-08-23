@@ -18,11 +18,12 @@ node_path=/usr/bin/node
 git_path=/usr/bin/git
 sha256_path=/usr/bin/sha256sum
 stat_path=/usr/bin/stat
+find_path=/usr/bin/find
 if [ ! -x "$stat_path" ] || [ -L "$stat_path" ]; then
   printf '%s\n' 'trusted native release executable is unavailable' >&2
   exit 78
 fi
-for executable in "$node_path" "$git_path" "$sha256_path"; do
+for executable in "$node_path" "$git_path" "$sha256_path" "$find_path"; do
   if [ ! -x "$executable" ] || [ -L "$executable" ] || [ "$("$stat_path" -c '%u:%g:%a' "$executable")" != 0:0:755 ]; then
     printf '%s\n' 'trusted native release executable is unavailable' >&2
     exit 78
@@ -36,12 +37,13 @@ fi
 channel_path=$script_root/music-release-channel.mjs
 register_path=$script_root/music-native-typescript-register.mjs
 resolver_path=$script_root/music-native-typescript-loader.mjs
+preflight_path=$script_root/music-linux-qualification-preflight.sh
 if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
   target_path=$script_root/music-cli.ts
 else
   target_path=$script_root/music-docker-release-rehearsal.ts
 fi
-for authority in "$channel_path" "$register_path" "$resolver_path" "$target_path"; do
+for authority in "$channel_path" "$register_path" "$resolver_path" "$target_path" "$preflight_path"; do
   if [ ! -f "$authority" ] || [ -L "$authority" ]; then
     printf '%s\n' 'trusted native release source authority is unavailable' >&2
     exit 78
@@ -49,7 +51,25 @@ for authority in "$channel_path" "$register_path" "$resolver_path" "$target_path
 done
 cd -- "$repository_root"
 
-before=$("$sha256_path" "$node_path" "$git_path" "$sha256_path" "$channel_path" "$register_path" "$resolver_path" "$target_path")
+npm_authority_root=/opt/explorers-music-node-v22.12.0
+npm_root=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm
+npm_cli_path=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js
+npm_path=/opt/explorers-music-node-v22.12.0/bin/npm
+playwright_path=/opt/explorers-music-playwright
+browser_manifest_path=/opt/explorers-music-playwright/.chromium-executable.sha256
+browser_pattern='*/chrome-linux*/chrome'
+npm_cli_sha256=8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7
+additional_authorities=
+if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
+  "$preflight_path" "$node_path" "$git_path" "$sha256_path" "$stat_path" "$find_path" \
+    "$npm_root" "$npm_cli_path" "$npm_path" "$playwright_path" 0 0 755 v22.12.0 "$browser_pattern" "$npm_cli_sha256" "$browser_manifest_path"
+  browser_executable=$("$find_path" "$playwright_path" -xdev -type f -path "$browser_pattern" -print)
+  additional_authorities="$npm_cli_path $npm_path $browser_executable $browser_manifest_path"
+fi
+
+# additional_authorities is preflight-constrained to paths without whitespace.
+# shellcheck disable=SC2086
+before=$("$sha256_path" "$node_path" "$git_path" "$sha256_path" "$find_path" "$channel_path" "$register_path" "$resolver_path" "$target_path" "$preflight_path" $additional_authorities)
 empty_global_npm_config=/etc/explorers-music-release-empty.npmrc
 if [ -e "$empty_global_npm_config" ]; then
   printf '%s\n' 'trusted empty npm global configuration authority is unavailable' >&2
@@ -77,6 +97,10 @@ set -- \
   NPM_CONFIG_AUDIT=false \
   NPM_CONFIG_FUND=false \
   NPM_CONFIG_UPDATE_NOTIFIER=false
+if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
+  set -- "$@" "PATH=$npm_authority_root/bin:/usr/bin:/bin" \
+    "npm_execpath=$npm_cli_path" "PLAYWRIGHT_BROWSERS_PATH=$playwright_path"
+fi
 [ -z "${MUSIC_C10_STANDALONE_POSTGRES_ACK-}" ] || set -- "$@" "MUSIC_C10_STANDALONE_POSTGRES_ACK=$MUSIC_C10_STANDALONE_POSTGRES_ACK"
 [ -z "${MUSIC_C10_STANDALONE_POSTGRES_PORT-}" ] || set -- "$@" "MUSIC_C10_STANDALONE_POSTGRES_PORT=$MUSIC_C10_STANDALONE_POSTGRES_PORT"
 [ -z "${MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID-}" ] || set -- "$@" "MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID=$MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID"
@@ -99,7 +123,8 @@ else
 fi
 exit_code=$?
 set -e
-after=$("$sha256_path" "$node_path" "$git_path" "$sha256_path" "$channel_path" "$register_path" "$resolver_path" "$target_path")
+# shellcheck disable=SC2086
+after=$("$sha256_path" "$node_path" "$git_path" "$sha256_path" "$find_path" "$channel_path" "$register_path" "$resolver_path" "$target_path" "$preflight_path" $additional_authorities)
 if [ "$before" != "$after" ]; then
   printf '%s\n' 'trusted native release authority changed during execution' >&2
   exit 78

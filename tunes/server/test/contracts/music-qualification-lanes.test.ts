@@ -429,7 +429,10 @@ describe("portable Music qualification lanes", () => {
       .toContain("tunes/scripts/music-interrupt-rehearsal.ts");
     const nightly = MUSIC_QUALIFICATION_LANES.nightly.stages.flatMap((stage) => stage.taskIds);
     const release = MUSIC_QUALIFICATION_LANES.release.stages.flatMap((stage) => stage.taskIds);
-    expect(nightly).toContain("fixture-fullstack-browser");
+    expect(nightly).toEqual(expect.arrayContaining(["fullstack-browser", "accessibility-browser", "fixture-fullstack-browser"]));
+    for (const id of ["fullstack-browser", "accessibility-browser", "fixture-fullstack-browser"] as const) {
+      expect(MUSIC_QUALIFICATION_TASKS[id].npmArgs).toEqual(expect.arrayContaining(["test:e2e", "--project=chromium"]));
+    }
     expect(release).toEqual(expect.arrayContaining([
       "fixture-fullstack-browser", "real-docker-evidence", "real-docker-release", "interrupt-resume",
     ]));

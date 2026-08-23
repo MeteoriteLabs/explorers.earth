@@ -634,7 +634,12 @@ On Windows, use the native launcher:
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tunes\scripts\music-release-launcher.ps1 -Mode qualification
 ```
 
-On the protected Linux qualification host, use the native launcher with its minimal environment. macOS and user-writable/nvm Node installations are not qualification authority:
+On the protected Linux qualification host, use the native launcher with its
+minimal environment. It accepts only the checksum-pinned Node/npm authority at
+`/usr/bin/node` and `/opt/explorers-music-node-v22.12.0`, plus the root-protected
+Playwright Chromium authority at `/opt/explorers-music-playwright`; missing,
+tampered, group/world-writable, or caller-selected tools fail before Node.
+macOS and user-writable/nvm Node installations are not qualification authority:
 
 ```text
 /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification

@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -10,6 +11,63 @@ const rehearsal = join(tunesRoot, "scripts", "music-docker-release-rehearsal.ts"
 const qualification = join(tunesRoot, "scripts", "music-cli.ts");
 const tsxCli = join(tunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
 const sandboxes: string[] = [];
+const posixShell = process.platform === "win32" ? "C:/Program Files/Git/bin/sh.exe" : "/bin/sh";
+
+function shellPath(path: string): string {
+  const normalized = path.replaceAll("\\", "/");
+  const drive = normalized.match(/^([A-Za-z]):(\/.*)$/);
+  return drive ? `/${drive[1]!.toLowerCase()}${drive[2]}` : normalized;
+}
+
+function protectedPreflightFixture(): {
+  root: string;
+  args: string[];
+  npmCli: string;
+  browserExecutable: string;
+} {
+  const root = mkdtempSync(join(tmpdir(), "music-linux-authority-"));
+  sandboxes.push(root);
+  const bin = join(root, "bin");
+  const npmRoot = join(root, "npm");
+  const npmCli = join(npmRoot, "bin", "npm-cli.js");
+  const npmPath = join(bin, "npm");
+  const browserRoot = join(root, "playwright");
+  const browserExecutable = join(browserRoot, "chromium-1", "chrome-linux", "chrome");
+  const browserManifest = join(browserRoot, ".chromium-executable.sha256");
+  mkdirSync(bin, { recursive: true });
+  mkdirSync(join(npmRoot, "bin"), { recursive: true });
+  mkdirSync(join(browserRoot, "chromium-1", "chrome-linux"), { recursive: true });
+  const node = join(bin, "node");
+  const git = join(bin, "git");
+  const sha = join(bin, "sha256sum");
+  for (const [path, source] of [
+    [node, "#!/bin/sh\nprintf '%s\\n' v22.12.0\n"],
+    [git, "#!/bin/sh\nexit 0\n"],
+    [sha, "#!/bin/sh\nexec /usr/bin/sha256sum \"$@\"\n"],
+    [npmCli, "#!/usr/bin/env node\n"],
+    [npmPath, "#!/bin/sh\nexit 0\n"],
+    [browserExecutable, "#!/bin/sh\nexit 0\n"],
+  ] as const) {
+    writeFileSync(path, source);
+    chmodSync(path, 0o755);
+  }
+  const metadata = spawnSync(posixShell, ["-c", `/usr/bin/stat -c '%u:%g' '${shellPath(node)}'`], { encoding: "utf8" });
+  expect(metadata.status, metadata.stderr).toBe(0);
+  const [uid, gid] = metadata.stdout.trim().split(":");
+  writeFileSync(browserManifest, `${createHash("sha256").update(readFileSync(browserExecutable)).digest("hex")}\n`);
+  return {
+    root,
+    npmCli,
+    browserExecutable,
+    args: [
+      shellPath(node), shellPath(git), shellPath(sha), "/usr/bin/stat", "/usr/bin/find",
+      shellPath(npmRoot), shellPath(npmCli), shellPath(npmPath), shellPath(browserRoot),
+      uid!, gid!, "755", "v22.12.0", "*/chrome-linux*/chrome",
+      createHash("sha256").update(readFileSync(npmCli)).digest("hex"),
+      shellPath(browserManifest),
+    ],
+  };
+}
 
 function withoutNodeStartupAuthority(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   const environment = { ...process.env };
@@ -46,6 +104,32 @@ afterEach(() => {
 });
 
 describe("native Music release launch boundary", () => {
+  it.skipIf(!existsSync(posixShell))("accepts a complete protected npm and Chromium preflight", () => {
+    const fixture = protectedPreflightFixture();
+    const helper = join(tunesRoot, "scripts", "music-linux-qualification-preflight.sh");
+    const result = spawnSync(posixShell, [shellPath(helper), ...fixture.args], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+  });
+
+  it.skipIf(!existsSync(posixShell)).each([
+    ["missing npm", "npm", "missing"],
+    ["tampered npm", "npm", "content"],
+    ["missing browser", "browser", "missing"],
+    ["tampered browser", "browser", "content"],
+  ] as const)("fails closed for %s authority", (_label, authority, mutation) => {
+    const fixture = protectedPreflightFixture();
+    const target = authority === "npm" ? fixture.npmCli : fixture.browserExecutable;
+    if (mutation === "missing") rmSync(target, { force: true });
+    if (mutation === "content") writeFileSync(target, `${readFileSync(target, "utf8")}# tampered\n`);
+    if (mutation === "directory") {
+      rmSync(target, { force: true });
+      mkdirSync(target);
+    }
+    const helper = join(tunesRoot, "scripts", "music-linux-qualification-preflight.sh");
+    const result = spawnSync(posixShell, [shellPath(helper), ...fixture.args], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(78);
+    expect(result.stderr).toContain(authority === "npm" ? "trusted native npm authority is unavailable" : "trusted native Playwright authority is unavailable");
+  });
   it("records why a direct Node launch can never be the trusted preload boundary", () => {
     const probe = preloadProbe();
     const result = spawnSync(process.execPath, [tsxCli, rehearsal], {

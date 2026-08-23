@@ -810,6 +810,11 @@ describe("Music CI publication order", () => {
     expect(steps).toContain("node-v22.12.0-linux-x64.tar.xz");
     expect(steps).toContain("22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f");
     expect(steps).toContain("/usr/bin/sha256sum");
+    expect(steps).toContain("/opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js");
+    expect(steps).toContain("PLAYWRIGHT_BROWSERS_PATH");
+    expect(steps).toContain("playwright install --with-deps chromium");
+    expect(steps).toContain("/opt/explorers-music-playwright");
+    expect(steps).toContain(".chromium-executable.sha256");
     expect(steps).not.toContain("music-load-qualification.test.ts");
     expect(read("tunes/scripts/music-release-launcher.sh")).toContain("lane=test:nightly");
     expect(read("tunes/scripts/music-qualification.ts")).toMatch(/nightly:\s*\{[\s\S]*nightly-postgres[\s\S]*nightly-recovery[\s\S]*nightly-drift/);
@@ -887,6 +892,12 @@ describe("POSIX native launcher environment rejection", () => {
     const launcher = read("tunes/scripts/music-release-launcher.sh");
     expect(launcher).toContain("node_path=/usr/bin/node");
     expect(launcher).toContain("sha256_path=/usr/bin/sha256sum");
+    expect(launcher).toContain("npm_cli_path=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js");
+    expect(launcher).toContain("npm_cli_sha256=8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7");
+    expect(launcher).toContain("playwright_path=/opt/explorers-music-playwright");
+    expect(launcher).toContain("browser_manifest_path=/opt/explorers-music-playwright/.chromium-executable.sha256");
+    expect(launcher).toContain('"npm_execpath=$npm_cli_path"');
+    expect(launcher).toContain('"PLAYWRIGHT_BROWSERS_PATH=$playwright_path"');
     expect(launcher).toContain("0:0:755");
     expect(launcher).toContain("qualification|nightly|rehearsal");
     expect(read("tunes/scripts/music-release-channel.mjs")).toContain('["qualification", "nightly", "rehearsal"]');

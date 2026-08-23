@@ -36,18 +36,29 @@ Linux qualification host. macOS is not a supported release-qualification host;
 an nvm-managed or other user-writable Node is not qualification authority.
 
 The Linux host must provide regular, non-symlink `/usr/bin/node`, `/usr/bin/git`,
-and `/usr/bin/sha256sum` files owned by root with mode `0755`. Node must be exactly
-v22.12.0. The pinned workflow installs the official Linux x64 archive only after
-verifying SHA-256
+`/usr/bin/sha256sum`, and `/usr/bin/find` files owned by root with mode `0755`.
+Node must be exactly v22.12.0. The pinned workflow installs both Node and npm
+from the official Linux x64 archive only after verifying SHA-256
 `22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f`,
-then copies the verified binary as root. Reproduce the prerequisite check before
-qualification:
+then protects npm at `/opt/explorers-music-node-v22.12.0`; neither ambient npm
+nor caller `PATH` is authority. Its npm CLI SHA-256 is fixed as
+`8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7`.
+Nightly also installs the lockfile-pinned
+Playwright Chromium with OS dependencies at `/opt/explorers-music-playwright`.
+Both trees are root-owned and group/world non-writable. The native preflight
+validates these authorities, including the one Chromium executable against its
+protected `.chromium-executable.sha256` installation manifest, before Node
+starts. Reproduce the fixed-file prerequisite check before qualification:
 
 ```sh
 test "$(/usr/bin/node --version)" = v22.12.0
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
+test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/find)" = 0:0:755
+test "$(/usr/bin/stat -c '%u:%g:%a' /opt/explorers-music-node-v22.12.0/bin/npm)" = 0:0:755
+test "$(/usr/bin/stat -c '%u:%g:%a' /opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js)" = 0:0:755
+test -z "$(/usr/bin/find /opt/explorers-music-node-v22.12.0 /opt/explorers-music-playwright -xdev \( ! -uid 0 -o ! -gid 0 -o -perm /022 \) -print -quit)"
 ```
 
 Run the checked-in launcher from the repository root with the command for the

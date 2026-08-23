@@ -186,7 +186,7 @@ jobs:
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci
-      - name: Provision the protected Linux qualification Node
+      - name: Provision the protected Linux qualification Node and npm
         env:
           NODE_ARCHIVE_SHA256: 22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f
         run: |
@@ -197,11 +197,39 @@ jobs:
           printf '%s  %s\n' "$NODE_ARCHIVE_SHA256" "$archive" | /usr/bin/sha256sum --check --strict
           tar --extract --xz --file "$archive" --directory "$RUNNER_TEMP"
           sudo install -o root -g root -m 0755 "$root/bin/node" /usr/bin/node
+          npm_authority=/opt/explorers-music-node-v22.12.0
+          npm_root="$npm_authority/lib/node_modules/npm"
+          sudo install -d -o root -g root -m 0755 "$npm_authority/bin" "$npm_root"
+          sudo cp -aL "$root/lib/node_modules/npm/." "$npm_root/"
+          sudo chown -R root:root "$npm_authority"
+          sudo chmod -R go-w "$npm_authority"
+          sudo chmod 0755 "$npm_root/bin/npm-cli.js"
+          printf '%s\n' '#!/bin/sh' 'exec /usr/bin/node /opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js "$@"' | sudo tee "$npm_authority/bin/npm" >/dev/null
+          sudo chown root:root "$npm_authority/bin/npm"
+          sudo chmod 0755 "$npm_authority/bin/npm"
+          printf '%s  %s\n' '8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7' "$npm_root/bin/npm-cli.js" | /usr/bin/sha256sum --check --strict
           test "$(/usr/bin/node --version)" = v22.12.0
           test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
           test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
           test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
       - run: npm run music:bootstrap -- --mode fixture
+      - name: Install the pinned protected Playwright Chromium authority
+        run: |
+          set -euo pipefail
+          browser_stage="$RUNNER_TEMP/explorers-music-playwright"
+          PLAYWRIGHT_BROWSERS_PATH="$browser_stage" /usr/bin/node /opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js exec --prefix explorers-earth -- playwright install --with-deps chromium
+          sudo install -d -o root -g root -m 0755 /opt/explorers-music-playwright
+          sudo cp -aL "$browser_stage/." /opt/explorers-music-playwright/
+          sudo chown -R root:root /opt/explorers-music-playwright
+          sudo chmod -R go-w /opt/explorers-music-playwright
+          mapfile -t chromium_executables < <(/usr/bin/find /opt/explorers-music-playwright -xdev -type f -path '*/chrome-linux*/chrome' -print)
+          test "${#chromium_executables[@]}" -eq 1
+          sudo chmod 0755 "${chromium_executables[0]}"
+          browser_digest=$(/usr/bin/sha256sum "${chromium_executables[0]}")
+          browser_digest=${browser_digest%% *}
+          printf '%s\n' "$browser_digest" | sudo tee /opt/explorers-music-playwright/.chromium-executable.sha256 >/dev/null
+          sudo chown root:root /opt/explorers-music-playwright/.chromium-executable.sha256
+          sudo chmod 0644 /opt/explorers-music-playwright/.chromium-executable.sha256
       - name: Run the authoritative native nightly qualification lane
         run: /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh nightly
 
