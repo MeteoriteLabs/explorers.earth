@@ -123,7 +123,9 @@ export function PublicProfileBootstrapProvider({ children }: { children: ReactNo
       return retryInFlightRef.current.operation;
     }
 
+    // Assigned before the first awaited completion and captured for promise identity.
     let operation!: Promise<void>;
+    // eslint-disable-next-line prefer-const
     operation = (async () => {
       setRetryState({ bootstrapKey: retryKey, retrying: true });
       try {

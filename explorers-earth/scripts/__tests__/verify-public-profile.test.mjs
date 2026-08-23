@@ -1,0 +1,78 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  createVerificationPlan,
+  parseVerificationArgs,
+  runVerificationPlan,
+} from "../verify-public-profile.mjs";
+
+test("parses portable deterministic command options", () => {
+  assert.deepEqual(
+    parseVerificationArgs(["--username=alice", "--headed", "--dry-run", "--json"]),
+    { mode: "deterministic", username: "alice", headed: true, dryRun: true, json: true },
+  );
+});
+
+test("builds the deterministic golden path without protected commands", () => {
+  const plan = createVerificationPlan({ mode: "deterministic", username: "alice", headed: true });
+  assert.deepEqual(plan.map(({ id }) => id), [
+    "fixture-env", "contract", "lint", "typecheck-app", "typecheck-test",
+    "typecheck-e2e", "i18n", "unit", "coverage", "e2e", "build",
+  ]);
+  assert.deepEqual(plan.find(({ id }) => id === "e2e").args, ["run", "test:e2e", "--", "--headed"]);
+  assert.equal(plan.some(({ id }) => /real-account|public-api|mutation/.test(id)), false);
+});
+
+test("builds the protected release path with preflights before browser execution", () => {
+  const plan = createVerificationPlan({ mode: "release", username: "alice", headed: false });
+  assert.deepEqual(plan.map(({ id }) => id), [
+    "read-only-env", "public-api", "mutation-env", "real-account",
+  ]);
+  assert.deepEqual(plan[1].args, ["run", "verify:public-api", "--", "--username=alice", "--json"]);
+});
+
+test("dry-run never spawns a child and returns a machine-readable plan", async () => {
+  let calls = 0;
+  const result = await runVerificationPlan({
+    options: { mode: "release", username: "alice", headed: false, dryRun: true, json: true },
+    spawn: async () => { calls += 1; return { status: 0 }; },
+  });
+  assert.equal(calls, 0);
+  assert.equal(result.code, "DRY_RUN");
+  assert.equal(result.safeContext.commands.length, 4);
+});
+
+test("stops on the first stable blocker and names the failed command and artifact", async () => {
+  const calls = [];
+  const result = await runVerificationPlan({
+    options: { mode: "release", username: "alice", headed: false, dryRun: false, json: true },
+    spawn: async (step) => {
+      calls.push(step.id);
+      return { status: 20, code: "ENV_MISSING" };
+    },
+  });
+  assert.deepEqual(calls, ["read-only-env"]);
+  assert.equal(result.code, "ENV_MISSING");
+  assert.equal(result.safeContext.failedCommand, "read-only-env");
+  assert.match(result.artifactPath, /verification-summary\.json$/);
+});
+
+test("rejects unknown options without executing anything", () => {
+  assert.throws(() => parseVerificationArgs(["--oops"]), /UNKNOWN_OPTION/);
+});
+
+test("passes JSON mode to every child runner so output can remain one safe envelope", async () => {
+  const observed = [];
+  const result = await runVerificationPlan({
+    options: { mode: "release", username: "alice", headed: false, dryRun: false, json: true },
+    spawn: async (step, options) => {
+      observed.push([step.id, options.json]);
+      return { status: 0 };
+    },
+  });
+  assert.equal(result.code, "READY");
+  assert.deepEqual(observed, [
+    ["read-only-env", true], ["public-api", true], ["mutation-env", true], ["real-account", true],
+  ]);
+});

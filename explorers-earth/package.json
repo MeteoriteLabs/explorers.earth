@@ -35,7 +35,9 @@
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "verify:public-api": "node scripts/verify-public-api-access.mjs",
     "verify:public-profile:env": "node scripts/verify-public-profile-env.mjs",
-    "test:public-profile-contract": "node --test scripts/__tests__/playwright-project-contract.test.mjs scripts/__tests__/playwright-server-identity.test.mjs scripts/__tests__/public-profile-contract.test.mjs scripts/__tests__/public-profile-formal-review-contract.test.mjs scripts/__tests__/verify-public-api-access.test.mjs scripts/__tests__/verify-public-profile-env.test.mjs scripts/__tests__/verificationResult.test.mjs"
+    "verify:public-profile": "node scripts/verify-public-profile.mjs",
+    "verify:public-profile:release": "node scripts/verify-public-profile.mjs",
+    "test:public-profile-contract": "node --test scripts/__tests__/playwright-project-contract.test.mjs scripts/__tests__/playwright-server-identity.test.mjs scripts/__tests__/public-profile-contract.test.mjs scripts/__tests__/public-profile-formal-review-contract.test.mjs scripts/__tests__/verify-public-api-access.test.mjs scripts/__tests__/verify-public-profile-env.test.mjs scripts/__tests__/verify-public-profile.test.mjs scripts/__tests__/verificationResult.test.mjs"
   },
   "dependencies": {
     "@apollo/client": "^3.12.2",

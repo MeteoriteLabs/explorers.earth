@@ -52,6 +52,15 @@ Run these commands from `explorers-earth/` with Node `>=22.12` after `npm ci`. I
 | Live read-only | `npm run verify:public-api -- --username=<published-username> --json` | No mutation; usually seconds | Redacted JSON only |
 | Protected mutation | `npm run verify:public-profile:env -- --mode=mutation --json` | Dedicated non-production account only | Any retained recovery path blocks further mutations |
 
+The contributor golden path is `npm run verify:public-profile`; it runs the
+fixture environment doctor, contract tests, lint, all three TypeScript gates,
+i18n, unit tests, focused public-profile coverage, deterministic Playwright, and
+the production build. Use `--headed` to watch Chrome, `--dry-run` to list work,
+and `--json` for the final redacted envelope. The protected release path is
+`npm run verify:public-profile:release -- --username=<published-username>` and
+must never be used with a personal or production account. Its `--dry-run --json`
+form is safe because it executes no child process.
+
 The protected browser journey is documented in
 [`explorers-earth/e2e/real-account/README.md`](../explorers-earth/e2e/real-account/README.md).
 Run `npm run test:e2e:real-account:read-only` for the non-mutating guest route

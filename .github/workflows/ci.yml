@@ -1,6 +1,17 @@
 name: CI Pipeline
 
 on:
+  workflow_dispatch:
+    inputs:
+      run_protected_public_profile:
+        description: 'Run the approved dedicated-account public-profile release gate'
+        required: true
+        type: boolean
+        default: false
+      public_profile_username:
+        description: 'Published dedicated test-account username'
+        required: false
+        type: string
   pull_request:
     branches: [main, develop]
     paths-ignore:
@@ -75,6 +86,15 @@ jobs:
         # checks zero files — a false green. `-b` follows references and matches
         # the compile step in `npm run build`.
         run: npx tsc -b
+
+      - name: Type-check unit tests
+        run: npm run typecheck:test
+
+      - name: Type-check Playwright tests
+        run: npm run typecheck:e2e
+
+      - name: Check translations
+        run: npm run i18n:check
 
   # ─────────────────────────────────────────
   # Job 3: Unit Tests with Coverage Report
@@ -254,8 +274,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright E2E tests
-        run: npx playwright test --project=chromium
+      - name: Run deterministic Playwright E2E tests
+        run: npm run test:e2e
         env:
           CI: true
           # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
@@ -273,7 +293,19 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: explorers-earth/playwright-report/
+          path: explorers-earth/playwright-report/deterministic/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload machine-readable Playwright summaries
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deterministic-playwright-summaries
+          path: |
+            explorers-earth/test-results/playwright/deterministic/summary.json
+            explorers-earth/test-results/playwright/deterministic/junit.xml
+          if-no-files-found: error
           retention-days: 7
 
       - name: Upload screenshots/videos on failure
@@ -281,7 +313,8 @@ jobs:
         if: failure()
         with:
           name: e2e-failure-artifacts
-          path: explorers-earth/test-results/
+          path: explorers-earth/test-results/playwright/deterministic/failure-artifacts/
+          if-no-files-found: warn
           retention-days: 7
 
       - name: Upload public profile contact-sheet artifact
@@ -290,5 +323,78 @@ jobs:
         with:
           name: public-profile-contact-sheet
           path: explorers-earth/test-results/contact-sheet/
+          if-no-files-found: warn
           retention-days: 14
+
+  protected-public-profile-release:
+    name: 🔒 Protected Public Profile Release
+    if: github.event_name == 'workflow_dispatch' && inputs.run_protected_public_profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: public-profile-release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run approved protected release verification
+        run: npm run verify:public-profile:release -- --username="${{ inputs.public_profile_username }}" --json
+        env:
+          VITE_API_URL: ${{ vars.PUBLIC_API_URL }}
+          VITE_PUBLIC_READ_ACCESS_TOKEN: ${{ secrets.VITE_PUBLIC_READ_ACCESS_TOKEN }}
+          VITE_ANALYTICS_WRITE_ACCESS_TOKEN: ${{ secrets.VITE_ANALYTICS_WRITE_ACCESS_TOKEN }}
+          PUBLIC_API_CAPABILITY_SCOPE: ${{ vars.PUBLIC_API_CAPABILITY_SCOPE }}
+          PUBLIC_API_EXPECTED_ORIGIN: ${{ vars.PUBLIC_API_EXPECTED_ORIGIN }}
+          PUBLIC_API_ORIGIN_POLICY: ${{ vars.PUBLIC_API_ORIGIN_POLICY }}
+          PUBLIC_API_RATE_LIMIT_POLICY: ${{ vars.PUBLIC_API_RATE_LIMIT_POLICY }}
+          PUBLIC_API_CONTROLLED_FIXTURE: 'true'
+          PUBLIC_API_PRIVATE_ACCOUNT_ID: ${{ vars.PUBLIC_API_PRIVATE_ACCOUNT_ID }}
+          PUBLIC_API_PRIVATE_LIST_ID: ${{ vars.PUBLIC_API_PRIVATE_LIST_ID }}
+          PUBLIC_API_PRIVATE_ITEM_ID: ${{ vars.PUBLIC_API_PRIVATE_ITEM_ID }}
+          PUBLIC_API_PRIVATE_LIST_SLUG: ${{ vars.PUBLIC_API_PRIVATE_LIST_SLUG }}
+          PUBLIC_API_RUN_ID: ${{ github.run_id }}
+          PUBLIC_PROFILE_MUTATION_APPROVED: ${{ vars.PUBLIC_PROFILE_MUTATION_APPROVED }}
+          PUBLIC_PROFILE_TEST_ACCOUNT_MARKER: ${{ vars.PUBLIC_PROFILE_TEST_ACCOUNT_MARKER }}
+          PUBLIC_API_ANALYTICS_QA_SINK: ${{ vars.PUBLIC_API_ANALYTICS_QA_SINK }}
+          PUBLIC_API_ANALYTICS_CANARY_MUTATION: ${{ vars.PUBLIC_API_ANALYTICS_CANARY_MUTATION }}
+          PUBLIC_API_ANALYTICS_CLEANUP_MUTATION: ${{ vars.PUBLIC_API_ANALYTICS_CLEANUP_MUTATION }}
+          PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY: ${{ vars.PUBLIC_API_ANALYTICS_CLEANUP_VERIFY_QUERY }}
+          E2E_PROFILE_USERNAME: ${{ inputs.public_profile_username }}
+          E2E_PROFILE_ROUTE_FIXTURES: ${{ secrets.E2E_PROFILE_ROUTE_FIXTURES }}
+          E2E_PROFILE_STORAGE_STATE: ${{ secrets.E2E_PROFILE_STORAGE_STATE }}
+          E2E_PROFILE_NON_OWNER_STORAGE_STATE: ${{ secrets.E2E_PROFILE_NON_OWNER_STORAGE_STATE }}
+          E2E_PROFILE_GALLERY_FILE: ${{ vars.E2E_PROFILE_GALLERY_FILE }}
+          E2E_PROFILE_LIVE_WRITES: '1'
+          E2E_PROFILE_LIVE_WRITE_CONFIRMATION: I_APPROVE_PROFILE_MUTATION_AND_RESTORE
+
+      - name: Upload required redacted protected summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protected-public-profile-summary
+          path: |
+            explorers-earth/test-results/public-profile-verification/verification-summary.json
+            explorers-earth/test-results/playwright/real-account-redacted/summary.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload optional protected failure media
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: protected-public-profile-failure-artifacts
+          path: explorers-earth/test-results/playwright/real-account-redacted/failure-artifacts/
+          if-no-files-found: warn
+          retention-days: 7
 

@@ -177,14 +177,14 @@ test("bounded secondary settings cases cover every value and every factor pair",
 });
 
 test.describe("Public Profile Theme & Customization E2E", () => {
-  test("renders homepage, navigation, and theme system elements", async ({ context, page }) => {
+  test("renders the branded bootstrap while authenticated profile navigation settles", async ({ context, page }) => {
     await setupMockAuthentication(context);
     await page.goto("/");
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("text=explorers.earth").first()).toBeVisible();
+    await expect(page.locator(".earth-loader")).toBeVisible();
 
     await page.goto("/profile");
     await page.waitForLoadState("domcontentloaded");
-    expect(page.url()).toContain("/profile");
+    await expect(page).toHaveURL(/\/profile$/);
   });
 });
