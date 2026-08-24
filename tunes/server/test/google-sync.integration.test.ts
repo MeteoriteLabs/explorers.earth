@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createValidatedApp as createApp } from '../config/music-startup';
-import { prepareProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
+import { prepareProtectedRuntimeTestAuthority, releaseProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
 
 let storage: typeof import('../storage')['storage'];
 
@@ -29,7 +29,10 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
     ({ storage } = await import('../storage'));
     await removeFresh();
   });
-  afterAll(removeFresh);
+  afterAll(async () => {
+    await removeFresh();
+    await releaseProtectedRuntimeTestAuthority();
+  });
 
   it('rejects unauthenticated username/email adoption without creating a user', async () => {
     const r = await request(app)

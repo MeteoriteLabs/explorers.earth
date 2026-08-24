@@ -5,7 +5,7 @@ import pg from "pg";
 import { createValidatedApp as createApp } from "../../config/music-startup";
 import { MusicIdentityRepository } from "../../repositories/musicIdentityRepository";
 import type { Pool } from "pg";
-import { prepareProtectedRuntimeTestAuthority } from "../protected-runtime-test-authority";
+import { prepareProtectedRuntimeTestAuthority, releaseProtectedRuntimeTestAuthority } from "../protected-runtime-test-authority";
 
 let pool: Pool;
 let authorityPool: Pool;
@@ -79,6 +79,7 @@ describePostgres("C3 real migrated runtime graph", () => {
     await authorityPool?.query("DELETE FROM users WHERE id=$1", [userId]).catch(() => undefined);
     await authorityPool?.query("DELETE FROM users WHERE strapi_user_document_id=$1", [ensurePerson]).catch(() => undefined);
     await authorityPool?.end().catch(() => undefined);
+    await releaseProtectedRuntimeTestAuthority();
   });
 
   it("runs the sole bodyless ensure through the real route graph and keeps legacy boundaries tombstoned", async () => {

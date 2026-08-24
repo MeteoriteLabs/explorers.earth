@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createValidatedApp as createApp } from '../config/music-startup';
-import { prepareProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
+import { prepareProtectedRuntimeTestAuthority, releaseProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
 
 let storage: typeof import('../storage')['storage'];
 
@@ -59,6 +59,7 @@ afterAll(async () => {
   } catch {
     /* leave the test row; it's namespaced (e2e_leak_test_user) */
   }
+  await releaseProtectedRuntimeTestAuthority();
 });
 
 describe('CRITICAL: user-returning responses strip secrets', () => {

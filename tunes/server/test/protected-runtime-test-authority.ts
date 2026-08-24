@@ -34,3 +34,12 @@ export async function prepareProtectedRuntimeTestAuthority(): Promise<MusicStart
       }, authorityName, dependencies),
   };
 }
+
+export async function releaseProtectedRuntimeTestAuthority(): Promise<void> {
+  const authority = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 1 });
+  try {
+    await authority.query("REVOKE music_runtime FROM music_runtime_login");
+  } finally {
+    await authority.end();
+  }
+}
