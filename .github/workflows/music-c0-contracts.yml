@@ -52,7 +52,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: npm test --prefix tunes -- --run server/test/contracts
       - if: runner.os == 'Windows'
-        run: npm test --prefix tunes -- --run server/test/contracts --exclude server/test/contracts/music-fixture-secret.test.ts
+        run: npm test --prefix tunes -- --run server/test/contracts --exclude=server/test/contracts/music-fixture-secret.test.ts
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline
       - if: runner.os == 'Linux'
