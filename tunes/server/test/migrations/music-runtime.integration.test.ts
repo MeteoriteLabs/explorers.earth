@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type Server as HttpServer } from "node:http";
 import request from "supertest";
+import pg from "pg";
 import { createValidatedApp as createApp } from "../../config/music-startup";
 import { MusicIdentityRepository } from "../../repositories/musicIdentityRepository";
 import type { Pool } from "pg";
 import { prepareProtectedRuntimeTestAuthority } from "../protected-runtime-test-authority";
 
 let pool: Pool;
+let authorityPool: Pool;
 let storage: typeof import("../../storage")["storage"];
 
 const runIntegration = process.env.MUSIC_C3_POSTGRES_TEST === "1";
@@ -46,6 +48,8 @@ describePostgres("C3 real migrated runtime graph", () => {
     if (!address || typeof address === "string") throw new Error("runtime Strapi did not bind");
     process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
     process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = process.env.STRAPI_URL;
+    process.env.STRAPI_FIXTURE_URL = process.env.STRAPI_URL;
+    authorityPool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 1 });
     const startupDependencies = await prepareProtectedRuntimeTestAuthority();
     ({ app, server } = await createApp(process.env, startupDependencies));
     ({ pool } = await import("../../db"));
@@ -66,10 +70,11 @@ describePostgres("C3 real migrated runtime graph", () => {
   afterAll(async () => {
     server?.close();
     strapi?.close();
-    await pool.query("DROP TRIGGER IF EXISTS runtime_delete_failure ON playback_states").catch(() => undefined);
-    await pool.query("DROP FUNCTION IF EXISTS runtime_fail_delete()").catch(() => undefined);
-    await pool.query("DELETE FROM users WHERE id=$1", [userId]).catch(() => undefined);
-    await pool.query("DELETE FROM users WHERE strapi_user_document_id=$1", [ensurePerson]).catch(() => undefined);
+    await authorityPool?.query("DROP TRIGGER IF EXISTS runtime_delete_failure ON playback_states").catch(() => undefined);
+    await authorityPool?.query("DROP FUNCTION IF EXISTS runtime_fail_delete()").catch(() => undefined);
+    await authorityPool?.query("DELETE FROM users WHERE id=$1", [userId]).catch(() => undefined);
+    await authorityPool?.query("DELETE FROM users WHERE strapi_user_document_id=$1", [ensurePerson]).catch(() => undefined);
+    await authorityPool?.end().catch(() => undefined);
   });
 
   it("runs the sole bodyless ensure through the real route graph and keeps legacy boundaries tombstoned", async () => {
@@ -85,7 +90,7 @@ describePostgres("C3 real migrated runtime graph", () => {
     expect(first.body).toMatchObject({ version: "music-identity/v1", identity: { status: "active" } });
     expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE strapi_user_document_id=$1", [ensurePerson])).rows[0].count)).toBe(1);
     await request(app).post("/api/music/identity/ensure").set("authorization", authorization).send({ username: "forged" }).expect(400);
-    await request(app).post("/api/auth/sync").send({ username: "forged" }).expect(401);
+    await request(app).post("/api/auth/sync").send({ username: "forged" }).expect(410);
     await request(app).post("/api/register").send({ username: "forged" }).expect(410);
     await request(app).post("/graphql").send({ query: "mutation { deleteUsers { documentId } }" }).expect(410);
   });
@@ -107,9 +112,9 @@ describePostgres("C3 real migrated runtime graph", () => {
       expect(JSON.stringify(response.body)).not.toMatch(/relation .* does not exist|column .* does not exist|null value in column/i);
     }
     await request(app).post("/graphql").send({ query: "mutation { deleteUsers { documentId } }" })
-      .expect(410).expect(({ body }) => expect(body.error?.code).toBe("GRAPHQL_PROXY_REMOVED"));
+      .expect(410).expect(({ body }) => expect(body.error?.code).toBe("SURFACE_REMOVED"));
     await request(app).post("/api/auth/sync").send({ strapiUser: { username: "forged" } })
-      .expect(401).expect(({ body }) => expect(body.error?.code).toBe("AUTH_REQUIRED"));
+      .expect(410).expect(({ body }) => expect(body.error?.code).toBe("SURFACE_REMOVED"));
     const after = Number((await pool.query("SELECT count(*) AS count FROM users WHERE username=ANY($1::text[])", [forgedNames])).rows[0].count);
     expect(after).toBe(before);
   });
@@ -150,9 +155,9 @@ describePostgres("C3 real migrated runtime graph", () => {
 
   it("rolls back all seven raw-only deletes on failure, then deletes/cascades them atomically", async () => {
     for (const table of rawTables) await pool.query(`INSERT INTO ${table}(user_id) VALUES ($1)`, [userId]);
-    await pool.query(`CREATE FUNCTION runtime_fail_delete() RETURNS trigger LANGUAGE plpgsql AS $$
+    await authorityPool.query(`CREATE FUNCTION runtime_fail_delete() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'runtime injected delete failure'; END; $$`);
-    await pool.query(`CREATE TRIGGER runtime_delete_failure BEFORE DELETE ON playback_states
+    await authorityPool.query(`CREATE TRIGGER runtime_delete_failure BEFORE DELETE ON playback_states
       FOR EACH ROW EXECUTE FUNCTION runtime_fail_delete()`);
 
     await expect(storage.deleteUser(userId)).rejects.toThrow("runtime injected delete failure");
@@ -161,8 +166,8 @@ describePostgres("C3 real migrated runtime graph", () => {
     }
     expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE id=$1", [userId])).rows[0].count)).toBe(1);
 
-    await pool.query("DROP TRIGGER runtime_delete_failure ON playback_states");
-    await pool.query("DROP FUNCTION runtime_fail_delete()");
+    await authorityPool.query("DROP TRIGGER runtime_delete_failure ON playback_states");
+    await authorityPool.query("DROP FUNCTION runtime_fail_delete()");
     const activeDeletion = await storage.deleteUser(userId);
     expect(activeDeletion.operationId).toMatch(/^storage-delete:[a-f0-9]{64}$/);
     for (const table of rawTables) {

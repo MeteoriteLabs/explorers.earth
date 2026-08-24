@@ -36,8 +36,8 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
       .post('/api/auth/sync')
       .send({ strapiUser: { username: FRESH.username, email: FRESH.email } });
 
-    expect(r.status).toBe(401);
-    expect(r.body.error?.code).toBe('AUTH_REQUIRED');
+    expect(r.status).toBe(410);
+    expect(r.body.error?.code).toBe('SURFACE_REMOVED');
     const persisted = await storage.getUserByUsername(FRESH.username);
     expect(persisted).toBeUndefined();
   });

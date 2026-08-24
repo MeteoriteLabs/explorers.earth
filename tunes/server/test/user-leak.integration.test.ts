@@ -48,6 +48,7 @@ beforeAll(async () => {
   await storage.updateUser(created.id, {
     otp: SEED.otp,
     emailVerificationToken: 'verif-seed-token',
+    guestDiscoverable: true,
   } as any);
 });
 
@@ -63,13 +64,13 @@ afterAll(async () => {
 describe('CRITICAL: user-returning responses strip secrets', () => {
   it('GET /api/auth/user-data → no secret fields', async () => {
     const r = await request(app).get(`/api/auth/user-data?username=${SEED.username}`);
-    expect(r.status).toBe(401);
+    expect(r.status).toBe(410);
     for (const value of [SEED.password, SEED.otp, 'verif-seed-token']) expect(JSON.stringify(r.body)).not.toContain(value);
   });
 
   it('GET /api/auth/onboarding-status → no secret fields', async () => {
     const r = await request(app).get(`/api/auth/onboarding-status?username=${SEED.username}`);
-    expect(r.status).toBe(401);
+    expect(r.status).toBe(410);
     for (const value of [SEED.password, SEED.otp, 'verif-seed-token']) expect(JSON.stringify(r.body)).not.toContain(value);
   });
 
@@ -77,7 +78,7 @@ describe('CRITICAL: user-returning responses strip secrets', () => {
     const r = await request(app)
       .post('/api/auth/sync')
       .send({ strapiUser: { username: SEED.username, email: SEED.email } });
-    expect(r.status).toBe(401);
+    expect(r.status).toBe(410);
     for (const value of [SEED.password, SEED.otp, 'verif-seed-token']) expect(JSON.stringify(r.body)).not.toContain(value);
   });
 
