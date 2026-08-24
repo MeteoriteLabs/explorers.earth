@@ -77,6 +77,10 @@ describe("Music deployment authority files", () => {
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain("verify-publication-authority.mjs");
     expect(read(".github/workflows/tunes-deploy.yml")).toContain("verify-publication-authority.mjs");
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");
+    const workflow = parseYaml(ci);
+    const proof = workflow.jobs["build-test-scan-push"].steps
+      .find((step: { name?: string }) => step.name === "Prove gate entrypoint is in the exact image").run;
+    expect(proof).toMatch(/node[^\r\n]*-e[ \t]+"const\{existsSync\}/);
   });
 
   it("documents the exact ordered publication migration recovery authority", () => {
