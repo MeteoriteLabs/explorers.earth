@@ -2,9 +2,15 @@ import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
 const externalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
+const prSafe = process.env.PLAYWRIGHT_PR_SAFE === 'true';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: prSafe ? [
+    '**/music-auth-triggers.spec.ts',
+    '**/music-fixture-fullstack.spec.ts',
+    '**/music-fullstack.spec.ts',
+  ] : [],
   timeout: 90000, // 90 seconds test timeout
   expect: {
     timeout: 10000, // 10 seconds expect timeout

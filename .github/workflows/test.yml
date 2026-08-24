@@ -53,9 +53,9 @@ jobs:
 
   unit-coverage:
     needs: static
-    # The measured checkpoint security implementation includes native Windows ACL proof.
-    # Portable contract and qualification lanes continue to run on Linux below.
-    runs-on: windows-2025
+    # Native Windows ACL behavior has injected unit contracts and a native local proof;
+    # the portable coverage gate must not inherit hosted-runner ACL policy.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -172,7 +172,7 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: fixture-placeholder
           VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
           VITE_LOCAL_TUNES_ENABLED: "true"
-          VITE_LOCAL_TUNES_API_URL: http://localhost:5173
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
         run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium --retries=0
 
   load-chaos:

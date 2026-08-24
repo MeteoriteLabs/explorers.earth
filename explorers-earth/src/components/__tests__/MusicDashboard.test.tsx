@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import MusicDashboard from "../MusicDashboard";
 import { musicWorkspaceClient } from "../../hooks/useTunesDashboard";
+import { MusicClientError } from "../../lib/localTunesApiClient";
 
 const base = {
   playlists: [] as Array<any>,
@@ -161,6 +162,34 @@ describe("Music workspace UI", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
     expect(publish.mock.calls[1][1]).toBe(publish.mock.calls[0][1]);
+  });
+
+  it.each([
+    new MusicClientError("REQUEST_INVALID", 400, "The publication command is invalid."),
+    new MusicClientError(
+      "AUTH_UNAVAILABLE",
+      409,
+      "The saved publication command has expired.",
+      undefined,
+      "PUBLICATION_REPLAY_EXPIRED",
+      false,
+    ),
+  ])("retires a publication command rejected with terminal code $code/$upstreamCode", async (terminalError) => {
+    let uuid = 0;
+    vi.stubGlobal("crypto", { randomUUID: () => `11111111-2222-4333-8444-${String(++uuid).padStart(12, "0")}` });
+    const publish = vi.spyOn(musicWorkspaceClient, "setPublication")
+      .mockRejectedValueOnce(terminalError)
+      .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
+
+    render(<MusicDashboard data={base} scope={scope} />);
+    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Public" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
+
+    expect(publish.mock.calls[1][1]).not.toBe(publish.mock.calls[0][1]);
   });
 
   it("keeps recovery and sharing guidance at the approved body-size token", async () => {

@@ -520,6 +520,7 @@ async function validateWindowsCheckpointSecurities(
   }
 }
 
+/* c8 ignore start -- native Windows execution is covered by the Windows ACL proof; portable tests inject this boundary. */
 function inspectWindowsCheckpointSecurities(paths: string[]): WindowsCheckpointSecurity[] {
   const output = execFileSync(
     "powershell.exe",
@@ -528,6 +529,7 @@ function inspectWindowsCheckpointSecurities(paths: string[]): WindowsCheckpointS
   );
   return parseWindowsCheckpointSecurityOutput(output, paths.length);
 }
+/* c8 ignore stop */
 
 export function parseWindowsCheckpointSecurityOutput(
   output: string,

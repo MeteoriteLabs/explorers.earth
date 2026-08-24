@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import type { TunesDashboardData } from "../hooks/useTunesDashboard";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 import type { MusicPlaylist, MusicPublicationMode } from "../features/music/musicWorkspaceClient";
+import { MusicClientError } from "../lib/localTunesApiClient";
 import {
   completeMusicPublicationCommand,
   getOrCreateMusicPublicationCommand,
@@ -210,7 +211,13 @@ function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardD
       await data.refetch();
       toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
       if (mode !== "unlisted") onClose();
-    } catch {
+    } catch (cause) {
+      if (
+        cause instanceof MusicClientError
+        && (cause.code === "REQUEST_INVALID" || cause.upstreamCode === "PUBLICATION_REPLAY_EXPIRED")
+      ) {
+        completeMusicPublicationCommand(scope, mode, command.key);
+      }
       toast.error("Music is temporarily unavailable.");
     } finally {
       setSaving(false);
