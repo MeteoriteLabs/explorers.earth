@@ -29,11 +29,15 @@ export interface MusicStartupDependencies extends MusicIdentityConfigDependencie
 }
 
 async function loadProductionRuntime(): Promise<MusicServerRuntime> {
-  const [{ createApp }, { setupVite, serveStatic }] = await Promise.all([
+  const [{ createApp }, { serveStatic }] = await Promise.all([
     import("../app"),
-    import("../vite"),
+    import("../runtime"),
   ]);
-  return { createApp, setupVite, serveStatic };
+  return {
+    createApp,
+    serveStatic,
+    setupVite: async (app, server) => (await import("../vite")).setupVite(app, server),
+  };
 }
 
 /** The only startup discriminator. No routes, storage, or listener are loaded before it succeeds. */

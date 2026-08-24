@@ -9,6 +9,23 @@ const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Tunes workflow provenance and input boundary", () => {
+  it("blocks fixable high vulnerabilities and retains a complete disclosure scan", () => {
+    const workflow = parseYaml(read(".github/workflows/tunes.yml"));
+    const steps = workflow.jobs["build-test-scan-push"].steps;
+    const actionable = steps.find((step: any) => step.name === "Block fixable high and critical image vulnerabilities");
+    const disclosure = steps.find((step: any) => step.name === "Report all high and critical image vulnerabilities");
+    const upload = steps.find((step: any) => step.name === "Retain complete vulnerability report");
+    expect(actionable.with).toMatchObject({ "fail-build": true, "severity-cutoff": "high", "only-fixed": true });
+    expect(disclosure.if).toBe("always()");
+    expect(disclosure["continue-on-error"]).toBe(true);
+    expect(disclosure.with).toMatchObject({ "fail-build": false, "severity-cutoff": "high", "only-fixed": false, "output-format": "sarif" });
+    expect(disclosure.with["output-file"]).toBe("grype-complete.sarif");
+    expect(upload.if).toBe("always()");
+    expect(upload.uses).toBe("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02");
+    expect(upload.with.path).toBe("grype-complete.sarif");
+    expect(steps.indexOf(actionable)).toBeLessThan(steps.findIndex((step: any) => step.name === "Push and expose registry digest"));
+  });
+
   it("makes manual dispatch rollback-only and keeps deploy inputs internal to workflow_call", () => {
     // Production break caught: a manual caller selects an arbitrary package or commit for production deploy.
     const workflow = parseYaml(read(".github/workflows/tunes-deploy.yml"));

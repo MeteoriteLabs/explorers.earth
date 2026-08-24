@@ -106,13 +106,38 @@ jobs:
           docker run --rm --entrypoint node
           "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
           "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql','/app/migrations/0008_credential_revocation_operations.sql','/app/migrations/0009_credential_revocation_history_immutability.sql','/app/migrations/0010_least_privilege_runtime_role.sql','/app/migrations/0011_durable_publication_idempotency.sql','/app/migrations/0012_publication_replay_expiry_guard.sql','/app/migrations/0013_publication_operation_database_clock.sql','/app/migrations/0014_durable_reactivation_authority.sql','/app/migrations/0015_publication_operation_archive.sql','/app/migrations/0016_publication_operation_retention.sql','/app/migrations/0017_publication_idempotency_key_retirement.sql'])if(!existsSync(p))process.exit(1)"
-      - name: Scan the exact built image
+      - name: Prove the exact production image loads its server graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 30s docker run --rm --entrypoint node \
+            "${{ steps.image.outputs.name }}:${{ github.sha }}" \
+            dist/server/deployment/run-production-graph-smoke.js
+      - name: Block fixable high and critical image vulnerabilities
         uses: anchore/scan-action@v7
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: true
           severity-cutoff: high
           only-fixed: true
+      - name: Report all high and critical image vulnerabilities
+        if: always()
+        continue-on-error: true
+        uses: anchore/scan-action@v7
+        with:
+          image: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          fail-build: false
+          severity-cutoff: high
+          only-fixed: false
+          output-format: sarif
+          output-file: grype-complete.sarif
+      - name: Retain complete vulnerability report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: grype-complete-${{ github.sha }}
+          path: grype-complete.sarif
+          if-no-files-found: error
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3

@@ -392,7 +392,7 @@ export class MusicDomainRepository {
     return {
       state,
       noindex: state === "unlisted",
-      playlist: state === "public" || (state === "unlisted" && (row.has_visible_playlist ?? row.playlist_id)) ? publicPlaylist : undefined,
+      playlist: state === "public" || state === "unlisted" ? publicPlaylist : undefined,
     };
   }
 

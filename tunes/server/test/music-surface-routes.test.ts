@@ -342,11 +342,19 @@ describe("canonical Music REST surfaces", () => {
   it("marks unlisted capability reads noindex and returns a distinct public-only 429", async () => {
     // Break caught: unlisted pages enter indexing or public throttling is disguised as resource existence.
     const unlisted = appFor({
-      resolveGuestResource: vi.fn(async () => ({ state: "unlisted", noindex: true, playlist: { id: 1 } })),
+      resolveGuestResource: vi.fn(async () => ({
+        state: "unlisted",
+        noindex: true,
+        playlist: {
+          songs: [], currentlyPlaying: undefined, playedSongs: [], playlists: [],
+          user: { id: 11, username: "empty-owner", guestUrl: "empty-unlisted" },
+        },
+      })),
     });
     const found = await request(unlisted.app).get(`/api/playlist/${"A".repeat(43)}`);
     expect(found.status).toBe(200);
     expect(found.headers["x-robots-tag"]).toBe("noindex, nofollow");
+    expect(found.body).toMatchObject({ songs: [], playlists: [], user: { id: 11, username: "empty-owner", guestUrl: "empty-unlisted" } });
 
     const limitedLookup = vi.fn(async () => ({ state: "public", playlist: { id: 2 } }));
     const limited = appFor({ resolveGuestResource: limitedLookup }, { publicRateLimited: () => true });

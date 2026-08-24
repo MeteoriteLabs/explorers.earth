@@ -31,6 +31,16 @@ describe("Music deployment authority files", () => {
     expect(dockerfile).toContain("COPY --from=prod-deps /app/node_modules ./node_modules");
     expect(dockerfile).not.toContain("COPY --from=deps /app/node_modules ./node_modules");
     expect(dockerfile).toContain("rm -rf /usr/local/lib/node_modules/npm");
+    expect(read("tunes/server/app.ts")).not.toContain('from "./vite"');
+    expect(read("tunes/server/runtime.ts")).not.toMatch(/from ["']vite["']/);
+    expect(read("tunes/server/runtime.ts")).not.toContain("nanoid");
+    expect(JSON.parse(read("tunes/package.json")).scripts.build).toContain("--splitting");
+    expect(JSON.parse(read("tunes/package.json")).scripts.build).toContain("server/deployment/run-production-graph-smoke.ts");
+    expect(read("tunes/server/deployment/run-production-graph-smoke.ts")).toContain('from "../app"');
+    const ci = read(".github/workflows/tunes.yml");
+    expect(ci).toContain("Prove the exact production image loads its server graph");
+    expect(ci).toContain("timeout 30s docker run");
+    expect(ci).toContain("dist/server/deployment/run-production-graph-smoke.js");
   });
 
   it("mounts the dedicated lifecycle-proof authority into both production Tunes slots", () => {

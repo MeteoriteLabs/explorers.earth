@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes/index";
-import { log } from "./vite";
+import { log } from "./runtime";
 import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";

@@ -315,6 +315,36 @@ describe("MusicDomainRepository owner predicates", () => {
     });
   });
 
+  it("serves an empty unlisted publication to its valid capability", async () => {
+    const capability = "C".repeat(43);
+    const harness = recordingPool([{
+      id: 31,
+      identity_status: "active",
+      guest_capability_hash: hashGuestCapability(capability),
+      guest_capability_revoked_at: null,
+      guest_discoverable: false,
+      guest_url: "unlisted-empty",
+      username: "display",
+      venue_name: null,
+      theme: null,
+      allow_song_requests: false,
+      allow_guest_play_on_device: false,
+      allow_playlist_sharing: true,
+      allow_recently_played_visibility: false,
+      has_visible_playlist: false,
+      songs: [],
+      currently_playing: null,
+      played_songs: [],
+      visible_playlists: [],
+    }]);
+
+    await expect(new MusicDomainRepository(harness.pool).resolveGuestResource("unlisted-empty", capability)).resolves.toMatchObject({
+      state: "unlisted",
+      noindex: true,
+      playlist: { songs: [], playlists: [] },
+    });
+  });
+
   it("lists discoverable public playlists independently of revoked guest capabilities", async () => {
     // Break caught: publishing publicly revokes an unlisted capability, but that must not remove the public URL from discovery.
     const harness = recordingPool([{
