@@ -303,11 +303,18 @@ describe("Strapi identity gateway", () => {
       connectTimeoutMs: 100,
       overallTimeoutMs: 15,
     });
-    const first = deadlineBounded.resolve("first-deadline-proof", "deadline-1");
-    const second = deadlineBounded.resolve("second-deadline-proof", "deadline-2");
-    const deadlineResults = Promise.allSettled([first, second]);
-    await deadlineResults;
-    expect(queuedFetch).toHaveBeenCalledTimes(1);
+    vi.useFakeTimers();
+    try {
+      const first = deadlineBounded.resolve("first-deadline-proof", "deadline-1");
+      const second = deadlineBounded.resolve("second-deadline-proof", "deadline-2");
+      const deadlineResults = Promise.allSettled([first, second]);
+      await vi.advanceTimersByTimeAsync(15);
+      await vi.advanceTimersByTimeAsync(25);
+      await deadlineResults;
+      expect(queuedFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps an opened circuit generation closed to stale success and stale failure races", async () => {
