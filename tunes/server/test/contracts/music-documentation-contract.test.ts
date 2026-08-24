@@ -791,6 +791,7 @@ describe("Music CI publication order", () => {
     expect(workflow.jobs?.["docs-contracts"]).not.toHaveProperty("needs");
     expect(workflow.jobs?.static).not.toHaveProperty("needs");
     expect(workflow.jobs?.["unit-coverage"]?.needs).toBe("static");
+    expect(workflow.jobs?.["unit-coverage"]?.["runs-on"]).toBe("windows-2025");
     expect(workflow.jobs?.contracts?.needs).toBe("unit-coverage");
     expect(workflow.jobs?.database?.needs).toBe("contracts");
     expect(workflow.jobs?.security?.needs).toBe("database");

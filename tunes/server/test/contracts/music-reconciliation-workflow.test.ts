@@ -153,6 +153,12 @@ describe("Music reconciliation automation contract", () => {
     const c0 = parseYaml(read(".github/workflows/music-c0-contracts.yml"));
     expect(c0.on.pull_request.paths).toContain("package.json");
     expect(c0.on.push.paths).toContain("package.json");
+    expect(c0.jobs.contracts.steps.map((step: any) => step.run).filter(Boolean)).toEqual(expect.arrayContaining([
+      "npm ci",
+      "npm ci --prefix tunes",
+    ]));
+    expect(c0.jobs.contracts.steps.findIndex((step: any) => step.run === "npm ci"))
+      .toBeLessThan(c0.jobs.contracts.steps.findIndex((step: any) => step.name === "Prove public JSON command on Node 22.12"));
     expect(tunes.on.pull_request.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
     expect(tunes.on.push.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
   });

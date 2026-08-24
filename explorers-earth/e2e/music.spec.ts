@@ -258,7 +258,7 @@ test("sharing save uses one canonical publication command and restores focus", a
   expect(audit.publicationCommands).toHaveLength(1);
   expect(audit.publicationCommands[0]).toEqual({
     body: { mode: "public" },
-    idempotencyKey: expect.stringMatching(/^publication-/),
+    idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f-]{36}$/),
   });
 });
 

@@ -1,4 +1,7 @@
-import type { MusicPublicationMode } from "../../../../tunes/shared/musicPublicationContract";
+import {
+  createMusicPublicationIdempotencyKey,
+  type MusicPublicationMode,
+} from "../../../../tunes/shared/musicPublicationContract";
 
 export interface MusicPublicationOwnerScope {
   userDocumentId: string;
@@ -33,7 +36,7 @@ export function getOrCreateMusicPublicationCommand(
     owner: { ...owner },
     mode,
     requestFingerprint: fingerprint(mode),
-    key: `publication-${crypto.randomUUID()}`,
+    key: createMusicPublicationIdempotencyKey(Date.now(), crypto.randomUUID()),
   };
   pendingCommands.set(index, created);
   return created;

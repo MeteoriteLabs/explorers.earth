@@ -21,6 +21,17 @@ function heredoc(source: string, opener: string): string {
 }
 
 describe("Music deployment authority files", () => {
+  it("mounts the dedicated lifecycle-proof authority into both production Tunes slots", () => {
+    const compose = parseYaml(read("docker-compose.yml"));
+    for (const slot of ["tunes-blue", "tunes-green"]) {
+      expect(compose.services[slot].environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE, slot)
+        .toBe("/run/secrets/strapi-lifecycle-proof");
+      expect(compose.services[slot].volumes, slot).toContain(
+        "${STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST:?STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST is required}:/run/secrets/strapi-lifecycle-proof:ro",
+      );
+    }
+  });
+
   it("has one build authority, one deploy authority, and no legacy host rebuild path", () => {
     const result = auditDeploymentAuthority({
       ciWorkflow: read(".github/workflows/tunes.yml"),

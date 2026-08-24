@@ -30,6 +30,7 @@ function productionModel(): { services: Record<string, ComposeService> } {
       MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "/opt/explorers/music-token-secrets",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-2026-08",
       MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST: "/opt/explorers/music-publication-response",
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST: "/opt/explorers/strapi-lifecycle-proof",
       EXPLORERS_IMAGE: `ghcr.io/example/explorers@${digest}`,
       TUNES_BLUE_IMAGE: `ghcr.io/example/tunes@${digest}`, TUNES_BLUE_DIGEST: digest, TUNES_BLUE_COMMIT: "a".repeat(40),
       TUNES_GREEN_IMAGE: `ghcr.io/example/tunes@${digest}`, TUNES_GREEN_DIGEST: digest, TUNES_GREEN_COMMIT: "a".repeat(40),

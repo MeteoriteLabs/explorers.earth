@@ -113,7 +113,7 @@ describe("Music workspace UI", () => {
     await userEvent.click(save);
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Music sharing" })).not.toBeInTheDocument());
     expect(publish.mock.calls[0][0]).toBe("public");
-    expect(publish.mock.calls[0][1]).toMatch(/^publication-/);
+    expect(publish.mock.calls[0][1]).toMatch(/^tunes-share-v1-\d{13}-[0-9a-f-]{36}$/);
     expect(publish.mock.calls[1]).toEqual(publish.mock.calls[0]);
     expect(opener).toHaveFocus();
   });

@@ -72,7 +72,7 @@ for (const viewport of [
     expect(qualification.publicationMode()).toBe("public");
     expect(qualification.publicationCommands).toEqual([{
       body: { mode: "public" },
-      idempotencyKey: expect.stringMatching(/^publication-/),
+      idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f-]{36}$/),
     }]);
 
     await expectButtonsToMeetTouchTarget(page.locator("section.dashboard-theme"));

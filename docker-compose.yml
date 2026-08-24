@@ -21,6 +21,7 @@ x-tunes-environment: &tunes-environment
   TRUST_PROXY_HOPS: "1"
   MUSIC_TRUSTED_PROXY_IP: ${TRAEFIK_PROXY_IP:-172.31.250.2}
   STRAPI_ACCESS_TOKEN: ${STRAPI_ACCESS_TOKEN:?STRAPI_ACCESS_TOKEN is required}
+  STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: /run/secrets/strapi-lifecycle-proof
   STRAPI_JWT_SECRET: ${STRAPI_JWT_SECRET:?STRAPI_JWT_SECRET is required}
   STRAPI_GRAPHQL_ENDPOINT: ${STRAPI_GRAPHQL_ENDPOINT:-}
   STRAPI_API_KEY: ${STRAPI_API_KEY:-}
@@ -87,6 +88,7 @@ x-tunes-service: &tunes-service
     - ${MUSIC_TOKEN_SECRET_DIRECTORY_HOST:?MUSIC_TOKEN_SECRET_DIRECTORY_HOST is required}:/run/secrets/music-token:ro
     - ${MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST:?MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST is required}:/run/secrets/music-publication-response:ro
     - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
+    - ${STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST:?STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST is required}:/run/secrets/strapi-lifecycle-proof:ro
   networks:
     - proxy
     - internal

@@ -42,7 +42,10 @@ jobs:
         with:
           node-version: "22.12"
           cache: npm
-          cache-dependency-path: tunes/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+      - run: npm ci
       - run: npm ci --prefix tunes
       - name: Prove public JSON command on Node 22.12
         run: npm run --silent music:fixtures:capture -- --format json

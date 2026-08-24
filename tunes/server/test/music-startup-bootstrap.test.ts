@@ -92,6 +92,7 @@ function renderedProductionEnvironment(): Record<string, string> {
     MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "C:/fixture/music-token-secrets",
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-current",
     MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST: "C:/fixture/music-publication-response",
+    STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST: "C:/fixture/strapi-lifecycle-proof",
     EXPLORERS_IMAGE: `ghcr.io/example/explorers@${digestA}`,
     TUNES_BLUE_IMAGE: `ghcr.io/example/tunes@${digestA}`,
     TUNES_BLUE_DIGEST: digestA,
