@@ -48,9 +48,9 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix tunes
       - name: Prove public JSON command on Node 22.12
-        run: npm run --silent music-cli -- fixtures:capture --format json
+        run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
       - run: npm test --prefix tunes -- --run server/test/contracts
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline
       - if: runner.os == 'Linux'
-        run: docker compose -p explorers-music-fixture -f docker-compose.music-test.yml config --quiet
+        run: docker compose --env-file .env.music.test.example -p explorers-music-fixture -f docker-compose.music-test.yml config --quiet

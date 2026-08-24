@@ -160,7 +160,9 @@ describe("Music reconciliation automation contract", () => {
     expect(c0.jobs.contracts.steps.findIndex((step: any) => step.run === "npm ci"))
       .toBeLessThan(c0.jobs.contracts.steps.findIndex((step: any) => step.name === "Prove public JSON command on Node 22.12"));
     expect(c0.jobs.contracts.steps.find((step: any) => step.name === "Prove public JSON command on Node 22.12").run)
-      .toBe("npm run --silent music-cli -- fixtures:capture --format json");
+      .toBe("node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json");
+    expect(c0.jobs.contracts.steps.find((step: any) => step.run?.includes("docker compose")).run)
+      .toContain("--env-file .env.music.test.example");
     expect(tunes.on.pull_request.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
     expect(tunes.on.push.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
   });
