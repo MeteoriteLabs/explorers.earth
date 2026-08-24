@@ -1,6 +1,11 @@
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import pg from "pg";
 import { migrateMusicDatabase } from "../db/migrate";
+import { provisionMusicRuntimeLogin } from "../db/music-runtime-role";
 import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
@@ -44,6 +49,20 @@ export default async function setupIntegrationDatabase(): Promise<void> {
       throw new Error("integration tests require PostgreSQL 15 before migration");
     }
     await migrateMusicDatabase(pool);
+    const runtimePassword = randomBytes(32).toString("base64url");
+    await provisionMusicRuntimeLogin(pool, {
+      loginRole: process.env.MUSIC_DATABASE_USER ?? "music_runtime_login",
+      password: runtimePassword,
+    });
+    const secretDirectory = mkdtempSync(join(tmpdir(), "music-runtime-integration-"));
+    const passwordFile = join(secretDirectory, "runtime-password");
+    writeFileSync(passwordFile, runtimePassword, { mode: 0o600 });
+    const target = new URL(rawTarget);
+    process.env.MUSIC_DATABASE_HOST = target.hostname;
+    process.env.MUSIC_DATABASE_PORT = target.port;
+    process.env.MUSIC_DATABASE_NAME = target.pathname.slice(1);
+    process.env.MUSIC_DATABASE_PASSWORD_FILE = passwordFile;
+    delete process.env.DATABASE_URL;
   } finally {
     await pool.end();
   }
