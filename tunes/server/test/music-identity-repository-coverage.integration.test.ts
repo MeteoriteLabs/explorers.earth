@@ -97,6 +97,23 @@ describe("MusicIdentityRepository defensive coverage", () => {
     const absent = scriptedRepository([{ sql: "UPDATE music_reactivation_tokens", reply: { rowCount: 0 } }]);
     await expect(absent.repository.revokeReactivationToken(tokenHash)).resolves.toBe(false);
     await expect(absent.repository.revokeReactivationToken("bad")).rejects.toThrow();
+
+    const validIssue = {
+      tokenHash,
+      strapiUserId: 7,
+      userDocumentId: "user-coverage",
+      accountDocumentId: "account-coverage",
+      operationId: "10000000-0000-4000-8000-000000000001",
+      expiresInSeconds: 60,
+    };
+    await expect(absent.repository.issueReactivationToken({ ...validIssue, operationId: "invalid" }))
+      .rejects.toThrow(/reactivation operation is invalid/);
+    await expect(absent.repository.issueReactivationToken({ ...validIssue, strapiUserId: 0 }))
+      .rejects.toThrow(/token authority is invalid/);
+    await expect(absent.repository.claimReactivationToken(tokenHash, "invalid-owner"))
+      .rejects.toThrow(/reactivation lease owner is invalid/);
+    await expect(absent.repository.claimReactivationToken(tokenHash, leaseOwner, 0))
+      .rejects.toThrow(/lease duration is invalid/);
   });
   it("validates every ensure input family", async () => {
     const valid = ensureInput();
