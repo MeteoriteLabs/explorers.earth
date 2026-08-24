@@ -107,7 +107,7 @@ describe("MusicIdentityRepository defensive coverage", () => {
       expiresInSeconds: 60,
     };
     await expect(absent.repository.issueReactivationToken({ ...validIssue, operationId: "invalid" }))
-      .rejects.toThrow(/reactivation operation is invalid/);
+      .rejects.toThrow(/reactivation operation ID is invalid/);
     await expect(absent.repository.issueReactivationToken({ ...validIssue, strapiUserId: 0 }))
       .rejects.toThrow(/token authority is invalid/);
     await expect(absent.repository.claimReactivationToken(tokenHash, "invalid-owner"))

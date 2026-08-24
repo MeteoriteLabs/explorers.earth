@@ -611,7 +611,7 @@ describe("portable Music qualification lanes", () => {
     expect(stages.slice(1).flatMap((stage) => stage.parallel ? stage.taskIds : []))
       .not.toContain("explorer-critical-coverage");
     expect(MUSIC_QUALIFICATION_TASKS["tunes-critical-coverage"].npmArgs)
-      .toEqual(expect.arrayContaining(["--maxWorkers=1", "--fileParallelism=false"]));
+      .toEqual(expect.arrayContaining(["--maxWorkers=1", "--fileParallelism=false", "--testTimeout=30000"]));
   });
 
   it("caps the complete nightly and release scheduler instead of raising task timeouts", () => {

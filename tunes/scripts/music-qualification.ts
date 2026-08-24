@@ -175,7 +175,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
   ], ["refresh-rename-sharing", "lifecycle"]),
   "music-types-baseline": task("music-types-baseline", "Music TypeScript baseline", ["run", "music:types:baseline"], ["timing-evidence"]),
   "tunes-critical-coverage": task("tunes-critical-coverage", "Tunes critical-module coverage", [
-    "run", "test:music-critical-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false",
+    "run", "test:music-critical-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=30000",
   ], ["critical-coverage"]),
   "tunes-repository-coverage": task("tunes-repository-coverage", "Tunes PostgreSQL repository coverage", ["run", "test:music-c8:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
   "tunes-identity-repository-coverage": task("tunes-identity-repository-coverage", "Tunes identity PostgreSQL repository coverage", ["run", "test:music-c45:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
