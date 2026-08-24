@@ -2,9 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type Server as HttpServer } from "node:http";
 import request from "supertest";
 import { createValidatedApp as createApp } from "../../config/music-startup";
-import { pool } from "../../db";
 import { MusicIdentityRepository } from "../../repositories/musicIdentityRepository";
-import { storage } from "../../storage";
+import type { Pool } from "pg";
+
+let pool: Pool;
+let storage: typeof import("../../storage")["storage"];
 
 const runIntegration = process.env.MUSIC_C3_POSTGRES_TEST === "1";
 const describePostgres = runIntegration ? describe.sequential : describe.skip;
@@ -44,6 +46,8 @@ describePostgres("C3 real migrated runtime graph", () => {
     process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
     process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = process.env.STRAPI_URL;
     ({ app, server } = await createApp());
+    ({ pool } = await import("../../db"));
+    ({ storage } = await import("../../storage"));
     const identity = await new MusicIdentityRepository(pool).createIdentity({
       username: suffix,
       password: "disabled-native-password",

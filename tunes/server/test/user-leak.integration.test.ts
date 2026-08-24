@@ -13,7 +13,8 @@ import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createValidatedApp as createApp } from '../config/music-startup';
-import { storage } from '../storage';
+
+let storage: typeof import('../storage')['storage'];
 
 const SECRETS = ['password', 'otp', 'otpExpiry', 'emailVerificationToken', 'emailVerificationExpiry'] as const;
 
@@ -35,6 +36,7 @@ let seededUserId = 0;
 
 beforeAll(async () => {
   ({ app } = await createApp());
+  ({ storage } = await import('../storage'));
   // createUser assigns a random-hex guestUrl (see storage.createUser). Adjust the
   // seed fields here if the users table gains NOT NULL columns.
   const created = await storage.createUser(SEED as any);

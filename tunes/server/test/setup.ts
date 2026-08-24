@@ -3,6 +3,11 @@
 // pool on import). Pure-unit tests (sanitize-user) don't import the app. The
 // C0 fixture contract deliberately fixes its test database to loopback:55432.
 import { randomBytes } from "node:crypto";
+import { writeFileSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import pg from "pg";
+import { provisionMusicRuntimeLogin } from "../db/music-runtime-role";
 
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-at-least-32-characters';
@@ -47,6 +52,24 @@ process.env.MUSIC_RECONCILIATION_MAX_ROWS = '0';
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient
 // DATABASE_URL (it could point at dev/prod): use DATABASE_URL_TEST if provided,
 // otherwise a local throwaway. Any inherited DATABASE_URL is deliberately ignored.
-process.env.DATABASE_URL =
-  process.env.DATABASE_URL_TEST ||
-  'postgresql://tunes:tunes@127.0.0.1:5433/tunes_e2e';
+if (process.env.MUSIC_C3_POSTGRES_TEST === "1") {
+  const target = new URL(process.env.DATABASE_URL_TEST);
+  const runtimePassword = randomBytes(32).toString("base64url");
+  const authority = new pg.Pool({ connectionString: target.toString(), max: 1 });
+  try {
+    await provisionMusicRuntimeLogin(authority, {
+      loginRole: process.env.MUSIC_DATABASE_USER,
+      password: runtimePassword,
+    });
+  } finally {
+    await authority.end();
+  }
+  const secretDirectory = mkdtempSync(join(tmpdir(), "music-runtime-integration-"));
+  const passwordFile = join(secretDirectory, "runtime-password");
+  writeFileSync(passwordFile, runtimePassword, { mode: 0o600 });
+  process.env.MUSIC_DATABASE_HOST = target.hostname;
+  process.env.MUSIC_DATABASE_PORT = target.port;
+  process.env.MUSIC_DATABASE_NAME = target.pathname.slice(1);
+  process.env.MUSIC_DATABASE_PASSWORD_FILE = passwordFile;
+}
+delete process.env.DATABASE_URL;

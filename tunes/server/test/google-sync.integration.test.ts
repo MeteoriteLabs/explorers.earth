@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createValidatedApp as createApp } from '../config/music-startup';
-import { storage } from '../storage';
+
+let storage: typeof import('../storage')['storage'];
 
 const FRESH = { username: 'e2e_gsync_user', email: 'gsync-test@example.com' };
 
@@ -21,11 +22,14 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
   // beforeAll cleanup guarantees the CREATE path runs even if a prior run
   // failed mid-test and left a stale row (which would otherwise make this
   // pass via the existing-user path — a false green).
-  beforeAll(removeFresh);
+  beforeAll(async () => {
+    ({ app } = await createApp());
+    ({ storage } = await import('../storage'));
+    await removeFresh();
+  });
   afterAll(removeFresh);
 
   it('rejects unauthenticated username/email adoption without creating a user', async () => {
-    ({ app } = await createApp());
     const r = await request(app)
       .post('/api/auth/sync')
       .send({ strapiUser: { username: FRESH.username, email: FRESH.email } });
