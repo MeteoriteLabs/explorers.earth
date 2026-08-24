@@ -48,6 +48,7 @@ describePostgres("C3 real migrated runtime graph", () => {
     if (!address || typeof address === "string") throw new Error("runtime Strapi did not bind");
     process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
     process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = process.env.STRAPI_URL;
+    process.env.MUSIC_STRAPI_HOST_PORT = String(address.port);
     process.env.STRAPI_FIXTURE_URL = process.env.STRAPI_URL;
     authorityPool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 1 });
     const startupDependencies = await prepareProtectedRuntimeTestAuthority();
