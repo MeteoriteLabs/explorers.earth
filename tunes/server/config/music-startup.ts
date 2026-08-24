@@ -22,6 +22,7 @@ export interface MusicServerRuntime {
 
 export interface MusicStartupDependencies extends MusicIdentityConfigDependencies {
   loadRuntime?: () => Promise<MusicServerRuntime>;
+  resolveDatabaseConnection?: typeof resolveMusicDatabaseConnection;
   verifyDatabaseConnection?: (connection: MusicDatabaseConnection) => Promise<void>;
   host?: string;
   port?: number;
@@ -43,7 +44,11 @@ export async function validateMusicStartupEnvironment(
   if (environment.MUSIC_MODE === "fixture") parseMusicRuntimeFixtureEnvironment(environment);
   else if (environment.MUSIC_MODE !== "live") throw new Error("MUSIC_MODE must be live or fixture");
   const config = await resolveMusicIdentityRuntimeConfig(environment, dependencies);
-  const database = await resolveMusicDatabaseConnection(environment, "runtime", dependencies);
+  const database = await (dependencies.resolveDatabaseConnection ?? resolveMusicDatabaseConnection)(
+    environment,
+    "runtime",
+    dependencies,
+  );
   if (dependencies.verifyDatabaseConnection) await dependencies.verifyDatabaseConnection(database);
   else await verifyMusicRuntimeDatabaseConnection(database, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
   environment.DATABASE_URL = database.connectionString;

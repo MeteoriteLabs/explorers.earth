@@ -7,6 +7,7 @@ import {
   startMusicServer,
   type MusicServerRuntime,
 } from "../config/music-startup";
+import type { MusicDatabaseConnection } from "../config/music-database-config";
 
 const windowsEffectiveUserSid = process.platform === "win32"
   ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
@@ -134,6 +135,28 @@ function controlledRuntime(events: string[]): MusicServerRuntime {
 }
 
 describe("discriminated Music startup bootstrap", () => {
+  it("uses an injected runtime database resolver after validating the fixture contract", async () => {
+    const environment = withSigningFile(parseEnvironmentFile(resolve(repositoryRoot, ".env.music.test.example")));
+    const database: MusicDatabaseConnection = {
+      connectionString: "postgresql://music_runtime_login:test@127.0.0.1:55432/music_fixture",
+      database: "music_fixture",
+      host: "127.0.0.1",
+      password: "test",
+      port: 55432,
+      user: "music_runtime_login",
+    };
+    const resolveDatabaseConnection = vi.fn(async () => database);
+
+    await startMusicServer(environment, {
+      resolveDatabaseConnection,
+      verifyDatabaseConnection: async () => undefined,
+      loadRuntime: async () => controlledRuntime([]),
+    });
+
+    expect(resolveDatabaseConnection).toHaveBeenCalledTimes(1);
+    expect(environment.DATABASE_URL).toBe(database.connectionString);
+  });
+
   it("validates the rendered live Compose environment exactly once before application import and listen", async () => {
     const environment = withSigningFile(renderedProductionEnvironment());
     for (const fixtureOnly of [

@@ -36,8 +36,8 @@ let seededGuestUrl = '';
 let seededUserId = 0;
 
 beforeAll(async () => {
-  await prepareProtectedRuntimeTestAuthority();
-  ({ app } = await createApp());
+  const startupDependencies = await prepareProtectedRuntimeTestAuthority();
+  ({ app } = await createApp(process.env, startupDependencies));
   ({ storage } = await import('../storage'));
   // createUser assigns a random-hex guestUrl (see storage.createUser). Adjust the
   // seed fields here if the users table gains NOT NULL columns.

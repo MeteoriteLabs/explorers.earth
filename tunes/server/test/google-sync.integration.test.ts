@@ -24,8 +24,8 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
   // failed mid-test and left a stale row (which would otherwise make this
   // pass via the existing-user path — a false green).
   beforeAll(async () => {
-    await prepareProtectedRuntimeTestAuthority();
-    ({ app } = await createApp());
+    const startupDependencies = await prepareProtectedRuntimeTestAuthority();
+    ({ app } = await createApp(process.env, startupDependencies));
     ({ storage } = await import('../storage'));
     await removeFresh();
   });

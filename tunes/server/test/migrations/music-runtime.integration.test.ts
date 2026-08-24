@@ -46,8 +46,8 @@ describePostgres("C3 real migrated runtime graph", () => {
     if (!address || typeof address === "string") throw new Error("runtime Strapi did not bind");
     process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
     process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = process.env.STRAPI_URL;
-    await prepareProtectedRuntimeTestAuthority();
-    ({ app, server } = await createApp());
+    const startupDependencies = await prepareProtectedRuntimeTestAuthority();
+    ({ app, server } = await createApp(process.env, startupDependencies));
     ({ pool } = await import("../../db"));
     ({ storage } = await import("../../storage"));
     const identity = await new MusicIdentityRepository(pool).createIdentity({
