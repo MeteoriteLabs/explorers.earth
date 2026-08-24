@@ -37,9 +37,12 @@ describePostgres("C3 real migrated runtime graph", () => {
         documentId: ensurePerson, username: `${suffix}_ensure`, email: `${suffix}_ensure@example.invalid`,
         provider: "local", confirmed: true, blocked: false,
       }));
-      if (incoming.url?.startsWith("/api/accounts?")) return response.end(JSON.stringify({ data: [{
-        documentId: `${suffix}_ensure_account`, Account_Name: "Runtime Ensure", Account_Type: "Venue", mobile_number: "+15555550123",
-      }] }));
+      if (incoming.url?.startsWith("/api/accounts?")) return response.end(JSON.stringify({
+        data: [{
+          documentId: `${suffix}_ensure_account`, Account_Name: "Runtime Ensure", Account_Type: "Venue", mobile_number: "+15555550123",
+        }],
+        meta: { pagination: { page: 1, pageSize: 50, pageCount: 1, total: 1 } },
+      }));
       response.statusCode = 404;
       return response.end(JSON.stringify({ error: "not found" }));
     }).listen(0, "127.0.0.1");
