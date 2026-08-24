@@ -9,7 +9,8 @@ const yaml = require("js-yaml") as { load(source: string): any; dump(value: unkn
 const enabled = process.env.MUSIC_C3_TRAEFIK_TEST === "1";
 const describeTraefik = enabled ? describe.sequential : describe.skip;
 const repoRoot = resolve(import.meta.dirname, "../../../..");
-const compatEntrypoint = resolve(repoRoot, "tunes/server/deployment/run-registration-compat.ts");
+const tunesRoot = resolve(repoRoot, "tunes");
+const compatEntrypoint = resolve(tunesRoot, "server/deployment/run-registration-compat.ts");
 
 function listen(server: Server): Promise<number> {
   return new Promise((resolvePort, reject) => {
@@ -68,7 +69,7 @@ describeTraefik("production registration compatibility route through Traefik", (
     await listen(candidate);
 
     compat = spawn(process.execPath, ["--import", "tsx", compatEntrypoint], {
-      cwd: repoRoot,
+      cwd: tunesRoot,
       env: {
         PATH: process.env.PATH,
         SystemRoot: process.env.SystemRoot,
