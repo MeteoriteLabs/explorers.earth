@@ -1,3 +1,12 @@
+export async function cancelDeletionAndResumeMusic<T>(input: {
+  cancelDeletion: () => Promise<T>;
+  resumeMusic: () => Promise<unknown>;
+}): Promise<T> {
+  const cancelled = await input.cancelDeletion();
+  await input.resumeMusic();
+  return cancelled;
+}
+
 export async function deactivateExplorerAndMusic(input: {
   blockExplorer: () => Promise<boolean>;
   suspendMusic: () => Promise<unknown>;

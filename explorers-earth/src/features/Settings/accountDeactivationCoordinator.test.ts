@@ -1,5 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+import { cancelDeletionAndResumeMusic, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+
+describe("cancelDeletionAndResumeMusic", () => {
+  it("resumes Music before reporting deletion cancellation as complete", async () => {
+    const events: string[] = [];
+    const cancelled = { operation: { status: "suspended" } };
+    await expect(cancelDeletionAndResumeMusic({
+      cancelDeletion: vi.fn(async () => { events.push("deletion-cancelled"); return cancelled; }),
+      resumeMusic: vi.fn(async () => { events.push("music-reactivated"); }),
+    })).resolves.toBe(cancelled);
+    expect(events).toEqual(["deletion-cancelled", "music-reactivated"]);
+  });
+});
 
 describe("deactivateExplorerAndMusic", () => {
   it("does not block Explorer when Music suspension fails", async () => {

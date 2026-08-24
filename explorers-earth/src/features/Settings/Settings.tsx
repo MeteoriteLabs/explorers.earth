@@ -33,7 +33,7 @@ import {
 } from "../../services/accountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 import { closeLocalMusicSession } from "../music/musicSessionBoundary";
-import { deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+import { cancelDeletionAndResumeMusic, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
 
 
 const providerQuery = gql`
@@ -825,11 +825,14 @@ const Settings = memo(() => {
   const cancelDurableDeletion = async () => {
     setDeleteAccountLoading(true);
     try {
-      const result = await accountLifecycle.cancel();
+      const result = await cancelDeletionAndResumeMusic({
+        cancelDeletion: accountLifecycle.cancel,
+        resumeMusic: accountLifecycle.resume,
+      });
       setDeletionLifecycle(result.operation);
       setShowDeleteAccountModal(false);
       setDeleteStep(1);
-      toast.success("Account deletion was cancelled. Music remains paused until reactivation.");
+      toast.success("Account deletion was cancelled and Music was reactivated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Account deletion could not be cancelled.");
     } finally {
