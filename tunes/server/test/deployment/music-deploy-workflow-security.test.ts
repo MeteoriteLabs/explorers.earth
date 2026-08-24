@@ -34,7 +34,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(executable).toContain("com.explorers.music.minimum-containment-commit");
     expect(dockerfile).toContain("org.opencontainers.image.source");
     expect(dockerfile).toContain("com.explorers.music.minimum-containment-commit");
-    expect(dockerfile).toContain("FROM node@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd AS base");
+    expect(dockerfile).toContain("FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base");
   });
 
   it("keeps the local OCI rehearsal outside every production authority", () => {
