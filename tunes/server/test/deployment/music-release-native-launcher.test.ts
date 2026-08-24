@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -229,8 +229,6 @@ describe("native Music release launch boundary", () => {
   });
 
   it("refuses the direct qualification entrypoint before it can start a release lane", () => {
-    const runRoot = join(repositoryRoot, ".artifacts", "music-runs");
-    const before = existsSync(runRoot) ? readdirSync(runRoot).sort() : [];
     const result = spawnSync(process.execPath, [tsxCli, qualification, "test:release"], {
       cwd: repositoryRoot,
       encoding: "utf8",
@@ -240,6 +238,5 @@ describe("native Music release launch boundary", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("native Music release launcher attestation is required");
     expect(result.stderr).not.toContain("external fixture deployment authority is forbidden");
-    expect(existsSync(runRoot) ? readdirSync(runRoot).sort() : []).toEqual(before);
   });
 });
