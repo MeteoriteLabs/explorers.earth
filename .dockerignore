@@ -792,6 +792,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/musicIdentityCoordinator.ts
 !explorers-earth/src/features/music/musicPublicationCommandRegistry.ts
 !explorers-earth/src/features/music/musicSessionBoundary.ts
+!explorers-earth/src/features/music/musicShareUrl.ts
 !explorers-earth/src/features/music/musicState.ts
 !explorers-earth/src/features/music/musicWorkspaceClient.ts
 !explorers-earth/src/features/music/publicMusicClient.ts

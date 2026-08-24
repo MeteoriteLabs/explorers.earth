@@ -174,6 +174,9 @@ const paths = {
   "/api/music/identity/lifecycle/suspend": {
     post: lifecycleOperation("Suspend Music before Explorer account deactivation", "MusicSuspensionResponse"),
   },
+  "/api/music/identity/lifecycle/resume": {
+    post: lifecycleOperation("Reactivate Music when Explorer deactivation cannot be confirmed", "MusicReactivationResponse"),
+  },
   "/api/playlists": {
     get: ownerOperation({ summary: "List owner saved playlists", status: "200", response: { type: "array", items: ref("Playlist") } }),
     post: ownerOperation({ summary: "Create an owner saved playlist", status: "201", response: ref("Playlist"), request: body(ref("PlaylistInput"), "Saved playlist input") }),
@@ -385,6 +388,16 @@ export const MUSIC_OPENAPI_DOCUMENT = {
           identity: {
             type: "object", additionalProperties: false, required: ["status"], properties: {
               status: { type: "string", enum: ["suspended", "not_present"] },
+            },
+          },
+        },
+      },
+      MusicReactivationResponse: {
+        type: "object", additionalProperties: false, required: ["version", "identity"], properties: {
+          version: { type: "string", const: "music-lifecycle/v1" },
+          identity: {
+            type: "object", additionalProperties: false, required: ["status"], properties: {
+              status: { type: "string", enum: ["active", "not_present"] },
             },
           },
         },
