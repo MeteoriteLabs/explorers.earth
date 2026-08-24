@@ -505,6 +505,7 @@ async function validateWindowsCheckpointSecurities(
   if ((options.platform ?? process.platform) !== "win32") return;
   const securities = options.inspectWindowsCheckpointSecurity
     ? await Promise.all(files.map(({ path }) => options.inspectWindowsCheckpointSecurity!(path)))
+    /* c8 ignore next -- the native Windows subprocess boundary is exercised only by the native ACL proof. */
     : inspectWindowsCheckpointSecurities(files.map(({ path }) => path));
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
@@ -520,7 +521,7 @@ async function validateWindowsCheckpointSecurities(
   }
 }
 
-/* c8 ignore start -- native Windows execution is covered by the Windows ACL proof; portable tests inject this boundary. */
+/* c8 ignore next 8 -- native Windows execution is covered by the Windows ACL proof; portable tests inject this boundary. */
 function inspectWindowsCheckpointSecurities(paths: string[]): WindowsCheckpointSecurity[] {
   const output = execFileSync(
     "powershell.exe",
@@ -529,7 +530,6 @@ function inspectWindowsCheckpointSecurities(paths: string[]): WindowsCheckpointS
   );
   return parseWindowsCheckpointSecurityOutput(output, paths.length);
 }
-/* c8 ignore stop */
 
 export function parseWindowsCheckpointSecurityOutput(
   output: string,
