@@ -246,6 +246,31 @@ describe("MusicLifecycleService", () => {
       .rejects.toMatchObject({ code: "IDENTITY_CONFLICT" });
   });
 
+  it("reactivates only the exact authoritative Explorer tuple for compensation", async () => {
+    const h = harness();
+    h.repository.reactivateIdentity.mockResolvedValueOnce({
+      id: 41,
+      strapiUserDocumentId: identity.userDocumentId,
+      strapiAccountDocumentId: identity.accountDocumentId,
+      identityStatus: "active" as const,
+      sessionVersion: 9,
+    });
+    const service = new MusicLifecycleService(h.gateway, h.repository, {
+      operationIdFactory: () => "resume-proof-operation",
+      disconnectOwner: h.disconnectOwner,
+    });
+
+    await expect(service.reactivateFromProof("authoritative-proof", "request-resume")).resolves.toMatchObject({
+      id: 41, identityStatus: "active", sessionVersion: 9,
+    });
+    expect(h.gateway.resolve).toHaveBeenCalledWith("authoritative-proof", "request-resume");
+    expect(h.repository.reactivateIdentity).toHaveBeenCalledWith({
+      userDocumentId: identity.userDocumentId,
+      accountDocumentId: identity.accountDocumentId,
+      operationId: "resume-proof-operation",
+    });
+  });
+
   it("acknowledges exact local absence for suspend and reactivate without inventing a Music owner", async () => {
     // Break caught: a never-provisioned Explorer is stranded by LIFECYCLE_NOT_FOUND.
     const h = harness();

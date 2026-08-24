@@ -12,9 +12,12 @@ interface ComposeService {
   build?: { args?: Record<string, string> };
 }
 
+let cachedProductionModel: { services: Record<string, ComposeService> } | undefined;
+
 function productionModel(): { services: Record<string, ComposeService> } {
+  if (cachedProductionModel) return cachedProductionModel;
   const digest = `sha256:${"a".repeat(64)}`;
-  return JSON.parse(execFileSync("docker", ["compose", "--profile", "deployment", "-f", "docker-compose.yml", "config", "--format", "json"], {
+  cachedProductionModel = JSON.parse(execFileSync("docker", ["compose", "--profile", "deployment", "-f", "docker-compose.yml", "config", "--format", "json"], {
     cwd: repositoryRoot,
     encoding: "utf8",
     env: {
@@ -38,6 +41,7 @@ function productionModel(): { services: Record<string, ComposeService> } {
       TUNES_COMPAT_IMAGE: `ghcr.io/example/tunes@${digest}`,
     },
   })) as { services: Record<string, ComposeService> };
+  return cachedProductionModel;
 }
 
 describe("C5 credential configuration contracts", () => {
@@ -61,7 +65,7 @@ describe("C5 credential configuration contracts", () => {
     expect(rendered).not.toContain(fixtureSecret);
     expect(runtime.environment).not.toHaveProperty("MUSIC_TOKEN_CURRENT_SECRET");
     expect(runtime.environment).not.toHaveProperty("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY");
-  });
+  }, 15_000);
 
   it("renders separate file-backed migrator/runtime authority without any password value", () => {
     const model = productionModel();

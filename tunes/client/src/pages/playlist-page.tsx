@@ -31,8 +31,8 @@ import { GuestBottomNavigation } from "@/components/guest-bottom-navigation";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils"; import GuestCapabilityImport from "@/components/guest-capability-import";
+import { PUBLIC_PLAYLIST_POLLING_INTERVAL_MS } from "@/lib/publicPlaylistPolling";
 
-const POLLING_INTERVAL = 1000;
 
 interface PlaylistResponse {
   songs: Song[];
@@ -60,7 +60,7 @@ export default function PlaylistPage() {
   // Query for playlist data
   const { data: playlist, isLoading, error } = useQuery<PlaylistResponse>({
     queryKey: [`/api/playlist/${guestUrl}`],
-    refetchInterval: POLLING_INTERVAL,
+    refetchInterval: PUBLIC_PLAYLIST_POLLING_INTERVAL_MS,
     staleTime: 0,
     retry: true,
     retryDelay: 1000,

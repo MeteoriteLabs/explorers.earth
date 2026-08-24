@@ -221,12 +221,15 @@ export class MusicDomainRepository {
         return null;
       }
       const activated = (await client.query(
-        `WITH previous AS (
+        `WITH target AS (
+           SELECT id FROM songs WHERE user_id=$1 AND id=$2 FOR UPDATE
+         ), previous AS (
            UPDATE songs SET status='played',played_at=now()
             WHERE user_id=$1 AND status='playing' AND id<>$2
+              AND EXISTS (SELECT 1 FROM target)
          )
          UPDATE songs SET status='playing',played_at=NULL
-          WHERE user_id=$1 AND id=$2
+          WHERE user_id=$1 AND id=$2 AND EXISTS (SELECT 1 FROM target)
          RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
         [musicUserId, songId],
       )).rows[0];

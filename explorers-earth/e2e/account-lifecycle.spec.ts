@@ -88,6 +88,14 @@ async function mockSettings(
       });
       return;
     }
+    if (action === "resume") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: "music-lifecycle/v1", identity: { status: options.musicNotPresent ? "not_present" : "active" } }),
+      });
+      return;
+    }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(envelope(operation)) });
   });
   await context.route("**/graphql", async (route) => {
@@ -211,7 +219,7 @@ test("pending Music deletion prevents Strapi deactivation and browser auth clean
   expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("mock-jwt-token-xyz");
 });
 
-test("an unconfirmed Strapi block leaves the suspended transition resumable without reporting success", async ({ context, page }) => {
+test("an unconfirmed Strapi block compensates Music without reporting success", async ({ context, page }) => {
   const events: string[] = [];
   await mockSettings(context, {
     operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
@@ -222,7 +230,7 @@ test("an unconfirmed Strapi block leaves the suspended transition resumable with
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
   await expect.poll(() => events.filter((event) => event === "strapi-block").length).toBe(1);
   await expect(page).toHaveURL(/\/settings$/);
-  expect(events.filter((event) => ["suspend", "strapi-block"].includes(event))).toEqual(["suspend", "strapi-block"]);
+  expect(events.filter((event) => ["suspend", "strapi-block", "resume"].includes(event))).toEqual(["suspend", "strapi-block", "resume"]);
   expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("mock-jwt-token-xyz");
 });
 

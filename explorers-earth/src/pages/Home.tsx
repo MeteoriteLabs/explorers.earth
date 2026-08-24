@@ -32,6 +32,7 @@ import { getAllUserLocations } from "../utils/geoHelpers";
 import InteractiveMap from "../components/InteractiveMap";
 import { calculateIsProfileComplete, calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
+import { publicMusicShareUrl } from "../features/music/musicShareUrl";
 
 // Category integrations
 import { MOVIE_LISTS_BY_ACCOUNT } from "../features/Movies/api/query";
@@ -391,8 +392,8 @@ const Home = memo(() => {
     else if (activeTab === "movies") subPath = "movies";
     else if (activeTab === "books") subPath = "books";
     else if (activeTab === "games") subPath = "games";
-    else if (activeTab === "music" && tunesDashboard.dashboard?.publication.publicSlug) {
-      return `${url}/music/share/${encodeURIComponent(tunesDashboard.dashboard.publication.publicSlug)}`;
+    else if (activeTab === "music") {
+      return publicMusicShareUrl(url, tunesDashboard.dashboard?.publication) ?? `${url}/music`;
     }
     else if (activeTab === "guides") subPath = "guides";
     else if (activeTab === "apps") subPath = "apps";
@@ -400,7 +401,7 @@ const Home = memo(() => {
     else if (activeTab === "people") subPath = "people";
 
     return `${url}/${user?.username}/${subPath}`;
-  }, [activeTab, tunesDashboard.dashboard?.publication.publicSlug, url, user?.username]);
+  }, [activeTab, tunesDashboard.dashboard?.publication, url, user?.username]);
   const listNames = userLists?.recommendationLists;
   const allGuides: Guide[] = guidesData?.guides || [];
   // Show all guides (drafts and published) on Home Dashboard, matching Recommendations behavior
@@ -1123,13 +1124,13 @@ const Home = memo(() => {
                         : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
                     }
                   </button>
-                  <button
+                  {(activeTab !== "music" || tunesDashboard.dashboard?.publication.mode === "public") && <button
                     onClick={() => setShowCategoryShareModal(true)}
                     title="Share recommendations link"
                     className="w-10 h-10 rounded-xl bg-[var(--dash-search-bg)] border border-dashboard flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-dashboard-muted flex-shrink-0 text-dashboard-muted hover:text-dashboard"
                   >
                     <ShareIcon size={14} />
-                  </button>
+                  </button>}
                 </div>
 
                 {/* Recommendation List Items Container */}

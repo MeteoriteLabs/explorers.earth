@@ -323,6 +323,23 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     )).rows).toEqual(ownerBBefore);
   });
 
+  it("keeps current playback when the requested target is missing or belongs to another owner", async () => {
+    const ownerA = await identities.ensureIdentity(identityInput("playback-target-a"));
+    const ownerB = await identities.ensureIdentity(identityInput("playback-target-b"));
+    const current = await domain.addSong(ownerA.id, {
+      youtubeId: "current-a", title: "Current A", artist: "A", thumbnailUrl: "https://img/current-a",
+    }) as { id: number };
+    const foreign = await domain.addSong(ownerB.id, {
+      youtubeId: "foreign-b", title: "Foreign B", artist: "B", thumbnailUrl: "https://img/foreign-b",
+    }) as { id: number };
+    await domain.setPlaying(ownerA.id, current.id);
+
+    await expect(domain.setPlaying(ownerA.id, foreign.id)).resolves.toBeUndefined();
+    await expect(domain.setPlaying(ownerA.id, 2_147_483_647)).resolves.toBeUndefined();
+    expect((await pool.query("SELECT status,played_at FROM songs WHERE id=$1", [current.id])).rows[0])
+      .toEqual({ status: "playing", played_at: null });
+  });
+
   it("lists only active explicitly discoverable users with a visible playlist for the sitemap", async () => {
     // Break caught: lifecycle, unlisted, and zero-visible pages entered discovery, or capability revocation hid a public page.
     const suffixes = ["sitemap-live", "sitemap-suspended", "sitemap-pending", "sitemap-private", "sitemap-unlisted", "sitemap-revoked", "sitemap-zero"];

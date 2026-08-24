@@ -358,6 +358,27 @@ describe("account lifecycle service", () => {
     }
   });
 
+  it("uses the exact bodyless resume endpoint for deactivation compensation", async () => {
+    const valid = { version: "music-lifecycle/v1", identity: { status: "active" } };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(valid), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof", fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    await expect(service.resume()).resolves.toEqual(valid);
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/lifecycle/resume", {
+      method: "POST", headers: { Authorization: "Bearer authoritative-bearer-proof" },
+    });
+
+    const invalidService = createAccountLifecycleService({
+      baseUrl: "https://music.example", getBearer: () => "authoritative-bearer-proof",
+      fetchImpl: async () => new Response(JSON.stringify({
+        version: "music-lifecycle/v1", identity: { status: "suspended" },
+      }), { status: 200 }),
+    });
+    await expect(invalidService.resume()).rejects.toMatchObject({ code: "LIFECYCLE_RESPONSE_INVALID" });
+  });
+
   it("accepts only an exact typed not-present suspension acknowledgement", async () => {
     // Break caught: never-provisioned Explorer accounts cannot proceed to Strapi deactivation.
     const valid = { version: "music-lifecycle/v1", identity: { status: "not_present" } };

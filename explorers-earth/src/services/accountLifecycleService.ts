@@ -15,7 +15,7 @@ export interface AccountLifecycleStatus {
 
 export interface AccountSuspensionStatus {
   version: "music-lifecycle/v1";
-  identity: { status: "suspended" | "not_present" };
+  identity: { status: "active" | "suspended" | "not_present" };
 }
 
 export class AccountLifecycleError extends Error {
@@ -41,7 +41,7 @@ export function createAccountLifecycleService(input: {
 
   const request = async <T>(
     method: "GET" | "POST",
-    action: "prepare" | "status" | "boundary" | "cancel" | "suspend",
+    action: "prepare" | "status" | "boundary" | "cancel" | "suspend" | "resume",
     parse: (body: unknown) => T,
   ) => {
     const bearer = input.getBearer();
@@ -76,6 +76,7 @@ export function createAccountLifecycleService(input: {
   const markBoundary = () => request("POST", "boundary", parseLifecycleStatus);
   const cancel = () => request("POST", "cancel", parseLifecycleStatus);
   const suspend = () => request("POST", "suspend", parseSuspensionStatus);
+  const resume = () => request("POST", "resume", parseReactivationStatus);
   const requireDeletableOperation = (result: AccountLifecycleStatus, boundaryRequired = false) => {
     if (result.operation.status !== "pending_deletion"
         || result.operation.phase !== "prepared"
@@ -145,7 +146,7 @@ export function createAccountLifecycleService(input: {
     }
     dependencies.clearAuth();
   };
-  return { prepare, status, markBoundary, cancel, suspend, deleteAccount };
+  return { prepare, status, markBoundary, cancel, suspend, resume, deleteAccount };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -213,6 +214,19 @@ function parseSuspensionStatus(value: unknown): AccountSuspensionStatus {
     throw new AccountLifecycleError(
       "LIFECYCLE_RESPONSE_INVALID", 502,
       "Music returned an invalid account suspension response. Try again.", true,
+    );
+  }
+  return value as unknown as AccountSuspensionStatus;
+}
+
+function parseReactivationStatus(value: unknown): AccountSuspensionStatus {
+  if (!isRecord(value) || !hasExactKeys(value, ["version", "identity"])
+      || value.version !== "music-lifecycle/v1" || !isRecord(value.identity)
+      || !hasExactKeys(value.identity, ["status"])
+      || !["active", "not_present"].includes(String(value.identity.status))) {
+    throw new AccountLifecycleError(
+      "LIFECYCLE_RESPONSE_INVALID", 502,
+      "Music returned an invalid account reactivation response. Try again.", true,
     );
   }
   return value as unknown as AccountSuspensionStatus;

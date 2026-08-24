@@ -631,6 +631,7 @@ const Settings = memo(() => {
           await deactivateExplorerAndMusic({
             blockExplorer: updateExplorerBlocked,
             suspendMusic: accountLifecycle.suspend,
+            resumeMusic: accountLifecycle.resume,
           });
         }
         toast.success(

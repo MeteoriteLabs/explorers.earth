@@ -29,6 +29,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     markDeletionBoundary: vi.fn(async () => ({ ...status, boundaryCrossed: true, state: "requested" as const })),
     cancelDeletion: vi.fn(async () => ({ ...status, identityStatus: "suspended" as const, state: "cancelled" as const })),
     suspendFromProof: vi.fn(async () => ({ identityStatus: "suspended" as const })),
+    reactivateFromProof: vi.fn(async () => ({ identityStatus: "active" as const })),
     ...overrides,
   };
   setupMusicIdentityRoutes(app, {
@@ -94,6 +95,16 @@ describe("mounted Music lifecycle identity boundary", () => {
       .expect(200);
     expect(response.body).toEqual({ version: "music-lifecycle/v1", identity: { status: "not_present" } });
     expect(lifecycle.suspendFromProof).toHaveBeenCalledOnce();
+  });
+
+  it("mounts a bodyless authoritative resume for failed Explorer-block compensation", async () => {
+    const { app, lifecycle } = appFor();
+    const response = await request(app).post("/api/music/identity/lifecycle/resume")
+      .set("Authorization", `Bearer ${"b".repeat(32)}`)
+      .set("X-Request-Id", "request-resume")
+      .expect(200);
+    expect(response.body).toEqual({ version: "music-lifecycle/v1", identity: { status: "active" } });
+    expect(lifecycle.reactivateFromProof).toHaveBeenCalledWith("b".repeat(32), "request-resume");
   });
 
   it("returns typed pending-deletion conflict instead of a suspension acknowledgement", async () => {
@@ -185,7 +196,7 @@ describe("mounted Music lifecycle identity boundary", () => {
 
   it("classifies every lifecycle route as the Explorer identity boundary", () => {
     // Break caught: generated authorization falls back to a retired/owner CRUD classification.
-    for (const path of ["prepare", "status", "boundary", "cancel"]) {
+    for (const path of ["prepare", "status", "boundary", "cancel", "suspend", "resume"]) {
       expect(decisionForRoute({ method: path === "status" ? "GET" : "POST", path: `/api/music/identity/lifecycle/${path}`, classification: "private" }))
         .toBe("strapi-identity");
     }

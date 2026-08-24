@@ -145,6 +145,15 @@ export class MusicLifecycleService {
     return result;
   }
 
+  async reactivateFromProof(proof: string, requestId: string): Promise<MusicIdentityProjection | MusicIdentityNotPresentProjection> {
+    const authoritative = await this.gateway.resolve(proof, requestId);
+    return this.repository.reactivateIdentity({
+      userDocumentId: authoritative.userDocumentId,
+      accountDocumentId: authoritative.accountDocumentId,
+      operationId: this.operationIdFactory(),
+    });
+  }
+
   async reactivate(strapiUserDocumentId: string): Promise<MusicIdentityProjection> {
     return this.repository.transitionIdentity({
       strapiUserDocumentId,

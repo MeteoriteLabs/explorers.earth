@@ -34,7 +34,7 @@ export interface MusicIdentityRouteDependencies {
   ensure: (proof: string, requestId: string) => Promise<MusicIdentityProjection>;
   mintCredential: (identity: MusicIdentityProjection) => MintedMusicToken;
   resolvePrincipal: (token: string) => Promise<MusicPrincipal>;
-  lifecycle?: Pick<MusicLifecycleService, "prepareDeletion" | "status" | "markDeletionBoundary" | "cancelDeletion" | "suspendFromProof">;
+  lifecycle?: Pick<MusicLifecycleService, "prepareDeletion" | "status" | "markDeletionBoundary" | "cancelDeletion" | "suspendFromProof" | "reactivateFromProof">;
   isMusicCredential?: (token: string) => boolean;
   limiter: BoundedIdentityRateLimiter;
   logger?: (entry: Record<string, unknown>) => void;
@@ -66,7 +66,7 @@ export interface MusicIdentityRouteDependencies {
 /** Reject bytes before the global JSON/urlencoded parsers can inspect them. */
 export function setupMusicIdentityBodylessPreflight(app: Express): void {
   app.use((req, res, next) => {
-    if (req.method !== "POST" || !/^\/api\/music\/identity\/(?:ensure|lifecycle\/(?:prepare|boundary|cancel))$/.test(req.path)) return next();
+    if (req.method !== "POST" || !/^\/api\/music\/identity\/(?:ensure|lifecycle\/(?:prepare|boundary|cancel|suspend|resume))$/.test(req.path)) return next();
     const contentLength = req.get("content-length");
     if ((!contentLength || contentLength === "0") && !req.get("transfer-encoding")) return next();
     const requestId = validRequestId(req.get("x-request-id")) ?? randomUUID();
@@ -197,7 +197,10 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
     app.get("/api/music/identity/lifecycle/status", lifecycleHandler("status", (proof, requestId) => lifecycle.status(proof, requestId)));
     app.post("/api/music/identity/lifecycle/boundary", lifecycleHandler("boundary", (proof, requestId) => lifecycle.markDeletionBoundary(proof, requestId)));
     app.post("/api/music/identity/lifecycle/cancel", lifecycleHandler("cancel", (proof, requestId) => lifecycle.cancelDeletion(proof, requestId)));
-    app.post("/api/music/identity/lifecycle/suspend", async (req: Request, res: Response) => {
+    const availabilityHandler = (
+      action: "suspend" | "resume",
+      operation: (proof: string, requestId: string) => Promise<{ identityStatus: string }>,
+    ) => async (req: Request, res: Response) => {
       const requestId = validRequestId(req.get("x-request-id")) ?? requestIdFactory();
       res.setHeader("X-Request-Id", requestId);
       let status = 500;
@@ -215,7 +218,7 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
         if (!rate.allowed) {
           throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music lifecycle attempts.", "retry", true, rate.retryAfterSeconds ?? 1);
         }
-        const value = await lifecycle.suspendFromProof(proof, requestId);
+        const value = await operation(proof, requestId);
         status = 200;
         outcome = "completed";
         return res.status(200).json({ version: "music-lifecycle/v1", identity: { status: value.identityStatus } });
@@ -226,9 +229,15 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
         if (status === 429 || status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
         return res.status(status).json(musicErrorEnvelope(error, requestId));
       } finally {
-        logger({ event: "music_lifecycle_suspend", requestId, outcome, status });
+        logger({ event: `music_lifecycle_${action}`, requestId, outcome, status });
       }
-    });
+    };
+    app.post("/api/music/identity/lifecycle/suspend", availabilityHandler(
+      "suspend", (proof, requestId) => lifecycle.suspendFromProof(proof, requestId),
+    ));
+    app.post("/api/music/identity/lifecycle/resume", availabilityHandler(
+      "resume", (proof, requestId) => lifecycle.reactivateFromProof(proof, requestId),
+    ));
   }
 
   const principalMiddleware = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);

@@ -261,6 +261,14 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text.toLowerCase()).toContain("visible_playlists");
   });
 
+  it("validates and locks the owner playback target before retiring the current song", async () => {
+    const harness = recordingPool();
+    await new MusicDomainRepository(harness.pool).setPlaying(23, 71);
+    const transition = harness.calls[0].text.toLowerCase();
+    expect(transition).toMatch(/target as \( select id from songs where user_id=\$1 and id=\$2 for update \)/);
+    expect(transition).toMatch(/status='playing'.*exists \(select 1 from target\)/);
+  });
+
   it("keeps a public resource reachable when a supplied stale capability was revoked", async () => {
     const capability = "B".repeat(43);
     const harness = recordingPool([{

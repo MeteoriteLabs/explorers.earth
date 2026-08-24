@@ -488,7 +488,17 @@
       "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "suspend",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
-      "line": 200
+      "line": 235
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/resume",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 238
     },
     {
       "method": "GET",
@@ -498,7 +508,7 @@
       "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicIdentityRoutes.ts",
-      "line": 235
+      "line": 244
     },
     {
       "method": "GET",
