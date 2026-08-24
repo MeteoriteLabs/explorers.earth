@@ -782,6 +782,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/PublicPlaceCard.tsx
 !explorers-earth/src/features/PublicHome/components/PublicProfile.tsx
 !explorers-earth/src/features/Settings/Settings.tsx
+!explorers-earth/src/features/Settings/accountDeactivationCoordinator.ts
 !explorers-earth/src/features/Settings/api/mutation.ts
 !explorers-earth/src/features/Settings/components/AccountDeletionLifecyclePanel.tsx
 !explorers-earth/src/features/Settings/components/BillingTab.tsx
