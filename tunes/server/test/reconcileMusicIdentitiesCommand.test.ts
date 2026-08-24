@@ -424,11 +424,13 @@ describe("music reconciliation checkpoints", () => {
     ["a mismatched native device identity", { nativeDev: "0" }],
     ["a mismatched native file identity", { nativeIno: "0" }],
     ["a non-integral unsafe-principal count", { unsafeWritePrincipalCount: 0.5 }],
+    ["a missing inspection result", null],
   ])("fails closed on Windows checkpoint security with %s", async (_name, result) => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-win-security-"));
     const path = join(directory, "checkpoint.json");
     await writeMusicReconciliationCheckpoint(path, checkpoint());
     const inspectWindowsCheckpointSecurity = vi.fn(async (target: string) => {
+      if (result === null) return undefined as never;
       const metadata = await lstat(target, { bigint: true });
       return {
         nativeDev: String(metadata.dev),
