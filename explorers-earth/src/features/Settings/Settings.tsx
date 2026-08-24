@@ -33,6 +33,7 @@ import {
 } from "../../services/accountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 import { closeLocalMusicSession } from "../music/musicSessionBoundary";
+import { deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
 
 
 const providerQuery = gql`
@@ -615,28 +616,33 @@ const Settings = memo(() => {
 
       // Proceed with account deactivation/activation
       try {
-        if (!userBlocked) await accountLifecycle.suspend();
-        const response = await updateBlockedStatus({
-          variables: {
-            updateUsersPermissionsUserId: user?.id,
-            data: { blocked: !userBlocked },
-          },
-        });
-        if (response.data?.updateUsersPermissionsUser?.data?.blocked !== !userBlocked) {
-          throw new Error("Explorer account status update was not confirmed.");
+        const updateExplorerBlocked = async () => {
+          const response = await updateBlockedStatus({
+            variables: {
+              updateUsersPermissionsUserId: user?.id,
+              data: { blocked: !userBlocked },
+            },
+          });
+          return response.data?.updateUsersPermissionsUser?.data?.blocked === !userBlocked;
+        };
+        if (userBlocked) {
+          if (!await updateExplorerBlocked()) throw new Error("Explorer account status update was not confirmed.");
+        } else {
+          await deactivateExplorerAndMusic({
+            blockExplorer: updateExplorerBlocked,
+            suspendMusic: accountLifecycle.suspend,
+          });
         }
-        if (response.data) {
-          toast.success(
-            userBlocked
-              ? t("settings.account.deactivateAccount.activatedMessage")
-              : t("settings.account.deactivateAccount.successMessage")
-          );
-          updateUserBlocked(!userBlocked);
-          setShowModal(false);
-          navigate("/");
-          logout();
-          closeLocalMusicSession();
-        }
+        toast.success(
+          userBlocked
+            ? t("settings.account.deactivateAccount.activatedMessage")
+            : t("settings.account.deactivateAccount.successMessage")
+        );
+        updateUserBlocked(!userBlocked);
+        setShowModal(false);
+        navigate("/");
+        logout();
+        closeLocalMusicSession();
       } catch (error) {
         console.error(error);
         toast.error(t("settings.account.changePassword.updateAccountStatusFailed"));
