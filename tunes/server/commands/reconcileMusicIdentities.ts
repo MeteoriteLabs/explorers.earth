@@ -288,7 +288,7 @@ export async function writeMusicReconciliationCheckpoint(
       await handle.sync();
       const temporaryMetadata = await handle.stat({ bigint: true });
       validateCheckpointMetadata(temporaryMetadata, options);
-      await validateWindowsCheckpointSecurity(temporary, temporaryMetadata, options, true);
+      await validateWindowsCheckpointSecurity(temporary, temporaryMetadata, options);
       /* c8 ignore next -- a successful descriptor write cannot report a different size without a broken filesystem. */
       if (temporaryMetadata.size !== BigInt(encoded.byteLength)) return invalidCheckpointFile();
       await handle.close();
@@ -338,7 +338,7 @@ export async function readMusicReconciliationCheckpoint(
       const opened = await handle.stat({ bigint: true });
       validateCheckpointMetadata(opened, options);
       if (!sameCheckpointIdentity(before, opened)) return invalidCheckpointFile();
-      await validateWindowsCheckpointSecurity(path, opened, options, true);
+      await validateWindowsCheckpointSecurity(path, opened, options);
       const buffer = Buffer.alloc(MAX_CHECKPOINT_BYTES + 1);
       const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
       const afterDescriptor = await handle.stat({ bigint: true });
@@ -402,7 +402,6 @@ async function checkpointAncestors(
     await validateWindowsCheckpointSecurities([{
       path: paths[immediateIndex],
       metadata: metadata[immediateIndex],
-      requireEffectiveOwner: true,
     }], options);
   }
   return metadata;
@@ -476,7 +475,7 @@ async function validateExistingCheckpointTarget(
   try {
     const metadata = await fileSystem.lstat(path);
     validateCheckpointMetadata(metadata, options);
-    await validateWindowsCheckpointSecurity(path, metadata, options, true);
+    await validateWindowsCheckpointSecurity(path, metadata, options);
     if (options.requireAbsent) invalidCheckpointFile();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -487,13 +486,12 @@ async function validateWindowsCheckpointSecurity(
   path: string,
   metadata: BigIntStats,
   options: MusicReconciliationCheckpointFileOptions,
-  requireEffectiveOwner: boolean,
 ): Promise<void> {
-  await validateWindowsCheckpointSecurities([{ path, metadata, requireEffectiveOwner }], options);
+  await validateWindowsCheckpointSecurities([{ path, metadata }], options);
 }
 
 async function validateWindowsCheckpointSecurities(
-  files: Array<{ path: string; metadata: BigIntStats; requireEffectiveOwner: boolean }>,
+  files: Array<{ path: string; metadata: BigIntStats }>,
   options: MusicReconciliationCheckpointFileOptions,
 ): Promise<void> {
   const inspectSecurity = options.inspectWindowsCheckpointSecurity
@@ -508,7 +506,7 @@ async function validateWindowsCheckpointSecurities(
     if (!security
         || !/^\d+$/.test(security.nativeDev) || !/^\d+$/.test(security.nativeIno)
         || BigInt(security.nativeDev) !== file.metadata.dev || BigInt(security.nativeIno) !== file.metadata.ino
-        || (file.requireEffectiveOwner && security.ownerMatchesEffectiveUser !== true)
+        || security.ownerMatchesEffectiveUser !== true
         || !Number.isSafeInteger(security.unsafeWritePrincipalCount)
         || security.unsafeWritePrincipalCount !== 0) {
       invalidCheckpointFile();
