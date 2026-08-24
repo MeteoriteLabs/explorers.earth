@@ -261,6 +261,25 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text.toLowerCase()).toContain("visible_playlists");
   });
 
+  it("keeps a public resource reachable when a supplied stale capability was revoked", async () => {
+    const capability = "B".repeat(43);
+    const harness = recordingPool([{
+      id: 31,
+      identity_status: "active",
+      guest_capability_hash: hashGuestCapability(capability),
+      guest_capability_revoked_at: new Date("2026-08-24T00:00:00Z"),
+      guest_discoverable: true,
+      guest_url: "public-after-unlisted",
+      playlist_id: 7,
+      name: "public",
+      description: null,
+    }]);
+
+    await expect(
+      new MusicDomainRepository(harness.pool).resolveGuestResource("public-after-unlisted", capability),
+    ).resolves.toMatchObject({ state: "public" });
+  });
+
   it("keeps an active discoverable owner reachable with the exact empty public playlist shape", async () => {
     const harness = recordingPool([{
       id: 31,

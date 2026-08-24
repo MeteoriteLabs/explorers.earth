@@ -364,9 +364,9 @@ export class MusicDomainRepository {
       && verifyGuestCapability(capability!, row.guest_capability_hash);
     const state = row.identity_status === "suspended" ? "suspended"
       : row.identity_status === "pending_deletion" ? "pending_deletion"
-        : row.guest_capability_revoked_at && capabilityMatch ? "revoked"
-          : capabilityMatch ? "unlisted"
-            : row.guest_discoverable ? "public" : "private";
+        : row.guest_discoverable ? "public"
+          : row.guest_capability_revoked_at && capabilityMatch ? "revoked"
+            : capabilityMatch ? "unlisted" : "private";
     const publicPlaylist = {
       songs: row.songs ?? [],
       user: {
