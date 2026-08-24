@@ -503,14 +503,14 @@ async function validateWindowsCheckpointSecurities(
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     const security = securities[index];
-    if (!security
-        || !/^\d+$/.test(security.nativeDev) || !/^\d+$/.test(security.nativeIno)
-        || BigInt(security.nativeDev) !== file.metadata.dev || BigInt(security.nativeIno) !== file.metadata.ino
-        || security.ownerMatchesEffectiveUser !== true
-        || !Number.isSafeInteger(security.unsafeWritePrincipalCount)
-        || security.unsafeWritePrincipalCount !== 0) {
-      invalidCheckpointFile();
-    }
+    if (!security) invalidCheckpointFile();
+    if (!/^\d+$/.test(security.nativeDev)) invalidCheckpointFile();
+    if (!/^\d+$/.test(security.nativeIno)) invalidCheckpointFile();
+    if (BigInt(security.nativeDev) !== file.metadata.dev) invalidCheckpointFile();
+    if (BigInt(security.nativeIno) !== file.metadata.ino) invalidCheckpointFile();
+    if (security.ownerMatchesEffectiveUser !== true) invalidCheckpointFile();
+    if (!Number.isSafeInteger(security.unsafeWritePrincipalCount)) invalidCheckpointFile();
+    if (security.unsafeWritePrincipalCount !== 0) invalidCheckpointFile();
   }
 }
 
