@@ -40,10 +40,12 @@ function protectedPreflightFixture(): {
   const node = join(bin, "node");
   const git = join(bin, "git");
   const sha = join(bin, "sha256sum");
+  const find = join(bin, "find");
   for (const [path, source] of [
     [node, "#!/bin/sh\nprintf '%s\\n' v22.12.0\n"],
     [git, "#!/bin/sh\nexit 0\n"],
     [sha, "#!/bin/sh\nexec /usr/bin/sha256sum \"$@\"\n"],
+    [find, "#!/bin/sh\nexec /usr/bin/find \"$@\"\n"],
     [npmCli, "#!/usr/bin/env node\n"],
     [npmPath, "#!/bin/sh\nexit 0\n"],
     [browserExecutable, "#!/bin/sh\nexit 0\n"],
@@ -60,7 +62,7 @@ function protectedPreflightFixture(): {
     npmCli,
     browserExecutable,
     args: [
-      shellPath(node), shellPath(git), shellPath(sha), "/usr/bin/stat", "/usr/bin/find",
+      shellPath(node), shellPath(git), shellPath(sha), "/usr/bin/stat", shellPath(find),
       shellPath(npmRoot), shellPath(npmCli), shellPath(npmPath), shellPath(browserRoot),
       uid!, gid!, "755", "v22.12.0", "*/chrome-linux*/chrome",
       createHash("sha256").update(readFileSync(npmCli)).digest("hex"),

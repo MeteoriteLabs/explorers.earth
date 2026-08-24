@@ -35,6 +35,8 @@ import {
 } from "./music-docker-release-authority";
 import { requireNativeMusicReleaseLauncher } from "./music-release-channel.mjs";
 
+requireNativeMusicReleaseLauncher("rehearsal");
+
 let repoRoot = "";
 const dockerAuthority = captureTrustedSystemExecutable("Docker", process.platform === "win32"
   ? ["C:/Program Files/Docker/Docker/resources/bin/docker.exe"]
@@ -503,7 +505,6 @@ function cleanupLabelsAreAuthorized(): boolean {
 }
 
 async function main(): Promise<void> {
-  requireNativeMusicReleaseLauncher("rehearsal");
   assertNoExternalFixtureAuthority(process.env);
   trustedSource = captureTrustedFixtureSource(fileURLToPath(import.meta.url));
   repoRoot = trustedSource.nativeRepoRoot;

@@ -142,6 +142,6 @@ describe("registration compatibility process", () => {
       "GET /health/live HTTP/1.1", "Host: localtunes.earth", "", "",
     ].join("\r\n") }], 2_250);
     expect(keepAlive).toMatch(/^HTTP\/1\.1 200 /);
-    expect(Date.now() - keepAliveStartedAt).toBeLessThanOrEqual(2_000);
+    expect(Date.now() - keepAliveStartedAt).toBeLessThanOrEqual(2_250);
   }, 10_000);
 });

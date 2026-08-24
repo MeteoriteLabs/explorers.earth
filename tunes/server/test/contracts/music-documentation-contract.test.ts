@@ -370,6 +370,11 @@ function documentedHttpErrorCodes(): string[] {
 }
 
 describe("Music documentation publication contract", () => {
+  it("documents proof-ineligible compensation on the lifecycle resume route", () => {
+    const resume = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/identity/lifecycle/resume"].post;
+    expect(resume.responses["403"]["x-error-codes"]).toContain("IDENTITY_INELIGIBLE");
+  });
+
   it("publishes every identity, API, security, testing, deployment, reconciliation, and incident document", () => {
     // Break caught: an operator or integrator loses the only supported contract for a release-critical surface.
     expect(requiredDocuments.filter((path) => !existsSync(resolve(root, path)))).toEqual([]);

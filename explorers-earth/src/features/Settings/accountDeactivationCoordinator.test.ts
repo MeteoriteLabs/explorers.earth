@@ -31,4 +31,15 @@ describe("deactivateExplorerAndMusic", () => {
     })).rejects.toThrow("Explorer account status update was not confirmed");
     expect(events).toEqual(["music-suspended", "explorer-unconfirmed", "music-reactivated"]);
   });
+
+  it("reactivates Music before propagating an Explorer blocking failure", async () => {
+    const events: string[] = [];
+    const failure = new Error("Explorer unavailable");
+    await expect(deactivateExplorerAndMusic({
+      suspendMusic: vi.fn(async () => { events.push("music-suspended"); }),
+      blockExplorer: vi.fn(async () => { events.push("explorer-failed"); throw failure; }),
+      resumeMusic: vi.fn(async () => { events.push("music-reactivated"); }),
+    })).rejects.toBe(failure);
+    expect(events).toEqual(["music-suspended", "explorer-failed", "music-reactivated"]);
+  });
 });

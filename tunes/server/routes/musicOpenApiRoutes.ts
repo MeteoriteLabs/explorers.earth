@@ -106,7 +106,7 @@ const idempotencyKeyParameter = {
   },
 };
 
-const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleResponse") => ({
+const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleResponse", includesIneligibleProof = false) => ({
   summary,
   description: "Bodyless Explorer identity-boundary operation. Browser owner, user, Account, document, username, and email selectors are forbidden.",
   security: explorerSecurity,
@@ -115,6 +115,9 @@ const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleRes
     "200": success("Durable Music lifecycle status.", ref(responseSchema)),
     "400": failure("The bodyless lifecycle request is invalid.", ["REQUEST_INVALID"]),
     "401": failure("The authoritative Explorer proof is missing or invalid.", ["AUTH_REQUIRED", "AUTH_INVALID"]),
+    ...(includesIneligibleProof ? {
+      "403": failure("The authoritative Explorer identity is ineligible for reactivation.", ["IDENTITY_INELIGIBLE"]),
+    } : {}),
     "409": failure("The lifecycle operation conflicts or can no longer be cancelled.", ["IDENTITY_CONFLICT", "LIFECYCLE_NOT_FOUND", "LIFECYCLE_CANCEL_FORBIDDEN"]),
     "429": failure("The identity boundary is rate limited.", ["RATE_LIMITED"], true),
     "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
@@ -175,7 +178,7 @@ const paths = {
     post: lifecycleOperation("Suspend Music before Explorer account deactivation", "MusicSuspensionResponse"),
   },
   "/api/music/identity/lifecycle/resume": {
-    post: lifecycleOperation("Reactivate Music when Explorer deactivation cannot be confirmed", "MusicReactivationResponse"),
+    post: lifecycleOperation("Reactivate Music when Explorer deactivation cannot be confirmed", "MusicReactivationResponse", true),
   },
   "/api/playlists": {
     get: ownerOperation({ summary: "List owner saved playlists", status: "200", response: { type: "array", items: ref("Playlist") } }),

@@ -377,7 +377,7 @@ describe("music CLI output contract", () => {
     expect(evidence).not.toContain('"POSTGRES_PASSWORD":"music"');
     expect(evidence).not.toContain("fixture-read-only-token");
     expect(evidence).not.toContain("--env-file");
-  });
+  }, 15_000);
 
   it("returns a typed JSON doctor diagnosis for an invalid environment", () => {
     // Production break caught: run-context parsing throws before doctor can

@@ -4,7 +4,14 @@ export async function deactivateExplorerAndMusic(input: {
   resumeMusic: () => Promise<unknown>;
 }): Promise<void> {
   await input.suspendMusic();
-  if (await input.blockExplorer()) return;
+  let blocked: boolean;
+  try {
+    blocked = await input.blockExplorer();
+  } catch (failure) {
+    await input.resumeMusic();
+    throw failure;
+  }
+  if (blocked) return;
   await input.resumeMusic();
   throw new Error("Explorer account status update was not confirmed.");
 }
