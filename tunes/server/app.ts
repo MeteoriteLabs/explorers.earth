@@ -95,7 +95,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
       // Allow necessary headers
       res.header(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-Music-Guest-Capability"
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, Idempotency-Key, X-Music-Guest-Capability"
       );
       // Allow necessary methods
       res.header(

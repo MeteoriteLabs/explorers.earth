@@ -19,6 +19,7 @@ describe("public Music page", () => {
     loadPublicMusic.mockReset();
     vi.useRealTimers();
     window.history.replaceState({}, "", "/");
+    window.sessionStorage.clear();
   });
 
   it("uses the unified public 404 for private, missing, and invalid links", () => {
@@ -81,5 +82,24 @@ describe("public Music page", () => {
     expect(loadPublicMusic.mock.calls[1].slice(0, 2)).toEqual(["public-slug-b", "B".repeat(43)]);
     expect(loadPublicMusic.mock.calls[1][2]).toBeInstanceOf(AbortSignal);
     expect(window.location.hash).toBe("");
+  });
+
+  it("retains a scrubbed unlisted capability for a same-tab remount", async () => {
+    loadPublicMusic.mockResolvedValue({ songs: [], playlists: [] });
+    window.history.replaceState({}, "", `/music/share/public-slug#access=${"C".repeat(43)}`);
+    const first = render(
+      <MemoryRouter initialEntries={["/music/share/public-slug"]}>
+        <Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(loadPublicMusic).toHaveBeenCalledWith("public-slug", "C".repeat(43), expect.any(AbortSignal)));
+    first.unmount();
+    loadPublicMusic.mockClear();
+    render(
+      <MemoryRouter initialEntries={["/music/share/public-slug"]}>
+        <Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(loadPublicMusic).toHaveBeenCalledWith("public-slug", "C".repeat(43), expect.any(AbortSignal)));
   });
 });

@@ -16,6 +16,26 @@ function capabilityFromFragment(fragment: string): string | undefined {
   return capability && /^[A-Za-z0-9_-]{43}$/.test(capability) ? capability : undefined;
 }
 
+function capabilityStorageKey(publicSlug: string): string {
+  return `explorers.music.unlisted-capability.v1:${publicSlug}`;
+}
+
+function retainedCapability(publicSlug: string): string | undefined {
+  try {
+    return capabilityFromFragment(`#access=${window.sessionStorage.getItem(capabilityStorageKey(publicSlug)) ?? ""}`);
+  } catch {
+    return undefined;
+  }
+}
+
+function retainCapability(publicSlug: string, capability: string): void {
+  try { window.sessionStorage.setItem(capabilityStorageKey(publicSlug), capability); } catch { /* storage can be unavailable */ }
+}
+
+function forgetCapability(publicSlug: string): void {
+  try { window.sessionStorage.removeItem(capabilityStorageKey(publicSlug)); } catch { /* storage can be unavailable */ }
+}
+
 export function PublicMusicContent({
   state,
   resource,
@@ -122,7 +142,9 @@ export default function PublicMusic() {
     if (!publicSlug) return;
     const controller = new AbortController();
     const fragment = location.hash || window.location.hash;
-    const capability = capabilityFromFragment(fragment);
+    const fragmentCapability = capabilityFromFragment(fragment);
+    if (fragmentCapability) retainCapability(publicSlug, fragmentCapability);
+    const capability = fragmentCapability ?? retainedCapability(publicSlug);
     if (window.location.hash) {
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
     }
@@ -134,7 +156,10 @@ export default function PublicMusic() {
       setState("ready");
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return;
-      if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") setState("not-found");
+      if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") {
+        forgetCapability(publicSlug);
+        setState("not-found");
+      }
       else if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") {
         setRetryAfterSeconds(error.retryAfterSeconds ?? 60);
         setState("rate-limited");
