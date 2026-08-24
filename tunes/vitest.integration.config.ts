@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   test: {
+    env: { MUSIC_INTEGRATION_SETUP: '1' },
     environment: 'node',
     globals: true,
     globalSetup: ['./server/test/integration-global-setup.ts'],

@@ -52,7 +52,7 @@ process.env.MUSIC_RECONCILIATION_MAX_ROWS = '0';
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient
 // DATABASE_URL (it could point at dev/prod): use DATABASE_URL_TEST if provided,
 // otherwise a local throwaway. Any inherited DATABASE_URL is deliberately ignored.
-if (process.env.MUSIC_C3_POSTGRES_TEST === "1") {
+if (process.env.MUSIC_INTEGRATION_SETUP === "1") {
   const target = new URL(process.env.DATABASE_URL_TEST);
   const runtimePassword = randomBytes(32).toString("base64url");
   const authority = new pg.Pool({ connectionString: target.toString(), max: 1 });
