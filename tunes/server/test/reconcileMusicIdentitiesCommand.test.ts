@@ -451,6 +451,29 @@ describe("music reconciliation checkpoints", () => {
     }
   });
 
+  it("accepts a checkpoint when the injected Windows security inspector proves its owner and ACL", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-win-valid-"));
+    const path = join(directory, "checkpoint.json");
+    await writeMusicReconciliationCheckpoint(path, checkpoint());
+    try {
+      const restored = await Reflect.apply(readMusicReconciliationCheckpoint, undefined, [path, {
+        platform: "win32",
+        inspectWindowsCheckpointSecurity: async (target: string) => {
+          const metadata = await lstat(target, { bigint: true });
+          return {
+            nativeDev: String(metadata.dev),
+            nativeIno: String(metadata.ino),
+            ownerMatchesEffectiveUser: true,
+            unsafeWritePrincipalCount: 0,
+          };
+        },
+      }]);
+      expect(restored).toEqual(checkpoint());
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("fails closed on malformed or incomplete native Windows security output", () => {
     const valid = JSON.stringify({
       nativeDev: "1",
