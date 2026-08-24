@@ -164,7 +164,9 @@ describe("Music reconciliation automation contract", () => {
     expect(c0.jobs.contracts.steps.find((step: any) => step.run?.includes("docker compose")).run)
       .toContain("--env-file .env.music.test.example");
     const windowsContracts = c0.jobs.contracts.steps.find((step: any) => step.if === "runner.os == 'Windows'");
-    expect(windowsContracts.run).toBe("node tunes/node_modules/vitest/vitest.mjs run --root tunes server/test/contracts --exclude server/test/contracts/music-fixture-secret.test.ts");
+    expect(windowsContracts.run).toContain("music-reconciliation-workflow.test.ts");
+    expect(windowsContracts.run).toContain("music-documentation-contract.test.ts");
+    expect(windowsContracts.run).toContain("music-openapi-contract.test.ts");
     expect(tunes.on.pull_request.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
     expect(tunes.on.push.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
   });
