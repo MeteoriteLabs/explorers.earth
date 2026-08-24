@@ -23,10 +23,14 @@ function heredoc(source: string, opener: string): string {
 describe("Music deployment authority files", () => {
   it("keeps development dependencies out of the production image", () => {
     const dockerfile = read("tunes/Dockerfile");
+    expect(dockerfile).toContain(
+      "FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
+    );
     expect(dockerfile).toContain("FROM base AS prod-deps");
     expect(dockerfile).toContain("RUN npm ci --omit=dev --legacy-peer-deps");
     expect(dockerfile).toContain("COPY --from=prod-deps /app/node_modules ./node_modules");
     expect(dockerfile).not.toContain("COPY --from=deps /app/node_modules ./node_modules");
+    expect(dockerfile).toContain("rm -rf /usr/local/lib/node_modules/npm");
   });
 
   it("mounts the dedicated lifecycle-proof authority into both production Tunes slots", () => {

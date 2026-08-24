@@ -1,4 +1,4 @@
-FROM node@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd AS base
+FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base
 
 # Set working directory here
 WORKDIR /app
@@ -45,6 +45,10 @@ RUN npm run build
 # Production image
 FROM base AS runner
 ENV NODE_ENV=production
+# The service only needs the Node runtime; do not ship npm's package-management
+# dependency graph in the production attack surface.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
 ARG BUILD_COMMIT
 ARG BUILD_SOURCE
 LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
