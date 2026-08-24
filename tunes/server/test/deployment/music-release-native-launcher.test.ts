@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../..");
@@ -238,5 +239,24 @@ describe("native Music release launch boundary", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("native Music release launcher attestation is required");
     expect(result.stderr).not.toContain("external fixture deployment authority is forbidden");
+  });
+
+  it("rejects a caller-forged nonce even when the anonymous channel matches", () => {
+    const nonce = "a".repeat(64);
+    const channel = pathToFileURL(join(tunesRoot, "scripts", "music-release-channel.mjs")).href;
+    const result = spawnSync(process.execPath, [
+      "--import", channel,
+      "--eval", "",
+      "--",
+      "--music-native-release-channel", "rehearsal", nonce,
+    ], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      input: `${nonce}\n`,
+      env: withoutNodeStartupAuthority(),
+      windowsHide: true,
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("native Music release launcher attestation is invalid");
   });
 });
