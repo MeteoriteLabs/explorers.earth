@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createValidatedApp as createApp } from '../config/music-startup';
+import { prepareProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
 
 let storage: typeof import('../storage')['storage'];
 
@@ -35,6 +36,7 @@ let seededGuestUrl = '';
 let seededUserId = 0;
 
 beforeAll(async () => {
+  await prepareProtectedRuntimeTestAuthority();
   ({ app } = await createApp());
   ({ storage } = await import('../storage'));
   // createUser assigns a random-hex guestUrl (see storage.createUser). Adjust the

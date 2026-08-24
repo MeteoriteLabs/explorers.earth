@@ -4,6 +4,7 @@ import request from "supertest";
 import { createValidatedApp as createApp } from "../../config/music-startup";
 import { MusicIdentityRepository } from "../../repositories/musicIdentityRepository";
 import type { Pool } from "pg";
+import { prepareProtectedRuntimeTestAuthority } from "../protected-runtime-test-authority";
 
 let pool: Pool;
 let storage: typeof import("../../storage")["storage"];
@@ -45,6 +46,7 @@ describePostgres("C3 real migrated runtime graph", () => {
     if (!address || typeof address === "string") throw new Error("runtime Strapi did not bind");
     process.env.STRAPI_URL = `http://127.0.0.1:${address.port}`;
     process.env.MUSIC_FIXTURE_STRAPI_ORIGIN = process.env.STRAPI_URL;
+    await prepareProtectedRuntimeTestAuthority();
     ({ app, server } = await createApp());
     ({ pool } = await import("../../db"));
     ({ storage } = await import("../../storage"));

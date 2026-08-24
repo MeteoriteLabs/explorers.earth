@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createValidatedApp as createApp } from '../config/music-startup';
+import { prepareProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
 
 let storage: typeof import('../storage')['storage'];
 
@@ -23,6 +24,7 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
   // failed mid-test and left a stale row (which would otherwise make this
   // pass via the existing-user path — a false green).
   beforeAll(async () => {
+    await prepareProtectedRuntimeTestAuthority();
     ({ app } = await createApp());
     ({ storage } = await import('../storage'));
     await removeFresh();
