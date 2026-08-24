@@ -292,19 +292,19 @@ describe("Strapi identity gateway", () => {
     expect(peak).toBeLessThanOrEqual(2);
     expect(bounded.stats().peakPending).toBeLessThanOrEqual(3);
 
-    const queuedFetch = vi.fn<typeof fetch>(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 40));
-      return response({}, 401);
-    });
-    const deadlineBounded = gateway(queuedFetch, {
-      maxConcurrency: 1,
-      maxPending: 2,
-      retries: 0,
-      connectTimeoutMs: 100,
-      overallTimeoutMs: 15,
-    });
     vi.useFakeTimers();
     try {
+      const queuedFetch = vi.fn<typeof fetch>(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        return response({}, 401);
+      });
+      const deadlineBounded = gateway(queuedFetch, {
+        maxConcurrency: 1,
+        maxPending: 2,
+        retries: 0,
+        connectTimeoutMs: 100,
+        overallTimeoutMs: 15,
+      });
       const first = deadlineBounded.resolve("first-deadline-proof", "deadline-1");
       const second = deadlineBounded.resolve("second-deadline-proof", "deadline-2");
       const deadlineResults = Promise.allSettled([first, second]);
