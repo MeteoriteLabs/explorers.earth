@@ -35,6 +35,8 @@ import {
 import { startMusicReconciliationSuspensionListener } from "../services/musicReconciliationSuspensionListener";
 import { MusicFeatureDecisionService, type MusicFeatureFlag } from "../services/musicFeatureDecisionService";
 import { setupMusicFeatureRoutes } from "./musicFeatureRoutes";
+import { setupExplorersAnalyticsRoutes } from "./explorersAnalyticsRoutes";
+import { createExplorersAnalyticsDependencies } from "../services/explorers-analytics-composition";
 
 const featureAllowlist = (value?: string) => new Set((value ?? "").split(",").map((item) => item.trim()).filter(Boolean));
 const featurePercentage = (value?: string) => { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 0; };
@@ -137,6 +139,7 @@ export async function registerRoutes(
   setupCanonicalMusicRoutes(app, canonicalDependencies);
   setupMusicOpenApiRoutes(app);
   setupAuthRoutes(app);
+  setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies());
   setupReactivationRoutes(app, {
     reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
   });

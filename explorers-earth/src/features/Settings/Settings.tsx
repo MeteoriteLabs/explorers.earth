@@ -3,16 +3,17 @@ import BillingTab from "./components/BillingTab";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
-import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
+import { useQuery as useReactQuery } from "@tanstack/react-query";
+import { localTunesRequest } from "../../lib/apiClient";
 import {
   updatePasswordMutation,
-  deleteExplorerAccountMutation,
-  deleteExplorerUserMutation,
+  deleteAccountMutation,
+  accountQuery,
   addReasonForLeavingMutation,
   updateBlockedStatusMutation,
   updateTabVisibilityMutation,
   CHECK_PUBLISHED_LISTS,
-  getUserAccountQuery,
 } from "./api/mutation";
 import useAuthStore from "../../store/store";
 import { toast } from "sonner";
@@ -24,48 +25,17 @@ import PasswordInput from "../../components/ui/PasswordInput";
 import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
-import { selectCompletedAccount } from "../music/musicIdentityCoordinator";
+import ConnectedAccounts from "./components/ConnectedAccounts";
+import ProfileAccountSettings from "./components/ProfileAccountSettings";
 import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
-import {
-  AccountLifecycleError,
-  createAccountLifecycleService,
-  type AccountLifecycleStatus,
-} from "../../services/accountLifecycleService";
-import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
-import { closeLocalMusicSession } from "../music/musicSessionBoundary";
-import { createDeletionCancellationCoordinator, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+import { selectCompletedAccount } from "../music/musicIdentityCoordinator";
 
+const SETTINGS_TABS = ["account", "billing"] as const;
 
 const providerQuery = gql`
   query UsersPermissionsUser($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       provider
-    }
-  }
-`;
-
-const settingsAccountQuery = gql`
-  query SettingsAccount($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      documentId
-      accounts {
-        documentId
-        Account_Name
-        Account_Type
-        mobile_number
-        Addresss
-        public_profile
-        public_recommendations
-        public_movie
-        public_guides
-        public_books
-        public_games
-        public_apps
-        public_products
-        public_people
-        pinned_nav_tabs
-        auto_pinning
-      }
     }
   }
 `;
@@ -112,8 +82,6 @@ const Settings = memo(() => {
   const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
   const [deleteAccountLoading, setDeleteAccountLoading] =
     useState<boolean>(false);
-  const [deletionLifecycle, setDeletionLifecycle] = useState<AccountLifecycleStatus["operation"] | null>(null);
-  const [deletionAuthorityResolved, setDeletionAuthorityResolved] = useState(false);
   // Password visibility states for delete account modal
   const [deletePasswordVisible, setDeletePasswordVisible] = useState<boolean>(false);
   const [deletePasswordConfirmVisible, setDeletePasswordConfirmVisible] = useState<boolean>(false);
@@ -130,6 +98,7 @@ const Settings = memo(() => {
   const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
+  const [connectedAccountsSectionOpen, setConnectedAccountsSectionOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const { data } = useQuery(providerQuery, {
@@ -139,15 +108,30 @@ const Settings = memo(() => {
     skip: !user?.documentId,
   });
 
-  // Query for current user's account data for tab visibility settings
-  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(settingsAccountQuery, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
+  const { data: accountData } = useQuery(accountQuery, {
+    variables: {
+      filters: {
+        username: {
+          eq: deleteUsername,
+        },
+      },
+    },
+    skip: !deleteUsername,
   });
 
-  const currentAccountCandidates = currentUserAccountData?.usersPermissionsUser?.accounts;
-  const selectedSettingsAccount = selectCompletedAccount(currentAccountCandidates);
-  const currentAccount = currentAccountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedSettingsAccount?.documentId);
+  // Query for current user's account data for tab visibility settings
+  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(accountQuery, {
+    variables: {
+      filters: {
+        username: {
+          eq: user?.username,
+        },
+      },
+    },
+    skip: !user?.username,
+  });
+
+  const currentAccount = selectCompletedAccount(currentUserAccountData?.accounts);
   const accountDocumentId = currentAccount?.documentId;
 
   const {
@@ -167,65 +151,20 @@ const Settings = memo(() => {
     skip: !accountDocumentId,
   });
 
+  const { data: musicPlaylists } = useReactQuery<any[]>({
+    queryKey: ['tunes-playlists', user?.username],
+    queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
+    enabled: !!user?.username && currentAccount?.localtunes_integrated === "Yes",
+  });
+
   useEffect(() => {
     if (!settingsLoading) {
       (window as any).__dashboardLoaded = true;
     }
   }, [settingsLoading]);
 
-  const apolloClient = useApolloClient();
-  const [deleteExplorerAccount] = useMutation(deleteExplorerAccountMutation);
-  const [deleteExplorerUser] = useMutation(deleteExplorerUserMutation);
+  const [deleteAccount] = useMutation(deleteAccountMutation);
   const { t, i18n } = useTranslation();
-  const accountLifecycle = useMemo(() => createAccountLifecycleService({
-    baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
-    getBearer: () => useAuthStore.getState().token ?? undefined,
-  }), []);
-  const deletionCancellation = useMemo(() => createDeletionCancellationCoordinator({
-    cancelDeletion: accountLifecycle.cancel,
-    resumeMusic: accountLifecycle.resume,
-  }), [accountLifecycle]);
-
-  useEffect(() => {
-    if (!user) {
-      setDeletionAuthorityResolved(false);
-      return;
-    }
-    let active = true;
-    const refresh = async () => {
-      setDeletionAuthorityResolved(false);
-      try {
-        const result = await accountLifecycle.status();
-        if (!active) return;
-        setDeletionLifecycle(result.operation);
-        setDeletionAuthorityResolved(true);
-        if (result.operation.status === "pending_deletion" || result.operation.status === "tombstoned") {
-          setShowDeleteAccountModal(true);
-          setDeleteStep(4);
-        }
-      } catch (error) {
-        if (!active) return;
-        if (error instanceof AccountLifecycleError && error.code === "LIFECYCLE_NOT_FOUND") {
-          setDeletionLifecycle(null);
-          setDeletionAuthorityResolved(true);
-        }
-      }
-    };
-    void refresh();
-    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", refresh);
-    return () => {
-      active = false;
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [accountLifecycle, user]);
-
-  const deletionIsTerminal = deletionLifecycle?.deadLetter === true
-    || deletionLifecycle?.phase === "finalized"
-    || deletionLifecycle?.status === "tombstoned";
-  const deletionActionsBlocked = !deletionAuthorityResolved || deletionIsTerminal;
 
   // Helper to get the current language and handle settings search matching
   const currentLanguage = LANGUAGES.find((lang) => lang.code === i18n.language) || LANGUAGES[0];
@@ -233,6 +172,31 @@ const Settings = memo(() => {
   const matchesSearch = (text: string) => {
     if (!searchQuery.trim()) return true;
     return text.toLowerCase().includes(searchQuery.toLowerCase());
+  };
+
+  const handleSettingsTabKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    let nextIndex = index;
+    if (event.key === "ArrowLeft") {
+      nextIndex = (index - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length;
+    } else if (event.key === "ArrowRight") {
+      nextIndex = (index + 1) % SETTINGS_TABS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = SETTINGS_TABS.length - 1;
+    }
+
+    const nextTab = SETTINGS_TABS[nextIndex];
+    setActiveTab(nextTab);
+    document.getElementById(`settings-tab-${nextTab}`)?.focus();
   };
 
   // Helper to get the effective toggle value (optimistic override > server data)
@@ -264,6 +228,7 @@ const Settings = memo(() => {
     public_products:        listCountsData?.productLists?.length ?? 0,
     public_people:          listCountsData?.personLists?.length ?? 0,
     public_guides:          listCountsData?.guides?.length ?? 0,
+    public_music:           0,
     public_profile:         0,
   }), [listCountsData]);
 
@@ -272,6 +237,7 @@ const Settings = memo(() => {
     const keys = [
       'public_profile',
       'public_recommendations',
+      'public_music',
       'public_guides',
       'public_movie',
       'public_books',
@@ -281,7 +247,7 @@ const Settings = memo(() => {
       'public_people'
     ];
     return keys.filter(key => getTabVisibility(key));
-  }, [currentUserAccountData, tabVisibilityOverrides]);
+  }, [currentAccount, tabVisibilityOverrides]);
 
   // Compute which tabs are auto-pinned based on published categories and list counts
   const autoPinnedTabs = useMemo(() => {
@@ -447,6 +413,11 @@ const Settings = memo(() => {
           hasPublished = (publishedListsData?.recommendationLists?.length ?? 0) > 0;
           errorMsg = "You must have at least one published place list to make Recommendations public.";
           break;
+        case "public_music":
+          hasPublished = currentAccount?.localtunes_integrated === "Yes" &&
+            (musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false);
+          errorMsg = "You must have at least one published playlist to make Music public.";
+          break;
         default:
           hasPublished = true;
           break;
@@ -566,7 +537,6 @@ const Settings = memo(() => {
         localStorage.removeItem("qrtoken");
         // Log out from global state
         logout();
-        closeLocalMusicSession();
         // Redirect to login page
         navigate("/login");
         // Reset loading state (though component will unmount)
@@ -620,34 +590,23 @@ const Settings = memo(() => {
 
       // Proceed with account deactivation/activation
       try {
-        const updateExplorerBlocked = async () => {
-          const response = await updateBlockedStatus({
-            variables: {
-              updateUsersPermissionsUserId: user?.id,
-              data: { blocked: !userBlocked },
-            },
-          });
-          return response.data?.updateUsersPermissionsUser?.data?.blocked === !userBlocked;
-        };
-        if (userBlocked) {
-          if (!await updateExplorerBlocked()) throw new Error("Explorer account status update was not confirmed.");
-        } else {
-          await deactivateExplorerAndMusic({
-            blockExplorer: updateExplorerBlocked,
-            suspendMusic: accountLifecycle.suspend,
-            resumeMusic: accountLifecycle.resume,
-          });
+        const response = await updateBlockedStatus({
+          variables: {
+            updateUsersPermissionsUserId: user?.id,
+            data: { blocked: !userBlocked },
+          },
+        });
+        if (response.data) {
+          toast.success(
+            userBlocked
+              ? t("settings.account.deactivateAccount.activatedMessage")
+              : t("settings.account.deactivateAccount.successMessage")
+          );
+          updateUserBlocked(!userBlocked);
+          setShowModal(false);
+          navigate("/");
+          logout();
         }
-        toast.success(
-          userBlocked
-            ? t("settings.account.deactivateAccount.activatedMessage")
-            : t("settings.account.deactivateAccount.successMessage")
-        );
-        updateUserBlocked(!userBlocked);
-        setShowModal(false);
-        navigate("/");
-        logout();
-        closeLocalMusicSession();
       } catch (error) {
         console.error(error);
         toast.error(t("settings.account.changePassword.updateAccountStatusFailed"));
@@ -697,7 +656,7 @@ const Settings = memo(() => {
             username: deleteUsername,
             userID: user?.id,
             email: user?.email,
-            address: currentAccount?.Addresss,
+            address: accountData?.accounts?.[0]?.Addresss,
           },
         },
       });
@@ -708,7 +667,6 @@ const Settings = memo(() => {
   };
 
   const handleDeleteAccountFinal = async () => {
-    if (deletionActionsBlocked) return;
     if (deleteConfirmation.trim() !== t("settings.account.deleteAccount.step4.confirmTextValue")) {
       toast.error(
         t("settings.account.deleteAccount.step4.confirmationRequired")
@@ -747,7 +705,11 @@ const Settings = memo(() => {
       }
 
       // Proceed with account deletion
-      if (!currentAccount?.documentId) {
+      if (
+        !accountData ||
+        !accountData.accounts ||
+        !accountData.accounts[0]?.documentId
+      ) {
         toast.error(
           t("settings.account.changePassword.accountDocumentIdNotFound")
         );
@@ -755,7 +717,38 @@ const Settings = memo(() => {
         return;
       }
 
-      await performDurableAccountDeletion();
+      await deleteAccount({
+        variables: {
+          deleteUsersPermissionsUserId: user?.id,
+          filters: {
+            documentId: {
+              eq: user?.documentId,
+            },
+          },
+          deleteAccountDocumentId2: accountData.accounts[0].documentId,
+          documentId: user?.documentId,
+        },
+      });
+      toast.success(t("settings.account.deleteAccount.step4.successMessage"));
+      setShowDeleteAccountModal(false);
+      setDeleteStep(1);
+
+      // Clear all storage on account deletion
+      logout();
+
+      localStorage.removeItem("auth-storage");
+      localStorage.removeItem("qrtoken");
+      localStorage.removeItem("localTunes_session");
+      sessionStorage.removeItem("explorers_user_credentials");
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Clear all cookies
+      document.cookie.split(";").forEach(function (c) {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+
+      navigate("/login");
     } catch (error) {
       console.error(error);
       // Check if it's a login error (invalid password) - only for manual auth users
@@ -764,91 +757,6 @@ const Settings = memo(() => {
       } else {
         toast.error(t("settings.account.changePassword.deleteAccountFailed"));
       }
-    } finally {
-      setDeleteAccountLoading(false);
-    }
-  };
-
-  const clearDeletedAccountAuth = () => {
-    logout();
-    closeLocalMusicSession();
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("qrtoken");
-    localStorage.clear();
-    sessionStorage.clear();
-    navigate("/login");
-  };
-
-  const performDurableAccountDeletion = async () => {
-    if (deletionActionsBlocked) {
-      throw new AccountLifecycleError("LIFECYCLE_TERMINAL", 409, "Account deletion cannot be restarted.", false);
-    }
-    await accountLifecycle.deleteAccount({
-      readAccountPresence: async (durableAccountDocumentId) => {
-        try {
-          const result = await apolloClient.query({
-            query: getUserAccountQuery,
-            variables: { documentId: user?.documentId },
-            fetchPolicy: "network-only",
-          });
-          const accounts = result.data?.usersPermissionsUser?.accounts;
-          if (!Array.isArray(accounts)) return { status: "unknown" } as const;
-          if (accounts.length === 0) return { status: "absent" } as const;
-          if (accounts.length !== 1) return { status: "unknown" } as const;
-          const selected = accounts.find((account: { documentId?: string }) => account.documentId === durableAccountDocumentId);
-          return typeof selected?.documentId === "string"
-            ? { status: "present", accountDocumentId: selected.documentId } as const
-            : { status: "unknown" } as const;
-        } catch {
-          return { status: "unknown" } as const;
-        }
-      },
-      deleteExplorerAccount: async (authoritativeAccountDocumentId) => {
-        const result = await deleteExplorerAccount({ variables: { accountDocumentId: authoritativeAccountDocumentId } });
-        return typeof result.data?.deleteAccount?.documentId === "string"
-          ? result.data.deleteAccount.documentId
-          : null;
-      },
-      deleteExplorerUser: async () => {
-        const result = await deleteExplorerUser({
-          variables: {
-            userId: user?.id,
-            filters: { documentId: { eq: user?.documentId } },
-            recommendationDocumentId: user?.documentId,
-          },
-        });
-        return typeof result.data?.deleteUsersPermissionsUser?.data?.documentId === "string"
-          ? result.data.deleteUsersPermissionsUser.data.documentId
-          : null;
-      },
-      clearAuth: clearDeletedAccountAuth,
-    });
-    toast.success(t("settings.account.deleteAccount.step4.successMessage"));
-  };
-
-  const cancelDurableDeletion = async () => {
-    setDeleteAccountLoading(true);
-    try {
-      const result = await deletionCancellation.cancelAndResume();
-      setDeletionLifecycle(result.operation);
-      setShowDeleteAccountModal(false);
-      setDeleteStep(1);
-      toast.success("Account deletion was cancelled and Music was reactivated.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Account deletion could not be cancelled.");
-    } finally {
-      setDeleteAccountLoading(false);
-    }
-  };
-
-  const retryDurableDeletion = async () => {
-    if (deletionActionsBlocked) return;
-    setDeleteAccountLoading(true);
-    try {
-      await performDurableAccountDeletion();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Account deletion could not be resumed.");
-      try { setDeletionLifecycle((await accountLifecycle.status()).operation); } catch { /* keep the last durable view */ }
     } finally {
       setDeleteAccountLoading(false);
     }
@@ -871,10 +779,19 @@ const Settings = memo(() => {
         <div className="w-full mb-6 flex justify-center">
           <div
             className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] p-1"
+            role="tablist"
+            aria-label="Settings sections"
           >
             <button
+              id="settings-tab-account"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'account'}
+              aria-controls="settings-panel-account"
+              tabIndex={activeTab === 'account' ? 0 : -1}
               onClick={() => setActiveTab('account')}
-              className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
+              onKeyDown={(event) => handleSettingsTabKeyDown(event, 0)}
+              className={`min-h-11 px-4 py-2 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                 activeTab === 'account'
                   ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
                   : 'bg-transparent text-dashboard-muted hover:text-dashboard'
@@ -883,8 +800,15 @@ const Settings = memo(() => {
               Account
             </button>
             <button
+              id="settings-tab-billing"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'billing'}
+              aria-controls="settings-panel-billing"
+              tabIndex={activeTab === 'billing' ? 0 : -1}
               onClick={() => setActiveTab('billing')}
-              className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
+              onKeyDown={(event) => handleSettingsTabKeyDown(event, 1)}
+              className={`min-h-11 px-4 py-2 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                 activeTab === 'billing'
                   ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
                   : 'bg-transparent text-dashboard-muted hover:text-dashboard'
@@ -896,7 +820,13 @@ const Settings = memo(() => {
         </div>
 
         {activeTab === 'account' && (
-          <div className="flex flex-col gap-1.5">
+          <div
+            id="settings-panel-account"
+            role="tabpanel"
+            aria-labelledby="settings-tab-account"
+            className="flex flex-col gap-1.5"
+          >
+            <ProfileAccountSettings section="account" />
 
             {/* Search bar */}
             <div
@@ -1049,6 +979,9 @@ const Settings = memo(() => {
                             { key: 'public_recommendations', label: 'Places Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                             )},
+                            { key: 'public_music', label: 'Music Tab', icon: (
+                              <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            )},
                             { key: 'public_guides', label: 'Guides Tab', icon: (
                               <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
                             )},
@@ -1192,6 +1125,9 @@ const Settings = memo(() => {
                               { key: 'public_recommendations', label: 'Places Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
+                              { key: 'public_music', label: 'Music Tab', icon: (
+                                <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                              )},
                               { key: 'public_guides', label: 'Guides Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385a7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10a7.968 7.968 0 00-14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
                               )},
@@ -1268,6 +1204,58 @@ const Settings = memo(() => {
               </>
             )}
 
+            {/* ── CONNECTED ACCOUNTS section ── */}
+            {matchesSearch("connected accounts local tunes external platform integration google") && (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Connected Accounts</p>
+                <div
+                  className="rounded-xl overflow-hidden mb-3"
+                  style={{ background: 'var(--dash-sidebar-bg, hsl(var(--dashboard-sidebar)))', border: '1px solid var(--dash-border)' }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setConnectedAccountsSectionOpen(prev => !prev)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
+                  >
+                    <span className="text-base leading-none">🔗</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-dashboard font-poppins">Connected Accounts</div>
+                      <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Integrations · Manage external music platforms and accounts</div>
+                    </div>
+                    <svg
+                      width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
+                      className={`flex-shrink-0 transition-transform duration-200 ${connectedAccountsSectionOpen ? 'rotate-90' : ''}`}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {connectedAccountsSectionOpen && (
+                    <div
+                      ref={(el) => {
+                        if (el && !el.dataset.scrolled) {
+                          el.dataset.scrolled = 'true';
+                          setTimeout(() => {
+                            const rect = el.getBoundingClientRect();
+                            const isMobile = window.innerWidth < 768;
+                            const bottomOffset = isMobile ? 80 : 20;
+                            const cutoff = window.innerHeight - bottomOffset;
+                            if (rect.bottom > cutoff) {
+                              const scrollOffset = rect.bottom - cutoff + 20;
+                              window.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+                            }
+                          }, 100);
+                        }
+                      }}
+                      className="border-t border-dashboard px-2 py-2 bg-dashboard-bg/20"
+                    >
+                      <ConnectedAccounts />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* ── DANGER ZONE section ── */}
             {((matchesSearch("deactivate account block remove danger") || matchesSearch("delete account permanently remove danger"))) && (
               <>
@@ -1295,7 +1283,7 @@ const Settings = memo(() => {
                   )}
 
                   {/* Delete Account row */}
-                  {!deletionActionsBlocked && matchesSearch("delete account permanently remove danger") && (
+                  {matchesSearch("delete account permanently remove danger") && (
                     <button
                       type="button"
                       onClick={() => { setDeleteUsername(user?.username || ''); setShowDeleteAccountModal(true); setDeleteStep(1); }}
@@ -1319,6 +1307,9 @@ const Settings = memo(() => {
         {/* ── BILLING TAB ── */}
         {activeTab === 'billing' && (
           <div
+            id="settings-panel-billing"
+            role="tabpanel"
+            aria-labelledby="settings-tab-billing"
             className="rounded-2xl px-4 py-4 sm:px-6 sm:py-6 border shadow-xl"
             style={{
               background: 'rgba(255,255,255,0.03)',
@@ -1327,6 +1318,7 @@ const Settings = memo(() => {
               borderColor: 'rgba(255,255,255,0.08)',
             }}
           >
+            <ProfileAccountSettings section="billing" />
             <BillingTab />
           </div>
         )}
@@ -1711,39 +1703,34 @@ const Settings = memo(() => {
             onClose={() => setShowDeleteAccountModal(false)}
           >
             <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
-              {!deletionActionsBlocked && (<>
-                <h1 className="dt-heading"> {t("settings.account.deleteAccount.step4.modalTitle")}</h1>
-                <div className="flex flex-col mt-8 gap-4 md:justify-center mx-auto">
-                  <h1 className="dt-subtext">{t("settings.account.deleteAccount.step4.confirmText")}</h1>
-                  <div className="relative w-full">
-                    <input
-                      value={deleteConfirmation}
-                      onChange={(e) => setDeleteConfirmation(e.target.value)}
-                      type="text"
-                      placeholder={t("settings.account.deleteAccount.step4.confirmPlaceholder")}
-                      className="dt-input w-full"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end mt-8">
-                  <Button
-                    btnText={t("settings.account.deleteAccount.step4.deleteButton")}
-                    type="button"
-                    size="xsmall"
-                    variant="danger"
-                    onClickHandler={handleDeleteAccountFinal}
-                    isLoading={deleteAccountLoading}
-                    disabled={deleteAccountLoading}
+              <h1 className="dt-heading"> {t("settings.account.deleteAccount.step4.modalTitle")}</h1>
+              <div className="flex flex-col mt-8 gap-4 md:justify-center mx-auto">
+                <h1 className="dt-subtext">{t("settings.account.deleteAccount.step4.confirmText")}</h1>
+                <div className="relative w-full">
+                  <input
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    type="text"
+                    placeholder={t(
+                      "settings.account.deleteAccount.step4.confirmPlaceholder"
+                    )}
+                    className="dt-input w-full"
                   />
                 </div>
-              </>)}
-              {deletionLifecycle && (
-                <AccountDeletionLifecyclePanel
-                  status={deletionLifecycle}
-                  onCancel={() => void cancelDurableDeletion()}
-                  onRetry={() => void retryDurableDeletion()}
+              </div>
+              <div className="flex justify-end mt-8">
+                <Button
+                  btnText={t(
+                    "settings.account.deleteAccount.step4.deleteButton"
+                  )}
+                  type="button"
+                  size="xsmall"
+                  variant="danger"
+                  onClickHandler={handleDeleteAccountFinal}
+                  isLoading={deleteAccountLoading}
+                  disabled={deleteAccountLoading}
                 />
-              )}
+              </div>
             </div>
           </Modal>
         )
