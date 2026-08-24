@@ -114,6 +114,8 @@ describe("MusicIdentityRepository defensive coverage", () => {
       .rejects.toThrow(/reactivation lease owner is invalid/);
     await expect(absent.repository.claimReactivationToken(tokenHash, leaseOwner, 0))
       .rejects.toThrow(/lease duration is invalid/);
+    await expect(absent.repository.claimReactivationToken(tokenHash, leaseOwner))
+      .resolves.toEqual({ disposition: "missing" });
   });
   it("validates every ensure input family", async () => {
     const valid = ensureInput();
