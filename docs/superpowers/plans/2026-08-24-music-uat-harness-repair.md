@@ -128,3 +128,10 @@ Primary risks are orphaned containers after interruption and time-of-check/time-
 VERDICT: APPROVED FOR TEST-FIRST EXECUTION
 
 NO UNRESOLVED DECISIONS
+
+## Execution Update — 2026-08-24
+
+- Tasks 1–3 are implemented and covered by qualification contracts. The first clean PR run proved lane-owned PostgreSQL creation and cleanup; its diagnostic retry exposed two 10-second integration hooks, now raised to the explicit 30-second integration budget.
+- Critical coverage repairs expanded the planned test-only scope to the publication repository, identity repository, gateway, and absence-proof suites. The resulting critical run is 100% for statements, branches, functions, and lines (538 passed, 1 skipped).
+- Task 4 is implemented. Real Docker UAT proved: ordinary teardown retires credentials and retains volumes; bootstrap refuses before rotation; confirmed reset re-attests and removes only the two exact labeled fixture volumes; fresh bootstrap/up/smoke/down succeeds.
+- Task 5 remains the final clean-commit static, focused, fast, and repeated PR qualification pass.

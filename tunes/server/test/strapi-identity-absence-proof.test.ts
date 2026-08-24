@@ -87,6 +87,9 @@ describe("Strapi identity absence proof", () => {
     for (const fetchImpl of [
       async () => new Response("upstream down", { status: 503 }),
       async () => { throw new Error("network outage"); },
+      async () => new Response(new ReadableStream<Uint8Array>({
+        pull(controller) { controller.error(new Error("stream outage")); },
+      }), { status: 200 }),
     ]) {
       const outage = new StrapiIdentityAbsenceProof({
         baseUrl: "https://strapi.example", accessToken: "read-only-service-token",

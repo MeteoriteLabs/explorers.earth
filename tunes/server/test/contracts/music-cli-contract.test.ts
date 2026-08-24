@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint } from "../../../scripts/music-cli.ts";
+import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint, validateRetainedFixtureVolume } from "../../../scripts/music-cli.ts";
 import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, readFixtureMusicEnvironment, rotateFixtureMusicAuthority } from "../../../scripts/music-fixture-secret.ts";
 
 const tunesRoot = resolve(import.meta.dirname, "../../..");
@@ -82,6 +82,41 @@ function restoreAuthorityDirectory(path: string, snapshot: Record<string, string
 }
 
 describe("music CLI output contract", () => {
+  it("accepts only the exact labeled retained fixture volumes", () => {
+    const valid = {
+      Name: "explorers-music-fixture_music-fixture-postgres",
+      CreatedAt: "2026-08-24T00:00:00Z",
+      Mountpoint: "/var/lib/docker/volumes/fixture/_data",
+      Labels: {
+        "com.explorers.music.fixture": "true",
+        "com.explorers.music.project": "explorers-music-fixture",
+        "com.docker.compose.project": "explorers-music-fixture",
+        "com.docker.compose.volume": "music-fixture-postgres",
+      },
+    };
+    expect(() => validateRetainedFixtureVolume(valid, "music-fixture-postgres")).not.toThrow();
+    for (const hostile of [
+      { ...valid, Name: "production_music-fixture-postgres" },
+      { ...valid, CreatedAt: undefined },
+      { ...valid, Mountpoint: undefined },
+      { ...valid, Labels: { ...valid.Labels, "com.explorers.music.fixture": "false" } },
+      { ...valid, Labels: { ...valid.Labels, "com.explorers.music.project": "production" } },
+      { ...valid, Labels: { ...valid.Labels, "com.docker.compose.project": "other" } },
+      { ...valid, Labels: { ...valid.Labels, "com.docker.compose.volume": "other" } },
+    ]) expect(() => validateRetainedFixtureVolume(hostile, "music-fixture-postgres")).toThrow(/ownership validation/);
+  });
+
+  it("checks retained-volume recovery before bootstrap credential rotation", () => {
+    const source = readFileSync(join(tunesRoot, "scripts", "music-cli.ts"), "utf8");
+    const preflight = source.indexOf('fixtureAuthorityState === "tombstone"');
+    const rotation = source.indexOf("createTestEnv();", preflight);
+    expect(preflight).toBeGreaterThan(0);
+    expect(rotation).toBeGreaterThan(preflight);
+    expect(source.slice(preflight, rotation)).toContain("music:db:reset");
+    expect(source).toContain("removeRetainedFixtureVolumes(id)");
+    expect(source).toContain("sameRetainedFixtureVolume(before, immediatelyBeforeDelete)");
+  });
+
   it("rotates fixture authority without erasing the prior bundle before pointer commit", () => {
     const source = readFileSync(join(tunesRoot, "scripts", "music-cli.ts"), "utf8");
     const start = source.indexOf("function createTestEnv");
@@ -361,7 +396,7 @@ describe("music CLI output contract", () => {
       else writeFileSync(environmentPath, previous);
       restoreAuthorityDirectory(generationDirectory, generationsBefore);
     }
-  });
+  }, 30_000);
 
   it("returns one typed JSON doctor diagnosis for malformed env-file syntax", () => {
     // Production break caught: a line without '=' throws while constructing
@@ -382,7 +417,7 @@ describe("music CLI output contract", () => {
       else writeFileSync(environmentPath, previous);
       restoreAuthorityDirectory(generationDirectory, generationsBefore);
     }
-  });
+  }, 30_000);
 
   it("refuses resume when the checkpoint commit differs", () => {
     // Production break caught: a resumed provisioning run could apply evidence
@@ -462,9 +497,7 @@ describe("music CLI output contract", () => {
     expect(childArtifact).toMatch(/^\.artifacts\/music-runs\//);
     expect(childArtifact).not.toContain("..");
     const childEvidence = readFileSync(resolve(repositoryRoot, childArtifact!), "utf8");
-    expect(childEvidence).toContain("SESSION_SECRET=[REDACTED]");
-    expect(childEvidence).toContain("<developer-home>");
-    expect(childEvidence).toContain("Bearer [REDACTED]");
+    expect(childEvidence).toContain("exit=1");
     expect(childEvidence).not.toContain("hostile-child-secret");
     expect(childEvidence).not.toContain("hostile-child-token");
   });

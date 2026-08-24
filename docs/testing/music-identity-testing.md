@@ -19,6 +19,15 @@ npm run music:down -- --mode fixture
 
 `music:down` preserves volumes. Volume deletion requires the exact isolated Compose project and matching `--confirm-project`; it refuses unlabeled or mismatched resources. Do not inspect, copy, or commit the generated `.env.music.test` or `.artifacts` credentials.
 
+After an ordinary `music:down`, the generated credentials are retired while the database volume is intentionally retained. A subsequent bootstrap refuses to rotate new credentials over that database. To discard the fixture database, run the exact confirmed recovery command and then bootstrap again:
+
+```text
+npm run music:db:reset -- --mode fixture --target test --confirm-project explorers-music-fixture --confirm-reset "RESET explorers-music-fixture/music_fixture"
+npm run music:bootstrap -- --mode fixture
+```
+
+The retired-authority reset validates and re-inspects the exact Compose volume names and fixture labels immediately before deletion. It does not read or reconstruct retired passwords and refuses missing, replaced, differently labeled, or production-like resources.
+
 ## Executable lanes
 
 | Lane | Budget | Command | Proof |

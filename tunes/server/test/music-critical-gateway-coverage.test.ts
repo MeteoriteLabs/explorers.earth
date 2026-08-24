@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { MusicIdentityError } from "../../shared/musicError";
 import {
   StrapiIdentityGateway,
+  cancelResponseBody,
   fingerprintStrapiProof,
   parseRetryAfterMs,
+  readBoundedResponseBody,
   type ResolvedStrapiIdentity,
   type StrapiIdentityGatewayOptions,
 } from "../services/strapiIdentityGateway";
@@ -197,6 +199,7 @@ describe("C4 authoritative gateway critical coverage", () => {
       vi.fn<typeof fetch>().mockResolvedValue(response({}, 418)),
       vi.fn<typeof fetch>().mockResolvedValue(response("x".repeat(128 * 1_024 + 1))),
       vi.fn<typeof fetch>().mockResolvedValue(response("not-json")),
+      vi.fn<typeof fetch>().mockResolvedValue(new Response(new Uint8Array([0xff]), { status: 200 })),
       vi.fn<typeof fetch>().mockResolvedValue({
         status: 200,
         headers: new Headers(),
@@ -337,6 +340,42 @@ describe("C4 authoritative gateway critical coverage", () => {
       }).resolve("timer-proof", "timer-request")).resolves.toEqual(resolvedIdentity);
     } finally {
       timer.mockRestore();
+    }
+  });
+
+  it("rejects duplicate immutable account document IDs across an authoritative page", async () => {
+    const duplicate = { ...account };
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(response({
+        data: [account, duplicate],
+        meta: { pagination: { page: 1, pageSize: 50, pageCount: 1, total: 2 } },
+      }));
+    await expect(gateway({ fetchImpl, retries: 0 }).resolve("duplicate-account-proof", "duplicate-account-request"))
+      .rejects.toMatchObject({ code: "UPSTREAM_MALFORMED" });
+  });
+
+  it("covers empty, locked, failed-cancel, and expired bounded response bodies", async () => {
+    await expect(readBoundedResponseBody(new Response(null), 10, 10, new AbortController())).resolves.toBe("");
+
+    const lockedResponse = new Response("locked");
+    const reader = lockedResponse.body!.getReader();
+    await expect(cancelResponseBody(lockedResponse)).resolves.toBeUndefined();
+    reader.releaseLock();
+
+    await expect(cancelResponseBody({ body: {
+      locked: false,
+      cancel: async () => { throw new Error("cancel failed"); },
+    } } as unknown as Response)).resolves.toBeUndefined();
+
+    const now = vi.spyOn(Date, "now")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(11);
+    try {
+      await expect(readBoundedResponseBody(new Response("late"), 10, 10, new AbortController()))
+        .rejects.toThrow("deadline exceeded");
+    } finally {
+      now.mockRestore();
     }
   });
 

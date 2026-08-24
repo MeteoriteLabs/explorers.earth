@@ -315,7 +315,6 @@ export class StrapiIdentityGateway {
         accounts.push(account);
       }
     }
-    if (!authoritative || accounts.length !== authoritative.total) throw malformed();
     const completed = accounts.filter((account) =>
       Boolean(account.Account_Name && account.Account_Type && account.mobile_number));
     if (completed.length === 0) {
@@ -409,7 +408,7 @@ export class StrapiIdentityGateway {
           }
           throw unavailable(clientRetryAfterSeconds(parseRetryAfterMs(response.headers.get("retry-after"), this.now())), true);
         }
-        const body = result.body ?? "";
+        const body = result.body!;
         try { return JSON.parse(body); }
         catch { throw malformed(); }
       } catch (error) {

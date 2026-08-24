@@ -81,6 +81,23 @@ async function rejectsCode(promise: Promise<unknown>, code: string) {
 }
 
 describe("MusicIdentityRepository defensive coverage", () => {
+  it("fails closed for malformed reactivation claims and covers bounded token revocation", async () => {
+    expect(new StaleLifecycleOperationError("operation-a").message).toContain("operation-a");
+    const tokenHash = "a".repeat(64);
+    const leaseOwner = "20000000-0000-4000-8000-000000000001";
+    const malformed = scriptedRepository([{ sql: "WITH claimed AS", reply: { rows: [{
+      disposition: "claimed", strapi_user_id: "not-an-id", strapi_user_document_id: "user",
+      strapi_account_document_id: "account", operation_id: leaseOwner,
+    }] } }]);
+    await expect(malformed.repository.claimReactivationToken(tokenHash, leaseOwner))
+      .rejects.toThrow(/token authority is malformed/i);
+
+    const revoked = scriptedRepository([{ sql: "UPDATE music_reactivation_tokens", reply: { rowCount: 1 } }]);
+    await expect(revoked.repository.revokeReactivationToken(tokenHash)).resolves.toBe(true);
+    const absent = scriptedRepository([{ sql: "UPDATE music_reactivation_tokens", reply: { rowCount: 0 } }]);
+    await expect(absent.repository.revokeReactivationToken(tokenHash)).resolves.toBe(false);
+    await expect(absent.repository.revokeReactivationToken("bad")).rejects.toThrow();
+  });
   it("validates every ensure input family", async () => {
     const valid = ensureInput();
     const invalid = [

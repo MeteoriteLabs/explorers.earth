@@ -25,6 +25,7 @@ function publicationKey(label: string, issuedAtMs = now): string {
 function harness(
   handler: (text: string, values: unknown[]) => { rows?: unknown[]; rowCount?: number },
   operationTime: unknown = databaseOperationTime,
+  idempotencyAuthorityTime: unknown = databaseOperationTime,
 ) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
   const client = {
@@ -38,7 +39,7 @@ function harness(
         return { rows: [{ operation_time: operationTime }], rowCount: 1 };
       }
       if (normalized.startsWith("SELECT clock_timestamp()::text AS idempotency_authority_time")) {
-        return { rows: [{ idempotency_authority_time: databaseOperationTime }], rowCount: 1 };
+        return { rows: [{ idempotency_authority_time: idempotencyAuthorityTime }], rowCount: 1 };
       }
       const handled = { rows: [], rowCount: 0, ...handler(normalized, values) };
       if (normalized.includes("AS global_active_count") && handled.rows.length === 0) {
@@ -194,6 +195,51 @@ describe("durable publication operation repository", () => {
     expect(db.calls.filter(({ text }) => text.startsWith("SELECT pg_advisory_xact_lock"))).toHaveLength(2);
     expect(db.calls.some(({ text }) => text.startsWith("UPDATE users"))).toBe(false);
     expect(db.calls.some(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toBe(false);
+  });
+
+  it("fails closed for an unavailable idempotency clock and rejects a future-issued key", async () => {
+    const invalid = harness(() => ({ rows: [] }));
+    await expect(new MusicPublicationOperationRepository(invalid.pool as never, cipher)
+      .execute(41, "not-an-idempotency-key", "public")).resolves.toEqual({ status: "invalid" });
+    expect(invalid.calls).toHaveLength(0);
+
+    const unavailable = harness(() => ({ rows: [] }), databaseOperationTime, null);
+    await expect(new MusicPublicationOperationRepository(unavailable.pool as never, cipher)
+      .execute(41, publicationKey("missing-idempotency-clock"), "public"))
+      .rejects.toThrow(/idempotency clock authority is unavailable/i);
+
+    const future = harness((text) => text.includes("FROM music_publication_operations")
+      || text.includes("music_lookup_publication_operation_archive") ? { rows: [] } : { rows: [] });
+    await expect(new MusicPublicationOperationRepository(future.pool as never, cipher)
+      .execute(41, publicationKey("future-key", now + 5 * 60_000 + 1_000), "public"))
+      .resolves.toEqual({ status: "invalid" });
+    expect(future.calls.map(({ text }) => text)).toContain("COMMIT");
+  });
+
+  it("fails closed for malformed global, owner, and compaction quota authority", async () => {
+    const key = publicationKey("malformed-quota-authority");
+    for (const fixture of [
+      { global: { global_active_count: -1, retry_after_seconds: 1 }, owner: undefined },
+      { global: { global_active_count: 10_000, retry_after_seconds: 0 }, owner: undefined },
+      { global: undefined, owner: { active_count: -1, retry_after_seconds: 1 } },
+      { global: undefined, owner: { active_count: 100, retry_after_seconds: 86_401 } },
+    ]) {
+      const db = harness((text) => {
+        if (text.includes("idempotency_key_hash=$2") || text.includes("music_lookup_publication_operation_archive")) return { rows: [] };
+        if (text.includes("AS global_active_count") && fixture.global) return { rows: [fixture.global] };
+        if (text.includes("AS active_count") && fixture.owner) return { rows: [fixture.owner] };
+        return { rows: [] };
+      });
+      await expect(new MusicPublicationOperationRepository(db.pool as never, cipher).execute(41, key, "public"))
+        .rejects.toThrow(/quota authority is unavailable/i);
+    }
+
+    for (const compacted_count of [-1, 8, Number.NaN]) {
+      const db = harness((text) => text.includes("music_compact_publication_operations")
+        ? { rows: [{ compacted_count }] } : { rows: [] });
+      await expect(new MusicPublicationOperationRepository(db.pool as never, cipher).compactExpiredOperations(7))
+        .rejects.toThrow(/compaction authority is unavailable/i);
+    }
   });
 
   it("rejects a retired timestamped key after its bounded archive row is gone", async () => {
