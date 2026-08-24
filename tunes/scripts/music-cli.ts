@@ -48,6 +48,9 @@ import {
 import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
+  startC10StandalonePostgres,
+  stopC10StandalonePostgres,
+  type OwnedC10StandalonePostgresAuthority,
 } from "./music-qualification-postgres.ts";
 import { requireNativeMusicReleaseLauncher } from "./music-release-channel.mjs";
 
@@ -149,6 +152,7 @@ const qualificationPorts = new Set<number>();
 let activeRun: { id: string; command: string; format: OutputFormat; started: number; context: RunContext; reconciliationCheckpoint?: string } | undefined;
 let childSequence = 0;
 let activeFixtureEnvironment: Record<string, string> = {};
+let activeStandalonePostgresEnvironment: Record<string, string> = {};
 const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS = [
   "MUSIC_C10_STANDALONE_POSTGRES_ACK",
   "MUSIC_C10_STANDALONE_POSTGRES_PORT",
@@ -170,6 +174,18 @@ export function qualificationChildAmbientEnvironment(
     }
   }
   return childEnvironment;
+}
+
+export async function withQualificationPostgresAuthority<T, A>(input: {
+  existing: A | undefined;
+  acquire: () => Promise<A>;
+  release: (authority: A) => Promise<void>;
+  run: (authority: A) => Promise<T>;
+}): Promise<T> {
+  if (input.existing) return await input.run(input.existing);
+  const authority = await input.acquire();
+  try { return await input.run(authority); }
+  finally { await input.release(authority); }
 }
 let qualificationInterruptProbeScheduled = false;
 let qualificationInterruptionRequested = false;
@@ -878,9 +894,12 @@ async function runQualificationTask(
       let databaseUrlTest = taskEnvironment.MUSIC_C3_POSTGRES_TEST === "1"
         ? await fixtureMigratorUrl(activeFixtureEnvironment)
         : undefined;
-      const childAmbientEnvironment = qualificationChildAmbientEnvironment(task.id);
+      const childAmbientEnvironment = qualificationChildAmbientEnvironment(task.id, {
+        ...process.env,
+        ...activeStandalonePostgresEnvironment,
+      });
       const standalonePostgres = databaseUrlTest && qualificationTaskUsesStandalonePostgres(task.id)
-        ? attestC10StandalonePostgresAuthority(process.env, readGitSha())
+        ? attestC10StandalonePostgresAuthority(childAmbientEnvironment, readGitSha())
         : undefined;
       if (databaseUrlTest && standalonePostgres) {
         const standaloneDatabase = new URL(databaseUrlTest);
@@ -980,6 +999,27 @@ async function fixtureMigratorUrl(environment: Record<string, string>): Promise<
 
 async function portAvailable(port: number): Promise<boolean> {
   return await new Promise((resolvePort) => { const server = createServer(); server.unref(); server.once("error", () => resolvePort(false)); server.listen({ host: "127.0.0.1", port }, () => server.close(() => resolvePort(true))); });
+}
+
+async function allocateStandalonePostgresPort(): Promise<number> {
+  const preferred = preferredQualificationPort("standalone-postgres");
+  for (let offset = 0; offset <= 4_000; offset += 1) {
+    const candidate = 56_000 + ((preferred - 56_000 + offset) % 4_001);
+    if (candidate !== 55_432 && !qualificationPorts.has(candidate) && await portAvailable(candidate)) {
+      qualificationPorts.add(candidate);
+      return candidate;
+    }
+  }
+  throw new MusicCommandError("no isolated PostgreSQL port is available", "qualification-postgres-authority", EXIT.prerequisite);
+}
+
+function standalonePostgresEnvironment(authority: { port: number; containerId: string; commit: string }): Record<string, string> {
+  return {
+    MUSIC_C10_STANDALONE_POSTGRES_ACK: "C10_LABELED_LOCAL_PG15",
+    MUSIC_C10_STANDALONE_POSTGRES_PORT: String(authority.port),
+    MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID: authority.containerId,
+    MUSIC_C10_STANDALONE_POSTGRES_COMMIT: authority.commit,
+  };
 }
 
 async function renderComposeModel(id: string): Promise<{ model: ComposeModel; artifacts: string[] }> {
@@ -1235,13 +1275,36 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
   if (["test:fast", "test:pr", "test:nightly", "test:release"].includes(parsed.command)) {
     const lane = parsed.command.slice("test:".length) as MusicQualificationLaneName;
     if (lane === "release") assertQualificationSourceClean();
-    const report = await runMusicQualificationLane(lane, {
-      artifactDirectory: runDirectory(id),
-      priorLaneWallClockMs: readQualificationLaneHistory(lane, context),
-      authority: { commit: context.commit, environmentFingerprint: context.environmentFingerprint },
-      measurements: collectQualificationMeasurements([], context),
-      execute: async (task, execution) => await runQualificationTask(id, task, execution.attempt, execution.remainingBudgetMs),
-      writeReport: async (value) => portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))),
+    const runLane = async () => await runMusicQualificationLane(lane, {
+        artifactDirectory: runDirectory(id),
+        priorLaneWallClockMs: readQualificationLaneHistory(lane, context),
+        authority: { commit: context.commit, environmentFingerprint: context.environmentFingerprint },
+        measurements: collectQualificationMeasurements([], context),
+        execute: async (task, execution) => await runQualificationTask(id, task, execution.attempt, execution.remainingBudgetMs),
+        writeReport: async (value) => portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))),
+      });
+    const report = lane === "fast" ? await runLane() : await withQualificationPostgresAuthority({
+      existing: attestC10StandalonePostgresAuthority(process.env, context.commit),
+      acquire: async () => {
+        const passwordFile = activeFixtureEnvironment.MUSIC_DB_MIGRATOR_SECRET_FILE_HOST;
+        if (!passwordFile) throw new MusicCommandError("fixture migrator secret authority is required", "qualification-postgres-authority", EXIT.prerequisite);
+        return await startC10StandalonePostgres({
+          commit: context.commit,
+          port: await allocateStandalonePostgresPort(),
+          passwordFile: resolve(root, passwordFile),
+        });
+      },
+      release: async (authority) => {
+        if ((authority as OwnedC10StandalonePostgresAuthority).owned) {
+          await stopC10StandalonePostgres(authority as OwnedC10StandalonePostgresAuthority);
+          qualificationPorts.delete(authority.port);
+        }
+      },
+      run: async (authority) => {
+        activeStandalonePostgresEnvironment = standalonePostgresEnvironment(authority);
+        try { return await runLane(); }
+        finally { activeStandalonePostgresEnvironment = {}; }
+      },
     });
     attachMusicQualificationMeasurements(report, collectQualificationMeasurements(report.tasks, context));
     report.evidenceArtifact = portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(report, null, 2)));

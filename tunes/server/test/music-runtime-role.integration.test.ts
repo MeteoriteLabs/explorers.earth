@@ -21,6 +21,7 @@ const rogueLoginRole = `music_runtime_rogue_${process.pid}`;
 const incomingBridgeRole = `music_runtime_incoming_bridge_${process.pid}`;
 const incomingRogueRole = `music_runtime_incoming_rogue_${process.pid}`;
 const gateOwnerRole = `music_gate_owner_${process.pid}`;
+const unexpectedOwnerRole = `music_unexpected_owner_${process.pid}`;
 const runtimeCapabilityRole = ["music", "runtime"].join("_");
 const gateOwnerPassword = Buffer.alloc(32, 0x6f).toString("base64url");
 const runtimePassword = Buffer.alloc(32, 0x6d).toString("base64url");
@@ -131,6 +132,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${escalationRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${rogueLoginRole}`);
     await clusterAdmin?.query(`DROP ROLE IF EXISTS ${gateOwnerRole}`);
+    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${unexpectedOwnerRole}`);
     await clusterAdmin?.end();
     rmSync(runtimeSecretRoot, { recursive: true, force: true });
   });
@@ -337,15 +339,15 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     expect(authority.provisionMusicRuntimeLogin).toBeTypeOf("function");
     expect(authority.verifyMusicRuntimeLogin).toBeTypeOf("function");
     if (!authority.provisionMusicRuntimeLogin || !authority.verifyMusicRuntimeLogin) return;
-    await owner.query("CREATE ROLE music_unexpected_owner NOLOGIN");
-    await owner.query("ALTER TABLE users OWNER TO music_unexpected_owner");
-    await authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
+    await owner.query(`CREATE ROLE ${unexpectedOwnerRole} NOLOGIN`);
     try {
+      await owner.query(`ALTER TABLE users OWNER TO ${unexpectedOwnerRole}`);
+      await authority.provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
       await expect(authority.verifyMusicRuntimeLogin(owner, runtime, { loginRole: runtimeUser }))
         .rejects.toThrow(/owner|privilege|authority|attestation|unsafe/i);
     } finally {
       await owner.query("ALTER TABLE users OWNER TO music_migrator");
-      await owner.query("DROP ROLE music_unexpected_owner");
+      await owner.query(`DROP ROLE ${unexpectedOwnerRole}`);
     }
   });
 

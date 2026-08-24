@@ -9,6 +9,8 @@ import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
 import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
+  startC10StandalonePostgres,
+  stopC10StandalonePostgres,
   validateC10StandalonePostgresInspect,
 } from "../../../scripts/music-qualification-postgres";
 import {
@@ -22,6 +24,7 @@ import {
   sanitizeMusicChildArtifactOutput,
   sanitizeMusicCliText,
   selectMusicTimeToFirstGreen,
+  withQualificationPostgresAuthority,
 } from "../../../scripts/music-cli";
 import {
   attachMusicQualificationMeasurements,
@@ -200,6 +203,69 @@ describe("portable Music qualification lanes", () => {
       contextHost: "npipe:////./pipe/dockerDesktopLinuxEngine", imageId,
       inspect: { ...inspect, Config: { ...inspect.Config, Labels: {} } },
     })).toThrow(/owned PG15/i);
+  });
+
+  it("creates and removes an exact loopback-only lane-owned PG15 sidecar without exposing its password", async () => {
+    // Break caught: PostgreSQL qualification silently falls back to the
+    // five-service cluster and collides with its cluster-global runtime role.
+    const commit = "c".repeat(40);
+    const containerId = "a".repeat(64);
+    const imageId = `sha256:${"b".repeat(64)}`;
+    const contextHost = "npipe:////./pipe/dockerDesktopLinuxEngine";
+    const passwordFile = "C:\\protected\\music-db-migrator";
+    const mutations: string[][] = [];
+    const inspect = {
+      Id: containerId,
+      Name: `/music-c10-qualification-${commit.slice(0, 7)}-pg15`,
+      Image: imageId,
+      Config: { Image: "postgres:15-alpine", Labels: {
+        "com.explorers.music.c10-qualification": "true",
+        "com.explorers.music.owner": "task10",
+        "com.explorers.music.commit": commit,
+      } },
+      State: { Running: true, Health: { Status: "healthy" } },
+      HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "55539" }] } },
+    };
+    const dockerRead = (args: string[]) => {
+      if (args[0] === "context" && args[1] === "show") return "desktop-linux\n";
+      if (args[0] === "context" && args[1] === "inspect") return JSON.stringify(contextHost);
+      if (args.includes("image")) return `${imageId}\n`;
+      if (args.includes("inspect") && args.includes(containerId)) return JSON.stringify(inspect);
+      throw new Error(`unexpected read: ${args.join(" ")}`);
+    };
+    const authority = await startC10StandalonePostgres({ commit, port: 55539, passwordFile }, {
+      dockerRead,
+      dockerOptionalRead: () => undefined,
+      dockerRun: (args) => { mutations.push(args); return containerId; },
+      healthyInspect: async () => inspect,
+    });
+    expect(authority).toEqual({ port: 55539, containerId, commit, imageId, contextHost, owned: true });
+    const creation = mutations[0]!.join(" ");
+    expect(creation).toContain("127.0.0.1:55539:5432");
+    expect(creation).toContain("POSTGRES_PASSWORD_FILE=/run/secrets/music-c10-postgres-password");
+    expect(creation).toContain("readonly");
+    expect(creation).not.toContain("secret-value");
+    expect(JSON.stringify(authority)).not.toContain(passwordFile);
+
+    await stopC10StandalonePostgres(authority, {
+      dockerRead,
+      dockerRun: (args) => { mutations.push(args); return ""; },
+    });
+    expect(mutations.at(-1)).toEqual(["--host", contextHost, "rm", "--force", containerId]);
+  });
+
+  it("releases a lane-owned PostgreSQL authority exactly once when qualification fails", async () => {
+    // Break caught: a red task leaves the sidecar running, contaminating the
+    // retry and retaining a mounted credential longer than the lane lifetime.
+    const authority = { owned: true as const, containerId: "a".repeat(64) };
+    const events: string[] = [];
+    await expect(withQualificationPostgresAuthority({
+      existing: undefined,
+      acquire: async () => { events.push("acquire"); return authority; },
+      release: async (value) => { events.push(`release:${value.containerId}`); },
+      run: async (value) => { events.push(`run:${value.containerId}`); throw new Error("qualification red"); },
+    })).rejects.toThrow("qualification red");
+    expect(events).toEqual(["acquire", `run:${authority.containerId}`, `release:${authority.containerId}`]);
   });
 
   it("pins every Docker authority read to the validated local endpoint", () => {
