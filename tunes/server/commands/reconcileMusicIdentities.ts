@@ -1,5 +1,4 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import { constants, type BigIntStats } from "node:fs";
 import { link, lstat, mkdir, open, realpath, rename, rm, stat, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, join, parse, resolve } from "node:path";
@@ -13,6 +12,11 @@ import {
   type ReconciliationReview,
   type ReconciliationSourceMetadata,
 } from "../services/musicReconciler";
+import {
+  inspectWindowsCheckpointSecurities,
+  type WindowsCheckpointSecurity,
+} from "./windowsCheckpointSecurity";
+export { parseWindowsCheckpointSecurityOutput } from "./windowsCheckpointSecurity";
 
 export const MUSIC_RECONCILIATION_CHECKPOINT_SCHEMA_VERSION = "music-reconciliation-checkpoint/v1" as const;
 
@@ -249,15 +253,6 @@ interface MusicReconciliationCheckpointFileOptions {
   requireAbsent?: boolean;
   inspectWindowsCheckpointSecurity?: (path: string) => Promise<WindowsCheckpointSecurity>;
 }
-
-interface WindowsCheckpointSecurity {
-  nativeDev: string;
-  nativeIno: string;
-  ownerMatchesEffectiveUser: boolean;
-  unsafeWritePrincipalCount: number;
-}
-
-const windowsCheckpointSecurityHelper = resolve(import.meta.dirname, "../../scripts/windows-write-through.ps1");
 
 const checkpointFileSystem: MusicReconciliationCheckpointFileSystem = {
   lstat: (path) => lstat(path, { bigint: true }),
@@ -501,12 +496,12 @@ async function validateWindowsCheckpointSecurities(
   files: Array<{ path: string; metadata: BigIntStats; requireEffectiveOwner: boolean }>,
   options: MusicReconciliationCheckpointFileOptions,
 ): Promise<void> {
+  const inspectSecurity = options.inspectWindowsCheckpointSecurity
+    ? (paths: string[]) => Promise.all(paths.map((path) => options.inspectWindowsCheckpointSecurity!(path)))
+    : inspectWindowsCheckpointSecurities;
   /* c8 ignore next -- the POSIX bypass is exercised on the native POSIX worker. */
   if ((options.platform ?? process.platform) !== "win32") return;
-  const securities = options.inspectWindowsCheckpointSecurity
-    ? await Promise.all(files.map(({ path }) => options.inspectWindowsCheckpointSecurity!(path)))
-    /* c8 ignore next -- the native Windows subprocess boundary is exercised only by the native ACL proof. */
-    : inspectWindowsCheckpointSecurities(files.map(({ path }) => path));
+  const securities = await inspectSecurity(files.map(({ path }) => path));
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     const security = securities[index];
@@ -519,33 +514,6 @@ async function validateWindowsCheckpointSecurities(
       invalidCheckpointFile();
     }
   }
-}
-
-/* c8 ignore next 8 -- native Windows execution is covered by the Windows ACL proof; portable tests inject this boundary. */
-function inspectWindowsCheckpointSecurities(paths: string[]): WindowsCheckpointSecurity[] {
-  const output = execFileSync(
-    "powershell.exe",
-    ["-NoProfile", "-NonInteractive", "-File", windowsCheckpointSecurityHelper, "inspect-security", ...paths],
-    { encoding: "utf8", windowsHide: true, maxBuffer: 16 * 1024 },
-  );
-  return parseWindowsCheckpointSecurityOutput(output, paths.length);
-}
-
-export function parseWindowsCheckpointSecurityOutput(
-  output: string,
-  expectedCount: number,
-): WindowsCheckpointSecurity[] {
-  const securities = output.trim().split(/\r?\n/).filter(Boolean).map((line) => {
-    const parsed = JSON.parse(line) as Partial<WindowsCheckpointSecurity>;
-    if (typeof parsed.nativeDev !== "string" || typeof parsed.nativeIno !== "string"
-        || typeof parsed.ownerMatchesEffectiveUser !== "boolean"
-        || typeof parsed.unsafeWritePrincipalCount !== "number") {
-      invalidCheckpointFile();
-    }
-    return parsed as WindowsCheckpointSecurity;
-  });
-  if (securities.length !== expectedCount) invalidCheckpointFile();
-  return securities;
 }
 
 function sameCheckpointPath(left: string, right: string, platform: NodeJS.Platform): boolean {
