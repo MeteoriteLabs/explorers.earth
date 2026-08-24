@@ -21,6 +21,11 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
+# Keep build and test tooling out of the runtime image.
+FROM base AS prod-deps
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --legacy-peer-deps
+
 # Build the application
 FROM deps AS builder
 
@@ -48,7 +53,7 @@ LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
       org.opencontainers.image.title="explorers-tunes"
 
 # Copy production dependencies and build output
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
