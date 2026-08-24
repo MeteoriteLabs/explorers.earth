@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { musicErrorCodeSchema } from "../../../shared/musicError";
 import { EXPECTED_MUSIC_MIGRATION_CHAIN } from "../../../shared/music-migration-contract";
 import { MUSIC_OPENAPI_DOCUMENT } from "../../routes/musicOpenApiRoutes";
+import { MUSIC_QUALIFICATION_TASKS } from "../../../scripts/music-qualification";
 
 const root = resolve(import.meta.dirname, "../../../..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
@@ -799,6 +800,11 @@ describe("Music CI publication order", () => {
     expect(workflow.jobs?.browser?.needs).toBe("frontend");
     expect(workflow.jobs?.["load-chaos"]?.needs).toBe("browser");
     expect(workflow.jobs?.["image-deploy-contract"]?.needs).toEqual(["browser", "load-chaos"]);
+    const imageSteps = JSON.stringify(workflow.jobs?.["image-deploy-contract"]?.steps ?? []);
+    for (const path of MUSIC_QUALIFICATION_TASKS["release-rehearsal"].npmArgs.filter((value) => value.startsWith("server/test/deployment/"))) {
+      expect(imageSteps).toContain(path);
+    }
+    expect(imageSteps).not.toContain("music-release-native-launcher.test.ts");
   });
 
   it("runs the authoritative native nightly lane and isolates concurrency by event and lane", () => {

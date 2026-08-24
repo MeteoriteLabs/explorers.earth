@@ -39,6 +39,12 @@ export async function setupMockAuthentication(context: BrowserContext, options: 
         role: 'explorer'
       }));
       window.localStorage.setItem('auth_session', 'mock-session-id-456');
+      window.localStorage.setItem('explorers-cookie-consent', JSON.stringify({
+        essential: true,
+        analytics: false,
+        marketing: false,
+        timestamp: '2026-01-01T00:00:00.000Z',
+      }));
     } catch (e) {
       // Safe to ignore on about:blank, will run again on target origin
     }

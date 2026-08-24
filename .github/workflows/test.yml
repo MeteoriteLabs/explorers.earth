@@ -249,4 +249,20 @@ jobs:
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci --prefix tunes --legacy-peer-deps
       - name: Prove immutable image, migration, readiness, rollback floor, and kill-switch contracts
-        run: npm test --prefix tunes -- --run server/test/deployment --maxWorkers=1 --fileParallelism=false
+        env:
+          MUSIC_C3_TRAEFIK_TEST: "1"
+        run: >-
+          npm test --prefix tunes -- --run
+          server/test/deployment/music-command-plan.test.ts
+          server/test/deployment/music-deploy-executable.test.ts
+          server/test/deployment/music-deploy-workflow-security.test.ts
+          server/test/deployment/music-deployment-files.test.ts
+          server/test/deployment/music-deployment.test.ts
+          server/test/deployment/music-health-routes.test.ts
+          server/test/deployment/music-docker-release-authority.test.ts
+          server/test/deployment/music-production-policy.test.ts
+          server/test/deployment/music-publication-authority-verifier.test.ts
+          server/test/deployment/music-readiness.test.ts
+          server/test/deployment/registration-compat-process.test.ts
+          server/test/deployment/registration-compat-traefik.test.ts
+          --maxWorkers=1 --fileParallelism=false

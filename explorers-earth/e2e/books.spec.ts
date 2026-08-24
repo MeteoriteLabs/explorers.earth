@@ -7,7 +7,7 @@ test.beforeEach(async ({ context, page }) => {
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
 
-    if (payload?.query?.includes('CheckOnboardingStatus')) {
+    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('UsersPermissionsUser')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -18,7 +18,8 @@ test.beforeEach(async ({ context, page }) => {
                 {
                   Account_Name: 'Test Account',
                   Account_Type: 'business',
-                  mobile_number: '1234567890'
+                  mobile_number: '1234567890',
+                  documentId: 'acc-789'
                 }
               ]
             }
@@ -186,6 +187,10 @@ test('Flow 2: Books List and Recommendation creation E2E', async ({ page }) => {
   await submitBtn.click();
 
   await page.goto('/recommendations/books/book-list-123');
+
+  const keepDraftBtn = page.getByRole('button', { name: 'Keep Draft' });
+  await keepDraftBtn.waitFor({ state: 'visible', timeout: 2_000 }).catch(() => undefined);
+  if (await keepDraftBtn.isVisible()) await keepDraftBtn.click();
 
   const addBookBtn = page.locator('button:has-text("Add Book")');
   await expect(addBookBtn).toBeVisible();
