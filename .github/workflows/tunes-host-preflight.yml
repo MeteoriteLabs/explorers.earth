@@ -196,6 +196,11 @@ jobs:
             create_authority "$authority_dir/db-runtime"
             create_authority "$authority_dir/music-token"
             create_authority "$authority_dir/publication-response"
+            if [ "$(wc -c < "$authority_dir/publication-response")" -ne 43 ]; then
+              openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' > "$authority_dir/publication-response"
+              chmod 600 "$authority_dir/publication-response"
+            fi
+            test "$(wc -c < "$authority_dir/publication-response")" -eq 43
             create_authority "$authority_dir/lifecycle-proof"
             create_authority "$authority_dir/strapi-jwt"
             create_authority "$authority_dir/gate-key"
