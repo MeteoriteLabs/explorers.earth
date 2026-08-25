@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { cancelDeletionAndResumeMusic, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+import { createDeletionCancellationCoordinator, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
 
 describe("cancelDeletionAndResumeMusic", () => {
   it("resumes Music before reporting deletion cancellation as complete", async () => {
     const events: string[] = [];
     const cancelled = { operation: { status: "suspended" } };
-    await expect(cancelDeletionAndResumeMusic({
+    const coordinator = createDeletionCancellationCoordinator({
       cancelDeletion: vi.fn(async () => { events.push("deletion-cancelled"); return cancelled; }),
       resumeMusic: vi.fn(async () => { events.push("music-reactivated"); }),
-    })).resolves.toBe(cancelled);
+    });
+    await expect(coordinator.cancelAndResume()).resolves.toBe(cancelled);
     expect(events).toEqual(["deletion-cancelled", "music-reactivated"]);
   });
 
@@ -18,10 +19,11 @@ describe("cancelDeletionAndResumeMusic", () => {
     const resumeMusic = vi.fn()
       .mockRejectedValueOnce(new Error("Music temporarily unavailable"))
       .mockResolvedValueOnce(undefined);
-    await expect(cancelDeletionAndResumeMusic({ cancelDeletion, resumeMusic })).rejects.toThrow("Music temporarily unavailable");
-    await expect(cancelDeletionAndResumeMusic({ cancelDeletion, resumeMusic })).resolves.toBe(cancelled);
+    const coordinator = createDeletionCancellationCoordinator({ cancelDeletion, resumeMusic });
+    await expect(coordinator.cancelAndResume()).rejects.toThrow("Music temporarily unavailable");
+    await expect(coordinator.cancelAndResume()).resolves.toBe(cancelled);
 
-    expect(cancelDeletion).toHaveBeenCalledTimes(2);
+    expect(cancelDeletion).toHaveBeenCalledTimes(1);
     expect(resumeMusic).toHaveBeenCalledTimes(2);
   });
 });

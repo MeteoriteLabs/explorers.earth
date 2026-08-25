@@ -223,14 +223,15 @@ export async function guestMusicVideoFromUrl(capability: string | undefined, url
 }
 
 async function guestMusicFetch(capability: string | undefined, guestUrl: string, operation: string, body: unknown): Promise<Response> {
-  if (capability !== undefined && !GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
+  const normalizedCapability = capability || undefined;
+  if (normalizedCapability !== undefined && !GUEST_CAPABILITY_PATTERN.test(normalizedCapability)) throw new Error("A valid guest capability is required.");
   if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
   const response = await fetch(`/api/playlist/${encodeURIComponent(guestUrl)}/${operation}`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(capability ? { "X-Music-Guest-Capability": capability } : {}),
+      ...(normalizedCapability ? { "X-Music-Guest-Capability": normalizedCapability } : {}),
     },
     body: JSON.stringify(body),
     credentials: "include",

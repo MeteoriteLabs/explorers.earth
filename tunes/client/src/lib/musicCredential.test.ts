@@ -248,6 +248,13 @@ describe("C5 browser credential adapter", () => {
     expect(init?.headers).not.toHaveProperty("X-Music-Guest-Capability");
   });
 
+  it("normalizes legacy empty capability call sites to public authority", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await guestMusicSearch("", { query: "song" }, "public-owner");
+    expect(fetchMock.mock.calls[0][1]?.headers).not.toHaveProperty("X-Music-Guest-Capability");
+  });
+
   it("uses the same slug-bound header authority for bounded guest search and URL lookup", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ items: [] }), {
       status: 200, headers: { "Content-Type": "application/json" },

@@ -33,7 +33,7 @@ import {
 } from "../../services/accountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 import { closeLocalMusicSession } from "../music/musicSessionBoundary";
-import { cancelDeletionAndResumeMusic, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+import { createDeletionCancellationCoordinator, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
 
 
 const providerQuery = gql`
@@ -181,6 +181,10 @@ const Settings = memo(() => {
     baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
     getBearer: () => useAuthStore.getState().token ?? undefined,
   }), []);
+  const deletionCancellation = useMemo(() => createDeletionCancellationCoordinator({
+    cancelDeletion: accountLifecycle.cancel,
+    resumeMusic: accountLifecycle.resume,
+  }), [accountLifecycle]);
 
   useEffect(() => {
     if (!user) {
@@ -825,10 +829,7 @@ const Settings = memo(() => {
   const cancelDurableDeletion = async () => {
     setDeleteAccountLoading(true);
     try {
-      const result = await cancelDeletionAndResumeMusic({
-        cancelDeletion: accountLifecycle.cancel,
-        resumeMusic: accountLifecycle.resume,
-      });
+      const result = await deletionCancellation.cancelAndResume();
       setDeletionLifecycle(result.operation);
       setShowDeleteAccountModal(false);
       setDeleteStep(1);
