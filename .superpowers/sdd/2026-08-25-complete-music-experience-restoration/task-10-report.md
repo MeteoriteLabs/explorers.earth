@@ -951,3 +951,122 @@ This appendix is committed in the follow-up documentation commit. The untracked 
 - The selector contract is narrower than general Docker publishing by design: only one or two loopback/wildcard IPv4/IPv6 entries sharing one port are accepted. Unexpected topology fails before the controlled restart.
 - Run `32888977145` did not expose the actual binding rows, so dual-stack is a strongly supported diagnosis from timing and workflow order, not a raw-log-confirmed topology fact. The fixed stage vocabulary will make a future early failure diagnosable without weakening data sanitization.
 - This fix was not pushed, deployed, or triggered. The external live 200-sample SLO gate still requires an authorized manual workflow run against an explicitly attested test-app commit.
+
+## Real Strapi bearer SLO architecture correction (2026-08-26)
+
+### Live failure evidence and root cause
+
+Manual run `32890004373` executed the authenticated job on commit `031fd23e193ce429344715fc7300a94991428ce6` and completed all 200 HTTP measurements, but failed the gate:
+
+```json
+{"schemaVersion":"music-identity-slo/v1","outcome":"fail","reason":"threshold_failed","coldMode":"gateway_proof_cache_cold","restartCount":1,"ensureMutation":"identity_snapshots_and_sync_timestamps","sampleCount":200,"successCount":0,"successRatePercent":0,"gatewayProofCacheColdP95Ms":186.6,"warmP95Ms":183.1,"concurrentP95Ms":207.3}
+```
+
+Those latency values measured fast authentication rejection and are not valid cold/warm success evidence. Sanitized diagnostic run `32890767979` subsequently showed the repeated server outcome:
+
+```json
+{"event":"music_identity_ensure","outcome":"authentication_failure","status":401,"latencyMs":164}
+```
+
+The same `401 authentication_failure` pattern continued throughout the sampled log. The root cause is architectural: the SLO job minted HS256 JWTs with the Tunes container's local `STRAPI_JWT_SECRET`, but the identity gateway sends Explorer proofs to an external Strapi deployment whose JWT authority is different. A locally minted Tunes JWT can therefore never authenticate as that external Strapi user.
+
+### Approved correction
+
+The live SLO no longer reads `STRAPI_JWT_SECRET`, imports `jsonwebtoken`, or mints proofs. It requires the dedicated GitHub Actions secret `MUSIC_SLO_STRAPI_USER_TOKEN`, which must be a real, sufficiently long-lived bearer for the selected eligible Explorer user.
+
+The secret is contained as follows:
+
+- GitHub injects it through the masked `secrets.MUSIC_SLO_STRAPI_USER_TOKEN` context;
+- appleboy receives only the environment variable name through `envs`, never a literal token argument;
+- `docker exec -e MUSIC_SLO_STRAPI_USER_TOKEN` copies the existing environment value by name, without putting the value in the command text;
+- each Node process reads it once and immediately deletes it from `process.env`;
+- the remote shell unsets it on both pre-sampling failure and normal sampler completion;
+- no token, claim, user ID, response body, request ID, or raw error is printed.
+
+An absent or syntactically invalid secret fails closed before restart through the fixed aggregate stage `probe_authority_attestation`.
+
+### Exact-user preflight and restart boundary
+
+Before restart, a silent preflight selects one existing active Music row (`SELECT id FROM users WHERE identity_status='active' ORDER BY id ASC LIMIT 1`) and performs exactly one bodyless `POST /api/music/identity/ensure` with the real bearer. It fully parses and validates the successful credential envelope and requires its `musicUserId` to equal the selected Music row. Thus the external Strapi proof must resolve through the production gateway, satisfy the eligible/completed-account contract, and map to the exact already-provisioned Music identity. A `401`, malformed credential response, missing row, or identity mismatch fails without printing the proof or identity.
+
+The one controlled app restart occurs only after this preflight succeeds. Restart clears the preflight's in-memory gateway cache and source/fingerprint limiter buckets before any measured request. The preflight is idempotent at the identity boundary but, like every ensure, may refresh identity snapshot and synchronization timestamps; this is reported honestly by `ensureMutation: identity_snapshots_and_sync_timestamps`.
+
+### Honest TTL-cold and limiter schedule
+
+One stable real bearer cannot produce repeated fingerprint-cold requests by rotation. The corrected metric is therefore named `gateway_proof_cache_ttl_cold` / `gatewayProofCacheTtlColdP95Ms`.
+
+The attested image digest and exact deployed commit are checked first. The workflow then reads the immutable running container configuration and requires `MUSIC_IDENTITY_CACHE_TTL_MS=30000` and `MUSIC_RATE_LIMIT_PER_MINUTE=30`. Under that deployed code/config contract, the sampler performs 20 cycles of exactly ten calls:
+
+- one TTL-cold ensure;
+- four or five sequential warm ensures;
+- four or five concurrent warm ensures.
+
+The first cold sample occurs after restart. After every complete ten-call cycle—including settlement of its concurrent group—the sampler waits 31 seconds before starting the next cold sample. Cache hits do not extend the gateway's absolute 30-second expiry, so every next cycle begins at least one second after expiry. This produces exactly 20 cold, 90 sequential warm, and 90 concurrent measurements.
+
+The limiter uses the same configured 30-request fixed bucket for both loopback source and proof fingerprint. In the worst boundary alignment with zero request duration, cycles begin at 0, 31, and 62 seconds: the first bucket contains 20 calls, then resets before the third cycle. The executable schedule test applies the production fixed-window reset rule to all 200 call timestamps and proves the maximum bucket count is 20, below both limits. The single preflight call belongs to the pre-restart process and its bucket is discarded by restart.
+
+Expected job duration is approximately 10–12 minutes. The 30-minute SSH command and 35-minute job bounds also cover the conservative request-deadline path: at most 42 seconds of request deadlines per cycle, 589 seconds of intentional waits, and bounded preflight/restart/readiness overhead, leaving several minutes of margin.
+
+Aggregate output now includes only fixed status-category counts (`success`, `client_error`, `server_error`, `transport_or_validation_error`). The executable predicate regression models the observed live result as `client_error: 200`, `successCount: 0`, and a failed gate without exposing response details.
+
+### RED evidence
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 failed (1)
+Tests       11 failed | 6 passed (17)
+```
+
+The failures were specifically for the missing dedicated secret contract, old 22/25-minute bounds, absent real-bearer preflight, locally minted proof assumptions, missing status categories, dishonest cold label/schedule, and absent deployed TTL/limiter attestation.
+
+### GREEN and verification evidence
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 passed (1)
+Tests       17 passed (17)
+```
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts server/test/deployment/music-deploy-workflow-security.test.ts
+
+Test Files  2 passed (2)
+Tests       29 passed (29)
+```
+
+```text
+npm run test:music-critical-coverage --prefix tunes
+
+Test Files  24 passed (24)
+Tests       548 passed | 1 skipped (549)
+Statements  100% (1888/1888)
+Branches    100% (1695/1695)
+Functions   100% (274/274)
+Lines       100% (1647/1647)
+```
+
+```text
+npm run music:types:scoped --prefix tunes
+
+> tsc --project tsconfig.music-c0.json --pretty false --incremental false
+exit 0
+```
+
+The full workflow parsed with the repository's `js-yaml`, the complete extracted remote script passed Git Bash `bash -n`, and `git diff --check` exited 0.
+
+### Files and commits
+
+- `.github/workflows/tunes-host-preflight.yml`
+- `tunes/server/test/deployment/music-host-preflight.test.ts`
+- `.superpowers/sdd/2026-08-25-complete-music-experience-restoration/task-10-report.md` (this appendix)
+
+Implementation and regressions: `0fef7a2 fix(music): use real Strapi bearer for live SLO`.
+
+This appendix is committed in the follow-up documentation commit. The two untracked `.gstack` files were neither modified nor staged.
+
+### Remaining external gate and operator concern
+
+- The repository cannot create the external Strapi user bearer. An authorized operator must configure `MUSIC_SLO_STRAPI_USER_TOKEN` for the exact first active, already-provisioned eligible Music identity, with validity longer than the bounded job duration. Missing, expired, wrong-user, or ineligible authority fails closed.
+- This correction was not pushed, deployed, or triggered. Run `32890004373` proves the old architecture failed authentication; it does not qualify any SLO. A new authorized manual run against an explicitly attested deployed commit is still required to establish success ≥99.5%, TTL-cold p95 ≤5 seconds, sequential warm p95 ≤1 second, and concurrent p95 ≤1 second.
