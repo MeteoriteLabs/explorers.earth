@@ -669,3 +669,138 @@ The untracked `.gstack/browse-audit.jsonl` and `.gstack/claude-available.json` f
 
 - Local code now supplies the authenticated cold/warm/concurrent qualification path, but the real SLO result remains an external release gate until an authorized operator manually dispatches it against the test server. Per instruction, this task did not trigger or deploy the workflow and makes no claim that the live thresholds pass.
 - The repository does not provide a Tunes lint script and this machine does not have `actionlint`; the exact unavailable evidence is recorded above. All available scoped static and test gates pass.
+
+## Authenticated SLO probe review hardening (2026-08-26)
+
+### Review findings resolved
+
+The manual probe now measures a successful ensure only after it has fully read the response body, parsed JSON, and validated the strict `music-identity/v1` response shape. Validation requires exact top-level, identity, and credential keys; a positive integer Music user ID; active identity status; a 64–4096 character three-segment base64url/JWT-shaped credential; and a safe-integer expiry strictly in the future. The latency clock stops only after this validation. Fetch, body-read, malformed-body, expiry, and cancellation failures all produce unsuccessful samples, and a cleanup cancellation that never settles cannot strand the sample.
+
+Before the only restart, the job now requires the operator to supply `expected_deployed_commit`. The SSH script rejects non-lowercase 40-character commits, verifies the container's `MUSIC_IMAGE_COMMIT`, verifies the OCI image revision label, verifies `MUSIC_IMAGE_DIGEST`, and requires `.Config.Image` to match the immutable `ghcr.io/<owner>/explorers-tunes-test@sha256:<64 hex>` form. The existing exact branch lock, Compose project/service checks, running/healthy checks, one suppressed restart, and bounded post-restart readiness check remain in force.
+
+Identity selection is DB-first. The in-container script reads one active, already-provisioned Music identity from the Music `users` table, then asks Strapi for that exact document ID and requires the exact stored account document ID plus the same eligibility/completeness rules used by the gateway. It no longer selects the first eligible arbitrary Strapi user, so the probe cannot provision a new Music identity as a side effect.
+
+The ensure operation is semantically idempotent for this pre-provisioned identity, but it is not mutation-free. Every successful call refreshes the stored Strapi snapshots and writes `last_identity_sync_at` and `updated_at`. The aggregate output names this honestly as `identity_snapshots_and_sync_timestamps`. The workflow also performs one controlled test-app restart. There are no other intended mutations.
+
+### Statistically and operationally valid sampling
+
+The route limiter was inspected before redesign. It independently keys fixed-window buckets by socket source and bearer-proof fingerprint. The in-container calls all share the loopback source, whose default limit is 30 requests per 60 seconds; distinct identities or proofs cannot bypass that source cap.
+
+The probe therefore collects exactly 200 measurements in seven batches: six batches of 30 and one batch of 20. It waits 61 seconds after each completed non-final batch, so every new batch begins more than one complete limiter window after the preceding batch's last request. It does not change or reset limiter configuration.
+
+The measured population is:
+
+- 20 `gateway_proof_cache_cold` calls, each using a fresh two-minute HS256 Strapi JWT with a unique `jti`, which exercises a real gateway proof-cache miss without additional process restarts.
+- 90 sequential warm calls reusing the last cold proof in each batch.
+- 90 concurrent warm calls reusing that same proof, in groups no larger than 14.
+
+The single app restart is reported separately as `restartCount: 1`; the cold metric is deliberately named `gatewayProofCacheColdP95Ms` and is not represented as process-cold latency.
+
+The pass predicate requires all exact sample counts, at least 99.5% success, gateway-proof-cache-cold p95 at most 5000ms, sequential warm p95 at most 1000ms, and concurrent p95 at most 1000ms. At 200 samples, 199 successes equal exactly 99.5% and pass; 198 equal 99% and fail. A mutation check temporarily weakened the implementation threshold to 99%, and the executable test failed as expected before the 99.5% predicate was restored.
+
+Expected healthy execution is approximately 7–9 minutes. The six mandatory 61-second pacing intervals contribute 366 seconds. The per-call deadline is six seconds; a pessimistic calculation across all sequential calls, concurrent groups, pacing, selection, and the bounded restart/readiness wait is below 22 minutes. The SSH command timeout is 22 minutes and the job timeout is 25 minutes, providing a modest outer margin while still failing closed.
+
+### RED evidence
+
+Initial review contract and behavioral tests were written before the implementation change:
+
+```text
+cd tunes
+npm test -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 failed (1)
+Tests       10 failed (10)
+```
+
+The failures covered missing deployment attestation, arbitrary Strapi-first selection, absent executable helper exports, absent credential validation, status-only success, insufficient sample size, and incomplete p95 gating.
+
+The cancellation-settlement regression was then observed RED against the first implementation:
+
+```text
+Test Files  1 failed (1)
+Tests       1 failed | 10 passed (11)
+Expected: { success: false, latencyMs: 0 }
+Received: { timedOut: true }
+```
+
+The fix makes cleanup cancellation best-effort and rejection-contained without awaiting it after the sample has already failed.
+
+The exact success-rate boundary was mutation-tested by temporarily changing `>=99.5` to `>=99`:
+
+```text
+Test Files  1 failed (1)
+Tests       1 failed | 10 passed (11)
+Expected: passed false for 198/200
+Received: passed true
+```
+
+Restoring `>=99.5` returned the focused suite to GREEN. A final RED/GREEN cycle also replaced the container-controlled `MUSIC_SLO_UNIT_TEST` switch with the workflow-owned `docker exec -e MUSIC_SLO_EXECUTE=1` execution marker, preventing container configuration from silently disabling the probe.
+
+### Executable behavior coverage
+
+The test extracts the exact Node heredoc from the parsed workflow, compiles it in a VM, and invokes the exported functions. These are behavior tests of the script that will execute in the container, not substring approximations of its validator or predicate. Covered cases include:
+
+- valid complete payload and post-body-read latency;
+- invalid JSON, missing version/identity, expired credential, empty token, non-JWT token, and extra top-level fields;
+- stalled response body;
+- rejected response body read plus rejected cancellation;
+- never-settling cancellation after body timeout;
+- 199/200 passing and 198/200 failing;
+- cold, sequential warm, and concurrent p95 gates;
+- a concurrent distribution whose p95 is 1001ms failing even when all requests return successful credentials.
+
+Static workflow assertions remain for GitHub/SSH authority, immutable image attestation, exact branch and input gating, DB-first selection, limiter pacing, one restart, and the fixed aggregate-only output path.
+
+### GREEN evidence
+
+Final focused plus adjacent workflow security tests:
+
+```text
+cd tunes
+npm test -- server/test/deployment/music-host-preflight.test.ts server/test/deployment/music-deploy-workflow-security.test.ts
+
+Test Files  2 passed (2)
+Tests       23 passed (23)
+```
+
+Scoped types:
+
+```text
+cd tunes
+npm run music:types:scoped
+
+> tsc --project tsconfig.music-c0.json --pretty false --incremental false
+exit 0
+```
+
+Critical coverage:
+
+```text
+cd tunes
+npm run test:music-critical-coverage
+
+Test Files  24 passed (24)
+Tests       548 passed | 1 skipped (549)
+Statements  100% (1888/1888)
+Branches    100% (1695/1695)
+Functions   100% (274/274)
+Lines       100% (1647/1647)
+```
+
+The final embedded Node heredoc was extracted and passed to `node --check -` (`exit 0`). The focused test parses the entire workflow with `js-yaml`. `git diff --check` also exited 0.
+
+### Files and commits
+
+- `.github/workflows/tunes-host-preflight.yml`
+- `tunes/server/test/deployment/music-host-preflight.test.ts`
+- `.superpowers/sdd/2026-08-25-complete-music-experience-restoration/task-10-report.md` (this appendix)
+
+Implementation and tests: `3d31432 test(music): harden authenticated SLO evidence`.
+
+This appendix is committed in the follow-up documentation commit containing the report. The two untracked `.gstack` files were neither modified nor staged.
+
+### Concerns / external gate
+
+- The workflow was deliberately not dispatched or deployed. Local tests prove the executable probe logic and workflow contract, but only an authorized manual test-server run against an explicitly attested commit can establish the real success rate and p95 values.
+- The probe requires at least one active Music identity whose exact Strapi user/account remains eligible. Absence or mismatch fails closed with aggregate reason `no_provisioned_eligible_identity` and does not provision a replacement.
+- The manual probe is intentionally long-running because the loopback source limit creates a hard lower bound above six minutes for 200 requests. Shortening the pacing would invalidate the result or weaken the production limiter.
