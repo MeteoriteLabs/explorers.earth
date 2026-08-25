@@ -276,7 +276,7 @@ jobs:
                   COOKIE_SECRET: $(cat "$authority_dir/cookie-secret")
                   MUSIC_GATE_ATTESTATION_KEY: $(cat "$authority_dir/gate-key")
                   MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
-                  MUSIC_NEW_ENTRY_KILL_SWITCH: "true"
+                  MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
                   MUSIC_COHORT_ENABLED: "false"
                   MUSIC_TOKEN_CURRENT_KID: test-current-v1
                   MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token
