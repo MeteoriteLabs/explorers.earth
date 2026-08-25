@@ -29,7 +29,10 @@ npm run dev:tunes           # tunes at http://localhost:5000
 npm run dev:explorers-earth # explorers-earth at http://localhost:5173
 
 # Database (tunes only)
-npm run db:push             # Push schema changes to PostgreSQL
+# Apply the reviewed chain to the guarded fixture
+npm run music:db:migrate -- --mode fixture --target test
+# Verify journal, checksums, and catalog
+npm run music:db:verify -- --mode fixture --target test
 
 # Build
 npm run build:all
@@ -40,10 +43,10 @@ npm run build:all
 ### explorers-earth
 - `explorers-earth/src/features/` — Feature modules (Authentication, Profile, Favorites, Guides, Analytics, Settings, LandingPage, PublicHome)
 - `explorers-earth/src/components/MusicDashboard.tsx` — Embedded tunes music player dashboard
-- `explorers-earth/src/components/AuthSyncManager.tsx` — Background SSO sync with tunes
-- `explorers-earth/src/lib/apiClient.ts` — tunes API client (JWT auth, CSRF, retry logic)
-- `explorers-earth/src/services/ssoService.ts` — Cross-app SSO flow with tunes
-- `explorers-earth/src/hooks/useTunesDashboard.ts` — tunes data fetching + user sync hook
+- `explorers-earth/src/components/AuthSyncManager.tsx` — Authoritative Explorer identity and Account selection boundary
+- `explorers-earth/src/lib/localTunesApiClient.ts` — Short-lived Music credential client and single-flight ensure
+- `explorers-earth/src/features/music/musicApi.ts` — Canonical embedded Music API and identity coordinator
+- `explorers-earth/src/hooks/useTunesDashboard.ts` — Account-scoped Music data fetching
 - `explorers-earth/src/store/` — Zustand stores (store.ts, useCityStore.ts, useEmailStore.ts, useSetupStore.ts)
 - `explorers-earth/src/services/` — API service layer
 - `explorers-earth/src/hooks/` — Custom hooks (useProfileWalkthrough, useQRActions, useAIGuideQuota)
@@ -52,12 +55,12 @@ npm run build:all
 - `explorers-earth/netlify.toml` — Deployment config
 
 ### tunes
-- `tunes/shared/schema.ts` — Drizzle ORM database schema (single source of truth)
+- `tunes/shared/schema.ts` — Drizzle ORM schema model; the append-only migration manifest/chain is deployment authority
 - `tunes/server/routes/` — Express API routes (auth, playlist, admin, youtube, payment, email, gemini, instagram, strapi, subscription, page)
 - `tunes/server/services/` — Business logic (email, gemini, spotify-import, strapi, system-settings, youtube-import, user-sync)
 - `tunes/server/auth.ts` — Passport.js authentication setup
-- `tunes/server/jwt-auth-middleware.ts` — JWT validation for cross-app SSO (dual auth: session + JWT)
-- `tunes/server/legacy-routes.ts` — Legacy routes with multi-auth fallback
+- `tunes/server/routes/musicIdentityRoutes.ts` — Explorer proof boundary and Music credential issuance
+- `tunes/server/middleware/musicPrincipal.ts` — Local Music credential verification and numeric principal derivation
 - `tunes/server/storage.ts` — Database access layer
 - `tunes/server/swagger.ts` — OpenAPI/Swagger spec (live at /api-docs)
 - `tunes/client/src/pages/` — Frontend pages (dashboard, admin, auth, playlist, settings)
@@ -84,7 +87,7 @@ npm run build:all
 
 Key tables: `users`, `playlists`, `playlist_songs`, `songs`, `played_songs`, `user_sessions`, `user_profiles`, `guest_interactions`, `activity_logs`, `analytics_snapshots`, `api_tokens`, `team_members`, `email_templates`, `email_logs`, `page_contents`, `seo_settings`, `system_settings`, `youtube_api_usage`, `user_activity`, `session`
 
-See `tunes/shared/schema.ts` for complete schema. See `docs/tunes/database.md` for documentation.
+See `tunes/shared/schema.ts` for the schema model and `tunes/shared/music-migration-contract.ts` for the append-only deployed chain. See `docs/tunes/database.md` for documentation.
 
 ## API
 

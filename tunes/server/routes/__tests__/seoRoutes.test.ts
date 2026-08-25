@@ -28,4 +28,19 @@ describe("explorers sitemap static pages", () => {
     expect(response.text).toContain("<loc>https://explorers.earth/about</loc>");
     expect(response.text).toContain("<loc>https://explorers.earth/use-cases</loc>");
   });
+
+  it("serves only the repository-filtered active public playlist set without caching capability authority", async () => {
+    // Break caught: sitemap generation bypasses lifecycle/publication filtering or caches stale publication authority.
+    const app = express();
+    setupSeoRoutes(app, {
+      listPublishedMusicPlaylists: async () => [{ guestUrl: "active-public", updatedAt: new Date("2026-08-14T00:00:00Z") }],
+    });
+
+    const response = await request(app).get("/sitemap.xml");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.text).toContain("<loc>https://localtunes.earth/playlist/active-public</loc>");
+    expect(response.text).not.toContain("capability");
+  });
 });

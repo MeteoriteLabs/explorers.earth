@@ -156,7 +156,6 @@ export const onboardingInitialValues = {
   country: "",
   primaryLocation: "",
   accountType: "",
-  localTunesConsent: false,
 };
 
 export const createOnboardingValidationSchema = (t: TFunction) => Yup.object({

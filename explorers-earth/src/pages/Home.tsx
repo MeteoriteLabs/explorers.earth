@@ -31,6 +31,8 @@ import type { Guide } from "../features/Guides/types";
 import { getAllUserLocations } from "../utils/geoHelpers";
 import InteractiveMap from "../components/InteractiveMap";
 import { calculateIsProfileComplete, calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
+import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
+import { publicMusicShareUrl } from "../features/music/musicShareUrl";
 
 // Category integrations
 import { MOVIE_LISTS_BY_ACCOUNT } from "../features/Movies/api/query";
@@ -62,7 +64,7 @@ import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
 import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
-import { localTunesRequest } from "../lib/apiClient";
+import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 
 // S3 upload helpers
 import {
@@ -277,7 +279,8 @@ const Home = memo(() => {
     fetchPolicy: "cache-first", // Reuse cache if available
   });
 
-  const accountDocumentId = accountDataForGuides?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const selectedAccount = selectCompletedAccount(accountDataForGuides?.usersPermissionsUser?.accounts);
+  const accountDocumentId = selectedAccount?.documentId;
 
   // Fetch movie lists
   const { data: movieListsData, refetch: refetchMovies } = useQuery(MOVIE_LISTS_BY_ACCOUNT, {
@@ -328,7 +331,10 @@ const Home = memo(() => {
   const personLists = personListsData?.personLists || [];
 
   // Fetch music playlists
-  const tunesDashboard = useTunesDashboard();
+  const tunesDashboard = useTunesDashboard(user?.documentId && accountDocumentId ? {
+    userDocumentId: user.documentId,
+    accountDocumentId,
+  } : undefined);
   const musicPlaylists = tunesDashboard.playlists || [];
 
   // Fetch guides with network-only policy to match Recommendations behavior
@@ -377,7 +383,7 @@ const Home = memo(() => {
     return () => window.removeEventListener("focus", handleFocus);
   }, [accountDocumentId, user?.username, refetchGuides]);
 
-  const account = data?.accounts[0];
+  const account = data?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId);
   const url = getCurrentDomain();
 
   const activeTabShareUrl = useMemo(() => {
@@ -386,14 +392,16 @@ const Home = memo(() => {
     else if (activeTab === "movies") subPath = "movies";
     else if (activeTab === "books") subPath = "books";
     else if (activeTab === "games") subPath = "games";
-    else if (activeTab === "music") subPath = "music";
+    else if (activeTab === "music") {
+      return publicMusicShareUrl(url, tunesDashboard.dashboard?.publication) ?? `${url}/music`;
+    }
     else if (activeTab === "guides") subPath = "guides";
     else if (activeTab === "apps") subPath = "apps";
     else if (activeTab === "products") subPath = "products";
     else if (activeTab === "people") subPath = "people";
 
     return `${url}/${user?.username}/${subPath}`;
-  }, [activeTab, url, user?.username]);
+  }, [activeTab, tunesDashboard.dashboard?.publication, url, user?.username]);
   const listNames = userLists?.recommendationLists;
   const allGuides: Guide[] = guidesData?.guides || [];
   // Show all guides (drafts and published) on Home Dashboard, matching Recommendations behavior
@@ -405,14 +413,14 @@ const Home = memo(() => {
 
   // Calculate completion flags - Enhanced profile completion check
   const isProfileComplete = useMemo(() => {
-    const dashboardAccount = dashboardStatusData?.me?.accounts?.[0];
+    const dashboardAccount = dashboardStatusData?.me?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId);
     const accountData = dashboardAccount || account;
     return calculateIsProfileComplete(accountData);
-  }, [dashboardStatusData, account]);
+  }, [dashboardStatusData, account, accountDocumentId]);
 
   const isRecommendationsComplete = useMemo(() => {
     // Try dashboardStatusData first, then fallback to listNames
-    const dashboardAccount = dashboardStatusData?.me?.accounts?.[0];
+    const dashboardAccount = dashboardStatusData?.me?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId);
     const lists = dashboardAccount?.recommendation_lists || listNames;
 
     const isComplete = calculateIsRecommendationsComplete(lists);
@@ -426,7 +434,7 @@ const Home = memo(() => {
     }
 
     return isComplete;
-  }, [dashboardStatusData, listNames]);
+  }, [dashboardStatusData, listNames, accountDocumentId]);
 
   // Extensible: Check if ALL setup points are complete
   // Add new setup points here as the app grows
@@ -440,7 +448,7 @@ const Home = memo(() => {
     }
 
     // If we have account data (from either source), proceed with checks
-    const hasAccountData = dashboardStatusData?.me?.accounts?.[0] || account;
+    const hasAccountData = dashboardStatusData?.me?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId) || account;
     if (!hasAccountData) {
       return false; // No account data available yet - show setup card
     }
@@ -464,7 +472,7 @@ const Home = memo(() => {
 
     // If both steps are complete, hide the setup card immediately
     return bothComplete;
-  }, [isProfileComplete, isRecommendationsComplete, dashboardStatusLoading, loading, dashboardStatusData, account]);
+  }, [isProfileComplete, isRecommendationsComplete, dashboardStatusLoading, loading, dashboardStatusData, account, accountDocumentId]);
 
   const totalActiveListsCount = useMemo(() => {
     const activePlaces = listNames?.filter((list: any) => list.Visibility === true)?.length || 0;
@@ -1116,13 +1124,13 @@ const Home = memo(() => {
                         : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
                     }
                   </button>
-                  <button
+                  {(activeTab !== "music" || tunesDashboard.dashboard?.publication.mode === "public") && <button
                     onClick={() => setShowCategoryShareModal(true)}
                     title="Share recommendations link"
                     className="w-10 h-10 rounded-xl bg-[var(--dash-search-bg)] border border-dashboard flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-dashboard-muted flex-shrink-0 text-dashboard-muted hover:text-dashboard"
                   >
                     <ShareIcon size={14} />
-                  </button>
+                  </button>}
                 </div>
 
                 {/* Recommendation List Items Container */}
@@ -1776,6 +1784,7 @@ const Home = memo(() => {
           }}
           accountDocumentId={accountDocumentId}
           currentListCount={movieLists.length}
+          username={user?.username || ""}
           defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchMovies();
@@ -1786,7 +1795,6 @@ const Home = memo(() => {
               navigate(`/recommendations/movies`, { state: { justCreatedList: true } });
             }
           }}
-          username={user?.username || ""}
         />
       )}
 
@@ -1843,11 +1851,10 @@ const Home = memo(() => {
             setShowCreateMusicModal(false);
             setPrefillTitle("");
           }}
-          username={user?.username || ""}
           defaultListName={prefillTitle}
           onCreated={async () => {
             setPrefillTitle("");
-            await queryClient.invalidateQueries({ queryKey: ['tunes-playlists', user?.username] });
+            await queryClient.invalidateQueries({ queryKey: ["music-workspace"] });
             navigate("/music", { state: { justCreatedList: true } });
           }}
         />
@@ -1952,13 +1959,11 @@ const CreatePlaylistModal = ({
   open,
   onClose,
   onCreated,
-  username,
   defaultListName,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (newId?: string) => void;
-  username: string;
   defaultListName?: string;
 }) => {
   const [name, setName] = useState("");
@@ -1976,11 +1981,11 @@ const CreatePlaylistModal = ({
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const res = await localTunesRequest('POST', '/api/playlists', {
+      const res = await musicWorkspaceClient.createPlaylist(
         name,
-        description: description || undefined,
-        username,
-      });
+        description || null,
+        `home-playlist-${crypto.randomUUID()}`,
+      );
       toast.success("Playlist created");
       onCreated(res?.id?.toString());
       onClose();

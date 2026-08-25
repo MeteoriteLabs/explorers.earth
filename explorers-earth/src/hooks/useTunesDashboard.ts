@@ -1,76 +1,97 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import useAuthStore from '../store/store';
-import { syncLocalTunesUser } from '../services/localTunesService';
-import { localTunesRequest } from '../lib/apiClient';
-
-export interface TunesLocalUser {
-    id: number;
-    username: string;
-    email: string;
-    guestUrl: string;
-    venueName?: string;
-    allowSongRequests?: boolean;
-    allowGuestPlayOnDevice?: boolean;
-    allowPlaylistSharing?: boolean;
-    allowRecentlyPlayedVisibility?: boolean;
-    subscriptionPlan?: string;
-}
+import { useEffect, useSyncExternalStore } from "react";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
+import {
+  createMusicWorkspaceClient,
+  type MusicDashboardResponse,
+  type MusicEntitlementResponse,
+  type MusicPlaylist,
+} from "../features/music/musicWorkspaceClient";
 
 export interface TunesDashboardData {
-    localUser: TunesLocalUser | null;
-    guestUrl: string | null;
-    playlists: any[] | null;
-    playlist: { songs: any[]; currentlyPlaying?: any; playedSongs: any[] } | null;
-    isLoading: boolean;
-    error: string | null;
+  playlists: MusicPlaylist[];
+  dashboard: MusicDashboardResponse | null;
+  entitlement: MusicEntitlementResponse | null;
+  playlist: MusicDashboardResponse | null;
+  guestUrl: string | null;
+  localUser: null;
+  identityStatus: ReturnType<typeof musicIdentityCoordinator.getSnapshot>;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<unknown>;
+  retryIdentity: () => Promise<void>;
 }
 
-export function useTunesDashboard(): TunesDashboardData {
-    const { user } = useAuthStore();
-    const [localUser, setLocalUser] = useState<TunesLocalUser | null>(null);
-    const [guestUrl, setGuestUrl] = useState<string | null>(null);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [syncError, setSyncError] = useState<string | null>(null);
+export const musicWorkspaceClient = createMusicWorkspaceClient((input) => musicApi.request(input));
 
-    useEffect(() => {
-        if (!user) return;
-        setIsSyncing(true);
-        setSyncError(null);
-        syncLocalTunesUser({ id: user.id, username: user.username, email: user.email })
-            .then((result) => {
-                if (result.success && result.user) {
-                    setLocalUser(result.user as TunesLocalUser);
-                    setGuestUrl(result.user.guestUrl);
-                } else {
-                    setSyncError(result.message || 'Failed to sync with Local Tunes');
-                }
-            })
-            .catch((err: any) => setSyncError(err.message || 'Connection failed'))
-            .finally(() => setIsSyncing(false));
-    }, [user?.id]);
+export interface MusicWorkspaceScope {
+  userDocumentId: string;
+  accountDocumentId: string;
+}
 
-    const { data: playlists = null } = useQuery<any[]>({
-        queryKey: ['tunes-playlists', user?.username],
-        queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
-        enabled: !!user?.username && !!localUser,
-    });
+export function musicWorkspaceQueryKey(scope: MusicWorkspaceScope) {
+  return ["music-workspace", scope.userDocumentId, scope.accountDocumentId] as const;
+}
 
-    const { data: playlist = null } = useQuery<{ songs: any[]; currentlyPlaying?: any; playedSongs: any[] }>({
-        queryKey: ['tunes-playlist', guestUrl],
-        queryFn: () => localTunesRequest('GET', `/api/playlist/${guestUrl}`),
-        enabled: !!guestUrl,
-        refetchInterval: 5000,
-        staleTime: 0,           // always treat as stale so invalidations refetch immediately
-        refetchOnWindowFocus: false,
-    });
+export async function clearMusicWorkspaceScope(queryClient: QueryClient, scope: MusicWorkspaceScope): Promise<void> {
+  const queryKey = musicWorkspaceQueryKey(scope);
+  await queryClient.cancelQueries({ queryKey, exact: true });
+  queryClient.removeQueries({ queryKey, exact: true });
+}
 
-    return {
-        localUser,
-        guestUrl,
-        playlists,
-        playlist,
-        isLoading: isSyncing,
-        error: syncError,
-    };
+export async function clearAllMusicWorkspaceQueries(queryClient: QueryClient): Promise<void> {
+  await queryClient.cancelQueries({ queryKey: ["music-workspace"] });
+  queryClient.removeQueries({ queryKey: ["music-workspace"] });
+}
+
+const terminalWorkspaceCodes = new Set([
+  "AUTH_REQUIRED",
+  "AUTH_INVALID",
+  "TOKEN_EXPIRED",
+  "TOKEN_INVALID",
+  "TOKEN_REVOKED",
+  "IDENTITY_PENDING_DELETION",
+  "IDENTITY_TOMBSTONED",
+  "IDENTITY_SUSPENDED",
+]);
+
+export function retryWorkspaceFailure(failureCount: number, error: unknown): boolean {
+  const failure = error as { code?: unknown; upstreamCode?: unknown };
+  const code = typeof failure?.code === "string" ? failure.code : "";
+  const upstreamCode = typeof failure?.upstreamCode === "string" ? failure.upstreamCode : "";
+  if (terminalWorkspaceCodes.has(code) || terminalWorkspaceCodes.has(upstreamCode)) return false;
+  return failureCount < 1;
+}
+
+export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardData {
+  const identityStatus = useSyncExternalStore(
+    musicIdentityCoordinator.subscribe,
+    musicIdentityCoordinator.getSnapshot,
+    musicIdentityCoordinator.getSnapshot,
+  );
+  const query = useQuery({
+    queryKey: scope ? musicWorkspaceQueryKey(scope) : ["music-workspace", "no-user", "no-account"],
+    queryFn: () => musicWorkspaceClient.load(),
+    enabled: identityStatus === "ready" && scope !== undefined,
+    staleTime: 30_000,
+    retry: retryWorkspaceFailure,
+  });
+  useEffect(() => {
+    if (query.error) musicIdentityCoordinator.reportFailure(query.error);
+  }, [query.error]);
+  const visibleData = query.error ? undefined : query.data;
+  const dashboard = visibleData?.dashboard ?? null;
+  return {
+    playlists: visibleData?.playlists ?? [],
+    dashboard,
+    entitlement: visibleData?.entitlement ?? null,
+    playlist: dashboard,
+    guestUrl: dashboard?.publication.publicSlug ?? null,
+    localUser: null,
+    identityStatus,
+    isLoading: identityStatus === "setting_up" || (scope !== undefined && query.isLoading),
+    error: query.error ? "Music is temporarily unavailable." : null,
+    refetch: query.refetch,
+    retryIdentity: () => musicIdentityCoordinator.retry(),
+  };
 }

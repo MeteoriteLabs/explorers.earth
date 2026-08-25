@@ -3,16 +3,8 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [main, develop]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
   push:
     branches: [main, develop]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -194,7 +186,9 @@ jobs:
           # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
           # integration enabled or the playlist UI never renders.
           VITE_LOCAL_TUNES_ENABLED: true
-          VITE_LOCAL_TUNES_API_URL: http://localhost:5173
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          # Full-stack Music authority suites belong to the provisioned qualification lanes.
+          PLAYWRIGHT_PR_SAFE: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

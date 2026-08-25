@@ -340,8 +340,7 @@
     "signupSubtitle": "explorers ਦੀਆਂ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ ਦਾ ਆਨੰਦ ਲੈਣ ਲਈ ਸਾਇਨ ਅਪ ਕਰੋ",
     "signUpWithGoogle": "Google ਨਾਲ ਸਾਇਨ ਅਪ ਕਰੋ",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ਵਰਤੋਂਕਾਰ ਨਾਮ",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "ਇਸ ਮਹੀਨੇ ਕਮਾਇਆ",
       "passiveTitle": "ਸਿਫਾਰਸ਼ਾਂ ਨੂੰ ਪੈਸਿਵ ਇਨਾਮਾਂ ਵਿੱਚ ਬਦਲੋ",
       "networkTitle": "ਆਪਣਾ ਨੈੱਟਵਰਕ ਬਣਾਓ ਅਤੇ ਆਪਣੇ ਆਪ ਕਮਾਓ"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "ਜਿਵੇਂ ਤੁਸੀਂ ਖੋਜਦੇ ਹੋ ਉਸੇ ਤਰ੍ਹਾਂ ਸੁਣੋ",
-      "body": "ਖੋਜ ਸਿਰਫ਼ ਵਿਜ਼ੂਅਲ ਨਹੀਂ ਹੈ। ਆਵਾਜ਼ ਯਾਦ, ਸੰਦਰਭ, ਅਤੇ ਭਾਵਨਾ ਲੈ ਕੇ ਆਉਂਦੀ ਹੈ।\n\nLocalTunes ਤੁਹਾਨੂੰ ਸਥਾਨਾਂ, ਯਾਤਰਾਵਾਂ, ਅਤੇ ਮੂਡਾਂ ਲਈ ਸਾਉਂਡਟ੍ਰੈਕਸ ਇਕੱਠੇ ਕਰਨ ਅਤੇ ਸਾਂਝੇ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਦਿੰਦਾ ਹੈ — ਚਾਹੇ ਇਹ ਸੜਕ 'ਤੇ ਲੱਭੀ ਸੰਗੀਤ ਹੋਵੇ ਜਾਂ ਉਹ ਆਵਾਜ਼ਾਂ ਜੋ ਤੁਹਾਡੇ ਲਈ ਇੱਕ ਸਥਾਨ ਦੀ ਪਰਿਭਾਸ਼ਾ ਕਰਦੀਆਂ ਹਨ।\n\nਤੁਹਾਡੇ Explorer ਪ੍ਰੋਫਾਈਲ ਨਾਲ ਨਿਰਵਿਘਨ ਰੂਪ ਵਿੱਚ ਜੁੜਿਆ ਹੋਇਆ।",
-      "exploreButton": "Tunes ਖੋਜੋ",
-      "featuresHeading": "ਸ਼ਕਤੀਸ਼ਾਲੀ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "ਰੀਅਲ-ਟਾਈਮ ਸਹਿਯੋਗ",
-          "description": "ਜਦੋਂ ਤੁਸੀਂ ਕੀ ਵਜਾਉਂਦੇ ਹੋ ਉਸ 'ਤੇ ਪੂਰਾ ਨਿਯੰਤਰਣ ਰੱਖਦੇ ਹੋਏ ਮਹਿਮਾਨਾਂ ਨੂੰ ਤੁਰੰਤ ਆਪਣੀ ਪਲੇਲਿਸਟ ਵਿੱਚ ਗਾਣੇ ਸ਼ਾਮਲ ਕਰਨ ਦਿਓ।"
-        },
-        "qrCodeSharing": {
-          "title": "QR ਕੋਡ ਸਾਂਝਾ ਕਰਨਾ",
-          "description": "ਇੱਕ ਸਧਾਰਨ QR ਕੋਡ ਸਕੈਨ ਨਾਲ ਆਪਣਾ ਸੰਗੀਤ ਅਨੁਭਵ ਸਾਂਝਾ ਕਰੋ - ਕੋਈ ਐਪਸ ਜਾਂ ਡਾਊਨਲੋਡਾਂ ਦੀ ਲੋੜ ਨਹੀਂ।"
-        },
-        "youtubeIntegration": {
-          "title": "YouTube ਏਕੀਕਰਣ",
-          "description": "ਲੱਖਾਂ ਗਾਣਿਆਂ ਤੱਕ ਪਹੁੰਚ ਪ੍ਰਾਪਤ ਕਰਨ ਅਤੇ ਸੰਪੂਰਨ ਮਾਹੌਲ ਬਣਾਉਣ ਲਈ YouTube ਨਾਲ ਨਿਰਵਿਘਨ ਰੂਪ ਵਿੱਚ ਏਕੀਕਰਣ ਕਰੋ।"
-        },
-        "voteLikeSystem": {
-          "title": "ਵੋਟ ਅਤੇ ਪਸੰਦ ਸਿਸਟਮ",
-          "description": "ਮਹਿਮਾਨ ਆਪਣੇ ਪਸੰਦੀਦਾ ਗਾਣਿਆਂ ਲਈ ਵੋਟ ਦੇ ਸਕਦੇ ਹਨ ਤਾਂ ਜੋ ਰੀਅਲ-ਟਾਈਮ ਵਿੱਚ ਪਲੇਲਿਸਟ ਕਤਾਰ ਨੂੰ ਪ੍ਰਭਾਵਿਤ ਕਰ ਸਕਣ।"
-        },
-        "silentParties": {
-          "title": "ਚੁੱਪ ਪਾਰਟੀਆਂ",
-          "description": "ਵਿਲੱਖਣ ਚੁੱਪ ਪਾਰਟੀਆਂ ਦਾ ਆਯੋਜਨ ਕਰੋ ਜਿੱਥੇ ਹਰ ਕੋਈ ਆਪਣੇ ਹੈੱਡਫੋਨਾਂ ਰਾਹੀਂ ਸੁਣਦਾ ਹੈ।"
-        },
-        "karaokeReady": {
-          "title": "ਕਾਰਾਓਕੇ ਤਿਆਰ",
-          "description": "ਸਹਿਯੋਗੀ ਪਲੇਲਿਸਟਾਂ ਅਤੇ ਰੀਅਲ-ਟਾਈਮ ਗਾਣਾ ਬੇਨਤੀਆਂ ਨਾਲ ਕਾਰਾਓਕੇ ਰਾਤਾਂ ਲਈ ਸੰਪੂਰਨ।"
-        }
-      },
-      "venueHeading": "ਹਰ ਵੈਨਿਊ ਲਈ ਸੰਪੂਰਨ",
-      "venues": {
-        "barsPubs": "ਬਾਰ ਅਤੇ ਪਬ",
-        "restaurants": "ਰੈਸਟੋਰੈਂਟ",
-        "coffeeShops": "ਕੌਫੀ ਦੁਕਾਨਾਂ",
-        "eventsWeddings": "ਇਵੈਂਟਸ ਅਤੇ ਵਿਆਹ",
-        "retailStores": "ਰਿਟੇਲ ਸਟੋਰ",
-        "gymsFitness": "ਜਿਮ ਅਤੇ ਫਿਟਨੈਸ"
-      },
-      "closingStatement": "Tunes ਖੋਜਣਾ <strong>ਮੁਫ਼ਤ</strong> ਹੈ, ਅਤੇ ਪੇਡ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ ਲਈ ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਅਪਗ੍ਰੇਡ ਕਰ ਸਕਦੇ ਹੋ।"
     },
     "whoIsFor": {
       "headline": "ਉਹਨਾਂ ਲੋਕਾਂ ਲਈ ਬਣਾਇਆ ਗਿਆ ਜਿਨ੍ਹਾਂ ਦਾ ਸੁਆਦ ਦੂਜਿਆਂ ਦੀ ਮਦਦ ਕਰਦਾ ਹੈ।",

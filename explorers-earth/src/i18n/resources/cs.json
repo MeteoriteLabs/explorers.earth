@@ -340,8 +340,7 @@
     "signupSubtitle": "Zaregistrujte se a užijte si funkce explorers",
     "signUpWithGoogle": "Registrovat se přes Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Uživatelské jméno",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Vyděláno tento měsíc",
       "passiveTitle": "Proměňte doporučení v pasivní odměny",
       "networkTitle": "Vybudujte svou síť a vydělávejte automaticky"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Poslouchejte při objevování",
-      "body": "Objevování není jen vizuální. Zvuk nese paměť, kontext a emoce.\n\nTunes vám umožňuje sbírat a sdílet soundtracky pro místa, cesty a nálady — ať už je to hudba objevená na cestě nebo zvuky, které definují místo pro vás.\n\nBezproblémově propojeno s vaším profilem Explorer.",
-      "exploreButton": "Prozkoumat Tunes",
-      "featuresHeading": "Výkonné Funkce",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Spolupráce v Reálném Čase",
-          "description": "Umožněte hostům okamžitě přidávat písně do vašeho playlistu, přičemž si zachováte plnou kontrolu nad tím, co se přehrává."
-        },
-        "qrCodeSharing": {
-          "title": "Sdílení QR Kódu",
-          "description": "Sdílejte svůj hudební zážitek jednoduchým skenováním QR kódu — žádné aplikace ani stahování není potřeba."
-        },
-        "youtubeIntegration": {
-          "title": "Integrace YouTube",
-          "description": "Bezproblémově se integrujte s YouTube pro přístup k milionům písní a vytvoření dokonalé atmosféry."
-        },
-        "voteLikeSystem": {
-          "title": "Systém Hlasování a Líbí se",
-          "description": "Hosté mohou hlasovat pro své oblíbené písně, aby ovlivnili frontu playlistu v reálném čase."
-        },
-        "silentParties": {
-          "title": "Tiché Večírky",
-          "description": "Pořádejte jedinečné tiché večírky, kde všichni poslouchají přes své vlastní sluchátka."
-        },
-        "karaokeReady": {
-          "title": "Připraveno pro Karaoke",
-          "description": "Perfektní pro karaoke večery s kolaborativními playlisty a požadavky na písně v reálném čase."
-        }
-      },
-      "venueHeading": "Perfektní pro Každé Místo",
-      "venues": {
-        "barsPubs": "Bary a Hospody",
-        "restaurants": "Restaurace",
-        "coffeeShops": "Kavárny",
-        "eventsWeddings": "Události a Svátby",
-        "retailStores": "Obchody",
-        "gymsFitness": "Posilovny a Fitness"
-      },
-      "closingStatement": "Tunes je <strong>zdarma</strong> k prozkoumání, a pro placené funkce můžete později upgradovat."
     },
     "whoIsFor": {
       "headline": "Stvořeno pro lidi, jejichž vkus pomáhá ostatním.",

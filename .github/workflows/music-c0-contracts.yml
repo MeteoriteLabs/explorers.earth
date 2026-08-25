@@ -1,0 +1,59 @@
+name: Music C0 contracts
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "tunes/**"
+      - "fixtures/**"
+      - "docker-compose.music-test.yml"
+      - ".env.music*.example"
+      - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/test.yml"
+      - ".github/workflows/music-reconcile.yml"
+      - "docs/**"
+  push:
+    branches: [main, develop]
+    paths:
+      - "package.json"
+      - "tunes/**"
+      - "fixtures/**"
+      - "docker-compose.music-test.yml"
+      - ".env.music*.example"
+      - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/test.yml"
+      - ".github/workflows/music-reconcile.yml"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Music contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix tunes
+      - name: Prove public JSON command on Node 22.12
+        run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
+      - if: runner.os == 'Linux'
+        run: npm test --prefix tunes -- --run server/test/contracts
+      - if: runner.os == 'Windows'
+        run: npm test --prefix tunes -- --run server/test/contracts/music-reconciliation-workflow.test.ts server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts
+      - run: npm run music:types:scoped
+      - run: npm run music:types:baseline
+      - if: runner.os == 'Linux'
+        run: docker compose --env-file .env.music.test.example -p explorers-music-fixture -f docker-compose.music-test.yml config --quiet

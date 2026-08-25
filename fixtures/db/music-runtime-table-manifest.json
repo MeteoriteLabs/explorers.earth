@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "music-runtime-table-manifest/v1",
+  "migrationChain": {
+    "engine": "postgresql-15",
+    "expectedId": "0017_publication_idempotency_key_retirement",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql"],
+    "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations", "music_publication_operations", "music_publication_operation_archive", "music_reactivation_tokens"]
+  },
+  "generatedFrom": ["tunes/shared/schema.ts", "tunes/server/**/*.ts"],
+  "tables": [
+    { "name": "activity_logs", "managedBy": "drizzle", "family": "security-audit", "lifecycle": "retain-policy" },
+    { "name": "analytics_snapshots", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },
+    { "name": "api_tokens", "managedBy": "drizzle", "family": "security-audit", "lifecycle": "revoke-delete" },
+    { "name": "email_logs", "managedBy": "drizzle", "family": "pii", "lifecycle": "anonymize-retain-policy" },
+    { "name": "email_templates", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-owner-policy" },
+    { "name": "guest_interactions", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },
+    { "name": "page_contents", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-owner-policy" },
+    { "name": "playback_states", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
+    { "name": "played_songs", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },
+    { "name": "playlist_songs", "managedBy": "drizzle", "family": "user-content", "lifecycle": "delete" },
+    { "name": "playlists", "managedBy": "drizzle", "family": "user-content", "lifecycle": "delete" },
+    { "name": "seo_settings", "managedBy": "drizzle", "family": "analytics", "lifecycle": "remove-identifiers-retain" },
+    { "name": "session", "managedBy": "drizzle", "family": "security-audit", "lifecycle": "expire-delete" },
+    { "name": "songs", "managedBy": "drizzle", "family": "user-content", "lifecycle": "delete" },
+    { "name": "system_settings", "managedBy": "drizzle", "family": "security-audit", "lifecycle": "rotate-delete-secrets" },
+    { "name": "team_members", "managedBy": "drizzle", "family": "pii", "lifecycle": "delete-after-reassignment" },
+    { "name": "user_activity", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },
+    { "name": "user_profiles", "managedBy": "drizzle", "family": "pii", "lifecycle": "delete-anonymize" },
+    { "name": "user_sessions", "managedBy": "drizzle", "family": "security-audit", "lifecycle": "delete-anonymize-policy" },
+    { "name": "users", "managedBy": "drizzle", "family": "pii", "lifecycle": "delete-anonymize" },
+    { "name": "widgets", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
+    { "name": "youtube_api_calls", "managedBy": "unmanaged-raw-sql", "family": "analytics", "lifecycle": "anonymize-retain" },
+    { "name": "youtube_api_usage", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },
+    { "name": "youtube_music", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
+    { "name": "youtube_music_playlists", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
+    { "name": "youtube_playlists", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
+    { "name": "youtube_tokens", "managedBy": "unmanaged-raw-sql", "family": "security-audit", "lifecycle": "revoke-delete" }
+  ],
+  "systemReferences": ["pg_stat_activity"]
+}

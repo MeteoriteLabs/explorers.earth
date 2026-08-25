@@ -6,7 +6,6 @@ import PublicHomePage from "../pages/public/PublicHomePage";
 import Community from "../features/PublicHome/components/Community";
 import MapView from "../features/PublicHome/components/MapView";
 import PlaceMapView from "../features/PublicHome/components/PlaceMapView";
-import PublicMusic from "../pages/public/PublicMusic";
 import PublicGuides from "../features/PublicHome/components/PublicGuides";
 import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuideDetailPage";
 import { UsernameValidator } from "./validators";
@@ -34,11 +33,6 @@ const PublicRoutes = [
     <Route index element={
       <TabVisibilityGuard tabField="public_profile" defaultVisible={true}>
         <PublicProfile />
-      </TabVisibilityGuard>
-    } />
-    <Route path="music" element={
-      <TabVisibilityGuard tabField="public_music" defaultVisible={false}>
-        <PublicMusic />
       </TabVisibilityGuard>
     } />
     <Route path="places">

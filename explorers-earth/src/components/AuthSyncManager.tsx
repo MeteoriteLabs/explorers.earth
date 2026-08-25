@@ -1,142 +1,128 @@
-import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import useAuthStore from '../store/store';
-import { handlePostLoginSync } from '../services/ssoService';
-import { useApolloClient, gql } from '@apollo/client';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { gql, useQuery } from "@apollo/client";
+import useAuthStore from "../store/store";
+import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
+import { selectExplorerAccountState } from "../features/music/musicIdentityCoordinator";
+import { musicSessionBoundary } from "../features/music/musicSessionBoundary";
+import { clearAllMusicWorkspaceQueries, clearMusicWorkspaceScope } from "../hooks/useTunesDashboard";
+import { queryClient } from "../lib/queryClient";
+import { clearMusicPublicationCommands } from "../features/music/musicPublicationCommandRegistry";
 
-// Session-level key to prevent repeated syncs on every page visit
-const SYNC_DONE_KEY = 'localtunes_sync_done';
+const musicEligibilityQuery = gql`
+  query MusicIdentityEligibility($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      documentId
+      provider
+      confirmed
+      blocked
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        mobile_number
+      }
+    }
+  }
+`;
 
-/**
- * All known first-level private/app route segments.
- * Public profile pages follow the pattern  /:username/*  where the first
- * segment is a username — NOT one of these reserved app routes.
- *
- * If the first path segment is NOT in this set, the page is a public
- * profile page and sync must be skipped entirely.
- */
-const PRIVATE_ROUTE_SEGMENTS = new Set([
-    '',                   // root "/"
-    'home',
-    'profile',
-    'settings',
-    'favorites',
-    'login',
-    'signup',
-    'onboarding',
-    'checkout',
-    'subscription-plans',
-    'music',
-    '404',
-]);
-
-/**
- * Returns true if the pathname belongs to a public profile page
- * (the /:username/* pattern) and should NOT trigger any sync calls.
- */
-function isPublicProfilePage(pathname: string): boolean {
-    const firstSegment = pathname.split('/')[1] ?? '';
-    return !PRIVATE_ROUTE_SEGMENTS.has(firstSegment);
-}
-
-/**
- * Handles background synchronisation with LocalTunes.
- *
- * Rules:
- *  1. NEVER fires on public profile pages ( /:username/* ) — avoids leaking
- *     auth-related XHR calls that are visible in DevTools to any visitor.
- *  2. NEVER fires on /onboarding — user has no Strapi account yet, so the
- *     sync fires too early: guestUrl cannot be saved (no account to write to)
- *     AND the sessionStorage gate blocks the real post-onboarding sync from
- *     ever running. This was the root cause of guestUrl never being saved.
- *  3. Fires at most ONCE per browser session (sessionStorage deduplication)
- *     so navigating between private pages doesn't re-trigger the sync.
- */
+/** Starts the sole automatic Music identity flow after authoritative eligibility is positive. */
 const AuthSyncManager = () => {
-    const { user, isAuthenticated } = useAuthStore();
-    const apolloClient = useApolloClient();
-    const location = useLocation();
-    const hasSynced = useRef(false);
-    const isSyncing = useRef(false);
+  const { user, isAuthenticated } = useAuthStore();
+  const { data, loading, error, refetch } = useQuery(musicEligibilityQuery, {
+    variables: { documentId: user?.documentId },
+    skip: !isAuthenticated || !user?.documentId,
+    fetchPolicy: "cache-and-network",
+    nextFetchPolicy: "cache-first",
+    errorPolicy: "all",
+  });
+  const activeScope = useRef<{ userDocumentId: string; accountDocumentId: string }>();
+  const accountGeneration = useSyncExternalStore(
+    musicSessionBoundary.subscribeAccountGeneration,
+    musicSessionBoundary.getAccountGenerationSnapshot,
+    musicSessionBoundary.getAccountGenerationSnapshot,
+  );
+  const observedAccountGeneration = useRef(accountGeneration);
+  const remoteRefreshActive = useRef(false);
 
-    useEffect(() => {
-        // Rule 1 — skip entirely on public profile pages
-        if (isPublicProfilePage(location.pathname)) {
-            return;
-        }
+  const reconcileAuthoritative = useCallback((authoritative: typeof data.usersPermissionsUser | undefined, options: {
+    broadcastChange: boolean;
+    force: boolean;
+  }) => {
+    if (!isAuthenticated || !user || !authoritative || authoritative.documentId !== user.documentId) return;
+    const clearActiveScope = () => {
+      const previous = activeScope.current;
+      if (!previous) return;
+      activeScope.current = undefined;
+      musicApi.setAuthority(undefined);
+      musicIdentityCoordinator.reset();
+      clearMusicPublicationCommands(previous);
+      void clearMusicWorkspaceScope(queryClient, previous);
+      if (options.broadcastChange) musicSessionBoundary.publish("account-generation");
+    };
+    if (authoritative.blocked === true) {
+      clearActiveScope();
+      return;
+    }
+    const selection = selectExplorerAccountState(authoritative.accounts, { authoritative: true });
+    if (selection.kind !== "selected") {
+      clearActiveScope();
+      return;
+    }
+    const account = selection.account;
+    const nextScope = { userDocumentId: authoritative.documentId, accountDocumentId: account.documentId };
+    const nextAuthority = `${nextScope.userDocumentId}:${nextScope.accountDocumentId}`;
+    const previous = activeScope.current;
+    const changed = !previous || previous.userDocumentId !== nextScope.userDocumentId || previous.accountDocumentId !== nextScope.accountDocumentId;
+    if (changed || options.force) {
+      if (previous && changed) {
+        clearMusicPublicationCommands(previous);
+        void clearMusicWorkspaceScope(queryClient, previous);
+      }
+      musicApi.setAuthority(nextAuthority);
+      musicIdentityCoordinator.reset();
+      if (previous && changed && options.broadcastChange) musicSessionBoundary.publish("account-generation");
+      activeScope.current = nextScope;
+    }
+    void musicIdentityCoordinator.reconcile({
+      provider: authoritative.provider === "google" ? "google" : "email",
+      authenticated: true,
+      verified: authoritative.confirmed === true || authoritative.provider === "google",
+      userDocumentId: authoritative.documentId,
+      account,
+    }).catch(() => undefined);
+  }, [isAuthenticated, user]);
 
-        // Rule 2 — NEVER sync during onboarding.
-        // At this point the Strapi account record doesn't exist yet, so:
-        //   - The Neon user gets created but guestUrl can't be written back
-        //   - The SYNC_DONE_KEY is set, blocking the real post-onboarding sync
-        //   - Onboarding's own sync call fails with 400 "user already exists"
-        const firstSegment = location.pathname.split('/')[1] ?? '';
-        if (firstSegment === 'onboarding') {
-            return;
-        }
+  useEffect(() => {
+    if (observedAccountGeneration.current === accountGeneration) return;
+    observedAccountGeneration.current = accountGeneration;
+    if (!isAuthenticated || !user?.documentId || typeof refetch !== "function") return;
+    let cancelled = false;
+    remoteRefreshActive.current = true;
+    activeScope.current = undefined;
+    void refetch().then((result) => {
+      if (!cancelled) reconcileAuthoritative(result.data?.usersPermissionsUser, { broadcastChange: false, force: true });
+    }).catch(() => undefined).finally(() => {
+      if (!cancelled) remoteRefreshActive.current = false;
+    });
+    return () => { cancelled = true; };
+  }, [accountGeneration, isAuthenticated, reconcileAuthoritative, refetch, user?.documentId]);
 
-        // Rule 3 — must be authenticated
-        if (!isAuthenticated || !user) {
-            return;
-        }
+  useEffect(() => {
+    const authoritative = data?.usersPermissionsUser;
+    if (!isAuthenticated || !user) {
+      musicApi.logout();
+      musicIdentityCoordinator.reset();
+      void clearAllMusicWorkspaceQueries(queryClient);
+      clearMusicPublicationCommands();
+      activeScope.current = undefined;
+      return;
+    }
+    if (remoteRefreshActive.current) return;
+    if (loading || error) return;
+    reconcileAuthoritative(authoritative, { broadcastChange: true, force: false });
+  }, [data, error, isAuthenticated, loading, reconcileAuthoritative, user]);
 
-        // Rule 4 — only once per session
-        if (hasSynced.current || sessionStorage.getItem(SYNC_DONE_KEY) || isSyncing.current) {
-            return;
-        }
-
-        isSyncing.current = true;
-
-        const attemptSync = async () => {
-            try {
-                // Rule 5: User must have completed onboarding before we sync
-                const { data } = await apolloClient.query({
-                    query: gql`
-                      query CheckOnboardingForSync($documentId: ID!) {
-                        usersPermissionsUser(documentId: $documentId) {
-                          accounts {
-                            Account_Name
-                            Account_Type
-                            mobile_number
-                          }
-                        }
-                      }
-                    `,
-                    variables: { documentId: user.documentId },
-                    fetchPolicy: 'network-only' // Ensure we have the latest status
-                });
-
-                const account = data?.usersPermissionsUser?.accounts?.[0];
-                const isOnboardingRequired =
-                    !account ||
-                    !account.Account_Name ||
-                    !account.Account_Type ||
-                    !account.mobile_number;
-
-                if (isOnboardingRequired) {
-                    console.log('Skipping LocalTunes sync: Onboarding is pending');
-                    isSyncing.current = false;
-                    return; // Skip sync, and DO NOT set SYNC_DONE_KEY, so it can run after onboarding
-                }
-
-                // If onboarding is complete, we can finalize the sync
-                hasSynced.current = true;
-                sessionStorage.setItem(SYNC_DONE_KEY, '1');
-
-                await handlePostLoginSync(user, apolloClient);
-                isSyncing.current = false;
-            } catch (err) {
-                console.error('Background LocalTunes check/sync failed:', err);
-                hasSynced.current = false;
-                isSyncing.current = false;
-                sessionStorage.removeItem(SYNC_DONE_KEY);
-            }
-        };
-
-        attemptSync();
-    }, [isAuthenticated, user, apolloClient, location.pathname]);
-
-    return null;
+  return null;
 };
 
 export default AuthSyncManager;

@@ -27,6 +27,7 @@ const account = (fields: Record<string, unknown>) => ({
   usersPermissionsUser: { accounts: [fields] },
 });
 const COMPLETE = account({
+  documentId: "account-document-1",
   Account_Name: "Bhavya",
   Account_Type: "Personal",
   mobile_number: "+919876543210",
@@ -38,6 +39,7 @@ const renderAt = (path = "/home") =>
       <Routes>
         <Route element={<ProtectedRoute />}>
           <Route path="/home" element={<div>PROTECTED HOME</div>} />
+          <Route path="/settings" element={<div>PROTECTED SETTINGS</div>} />
         </Route>
         <Route path="/onboarding" element={<div>ONBOARDING PAGE</div>} />
         <Route path="/login" element={<div>LOGIN PAGE</div>} />
@@ -92,6 +94,49 @@ describe("ProtectedRoute onboarding gate", () => {
     expect(screen.getByText("ONBOARDING PAGE")).toBeInTheDocument();
   });
 
+  it("selects the same immutable complete Account regardless of response order", () => {
+    mockStore(AUTHED);
+    const incomplete = { documentId: "account-incomplete", Account_Name: "Draft", Account_Type: "Personal", mobile_number: "" };
+    const complete = { documentId: "account-complete", Account_Name: "Ready", Account_Type: "Personal", mobile_number: "+919876543210" };
+    mockQuery({ data: { usersPermissionsUser: { accounts: [incomplete, complete] } }, loading: false, error: null });
+    renderAt();
+    expect(screen.getByText("PROTECTED HOME")).toBeInTheDocument();
+  });
+
+  it("keeps multiple complete Accounts in a recoverable unknown state instead of picking index zero", () => {
+    mockStore(AUTHED);
+    mockQuery({
+      data: { usersPermissionsUser: { accounts: [
+        { documentId: "account-a", Account_Name: "A", Account_Type: "Personal", mobile_number: "+10000000001" },
+        { documentId: "account-b", Account_Name: "B", Account_Type: "Business", mobile_number: "+10000000002" },
+      ] } },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderAt();
+    expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
+  });
+
+  it("keeps account-less pending deletion on Settings so reload can resume", async () => {
+    // Break caught: successful Account deletion redirects to onboarding before the user mutation can retry.
+    mockStore({ ...AUTHED, token: "authoritative-bearer-proof" });
+    (useAuthStore as any).getState = () => ({ token: "authoritative-bearer-proof" });
+    mockQuery({ data: { usersPermissionsUser: { accounts: [] } }, loading: false, error: null, refetch: vi.fn() });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      version: "music-lifecycle/v1",
+      operation: {
+        operationId: "durable-operation", status: "pending_deletion", phase: "prepared", state: "requested",
+        boundaryCrossed: true, retryable: true, deadLetter: false,
+        upstreamUserDocumentId: "user-document-a", upstreamAccountDocumentId: "account-document-a",
+      },
+    }), { status: 200 })));
+    renderAt("/settings");
+    expect(await screen.findByText("PROTECTED SETTINGS")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("does NOT bounce to /onboarding on an error with no data — shows a recoverable state (the regression)", () => {
     mockStore(AUTHED);
     mockQuery({ data: null, loading: false, error: new Error("network blip") });
@@ -125,10 +170,11 @@ describe("ProtectedRoute onboarding gate", () => {
     expect(screen.getByText("Try again")).toBeInTheDocument();
   });
 
-  it("keeps the user on the protected page when an error arrives alongside complete cached data", () => {
+  it("treats complete cached data alongside an authoritative error as recoverable unknown", () => {
     mockStore(AUTHED);
     mockQuery({ data: COMPLETE, loading: false, error: new Error("partial") });
     renderAt();
-    expect(screen.getByText("PROTECTED HOME")).toBeInTheDocument();
+    expect(screen.queryByText("PROTECTED HOME")).toBeNull();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
   });
 });

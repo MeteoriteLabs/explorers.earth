@@ -346,8 +346,7 @@
     "signupSubtitle": "Sign up to enjoy the features of explorers",
     "signUpWithGoogle": "Sign up with Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Username",
@@ -1485,49 +1484,6 @@
       "engagement": "Engagement",
       "referrals": "Referrals",
       "livePreview": "Live preview"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Listen as you explore",
-      "body": "Exploration isn't only visual. Sound carries memory, context, and emotion.\n\nLocalTunes lets you collect and share soundtracks for places, journeys, and moods — whether it's music discovered on the road or sounds that define a place for you.\n\nSeamlessly connected to your Explorer profile.",
-      "exploreButton": "Explore Tunes",
-      "featuresHeading": "Powerful Features",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Real-time Collaboration",
-          "description": "Let guests add songs to your playlist instantly while you maintain full control over what plays."
-        },
-        "qrCodeSharing": {
-          "title": "QR Code Sharing",
-          "description": "Share your music experience with a simple QR code scan - no apps or downloads required."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integration",
-          "description": "Seamlessly integrate with YouTube to access millions of songs and create the perfect atmosphere."
-        },
-        "voteLikeSystem": {
-          "title": "Vote & Like System",
-          "description": "Guests can vote for their favorite songs to influence the playlist queue in real-time."
-        },
-        "silentParties": {
-          "title": "Silent Parties",
-          "description": "Host unique silent parties where everyone listens through their own headphones."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Ready",
-          "description": "Perfect for karaoke nights with collaborative playlists and real-time song requests."
-        }
-      },
-      "venueHeading": "Perfect for Every Venue",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "restaurants": "Restaurants",
-        "coffeeShops": "Coffee Shops",
-        "eventsWeddings": "Events & Weddings",
-        "retailStores": "Retail Stores",
-        "gymsFitness": "Gyms & Fitness"
-      },
-      "closingStatement": "Tunes is <strong>free</strong> to explore, and for paid features you can upgrade afterwards."
     },
     "referEarn": {
       "headline": "Share, refer, and earn",

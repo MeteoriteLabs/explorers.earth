@@ -1,1174 +1,365 @@
-// Embedded tunes dashboard for the explorers Music tab
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { ListVisibilityModal } from './ListVisibilityModal';
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
+import { Copy, ListMusic, Plus, Settings2 } from "lucide-react";
+import { toast } from "sonner";
+import type { TunesDashboardData } from "../hooks/useTunesDashboard";
+import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
+import type { MusicPlaylist, MusicPublicationMode } from "../features/music/musicWorkspaceClient";
+import { MusicClientError } from "../lib/localTunesApiClient";
 import {
-  Music2,
-  Loader2,
-  ListMusic,
-  Search,
-  Settings2,
-  Library,
-  ExternalLink,
-  Play,
-  History,
-  PlayCircle,
-  Shuffle,
-  MoreVertical,
-  Pencil,
-  Trash2 as TrashIcon,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
-import SwitchButton from './ui/SwitchButton';
-import { AddIcon } from '../assets/icons/AddIcon';
-import PlaylistTable from './playlist-table';
-import SearchSongs from './search-songs';
-import YoutubePlayer from './youtube-player';
-// Note: using manual tab rendering instead of ui/tabs to match the dark dashboard theme
-import { useWebSocket } from '../hooks/useWebSocket';
-import { localTunesRequest } from '../lib/apiClient';
-import type { TunesDashboardData } from '../hooks/useTunesDashboard';
-import type { Song } from '../types/music';
+  completeMusicPublicationCommand,
+  getOrCreateMusicPublicationCommand,
+  type MusicPublicationOwnerScope,
+} from "../features/music/musicPublicationCommandRegistry";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
-  isPublic?: boolean;
-  onVisibilityToggle?: () => void;
-  onPlaylistCreated?: () => void;
+  scope: MusicPublicationOwnerScope;
+  readOnly?: boolean;
 }
 
-type MainTab = 'queue' | 'guest-controls' | 'recently-played' | 'playlists';
+const buttonClass = "min-h-11 min-w-11 rounded-xl px-4 text-sm font-semibold outline-none ring-offset-2 ring-offset-dashboard-bg focus-visible:ring-2 focus-visible:ring-dashboard-accent disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none";
 
-// Small confirmation modal (no shadcn Dialog needed)
-function ConfirmModal({
-  open,
+function operationKey(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
+function WorkspaceDialog({
   title,
   description,
-  onConfirm,
-  onCancel,
-  confirmLabel = 'Continue',
-  loading = false,
+  children,
+  onClose,
+  opener,
+  closeDisabled = false,
 }: {
-  open: boolean;
   title: string;
   description: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  confirmLabel?: string;
-  loading?: boolean;
+  children: React.ReactNode;
+  onClose: () => void;
+  opener: RefObject<HTMLButtonElement>;
+  closeDisabled?: boolean;
 }) {
-  if (!open) return null;
+  const dialog = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  const close = () => {
+    if (closeDisabled) return;
+    onClose();
+  };
+
+  useEffect(() => {
+    const root = dialog.current;
+    const first = root?.querySelector<HTMLElement>("[data-autofocus]");
+    first?.focus();
+    return () => { opener.current?.focus(); };
+  }, [opener]);
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(dialog.current?.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])",
+    ) ?? []);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4">
-      <div className="bg-dashboard border border-dashboard rounded-xl p-6 max-w-sm w-full shadow-2xl">
-        <h3 className="text-dashboard font-semibold mb-2">{title}</h3>
-        <p className="text-gray-400 text-sm mb-5">{description}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="px-4 py-1.5 text-sm rounded bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-40 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="px-4 py-1.5 text-sm rounded bg-dashboard-accent text-[var(--dash-accent-text)] hover:opacity-90 disabled:opacity-40 transition-colors flex items-center gap-1.5"
-          >
-            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            {confirmLabel}
-          </button>
-        </div>
+    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+      <div
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        onKeyDown={onKeyDown}
+        className="dashboard-theme dashboard-theme-dark max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-dashboard bg-dashboard-sidebar p-5 shadow-2xl sm:p-6"
+      >
+        <h2 id={titleId} className="text-xl font-semibold text-dashboard">{title}</h2>
+        <p id={descriptionId} className="mt-2 text-base text-dashboard-light">{description}</p>
+        {children}
       </div>
     </div>
   );
 }
 
-export default function MusicDashboard({ data, isPublic, onVisibilityToggle, onPlaylistCreated }: MusicDashboardProps) {
-  const { localUser, guestUrl, playlists, playlist, isLoading, error } = data;
-  const queryClient = useQueryClient();
-  const hasAutoStarted = useRef(false);
-
-  // ── Active tab state ───────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<MainTab>('queue');
-
-  // ── Queue/player state ─────────────────────────────────────────────────────
-  const [settings, setSettings] = useState({
-    allowSongRequests: false,
-    allowGuestPlayOnDevice: false,
-    allowPlaylistSharing: false,
-    allowRecentlyPlayedVisibility: false,
-  });
-
-  // ── Playlist UI state ──────────────────────────────────────────────────────
-  const [activePlaylistTab, setActivePlaylistTab] = useState<string>('');
-  // New playlist creation
-  const [showNewPlaylistInput, setShowNewPlaylistInput] = useState(false);
-  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
-
-  useEffect(() => {
-    const handleWindowClick = () => {
-      setMobileDropdownOpen(false);
-    };
-    window.addEventListener("click", handleWindowClick);
-    return () => window.removeEventListener("click", handleWindowClick);
-  }, []);
-
-  const [newPlaylistName, setNewPlaylistName] = useState('');
-  const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
-  // Inline edit form
-  const [editingPlaylistId, setEditingPlaylistId] = useState<number | null>(null);
-  const [editPlaylistName, setEditPlaylistName] = useState('');
-  const [editPlaylistDescription, setEditPlaylistDescription] = useState('');
-  // Confirm replace queue dialog
-  const [playlistToReplace, setPlaylistToReplace] = useState<{
-    id: number;
-    songs: Song[];
-    type: 'play' | 'shuffle';
-  } | null>(null);
-  const [isReplacingQueue, setIsReplacingQueue] = useState(false);
-  // Dropdown menu open state (per playlist)
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    playlistId: number;
-    playlistName: string;
-  } | null>(null);
-
-  // Sync settings when localUser loads
-  useEffect(() => {
-    if (localUser) {
-      setSettings({
-        allowSongRequests: localUser.allowSongRequests ?? false,
-        allowGuestPlayOnDevice: localUser.allowGuestPlayOnDevice ?? false,
-        allowPlaylistSharing: localUser.allowPlaylistSharing ?? false,
-        allowRecentlyPlayedVisibility: localUser.allowRecentlyPlayedVisibility ?? false,
-      });
-    }
-  }, [localUser?.id]);
-
-  // Set the first playlist tab when playlists load for the first time
-  useEffect(() => {
-    if (playlists && playlists.length > 0 && !activePlaylistTab) {
-      setActivePlaylistTab(playlists[0].id.toString());
-    }
-  }, [playlists]);
-
-  const songs = (playlist?.songs ?? []) as Song[];
-  const currentlyPlaying = playlist?.currentlyPlaying as Song | undefined;
-  const playedSongs = (playlist?.playedSongs ?? []) as Song[];
-
-  // Socket.io for real-time queue updates
-  const handleSocketMessage = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-  }, [guestUrl, queryClient]);
-
-  useWebSocket(
-    guestUrl ?? '',
-    handleSocketMessage,
-    { enabled: !!guestUrl }
-  );
-
-  // Auto-start first song when queue has songs but nothing is playing
-  useEffect(() => {
-    if (songs.length > 0 && !currentlyPlaying && localUser?.username && !hasAutoStarted.current) {
-      hasAutoStarted.current = true;
-      localTunesRequest('POST', '/api/playlist/currently-playing', {
-        songId: songs[0].id,
-        username: localUser.username,
-      })
-        .then(() => queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] }))
-        .catch(() => { });
-    }
-  }, [songs, currentlyPlaying, localUser, guestUrl, queryClient]);
-
-  // Fetch current song (used by YoutubePlayer — returns cached state, no extra network call)
-  const fetchCurrentSong = useCallback(async (): Promise<Song | undefined> => {
-    return currentlyPlaying as Song | undefined;
-  }, [currentlyPlaying]);
-
-  // ── Queue mutations ────────────────────────────────────────────────────────
-
-  const handlePlaySong = useCallback(async (song: Song) => {
+function CreatePlaylistDialog({ onClose, opener, onCreated }: { onClose: () => void; opener: RefObject<HTMLButtonElement>; onCreated: () => Promise<unknown> }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
     try {
-      await localTunesRequest('POST', '/api/playlist/currently-playing', {
-        songId: song.id,
-        username: localUser?.username,
-      });
-      queryClient.refetchQueries({ queryKey: ['tunes-playlist', guestUrl] });
+      await musicWorkspaceClient.createPlaylist(name.trim(), description.trim() || null, operationKey("playlist-create"));
+      await onCreated();
+      toast.success("Playlist created.");
+      onClose();
     } catch {
-      toast.error('Failed to play song');
-    }
-  }, [localUser, guestUrl, queryClient]);
-
-  const nextSongForPlayer = songs[0] as Song | undefined;
-  const handleSongFinished = useCallback(async () => {
-    const next = nextSongForPlayer;
-    if (next) {
-      try {
-        await localTunesRequest('POST', '/api/playlist/currently-playing', {
-          songId: next.id,
-          username: localUser?.username,
-        });
-      } catch {
-        // ignore
-      }
-    }
-    queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-  }, [nextSongForPlayer, localUser, guestUrl, queryClient]);
-
-  const deleteSongMutation = useMutation({
-    mutationFn: (songId: number) =>
-      localTunesRequest('DELETE', `/api/playlist/songs/${songId}?username=${localUser?.username}`),
-    onSuccess: () => {
-      toast.success('Song removed from queue');
-      queryClient.refetchQueries({ queryKey: ['tunes-playlist', guestUrl] });
-    },
-    onError: () => toast.error('Failed to remove song'),
-  });
-
-  const addToQueueMutation = useMutation({
-    mutationFn: (song: Song) =>
-      localTunesRequest('POST', '/api/playlist/songs', {
-        youtubeId: song.youtubeId,
-        title: song.title,
-        artist: song.artist,
-        thumbnailUrl: song.thumbnailUrl,
-        username: localUser?.username,
-      }),
-    onSuccess: () => {
-      toast.success('Added to queue');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-    },
-    onError: () => toast.error('Failed to add to queue'),
-  });
-
-  // Single-PATCH reorder: storage.updateSongPosition() rewrites the ENTIRE queue order
-  // in one DB transaction, so sending one PATCH per song would compound incorrectly.
-  // We detect which song moved and send exactly one PATCH with its new target index.
-  const reorderMutation = useMutation({
-    mutationFn: async (newOrder: number[]) => {
-      const currentIds = songs.map(s => s.id);
-
-      // Build a lookup: songId → old index
-      const oldIndexMap = new Map<number, number>(currentIds.map((id, i) => [id, i]));
-
-      // Find the song whose position in newOrder differs from its original position.
-      // We prefer the song that moved the furthest (the actually-dragged song).
-      let movedSongId: number | null = null;
-      let newTargetIndex = -1;
-      let maxDelta = 0;
-
-      for (let i = 0; i < newOrder.length; i++) {
-        const id = newOrder[i];
-        const oldIdx = oldIndexMap.get(id) ?? i;
-        const delta = Math.abs(oldIdx - i);
-        if (delta > maxDelta) {
-          maxDelta = delta;
-          movedSongId = id;
-          newTargetIndex = i;
-        }
-      }
-
-      if (movedSongId === null || maxDelta === 0) return; // nothing changed
-
-      await localTunesRequest('PATCH', `/api/playlist/songs/${movedSongId}/position`, {
-        position: newTargetIndex,
-      });
-    },
-    onSuccess: () => {
-      toast.success('Queue reordered');
-      queryClient.refetchQueries({ queryKey: ['tunes-playlist', guestUrl] });
-    },
-    onError: () => toast.error('Failed to reorder songs'),
-  });
-
-  // Update guest settings
-  const updateSettingsMutation = useMutation({
-    mutationFn: (patch: Record<string, boolean>) =>
-      localTunesRequest('PATCH', '/api/user', { username: localUser?.username, ...patch }),
-    onSuccess: () => toast.success('Settings saved'),
-    onError: () => {
-      toast.error('Failed to save settings');
-      if (localUser) {
-        setSettings({
-          allowSongRequests: localUser.allowSongRequests ?? false,
-          allowGuestPlayOnDevice: localUser.allowGuestPlayOnDevice ?? false,
-          allowPlaylistSharing: localUser.allowPlaylistSharing ?? false,
-          allowRecentlyPlayedVisibility: localUser.allowRecentlyPlayedVisibility ?? false,
-        });
-      }
-    },
-  });
-
-  const handleToggle = (key: keyof typeof settings) => {
-    const newVal = !settings[key];
-    setSettings(prev => ({ ...prev, [key]: newVal }));
-    updateSettingsMutation.mutate({ [key]: newVal });
-  };
-
-  // ── Playlist mutations ─────────────────────────────────────────────────────
-
-  const createPlaylistMutation = useMutation({
-    mutationFn: ({ name, description }: { name: string; description: string }) =>
-      localTunesRequest('POST', '/api/playlists', {
-        name,
-        description: description || undefined,
-        username: localUser?.username,
-      }),
-    onSuccess: (data: any) => {
-      toast.success('Playlist created');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-      setShowNewPlaylistInput(false);
-      setNewPlaylistName('');
-      setNewPlaylistDescription('');
-      // Switch to the new playlist tab
-      if (data?.id) setActivePlaylistTab(data.id.toString());
-      if (onPlaylistCreated) onPlaylistCreated();
-    },
-    onError: () => toast.error('Failed to create playlist'),
-  });
-
-  const deletePlaylistMutation = useMutation({
-    mutationFn: (playlistId: number) =>
-      localTunesRequest('DELETE', `/api/playlists/${playlistId}?username=${localUser?.username}`),
-    onSuccess: () => {
-      toast.success('Playlist deleted');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-      setActivePlaylistTab('');
-    },
-    onError: () => toast.error('Failed to delete playlist'),
-  });
-
-  const updatePlaylistMutation = useMutation({
-    mutationFn: ({ playlistId, name, description }: { playlistId: number; name: string; description: string }) =>
-      localTunesRequest('PATCH', `/api/playlists/${playlistId}`, {
-        name,
-        description: description || undefined,
-        username: localUser?.username,
-      }),
-    onSuccess: () => {
-      toast.success('Playlist updated');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-      setEditingPlaylistId(null);
-      setEditPlaylistName('');
-      setEditPlaylistDescription('');
-    },
-    onError: () => toast.error('Failed to update playlist'),
-  });
-
-  const updatePlaylistVisibilityMutation = useMutation({
-    mutationFn: ({ playlistId, isVisible }: { playlistId: number; isVisible: boolean }) =>
-      localTunesRequest('PATCH', `/api/playlists/${playlistId}/visibility`, {
-        isVisible,
-        username: localUser?.username,
-      }),
-    onSuccess: (_data, { isVisible }) => {
-      toast.success(`Playlist ${isVisible ? 'visible to guests' : 'hidden from guests'}`);
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-    },
-    onError: () => toast.error('Failed to update visibility'),
-  });
-
-  const addSongsToPlaylistMutation = useMutation({
-    mutationFn: ({ playlistId, songs }: { playlistId: number; songs: Song[] }) =>
-      localTunesRequest('POST', `/api/playlists/${playlistId}/songs`, {
-        songs: songs.map(s => ({
-          youtubeId: s.youtubeId,
-          title: s.title,
-          artist: s.artist,
-          thumbnailUrl: s.thumbnailUrl,
-        })),
-        username: localUser?.username,
-      }),
-    onSuccess: (_data, { playlistId }) => {
-      toast.success('Songs added to playlist');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-      
-      const targetPlaylist = playlists?.find(p => p.id === playlistId);
-      if (targetPlaylist && !targetPlaylist.isVisibleToGuests) {
-        setListVisibilityPrompt({
-          isOpen: true,
-          playlistId,
-          playlistName: targetPlaylist.name,
-        });
-      }
-    },
-    onError: () => toast.error('Failed to add songs to playlist'),
-  });
-
-  const deletePlaylistSongMutation = useMutation({
-    mutationFn: ({ playlistId, songId }: { playlistId: number; songId: number }) =>
-      localTunesRequest(
-        'DELETE',
-        `/api/playlists/${playlistId}/songs/${songId}?username=${localUser?.username}`
-      ),
-    onSuccess: () => {
-      toast.success('Song removed from playlist');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-    },
-    onError: () => toast.error('Failed to remove song from playlist'),
-  });
-
-  // Add all songs from a saved playlist to the live queue (appends)
-  const addPlaylistToQueueMutation = useMutation({
-    mutationFn: async (playlistSongs: Song[]) => {
-      for (const song of playlistSongs) {
-        await localTunesRequest('POST', '/api/playlist/songs', {
-          youtubeId: song.youtubeId,
-          title: song.title,
-          artist: song.artist,
-          thumbnailUrl: song.thumbnailUrl,
-          username: localUser?.username,
-        });
-      }
-    },
-    onSuccess: () => {
-      toast.success('Playlist added to queue');
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-    },
-    onError: () => toast.error('Failed to add playlist to queue'),
-  });
-
-  // Replace current queue with playlist songs (play or shuffle)
-  const replaceQueueMutation = useMutation({
-    mutationFn: async ({ songs: playlistSongs, type }: { songs: Song[]; type: 'play' | 'shuffle' }) => {
-      setIsReplacingQueue(true);
-      try {
-        // 1. Stop current song
-        await localTunesRequest('POST', '/api/playlist/currently-playing', {
-          songId: null,
-          username: localUser?.username,
-        }).catch(() => { });
-
-        // 2. Clear current queue
-        const currentQueue = (playlist?.songs ?? []) as Song[];
-        for (const song of currentQueue) {
-          await localTunesRequest(
-            'DELETE',
-            `/api/playlist/songs/${song.id}?username=${localUser?.username}`
-          ).catch(() => { });
-        }
-
-        // 3. Build ordered/shuffled list
-        const orderedSongs = type === 'shuffle'
-          ? [...playlistSongs].sort(() => Math.random() - 0.5)
-          : [...playlistSongs];
-
-        // 4. Add each song to queue
-        for (let i = 0; i < orderedSongs.length; i++) {
-          const s = orderedSongs[i];
-          await localTunesRequest('POST', `/api/playlist/songs?username=${localUser?.username}`, {
-            youtubeId: s.youtubeId,
-            title: s.title,
-            artist: s.artist,
-            thumbnailUrl: s.thumbnailUrl,
-            position: i,
-          });
-        }
-
-        // 5. Refresh queue and start playing first song
-        await queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-        // Short delay for DB to settle before fetching first song id
-        await new Promise(r => setTimeout(r, 600));
-        const refreshed = await localTunesRequest('GET', `/api/playlist/${guestUrl}`);
-        const firstSong = (refreshed as any)?.songs?.[0];
-        if (firstSong?.id) {
-          await localTunesRequest('POST', '/api/playlist/currently-playing', {
-            songId: firstSong.id,
-            username: localUser?.username,
-          });
-        }
-      } finally {
-        setIsReplacingQueue(false);
-      }
-    },
-    onSuccess: (_data, { type }) => {
-      toast.success(type === 'shuffle' ? 'Playlist shuffled and started' : 'Playlist started');
-      setPlaylistToReplace(null);
-      queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-    },
-    onError: () => {
-      setIsReplacingQueue(false);
-      toast.error('Failed to start playlist');
-    },
-  });
-
-  const handleConfirmReplaceQueue = () => {
-    if (playlistToReplace) {
-      replaceQueueMutation.mutate({
-        songs: playlistToReplace.songs,
-        type: playlistToReplace.type,
-      });
+      toast.error("Music is temporarily unavailable.");
+    } finally {
+      setSaving(false);
     }
   };
-
-  const guestPageUrl = `${import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth'}/guest/${guestUrl}`;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12 gap-2 text-gray-400">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        <span className="text-sm">Connecting to Local Tunes…</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-yellow-400 text-sm">Could not connect to Local Tunes</p>
-        <p className="text-gray-500 text-xs mt-1">{error}</p>
-      </div>
-    );
-  }
-
-  // Tab definitions
-  const tabs: { id: MainTab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
-    { id: 'queue', label: 'Queue', shortLabel: 'Queue', icon: <ListMusic className="w-3.5 h-3.5" /> },
-    { id: 'guest-controls', label: 'Guest Controls', shortLabel: 'Guests', icon: <Settings2 className="w-3.5 h-3.5" /> },
-    { id: 'recently-played', label: 'Recently Played', shortLabel: 'Recent', icon: <History className="w-3.5 h-3.5" /> },
-    { id: 'playlists', label: 'Playlists', shortLabel: 'Playlists', icon: <Library className="w-3.5 h-3.5" /> },
-  ];
-
   return (
-    <div className="space-y-4">
-      {/* Desktop Screen actions row */}
-      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-dashboard">
-        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
-          <SwitchButton
-            isChecked={isPublic === true}
-            onChange={onVisibilityToggle || (() => {})}
-            variant="blue"
-          />
-          <span className="text-[10px] md:text-xs text-dashboard leading-tight whitespace-nowrap font-medium font-poppins">Public Visibility</span>
+    <WorkspaceDialog title="Create playlist" description="Name a playlist for the music you want to keep together." onClose={onClose} opener={opener}>
+      <form onSubmit={submit} className="mt-5 space-y-4">
+        <label className="block text-sm text-dashboard-light">
+          Playlist name
+          <input data-autofocus value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required className="mt-2 min-h-11 w-full rounded-xl border border-dashboard bg-dashboard-muted px-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+        </label>
+        <label className="block text-sm text-dashboard-light">
+          Description <span className="text-dashboard-muted">(optional)</span>
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={3} className="mt-2 w-full rounded-xl border border-dashboard bg-dashboard-muted p-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+        </label>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+          <button type="submit" disabled={saving || !name.trim()} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Creating…" : "Create playlist"}</button>
         </div>
-        <button
-          onClick={() => {
-            setActiveTab('playlists');
-            setShowNewPlaylistInput(true);
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-[var(--dash-accent-text)] font-medium transition-all shadow-md whitespace-nowrap cursor-pointer"
-        >
-          <AddIcon size="5" />
-          <span>New Playlist</span>
-        </button>
-      </div>
+      </form>
+    </WorkspaceDialog>
+  );
+}
 
-      {/* Mobile actions row (split action button with visibility dropdown) */}
-      <div className="md:hidden relative mb-4 w-full">
-        <div className="flex w-full rounded-2xl overflow-hidden border border-dashboard shadow-md">
-          <button
-            onClick={() => {
-              setActiveTab('playlists');
-              setShowNewPlaylistInput(true);
-            }}
-            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-[var(--dash-accent-text)] py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <AddIcon size="4" />
-            <span>New Playlist</span>
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMobileDropdownOpen(!mobileDropdownOpen);
-            }}
-            className="bg-dashboard-accent border-l border-dashboard px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
-          >
-            <svg className={`w-3.5 h-3.5 text-[var(--dash-accent-text)] transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+function RenamePlaylistDialog({
+  playlist,
+  onClose,
+  opener,
+  onRenamed,
+}: {
+  playlist: MusicPlaylist;
+  onClose: () => void;
+  opener: RefObject<HTMLButtonElement>;
+  onRenamed: () => Promise<unknown>;
+}) {
+  const [name, setName] = useState(playlist.name);
+  const [description, setDescription] = useState(playlist.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await musicWorkspaceClient.renamePlaylist(
+        playlist.id,
+        name.trim(),
+        description.trim() || null,
+        operationKey("playlist-rename"),
+      );
+      await onRenamed();
+      toast.success("Playlist renamed.");
+      onClose();
+    } catch {
+      toast.error("Music is temporarily unavailable.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <WorkspaceDialog title="Rename playlist" description="Update this playlist name and description." onClose={onClose} opener={opener} closeDisabled={saving}>
+      <form onSubmit={submit} className="mt-5 space-y-4">
+        <label className="block text-sm text-dashboard-light">
+          Playlist name
+          <input data-autofocus value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required className="mt-2 min-h-11 w-full rounded-xl border border-dashboard bg-dashboard-muted px-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+        </label>
+        <label className="block text-sm text-dashboard-light">
+          Description <span className="text-dashboard-muted">(optional)</span>
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={3} className="mt-2 w-full rounded-xl border border-dashboard bg-dashboard-muted p-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+        </label>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+          <button type="submit" disabled={saving || !name.trim()} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Saving…" : "Save playlist"}</button>
         </div>
-        {mobileDropdownOpen && (
-          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
-            <span className="text-[11px] text-dashboard font-semibold font-poppins">Manage Public Visibility</span>
+      </form>
+    </WorkspaceDialog>
+  );
+}
+
+const publicationCopy: Record<MusicPublicationMode, string> = {
+  private: "Only you can open this Music workspace.",
+  unlisted: "Anyone with the private link can view shared playlists. The page won’t appear in search.",
+  public: "Anyone can view shared playlists, and the page can appear in search.",
+};
+
+function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardData; scope: MusicPublicationOwnerScope; onClose: () => void; opener: RefObject<HTMLButtonElement> }) {
+  const current = data.dashboard?.publication;
+  const [mode, setMode] = useState<MusicPublicationMode>(current?.mode ?? "private");
+  const [capability, setCapability] = useState<string>();
+  const [saving, setSaving] = useState(false);
+  const publicSlug = current?.publicSlug ?? "";
+  const base = `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}`;
+  const shareLink = mode === "public" ? base : mode === "unlisted" && capability ? `${base}#access=${capability}` : undefined;
+  const save = async () => {
+    setSaving(true);
+    const command = getOrCreateMusicPublicationCommand(scope, mode);
+    try {
+      const result = await musicWorkspaceClient.setPublication(mode, command.key);
+      completeMusicPublicationCommand(scope, mode, command.key);
+      setCapability("capability" in result ? result.capability : undefined);
+      await data.refetch();
+      toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
+      if (mode !== "unlisted") onClose();
+    } catch (cause) {
+      if (
+        cause instanceof MusicClientError
+        && (cause.code === "REQUEST_INVALID" || cause.upstreamCode === "PUBLICATION_REPLAY_EXPIRED")
+      ) {
+        completeMusicPublicationCommand(scope, mode, command.key);
+      }
+      toast.error("Music is temporarily unavailable.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <WorkspaceDialog title="Music sharing" description="Choose who can view the playlists you share." onClose={onClose} opener={opener} closeDisabled={saving}>
+      <fieldset className="mt-5 space-y-2">
+        <legend className="sr-only">Visibility mode</legend>
+        {(["private", "unlisted", "public"] as const).map((value, index) => (
+          <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashboard bg-dashboard-bg/40 px-3 text-dashboard focus-within:ring-2 focus-within:ring-dashboard-accent">
+            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} disabled={saving} onChange={() => { setMode(value); setCapability(undefined); }} className="h-5 w-5 accent-[var(--dash-accent)]" />
+            <span>{value[0].toUpperCase() + value.slice(1)}</span>
+          </label>
+        ))}
+      </fieldset>
+      <div className="mt-4 rounded-xl bg-dashboard-muted p-4">
+        <p className="text-base text-dashboard-light">{publicationCopy[mode]}</p>
+        {mode === "unlisted" && !shareLink && <p className="mt-2 text-base text-dashboard-muted">Save to create a new private link. Creating another link replaces the previous one.</p>}
+        {shareLink && (
+          <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold uppercase ${isPublic ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {isPublic ? "Pub" : "Draft"}
-              </span>
-              <SwitchButton
-                isChecked={isPublic === true}
-                onChange={onVisibilityToggle || (() => {})}
-                variant="blue"
-              />
+              <input readOnly aria-label="Music share link" value={shareLink} className="min-h-11 min-w-0 flex-1 rounded-xl border border-dashboard bg-dashboard-bg px-3 text-base text-dashboard" />
+              <button type="button" aria-label="Copy Music link" onClick={() => void navigator.clipboard.writeText(shareLink)} className={`${buttonClass} bg-dashboard-bg text-dashboard`}><Copy className="h-4 w-4" /></button>
             </div>
+            <a href={shareLink} target="_blank" rel="noopener noreferrer" aria-label="Preview public Music page" className={`${buttonClass} inline-flex items-center border border-dashboard bg-dashboard-bg text-dashboard`}>Preview</a>
           </div>
         )}
       </div>
-
-      {/* ── Add Songs — always visible at top ─────────────────────────────── */}
-      <div className="bg-dashboard-muted/40 border border-dashboard rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Search className="w-4 h-4 text-dashboard-accent" />
-          <p className="text-dashboard text-sm font-semibold">Add Songs</p>
-        </div>
-        <SearchSongs
-          guestUrl={guestUrl ?? undefined}
-          onSongsAdded={() => { }}
-          onSongsAddedCallback={async () => {
-            queryClient.invalidateQueries({ queryKey: ['tunes-playlist', guestUrl] });
-          }}
-        />
+      <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onClose} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+        <button type="button" onClick={() => void save()} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Saving…" : "Save sharing"}</button>
       </div>
+    </WorkspaceDialog>
+  );
+}
 
-      {/* ── Video Player ────────────────────────────────────────────────────── */}
-      {(currentlyPlaying || songs.length > 0) && (
-        <div className="bg-dashboard-muted/40 border border-dashboard rounded-xl p-4">
-          {currentlyPlaying ? (
-            <YoutubePlayer
-              currentSong={currentlyPlaying}
-              nextSong={nextSongForPlayer}
-              fetchCurrentSong={fetchCurrentSong}
-              onSongFinished={handleSongFinished}
-              defaultAutoplay={true}
-              showAutoplayControl={false}
-            />
-          ) : (
-            <div className="flex items-center gap-3 p-2">
-              <img
-                src={songs[0].thumbnailUrl}
-                className="w-14 h-14 rounded object-cover flex-shrink-0"
-                alt={songs[0].title}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-dashboard text-sm font-medium truncate">{songs[0].title}</p>
-                <p className="text-gray-400 text-xs truncate">{songs[0].artist}</p>
-              </div>
-              <button
-                onClick={() => handlePlaySong(songs[0])}
-                className="w-10 h-10 rounded-full bg-dashboard-accent flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity"
-                title="Start playing"
-              >
-                <Play className="w-4 h-4 text-[var(--dash-accent-text)] ml-0.5" />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-center mx-auto bg-dashboard-muted border border-dashboard p-1 rounded-3xl w-fit shadow-sm my-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 text-[10px] sm:text-xs font-medium transition-all duration-300 whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-dashboard-accent rounded-2xl text-[var(--dash-accent-text)] shadow-md"
-                : "bg-transparent rounded-2xl text-dashboard-muted hover:text-dashboard"
-            }`}
-          >
-            {tab.icon}
-            <span>{tab.shortLabel}</span>
-            {tab.id === "queue" && (currentlyPlaying || songs.length > 0) && (
-              <span className={`text-[10px] ${activeTab === "queue" ? "opacity-80 font-bold" : "opacity-50 font-normal"}`}>
-                {currentlyPlaying ? `${songs.length + 1}` : songs.length}
-              </span>
-            )}
-            {tab.id === "recently-played" && playedSongs.length > 0 && (
-              <span className={`text-[10px] ${activeTab === "recently-played" ? "opacity-80 font-bold" : "opacity-50 font-normal"}`}>
-                {playedSongs.length}
-              </span>
-            )}
-            {tab.id === "playlists" && playlists && playlists.length > 0 && (
-              <span className={`text-[10px] ${activeTab === "playlists" ? "opacity-80 font-bold" : "opacity-50 font-normal"}`}>
-                {playlists.length}
-              </span>
-            )}
+function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: MusicPlaylist; readOnly: boolean; onChanged: () => Promise<unknown>; announce: (message: string) => void }) {
+  const [renameOpen, setRenameOpen] = useState(false);
+  const renameOpener = useRef<HTMLButtonElement>(null);
+  const setVisible = async () => {
+    try {
+      await musicWorkspaceClient.setPlaylistVisibility(playlist.id, !playlist.isVisibleToGuests, operationKey("playlist-visibility"));
+      await onChanged();
+    } catch { toast.error("Music is temporarily unavailable."); }
+  };
+  const move = async (songId: number, to: number, title: string) => {
+    if (to < 0 || to >= playlist.songs.length) return;
+    try {
+      await musicWorkspaceClient.reorderPlaylistSong(playlist.id, songId, to, operationKey("playlist-reorder"));
+      announce(`${title} moved to position ${to + 1}.`);
+      await onChanged();
+    } catch { toast.error("Music is temporarily unavailable."); }
+  };
+  return (
+    <section role="tabpanel" aria-label={playlist.name} className="rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div><h3 className="font-semibold text-dashboard">{playlist.name}</h3>{playlist.description && <p className="mt-1 text-sm text-dashboard-muted">{playlist.description}</p>}</div>
+        <div className="flex flex-wrap gap-2">
+          <button ref={renameOpener} type="button" onClick={() => setRenameOpen(true)} disabled={readOnly} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Rename playlist</button>
+          <button type="button" onClick={() => void setVisible()} disabled={readOnly} aria-pressed={playlist.isVisibleToGuests} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>
+            {playlist.isVisibleToGuests ? "Shared" : "Private"}
           </button>
-        ))}
-      </div>
-
-      {/* ── Tab Content ────────────────────────────────────────────────────── */}
-      <div className="bg-dashboard-muted/40 border border-dashboard rounded-xl overflow-hidden min-h-[300px]">
-        {/* Tab content wrapper */}
-        <div className="p-4">
-
-          {/* ── Queue tab ──────────────────────────────────────────────────── */}
-          {activeTab === 'queue' && (
-            <div>
-              {!currentlyPlaying && songs.length === 0 ? (
-                <div className="text-center py-6 text-gray-400">
-                  <Music2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Queue is empty</p>
-                  <p className="text-xs mt-1 opacity-60">Use Add Songs above to get started</p>
-                </div>
-              ) : (
-                <>
-                  {currentlyPlaying && (
-                    <div className="flex items-center gap-3 p-3 mb-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                      <img
-                        src={currentlyPlaying.thumbnailUrl}
-                        className="w-10 h-10 rounded object-cover flex-shrink-0"
-                        alt={currentlyPlaying.title}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-green-400 mb-0.5">Now Playing</p>
-                        <p className="text-sm text-dashboard font-medium truncate">{currentlyPlaying.title}</p>
-                        <p className="text-xs text-gray-400 truncate">{currentlyPlaying.artist}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {songs.length > 0 && (
-                    <PlaylistTable
-                      songs={songs}
-                      currentPlayingSong={currentlyPlaying}
-                      showControls={false}
-                      showReorderControls={true}
-                      onPlaySong={handlePlaySong}
-                      onDeleteSong={(id) => deleteSongMutation.mutate(id)}
-                      onReorderSongs={(newOrder) => reorderMutation.mutate(newOrder)}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ── Guest Controls tab ─────────────────────────────────────────── */}
-          {activeTab === 'guest-controls' && (
-            <div>
-              <div className="space-y-1">
-                {([
-                  { key: 'allowSongRequests' as const, label: 'Allow song requests', desc: 'Guests can add songs to your queue' },
-                  { key: 'allowGuestPlayOnDevice' as const, label: 'Guest playback on device', desc: 'Guests can play music on their own device' },
-                  { key: 'allowPlaylistSharing' as const, label: 'Allow playlist sharing', desc: 'Guests can see your saved playlists' },
-                  { key: 'allowRecentlyPlayedVisibility' as const, label: 'Show recently played', desc: "Guests can see songs you've played" },
-                ]).map(({ key, label, desc }) => (
-                  <div key={key} className="flex items-center justify-between gap-4 py-2.5 border-b border-dashboard last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-dashboard text-sm">{label}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
-                    </div>
-                    <button
-                      onClick={() => handleToggle(key)}
-                      disabled={updateSettingsMutation.isPending}
-                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 disabled:opacity-50
-                        ${settings[key] ? 'bg-dashboard-accent' : 'bg-gray-600'}`}
-                      aria-label={`Toggle ${label}`}
-                    >
-                      <span
-                        className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200
-                          ${settings[key] ? 'translate-x-5' : 'translate-x-0'}`}
-                      />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {guestUrl && (
-                <div className="mt-4 pt-4 border-t border-dashboard">
-                  <p className="text-gray-500 text-xs mb-1">Guest page link</p>
-                  <p className="text-gray-400 text-xs break-all font-mono">{guestPageUrl}</p>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(guestPageUrl);
-                      toast.success('Link copied!');
-                    }}
-                    className="mt-1.5 text-xs text-dashboard-accent hover:opacity-80"
-                  >
-                    Copy link
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Recently Played tab ────────────────────────────────────────── */}
-          {activeTab === 'recently-played' && (
-            <div>
-              {playedSongs.length === 0 ? (
-                <div className="text-center py-6 text-gray-400">
-                  <History className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No recently played songs</p>
-                </div>
-              ) : (
-                <PlaylistTable
-                  songs={playedSongs}
-                  isHistory={true}
-                  showControls={false}
-                  showReorderControls={false}
-                  onPlaySong={handlePlaySong}
-                  showAddToQueue={true}
-                  onAddToQueue={(song) => addToQueueMutation.mutate(song)}
-                  onDeleteSong={(id) => deleteSongMutation.mutate(id)}
-                />
-              )}
-            </div>
-          )}
-
-          {/* ── Playlists tab ──────────────────────────────────────────────── */}
-          {activeTab === 'playlists' && (
-            <div>
-              {/* Header: new playlist button */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs text-gray-500">
-                  {playlists && playlists.length > 0 ? `${playlists.length} playlist${playlists.length !== 1 ? 's' : ''}` : 'No playlists yet'}
-                </span>
-                {showNewPlaylistInput ? null : (
-                  <button
-                    onClick={() => setShowNewPlaylistInput(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dashboard-accent hover:opacity-90 text-[10px] sm:text-xs text-[var(--dash-accent-text)] font-medium transition-all shadow-md whitespace-nowrap"
-                  >
-                    <AddIcon size="3.5" />
-                    New Playlist
-                  </button>
-                )}
-              </div>
-
-              {/* Inline new-playlist form */}
-              {showNewPlaylistInput && (
-                <div className="mb-4 p-3 bg-dashboard-muted/50 rounded-lg border border-dashboard space-y-2">
-                  <p className="text-xs text-dashboard font-medium">Create Playlist</p>
-                  <input
-                    type="text"
-                    value={newPlaylistName}
-                    onChange={e => setNewPlaylistName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newPlaylistName.trim()) {
-                        createPlaylistMutation.mutate({ name: newPlaylistName.trim(), description: newPlaylistDescription.trim() });
-                      }
-                      if (e.key === 'Escape') {
-                        setShowNewPlaylistInput(false);
-                        setNewPlaylistName('');
-                        setNewPlaylistDescription('');
-                      }
-                    }}
-                    placeholder="Playlist name…"
-                    autoFocus
-                    className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
-                  />
-                  <input
-                    type="text"
-                    value={newPlaylistDescription}
-                    onChange={e => setNewPlaylistDescription(e.target.value)}
-                    placeholder="Description (optional)…"
-                    className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
-                  />
-                  <div className="flex items-center gap-2 justify-end">
-                    <button
-                      onClick={() => { setShowNewPlaylistInput(false); setNewPlaylistName(''); setNewPlaylistDescription(''); }}
-                      className="text-xs text-gray-400 hover:text-dashboard transition-colors px-3 py-1"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (newPlaylistName.trim()) {
-                          createPlaylistMutation.mutate({ name: newPlaylistName.trim(), description: newPlaylistDescription.trim() });
-                        }
-                      }}
-                      disabled={!newPlaylistName.trim() || createPlaylistMutation.isPending}
-                      className="text-xs bg-dashboard-accent text-[var(--dash-accent-text)] rounded px-3 py-1 hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
-                    >
-                      {createPlaylistMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                      Create
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {(!playlists || playlists.length === 0) && !showNewPlaylistInput && (
-                <div className="text-center py-6 text-gray-400">
-                  <Library className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No saved playlists yet</p>
-                  <p className="text-xs mt-1 opacity-60">Create one to organise your favourite songs</p>
-                </div>
-              )}
-
-              {/* Tab-based playlist view */}
-              {playlists && playlists.length > 0 && (() => {
-                const currentTabId = activePlaylistTab || playlists[0].id.toString();
-                return (
-                  <div>
-                    {/* Playlist tab strip */}
-                    <div className="mb-4 flex flex-wrap gap-1 p-1 bg-dashboard-muted/50 border border-dashboard rounded-lg overflow-x-auto">
-                      {playlists.map((pl: any) => {
-                        const isActive = currentTabId === pl.id.toString();
-                        return (
-                          <button
-                            key={pl.id}
-                            onClick={() => setActivePlaylistTab(pl.id.toString())}
-                            className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-xl transition-all ${isActive
-                              ? 'bg-dashboard-muted text-dashboard font-semibold'
-                              : 'text-dashboard-light hover:text-dashboard hover:bg-dashboard-muted/50'
-                              }`}
-                          >
-                            {pl.name}
-                            <span className="ml-1 opacity-50 font-normal">({pl.songs?.length ?? 0})</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Per-playlist content — render only active tab */}
-                    {playlists.map((p: any) => {
-                      if (p.id.toString() !== currentTabId) return null;
-                      const isEditing = editingPlaylistId === p.id;
-                      return (
-                        <div key={p.id}>
-                          <div className="space-y-4">
-
-                            {/* Add Songs to playlist */}
-                            <div className="bg-dashboard-muted/40 rounded-lg p-3 border border-dashboard">
-                              <p className="text-xs text-gray-400 font-medium mb-2">Add Songs to "{p.name}"</p>
-                              <SearchSongs
-                                playlistId={p.id}
-                                onAddSongs={(songs) =>
-                                  addSongsToPlaylistMutation.mutate({ playlistId: p.id, songs })
-                                }
-                                onSongsAddedCallback={async () => {
-                                  queryClient.invalidateQueries({ queryKey: ['tunes-playlists', localUser?.username] });
-                                }}
-                              />
-                            </div>
-
-                            {/* Playlist header: name/desc + ⋮ menu */}
-                            {isEditing ? (
-                              <div className="bg-dashboard-muted/40 rounded-lg p-3 border border-dashboard space-y-2">
-                                <p className="text-xs text-gray-400 font-medium">Edit Playlist</p>
-                                <input
-                                  type="text"
-                                  value={editPlaylistName}
-                                  onChange={e => setEditPlaylistName(e.target.value)}
-                                  placeholder="Playlist name…"
-                                  autoFocus
-                                  className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
-                                />
-                                <input
-                                  type="text"
-                                  value={editPlaylistDescription}
-                                  onChange={e => setEditPlaylistDescription(e.target.value)}
-                                  placeholder="Description (optional)…"
-                                  className="w-full text-sm bg-dashboard-muted border border-dashboard rounded px-2 py-1.5 text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
-                                />
-                                <div className="flex gap-2 justify-end">
-                                  <button
-                                    onClick={() => setEditingPlaylistId(null)}
-                                    className="text-xs text-gray-400 hover:text-dashboard px-3 py-1"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (editPlaylistName.trim()) {
-                                        updatePlaylistMutation.mutate({
-                                          playlistId: p.id,
-                                          name: editPlaylistName.trim(),
-                                          description: editPlaylistDescription.trim(),
-                                        });
-                                      }
-                                    }}
-                                    disabled={!editPlaylistName.trim() || updatePlaylistMutation.isPending}
-                                    className="text-xs bg-dashboard-accent text-[var(--dash-accent-text)] rounded px-3 py-1 hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
-                                  >
-                                    {updatePlaylistMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                                    Save
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-dashboard text-sm font-medium truncate">{p.name}</p>
-                                  {p.description && (
-                                    <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{p.description}</p>
-                                  )}
-                                  <p className="text-gray-500 text-xs mt-0.5">{p.songs?.length ?? 0} songs</p>
-                                </div>
-
-                                {/* ⋮ more menu */}
-                                <div className="relative flex-shrink-0">
-                                  <button
-                                    onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}
-                                    className="p-1.5 rounded text-gray-400 hover:text-dashboard hover:bg-dashboard-muted transition-colors"
-                                    title="More options"
-                                  >
-                                    <MoreVertical className="w-4 h-4" />
-                                  </button>
-                                  {openMenuId === p.id && (
-                                    <>
-                                      {/* Backdrop to close on outside click */}
-                                      <div
-                                        className="fixed inset-0 z-10"
-                                        onClick={() => setOpenMenuId(null)}
-                                      />
-                                      <div className="absolute right-0 top-8 z-20 bg-dashboard border border-dashboard rounded-lg shadow-xl overflow-hidden min-w-[140px]">
-                                        <button
-                                          onClick={() => {
-                                            setOpenMenuId(null);
-                                            setEditingPlaylistId(p.id);
-                                            setEditPlaylistName(p.name);
-                                            setEditPlaylistDescription(p.description || '');
-                                          }}
-                                          className="flex items-center gap-2 px-3 py-2 text-sm text-dashboard hover:bg-dashboard-muted w-full text-left transition-colors"
-                                        >
-                                          <Pencil className="w-3.5 h-3.5" />
-                                          Edit Playlist
-                                        </button>
-                                        <button
-                                          onClick={() => {
-                                            setOpenMenuId(null);
-                                            deletePlaylistMutation.mutate(p.id);
-                                          }}
-                                          className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-400/10 w-full text-left transition-colors"
-                                        >
-                                          <TrashIcon className="w-3.5 h-3.5" />
-                                          Delete Playlist
-                                        </button>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Action buttons */}
-                            <div className="flex flex-row items-center gap-3 pt-2">
-                              <button
-                                onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'play' })}
-                                disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                              >
-                                <PlayCircle className="w-4 h-4" />
-                                <span>Play</span>
-                              </button>
-                              <button
-                                onClick={() => setPlaylistToReplace({ id: p.id, songs: p.songs ?? [], type: 'shuffle' })}
-                                disabled={!p.songs?.length}
-                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                              >
-                                <Shuffle className="w-4 h-4" />
-                                <span>Shuffle</span>
-                              </button>
-                              <button
-                                onClick={() => addPlaylistToQueueMutation.mutate(p.songs ?? [])}
-                                disabled={!p.songs?.length || addPlaylistToQueueMutation.isPending}
-                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-dashboard-muted text-dashboard hover:bg-dashboard-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                              >
-                                {addPlaylistToQueueMutation.isPending
-                                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                                  : <AddIcon size="4" />
-                                }
-                                <span>Add to Queue</span>
-                              </button>
-                            </div>
-
-                            {/* Visible to guests toggle */}
-                            {settings.allowPlaylistSharing && (
-                              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-dashboard-muted/40 border border-dashboard">
-                                <div className="flex items-center gap-2">
-                                  {p.isVisibleToGuests
-                                    ? <Eye className="w-3.5 h-3.5 text-green-400" />
-                                    : <EyeOff className="w-3.5 h-3.5 text-gray-500" />
-                                  }
-                                  <span className="text-xs text-dashboard-light">Visible to guests</span>
-                                </div>
-                                <button
-                                  onClick={() =>
-                                    updatePlaylistVisibilityMutation.mutate({
-                                      playlistId: p.id,
-                                      isVisible: !p.isVisibleToGuests,
-                                    })
-                                  }
-                                  disabled={updatePlaylistVisibilityMutation.isPending}
-                                  className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 disabled:opacity-50
-                                  ${p.isVisibleToGuests ? 'bg-dashboard-accent' : 'bg-gray-600'}`}
-                                  aria-label="Toggle guest visibility"
-                                >
-                                  <span
-                                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200
-                                    ${p.isVisibleToGuests ? 'translate-x-5' : 'translate-x-0'}`}
-                                  />
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Song list */}
-                            {p.songs && p.songs.length > 0 ? (
-                              <PlaylistTable
-                                songs={p.songs as Song[]}
-                                showControls={false}
-                                showReorderControls={false}
-                                showAddToQueue={true}
-                                onAddToQueue={(song) => addToQueueMutation.mutate(song)}
-                                onDeleteSong={(songId) =>
-                                  deletePlaylistSongMutation.mutate({ playlistId: p.id, songId })
-                                }
-                              />
-                            ) : (
-                              <div className="text-center py-6 text-gray-400">
-                                <Music2 className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                                <p className="text-xs">This playlist is empty — add songs above!</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
         </div>
       </div>
-
-      {/* Full dashboard link */}
-      <div className="text-center pt-1 pb-2">
-        <a
-          href={`${import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth'}/auth?tab=login`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-gray-500 hover:text-gray-400 inline-flex items-center gap-1"
-        >
-          Open full Local Tunes dashboard
-          <ExternalLink className="w-3 h-3" />
-        </a>
-      </div>
-
-      {/* ── Confirm replace queue dialog ────────────────────────────────── */}
-      <ConfirmModal
-        open={!!playlistToReplace}
-        title="Replace Current Queue?"
-        description={`This will remove all songs from your current queue and ${playlistToReplace?.type === 'shuffle' ? 'shuffle and play' : 'play'
-          } the selected playlist instead.`}
-        confirmLabel={isReplacingQueue ? 'Starting…' : 'Continue'}
-        loading={isReplacingQueue}
-        onConfirm={handleConfirmReplaceQueue}
-        onCancel={() => {
-          if (!isReplacingQueue) setPlaylistToReplace(null);
-        }}
-      />
-      {listVisibilityPrompt && (
-        <ListVisibilityModal
-          isOpen={listVisibilityPrompt.isOpen}
-          onClose={() => setListVisibilityPrompt(null)}
-          listName={listVisibilityPrompt.playlistName}
-          categoryName="Music"
-          onConfirm={async () => {
-            try {
-              await updatePlaylistVisibilityMutation.mutateAsync({
-                playlistId: listVisibilityPrompt.playlistId,
-                isVisible: true,
-              });
-              toast.success(`"${listVisibilityPrompt.playlistName}" published!`);
-            } catch {
-              toast.error("Failed to update visibility.");
-            }
-          }}
-          loading={updatePlaylistVisibilityMutation.isPending}
+      {playlist.songs.length === 0 ? <p className="mt-6 text-sm text-dashboard-muted">This playlist is empty.</p> : (
+        <ol className="mt-5 space-y-2">
+          {playlist.songs.map((song, index) => (
+            <li key={song.id} className="flex items-center gap-3 rounded-xl bg-dashboard-muted/60 p-2">
+              <img src={song.thumbnailUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-dashboard">{song.title}</p><p className="truncate text-xs text-dashboard-muted">{song.artist}</p></div>
+              <div className="flex gap-1">
+                <button type="button" aria-label={`Move ${song.title} up`} disabled={readOnly || index === 0} onClick={() => void move(song.id, index - 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↑</button>
+                <button type="button" aria-label={`Move ${song.title} down`} disabled={readOnly || index === playlist.songs.length - 1} onClick={() => void move(song.id, index + 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↓</button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      {renameOpen && (
+        <RenamePlaylistDialog
+          playlist={playlist}
+          opener={renameOpener}
+          onClose={() => setRenameOpen(false)}
+          onRenamed={onChanged}
         />
       )}
+    </section>
+  );
+}
+
+export default function MusicDashboard({ data, scope, readOnly = false }: MusicDashboardProps) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [sharingOpen, setSharingOpen] = useState(false);
+  const [activeId, setActiveId] = useState<number | undefined>(data.playlists[0]?.id);
+  const [announcement, setAnnouncement] = useState("");
+  const createOpener = useRef<HTMLButtonElement>(null);
+  const sharingOpener = useRef<HTMLButtonElement>(null);
+  const activeIndex = Math.max(0, data.playlists.findIndex((playlist) => playlist.id === activeId));
+  const active = data.playlists[activeIndex];
+
+  useEffect(() => {
+    if (!data.playlists.some((playlist) => playlist.id === activeId)) setActiveId(data.playlists[0]?.id);
+  }, [activeId, data.playlists]);
+
+  const tabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (!data.playlists.length || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? data.playlists.length - 1
+      : (index + (event.key === "ArrowRight" ? 1 : -1) + data.playlists.length) % data.playlists.length;
+    setActiveId(data.playlists[next].id);
+    document.getElementById(`music-playlist-tab-${data.playlists[next].id}`)?.focus();
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <button ref={sharingOpener} type="button" disabled={readOnly} onClick={() => setSharingOpen(true)} className={`${buttonClass} w-full bg-dashboard-muted text-dashboard sm:w-auto`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
+        {data.playlists.length > 0 && <button ref={createOpener} type="button" onClick={() => setCreateOpen(true)} disabled={readOnly} className={`${buttonClass} w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}><Plus className="mr-2 inline h-4 w-4" />Create playlist</button>}
+      </div>
+
+      {data.playlists.length === 0 ? (
+        <section className="rounded-2xl border border-dashboard bg-dashboard-sidebar px-5 py-12 text-center sm:px-8">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-muted text-dashboard-accent"><ListMusic className="h-6 w-6" /></div>
+          <h2 className="mt-4 text-xl font-semibold text-dashboard">Create your first playlist</h2>
+          <p className="mx-auto mt-2 max-w-md text-base text-dashboard-muted">Build a playlist to collect and share the music you love.</p>
+          <button ref={createOpener} type="button" onClick={() => setCreateOpen(true)} disabled={readOnly} className={`${buttonClass} mt-6 w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}>Create playlist</button>
+        </section>
+      ) : (
+        <>
+          <div role="tablist" aria-label="Music playlists" className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
+            {data.playlists.map((playlist, index) => (
+              <button id={`music-playlist-tab-${playlist.id}`} key={playlist.id} role="tab" aria-selected={playlist.id === active?.id} tabIndex={playlist.id === active?.id ? 0 : -1} onClick={() => setActiveId(playlist.id)} onKeyDown={(event) => tabKey(event, index)} className={`${buttonClass} shrink-0 ${playlist.id === active?.id ? "bg-dashboard-accent text-[var(--dash-accent-text)]" : "bg-dashboard-muted text-dashboard"}`}>{playlist.name}</button>
+            ))}
+          </div>
+          {active && <PlaylistPanel playlist={active} readOnly={readOnly} onChanged={data.refetch} announce={setAnnouncement} />}
+        </>
+      )}
+
+      <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
+      {createOpen && <CreatePlaylistDialog onClose={() => setCreateOpen(false)} opener={createOpener} onCreated={data.refetch} />}
+      {sharingOpen && <SharingDialog data={data} scope={scope} onClose={() => setSharingOpen(false)} opener={sharingOpener} />}
     </div>
   );
 }

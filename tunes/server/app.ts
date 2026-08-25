@@ -1,9 +1,18 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes/index";
-import { log } from "./vite";
+import { log } from "./runtime";
 import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
+import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
+import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config";
+import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
+import { StrapiIdentityAbsenceProof } from "./services/strapiIdentityAbsenceProof";
+
+export function sanitizedRequestLogTarget(request: Pick<Request, "path">): string {
+  return request.path;
+}
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -20,16 +29,33 @@ import { storage } from "./storage";
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(): Promise<{ app: express.Express; server: Server }> {
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig): Promise<{ app: express.Express; server: Server }> {
+  installSafeConsole();
+  assertContainmentStartup(process.env);
   const app = express();
 
   // Enable trust proxy FIRST, before any middleware
   // This is critical for secure cookies to work properly
-  app.set("trust proxy", true);
+  app.set("trust proxy", (peerAddress: string) => musicIdentityConfig.isTrustedProxy(peerAddress));
 
   // Basic middleware setup
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  app.use((req, res, next) => {
+    res.setHeader("X-Request-Id", requestIdFor(req));
+    next();
+  });
+  app.use((req, res, next) => {
+    const declared = req.get("content-length");
+    if (declared && /^\d+$/.test(declared) && Number(declared) > 64 * 1024) {
+      const requestId = requestIdFor(req); let sent = false;
+      const reject = () => { if (sent) return; sent = true; res.setHeader("Connection", "close"); res.status(413).json(musicErrorEnvelope(new MusicIdentityError("PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false), requestId)); };
+      const deadline = setTimeout(reject, 25); deadline.unref();
+      req.once("end", reject); req.resume(); return;
+    }
+    next();
+  });
+  setupMusicIdentityBodylessPreflight(app);
+  app.use(express.json({ limit: "64kb" }));
+  app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));
 
   // Serve favicon and related files directly from root and public directories
@@ -65,10 +91,11 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
 
       // Allow credentials (cookies, authorization headers, etc)
       res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Expose-Headers", "Retry-After");
       // Allow necessary headers
       res.header(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Cookie, Authorization, X-CSRF-Token, X-Username"
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, Idempotency-Key, X-Music-Guest-Capability"
       );
       // Allow necessary methods
       res.header(
@@ -80,7 +107,7 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
     }
 
     // Handle preflight OPTIONS requests
-    if (req.method === "OPTIONS") {
+    if (req.method === "OPTIONS" && req.get("access-control-request-method")) {
       return res.sendStatus(200);
     }
 
@@ -98,18 +125,9 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
     // Detailed request logging for API routes
     if (isApiRoute || isPost) {
       console.log(`\n🟦 ============================================`);
-      console.log(`🟦 [Request Logger] ${req.method} ${req.originalUrl}`);
+      console.log(`🟦 [Request Logger] ${req.method} ${sanitizedRequestLogTarget(req)}`);
       console.log(`🟦 Path: ${path}`);
       console.log(`🟦 Content-Type: ${req.headers['content-type']}`);
-      if (isPost) {
-        // Log body preview for POST requests
-        try {
-          const bodyPreview = JSON.stringify(req.body).substring(0, 200);
-          console.log(`🟦 Body Preview: ${bodyPreview}...`);
-        } catch (e) {
-          console.log('🟦 Body not serializable');
-        }
-      }
       console.log(`🟦 ============================================\n`);
     }
 
@@ -128,15 +146,22 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
   });
 
   console.log('Starting server initialization...');
-  const server = await registerRoutes(app, storage);
+  const { lifecycleProofToken, ...routeMusicConfig } = musicIdentityConfig;
+  const identityAbsenceProof = new StrapiIdentityAbsenceProof({
+    baseUrl: musicIdentityConfig.strapiOrigin,
+    accessToken: lifecycleProofToken,
+    fetchImpl: musicIdentityConfig.fetchImpl,
+    timeoutMs: Math.min(musicIdentityConfig.overallTimeoutMs, 30_000),
+  });
+  const server = await registerRoutes(app, storage, routeMusicConfig, {
+    proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+    fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
+  });
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Error:', err);
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    containmentErrorHandler(err, req, res);
   });
 
   return { app, server };

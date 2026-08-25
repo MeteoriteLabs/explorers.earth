@@ -1,8 +1,5 @@
 import { FC } from "react";
 import { useMutation, useQuery } from "@apollo/client";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
-import { localTunesRequest } from "../lib/apiClient";
-import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
@@ -35,7 +32,6 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
   onSuccess,
 }) => {
   const [updateTabVisibility, { loading }] = useMutation(updateTabVisibilityMutation);
-  const { user } = useAuthStore();
 
   const {
     data: publishedListsData,
@@ -45,12 +41,6 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
     variables: { accountDocumentId },
     skip: !accountDocumentId,
     fetchPolicy: "network-only",
-  });
-
-  const { data: musicPlaylists } = useReactQuery<any[]>({
-    queryKey: ['tunes-playlists', user?.username],
-    queryFn: () => localTunesRequest('GET', `/api/playlists?username=${user?.username}`),
-    enabled: !!user?.username && categoryName === "Music",
   });
 
   const handleMakePublic = async () => {
@@ -103,9 +93,9 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
         errorMsg = "You must have at least one published place list to make Recommendations public.";
         break;
       case "public_music":
-        hasPublished = musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false;
-        errorMsg = "You must have at least one published playlist to make Music public.";
-        break;
+        toast.info("Manage privacy and links from Music sharing settings.");
+        onClose();
+        return;
       default:
         hasPublished = true;
         break;

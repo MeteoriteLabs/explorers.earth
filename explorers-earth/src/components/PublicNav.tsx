@@ -2,7 +2,6 @@ import { memo, useMemo } from "react";
 import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
-import MusicNote from "../assets/icons/MusicNote";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -65,17 +64,10 @@ const PublicNav = memo(() => {
     return normalizedPath.includes('/places');
   };
 
-  // Helper function to check if current path is for music
-  const isMusicPath = (currentPath: string) => {
-    const normalizedPath = normalizePath(currentPath);
-    return normalizedPath.includes('/music');
-  };
-
   // Tab visibility logic based on Account collection fields
   // Strict opt-in: a category tab is public only when explicitly "Yes".
   const showRecommendationsTab = accountData?.public_recommendations === "Yes";
   const showProfileTab = true; // Always show public profile tab
-  const showMusicTab = accountData?.public_music === "Yes";
   const showGuidesTab = accountData?.public_guides === "Yes";
   const showMoviesTab = accountData?.public_movie === "Yes";
   const showBooksTab = accountData?.public_books === "Yes";
@@ -137,9 +129,6 @@ const PublicNav = memo(() => {
     public_products:        listCountsData?.productLists?.length ?? 0,
     public_people:          listCountsData?.personLists?.length ?? 0,
     public_guides:          listCountsData?.guides?.length ?? 0,
-    // Music is from LocalTunes — count is not available via GraphQL here;
-    // treat it as 0 so it fills after content-heavy tabs.
-    public_music:           0,
     // Profile has no "lists" — it's always guaranteed a slot via default pin.
     public_profile:         0,
   }), [listCountsData]);
@@ -192,15 +181,6 @@ const PublicNav = memo(() => {
         : <Film size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
       text: "Movies",
       path: `/${username}/movies`,
-    }] : []),
-    // Only add music tab if visibility is enabled
-    ...(showMusicTab ? [{
-      id: 'public_music',
-      icon: isMusicPath(location.pathname)
-        ? <MusicNote fill="white" />
-        : <MusicNote outline strokeColor="rgba(255,255,255,0.5)" />,
-      text: "Music",
-      path: `/${username}/music`,
     }] : []),
     // Only add books tab if visibility is enabled
     ...(showBooksTab ? [{
@@ -266,7 +246,6 @@ const PublicNav = memo(() => {
           // Check if current path matches the nav item path
           const isActive = isPathMatch(location.pathname, item.path) ||
             (item.path.includes('/places') && isPlacesPath(location.pathname)) ||
-            (item.path.includes('/music') && isMusicPath(location.pathname)) ||
             (item.path.includes('/movies') && isMoviesPath(location.pathname)) ||
             (item.path.includes('/books') && isBooksPath(location.pathname)) ||
             (item.path.includes('/games') && isGamesPath(location.pathname)) ||

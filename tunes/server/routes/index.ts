@@ -1,48 +1,188 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import type { IStorage } from "../storage";
-import { setupSwagger } from "../swagger";
-import { setupUserRoutes } from "../user-routes";
-import { setupPaymentRoutes } from "./paymentRoutes";
-import { setupSubscriptionRoutes } from "./subscriptionRoutes";
-import { setupGeminiRoutes } from "./geminiRoutes";
-import { setupInstagramRoutes } from "./instagramRoutes";
-import { setupGoogleOAuthRoutes } from "../google-oauth-routes";
-import { setupAuthBridgeRoutes } from "../auth-bridge-routes";
 import { setupSeoRoutes } from "../seo-routes";
 import { setupAuthRoutes } from "./authRoutes";
 import { setupPlaylistRoutes } from "./playlistRoutes";
-import { setupAdminRoutes } from "./adminRoutes";
-import { setupStrapiRoutes } from "./strapiRoutes";
-import { setupYoutubeRoutes } from "./youtubeRoutes";
-import { setupEmailRoutes } from "./emailRoutes";
-import { setupPageRoutes } from "./pageRoutes";
 import { setupReactivationRoutes } from "./reactivationRoutes";
-import scrapeRoutes from "./scrapeRoutes";
+import { setupMusicFixtureProbeRoute } from "./musicFixtureProbe";
+import { pool } from "../db";
+import { setupMusicHealthRoutes } from "../deployment/music-health";
+import { checkMusicDatabaseReadiness } from "../db/readiness";
+import { setupNativeSessionContainment, setupOwnerContainment } from "../security-containment";
+import { setupMusicIdentityRoutes } from "./musicIdentityRoutes";
+import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
+import { StrapiIdentityGateway } from "../services/strapiIdentityGateway";
+import { MusicProjectionService } from "../services/musicProjectionService";
+import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
+import { createMusicCohortEntryResolver, parseMusicCohortConfiguration } from "../deployment/music-deployment";
+import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
+import { MusicTokenService } from "../services/musicTokenService";
+import { createMusicSocketCredentialVerifier, MusicPrincipalService } from "../middleware/musicPrincipal";
+import { MusicDomainRepository } from "../repositories/musicDomainRepository";
+import { MusicPublicationOperationRepository } from "../repositories/musicPublicationOperationRepository";
+import { MusicPublicationResponseCipher } from "../services/musicPublicationResponseCrypto";
+import { createYouTubeReadService } from "../services/youtubeReadService";
+import { setupCanonicalMusicRoutes, setupMusicSurfaceBoundary } from "./musicSurfaceRoutes";
+import { setupMusicOpenApiRoutes } from "./musicOpenApiRoutes";
+import { MusicLifecycleService } from "../services/musicLifecycleService";
+import { MusicOwnerSocketRegistry } from "../socket/musicSocketServer";
+import {
+  runMusicLifecycleWorkerOnce,
+  startMusicLifecycleWorker,
+  type AuthoritativeAbsence,
+} from "../workers/musicLifecycleWorker";
+import { startMusicReconciliationSuspensionListener } from "../services/musicReconciliationSuspensionListener";
 
-export function registerRoutes(app: Express, _storage: IStorage): Server {
-  setupSwagger(app);
-
+export async function registerRoutes(
+  app: Express,
+  _storage: IStorage,
+  musicConfig: Omit<MusicIdentityRuntimeConfig, "lifecycleProofToken">,
+  lifecycleAbsenceProof: {
+    proveAbsence(identity: { userDocumentId: string; accountDocumentId: string }): Promise<AuthoritativeAbsence>;
+    fixtureReadToken?: string;
+  },
+): Promise<Server> {
+  if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
+    setupMusicHealthRoutes(app, { pool });
+  }
+  if (process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
+    mode: "fixture",
+    databaseQuery: (sql) => pool.query(sql),
+    migrationReadiness: () => checkMusicDatabaseReadiness(pool),
+    strapiUrl: process.env.STRAPI_URL ?? "",
+    strapiReadToken: lifecycleAbsenceProof.fixtureReadToken ?? "",
+    fetchImpl: fetch,
+  });
+  setupNativeSessionContainment(app);
+  const identityGateway = new StrapiIdentityGateway({
+    baseUrl: musicConfig.strapiOrigin,
+    fetchImpl: musicConfig.fetchImpl,
+    maxConcurrency: musicConfig.maxConcurrency,
+    maxPending: musicConfig.maxPending,
+    retries: musicConfig.retries,
+    connectTimeoutMs: musicConfig.connectTimeoutMs,
+    readTimeoutMs: musicConfig.readTimeoutMs,
+    overallTimeoutMs: musicConfig.overallTimeoutMs,
+    cacheTtlMs: musicConfig.cacheTtlMs,
+    circuitFailureThreshold: musicConfig.circuitFailureThreshold,
+    circuitOpenMs: musicConfig.circuitOpenMs,
+  });
+  const identityRepository = new MusicIdentityRepository(pool);
+  const identityProjection = new MusicProjectionService(identityGateway, identityRepository, musicConfig.maxInflight);
+  const cohortEntryEnabled = createMusicCohortEntryResolver({
+    killSwitch: () => process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
+    cohort: parseMusicCohortConfiguration(process.env),
+    resolveIdentity: (proof, requestId) => identityGateway.resolve(proof, requestId),
+  });
+  const musicTokens = new MusicTokenService(musicConfig.musicToken);
+  const musicPrincipals = new MusicPrincipalService(musicTokens, identityRepository);
+  const ownerSocketRegistry = new MusicOwnerSocketRegistry();
+  const lifecycle = new MusicLifecycleService(identityGateway, identityRepository, {
+    disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
+  });
+  setupMusicIdentityRoutes(app, {
+    ensure: (proof, requestId) => identityProjection.ensure(proof, requestId),
+    mintCredential: (identity) => musicTokens.mint(identity),
+    resolvePrincipal: (token) => musicPrincipals.resolve(token),
+    lifecycle,
+    isMusicCredential: (token) => {
+      try { musicTokens.verify(token); return true; }
+      catch { return false; }
+    },
+    entryEnabled: cohortEntryEnabled,
+    trustedProxyHops: musicConfig.trustedProxyHops,
+    isTrustedProxy: musicConfig.isTrustedProxy,
+    telemetry: () => ({ ...identityGateway.stats(), coalesced: identityProjection.stats().coalesced }),
+    metrics: (entry) => console.info("music_identity_metric", entry),
+    limiter: new BoundedIdentityRateLimiter({
+      limit: musicConfig.rateLimitPerMinute,
+      globalLimit: musicConfig.globalRateLimitPerMinute,
+      windowMs: 60_000,
+      maxEntries: musicConfig.rateMaxEntries,
+    }),
+  });
+  const publicationOperations = new MusicPublicationOperationRepository(
+    pool,
+    new MusicPublicationResponseCipher(musicConfig.publicationResponse),
+  );
+  await publicationOperations.verifyReplayReadiness();
+  const musicDomain = new MusicDomainRepository(pool, publicationOperations);
+  const canonicalDependencies = {
+    repository: musicDomain,
+    resolvePrincipal: (token: string) => musicPrincipals.resolve(token),
+    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean) ?? ["http://localhost:5173"],
+    trustedProxyHops: musicConfig.trustedProxyHops,
+    isTrustedProxy: musicConfig.isTrustedProxy,
+    youtube: createYouTubeReadService(process.env.YOUTUBE_API_KEY),
+  };
+  setupCanonicalMusicRoutes(app, canonicalDependencies);
+  setupMusicOpenApiRoutes(app);
   setupAuthRoutes(app);
-  const server = setupPlaylistRoutes(app);
-  setupAdminRoutes(app);
-  setupStrapiRoutes(app);
-  setupYoutubeRoutes(app);
-  setupEmailRoutes(app);
-  setupPageRoutes(app);
-  setupReactivationRoutes(app);
-
-  setupUserRoutes(app);
-  setupPaymentRoutes(app);
-  setupSubscriptionRoutes(app);
-  setupGeminiRoutes(app);
-  setupInstagramRoutes(app);
-  setupGoogleOAuthRoutes(app);
-  setupAuthBridgeRoutes(app);
-  setupSeoRoutes(app);
-
-  // Scraper Routes
-  app.use("/api", scrapeRoutes);
+  setupReactivationRoutes(app, {
+    reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
+  });
+  setupMusicSurfaceBoundary(app, canonicalDependencies);
+  setupOwnerContainment(app);
+  const server = setupPlaylistRoutes(app, {
+    allowedOrigins: canonicalDependencies.allowedOrigins,
+    ownerCredentials: createMusicSocketCredentialVerifier(musicPrincipals),
+    resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
+    ownerRegistry: ownerSocketRegistry,
+  });
+  let suspensionSafetyFailed = false;
+  const failClosedSuspensionSafety = (): void => {
+    if (suspensionSafetyFailed) return;
+    suspensionSafetyFailed = true;
+    const wasListening = server.listening;
+    if (wasListening) server.close();
+    void ownerSocketRegistry.disconnectAllSockets().catch(() => {
+      console.error("music_reconciliation_socket_shutdown_failed");
+    }).finally(() => {
+      if (!wasListening) server.emit("error", new Error("Music reconciliation suspension safety failed"));
+    });
+  };
+  const suspensionListener = await startMusicReconciliationSuspensionListener({
+    pool,
+    disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
+    onDisconnectError: () => {
+      console.error("music_reconciliation_owner_disconnect_failed");
+      failClosedSuspensionSafety();
+    },
+    onFatal: () => {
+      console.error("music_reconciliation_suspension_listener_failed");
+      failClosedSuspensionSafety();
+    },
+  });
+  setupSeoRoutes(app, { listPublishedMusicPlaylists: () => musicDomain.listPublishedMusicPlaylists() });
+  const lifecycleWorker = startMusicLifecycleWorker({
+    intervalMs: 30_000,
+    onError: () => console.error("music_lifecycle_worker_failed"),
+    runOnce: async () => {
+      const result = await runMusicLifecycleWorkerOnce({
+        repository: identityRepository,
+        proveAbsence: (identity) => lifecycleAbsenceProof.proveAbsence(identity),
+        maxAttempts: 5,
+        batchSize: 10,
+      });
+      if (result.claimed > 0) console.info("music_lifecycle_worker", result);
+    },
+  });
+  const publicationShredTimer = setInterval(() => {
+    void publicationOperations.shredExpiredResponses(1_000)
+      .then(() => publicationOperations.compactExpiredOperations(1_000))
+      .catch(() => {
+      console.error("music_publication_response_shred_failed");
+      });
+  }, 60 * 1_000);
+  publicationShredTimer.unref();
+  server.once("close", () => {
+    lifecycleWorker.stop();
+    clearInterval(publicationShredTimer);
+    void suspensionListener.stop().catch(() => {
+      console.error("music_reconciliation_suspension_listener_stop_failed");
+    });
+  });
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {
@@ -76,47 +216,5 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
     }
   });
   
-  // GraphQL Proxy for Strapi
-  app.post("/graphql", async (req, res) => {
-    try {
-      const strapiUrl = process.env.STRAPI_URL;
-      const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
-      
-      if (!strapiUrl) {
-        return res.status(500).json({ error: "STRAPI_URL not configured" });
-      }
-
-      const authHeader = req.headers.authorization;
-      const isAuthOperation = req.body?.query?.includes("login") || req.body?.query?.includes("register");
-      
-      const finalToken = isAuthOperation 
-        ? undefined 
-        : (authHeader || (strapiToken ? `Bearer ${strapiToken}` : undefined));
-      
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      
-      if (finalToken) {
-        headers["Authorization"] = finalToken;
-      }
-
-      const response = await fetch(`${strapiUrl}/graphql`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(req.body),
-      });
-
-      const data = await response.json();
-      res.status(response.status).json(data);
-    } catch (error) {
-      console.error("❌ GraphQL Proxy Error:", error);
-      res.status(500).json({ 
-        error: "GraphQL Proxy Error", 
-        message: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
-  });
-
   return server;
 }

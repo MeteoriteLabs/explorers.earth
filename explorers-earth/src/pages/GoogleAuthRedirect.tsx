@@ -3,8 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import useAuthStore from "../store/store";
 import { EarthLoader } from "../components/EarthLoader";
-import { storeUserCredentials } from "../utils/sessionCredentials";
-import { consumeSsoReturn } from "../utils/tunesSso";
 
 /**
  * GoogleAuthRedirect — handles /google-auth/callback
@@ -25,7 +23,7 @@ import { consumeSsoReturn } from "../utils/tunesSso";
  *     ↑ the access_token here IS the Strapi JWT — NOT a Google token.
  *
  *  5. This component reads that JWT, fetches the user profile, stores
- *     credentials, and navigates to /home.
+ *     the application token, and navigates to /home.
  *
  * IMPORTANT: No second OAuth exchange is performed here. The access_token
  * provided by Strapi's redirect is already the final authentication token.
@@ -96,23 +94,13 @@ const GoogleAuthRedirect = () => {
           username: user.username,
         });
 
-        // Store credentials (Google users have no plaintext password)
-        storeUserCredentials({
-          username: user.username,
-          email: user.email,
-          password: "google_auth_user",
-        });
-
         // Persist the final Strapi JWT
         localStorage.setItem("qrtoken", finalJwt);
 
         // Add a small delay for state update before redirect
         setAuthStatus("Login successful! Redirecting...");
         setTimeout(() => {
-          // Honor a fresh, consume-once SSO return (e.g. /sso/tunes); default
-          // behaviour (/home) is unchanged when nothing valid is stashed.
-          const dest = consumeSsoReturn(Date.now());
-          navigate(dest ?? "/home");
+          navigate("/home");
         }, 1500);
       } catch (error) {
         console.error("[GoogleAuthRedirect] Error fetching user profile:", error);

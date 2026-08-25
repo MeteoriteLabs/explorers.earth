@@ -19,8 +19,6 @@ import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import useToast from "../hooks/useToast";
 import { isManualAuthEnabled } from "../config/featureFlags";
-import { storeUserCredentials } from "../utils/sessionCredentials";
-import { consumeSsoReturn } from "../utils/tunesSso";
 import AuthLayout from "../components/auth/AuthLayout";
 import AuthShell from "../components/auth/AuthShell";
 
@@ -69,13 +67,6 @@ const Login = () => {
           username: response.data.login.user.username,
         };
 
-        // Store user credentials in session storage for Local Tunes integration
-        storeUserCredentials({
-          username: String(values.username),
-          email: String(userData.email),
-          password: String(values.password)
-        });
-
         loginState(userData);
         localStorage.setItem("qrtoken", response.data.login.jwt);
 
@@ -87,8 +78,7 @@ const Login = () => {
         // Small delay to ensure user sees the success message
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        const dest = consumeSsoReturn(Date.now());
-        navigate(dest ?? "/home");
+        navigate("/home");
       }
     } catch (err) {
       setIsCompletingLogin(false);

@@ -11,9 +11,16 @@ export default defineConfig({
     },
   },
   test: {
+    env: { MUSIC_INTEGRATION_SETUP: '1' },
     environment: 'node',
     globals: true,
+    globalSetup: ['./server/test/integration-global-setup.ts'],
     setupFiles: ['./server/test/setup.ts'],
+    hookTimeout: 30_000,
+    // Integration files share one disposable PostgreSQL authority and perform
+    // schema/database teardown. Keep file order deterministic; concurrency is
+    // exercised explicitly inside the projection/migration suites.
+    fileParallelism: false,
     include: ['**/*.integration.test.ts'],
     exclude: [...configDefaults.exclude],
   },

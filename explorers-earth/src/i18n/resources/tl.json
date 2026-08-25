@@ -340,8 +340,7 @@
     "signupSubtitle": "Mag-sign up upang masiyahan sa mga feature ng explorers",
     "signUpWithGoogle": "Mag-sign up gamit ang Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Username",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Nakita sa buwang ito",
       "passiveTitle": "I-convert ang mga rekomendasyon sa passive rewards",
       "networkTitle": "Magtayo ng inyong network at kumita nang automatic"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Makinig habang nag-e-explore kayo",
-      "body": "Ang pag-e-explore ay hindi lamang visual. Ang tunog ay nagdadala ng memorya, konteksto, at emosyon.\n\nBinibigyang-daan ng LocalTunes na kolektahin at ibahagi ang mga soundtrack para sa mga lugar, paglalakbay, at mood — maging ito ay musika na natuklasan sa daan o mga tunog na nagbibigay-kahulugan sa isang lugar para sa inyo.\n\nWalang putol na nakakonekta sa inyong Explorer profile.",
-      "exploreButton": "I-explore ang Tunes",
-      "featuresHeading": "Malakas na Features",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Real-time na Pakikipagtulungan",
-          "description": "Hayaan ang mga bisita na magdagdag ng mga kanta sa inyong playlist agad habang pinapanatili ninyo ang buong kontrol sa kung ano ang tumutugtog."
-        },
-        "qrCodeSharing": {
-          "title": "QR Code Sharing",
-          "description": "Ibahagi ang inyong karanasan sa musika sa pamamagitan ng simpleng QR code scan - walang apps o downloads na kailangan."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integration",
-          "description": "Walang putol na isama sa YouTube upang ma-access ang milyun-milyong kanta at lumikha ng perpektong kapaligiran."
-        },
-        "voteLikeSystem": {
-          "title": "Vote & Like System",
-          "description": "Maaaring bumoto ang mga bisita para sa kanilang mga paboritong kanta upang maimpluwensyahan ang playlist queue sa real-time."
-        },
-        "silentParties": {
-          "title": "Silent Parties",
-          "description": "Mag-host ng natatanging silent parties kung saan lahat ay nakikinig sa pamamagitan ng kanilang sariling headphones."
-        },
-        "karaokeReady": {
-          "title": "Handa para sa Karaoke",
-          "description": "Perpekto para sa mga gabi ng karaoke na may collaborative playlists at real-time na song requests."
-        }
-      },
-      "venueHeading": "Perpekto para sa Bawat Venue",
-      "venues": {
-        "barsPubs": "Mga Bar & Pub",
-        "restaurants": "Mga Restaurant",
-        "coffeeShops": "Mga Coffee Shop",
-        "eventsWeddings": "Mga Event & Kasal",
-        "retailStores": "Mga Retail Store",
-        "gymsFitness": "Mga Gym & Fitness"
-      },
-      "closingStatement": "Ang Tunes ay <strong>libre</strong> na i-explore, at para sa paid features maaari kayong mag-upgrade pagkatapos."
     },
     "whoIsFor": {
       "headline": "Ginawa para sa mga taong nakakatulong ang panlasa sa iba.",

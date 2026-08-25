@@ -1,4 +1,4 @@
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import AuthForm from "../features/Authentication/components/AuthForm";
 import {
   FormValues,
@@ -28,17 +28,8 @@ import {
 } from "../utils/uploadPathGenerator";
 import { createUsernameValidation } from "../features/Authentication/data";
 import {
-  isLocalTunesEnabled,
-  syncLocalTunesUser,
-} from "../services/localTunesService";
-import {
-  autoUpdateLocalTunesPublicLink
-} from "../services/ssoService";
-import { useApolloClient } from "@apollo/client";
-import {
   isFreePlan
 } from "../services/paymentService";
-import { removeUserCredentials } from "../utils/sessionCredentials";
 import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, getSubscriptionPlans } from "../services/subscriptionService";
 import Modal from "../components/ui/Modal";
 
@@ -57,6 +48,12 @@ import {
   endFinalize,
 } from "./onboardingFinalizeLock";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
+import {
+  selectExplorerAccountDocument,
+  selectExplorerAccountState,
+  selectExplorerAccountUploadTarget,
+} from "../features/music/musicIdentityCoordinator";
+import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
 
 const onboardingQuery = gql`
   mutation createAccount($data: AccountInput!) {
@@ -95,6 +92,7 @@ const checkAccountQuery = gql`
   query CheckAccount($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       accounts {
+        documentId
         Account_Name
         Account_Type
         mobile_number
@@ -120,7 +118,6 @@ const UPDATE_ACCOUNT_MUTATION = gql`
   mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
     updateAccount(documentId: $documentId, data: $data) {
       documentId
-      localtunes_integrated
     }
   }
 `;
@@ -388,6 +385,7 @@ interface SubscriptionPlan {
 
 const OnBoarding = () => {
   const { t } = useTranslation();
+  const apolloClient = useApolloClient();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -409,36 +407,27 @@ const OnBoarding = () => {
   const documentId = useAuthStore((state) => state.user?.documentId);
   const logout = useAuthStore((state) => state.logout);
   // const { isAuthenticated } = useAuthStore();
-  const apolloClient = useApolloClient();
   const token = useAuthStore((state) => state.token);
   const navigate = useNavigate();
   const location = useLocation();
  
-  // Password modal state for Local Tunes registration
   const [showLogoutModal, setShowLogoutModal] = useState(false);
  
   const handleLogout = async () => {
     setShowLogoutModal(false);
     logout();
+    closeLocalMusicSession();
  
     // Clear all explorers storage
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("qrtoken");
  
-    // Clear Local Tunes session
-    localStorage.removeItem("localTunes_session");
- 
-    // Clear session storage (user credentials)
-    sessionStorage.removeItem("explorers_user_credentials");
  
     // Clear all other possible storage
     localStorage.clear();
     sessionStorage.clear();
  
     // Clear all cookies
-    document.cookie.split(";").forEach(function (c) {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
  
     navigate("/login");
     toast(t("toast.success.loggedOutSuccessfully", "Logged out successfully!"));
@@ -448,7 +437,6 @@ const OnBoarding = () => {
   // Subscription plan state
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedPlanData, setSelectedPlanData] = useState<SubscriptionPlan | null>(null);
-  const [_localTunesRegistrationResult, setLocalTunesRegistrationResult] = useState<any>(null);
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
   // Synchronous re-entrancy lock for the free-plan finalize/create path (guards
   // against a double-click creating duplicate accounts; see onboardingFinalizeLock).
@@ -527,12 +515,11 @@ const OnBoarding = () => {
   // Handle returning from subscription page
   useEffect(() => {
     const state = location.state as any;
-    if (state?.continueWithLocalTunes && state?.selectedPlan && !hasSubmitted && !isSubmitting) {
+    if (state?.selectedPlan && !hasSubmitted && !isSubmitting) {
       // User selected a plan, restore form data and continue with submission
       const updatedFormData = {
         ...formData,
         ...(state.formData || {}),
-        localTunesConsent: true,
       };
       setFormData(updatedFormData);
       // Automatically submit the form
@@ -540,11 +527,10 @@ const OnBoarding = () => {
         handleSubmit(updatedFormData);
       }, 100);
     } else if (state?.skipSubscription && !hasSubmitted && !isSubmitting) {
-      // User skipped subscription, proceed without Local Tunes
+      // The subscription choice is optional; onboarding completion remains authoritative.
       const updatedFormData = {
         ...formData,
         ...(state.formData || {}),
-        localTunesConsent: false,
       };
       setFormData(updatedFormData);
       // Automatically submit the form
@@ -654,13 +640,10 @@ const OnBoarding = () => {
   });
 
   // Check if user already has a complete account
-  const existingAccount =
-    existingAccountData?.usersPermissionsUser?.accounts?.[0];
-  const hasCompleteAccount =
-    existingAccount &&
-    existingAccount.Account_Name &&
-    existingAccount.Account_Type &&
-    existingAccount.mobile_number;
+  const existingAccountSelection = selectExplorerAccountState(existingAccountData?.usersPermissionsUser?.accounts, {
+    authoritative: !accountCheckLoading && Array.isArray(existingAccountData?.usersPermissionsUser?.accounts),
+  });
+  const hasCompleteAccount = existingAccountSelection.kind === "selected" || existingAccountSelection.kind === "ambiguous";
 
   // Redirect if account already exists and is complete
   useEffect(() => {
@@ -842,10 +825,20 @@ const OnBoarding = () => {
     }
   };
 
+  const resolveUploadAccountId = async (accountDocId: string): Promise<string> => {
+    if (!documentId) throw new Error("Explorer user authority is unavailable");
+    const lookup = await axios.get(
+      `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(accountDocId)}&filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(documentId)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const selection = selectExplorerAccountUploadTarget(lookup.data?.data, accountDocId, { authoritative: true });
+    if (selection.kind !== "selected") throw new Error("Explorer Account upload authority is unavailable");
+    return selection.account.id;
+  };
+
 
   const handleSubmit = async (values: FormValues) => {
     console.log("handleSubmit called with values:", values);
-    console.log("Local Tunes consent in handleSubmit:", values.localTunesConsent);
     console.log("hasCompleteAccount:", hasCompleteAccount);
 
     // Prevent duplicate submissions
@@ -895,8 +888,6 @@ const OnBoarding = () => {
       activeStep,
       stepsLength: steps.length,
     });
-    console.log("Local Tunes consent in values:", values.localTunesConsent);
-    console.log("Local Tunes consent in formData:", formData.localTunesConsent);
 
     // Prevent submission if already submitted or in progress
     if (hasSubmitted || isSubmitting) {
@@ -916,26 +907,17 @@ const OnBoarding = () => {
       const currentStepSchema = steps[activeStep].validationSchema;
       await currentStepSchema.validate(values, { abortEarly: false });
 
-      // Update form data with current step values, ensuring localTunesConsent is preserved
-      // Merge values, but prioritize localTunesConsent from formData if it exists
       const updatedFormData = {
         ...formData,
         ...values,
-        // Preserve localTunesConsent from formData if it was set (don't let undefined overwrite it)
-        localTunesConsent: (values.localTunesConsent !== undefined
-          ? (typeof values.localTunesConsent === 'boolean' ? (values.localTunesConsent ? 'true' : 'false') : values.localTunesConsent)
-          : (typeof formData.localTunesConsent === 'boolean' ? (formData.localTunesConsent ? 'true' : 'false') : formData.localTunesConsent)) as any
       } as typeof formData;
       setFormData(updatedFormData);
 
-      // Step 4 (index 3) is Local Tunes consent - should advance to Step 5 (Subscription Plans)
-      // Step 5 (index 4) is Subscription Plans - handled separately via handleSubscriptionSubmit
       if (activeStep === 3) {
         // TEMPORARILY SKIPPING subscription plan step — auto-register with free plan.
         // To re-enable the plan selection UI, restore handleNext() here and
         // uncomment the 'Subscription Plans' step in the steps array below.
-        console.log("Step 4 (Local Tunes), auto-registering with free plan...");
-        console.log("Step 4 - localTunesConsent:", updatedFormData.localTunesConsent);
+        console.log("Finalizing the selected plan...");
         await handleSubscriptionSubmitWithFreePlan(updatedFormData);
       } else if (activeStep === 4) {
         // Step 5 (Subscription Plans) - don't call handleSubmit, handled by handleSubscriptionSubmit
@@ -1046,30 +1028,22 @@ const OnBoarding = () => {
 
       // Check if account already exists
       let accountDocId = accountDocumentId;
-      let accountId: string | null = null;
       // Whether the existence lookup actually completed. If it throws we must
       // NOT assume "no account" — creating one blindly risks a duplicate.
       let existenceCheckSucceeded = false;
 
       if (!accountDocId) {
         try {
-          const existingAccountCheck = await axios.get(
-            `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${documentId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const existingAccountCheck = await refetch();
+          const selection = selectExplorerAccountDocument(
+            existingAccountCheck.data?.usersPermissionsUser?.accounts,
+            { authoritative: true },
           );
-          existenceCheckSucceeded = true;
-
-          if (existingAccountCheck.data?.data?.length > 0) {
+          existenceCheckSucceeded = selection.kind === "missing" || selection.kind === "selected";
+          if (selection.kind === "selected") {
             console.log('Account already exists, using existing account');
-            accountDocId = existingAccountCheck.data.data[0]?.documentId;
-            accountId = existingAccountCheck.data.data[0]?.id?.toString();
-            if (accountDocId) {
-              setAccountDocumentId(accountDocId);
-            }
+            accountDocId = selection.account.documentId;
+            setAccountDocumentId(accountDocId);
           }
         } catch (checkError) {
           console.warn("Could not verify existing accounts:", checkError);
@@ -1077,7 +1051,7 @@ const OnBoarding = () => {
       }
 
       // Don't blind-create when we couldn't verify the account doesn't already
-      // exist — that would produce a duplicate account (accounts[0] is unordered,
+      // exist — that would produce a duplicate account (the Account relation is unordered,
       // so the incomplete one can win and bounce the user back to onboarding).
       if (decideAccountAction(accountDocId, existenceCheckSucceeded) === "abort") {
         toast.error(
@@ -1090,8 +1064,7 @@ const OnBoarding = () => {
         return;
       }
 
-      // Resolved username — may be updated below if user changed it during onboarding.
-      // Declared here so it's accessible in the LocalTunes sync step after account creation.
+      // Resolved username may be updated below if the user changed it during onboarding.
       let usernameToUse = currentFormData.username || storedUsername || "user";
 
       // Create account only if it doesn't exist
@@ -1166,7 +1139,6 @@ const OnBoarding = () => {
               mobile_number: formattedPhoneNumber,
               username: usernameToUse,
               users_permissions_users: documentId,
-              localtunes_integrated: currentFormData.localTunesConsent ? "Yes" : "No",
             },
           },
         });
@@ -1177,32 +1149,15 @@ const OnBoarding = () => {
 
         console.log('explorers account created successfully');
 
-        // Get account ID and document ID
-        const accountFetchResponse = await axios.get(
-          `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busername%5D=${usernameToUse}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        accountId = accountFetchResponse.data.data[0]?.id?.toString();
-        accountDocId = accountFetchResponse.data.data[0]?.documentId;
-
-        if (accountDocId) {
-          setAccountDocumentId(accountDocId);
-        } else {
-          const createdAccountDocId = accountResponse.data?.createAccount?.documentId;
-          if (createdAccountDocId) {
-            setAccountDocumentId(createdAccountDocId);
-            accountDocId = createdAccountDocId;
-          }
-        }
+        const createdAccountDocId = accountResponse.data.createAccount.documentId;
+        if (!createdAccountDocId) throw new Error("Created Account authority is unavailable");
+        accountDocId = createdAccountDocId;
+        setAccountDocumentId(createdAccountDocId);
 
         // Upload images if available
-        if (accountId) {
+        if (tempProfileImage || tempBackgroundImage) {
           try {
+            const accountId = await resolveUploadAccountId(createdAccountDocId);
             if (tempProfileImage) {
               await uploadImage(
                 tempProfileImage,
@@ -1234,62 +1189,7 @@ const OnBoarding = () => {
         console.log('Using existing account, skipping account creation');
       }
 
-      // Step 1: Sync with LocalTunes (create Neon user or fetch existing)
-      // IMPORTANT: This runs AFTER the Strapi account is created, so guestUrl
-      // can be written back to the account immediately. AuthSyncManager is
-      // blocked on /onboarding so this is the FIRST time the sync fires.
-      console.log('Step 1: Syncing with LocalTunes...');
-
-      if (currentFormData.localTunesConsent && isLocalTunesEnabled()) {
-        try {
-          // Use usernameToUse (the final resolved username after any edits)
-          // This must match what was saved to the Strapi account record.
-          const localTunesResult = await syncLocalTunesUser({
-            id: authUser.documentId,
-            username: usernameToUse,
-            email: authUser.email
-          });
-
-          console.log('LocalTunes sync result:', localTunesResult);
-
-          if (localTunesResult.success) {
-            console.log('✅ LocalTunes account synced successfully');
-            toast.success('LocalTunes account connected successfully!');
-            setLocalTunesRegistrationResult(localTunesResult.user);
-
-            // Write guestUrl back to Strapi account immediately.
-            // accountDocId is guaranteed to exist at this point (just created above).
-            // We use authUser.documentId (Strapi user, not account) for the lookup.
-            const guestUrl = localTunesResult.user?.guestUrl;
-            if (guestUrl && accountDocId) {
-              console.log('🔗 Writing guestUrl to Strapi account:', guestUrl);
-              try {
-                await autoUpdateLocalTunesPublicLink(
-                  apolloClient,
-                  authUser.documentId,
-                  guestUrl
-                );
-                console.log('✅ guestUrl saved to account:', guestUrl);
-              } catch (linkError) {
-                console.error('❌ Failed to save guestUrl to account:', linkError);
-                // Non-fatal — user can reconnect from Settings
-              }
-            } else if (!guestUrl) {
-              console.warn('⚠️ LocalTunes sync succeeded but no guestUrl in response');
-            }
-          } else {
-            console.warn('⚠️ LocalTunes sync warning:', localTunesResult.message);
-            // Non-fatal — flow continues without LocalTunes connection
-          }
-        } catch (localTunesError: any) {
-          console.error('❌ LocalTunes sync failed:', localTunesError);
-          toast.warning(`LocalTunes connection issue: ${localTunesError?.message || 'unknown error'}`);
-          setLocalTunesRegistrationResult(null);
-        }
-      }
-
-      // Step 2: Create subscription entry
-      console.log('Step 2: Creating subscription entry...');
+      console.log('Creating subscription entry...');
       const { start_date, end_date } = calculateSubscriptionDates(planData.duration);
 
       const subscriptionResponse = await createUserSubscriptionPlan({
@@ -1344,8 +1244,7 @@ const OnBoarding = () => {
         }
       }
 
-      // Step 3: Update is_subscribed to true
-      console.log('Step 3: Updating is_subscribed...');
+      console.log('Updating subscription status...');
 
       await updateUserIsSubscribed({
         variables: {
@@ -1356,7 +1255,6 @@ const OnBoarding = () => {
         }
       });
 
-      // Note: localtunes_integrated is already set to "Yes" during account creation if user opted in
       console.log('All updates completed successfully');
 
       // Mark onboarding as completed
@@ -1375,10 +1273,13 @@ const OnBoarding = () => {
         );
       }
 
-      toast.success("Account created, Local Tunes registered, and subscription activated successfully!");
+      toast.success("Account created and subscription activated successfully!");
+
+      // The sole eligibility observer owns automatic Music setup. Refetch it
+      // after Account completion without letting a Music outage undo onboarding.
+      void apolloClient.refetchQueries({ include: ["MusicIdentityEligibility"] }).catch(() => undefined);
 
       // Navigate to home after successful completion
-      removeUserCredentials();
       setHasSubmitted(true);
       navigate("/home");
     } catch (error: any) {
@@ -1392,7 +1293,7 @@ const OnBoarding = () => {
 
   /**
    * AUTO-FREE-PLAN: Programmatically registers the user with the free plan.
-   * Called from Step 4 (Local Tunes) "Continue" button instead of advancing to
+   * Called from the final onboarding action instead of advancing to
    * the plan selection UI (Step 5), which is temporarily hidden.
    *
    * To re-enable the plan selection step:
@@ -1419,17 +1320,12 @@ const OnBoarding = () => {
   };
 
   // Final step (Address). Validates the address fields, then creates the account
-  // on the free plan. Local Tunes is provisioned silently here — its dedicated
-  // step was removed, so consent is implied and forced on. Mirrors the old
-  // Address "Confirm Details" button, but finalizes instead of advancing.
+  // on the free plan. Music setup begins automatically only after this Account exists.
   const handleFinalizeAddress = async () => {
     if (isSubmitting || hasSubmitted || isCreatingSubscription) return;
     try {
       await addressValidationSchema(t).validate(formData, { abortEarly: false });
-      await handleSubscriptionSubmitWithFreePlan({
-        ...formData,
-        localTunesConsent: true,
-      });
+      await handleSubscriptionSubmitWithFreePlan(formData);
     } catch (error) {
       if (error instanceof Yup.ValidationError) {
         error.errors.forEach((errorMessage) => toast.error(errorMessage));
@@ -1460,10 +1356,6 @@ const OnBoarding = () => {
         description: t('auth.onboarding.addressDetails.description'),
         validationSchema: addressValidationSchema(t),
       },
-      // Local Tunes is no longer a visible step. Its account is still provisioned
-      // silently during the final submit (see handleFinalizeAddress → the free-plan
-      // registration path, which calls syncLocalTunesUser when localTunesConsent is
-      // true). A one-line disclosure is shown in the footer on the final step.
     ];
 
     return baseSteps;
@@ -1599,15 +1491,11 @@ const OnBoarding = () => {
           name={field.name}
           type={field.type}
           placeholder={field.placeholder}
-          value={field.name === 'localTunesConsent'
-            ? (formData[field.name as keyof typeof formData] ? 'true' : 'false')
-            : String(formData[field.name as keyof typeof formData] || "")}
+          value={String(formData[field.name as keyof typeof formData] || "")}
           onChange={(e) =>
             setFormData((prev) => ({
               ...prev,
-              [field.name]: field.name === 'localTunesConsent'
-                ? (e.target.value === 'true' || e.target.checked)
-                : e.target.value
+              [field.name]: e.target.value
             }))
           }
           className="w-full placeholder:text-gray-400 outline-none p-2 sm:p-3 border border-dashboard bg-dashboard-muted font-poppins rounded-md text-sm text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent"

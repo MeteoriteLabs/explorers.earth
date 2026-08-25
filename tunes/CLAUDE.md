@@ -37,11 +37,11 @@ client/src/
 server/
 ├── index.ts            # Express app entry point, Vite middleware, server startup
 ├── auth.ts             # Passport.js config, session setup, login/register logic
-├── jwt-auth-middleware.ts # JWT validation middleware (dual auth: session + JWT)
-├── legacy-routes.ts    # Legacy playlist/user routes with multi-auth fallback
+├── middleware/musicPrincipal.ts # Music credential verification and numeric principal derivation
+├── routes/musicSurfaceRoutes.ts # Canonical C5 Music owner/guest routes
 ├── storage.ts          # Database access layer (all DB queries)
 ├── db.ts               # Drizzle + Neon connection setup
-├── swagger.ts          # OpenAPI spec (served at /api-docs)
+├── routes/musicOpenApiRoutes.ts # Minimal typed OpenAPI spec (served at /api-docs)
 ├── routes/
 │   ├── index.ts                # Route registration
 │   ├── authRoutes.ts           # Auth endpoints
@@ -94,19 +94,21 @@ shared/
 
 **Commands**:
 ```bash
-npm run db:push          # Push schema to database
+# Run from the repository root; these commands accept only the guarded fixture target
+npm run music:db:migrate -- --mode fixture --target test
+npm run music:db:verify -- --mode fixture --target test
 ```
 
 ## Authentication
 
-**Dual auth system** (session-based + JWT):
+**Separated Music credential and standalone-session boundaries**:
 - **Session auth**: Passport.js local strategy (username/password, scrypt hashing), express-session with PostgreSQL store, 7-day cookie
-- **JWT auth**: `jwt-auth-middleware.ts` validates Strapi JWT tokens for cross-app SSO from explorers-earth. Maps Strapi user → Neon DB user via `X-Username` header
+- **Embedded Music auth**: `POST /api/music/identity/ensure` validates the authoritative Strapi proof and selected Account, then mints a short-lived Music credential; `musicPrincipal.ts` derives the numeric owner for canonical REST and Socket.IO operations
 - Email verification with tokens + OTP support
 - Self-service account reactivation via magic link email (24-hour expiration token, self-seeding template)
 - Role-based: admin (isAdmin flag), venue owner, guest (via URL)
-- Protected routes: `requireAuth` / `requireAnyAuth` middleware (supports both session and JWT)
-- CORS: `ALLOWED_ORIGINS` env var controls allowed origins, `X-CSRF-Token` and `X-Username` headers supported
+- Protected canonical routes: Music credential plus server-derived owner predicate; standalone native endpoints use their explicit session/CSRF contract
+- Origin policy: `ALLOWED_ORIGINS` controls the exact REST and Socket.IO browser allowlist; credentialed mutations fail closed on missing or mismatched origin
 
 ## WebSocket (Socket.IO)
 
@@ -127,13 +129,14 @@ npm run db:push          # Push schema to database
 1. Create `server/routes/newRoute.ts`
 2. Register in `server/routes/index.ts`
 3. Add DB queries in `server/storage.ts`
-4. Add Swagger docs in `server/swagger.ts`
+4. Add typed OpenAPI paths in `server/routes/musicOpenApiRoutes.ts`
 
 **Add a new database table:**
 1. Define table + insert schema in `shared/schema.ts`
 2. Export types at bottom of schema file
-3. Run `npm run db:push` to sync
-4. Add storage methods in `server/storage.ts`
+3. Add the next append-only SQL file and update `shared/music-migration-contract.ts`
+4. Run `npm run music:db:migrate -- --mode fixture --target test` and `npm run music:db:verify -- --mode fixture --target test` from the repository root
+5. Add storage methods in `server/storage.ts`
 
 **Add a WebSocket event:**
 1. Define event handler in `server/routes/playlistRoutes.ts` (socket.on)

@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base
 
 # Set working directory here
 WORKDIR /app
@@ -21,6 +21,11 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
+# Keep build and test tooling out of the runtime image.
+FROM base AS prod-deps
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --legacy-peer-deps
+
 # Build the application
 FROM deps AS builder
 
@@ -40,9 +45,19 @@ RUN npm run build
 # Production image
 FROM base AS runner
 ENV NODE_ENV=production
+# The service only needs the Node runtime; do not ship npm's package-management
+# dependency graph in the production attack surface.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
+ARG BUILD_COMMIT
+ARG BUILD_SOURCE
+LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
+      org.opencontainers.image.source=$BUILD_SOURCE \
+      com.explorers.music.minimum-containment-commit="d226f7e4dc5a54195a59804ec729f72b5e8f10d7" \
+      org.opencontainers.image.title="explorers-tunes"
 
 # Copy production dependencies and build output
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
@@ -50,9 +65,13 @@ COPY --from=builder /app/public ./public
 COPY package.json ./
 COPY drizzle.config.ts ./
 COPY shared ./shared
+COPY migrations ./migrations
 
 # Expose application port
 EXPOSE 5000
+
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 # Set the default command
 CMD ["node", "dist/server/index.js"]

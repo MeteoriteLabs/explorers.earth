@@ -20,7 +20,6 @@ import LinkedinIcon from "../../../assets/icons/LinkedinIcon";
 import AppleMusic from "../../../assets/icons/AppleMusic";
 import TiktokIcon from "../../../assets/icons/TiktokIcon";
 import SnapchatIcon from "../../../assets/icons/SnapchatIcon";
-import MusicNote from "../../../assets/icons/MusicNote";
 import { IMAGE_CONFIG } from "../../../config";
 import FeedLayout from "../../../components/ui/FeedLayout";
 import FeedIcon from "../../../assets/icons/FeedIcon";
@@ -780,18 +779,6 @@ const PublicProfile = memo(() => {
                   onClick={() => analytics.trackClick('social-link', { platform: 'snapchat' })}
                 >
                   <SnapchatIcon color="white" />
-                </a>
-              )}
-            {accountData?.social_media?.localTunes?.link &&
-              accountData?.social_media?.localTunes?.visibility && (
-                <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.localTunes.link
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MusicNote fill="white" />
                 </a>
               )}
               {/* End of Social Links */}

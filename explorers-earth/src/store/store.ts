@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { clearMusicCredential } from "../lib/musicCredentialStore";
 
 // types for authentication
 interface AuthState {
@@ -21,6 +22,7 @@ interface AuthState {
     token: string;
   }) => void;
   logout: () => void;
+  updateUsername: (username: string) => void;
   updateUserBlocked: (blocked: boolean) => void;
 }
 
@@ -32,7 +34,8 @@ const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       user: null,
 
-      login: (data) =>
+      login: (data) => {
+        clearMusicCredential();
         set({
           isAuthenticated: true,
           user: {
@@ -43,14 +46,22 @@ const useAuthStore = create<AuthState>()(
             documentId: data.documentId,
           },
           token: data.token,
-        }),
+        });
+      },
 
-      logout: () =>
+      logout: () => {
+        clearMusicCredential();
         set({
           isAuthenticated: false,
           user: null,
           token: null,
-        }),
+        });
+      },
+
+      updateUsername: (username) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, username } : null,
+        })),
 
       // state for updating user status
       updateUserBlocked: (blocked) =>

@@ -1,150 +1,394 @@
-import { test, expect } from '@playwright/test';
-import { setupMockAuthentication } from './setup/auth';
+import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { expect, test, type Page } from "@playwright/test";
+import { setupMockAuthentication } from "./setup/auth";
 
-test.beforeEach(async ({ context, page }) => {
-  await setupMockAuthentication(context);
+const artifactDirectory = resolve(process.cwd(), "../.artifacts/task-9");
+const credential = "browser-only-music-credential";
+const completeAccount = {
+  __typename: "Account",
+  documentId: "account-document-123",
+  Account_Name: "Explorer",
+  Account_Type: "Personal",
+  mobile_number: "+15555550123",
+  profile_picture: null,
+  public_recommendations: "No",
+  public_music: "No",
+  public_guides: "No",
+  public_movie: "No",
+  public_books: "No",
+  public_games: "No",
+  public_apps: "No",
+  public_products: "No",
+  public_people: "No",
+  pinned_nav_tabs: [],
+  auto_pinning: true,
+};
 
-  // Mock GraphQL queries
-  await page.route('**/graphql', async route => {
+type MockOptions = {
+  playlists?: Array<Record<string, unknown>>;
+  ensureFailures?: number;
+  ensureDelayMs?: number;
+  ensureGate?: { call: number; wait: Promise<void> };
+};
+
+async function installMusicMocks(page: Page, options: MockOptions = {}) {
+  let ensureCalls = 0;
+  const publicationCommands: Array<{ body: unknown; idempotencyKey: string | null }> = [];
+  const warnings: string[] = [];
+  const pageErrors: string[] = [];
+  const playlists = options.playlists ?? [];
+
+  page.on("console", (message) => {
+    if (["warning", "error"].includes(message.type())) warnings.push(message.text());
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  await page.route("**/graphql", async (route) => {
     const payload = route.request().postDataJSON();
-    if (payload?.query?.includes('UsersPermissionsUser')) {
+    const query = payload?.query ?? "";
+    if (query.includes("usersPermissionsUser")) {
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
+        contentType: "application/json",
         body: JSON.stringify({
           data: {
             usersPermissionsUser: {
-              username: 'testuser',
-              email: 'test@explorers.earth',
+              __typename: "UsersPermissionsUser",
+              documentId: "mock-user-123",
+              username: "testuser",
+              email: "test@explorers.earth",
               razorpay_customer_id: null,
-              accounts: [
-                {
-                  username: 'testuser',
-                  documentId: 'acc-123',
-                  localtunes_integrated: 'Yes',
-                  localtunes_public: 'Yes',
-                  public_music: 'Yes',
-                }
-              ]
-            }
-          }
-        })
+              provider: "local",
+              confirmed: true,
+              blocked: false,
+              accounts: [completeAccount],
+            },
+          },
+        }),
       });
-    } else {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: {} })
-      });
+      return;
     }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: {} }) });
   });
 
-  // Mock Local Tunes auth sync endpoint
-  await page.route('**/api/auth/sync', async route => {
+  await page.route("**/api/music/identity/ensure", async (route) => {
+    ensureCalls += 1;
+    if (options.ensureGate?.call === ensureCalls) await options.ensureGate.wait;
+    if (options.ensureDelayMs) await new Promise((resolveDelay) => setTimeout(resolveDelay, options.ensureDelayMs));
+    if (ensureCalls <= (options.ensureFailures ?? 0)) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        headers: { "retry-after": "1" },
+        body: JSON.stringify({ error: { code: "IDENTITY_UPSTREAM_UNAVAILABLE", retryable: true } }),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {
-          id: 1,
-          username: 'testuser',
-          email: 'test@explorers.earth',
-          guestUrl: 'test-guest-url',
-        }
-      })
+      contentType: "application/json",
+      body: JSON.stringify({ credential: { token: credential, expiresAt: Date.now() + 600_000 } }),
     });
   });
 
-  // Mock Local Tunes endpoints
-  await page.route('**/api/user', async route => {
+  await page.route("**/api/playlists", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(playlists) });
+      return;
+    }
     await route.fulfill({
       status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: 1,
-        username: 'testuser',
-        guestUrl: 'test-guest-url',
-        allowSongRequests: true,
-        allowGuestPlayOnDevice: false,
-        allowPlaylistSharing: true,
-      })
+      contentType: "application/json",
+      body: JSON.stringify({ id: 99, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] }),
     });
   });
-
-  await page.route('**/api/playlist/**', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
+  await page.route("**/api/music/dashboard", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      songs: [],
+      currentlyPlaying: null,
+      playedSongs: [],
+      publication: { mode: "private", publicSlug: "public-slug-123" },
+    }),
+  }));
+  await page.route("**/api/music/entitlement", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }),
+  }));
+  await page.route("**/api/music/publication", (route) => {
+    const body = route.request().postDataJSON();
+    publicationCommands.push({ body, idempotencyKey: route.request().headers()["idempotency-key"] ?? null });
+    return route.fulfill({
+    status: 200,
+    contentType: "application/json",
       body: JSON.stringify({
-        songs: [],
-        currentlyPlaying: null,
-        playedSongs: [],
-        playlists: [
-          {
-            id: 10,
-            name: 'Chill Tracks',
-            description: 'Chill vibes',
-            songs: []
+        version: "music-publication/v1",
+        publication: { mode: body.mode, publicSlug: "public-slug-123" },
+        ...(body.mode === "unlisted" ? { capability: "a".repeat(43) } : {}),
+      }),
+    });
+  });
+  await page.route("**/api/playlists/*/visibility", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/playlists/*/reorder", (route) => route.fulfill({ status: 204 }));
+
+  return {
+    ensureCalls: () => ensureCalls,
+    publicationCommands,
+    warnings,
+    pageErrors,
+  };
+}
+
+test.beforeEach(async ({ context }) => {
+  await setupMockAuthentication(context);
+});
+
+for (const width of [320, 375, 640, 768, 1024]) {
+  test(`Music ready-empty remains responsive and accessible at ${width}px`, async ({ page }) => {
+    mkdirSync(artifactDirectory, { recursive: true });
+    const audit = await installMusicMocks(page);
+    await page.setViewportSize({ width, height: 820 });
+    await page.goto("/recommendations/music");
+
+    const title = page.getByRole("heading", { name: "Music", level: 1 });
+    await expect(title).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
+    await expect(page.getByText("Build a playlist to collect and share the music you love.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create playlist" })).toBeVisible();
+    await expect(page.locator("[role='status'], [role='alert']")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    const musicMain = page.locator("section.dashboard-theme");
+    const contrastRatios = await musicMain.evaluate((main) => {
+      const parse = (value: string) => {
+        const parts = value.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0];
+        const rgb = value.startsWith("color(srgb") ? parts.slice(0, 3).map((part) => part * 255) : parts.slice(0, 3);
+        return [...rgb, parts[3] ?? 1];
+      };
+      const luminance = (rgb: number[]) => {
+        const channel = rgb.map((part) => {
+          const normalized = part / 255;
+          return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * channel[0] + 0.7152 * channel[1] + 0.0722 * channel[2];
+      };
+      const ratio = (element: Element) => {
+        const foreground = parse(getComputedStyle(element).color);
+        let backgroundElement: Element | null = element;
+        let background = [0, 0, 0];
+        while (backgroundElement) {
+          const computed = getComputedStyle(backgroundElement).backgroundColor;
+          if (computed !== "rgba(0, 0, 0, 0)" && computed !== "transparent") {
+            background = parse(computed);
+            break;
           }
-        ]
-      })
-    });
-  });
-
-  await page.route('**/api/playlists', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: 10,
-        name: 'Chill Tracks',
-        description: 'Chill vibes',
-        songs: []
-      })
-    });
-  });
-
-  await page.route('**/api/youtube/search', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          youtubeId: 'vid-123',
-          title: 'Mock Song Title',
-          artist: 'Mock Song Artist',
-          thumbnailUrl: 'https://placehold.co/100x100',
+          backgroundElement = backgroundElement.parentElement;
         }
-      ])
+        const compositedForeground = foreground.slice(0, 3).map((part, index) => part * foreground[3] + background[index] * (1 - foreground[3]));
+        const [bright, dark] = [luminance(compositedForeground), luminance(background)].sort((a, b) => b - a);
+        return (bright + 0.05) / (dark + 0.05);
+      };
+      return [
+        ratio(main.querySelector("h1")!),
+        ratio(Array.from(main.querySelectorAll("p")).find((node) => node.textContent?.startsWith("Build a playlist"))!),
+        ratio(Array.from(main.querySelectorAll("button")).find((node) => node.textContent?.trim() === "Create playlist")!),
+      ];
     });
+    for (const ratio of contrastRatios) expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect((await musicMain.innerText())).not.toMatch(/Local Tunes|integration|provisioning|projection|ensure|sync|database|Strapi|token/i);
+
+    for (const control of await musicMain.getByRole("button").all()) {
+      if (await control.isVisible()) {
+        const box = await control.boundingBox();
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      }
+    }
+
+    await page.screenshot({ path: resolve(artifactDirectory, `music-ready-empty-${width}.png`), fullPage: true });
+    expect(audit.ensureCalls()).toBe(1);
+    expect(audit.pageErrors).toEqual([]);
+    expect(audit.warnings.filter((message) => /go\.apollo\.dev|missing field|cache data may be lost|invariant.*documentid/i.test(message))).toEqual([]);
+    const browserStorage = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
+    expect(browserStorage).not.toContain(credential);
+  });
+}
+
+test("sharing dialog traps focus, closes with Escape, and exposes only approved modes", async ({ page }) => {
+  await installMusicMocks(page);
+  await page.setViewportSize({ width: 375, height: 820 });
+  await page.goto("/recommendations/music");
+  const opener = page.getByRole("button", { name: "Sharing settings" });
+  await opener.click();
+  const dialog = page.getByRole("dialog", { name: "Music sharing" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("radio")).toHaveCount(3);
+  await expect(dialog.getByText("Private", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Unlisted", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Public", { exact: true })).toBeVisible();
+  await dialog.getByRole("radio", { name: "Public" }).check();
+  await expect(dialog.getByText("Anyone can view shared playlists, and the page can appear in search.")).toBeVisible();
+  await expect(dialog.getByLabel("Music share link")).toHaveValue(/\/music\/share\/public-slug-123$/);
+
+  const first = dialog.getByRole("radio", { name: "Private" });
+  const last = dialog.getByRole("button", { name: "Save sharing" });
+  await last.focus();
+  await page.keyboard.press("Tab");
+  await expect(first).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(last).toBeFocused();
+  await page.screenshot({ path: resolve(artifactDirectory, "music-sharing-375.png"), fullPage: true });
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+test("sharing save uses one canonical publication command and restores focus", async ({ page }) => {
+  const audit = await installMusicMocks(page);
+  await page.goto("/recommendations/music");
+  const opener = page.getByRole("button", { name: "Sharing settings" });
+  await opener.click();
+  const dialog = page.getByRole("dialog", { name: "Music sharing" });
+  await dialog.getByRole("radio", { name: "Public" }).check();
+  await dialog.getByRole("button", { name: "Save sharing" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect(audit.publicationCommands).toHaveLength(1);
+  expect(audit.publicationCommands[0]).toEqual({
+    body: { mode: "public" },
+    idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f-]{36}$/),
   });
 });
 
-test('Flow 4: Music Playlist and Recommendation creation E2E', async ({ page }) => {
-  await page.goto('/music');
+test("account-generation resets Music authority across tabs without logging Explorer out", async ({ page, context }) => {
+  const second = await context.newPage();
+  await installMusicMocks(page);
+  let releaseSecondEnsure!: () => void;
+  const secondEnsureGate = new Promise<void>((resolveGate) => { releaseSecondEnsure = resolveGate; });
+  const secondAudit = await installMusicMocks(second, {
+    playlists: [{ id: 10, name: "Old account playlist", description: null, isVisibleToGuests: false, songs: [] }],
+    ensureGate: { call: 2, wait: secondEnsureGate },
+  });
+  await page.goto("/recommendations/music");
+  await second.goto("/recommendations/music");
+  await expect(second.getByRole("tab", { name: "Old account playlist" })).toBeVisible();
 
-  // Phase 1: Create a List (New Playlist)
-  const newPlaylistBtn = page.locator('button:has-text("New Playlist")').first();
-  await expect(newPlaylistBtn).toBeVisible();
-  await newPlaylistBtn.click();
+  await page.evaluate(() => {
+    const event = { version: "music-session/v1", kind: "account-generation", eventId: crypto.randomUUID() };
+    localStorage.setItem("explorers-music-session", JSON.stringify(event));
+    localStorage.removeItem("explorers-music-session");
+  });
 
-  const nameInput = page.locator('input[placeholder="Playlist name…"]');
-  await nameInput.fill('Chill Tracks');
+  await expect(second).toHaveURL(/\/recommendations\/music$/);
+  await expect(second.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  await expect.poll(secondAudit.ensureCalls).toBe(2);
+  await expect(second.getByRole("tab", { name: "Old account playlist" })).toHaveCount(0);
+  expect(await second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(true);
+  releaseSecondEnsure();
+  await expect(second.getByRole("tab", { name: "Old account playlist" })).toBeVisible();
+  expect(secondAudit.ensureCalls()).toBe(2);
+  await second.close();
+});
 
-  const descInput = page.locator('input[placeholder="Description (optional)…"]');
-  await descInput.fill('Chill vibes');
+test("logout boundary clears Explorer authentication in another tab", async ({ page, context }) => {
+  const second = await context.newPage();
+  await installMusicMocks(page);
+  await installMusicMocks(second);
+  await page.goto("/recommendations/music");
+  await second.goto("/recommendations/music");
+  await page.evaluate(() => {
+    const event = { version: "music-session/v1", kind: "logout", eventId: crypto.randomUUID() };
+    localStorage.setItem("explorers-music-session", JSON.stringify(event));
+    localStorage.removeItem("explorers-music-session");
+  });
+  await expect.poll(() => second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(false);
+  await second.close();
+});
 
-  const createBtn = page.locator('button:has-text("Create")');
-  await createBtn.click();
+test("playlist tabs, keyboard reorder, and polite announcement work without mutable owner data", async ({ page }) => {
+  const playlists = [
+    {
+      id: 10,
+      name: "Road songs",
+      description: "For the drive",
+      isVisibleToGuests: false,
+      songs: [
+        { id: 1, title: "North", artist: "Sky", thumbnailUrl: "https://images.example/north.jpg", position: 0 },
+        { id: 2, title: "South", artist: "Sea", thumbnailUrl: "https://images.example/south.jpg", position: 1 },
+      ],
+    },
+    { id: 11, name: "Quiet", description: null, isVisibleToGuests: true, songs: [] },
+  ];
+  await installMusicMocks(page, { playlists });
+  await page.goto("/recommendations/music");
+  const firstTab = page.getByRole("tab", { name: "Road songs" });
+  await firstTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Quiet" })).toBeFocused();
+  await page.getByRole("tab", { name: "Road songs" }).click();
+  await page.getByRole("button", { name: "Move North down" }).click();
+  await expect(page.getByText("North moved to position 2.")).toHaveCount(1);
+});
 
-  // Phase 2: Add Songs
-  const searchInput = page.locator('input[placeholder*="Search for songs"]');
-  await expect(searchInput).toBeVisible();
-  await searchInput.fill('Mock Song');
+test("a Music outage keeps the Explorer shell usable and explicit retry recovers", async ({ page }) => {
+  const audit = await installMusicMocks(page, { ensureFailures: 1 });
+  await page.goto("/recommendations/music");
+  await expect(page.getByText("Music is taking longer than expected. Your Explorers account is ready.")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Home/i }).or(page.getByRole("button", { name: /Home/i })).first()).toBeVisible();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
+  expect(audit.ensureCalls()).toBe(2);
+});
 
-  // Verify the mock search suggestion matches and click add
-  const addSongBtn = page.locator('button[title="Add to queue"]').first();
-  // If the button exists or adding behaves differently, let's look at search-songs results
-  // For safety, in E2E tests we can trigger the search and assert inputs
-  await expect(searchInput).toHaveValue('Mock Song');
+test("Music loading animation respects reduced-motion preference", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  let releaseEnsure!: () => void;
+  const ensureGate = new Promise<void>((resolveGate) => { releaseEnsure = resolveGate; });
+  await installMusicMocks(page, { ensureGate: { call: 1, wait: ensureGate } });
+  await page.goto("/recommendations/music");
+  const skeleton = page.locator("section.dashboard-theme .animate-pulse").first();
+  await expect(skeleton).toBeVisible();
+  expect(await skeleton.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  releaseEnsure();
+  await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
+});
+
+test("public private, missing, and invalid links converge on the exact 404", async ({ page }) => {
+  await page.route("**/api/playlist/**", (route) => route.fulfill({ status: 403, contentType: "application/json", body: "{}" }));
+  await page.goto("/music/share/public-slug-123");
+  await expect(page.getByRole("heading", { name: "Music page unavailable" })).toBeVisible();
+  await expect(page.getByText("No public playlists yet.")).toHaveCount(0);
+});
+
+test("a valid public owner with no visible playlists has the exact reachable empty state", async ({ page }) => {
+  await page.route("**/api/playlist/**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ songs: [], playlists: [] }),
+  }));
+  await page.goto("/music/share/public-slug-123");
+  await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  await expect(page.getByText("No public playlists yet.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Music page unavailable" })).toHaveCount(0);
+});
+
+test("public rate-limit retry waits for Retry-After and then reaches the empty state", async ({ page }) => {
+  let requests = 0;
+  let rateLimited = true;
+  await page.route("**/api/playlist/**", (route) => {
+    requests += 1;
+    if (rateLimited) return route.fulfill({ status: 429, headers: { "retry-after": "3", "access-control-expose-headers": "Retry-After" }, body: "{}" });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ songs: [], playlists: [] }) });
+  });
+  await page.goto("/music/share/public-slug-123");
+  await expect(page.getByRole("heading", { name: "Too many requests. Try again in 3 seconds." })).toBeVisible();
+  const retry = page.getByRole("button", { name: "Retry" });
+  await expect(retry).toBeDisabled();
+  await expect(retry).toBeEnabled({ timeout: 4_000 });
+  rateLimited = false;
+  await retry.click();
+  await expect(page.getByText("No public playlists yet.")).toBeVisible();
+  expect(requests).toBeGreaterThanOrEqual(2);
 });

@@ -81,7 +81,7 @@ In development, Vite middleware provides HMR. In production, pre-built static fi
 
 | Route File | Base Path | Responsibility |
 |------------|-----------|----------------|
-| `authRoutes.ts` | `/api/auth/*` | Register, login, logout, email verify, OTP |
+| `authRoutes.ts` | `/api/login`, `/api/register`, `/api/logout`, `/api/check`, `/api/csrf-token` | Explicit standalone native-session endpoints |
 | `playlistRoutes.ts` | `/api/playlists/*` | Playlist CRUD, songs, WebSocket setup |
 | `adminRoutes.ts` | `/api/admin/*` | User management, statistics, team |
 | `youtubeRoutes.ts` | `/api/search/*` | YouTube song search |

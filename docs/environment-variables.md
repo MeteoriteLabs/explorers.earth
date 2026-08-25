@@ -88,7 +88,7 @@ All environment variables for both applications. Each app has its own `.env` fil
 | `SPOTIFY_CLIENT_ID` | No | Spotify app client ID (playlist import) | `abc123...` |
 | `SPOTIFY_CLIENT_SECRET` | No | Spotify app client secret | `secret...` |
 
-### Strapi CMS (Cross-App SSO)
+### Strapi CMS (Music identity boundary)
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|

@@ -1,0 +1,1036 @@
+{
+  "schemaVersion": "music-runtime-surface-inventory/v1",
+  "retiredSurfaces": [
+    {
+      "family": "legacy-browser-identity",
+      "disposition": "typed-410-boundary",
+      "reason": "Browser-selected identity bridges cannot establish Music ownership."
+    },
+    {
+      "family": "graphql-service-proxy",
+      "disposition": "typed-410-boundary",
+      "reason": "Unrestricted service-token GraphQL authority is prohibited."
+    },
+    {
+      "family": "legacy-admin",
+      "disposition": "typed-410-boundary",
+      "reason": "No internal Music admin principal exists."
+    },
+    {
+      "family": "swagger",
+      "disposition": "canonical-replacement",
+      "reason": "A minimal typed OpenAPI document describes only live canonical endpoints."
+    },
+    {
+      "family": "legacy-mixed-auth-owner-handlers",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "C5 owner routes replace product-required operations; the remainder retire fail-closed."
+    },
+    {
+      "family": "request",
+      "disposition": "canonical-replacement",
+      "reason": "Guest requests use the capability-only REST/socket allowlist."
+    },
+    {
+      "family": "queue",
+      "disposition": "canonical-replacement",
+      "reason": "Owner queue read/update/delete operations use principal-predicated SQL."
+    },
+    {
+      "family": "playlist",
+      "disposition": "canonical-replacement",
+      "reason": "Saved and active playlists use principal-predicated canonical routes."
+    },
+    {
+      "family": "settings",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "Playlist visibility is canonical; legacy identity/system settings retire."
+    },
+    {
+      "family": "device",
+      "disposition": "typed-410-boundary",
+      "reason": "Device-session authority remains outside the local Music principal."
+    },
+    {
+      "family": "analytics",
+      "disposition": "typed-410-boundary",
+      "reason": "Legacy mixed-auth analytics lacks a local scoped repository."
+    },
+    {
+      "family": "subscription",
+      "disposition": "typed-410-boundary",
+      "reason": "Caller-target subscription handlers are prohibited; entitlement is server-derived."
+    },
+    {
+      "family": "youtube",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "Typed C5 read-only search/video lookup remains; every broad or mutating sibling retires."
+    },
+    {
+      "family": "playback",
+      "disposition": "canonical-replacement",
+      "reason": "Playback state changes require C5 and owner-predicated queue SQL."
+    },
+    {
+      "family": "venue",
+      "disposition": "typed-410-boundary",
+      "reason": "Venue identity mutations remain authoritative in Explorer identity."
+    },
+    {
+      "family": "public",
+      "disposition": "canonical-replacement",
+      "reason": "Explicit publication and hashed capability reads replace implicit guest URLs."
+    },
+    {
+      "family": "admin",
+      "disposition": "typed-410-boundary",
+      "reason": "No internal Music admin principal exists."
+    },
+    {
+      "family": "payment",
+      "disposition": "typed-410-boundary",
+      "reason": "Legacy caller-target payment mutations cannot derive server authority safely."
+    },
+    {
+      "family": "scrape",
+      "disposition": "typed-410-boundary",
+      "reason": "Unrestricted scrape and image proxy operations are not Music owner functions."
+    },
+    {
+      "family": "instagram",
+      "disposition": "typed-410-boundary",
+      "reason": "The legacy mixed-auth upstream proxy is not an approved Music surface."
+    },
+    {
+      "family": "gemini",
+      "disposition": "typed-410-boundary",
+      "reason": "The legacy paid upstream proxy has no approved server-derived operation."
+    }
+  ],
+  "retirementMatchers": [
+    {
+      "family": "graphql-service-proxy",
+      "path": "/graphql",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/strapi/graphql",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/strapi/config",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/debug/strapi",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/auth",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/register",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/connect/google",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-admin",
+      "path": "/api/admin",
+      "match": "prefix",
+      "classification": "admin-tombstone"
+    },
+    {
+      "family": "swagger",
+      "path": "/api-docs",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "settings",
+      "path": "/api/page-contents",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/verify-email",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/resend-verification",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "venue",
+      "path": "/api/user",
+      "match": "prefix",
+      "classification": "tombstone",
+      "exclusions": [
+        "/api/user/request-reactivation",
+        "/api/user/reactivate"
+      ]
+    },
+    {
+      "family": "settings",
+      "path": "/api/system-settings",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "youtube",
+      "path": "/api/youtube",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "instagram",
+      "path": "/api/instagram",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "payment",
+      "path": "/api/payments",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "subscription",
+      "path": "/api/subscriptions",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "gemini",
+      "path": "/api/gemini",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "settings",
+      "path": "/api/email",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "analytics",
+      "path": "/api/seo",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/apps",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/products",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/people",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/apps",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/products",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/people",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "playlist",
+      "path": "/api/playlists",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "playlist",
+      "path": "/api/playlist",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "request",
+      "path": "/api/music/guest/request",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/guest-capability",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/publish",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/unpublish",
+      "match": "exact",
+      "classification": "tombstone"
+    }
+  ],
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/login",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 390
+    },
+    {
+      "method": "POST",
+      "path": "/api/register",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 481
+    },
+    {
+      "method": "POST",
+      "path": "/api/logout",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 656
+    },
+    {
+      "method": "GET",
+      "path": "/api/check",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 722
+    },
+    {
+      "method": "GET",
+      "path": "/api/csrf-token",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 731
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-health.ts",
+      "line": 43
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-health.ts",
+      "line": 47
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-entry/status",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-health.ts",
+      "line": 70
+    },
+    {
+      "method": "GET",
+      "path": "/itunes-api/search",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/index.ts",
+      "line": 188
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-fixture/readiness",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicFixtureProbe.ts",
+      "line": 23
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/ensure",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+selected-account",
+      "policy": "c5-mint-boundary",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 83
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/prepare",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 196
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/lifecycle/status",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 197
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/boundary",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 198
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/cancel",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 199
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/suspend",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "suspend",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 235
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/resume",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 238
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/current",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 244
+    },
+    {
+      "method": "GET",
+      "path": "/api-docs",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicOpenApiRoutes.ts",
+      "line": 480
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 98
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 102
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 109
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 117
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 129
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/:playlistId/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 136
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId/songs/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 146
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/reorder",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 155
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/visibility",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 166
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 177
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/dashboard",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 181
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 185
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/currently-playing",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 189
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/bulk",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 209
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlist/songs/:songId/position",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 216
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/history",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 230
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/search",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 234
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/video-from-url",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 246
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/publication",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 258
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/paid/import",
+      "classification": "paid-local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+fresh-entitlement+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 292
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/entitlement",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 302
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/:guestUrl",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability-or-explicit-publication",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 318
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/search",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 340
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/video-from-url",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 354
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/requests",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 367
+    },
+    {
+      "method": "ALL",
+      "path": "/{*musicRetiredPath}",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "normalized-executable-retirement-matcher",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/request-reactivation",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "reactivate",
+      "source": "tunes/server/routes/reactivationRoutes.ts",
+      "line": 134
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/reactivate",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "reactivate",
+      "source": "tunes/server/routes/reactivationRoutes.ts",
+      "line": 165
+    },
+    {
+      "method": "GET",
+      "path": "/robots.txt",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/seo-routes.ts",
+      "line": 178
+    },
+    {
+      "method": "GET",
+      "path": "/sitemap.xml",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/seo-routes.ts",
+      "line": 195
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers-sitemap.xml",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/seo-routes.ts",
+      "line": 216
+    }
+  ],
+  "events": [
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 134
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 176
+    },
+    {
+      "direction": "receive",
+      "event": "connection",
+      "classification": "c5-or-guest-handshake",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 227
+    },
+    {
+      "direction": "emit",
+      "event": "connection_status",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 255
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 259
+    },
+    {
+      "direction": "receive",
+      "event": "player_state",
+      "classification": "local-music-owner-event",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 280
+    },
+    {
+      "direction": "emit",
+      "event": "player_state",
+      "classification": "socket-recipient-revalidated",
+      "policy": "recipient-lifecycle+capability-recheck-before-delivery",
+      "ownerSource": "recipient.hashed-guest-capability",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 289
+    },
+    {
+      "direction": "receive",
+      "event": "guest_request",
+      "classification": "guest-capability-event",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "hashed-guest-capability",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 293
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request",
+      "classification": "socket-recipient-revalidated",
+      "policy": "recipient-lifecycle+capability-recheck-before-delivery",
+      "ownerSource": "recipient.socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 304
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request_status",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 305
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 310
+    }
+  ],
+  "jobs": [
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/app.ts",
+      "line": 51
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/run-registration-compat.ts",
+      "line": 58
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/routes/index.ts",
+      "line": 171
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "reactivation-token-cleanup",
+      "source": "tunes/server/services/reactivation-service.ts",
+      "line": 223
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "reactivation-token-cleanup",
+      "source": "tunes/server/services/reactivation-service.ts",
+      "line": 235
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityAbsenceProof.ts",
+      "line": 41
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 136
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 206
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 521
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/youtubeReadService.ts",
+      "line": 13
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/utils/scrapeUtils.ts",
+      "line": 467
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/utils/scrapeUtils.ts",
+      "line": 869
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/workers/musicLifecycleWorker.ts",
+      "line": 96
+    }
+  ]
+}

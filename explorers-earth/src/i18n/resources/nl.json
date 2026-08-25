@@ -340,8 +340,7 @@
     "signupSubtitle": "Meld je aan om te genieten van de functies van explorers",
     "signUpWithGoogle": "Aanmelden met Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Gebruikersnaam",
@@ -1398,49 +1397,6 @@
       "engagement": "Betrokkenheid",
       "referrals": "Verwijzingen",
       "livePreview": "Live-voorbeeld"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Luister terwijl je verkent",
-      "body": "Verkennen is niet alleen visueel. Geluid draagt geheugen, context en emotie.\n\nTunes stelt je in staat om soundtracks te verzamelen en te delen voor plaatsen, reizen en stemmingen — of het nu muziek is die onderweg is ontdekt of geluiden die een plek voor jou definiëren.\n\nNaadloos verbonden met je Explorer-profiel.",
-      "exploreButton": "Verken Tunes",
-      "featuresHeading": "Krachtige Functies",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Realtime Samenwerking",
-          "description": "Laat gasten direct nummers aan je afspeellijst toevoegen terwijl je volledige controle behoudt over wat er speelt."
-        },
-        "qrCodeSharing": {
-          "title": "QR-code Delen",
-          "description": "Deel je muziekervaring met een eenvoudige QR-code scan - geen apps of downloads vereist."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integratie",
-          "description": "Integreer naadloos met YouTube om toegang te krijgen tot miljoenen nummers en de perfecte sfeer te creëren."
-        },
-        "voteLikeSystem": {
-          "title": "Stem & Like Systeem",
-          "description": "Gasten kunnen stemmen op hun favoriete nummers om de afspeellijstwachtrij in realtime te beïnvloeden."
-        },
-        "silentParties": {
-          "title": "Stille Feesten",
-          "description": "Organiseer unieke stille feesten waar iedereen via hun eigen koptelefoon luistert."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Klaar",
-          "description": "Perfect voor karaokenachten met collaboratieve afspeellijsten en realtime nummerverzoeken."
-        }
-      },
-      "venueHeading": "Perfect voor Elke Locatie",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "restaurants": "Restaurants",
-        "coffeeShops": "Koffiehuizen",
-        "eventsWeddings": "Evenementen & Bruiloften",
-        "retailStores": "Winkels",
-        "gymsFitness": "Sportscholen & Fitness"
-      },
-      "closingStatement": "Tunes is <strong>gratis</strong> om te verkennen, en voor betaalde functies kun je daarna upgraden."
     },
     "referEarn": {
       "headline": "Deel, verwijs en verdien",

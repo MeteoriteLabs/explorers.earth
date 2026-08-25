@@ -102,7 +102,7 @@ export interface IStorage {
       };
     };
   }>;
-  deleteUser(id: number): Promise<void>;
+  deleteUser(id: number, operationId?: string): Promise<MusicIdentityDeletionResult>;
   getUserActivity(userId: number): Promise<{ totalSongs: number; lastActive?: Date }>;
 
   // New team management methods
@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
       this.sessionStore = new PgStore({
         pool: pool,
         tableName: 'session', // Default
-        createTableIfMissing: true,
+        createTableIfMissing: false,
         pruneSessionInterval: 60 * 60 // Prune expired sessions every hour (in seconds)
       });
       console.log("Session store initialized successfully");
@@ -814,125 +814,125 @@ export class DatabaseStorage implements IStorage {
     return stats;
   }
 
-  async deleteUser(id: number): Promise<void> {
-    console.log('Starting user deletion process for ID:', id);
-
+  async deleteUser(id: number, requestedOperationId?: string): Promise<MusicIdentityDeletionResult> {
+    // Keep selection, saga validation, cleanup, and finalization in one transaction; identity locks
+    // preserve the database primitive's global lock order. A prepared deletion
+    // owns its operation ID; callers may replay it but cannot substitute one.
+    // Active administrative deletion gets an unpredictable internal ID. The
+    // finalized tombstone remains the idempotency record after the user is gone.
     try {
-      // Clean up sessions first outside the transaction
-      // This prevents issues with session store operations
-      await this.cleanupUserSessions(id);
+      const connectionPool = this.getConnection();
+      const connection = typeof connectionPool.connect === "function"
+        ? await connectionPool.connect()
+        : connectionPool;
 
-      // Get a raw database connection for direct SQL operations
-      const connection = this.getConnection();
-
-      // Begin a transaction with a raw query
-      // This approach ensures we have maximum control over the deletion sequence
       await connection.query('BEGIN');
 
       try {
-        console.log('Starting transaction for user deletion with raw SQL approach');
+        const initialIdentity = (await connection.query(`SELECT id,strapi_user_document_id,strapi_account_document_id,
+          identity_status,session_version,lifecycle_operation_id FROM users WHERE id=$1`, [id])).rows[0];
+        if (!initialIdentity) {
+          if (!requestedOperationId) throw new LifecycleOperationConflictError();
+          const completed = (await connection.query(`SELECT 1 FROM music_identity_tombstones t
+            JOIN music_identity_lifecycle_operations o ON o.operation_id=t.lifecycle_operation_id
+            WHERE t.lifecycle_operation_id=$1 AND o.operation_kind='delete' AND t.music_user_id=$2
+              AND o.music_user_id=$2 AND o.operation_state='completed' AND o.operation_phase='finalized'`, [requestedOperationId,id])).rows[0];
+          if (!completed) throw new LifecycleOperationConflictError();
+          await connection.query('COMMIT');
+          return { operationId: requestedOperationId, finalized: false };
+        }
+        await connection.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${initialIdentity.strapi_user_document_id}`]);
+        await connection.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${initialIdentity.strapi_account_document_id}`]);
+        await connection.query("SELECT lock_music_numeric_user_id($1::integer)", [id]);
+        const identity = (await connection.query(`SELECT identity_status,session_version,lifecycle_operation_id
+          FROM users WHERE id=$1 FOR UPDATE`, [id])).rows[0];
+        if (!identity) throw new LifecycleOperationConflictError();
+        let operationId: string;
+        if (identity.identity_status === "pending_deletion") {
+          operationId = identity.lifecycle_operation_id;
+          if (!operationId || (requestedOperationId !== undefined && requestedOperationId !== operationId)) {
+            throw new LifecycleOperationConflictError();
+          }
+        } else {
+          if (requestedOperationId !== undefined) throw new LifecycleOperationConflictError();
+          operationId = `storage-delete:${randomBytes(32).toString("hex")}`;
+        }
 
-        // First, handle entities with foreign keys to user or related tables
-        // Delete in proper order to respect referential integrity
-
-        // Clear and update references first (don't delete yet)
         await connection.query(`UPDATE users SET account_manager_id = NULL WHERE account_manager_id = $1`, [id]);
-        console.log('Cleared account manager references');
 
         await connection.query(`UPDATE page_contents SET created_by = NULL WHERE created_by = $1`, [id]);
         await connection.query(`UPDATE page_contents SET updated_by = NULL WHERE updated_by = $1`, [id]);
-        console.log('Updated page content references');
 
         await connection.query(`UPDATE seo_settings SET updated_by = NULL WHERE updated_by = $1`, [id]);
-        console.log('Updated SEO settings references');
-
-        // Handle direct entity deletion in the correct sequence
-        // First-level dependent entities (no dependencies other than user)
-
-        // Delete related YouTube entities first (these were causing problems)
         await connection.query(`DELETE FROM youtube_music_playlists WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube Music playlists');
 
         await connection.query(`DELETE FROM youtube_music WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube Music connections');
 
         await connection.query(`DELETE FROM youtube_tokens WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube tokens');
 
         await connection.query(`DELETE FROM youtube_playlists WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube playlists');
 
         // Now handle all other user-dependent entities
         await connection.query(`DELETE FROM api_tokens WHERE user_id = $1`, [id]);
-        console.log('Deleted API tokens');
 
         await connection.query(`DELETE FROM email_logs WHERE api_token_id IN 
           (SELECT id FROM api_tokens WHERE user_id = $1)`, [id]);
-        console.log('Deleted associated email logs');
 
         await connection.query(`DELETE FROM guest_interactions WHERE user_id = $1`, [id]);
-        console.log('Deleted guest interactions');
 
         await connection.query(`DELETE FROM youtube_api_usage WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube API usage records');
 
         await connection.query(`DELETE FROM analytics_snapshots WHERE user_id = $1`, [id]);
-        console.log('Deleted analytics snapshots');
 
         await connection.query(`DELETE FROM activity_logs WHERE user_id = $1`, [id]);
-        console.log('Deleted activity logs');
 
         await connection.query(`DELETE FROM user_activity WHERE user_id = $1`, [id]);
-        console.log('Deleted user activity records');
 
         await connection.query(`DELETE FROM widgets WHERE user_id = $1`, [id]);
-        console.log('Deleted widgets');
 
         await connection.query(`DELETE FROM youtube_api_calls WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube API calls');
 
         await connection.query(`DELETE FROM playback_states WHERE user_id = $1`, [id]);
-        console.log('Deleted playback states');
 
         await connection.query(`DELETE FROM user_sessions WHERE user_id = $1`, [id]);
-        console.log('Deleted user sessions from database');
 
         // Delete playlist songs first (they depend on playlists)
         await connection.query(`DELETE FROM playlist_songs WHERE playlist_id IN 
           (SELECT id FROM playlists WHERE user_id = $1)`, [id]);
-        console.log('Deleted playlist songs');
 
         // Now delete playlists
         await connection.query(`DELETE FROM playlists WHERE user_id = $1`, [id]);
-        console.log('Deleted playlists');
 
         // Delete played songs records
         await connection.query(`DELETE FROM played_songs WHERE user_id = $1`, [id]);
-        console.log('Deleted played songs records');
 
         // Delete songs
         await connection.query(`DELETE FROM songs WHERE user_id = $1`, [id]);
-        console.log('Deleted songs');
 
         // Delete user profiles
         await connection.query(`DELETE FROM user_profiles WHERE user_id = $1`, [id]);
-        console.log('Deleted user profile');
 
-        // Finally, delete the user
-        await connection.query(`DELETE FROM users WHERE id = $1`, [id]);
-        console.log('Deleted user record');
-
+        // Finally, finalize the identity deletion through the one lock-ordered DB primitive.
+        const deletion = await connection.query(
+          `SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text) AS finalized`,
+          [id, operationId, 'storage-delete'],
+        );
         // If we get here, commit the transaction
         await connection.query('COMMIT');
-        console.log('User deletion completed successfully');
+        // Database sessions were transactional; now clear fallback memory sessions.
+        if (this.sessionStore instanceof MemoryStore) {
+          await this.cleanupUserSessions(id);
+        }
+        return { operationId, finalized: deletion.rows[0].finalized };
       } catch (txError) {
         // If anything goes wrong, roll back
         await connection.query('ROLLBACK');
-        console.error('Transaction error in deleteUser, rolled back:', txError);
         throw txError;
+      } finally {
+        if (typeof connection.release === "function") connection.release();
       }
     } catch (error) {
-      console.error('Error in deleteUser:', error);
+      if (error instanceof LifecycleOperationConflictError) throw error;
       throw new Error(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -2463,3 +2463,17 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+export interface MusicIdentityDeletionResult {
+  operationId: string;
+  finalized: boolean;
+}
+
+export class LifecycleOperationConflictError extends Error {
+  readonly code = "LIFECYCLE_OPERATION_CONFLICT" as const;
+
+  constructor() {
+    super("lifecycle operation conflicts with the current deletion saga");
+    this.name = "LifecycleOperationConflictError";
+  }
+}

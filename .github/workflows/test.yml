@@ -1,0 +1,268 @@
+name: Music contract and qualification CI
+
+on:
+  pull_request: {}
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Highest non-production lane to exercise
+        type: choice
+        options: [pr, nightly]
+        default: pr
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "music-test-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.lane || github.event_name == 'schedule' && 'nightly' || 'default' }}"
+  cancel-in-progress: true
+
+jobs:
+  docs-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Validate documentation, routes, errors, commands, environment, and migrations
+        run: npm test --prefix tunes -- --run server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts server/test/contracts/runtime-surface-inventory.test.ts server/test/contracts/runtime-table-manifest.test.ts server/test/contracts/music-environment-contract.test.ts server/test/contracts/music-forbidden-authority-search.test.ts
+
+  static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm run music:types:scoped
+      - run: npm run music:types:baseline
+
+  unit-coverage:
+    needs: static
+    # Native Windows ACL behavior has injected unit contracts and a native local proof;
+    # the portable coverage gate must not inherit hosted-runner ACL policy.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: |
+            tunes/package-lock.json
+            explorers-earth/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm ci --prefix explorers-earth
+      - run: npm run test:music-critical-coverage --prefix tunes -- --maxWorkers=1 --fileParallelism=false
+      - run: npm run test:music-critical-coverage --prefix explorers-earth
+
+  contracts:
+    needs: unit-coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm test --prefix tunes -- --run server/test/contracts
+
+  database:
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: music_fixture
+          POSTGRES_USER: music_migrator
+          POSTGRES_PASSWORD: music
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U music_migrator -d music_fixture"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture
+      MUSIC_C3_POSTGRES_TEST: "1"
+      MUSIC_C4_POSTGRES_TEST: "1"
+      MUSIC_C5_POSTGRES_TEST: "1"
+      MUSIC_C6_POSTGRES_TEST: "1"
+      MUSIC_C7_POSTGRES_TEST: "1"
+      MUSIC_C8_POSTGRES_TEST: "1"
+      MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Refuse any non-disposable database target
+        run: node -e "const u=new URL(process.env.DATABASE_URL_TEST);if(u.protocol!=='postgresql:'||u.username!=='music_migrator'||u.hostname!=='127.0.0.1'||u.port!=='55432'||u.pathname!=='/music_fixture')process.exit(5)"
+      - name: Run migrations and real PostgreSQL owner/lifecycle/reconciliation contracts
+        run: npm run test:integration --prefix tunes -- server/test/migrations/music-migration.integration.test.ts server/test/music-identity-projection.integration.test.ts server/test/music-credential.integration.test.ts server/test/music-domain-repository.integration.test.ts server/test/musicLifecycle.integration.test.ts server/test/musicReconciler.integration.test.ts server/test/reconciliationRepository.integration.test.ts --maxWorkers=1 --fileParallelism=false
+
+  security:
+    needs: database
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm test --prefix tunes -- --run server/test/contracts/music-authorization-matrix.test.ts server/test/security/music-security-qualification.test.ts server/test/music-surface-policy.test.ts server/test/music-surface-routes.test.ts server/test/music-identity-route.test.ts server/test/music-socket-server.test.ts
+
+  frontend:
+    needs: security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci --prefix explorers-earth
+      - run: npm run test:unit --prefix explorers-earth -- src/features/music src/components/__tests__/MusicDashboard.test.tsx src/pages/__tests__/MusicPage.test.tsx src/pages/__tests__/PublicMusic.test.tsx src/services/__tests__/accountLifecycleService.test.ts
+
+  browser:
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci --prefix explorers-earth
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      - name: Run Music E2E and accessibility contracts
+        env:
+          VITE_API_URL: http://localhost:5173/graphql
+          VITE_GOOGLE_MAPS_API_KEY: fixture-placeholder
+          VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
+          VITE_LOCAL_TUNES_ENABLED: "true"
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+        run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium --retries=0
+
+  load-chaos:
+    needs: browser
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.lane == 'nightly')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci
+      - name: Provision the protected Linux qualification Node and npm
+        env:
+          NODE_ARCHIVE_SHA256: 22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/node-v22.12.0-linux-x64.tar.xz"
+          root="$RUNNER_TEMP/node-v22.12.0-linux-x64"
+          curl --fail --location --proto '=https' --tlsv1.2 https://nodejs.org/download/release/v22.12.0/node-v22.12.0-linux-x64.tar.xz --output "$archive"
+          printf '%s  %s\n' "$NODE_ARCHIVE_SHA256" "$archive" | /usr/bin/sha256sum --check --strict
+          tar --extract --xz --file "$archive" --directory "$RUNNER_TEMP"
+          sudo install -o root -g root -m 0755 "$root/bin/node" /usr/bin/node
+          npm_authority=/opt/explorers-music-node-v22.12.0
+          npm_root="$npm_authority/lib/node_modules/npm"
+          sudo install -d -o root -g root -m 0755 "$npm_authority/bin" "$npm_root"
+          sudo cp -aL "$root/lib/node_modules/npm/." "$npm_root/"
+          sudo chown -R root:root "$npm_authority"
+          sudo chmod -R go-w "$npm_authority"
+          sudo chmod 0755 "$npm_root/bin/npm-cli.js"
+          printf '%s\n' '#!/bin/sh' 'exec /usr/bin/node /opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js "$@"' | sudo tee "$npm_authority/bin/npm" >/dev/null
+          sudo chown root:root "$npm_authority/bin/npm"
+          sudo chmod 0755 "$npm_authority/bin/npm"
+          printf '%s  %s\n' '8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7' "$npm_root/bin/npm-cli.js" | /usr/bin/sha256sum --check --strict
+          test "$(/usr/bin/node --version)" = v22.12.0
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
+      - run: npm run music:bootstrap -- --mode fixture
+      - name: Install the pinned protected Playwright Chromium authority
+        run: |
+          set -euo pipefail
+          browser_stage="$RUNNER_TEMP/explorers-music-playwright"
+          PLAYWRIGHT_BROWSERS_PATH="$browser_stage" /usr/bin/node /opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js exec --prefix explorers-earth -- playwright install --with-deps chromium
+          sudo install -d -o root -g root -m 0755 /opt/explorers-music-playwright
+          sudo cp -aL "$browser_stage/." /opt/explorers-music-playwright/
+          sudo chown -R root:root /opt/explorers-music-playwright
+          sudo chmod -R go-w /opt/explorers-music-playwright
+          mapfile -t chromium_executables < <(/usr/bin/find /opt/explorers-music-playwright -xdev -type f -path '*/chrome-linux*/chrome' -print)
+          test "${#chromium_executables[@]}" -eq 1
+          sudo chmod 0755 "${chromium_executables[0]}"
+          browser_digest=$(/usr/bin/sha256sum "${chromium_executables[0]}")
+          browser_digest=${browser_digest%% *}
+          printf '%s\n' "$browser_digest" | sudo tee /opt/explorers-music-playwright/.chromium-executable.sha256 >/dev/null
+          sudo chown root:root /opt/explorers-music-playwright/.chromium-executable.sha256
+          sudo chmod 0644 /opt/explorers-music-playwright/.chromium-executable.sha256
+      - name: Run the authoritative native nightly qualification lane
+        run: /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh nightly
+
+  image-deploy-contract:
+    needs: [browser, load-chaos]
+    if: always() && needs.browser.result == 'success' && (needs.load-chaos.result == 'success' || needs.load-chaos.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Prove immutable image, migration, readiness, rollback floor, and kill-switch contracts
+        env:
+          MUSIC_C3_TRAEFIK_TEST: "1"
+        run: >-
+          npm test --prefix tunes -- --run
+          server/test/deployment/music-command-plan.test.ts
+          server/test/deployment/music-deploy-executable.test.ts
+          server/test/deployment/music-deploy-workflow-security.test.ts
+          server/test/deployment/music-deployment-files.test.ts
+          server/test/deployment/music-deployment.test.ts
+          server/test/deployment/music-health-routes.test.ts
+          server/test/deployment/music-docker-release-authority.test.ts
+          server/test/deployment/music-production-policy.test.ts
+          server/test/deployment/music-publication-authority-verifier.test.ts
+          server/test/deployment/music-readiness.test.ts
+          server/test/deployment/registration-compat-process.test.ts
+          server/test/deployment/registration-compat-traefik.test.ts
+          --maxWorkers=1 --fileParallelism=false

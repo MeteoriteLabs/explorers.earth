@@ -340,8 +340,7 @@
     "signupSubtitle": "Registrirajte se da uživate u funkcionalnostima explorers-a",
     "signUpWithGoogle": "Registriraj se s Google-om",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Korisničko ime",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Zarađeno ovaj mjesec",
       "passiveTitle": "Pretvorite preporuke u pasivne nagrade",
       "networkTitle": "Izgradite vašu mrežu i zaradite automatski"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Slušajte dok istražujete",
-      "body": "Istraživanje nije samo vizualno. Zvuk nosi sjećanje, kontekst i emociju.\n\nTunes vam omogućava prikupljanje i dijeljenje soundtrackova za mjesta, putovanja i raspoloženja — bilo da je to glazba otkrivena na putu ili zvukovi koji definiraju mjesto za vas.\n\nBesprijekorno povezan s vašim Explorer profilom.",
-      "exploreButton": "Istražite Tunes",
-      "featuresHeading": "Moćne Funkcije",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Suradnja u Stvarnom Vremenu",
-          "description": "Dopustite gostima da trenutno dodaju pjesme na vašu playlistu dok zadržavate potpunu kontrolu nad onim što se reproducira."
-        },
-        "qrCodeSharing": {
-          "title": "Dijeljenje QR Koda",
-          "description": "Podijelite svoje glazbeno iskustvo jednostavnim skeniranjem QR koda — nisu potrebne aplikacije ili preuzimanja."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integracija",
-          "description": "Besprijekorno se integrirajte s YouTube-om za pristup milijunima pjesama i stvaranje savršene atmosfere."
-        },
-        "voteLikeSystem": {
-          "title": "Sustav Glasanja i Lajkanja",
-          "description": "Gosti mogu glasati za svoje omiljene pjesme kako bi utjecali na red čekanja playliste u stvarnom vremenu."
-        },
-        "silentParties": {
-          "title": "Tihi Zabavi",
-          "description": "Organizirajte jedinstvene tihi zabavi gdje svi slušaju kroz svoje slušalice."
-        },
-        "karaokeReady": {
-          "title": "Spremno za Karaoke",
-          "description": "Savršeno za karaoke večeri s kolaborativnim playlistama i zahtjevima za pjesme u stvarnom vremenu."
-        }
-      },
-      "venueHeading": "Savršeno za Svako Mjesto",
-      "venues": {
-        "barsPubs": "Barovi i Pubovi",
-        "restaurants": "Restorani",
-        "coffeeShops": "Kafići",
-        "eventsWeddings": "Događaji i Vjenčanja",
-        "retailStores": "Trgovine",
-        "gymsFitness": "Teretane i Fitness"
-      },
-      "closingStatement": "Tunes je <strong>besplatan</strong> za istraživanje, a za plaćene funkcije možete kasnije nadograditi."
     },
     "whoIsFor": {
       "headline": "Napravljen za ljude čiji ukus pomaže drugima.",

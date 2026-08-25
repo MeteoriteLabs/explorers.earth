@@ -340,8 +340,7 @@
     "signupSubtitle": "Regisztráljatok, hogy élvezzétek a explorers funkcióit",
     "signUpWithGoogle": "Regisztráció Google-lel",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Felhasználónév",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Ebben a hónapban keresve",
       "passiveTitle": "Alakítsátok át az ajánlásokat passzív jutalmakka",
       "networkTitle": "Építsétek fel a hálózatotokat és keressetek automatikusan"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Hallgass, miközben felfedezel",
-      "body": "A felfedezés nem csak vizuális. A hang emléket, kontextust és érzelmet hordoz.\n\nA Tunes lehetővé teszi, hogy helyekhez, utazásokhoz és hangulatokhoz gyűjts és ossz meg zenéket — legyen az úton felfedezett zene vagy hangok, amelyek egy helyet definiálnak számodra.\n\nZökkenőmentesen csatlakozik az Explorer profilodhoz.",
-      "exploreButton": "Felfedezés Tunes",
-      "featuresHeading": "Erős Funkciók",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Valós Idejű Együttműködés",
-          "description": "Engedélyezd a vendégeknek, hogy azonnal adjanak hozzá dalokat a lejátszási listádhoz, miközben teljes kontrollt tartasz azon, ami lejátszódik."
-        },
-        "qrCodeSharing": {
-          "title": "QR Kód Megosztás",
-          "description": "Oszd meg zenei élményedet egy egyszerű QR kód szkenneléssel — nincs szükség alkalmazásokra vagy letöltésekre."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integráció",
-          "description": "Zökkenőmentesen integrálódj a YouTube-dal, hogy hozzáférj milliók dalához és tökéletes légkört teremts."
-        },
-        "voteLikeSystem": {
-          "title": "Szavazási és Kedvelési Rendszer",
-          "description": "A vendégek szavazhatnak kedvenc dalaikra, hogy valós időben befolyásolják a lejátszási lista sorát."
-        },
-        "silentParties": {
-          "title": "Csendes Buli",
-          "description": "Rendezz egyedi csendes bulikat, ahol mindenki a saját fejhallgatóján keresztül hallgat."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Kész",
-          "description": "Tökéletes karaoke estékhez együttműködő lejátszási listákkal és valós idejű dal kérésekkel."
-        }
-      },
-      "venueHeading": "Tökéletes Minden Helyhez",
-      "venues": {
-        "barsPubs": "Bárok és Pubok",
-        "restaurants": "Étteremek",
-        "coffeeShops": "Kávézók",
-        "eventsWeddings": "Események és Esküvők",
-        "retailStores": "Kiskereskedelmi Üzletek",
-        "gymsFitness": "Edzőtermek és Fitness"
-      },
-      "closingStatement": "A Tunes <strong>ingyenes</strong> felfedezésre, és a fizetős funkciókhoz később frissíthetsz."
     },
     "whoIsFor": {
       "headline": "Olyan emberek számára készült, akiknek az ízlése segít másoknak.",

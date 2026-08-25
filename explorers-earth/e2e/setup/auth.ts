@@ -1,44 +1,54 @@
 import { BrowserContext } from '@playwright/test';
 
-export async function setupMockAuthentication(context: BrowserContext) {
+interface MockAuthenticationOptions {
+  token?: string;
+  cookieDomain?: string;
+  user?: { id: string; documentId: string; username: string; email: string; blocked: boolean };
+}
+
+export async function setupMockAuthentication(context: BrowserContext, options: MockAuthenticationOptions = {}) {
+  const token = options.token ?? 'mock-jwt-token-xyz';
+  const user = options.user ?? {
+    id: 'mock-user-123', documentId: 'mock-user-123', username: 'testuser', email: 'test@explorers.earth', blocked: false,
+  };
   // Populate storage state / session data to skip login
   await context.addCookies([
     {
       name: 'token',
-      value: 'mock-jwt-token-xyz',
-      domain: 'localhost',
+      value: token,
+      domain: options.cookieDomain ?? 'localhost',
       path: '/',
     }
   ]);
   
   // Inject localStorage login state safely
-  await context.addInitScript(() => {
+  await context.addInitScript(({ fixtureToken, fixtureUser }) => {
     try {
       window.localStorage.setItem('auth-storage', JSON.stringify({
         state: {
           isAuthenticated: true,
-          token: 'mock-jwt-token-xyz',
-          user: {
-            id: 'mock-user-123',
-            documentId: 'mock-user-123',
-            username: 'testuser',
-            email: 'test@explorers.earth',
-            blocked: false
-          }
+          token: fixtureToken,
+          user: fixtureUser,
         }
       }));
       window.localStorage.setItem('user', JSON.stringify({
-        id: 'mock-user-123',
-        documentId: 'mock-user-123',
-        username: 'testuser',
-        email: 'test@explorers.earth',
+        id: fixtureUser.id,
+        documentId: fixtureUser.documentId,
+        username: fixtureUser.username,
+        email: fixtureUser.email,
         role: 'explorer'
       }));
       window.localStorage.setItem('auth_session', 'mock-session-id-456');
+      window.localStorage.setItem('explorers-cookie-consent', JSON.stringify({
+        essential: true,
+        analytics: false,
+        marketing: false,
+        timestamp: '2026-01-01T00:00:00.000Z',
+      }));
     } catch (e) {
       // Safe to ignore on about:blank, will run again on target origin
     }
-  });
+  }, { fixtureToken: token, fixtureUser: user });
 
   // Mock subscription API calls at context level
   await context.route('**/api/subscriptions/**', async route => {

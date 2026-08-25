@@ -46,6 +46,10 @@ import { validateUsername } from "../utils/usernameValidation";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsProfileComplete } from "../utils/setupStatusCalculations";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
+import {
+  selectCompletedAccount,
+  selectExplorerAccountUploadTarget,
+} from "../features/music/musicIdentityCoordinator";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }
@@ -402,7 +406,9 @@ const Profile = memo(() => {
   }, [loading]);
 
   // ✅ VISIBILITY FIX: Get account data from GraphQL response, not separate axios call
-  const account = data?.usersPermissionsUser?.accounts?.[0];
+  const accountCandidates = data?.usersPermissionsUser?.accounts;
+  const selectedProfileAccount = selectCompletedAccount(accountCandidates);
+  const account = accountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedProfileAccount?.documentId);
 
   // Prepare profile data for walkthrough — memoized to prevent new object on every render
   const profileData = useMemo(() => ({
@@ -443,11 +449,9 @@ const Profile = memo(() => {
 
   // Initialize uploaded states with server data when available
   useEffect(() => {
-    if (data?.usersPermissionsUser?.accounts?.[0]) {
-      const serverBackgroundUrl =
-        data.usersPermissionsUser.accounts[0].bg_picture?.url;
-      const serverProfileUrl =
-        data.usersPermissionsUser.accounts[0].profile_picture?.url;
+    if (account) {
+      const serverBackgroundUrl = account.bg_picture?.url;
+      const serverProfileUrl = account.profile_picture?.url;
 
       // Only set if we don't already have a local uploaded version
       if (serverBackgroundUrl && !uploadedBackground) {
@@ -457,7 +461,7 @@ const Profile = memo(() => {
         setUploadedImage(serverProfileUrl);
       }
     }
-  }, [data, uploadedBackground, uploadedImage]);
+  }, [account, uploadedBackground, uploadedImage]);
 
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
 
@@ -484,30 +488,6 @@ const Profile = memo(() => {
 
   // ✅ VISIBILITY FIX: Simplified primary address handling
   // const [primaryAddressCombined, setPrimaryAddressCombined] = useState<string>("");
-
-  // ✅ VISIBILITY FIX: Remove redundant axios call that causes data sync issues
-  // The GraphQL query already provides all needed account data including social_media visibility
-  // useEffect(() => {
-  //   const fetchAccountData = async () => {
-  //     try {
-  //       const response = await axios.get(
-  //         `${
-  //           import.meta.env.VITE_REST_API_URL
-  //         }/accounts?filters%5Busername%5D=${user?.username}`,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //           },
-  //         }
-  //       );
-  //       setAccount(response.data.data[0]);
-  //     } catch (err) {
-  //       console.error("Error fetching account data:", err);
-  //     }
-  //   };
-
-  //   fetchAccountData();
-  // }, [token, user?.username]);
 
   // This modal prevents accidental username changes by showing warnings about link/QR code impacts
   const [showUsernameModal, setShowUsernameModal] = useState(false);
@@ -1393,7 +1373,6 @@ const Profile = memo(() => {
     tiktokvisiblity: account?.social_media?.tiktok?.visibility || false,
     snapchatvisiblity: account?.social_media?.snapchat?.visibility || false,
     facebookvisiblity: account?.social_media?.facebook?.visibility || false,
-    localTunesvisiblity: account?.social_media?.localTunes?.visibility || false,
 
     // Business Location fields
     title: (() => {
@@ -1516,6 +1495,18 @@ const Profile = memo(() => {
   // STRAPI UPLOAD INSIGHT: When using refId + field + ref parameters,
   // Strapi automatically associates the uploaded file with the specified model field.
   // No additional GraphQL mutation needed - just upload and refresh UI.
+  const resolveSelectedAccountUploadId = async (): Promise<string> => {
+    const accountDocumentId = selectedProfileAccount?.documentId;
+    if (!documentId || !accountDocumentId) throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
+    const lookup = await axios.get(
+      `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(accountDocumentId)}&filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(documentId)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const selection = selectExplorerAccountUploadTarget(lookup.data?.data, accountDocumentId, { authoritative: true });
+    if (selection.kind !== "selected") throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
+    return selection.account.id;
+  };
+
   const handleImageUpload = async (file: File | null) => {
     try {
       if (!file) {
@@ -1525,21 +1516,7 @@ const Profile = memo(() => {
       // Pause walkthrough during upload
       setIsUploading(true);
 
-      // First, get the account ID from REST API (needed for Strapi upload refId)
-      const accountResponse = await axios.get(
-        `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busername%5D=${user?.username
-        }`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const accountId = accountResponse.data.data[0]?.id?.toString();
-      if (!accountId) {
-        throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
-      }
+      const accountId = await resolveSelectedAccountUploadId();
 
       const formData = new FormData();
 
@@ -1619,21 +1596,7 @@ const Profile = memo(() => {
       // Pause walkthrough during upload
       setIsUploading(true);
 
-      // First, get the account ID from REST API (needed for Strapi upload refId)
-      const accountResponse = await axios.get(
-        `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5Busername%5D=${user?.username
-        }`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const accountId = accountResponse.data.data[0]?.id?.toString();
-      if (!accountId) {
-        throw new Error(t('dashboard.profile.common.errors.failedToGetAccountId'));
-      }
+      const accountId = await resolveSelectedAccountUploadId();
 
       const formData = new FormData();
 
@@ -1741,8 +1704,8 @@ const Profile = memo(() => {
                 style={{
                   backgroundImage: uploadedBackground
                     ? `url('${uploadedBackground}')`
-                    : data?.usersPermissionsUser?.accounts[0]?.bg_picture?.url
-                      ? `url('${data?.usersPermissionsUser?.accounts[0]?.bg_picture?.url}')`
+                    : account?.bg_picture?.url
+                      ? `url('${account.bg_picture.url}')`
                       : `url('${IMAGE_CONFIG.defaultImages.background}')`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
@@ -1771,7 +1734,7 @@ const Profile = memo(() => {
                     <img
                       src={
                         uploadedImage ||
-                        data?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+                        account?.profile_picture?.url ||
                         IMAGE_CONFIG.defaultImages.profile
                       }
                       alt={t('dashboard.profile.common.profile')}
@@ -1920,9 +1883,9 @@ const Profile = memo(() => {
               uploadedBackground={uploadedBackground}
               uploadedImage={uploadedImage}
               userData={{
-                bgPicture: data.usersPermissionsUser.accounts[0]?.bg_picture?.url,
+                bgPicture: account?.bg_picture?.url,
                 profilePicture:
-                  data.usersPermissionsUser.accounts[0]?.profile_picture?.url,
+                  account?.profile_picture?.url,
                 username: initialValues.username,
                 accountType: initialValues.accountType,
                 bio: initialValues.bio,

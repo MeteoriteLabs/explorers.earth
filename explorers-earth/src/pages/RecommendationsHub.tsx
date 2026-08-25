@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation, type ApolloCache } from "@apollo/client";
+import { gql, useQuery, useMutation, type ApolloCache } from "@apollo/client";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
   ChevronRight, Smartphone, ShoppingBag, Users,
@@ -12,16 +12,38 @@ import {
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
-import {
-  accountQuery,
-  updateAccountMutation,
-} from "../features/Settings/api/mutation";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
-import { localTunesRequest } from "../lib/apiClient";
+import { updateAccountMutation } from "../features/Settings/api/mutation";
+import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
 import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
 import { computePinnedNavTabIds, getVisibleNavTabIds, resolveAutoPinning } from "../utils/navPinning";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
+
+const hubAccountQuery = gql`
+  query RecommendationsHubAccount($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      documentId
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        mobile_number
+        public_profile
+        public_recommendations
+        public_music
+        public_movie
+        public_guides
+        public_books
+        public_games
+        public_apps
+        public_products
+        public_people
+        pinned_nav_tabs
+        auto_pinning
+      }
+    }
+  }
+`;
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -672,7 +694,11 @@ const RecommendationCard = ({
       </div>
 
       {/* Top Status & Kebab Menu Bar */}
-      <div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+      {cat.key === "music" ? (
+        <div className="absolute right-3.5 top-3.5 z-40 rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white/70">
+          Sharing in Music
+        </div>
+      ) : <div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
         {/* Pin indicator — icon only (a pinned category is always public too) */}
         {isPinned && (
           <div
@@ -786,7 +812,7 @@ const RecommendationCard = ({
           </AnimatePresence>,
           document.body
         )}
-      </div>
+      </div>}
 
       <div className="absolute inset-0 p-6 md:p-7 flex items-center z-20">
         <div className="flex flex-col min-w-0">
@@ -866,15 +892,17 @@ const RecommendationCard = ({
 
 const RecommendationsHub = () => {
   const { user } = useAuthStore();
-  const { data: accountData, refetch: refetchAccount } = useQuery(accountQuery, {
-    variables: { filters: { username: { eq: user?.username } } },
-    skip: !user?.username,
+  const { data: accountData, refetch: refetchAccount } = useQuery(hubAccountQuery, {
+    variables: { documentId: user?.documentId },
+    skip: !user?.documentId,
     // Revalidate on every hub mount so pinned/visibility state isn't stale after
     // returning from a category flow (default cache-first would serve old data).
     fetchPolicy: "cache-and-network",
   });
 
-  const account = accountData?.accounts?.[0];
+  const accountCandidates = accountData?.usersPermissionsUser?.accounts;
+  const selectedAccount = selectCompletedAccount(accountCandidates);
+  const account = accountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedAccount?.documentId);
   const accountDocumentId = account?.documentId;
 
   // Published-list counts per category — drives both the nav auto-ranking and the
@@ -916,21 +944,17 @@ const RecommendationsHub = () => {
   // before the first await and is released after the refetch settles.
   const accountMutationLock = useRef(false);
 
-  // Account isn't normalized in apolloCache (its onboarding query omits documentId),
-  // so a successful updateAccount only reaches the hub via refetchAccount(). If that
-  // refetch fails, pinnedTabIds stays on the pre-mutation snapshot and a later pin
-  // overwrites the change. Patch the account query cache from the mutation result so
-  // the successful write is authoritative regardless of the refetch outcome.
+  // Patch only the immutable selected Account after a successful write.
   const reconcileAccountCache = (
     cache: ApolloCache<unknown>,
     updated: Record<string, unknown> | null | undefined
   ) => {
     if (!updated) return;
-    cache.updateQuery<{ accounts: Record<string, unknown>[] }>(
-      { query: accountQuery, variables: { filters: { username: { eq: user?.username } } } },
+    cache.updateQuery<{ usersPermissionsUser?: { accounts?: Record<string, unknown>[] } }>(
+      { query: hubAccountQuery, variables: { documentId: user?.documentId } },
       (existing) =>
-        existing?.accounts?.length
-          ? { accounts: [{ ...existing.accounts[0], ...updated }, ...existing.accounts.slice(1)] }
+        existing?.usersPermissionsUser?.accounts?.length
+          ? { ...existing, usersPermissionsUser: { ...existing.usersPermissionsUser, accounts: existing.usersPermissionsUser.accounts.map((candidate) => candidate.documentId === updated.documentId ? { ...candidate, ...updated } : candidate) } }
           : existing ?? undefined
     );
   };
@@ -940,49 +964,14 @@ const RecommendationsHub = () => {
   const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap), [account, countMap]);
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
 
-  // Music lives in LocalTunes (not Strapi); fetch the user's playlists so the hub
-  // applies the same guest-visible-playlist guard that Settings and the modal use.
-  const {
-    data: musicPlaylists,
-    // isFetching (not isLoading): React Query reports isLoading:false whenever
-    // cached data exists, so a background refetch (e.g. after changing playlist
-    // visibility in MusicDashboard and returning to the hub) would otherwise be
-    // treated as "ready" and validated against the stale cached array.
-    isFetching: musicFetching,
-    isError: musicError,
-  } = useReactQuery<any[]>({
-    queryKey: ["tunes-playlists", user?.username],
-    queryFn: () => localTunesRequest("GET", `/api/playlists?username=${user?.username}`),
-    enabled: !!user?.username,
-  });
-
   // A category can be made public once it has publishable content.
   const hasPublishedContent = (cat: CategoryConfig): boolean => {
-    if (cat.key === "music") {
-      return account?.localtunes_integrated === "Yes" &&
-        (musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false);
-    }
     return (countMap[cat.tabId] ?? 0) > 0;
   };
 
-  // hasPublishedContent's data source differs by category: music reads the Local
-  // Tunes playlists (a separate React Query), everything else reads the Strapi
-  // count query (cache-and-network can expose stale/empty counts mid-revalidation).
-  // Guard on the RIGHT source's loading/error so we never validate against data
-  // that hasn't loaded — and don't block one category on another query's error.
-  // Returns true (and toasts) if the relevant source isn't ready.
+  // Guard public controls until the published-list count is authoritative.
   const contentNotReady = (cat: CategoryConfig): boolean => {
-    if (cat.key === "music") {
-      if (musicFetching) {
-        toast.info("Checking your Music, please wait…");
-        return true;
-      }
-      if (musicError) {
-        toast.error("Couldn't verify your Music. Please try again.");
-        return true;
-      }
-      return false;
-    }
+    if (cat.key === "music") return true;
     if (countsLoading) {
       toast.info("Checking your published lists, please wait…");
       return true;
@@ -996,6 +985,7 @@ const RecommendationsHub = () => {
 
   // Handle Toggle Pin
   const handleTogglePin = async (cat: CategoryConfig) => {
+    if (cat.key === "music") return;
     if (!accountDocumentId) {
       toast.error("Account data not loaded. Please try again.");
       return;
@@ -1089,6 +1079,7 @@ const RecommendationsHub = () => {
 
   // Handle Toggle Public Visibility
   const handleToggleVisibility = async (cat: CategoryConfig) => {
+    if (cat.key === "music") return;
     if (!accountDocumentId) {
       toast.error("Account data not loaded. Please try again.");
       return;

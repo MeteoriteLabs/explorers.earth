@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { InMemoryCache, gql } from '@apollo/client';
 import { typePolicies } from '../apolloCache';
 
@@ -34,6 +34,24 @@ describe('apollo typePolicies — documentId normalization (publish-label fix)',
     const id = cache.identify({ __typename, documentId: 'abc123' });
     expect(id).toBeTruthy();
     expect(id).toContain('abc123');
+  });
+
+  it.each(['Account', 'UsersPermissionsUser'])("identifies immutable Music profile entities by documentId", (__typename) => {
+    const cache = new InMemoryCache({ typePolicies });
+    const id = cache.identify({ __typename, documentId: "immutable-document-1" });
+    expect(id).toContain("immutable-document-1");
+  });
+
+  it("embeds legacy partial profile objects without an Apollo missing-documentId warning", () => {
+    const cache = new InMemoryCache({ typePolicies });
+    const warn = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const partial = gql`query PartialAccount { accounts { Account_Name __typename } }`;
+
+    expect(() => cache.writeQuery({
+      query: partial,
+      data: { accounts: [{ __typename: "Account", Account_Name: "Partial" }] },
+    })).not.toThrow();
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it('a publish mutation result patches the rendered list entity with NO refetch', () => {

@@ -1,16 +1,12 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2, Compass,
   Smartphone, ShoppingBag, Users
 } from "lucide-react";
-import { apiRequest } from "../../../lib/queryClient";
-import { extractGuestUrlFromLocalTunesLink } from "../../../utils/localTunesUtils";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import PublicPlaceCard from "./PublicPlaceCard";
-import type { PlaylistResponse } from "../../../types/music";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -367,7 +363,6 @@ interface ProfileRecommendationsTabProps {
     public_apps?: string;
     public_products?: string;
     public_people?: string;
-    localtunes_public?: string;
   };
   username: string;
 }
@@ -444,7 +439,6 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
     return value === "Yes" || value === undefined || value === null;
   }, [accountData]);
 
-  const musicEnabled = accountData?.public_music === "Yes";
   const moviesEnabled = accountData?.public_movie === "Yes";
   const booksEnabled = accountData?.public_books === "Yes";
   const gamesEnabled = accountData?.public_games === "Yes";
@@ -513,20 +507,6 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
     errorPolicy: "all",
   });
 
-  // Extract Local Tunes playlist ID if configured
-  const guestUrl = useMemo(() => {
-    const localTunesPublicLink = accountData?.localtunes_public;
-    return localTunesPublicLink ? extractGuestUrlFromLocalTunesLink(localTunesPublicLink) : null;
-  }, [accountData?.localtunes_public]);
-
-  // REST TanStack query to fetch music playlists
-  const { data: musicPlaylistData, isLoading: musicLoading } = useReactQuery<PlaylistResponse>({
-    queryKey: [`/api/playlist/${guestUrl}`],
-    queryFn: () => apiRequest("GET", `/api/playlist/${guestUrl}`),
-    enabled: !!guestUrl && musicEnabled,
-    staleTime: 5 * 60 * 1000,
-  });
-
   const isLoading = 
     (placesEnabled && placesLoading) ||
     (moviesEnabled && moviesLoading) ||
@@ -535,8 +515,7 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
     (appsEnabled && appsLoading) ||
     (productsEnabled && productsLoading) ||
     (peopleEnabled && peopleLoading) ||
-    (guidesEnabled && guidesLoading) ||
-    (musicEnabled && musicLoading && !musicPlaylistData);
+    (guidesEnabled && guidesLoading);
 
   // Map category data into lists safely
   const categoriesWithLists = useMemo(() => {
@@ -582,27 +561,6 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
             previewImages: previews,
             subtitle: formatCount(list.recommendationCount?.length || 0, "Place", "Places"),
             onClick: () => navigate(`/${username}/places/${toUrlSlug(list.List_Name || "")}`),
-          };
-        });
-    }
-
-    // 2. Music (Playlists)
-    if (musicPlaylistData?.playlists) {
-      result.music = musicPlaylistData.playlists
-        .filter((p: any) => p.isVisibleToGuests)
-        .map((playlist: any) => {
-          const previews = (playlist.songs || [])
-            .map((song: any) => song.thumbnailUrl || "")
-            .map((url: string) => resolveCoverUrl(url, "music") || "")
-            .filter((url: string) => !!url);
-
-          return {
-            id: String(playlist.id),
-            title: playlist.name || "",
-            image: null,
-            previewImages: previews,
-            subtitle: formatCount(playlist.songs?.length || 0, "Song", "Songs"),
-            onClick: () => navigate(`/${username}/music`),
           };
         });
     }
@@ -756,7 +714,6 @@ const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendat
     return result;
   }, [
     placesData,
-    musicPlaylistData,
     moviesData,
     booksData,
     gamesData,

@@ -340,8 +340,7 @@
     "signupSubtitle": "Registrera dig för att njuta av explorers-funktionerna",
     "signUpWithGoogle": "Registrera dig med Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Användarnamn",
@@ -1408,49 +1407,6 @@
       "earnedThisMonth": "Tjänat denna månad",
       "passiveTitle": "Förvandla rekommendationer till passiva belöningar",
       "networkTitle": "Bygg ditt nätverk och tjäna automatiskt"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Lyssna medan du utforskar",
-      "body": "Utforskning är inte bara visuell. Ljud bär minne, sammanhang och känsla.\n\nTunes låter dig samla och dela soundtrack för platser, resor och stämningar — vare sig det är musik upptäckt på vägen eller ljud som definierar en plats för dig.\n\nSömlöst ansluten till din Explorer-profil.",
-      "exploreButton": "Utforska Tunes",
-      "featuresHeading": "Kraftfulla Funktioner",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Realtidssamarbete",
-          "description": "Låt gäster lägga till låtar i din spellista omedelbart medan du behåller full kontroll över vad som spelas."
-        },
-        "qrCodeSharing": {
-          "title": "QR-koddelning",
-          "description": "Dela din musikupplevelse med en enkel QR-kodskanning — inga appar eller nedladdningar krävs."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube-integration",
-          "description": "Integrera sömlöst med YouTube för att komma åt miljontals låtar och skapa den perfekta atmosfären."
-        },
-        "voteLikeSystem": {
-          "title": "Röstnings- och Gilla-system",
-          "description": "Gäster kan rösta på sina favoritlåtar för att påverka spellistekön i realtid."
-        },
-        "silentParties": {
-          "title": "Tysta Fester",
-          "description": "Anordna unika tysta fester där alla lyssnar genom sina egna hörlurar."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Redo",
-          "description": "Perfekt för karaoke-kvällar med samarbetslistor och realtidslåtförfrågningar."
-        }
-      },
-      "venueHeading": "Perfekt för Varje Plats",
-      "venues": {
-        "barsPubs": "Barer & Pubar",
-        "restaurants": "Restauranger",
-        "coffeeShops": "Kaféer",
-        "eventsWeddings": "Evenemang & Bröllop",
-        "retailStores": "Butiker",
-        "gymsFitness": "Gym & Fitness"
-      },
-      "closingStatement": "Tunes är <strong>gratis</strong> att utforska, och för betalfunktioner kan du uppgradera senare."
     },
     "whoIsFor": {
       "headline": "Byggd för människor vars smak hjälper andra.",

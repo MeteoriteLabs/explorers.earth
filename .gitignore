@@ -41,6 +41,9 @@ out/
 .env.test.local
 .env.production.local
 .env.*.local
+.env.music.test
+.artifacts/
+.superpowers/sdd/
 
 # ----------------------------
 # TypeScript

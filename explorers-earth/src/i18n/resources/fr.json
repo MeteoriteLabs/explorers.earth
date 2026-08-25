@@ -340,8 +340,7 @@
     "signupSubtitle": "Inscrivez-vous pour profiter des fonctionnalités de explorers",
     "signUpWithGoogle": "S'inscrire avec Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nom d'utilisateur",
@@ -1398,49 +1397,6 @@
       "engagement": "Fiançailles",
       "referrals": "Références",
       "livePreview": "Aperçu en direct"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Écoutez pendant que vous explorez",
-      "body": "L'exploration n'est pas seulement visuelle. Le son porte la mémoire, le contexte et l'émotion.\n\nTunes vous permet de collecter et partager des bandes sonores pour des lieux, des voyages et des humeurs — qu'il s'agisse de musique découverte sur la route ou de sons qui définissent un lieu pour vous.\n\nParfaitement connecté à votre profil Explorer.",
-      "exploreButton": "Explorer Tunes",
-      "featuresHeading": "Fonctionnalités Puissantes",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Collaboration en Temps Réel",
-          "description": "Permettez aux invités d'ajouter des chansons à votre liste de lecture instantanément tout en gardant le contrôle total sur ce qui est joué."
-        },
-        "qrCodeSharing": {
-          "title": "Partage de Code QR",
-          "description": "Partagez votre expérience musicale avec un simple scan de code QR - aucune application ou téléchargement requis."
-        },
-        "youtubeIntegration": {
-          "title": "Intégration YouTube",
-          "description": "Intégrez parfaitement avec YouTube pour accéder à des millions de chansons et créer l'atmosphère parfaite."
-        },
-        "voteLikeSystem": {
-          "title": "Système de Vote et J'aime",
-          "description": "Les invités peuvent voter pour leurs chansons préférées pour influencer la file de lecture en temps réel."
-        },
-        "silentParties": {
-          "title": "Fêtes Silencieuses",
-          "description": "Organisez des fêtes silencieuses uniques où tout le monde écoute à travers ses propres écouteurs."
-        },
-        "karaokeReady": {
-          "title": "Prêt pour le Karaoké",
-          "description": "Parfait pour les soirées karaoké avec des listes de lecture collaboratives et des demandes de chansons en temps réel."
-        }
-      },
-      "venueHeading": "Parfait pour Tous les Lieux",
-      "venues": {
-        "barsPubs": "Bars et Pubs",
-        "restaurants": "Restaurants",
-        "coffeeShops": "Cafés",
-        "eventsWeddings": "Événements et Mariages",
-        "retailStores": "Magasins de Détail",
-        "gymsFitness": "Salles de Sport et Fitness"
-      },
-      "closingStatement": "Tunes est <strong>gratuit</strong> à explorer, et pour les fonctionnalités payantes, vous pouvez mettre à niveau par la suite."
     },
     "referEarn": {
       "headline": "Partagez, parrainez et gagnez",

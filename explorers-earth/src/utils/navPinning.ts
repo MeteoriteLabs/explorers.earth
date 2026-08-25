@@ -20,7 +20,6 @@ export const NAV_TAB_ORDER: string[] = [
   "public_recommendations",
   "public_guides",
   "public_movie",
-  "public_music",
   "public_books",
   "public_games",
   "public_apps",

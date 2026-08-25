@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run landing:check && npm run generate-static && tsc -b && vite build",
+    "build": "npm run landing:check && npm run generate-static && tsc -b && vite build && node scripts/check-music-production-bundle.mjs",
     "generate-static": "node scripts/generate-static-files.js",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -23,6 +23,7 @@
     "test:unit": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
+    "test:music-critical-coverage": "vitest run src/features/music/__tests__/musicEntitlementContract.test.ts src/features/music/__tests__/musicIdentityCoordinator.test.ts src/features/music/__tests__/musicPublicationCommandRegistry.test.ts src/features/music/__tests__/musicSessionBoundary.browser-channel.test.ts src/features/music/__tests__/musicSessionBoundary.node.test.ts src/features/music/__tests__/musicSessionBoundary.test.ts src/features/music/__tests__/musicState.test.ts src/features/music/__tests__/musicWorkspaceClient.test.ts src/features/music/__tests__/publicMusicClient.test.ts src/services/__tests__/accountLifecycleService.test.ts src/features/Settings/components/AccountDeletionLifecyclePanel.test.tsx src/lib/__tests__/musicCredentialStore.test.ts src/lib/__tests__/localTunesApiClient.test.ts src/lib/__tests__/music-critical-client-coverage.test.ts --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=text --coverage.all=true --coverage.include=src/features/music/musicEntitlementContract.ts --coverage.include=src/features/music/musicIdentityCoordinator.ts --coverage.include=src/features/music/musicPublicationCommandRegistry.ts --coverage.include=src/features/music/musicSessionBoundary.ts --coverage.include=src/features/music/musicState.ts --coverage.include=src/features/music/musicWorkspaceClient.ts --coverage.include=src/features/music/publicMusicClient.ts --coverage.include=src/services/accountLifecycleService.ts --coverage.include=src/features/Settings/components/AccountDeletionLifecyclePanel.tsx --coverage.include=src/lib/musicCredentialStore.ts --coverage.include=src/lib/localTunesApiClient.ts --coverage.thresholds.perFile=true --coverage.thresholds.lines=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.statements=100",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
@@ -92,6 +93,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.15.0",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.2",

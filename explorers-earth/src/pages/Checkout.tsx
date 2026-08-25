@@ -19,16 +19,8 @@ import {
 import PaymentModeToggle from '../components/PaymentModeToggle';
 import axios from 'axios';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import {
-  createLocalTunesUserWithRetry,
-  prepareLocalTunesUserData,
-  isLocalTunesEnabled,
-} from '../services/localTunesService';
-import {
-  getCredentialsForLocalTunes,
-  removeUserCredentials,
-} from '../utils/sessionCredentials';
 import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit } from '../services/subscriptionService';
+import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from '../components/MusicSubscriptionContainment';
 
 
 const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
@@ -59,15 +51,6 @@ const CREATE_ACCOUNT_MUTATION = gql`
   }
 `;
 
-const UPDATE_ACCOUNT_MUTATION = gql`
-  mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-      localtunes_integrated
-    }
-  }
-`;
-
 interface SubscriptionPlan {
   documentId: string;
   plan_name: string;
@@ -94,7 +77,6 @@ interface FormData {
   country?: string;
   postalCode?: string;
   primaryAddress: string;
-  localTunesConsent?: boolean;
 }
 
 interface LocationState {
@@ -105,7 +87,7 @@ interface LocationState {
   formData?: FormData;
 }
 
-const Checkout = () => {
+const ActiveCheckout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
@@ -120,7 +102,6 @@ const Checkout = () => {
 
   const [updateUserIsSubscribed] = useMutation(UPDATE_USER_IS_SUBSCRIBED_MUTATION);
   const [createAccount] = useMutation(CREATE_ACCOUNT_MUTATION);
-  const [updateAccount] = useMutation(UPDATE_ACCOUNT_MUTATION);
 
   useEffect(() => {
     setMounted(true);
@@ -193,7 +174,7 @@ const Checkout = () => {
     return numCost.toLocaleString();
   };
 
-  // Handle onboarding completion (create account, register Local Tunes, etc.)
+  // Handle onboarding completion and subscription activation.
   const handleOnboardingCompletion = async (formData: FormData, razorpayCustomerId?: string) => {
     if (!authUser?.id || !authUser?.documentId) {
       throw new Error('User information not available');
@@ -263,7 +244,6 @@ const Checkout = () => {
             mobile_number: formattedPhoneNumber,
             username: formData.username || authUser.username || "user",
             users_permissions_users: authUser.documentId,
-            localtunes_integrated: formData.localTunesConsent ? "Yes" : "No",
           },
         },
       });
@@ -273,53 +253,7 @@ const Checkout = () => {
       }
 
       accountDocId = accountResponse.data.createAccount.documentId;
-      console.log('Account created successfully with localtunes_integrated:', formData.localTunesConsent ? "Yes" : "No");
-    }
-
-    // Register on Local Tunes if user opted in
-    if (formData.localTunesConsent && isLocalTunesEnabled() && accountDocId) {
-      const storedCredentials = getCredentialsForLocalTunes();
-
-      if (storedCredentials) {
-        try {
-          const localTunesUserData = prepareLocalTunesUserData({
-            username: formData.username || authUser.username || '',
-            email: storedCredentials.email,
-            password: storedCredentials.password,
-            accountName: formData.accountName || formData.username || authUser.username || '',
-            businessName: formData.accountName || formData.username || authUser.username || '',
-          });
-
-          const localTunesResult = await createLocalTunesUserWithRetry(localTunesUserData);
-
-          if (localTunesResult) {
-            console.log('Local Tunes account created successfully');
-            toast.success('Local Tunes account created successfully!');
-
-            // Update localtunes_integrated to "Yes" if not already set
-            if (accountDocId) {
-              try {
-                await updateAccount({
-                  variables: {
-                    documentId: accountDocId,
-                    data: {
-                      localtunes_integrated: "Yes"
-                    }
-                  }
-                });
-              } catch (updateError) {
-                console.warn('Failed to update account localtunes_integrated:', updateError);
-              }
-            }
-          }
-        } catch (localTunesError: any) {
-          console.error('Local Tunes user creation failed:', localTunesError);
-          toast.error(`Local Tunes: ${localTunesError?.message || 'Registration failed'}`);
-        }
-      } else {
-        console.warn('No stored credentials found for Local Tunes creation');
-        toast.warning('Local Tunes registration skipped. Please connect later from Music or Settings page.');
-      }
+      console.log('Account created successfully');
     }
 
     // Update is_subscribed to true and razorpay_customer_id if available
@@ -338,8 +272,6 @@ const Checkout = () => {
       },
     });
 
-    // Clean up credentials
-    removeUserCredentials();
   };
 
   // Create subscription after successful payment
@@ -1233,6 +1165,11 @@ const Checkout = () => {
       `}</style>
     </div>
   );
+};
+
+const Checkout = () => {
+  if (!MUSIC_SUBSCRIPTION_FLOWS_ENABLED) return <MusicSubscriptionUnavailable />;
+  return <ActiveCheckout />;
 };
 
 export default Checkout;
