@@ -202,13 +202,16 @@ jobs:
             db_name="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_DB=//p' | head -n 1)"
             test -n "$db_name"
             migrator_password="$(cat "$authority_dir/db-migrator")"
-            docker exec -i tunes-db-1 psql -X -v ON_ERROR_STOP=1 -U "$db_user" -d "$db_name" -v password="$migrator_password" <<'SQL'
+            docker exec -i tunes-db-1 psql -X -v ON_ERROR_STOP=1 -U "$db_user" -d "$db_name" \
+              -v password="$migrator_password" -v legacy_owner="$db_user" -v database_name="$db_name" <<'SQL'
             DO $$ BEGIN
               IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='music_migrator') THEN
                 CREATE ROLE music_migrator LOGIN SUPERUSER CREATEROLE CREATEDB;
               END IF;
             END $$;
             ALTER ROLE music_migrator WITH LOGIN SUPERUSER CREATEROLE CREATEDB PASSWORD :'password';
+            REASSIGN OWNED BY :"legacy_owner" TO music_migrator;
+            ALTER DATABASE :"database_name" OWNER TO music_migrator;
             SQL
             candidate_digest="${CANDIDATE_IMAGE##*@}"
             docker run --rm --user "$(id -u):$(id -g)" --network "$shared_network_name" \
