@@ -113,7 +113,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: main
+          ref: ${{ github.sha }}
       - id: meta
         shell: bash
         run: |
