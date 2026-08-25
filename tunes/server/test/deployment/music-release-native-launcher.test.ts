@@ -241,6 +241,45 @@ describe("native Music release launch boundary", () => {
     expect(result.stderr).not.toContain("external fixture deployment authority is forbidden");
   });
 
+  it.skipIf(!existsSync(posixShell))("rejects committed authority hidden by an assume-unchanged index flag", () => {
+    const root = mkdtempSync(join(tmpdir(), "music-git-authority-"));
+    sandboxes.push(root);
+    const authority = join(root, "authority.mjs");
+    writeFileSync(authority, "export const trusted = true;\n");
+    for (const args of [["init"], ["config", "user.email", "test@example.com"], ["config", "user.name", "Test"], ["add", "authority.mjs"], ["commit", "-m", "fixture"]]) {
+      const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+    }
+    expect(spawnSync("git", ["update-index", "--assume-unchanged", "authority.mjs"], { cwd: root }).status).toBe(0);
+    writeFileSync(authority, "export const trusted = false;\n");
+
+    const helper = join(tunesRoot, "scripts", "music-git-authority-preflight.sh");
+    const result = spawnSync(posixShell, [shellPath(helper), shellPath(root), "git", "authority.mjs"], { encoding: "utf8" });
+
+    expect(result.status).toBe(78);
+    expect(result.stderr).toContain("trusted native release source authority is unavailable");
+  });
+
+  it.skipIf(process.platform !== "win32")("rejects hidden committed authority through the Windows preflight", () => {
+    const root = mkdtempSync(join(tmpdir(), "music-win-git-authority-"));
+    sandboxes.push(root);
+    const authority = join(root, "authority.mjs");
+    writeFileSync(authority, "export const trusted = true;\n");
+    for (const args of [["init"], ["config", "user.email", "test@example.com"], ["config", "user.name", "Test"], ["add", "authority.mjs"], ["commit", "-m", "fixture"]]) {
+      expect(spawnSync("git", args, { cwd: root }).status).toBe(0);
+    }
+    expect(spawnSync("git", ["update-index", "--assume-unchanged", "authority.mjs"], { cwd: root }).status).toBe(0);
+    writeFileSync(authority, "export const trusted = false;\n");
+    const helper = join(tunesRoot, "scripts", "music-git-authority-preflight.ps1");
+    const gitPath = spawnSync("where.exe", ["git.exe"], { encoding: "utf8" }).stdout.trim().split(/\r?\n/)[0]!;
+    const result = spawnSync("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", [
+      "-NoLogo", "-NoProfile", "-NonInteractive", "-File", helper,
+      "-RepositoryRoot", root, "-GitPath", gitPath, "-Authority", "authority.mjs",
+    ], { encoding: "utf8" });
+    expect(result.status).toBe(78);
+    expect(result.stderr).toContain("trusted native release source authority is unavailable");
+  });
+
   it("rejects a caller-forged nonce even when the anonymous channel matches", () => {
     const nonce = "a".repeat(64);
     const channel = pathToFileURL(join(tunesRoot, "scripts", "music-release-channel.mjs")).href;

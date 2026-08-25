@@ -42,7 +42,7 @@ interface CanonicalMusicRepository {
   resolveEntitlement(ownerId: number): Promise<{ state: MusicEntitlementState; sourceUpdatedAt?: Date } | undefined>;
   resolveGuestResource(publicSlug: string, capability?: string): Promise<{ state: string; noindex?: boolean; playlist?: unknown } | undefined>;
   resolveGuestSocketAuthority(capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
-  resolveGuestRequestAuthority(publicSlug: string, capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
+  resolveGuestRequestAuthority(publicSlug: string, capability?: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
 }
 
 export interface CanonicalMusicRouteDependencies {
@@ -367,12 +367,12 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   app.post("/api/playlist/:guestUrl/requests", identify, originGuard, async (req, res, next) => {
     try {
       const capability = req.get("x-music-guest-capability") ?? "";
-      if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) throw invalidGuestCapability();
-      const capabilityHash = hashGuestCapability(capability);
-      if (consumeContainmentLimit(`c6-guest-request:${capabilityHash}`, 20, 60_000)) {
+      const capabilityValid = /^[A-Za-z0-9_-]{43}$/.test(capability);
+      const authorityKey = capabilityValid ? hashGuestCapability(capability) : `public:${req.params.guestUrl}`;
+      if (consumeContainmentLimit(`c6-guest-request:${authorityKey}`, 20, 60_000)) {
         throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
       }
-      const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capability);
+      const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capabilityValid ? capability : undefined);
       if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
       res.status(201).json(songDto(await dependencies.repository.addSong(authority.musicUserId, songInput(req.body))));
     } catch (error) { next(error); }
@@ -562,12 +562,12 @@ function invalidGuestCapability() {
 
 async function guestRequestAuthority(req: Request, dependencies: CanonicalMusicRouteDependencies) {
   const capability = req.get("x-music-guest-capability") ?? "";
-  if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) throw invalidGuestCapability();
-  const capabilityHash = hashGuestCapability(capability);
-  if (consumeContainmentLimit(`c6-guest-lookup:${capabilityHash}`, 30, 60_000)) {
+  const capabilityValid = /^[A-Za-z0-9_-]{43}$/.test(capability);
+  const authorityKey = capabilityValid ? hashGuestCapability(capability) : `public:${req.params.guestUrl}`;
+  if (consumeContainmentLimit(`c6-guest-lookup:${authorityKey}`, 30, 60_000)) {
     throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
   }
-  const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capability);
+  const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capabilityValid ? capability : undefined);
   if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
   return authority;
 }

@@ -201,36 +201,36 @@ export function isMusicOwnerRequest(url: string): boolean {
 }
 
 export async function guestMusicRequest(
-  capability: string,
+  capability: string | undefined,
   song: { youtubeId: string; title: string; artist: string; thumbnailUrl: string },
   guestUrl: string,
 ): Promise<Response> {
-  if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
+  if (capability !== undefined && !GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
   if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
   return guestMusicFetch(capability, guestUrl, "requests", song);
 }
 
 export async function guestMusicSearch(
-  capability: string,
+  capability: string | undefined,
   input: { query: string; pageToken?: string },
   guestUrl: string,
 ): Promise<Response> {
   return guestMusicFetch(capability, guestUrl, "youtube/search", input);
 }
 
-export async function guestMusicVideoFromUrl(capability: string, url: string, guestUrl: string): Promise<Response> {
+export async function guestMusicVideoFromUrl(capability: string | undefined, url: string, guestUrl: string): Promise<Response> {
   return guestMusicFetch(capability, guestUrl, "youtube/video-from-url", { url });
 }
 
-async function guestMusicFetch(capability: string, guestUrl: string, operation: string, body: unknown): Promise<Response> {
-  if (!GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
+async function guestMusicFetch(capability: string | undefined, guestUrl: string, operation: string, body: unknown): Promise<Response> {
+  if (capability !== undefined && !GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
   if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
   const response = await fetch(`/api/playlist/${encodeURIComponent(guestUrl)}/${operation}`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "X-Music-Guest-Capability": capability,
+      ...(capability ? { "X-Music-Guest-Capability": capability } : {}),
     },
     body: JSON.stringify(body),
     credentials: "include",

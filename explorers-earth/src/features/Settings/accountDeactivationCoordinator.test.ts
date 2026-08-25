@@ -11,6 +11,19 @@ describe("cancelDeletionAndResumeMusic", () => {
     })).resolves.toBe(cancelled);
     expect(events).toEqual(["deletion-cancelled", "music-reactivated"]);
   });
+
+  it("retries only Music reactivation after deletion cancellation already committed", async () => {
+    const cancelled = { operation: { status: "suspended" } };
+    const cancelDeletion = vi.fn(async () => cancelled);
+    const resumeMusic = vi.fn()
+      .mockRejectedValueOnce(new Error("Music temporarily unavailable"))
+      .mockResolvedValueOnce(undefined);
+    await expect(cancelDeletionAndResumeMusic({ cancelDeletion, resumeMusic })).rejects.toThrow("Music temporarily unavailable");
+    await expect(cancelDeletionAndResumeMusic({ cancelDeletion, resumeMusic })).resolves.toBe(cancelled);
+
+    expect(cancelDeletion).toHaveBeenCalledTimes(2);
+    expect(resumeMusic).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("deactivateExplorerAndMusic", () => {

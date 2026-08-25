@@ -470,6 +470,11 @@ describe("MusicIdentityRepository defensive coverage", () => {
 
     const cancelReplay = scriptedRepository([{ sql: "music_user_id IS NULL AND operation_kind='delete'", reply: { rows: [{ ...noLocal, error_code: "NO_LOCAL:CANCELLED" }] } }]);
     await expect(cancelReplay.repository.cancelDeletion(lifecycleInput)).resolves.toMatchObject({ state: "cancelled" });
+    const cancelLiveReplay = scriptedRepository([
+      { sql: "FROM users WHERE strapi_user_document_id", reply: { rows: [{ ...identityRow, identity_status: "suspended", lifecycle_retention_stage: "identity-suspended", lifecycle_operation_id: "cancelled-operation" }] } },
+      { sql: "FROM music_identity_lifecycle_operations", reply: { rows: [{ operation_id: "cancelled-operation", operation_kind: "cancel_deletion", operation_phase: "prepared", operation_state: "completed" }] } },
+    ]);
+    await expect(cancelLiveReplay.repository.cancelDeletion(lifecycleInput)).resolves.toMatchObject({ state: "cancelled", identityStatus: "suspended" });
     const cancelForbidden = scriptedRepository([{ sql: "music_user_id IS NULL AND operation_kind='delete'", reply: { rows: [{ ...noLocal, error_code: "NO_LOCAL:BOUNDARY" }] } }]);
     await rejectsCode(cancelForbidden.repository.cancelDeletion(lifecycleInput), "LIFECYCLE_CANCEL_FORBIDDEN");
     const cancelAccountCollision = scriptedRepository([{ sql: "SELECT 1 FROM users WHERE strapi_account_document_id", reply: { rowCount: 1 } }]);

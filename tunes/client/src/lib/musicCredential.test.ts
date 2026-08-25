@@ -239,6 +239,15 @@ describe("C5 browser credential adapter", () => {
     expect(JSON.stringify(fetchMock.mock.calls[0][1]?.body)).not.toContain(capability);
   });
 
+  it("sends public song requests without inventing capability authority", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await guestMusicRequest(undefined, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "public-owner");
+    const init = fetchMock.mock.calls[0][1];
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/playlist/public-owner/requests");
+    expect(init?.headers).not.toHaveProperty("X-Music-Guest-Capability");
+  });
+
   it("uses the same slug-bound header authority for bounded guest search and URL lookup", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ items: [] }), {
       status: 200, headers: { "Content-Type": "application/json" },

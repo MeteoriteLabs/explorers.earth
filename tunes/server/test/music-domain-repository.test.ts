@@ -261,6 +261,20 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text.toLowerCase()).toContain("visible_playlists");
   });
 
+  it("authorizes song requests for an active public publication without a capability", async () => {
+    const harness = recordingPool([{
+      id: 44,
+      allow_song_requests: true,
+      guest_discoverable: true,
+      guest_capability_hash: null,
+    }]);
+
+    await expect(
+      new MusicDomainRepository(harness.pool).resolveGuestRequestAuthority("public-owner"),
+    ).resolves.toEqual({ musicUserId: 44, active: true, allowSongRequests: true });
+    expect(harness.calls[0].values).toEqual(["public-owner", null, false]);
+  });
+
   it("validates and locks the owner playback target before retiring the current song", async () => {
     const harness = recordingPool();
     await new MusicDomainRepository(harness.pool).setPlaying(23, 71);

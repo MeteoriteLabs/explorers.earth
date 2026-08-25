@@ -429,6 +429,25 @@ describe("canonical Music REST surfaces", () => {
     expect(invalid.body.error.code).toBe("GUEST_CAPABILITY_INVALID");
   });
 
+  it("accepts a public publication request without weakening unlisted authority", async () => {
+    const resolveGuestRequestAuthority = vi.fn(async (slug: string, capability?: string) =>
+      slug === "public-owner" && capability === undefined
+        ? { musicUserId: 88, active: true as const, allowSongRequests: true }
+        : undefined);
+    const { app, calls } = appFor({ resolveGuestRequestAuthority });
+    const response = await request(app).post("/api/playlist/public-owner/requests")
+      .set("Origin", "https://explorers.example")
+      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(response.status).toBe(201);
+    expect(resolveGuestRequestAuthority).toHaveBeenCalledWith("public-owner", undefined);
+    expect(calls).toContainEqual(["add-song", 88, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
+
+    const unlisted = await request(app).post("/api/playlist/unlisted-owner/requests")
+      .set("Origin", "https://explorers.example")
+      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(unlisted.status).toBe(403);
+  });
+
   it("binds guest search and URL lookup to the same per-slug capability without C5 authority", async () => {
     // Break caught: the public request UI called owner-only /api/youtube routes and minted a C5 credential.
     const { app, repository } = appFor();

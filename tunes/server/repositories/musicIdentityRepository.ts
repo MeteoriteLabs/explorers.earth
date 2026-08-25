@@ -1173,8 +1173,17 @@ export class MusicIdentityRepository {
         return noLocalLifecycleStatus(cancelled);
       }
       if (identity.strapi_account_document_id !== input.accountDocumentId) throw lifecycleConflict();
-      const deletion = (await client.query<any>(`SELECT operation_phase,operation_state FROM music_identity_lifecycle_operations
+      const deletion = (await client.query<any>(`SELECT operation_id,operation_kind,operation_phase,operation_state FROM music_identity_lifecycle_operations
         WHERE operation_id=$1 AND operation_kind='delete' FOR UPDATE`, [identity.lifecycle_operation_id])).rows[0];
+      if (identity.identity_status === "suspended" && identity.lifecycle_retention_stage === "identity-suspended") {
+        const cancelled = (await client.query<any>(`SELECT operation_id,operation_kind,operation_phase,operation_state
+          FROM music_identity_lifecycle_operations WHERE operation_id=$1 FOR UPDATE`, [identity.lifecycle_operation_id])).rows[0];
+        if (cancelled?.operation_kind === "cancel_deletion" && cancelled.operation_phase === "prepared"
+            && cancelled.operation_state === "completed") {
+          await client.query("COMMIT");
+          return { ...lifecycleStatusForRow(identity, cancelled), state: "cancelled", boundaryCrossed: false, retryable: false };
+        }
+      }
       if (identity.identity_status !== "pending_deletion" || deletion?.operation_phase !== "prepared"
           || deletion.operation_state !== "completed" || identity.lifecycle_retention_stage !== "deletion-prepared") {
         throw new MusicIdentityError("LIFECYCLE_CANCEL_FORBIDDEN", 409, "Music deletion can no longer be cancelled.", "contact_support", false);

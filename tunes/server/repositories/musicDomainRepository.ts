@@ -408,15 +408,18 @@ export class MusicDomainRepository {
       : undefined;
   }
 
-  async resolveGuestRequestAuthority(publicSlug: string, capability: string) {
-    if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) return undefined;
+  async resolveGuestRequestAuthority(publicSlug: string, capability?: string) {
+    const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+    const capabilityHash = capabilityValid ? hashGuestCapability(capability) : null;
     const row = (await this.pool.query(
-      `SELECT id,allow_song_requests,guest_capability_hash FROM users
-       WHERE guest_url=$1 AND guest_capability_hash=$2
-         AND guest_capability_revoked_at IS NULL AND identity_status='active'`,
-      [publicSlug, hashGuestCapability(capability)],
+      `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash FROM users
+       WHERE guest_url=$1 AND identity_status='active'
+         AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
+      [publicSlug, capabilityHash, capabilityValid],
     )).rows[0];
-    return row && verifyGuestCapability(capability, row.guest_capability_hash)
+    const authorityValid = row?.guest_discoverable === true
+      || (capabilityValid && verifyGuestCapability(capability, row?.guest_capability_hash));
+    return row && authorityValid
       ? { musicUserId: row.id, active: true as const, allowSongRequests: row.allow_song_requests === true }
       : undefined;
   }
