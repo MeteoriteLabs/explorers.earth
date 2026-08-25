@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      run_authenticated_identity_slo:
+        description: Run the authenticated identity SLO probe with one controlled test-app restart
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -19,8 +24,142 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  authenticated-identity-slo:
+    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.run_authenticated_identity_slo && !inputs.confirm_test_deploy && !inputs.diagnose_last_attempt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - name: Probe authenticated identity SLO without identity output
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        with:
+          host: ${{ secrets.TUNES_DEPLOY_HOST }}
+          username: deploy
+          key: ${{ secrets.TUNES_DEPLOY_KEY }}
+          fingerprint: SHA256:mkzoRIglhalq6lNwNgM2kyuRLFGLeIbpLQpypShYMSw
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-app-1)" = tunes
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-app-1)" = app
+            test "$(docker inspect --format '{{.State.Status}}' tunes-app-1)" = running
+            test "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1)" = healthy
+            docker restart --time 30 tunes-app-1 >/dev/null
+            ready=false
+            for attempt in $(seq 1 45); do
+              state="$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)"
+              health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1 2>/dev/null || true)"
+              if [ "$state" = running ] && [ "$health" = healthy ] \
+                  && curl --fail --silent --show-error --max-time 2 http://127.0.0.1:5000/health/ready >/dev/null; then
+                ready=true
+                break
+              fi
+              test "$attempt" -lt 45
+              sleep 2
+            done
+            test "$ready" = true
+            docker exec -i tunes-app-1 node <<'NODE'
+            const jwt = require("jsonwebtoken");
+            const { performance } = require("node:perf_hooks");
+
+            const schemaVersion = "music-identity-slo/v1";
+            const warmSampleCount = 14;
+            const concurrentSampleCount = 15;
+            let finished = false;
+            const finish = (value, passed) => {
+              if (finished) return;
+              finished = true;
+              console.log(JSON.stringify(value));
+              if (!passed) process.exitCode = 1;
+            };
+
+            const percentile95 = (values) => {
+              const sorted = [...values].sort((left, right) => left - right);
+              return sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)];
+            };
+            const milliseconds = (value) => Math.round(value * 10) / 10;
+
+            async function main() {
+              const accessAuthority = process.env.STRAPI_ACCESS_TOKEN;
+              const secret = process.env.STRAPI_JWT_SECRET;
+              const strapiOrigin = new URL(process.env.STRAPI_URL ?? "");
+              if (!accessAuthority || !secret || secret.length < 32
+                  || !["http:", "https:"].includes(strapiOrigin.protocol)
+                  || strapiOrigin.username || strapiOrigin.password) throw new Error("unavailable authority");
+              const selectionResponse = await fetch(new URL(
+                "/api/users?pagination[page]=1&pagination[pageSize]=100&populate=accounts",
+                strapiOrigin,
+              ), {
+                headers: { authorization: `Bearer ${accessAuthority}`, accept: "application/json" },
+                redirect: "error",
+                signal: AbortSignal.timeout(5_000),
+              });
+              if (!selectionResponse.ok) throw new Error("selection unavailable");
+              const users = await selectionResponse.json();
+              if (!Array.isArray(users)) throw new Error("selection malformed");
+              const candidate = users.filter((candidate) => {
+                const provider = typeof candidate.provider === "string" ? candidate.provider.toLowerCase() : "";
+                const completedAccounts = Array.isArray(candidate.accounts) ? candidate.accounts.filter((account) =>
+                  typeof account?.documentId === "string" && account.documentId.length > 0
+                  && typeof account?.Account_Name === "string" && account.Account_Name.trim().length > 0
+                  && typeof account?.Account_Type === "string" && account.Account_Type.trim().length > 0
+                  && typeof account?.mobile_number === "string" && account.mobile_number.trim().length > 0) : [];
+                if (!Number.isSafeInteger(candidate.id) || candidate.id < 1 || candidate.blocked !== false) return false;
+                return ((provider === "local" && candidate.confirmed === true) || provider === "google")
+                  && completedAccounts.length === 1;
+              }).sort((left, right) => left.id - right.id)[0];
+              if (!candidate) {
+                finish({ schemaVersion, outcome: "failed_closed", reason: "no_eligible_identity" }, false);
+                return;
+              }
+              const proof = jwt.sign({ id: candidate.id }, secret, { algorithm: "HS256", expiresIn: "5m" });
+              const tunesOrigin = new URL("http://127.0.0.1:5000");
+              const probeEnsure = async () => {
+                const startedAt = performance.now();
+                let success = false;
+                try {
+                  const response = await fetch(new URL("/api/music/identity/ensure", tunesOrigin), {
+                    method: "POST",
+                    headers: { authorization: `Bearer ${proof}` },
+                    redirect: "error",
+                    signal: AbortSignal.timeout(6_000),
+                  });
+                  success = response.status === 200;
+                  await response.body?.cancel();
+                } catch {}
+                return { success, latencyMs: performance.now() - startedAt };
+              };
+
+              const cold = await probeEnsure();
+              const warm = [];
+              for (let index = 0; index < warmSampleCount; index += 1) warm.push(await probeEnsure());
+              const concurrent = await Promise.all(Array.from({ length: concurrentSampleCount }, () => probeEnsure()));
+              const all = [cold, ...warm, ...concurrent];
+              const successCount = all.filter((sample) => sample.success).length;
+              const successRatePercent = Math.round(successCount / all.length * 100_000) / 1_000;
+              const coldLatencyMs = milliseconds(cold.latencyMs);
+              const warmP95Ms = milliseconds(percentile95(warm.map((sample) => sample.latencyMs)));
+              const concurrentP95Ms = milliseconds(percentile95(concurrent.map((sample) => sample.latencyMs)));
+              const passed = successRatePercent >= 99.5 && warmP95Ms <= 1000 && coldLatencyMs <= 5000;
+              finish({
+                schemaVersion,
+                outcome: passed ? "pass" : "fail",
+                reason: passed ? "thresholds_met" : "threshold_failed",
+                sampleCount: all.length,
+                successCount,
+                successRatePercent,
+                coldLatencyMs,
+                warmP95Ms,
+                concurrentP95Ms,
+              }, passed);
+            }
+
+            main().catch(() => finish({ schemaVersion, outcome: "failed_closed", reason: "probe_failed_closed" }, false));
+            NODE
+
   diagnose-last-attempt:
-    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.diagnose_last_attempt && !inputs.confirm_test_deploy
+    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.diagnose_last_attempt && !inputs.confirm_test_deploy && !inputs.run_authenticated_identity_slo
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -102,7 +241,7 @@ jobs:
             printf '%s\n' 'public_endpoint=ok'
 
   build-arm64:
-    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.confirm_test_deploy
+    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.confirm_test_deploy && !inputs.run_authenticated_identity_slo
     runs-on: ubuntu-24.04
     permissions:
       contents: read

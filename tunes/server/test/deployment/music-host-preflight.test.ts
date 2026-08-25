@@ -8,41 +8,99 @@ const read = (path: string) => readFileSync(resolve(repoRoot, path), "utf8");
 const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
-describe("Tunes host preflight authority", () => {
-  it("is manual, uses the proven SSH connection, and cannot deploy", () => {
-    const source = read(".github/workflows/tunes-host-preflight.yml");
-    const workflow = parseYaml(source);
+function sloJob() {
+  const workflow = parseYaml(read(".github/workflows/tunes-host-preflight.yml"));
+  return { workflow, job: workflow.jobs["authenticated-identity-slo"] };
+}
+
+describe("Tunes authenticated identity SLO preflight", () => {
+  it("is an explicit manual action restricted to the fingerprint diagnostic branch", () => {
+    const { workflow, job } = sloJob();
     expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
-    expect(workflow.jobs.preflight.if).toContain("github.ref == 'refs/heads/main'");
-    expect(workflow.jobs.preflight.environment).toBe("tunes-production");
-    expect(workflow.on.workflow_dispatch.inputs.confirm_read_only).toMatchObject({
+    expect(workflow.on.workflow_dispatch.inputs.run_authenticated_identity_slo).toEqual({
+      description: "Run the authenticated identity SLO probe with one controlled test-app restart",
       required: true,
+      default: false,
       type: "boolean",
     });
-    expect(source).toContain("secrets.TUNES_DEPLOY_HOST");
-    expect(source).toContain("secrets.TUNES_DEPLOY_KEY");
-    expect(source).toContain("fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}");
-    expect(source).toContain("username: deploy");
-    expect(source).toContain("appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17");
-    expect(source).not.toContain("GATE_PROD");
+    expect(job.if).toContain("github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic'");
+    expect(job.if).toContain("inputs.run_authenticated_identity_slo");
+    expect(job.if).toContain("!inputs.confirm_test_deploy");
+    expect(job.if).toContain("!inputs.diagnose_last_attempt");
+    expect(workflow.jobs["diagnose-last-attempt"].if).toContain("!inputs.run_authenticated_identity_slo");
+    expect(workflow.jobs["build-arm64"].if).toContain("!inputs.run_authenticated_identity_slo");
+    expect(job["runs-on"]).toBe("ubuntu-24.04");
+    expect(job.permissions).toEqual({ contents: "read" });
   });
 
-  it("limits the remote script to sanitized read-only observations", () => {
-    const workflow = parseYaml(read(".github/workflows/tunes-host-preflight.yml"));
-    const remote = workflow.jobs.preflight.steps.find((step: any) => step.name === "Inspect Tunes host without mutation");
-    expect(remote.with).not.toHaveProperty("script_stop");
+  it("uses the existing SSH/container authority and permits exactly one guarded test-app restart", () => {
+    const { job } = sloJob();
+    const remote = job.steps.find((step: any) => step.name === "Probe authenticated identity SLO without identity output");
+    expect(remote.uses).toBe("appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f");
+    expect(remote.with).toMatchObject({
+      host: "${{ secrets.TUNES_DEPLOY_HOST }}",
+      username: "deploy",
+      key: "${{ secrets.TUNES_DEPLOY_KEY }}",
+      fingerprint: "SHA256:mkzoRIglhalq6lNwNgM2kyuRLFGLeIbpLQpypShYMSw",
+    });
     const script = String(remote.with.script);
-    for (const evidence of ["id", "docker version", "docker compose version", "docker ps", "docker compose ls", "df -P", "stat -c"]) {
-      expect(script).toContain(evidence);
-    }
-    for (const mutation of [
-      /docker\s+compose\s+(?:up|down|restart|rm|pull|build)/,
-      /docker\s+(?:stop|restart|rm|rmi|prune)/,
-      /\b(?:sudo|rm|mv|cp|install|mkdir|chmod|chown|truncate|tee)\b/,
-      /\b(?:DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE)\b/i,
-      /(^|[^<])>(?!>)/m,
-    ]) {
-      expect(script).not.toMatch(mutation);
-    }
+    expect(script).toContain(`test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-app-1)" = tunes`);
+    expect(script).toContain(`test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-app-1)" = app`);
+    expect(script).toContain(`test "$(docker inspect --format '{{.State.Status}}' tunes-app-1)" = running`);
+    expect(script.match(/docker restart --time 30 tunes-app-1/g)).toHaveLength(1);
+    expect(script).toContain("docker restart --time 30 tunes-app-1 >/dev/null");
+    expect(script).toContain("for attempt in $(seq 1 45)");
+    expect(script).toContain("http://127.0.0.1:5000/health/ready");
+    expect(script).toContain(`test "$ready" = true`);
+    expect(script).toContain("docker exec -i tunes-app-1 node");
+    expect(script).not.toMatch(/docker\s+compose\s+(?:up|down|restart|rm|pull|build)/);
+    expect(script).not.toMatch(/docker\s+(?:stop|rm|rmi|prune)/);
+  });
+
+  it("selects and authenticates an existing completed Strapi identity only inside the app container", () => {
+    const { job } = sloJob();
+    const script = String(job.steps.find((step: any) => step.name === "Probe authenticated identity SLO without identity output").with.script);
+    expect(script).toContain("process.env.STRAPI_ACCESS_TOKEN");
+    expect(script).toContain("process.env.STRAPI_JWT_SECRET");
+    expect(script).toContain("/api/users?pagination[page]=1&pagination[pageSize]=100&populate=accounts");
+    expect(script).toContain("if (!Number.isSafeInteger(candidate.id) || candidate.id < 1 || candidate.blocked !== false) return false");
+    expect(script).toContain('(provider === "local" && candidate.confirmed === true) || provider === "google"');
+    expect(script).toContain("completedAccounts.length === 1");
+    expect(script).toContain("jwt.sign({ id: candidate.id }, secret, { algorithm: \"HS256\", expiresIn: \"5m\" })");
+    expect(script).toContain('method: "POST"');
+    expect(script).toContain('new URL("/api/music/identity/ensure", tunesOrigin)');
+    expect(script).not.toMatch(/body\s*:/);
+    expect(script).not.toMatch(/process\.env\.STRAPI_(?:ACCESS_TOKEN|JWT_SECRET)\s*[,}]/);
+  });
+
+  it("measures cold, warm, and concurrent calls and emits aggregate metrics only", () => {
+    const { job } = sloJob();
+    const script = String(job.steps.find((step: any) => step.name === "Probe authenticated identity SLO without identity output").with.script);
+    expect(script).toContain("const warmSampleCount = 14");
+    expect(script).toContain("const concurrentSampleCount = 15");
+    expect(script).toContain("await probeEnsure()");
+    expect(script).toContain("Promise.all(Array.from({ length: concurrentSampleCount }, () => probeEnsure()))");
+    expect(script).toContain("successRatePercent >= 99.5");
+    expect(script).toContain("warmP95Ms <= 1000");
+    expect(script).toContain("coldLatencyMs <= 5000");
+    expect(script.match(/console\.log/g)).toHaveLength(1);
+    expect(script).toContain('const schemaVersion = "music-identity-slo/v1"');
+    for (const aggregate of [
+      "sampleCount", "successCount", "successRatePercent", "coldLatencyMs", "warmP95Ms", "concurrentP95Ms",
+    ]) expect(script).toContain(aggregate);
+    for (const forbidden of [
+      "requestId", "responseBody", "token:", "jwt:", "userId", "userDocumentId", "accountId", "accountDocumentId", "identity:",
+    ]) expect(script).not.toContain(forbidden);
+  });
+
+  it("fails closed without logging raw errors or identity data", () => {
+    const { job } = sloJob();
+    const script = String(job.steps.find((step: any) => step.name === "Probe authenticated identity SLO without identity output").with.script);
+    expect(script).toContain('reason: "no_eligible_identity"');
+    expect(script).toContain('reason: "probe_failed_closed"');
+    expect(script).toContain("process.exitCode = 1");
+    expect(script).toContain("await response.body?.cancel()");
+    expect(script).not.toMatch(/console\.(?:error|warn|debug|info)/);
+    expect(script).not.toMatch(/JSON\.stringify\((?:candidate|users|response|error|cause)/);
   });
 });
