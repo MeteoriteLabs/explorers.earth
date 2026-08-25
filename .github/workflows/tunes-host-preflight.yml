@@ -31,11 +31,12 @@ jobs:
   authenticated-identity-slo:
     if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.run_authenticated_identity_slo && !inputs.confirm_test_deploy && !inputs.diagnose_last_attempt
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     permissions:
       contents: read
     env:
       EXPECTED_DEPLOYED_COMMIT: ${{ inputs.expected_deployed_commit }}
+      MUSIC_SLO_STRAPI_USER_TOKEN: ${{ secrets.MUSIC_SLO_STRAPI_USER_TOKEN }}
     steps:
       - name: Probe authenticated identity SLO without identity output
         uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
@@ -44,14 +45,15 @@ jobs:
           username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
           fingerprint: SHA256:mkzoRIglhalq6lNwNgM2kyuRLFGLeIbpLQpypShYMSw
-          command_timeout: 22m
-          envs: EXPECTED_DEPLOYED_COMMIT
+          command_timeout: 30m
+          envs: EXPECTED_DEPLOYED_COMMIT,MUSIC_SLO_STRAPI_USER_TOKEN
           script: |
             set -euo pipefail
             failure_stage=target_attestation
             report_shell_failure() {
               local status=$?
               trap - EXIT
+              unset MUSIC_SLO_STRAPI_USER_TOKEN
               if [ "$status" -ne 0 ]; then
                 printf '{"schemaVersion":"music-identity-slo-stage/v1","outcome":"failed_closed","stage":"%s"}\n' "$failure_stage"
               fi
@@ -109,6 +111,134 @@ jobs:
             published_probe_host="${published_binding_selection%%|*}"
             published_host_port="${published_binding_selection##*|}"
             published_ready_url="http://${published_probe_host}:${published_host_port}/health/ready"
+            container_cache_ttl_ms="$(docker inspect tunes-app-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^MUSIC_IDENTITY_CACHE_TTL_MS=//p')"
+            container_identity_rate_limit="$(docker inspect tunes-app-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^MUSIC_RATE_LIMIT_PER_MINUTE=//p')"
+            test "$container_cache_ttl_ms" = 30000
+            test "$container_identity_rate_limit" = 30
+            failure_stage=probe_authority_attestation
+            [[ "${MUSIC_SLO_STRAPI_USER_TOKEN:-}" =~ ^[A-Za-z0-9._~-]{16,4096}$ ]]
+            docker exec -e MUSIC_SLO_PREFLIGHT=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node <<'PREFLIGHT'
+            const { readFileSync } = require("node:fs");
+            const { Pool } = require("pg");
+
+            const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+            const exactKeys = (value, keys) => record(value)
+              && Object.keys(value).sort().join("|") === [...keys].sort().join("|");
+            const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+            function validateEnsurePayload(text, nowMs) {
+              let value;
+              try { value = JSON.parse(text); }
+              catch { throw new Error("bearer preflight failed"); }
+              if (!exactKeys(value, ["version", "identity", "credential"])
+                  || value.version !== "music-identity/v1"
+                  || !exactKeys(value.identity, ["musicUserId", "status"])
+                  || !Number.isSafeInteger(value.identity.musicUserId) || value.identity.musicUserId < 1
+                  || value.identity.status !== "active"
+                  || !exactKeys(value.credential, ["token", "expiresAt"])
+                  || typeof value.credential.token !== "string"
+                  || value.credential.token.length < 64 || value.credential.token.length > 4_096
+                  || !jwtPattern.test(value.credential.token)
+                  || !Number.isSafeInteger(value.credential.expiresAt)
+                  || value.credential.expiresAt <= nowMs) {
+                throw new Error("bearer preflight failed");
+              }
+              return value;
+            }
+
+            async function within(operation, timeoutMs, controller) {
+              let timer;
+              try {
+                return await Promise.race([
+                  operation,
+                  new Promise((_, reject) => {
+                    timer = setTimeout(() => {
+                      controller.abort();
+                      reject(new Error("bearer preflight failed"));
+                    }, timeoutMs);
+                  }),
+                ]);
+              } finally {
+                if (timer) clearTimeout(timer);
+              }
+            }
+
+            async function validateProvisionedBearer({
+              proof,
+              expectedMusicUserId,
+              fetchImpl = fetch,
+              wallNow = () => Date.now(),
+              timeoutMs = 6_000,
+            }) {
+              const controller = new AbortController();
+              let response;
+              try {
+                response = await within(fetchImpl(new URL("/api/music/identity/ensure", "http://127.0.0.1:5000"), {
+                  method: "POST",
+                  headers: { authorization: `Bearer ${proof}` },
+                  redirect: "error",
+                  signal: controller.signal,
+                }), timeoutMs, controller);
+                if (response.status !== 200) throw new Error("bearer preflight failed");
+                const text = await within(Promise.resolve(response.text()), timeoutMs, controller);
+                const value = validateEnsurePayload(text, wallNow());
+                if (value.identity.musicUserId !== expectedMusicUserId) throw new Error("bearer preflight failed");
+              } catch {
+                try {
+                  if (response?.body && !response.body.locked) {
+                    void Promise.resolve(response.body.cancel()).catch(() => undefined);
+                  }
+                } catch {}
+                throw new Error("bearer preflight failed");
+              }
+            }
+
+            function databaseConfiguration() {
+              if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL };
+              const passwordFile = process.env.MUSIC_DATABASE_PASSWORD_FILE;
+              const port = Number(process.env.MUSIC_DATABASE_PORT);
+              if (!process.env.MUSIC_DATABASE_HOST || !process.env.MUSIC_DATABASE_NAME
+                  || !process.env.MUSIC_DATABASE_USER || !passwordFile
+                  || !Number.isSafeInteger(port) || port < 1 || port > 65_535) {
+                throw new Error("bearer preflight failed");
+              }
+              return {
+                host: process.env.MUSIC_DATABASE_HOST,
+                port,
+                database: process.env.MUSIC_DATABASE_NAME,
+                user: process.env.MUSIC_DATABASE_USER,
+                password: readFileSync(passwordFile, "utf8").trim(),
+              };
+            }
+
+            async function selectProvisionedMusicUserId() {
+              const pool = new Pool({ ...databaseConfiguration(), max: 1, connectionTimeoutMillis: 5_000 });
+              try {
+                const result = await pool.query(`SELECT id FROM users WHERE identity_status='active' ORDER BY id ASC LIMIT 1`);
+                if (result.rows.length !== 1 || !Number.isSafeInteger(result.rows[0].id) || result.rows[0].id < 1) {
+                  throw new Error("bearer preflight failed");
+                }
+                return result.rows[0].id;
+              } finally {
+                await pool.end();
+              }
+            }
+
+            async function main() {
+              const proof = process.env.MUSIC_SLO_STRAPI_USER_TOKEN;
+              delete process.env.MUSIC_SLO_STRAPI_USER_TOKEN;
+              if (typeof proof !== "string" || !/^[A-Za-z0-9._~-]{16,4096}$/.test(proof)) {
+                throw new Error("bearer preflight failed");
+              }
+              const expectedMusicUserId = await selectProvisionedMusicUserId();
+              await validateProvisionedBearer({ proof, expectedMusicUserId });
+            }
+
+            module.exports = { validateProvisionedBearer };
+            if (process.env.MUSIC_SLO_PREFLIGHT === "1") {
+              main().catch(() => { process.exitCode = 1; });
+            }
+            PREFLIGHT
             failure_stage=restart
             docker restart --time 30 tunes-app-1 >/dev/null
             failure_stage=restart_readiness
@@ -126,25 +256,17 @@ jobs:
             done
             test "$ready" = true
             trap - EXIT
-            docker exec -e MUSIC_SLO_EXECUTE=1 -i tunes-app-1 node <<'NODE'
-            const { randomUUID } = require("node:crypto");
-            const { readFileSync } = require("node:fs");
-            const jwt = require("jsonwebtoken");
+            sampling_status=0
+            docker exec -e MUSIC_SLO_EXECUTE=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node <<'NODE' || sampling_status=$?
             const { performance } = require("node:perf_hooks");
-            const { Pool } = require("pg");
 
             const schemaVersion = "music-identity-slo/v1";
-            const coldMode = "gateway_proof_cache_cold";
+            const coldMode = "gateway_proof_cache_ttl_cold";
             const ensureMutation = "identity_snapshots_and_sync_timestamps";
-            const batchPlans = [
-              { cold: 3, warm: 13, concurrent: 14 },
-              { cold: 3, warm: 13, concurrent: 14 },
-              { cold: 3, warm: 13, concurrent: 14 },
-              { cold: 3, warm: 13, concurrent: 14 },
-              { cold: 3, warm: 13, concurrent: 14 },
-              { cold: 3, warm: 13, concurrent: 14 },
-              { cold: 2, warm: 12, concurrent: 6 },
-            ];
+            const batchPlans = Array.from({ length: 20 }, (_, index) => ({
+              warm: index < 10 ? 5 : 4,
+              concurrent: index < 10 ? 4 : 5,
+            }));
             let finished = false;
             const finish = (value, passed) => {
               if (finished) return;
@@ -220,21 +342,29 @@ jobs:
                 }), timeoutMs, controller);
                 const remaining = Math.max(1, timeoutMs - (monotonicNow() - startedAt));
                 if (response.status !== 200) {
+                  const statusCategory = response.status >= 400 && response.status < 500
+                    ? "client_error"
+                    : response.status >= 500 ? "server_error" : "transport_or_validation_error";
                   if (response.body && !response.body.locked) {
-                    await within(Promise.resolve(response.body.cancel()), remaining, controller);
+                    try { await within(Promise.resolve(response.body.cancel()), remaining, controller); }
+                    catch {}
                   }
-                  return { success: false, latencyMs: milliseconds(monotonicNow() - startedAt) };
+                  return { success: false, latencyMs: milliseconds(monotonicNow() - startedAt), statusCategory };
                 }
                 const text = await within(Promise.resolve(response.text()), remaining, controller);
                 validateEnsurePayload(text, wallNow());
-                return { success: true, latencyMs: milliseconds(monotonicNow() - startedAt) };
+                return { success: true, latencyMs: milliseconds(monotonicNow() - startedAt), statusCategory: "success" };
               } catch {
                 try {
                   if (response?.body && !response.body.locked) {
                     void Promise.resolve(response.body.cancel()).catch(() => undefined);
                   }
                 } catch {}
-                return { success: false, latencyMs: milliseconds(monotonicNow() - startedAt) };
+                return {
+                  success: false,
+                  latencyMs: milliseconds(monotonicNow() - startedAt),
+                  statusCategory: "transport_or_validation_error",
+                };
               }
             }
 
@@ -242,136 +372,73 @@ jobs:
               const all = [...cold, ...warm, ...concurrent];
               const successCount = all.filter((entry) => entry.success).length;
               const successRatePercent = Math.round(successCount / all.length * 100_000) / 1_000;
-              const gatewayProofCacheColdP95Ms = milliseconds(percentile95(cold.map((entry) => entry.latencyMs)));
+              const gatewayProofCacheTtlColdP95Ms = milliseconds(percentile95(cold.map((entry) => entry.latencyMs)));
               const warmP95Ms = milliseconds(percentile95(warm.map((entry) => entry.latencyMs)));
               const concurrentP95Ms = milliseconds(percentile95(concurrent.map((entry) => entry.latencyMs)));
+              const statusCategoryCounts = {
+                success: 0,
+                client_error: 0,
+                server_error: 0,
+                transport_or_validation_error: 0,
+              };
+              for (const entry of all) {
+                if (Object.hasOwn(statusCategoryCounts, entry.statusCategory)) {
+                  statusCategoryCounts[entry.statusCategory] += 1;
+                } else {
+                  statusCategoryCounts.transport_or_validation_error += 1;
+                }
+              }
               const passed = all.length === 200 && cold.length === 20 && warm.length === 90 && concurrent.length === 90
-                && successRatePercent >= 99.5 && gatewayProofCacheColdP95Ms <= 5000
+                && successRatePercent >= 99.5 && gatewayProofCacheTtlColdP95Ms <= 5000
                 && warmP95Ms <= 1000 && concurrentP95Ms <= 1000;
               return {
                 passed,
                 sampleCount: all.length,
                 successCount,
                 successRatePercent,
-                gatewayProofCacheColdP95Ms,
+                gatewayProofCacheTtlColdP95Ms,
                 warmP95Ms,
                 concurrentP95Ms,
+                statusCategoryCounts,
               };
             }
 
-            function databaseConfiguration() {
-              if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL };
-              const passwordFile = process.env.MUSIC_DATABASE_PASSWORD_FILE;
-              const port = Number(process.env.MUSIC_DATABASE_PORT);
-              if (!process.env.MUSIC_DATABASE_HOST || !process.env.MUSIC_DATABASE_NAME
-                  || !process.env.MUSIC_DATABASE_USER || !passwordFile
-                  || !Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-                throw new Error("database authority unavailable");
-              }
-              return {
-                host: process.env.MUSIC_DATABASE_HOST,
-                port,
-                database: process.env.MUSIC_DATABASE_NAME,
-                user: process.env.MUSIC_DATABASE_USER,
-                password: readFileSync(passwordFile, "utf8").trim(),
-              };
-            }
-
-            async function selectProvisionedIdentity() {
-              const pool = new Pool({ ...databaseConfiguration(), max: 1, connectionTimeoutMillis: 5_000 });
-              try {
-                const result = await pool.query(`SELECT strapi_user_document_id,strapi_account_document_id
-                  FROM users WHERE identity_status='active' ORDER BY id ASC LIMIT 1`);
-                if (result.rows.length !== 1) return undefined;
-                const row = result.rows[0];
-                if (typeof row.strapi_user_document_id !== "string" || !row.strapi_user_document_id
-                    || typeof row.strapi_account_document_id !== "string" || !row.strapi_account_document_id) return undefined;
-                return {
-                  userDocumentId: row.strapi_user_document_id,
-                  accountDocumentId: row.strapi_account_document_id,
-                };
-              } finally {
-                await pool.end();
-              }
-            }
-
-            async function verifyProvisionedEligibility(provisioned, accessAuthority, strapiOrigin) {
-              const params = new URLSearchParams({
-                "filters[documentId][$eq]": provisioned.userDocumentId,
-                "pagination[page]": "1",
-                "pagination[pageSize]": "2",
-                populate: "accounts",
-              });
-              const response = await fetch(new URL(`/api/users?${params}`, strapiOrigin), {
-                headers: { authorization: `Bearer ${accessAuthority}`, accept: "application/json" },
-                redirect: "error",
-                signal: AbortSignal.timeout(5_000),
-              });
-              if (!response.ok) return undefined;
-              const users = await response.json();
-              if (!Array.isArray(users) || users.length !== 1) return undefined;
-              const candidate = users[0];
-              const provider = typeof candidate.provider === "string" ? candidate.provider.toLowerCase() : "";
-              const completedAccounts = Array.isArray(candidate.accounts) ? candidate.accounts.filter((account) =>
-                typeof account?.documentId === "string" && account.documentId.length > 0
-                && typeof account?.Account_Name === "string" && account.Account_Name.trim().length > 0
-                && typeof account?.Account_Type === "string" && account.Account_Type.trim().length > 0
-                && typeof account?.mobile_number === "string" && account.mobile_number.trim().length > 0) : [];
-              if (!Number.isSafeInteger(candidate.id) || candidate.id < 1 || candidate.blocked !== false
-                  || candidate.documentId !== provisioned.userDocumentId
-                  || !((provider === "local" && candidate.confirmed === true) || provider === "google")
-                  || completedAccounts.length !== 1
-                  || completedAccounts[0].documentId !== provisioned.accountDocumentId) return undefined;
-              return candidate;
-            }
-
-            async function main() {
-              const accessAuthority = process.env.STRAPI_ACCESS_TOKEN;
-              const secret = process.env.STRAPI_JWT_SECRET;
-              const strapiOrigin = new URL(process.env.STRAPI_URL ?? "");
-              if (!accessAuthority || !secret || secret.length < 32
-                  || !["http:", "https:"].includes(strapiOrigin.protocol)
-                  || strapiOrigin.username || strapiOrigin.password) throw new Error("unavailable authority");
-              const provisioned = await selectProvisionedIdentity();
-              const candidate = provisioned
-                ? await verifyProvisionedEligibility(provisioned, accessAuthority, strapiOrigin)
-                : undefined;
-              if (!candidate) {
-                finish({
-                  schemaVersion,
-                  outcome: "failed_closed",
-                  reason: "no_provisioned_eligible_identity",
-                  coldMode,
-                  restartCount: 1,
-                  ensureMutation,
-                }, false);
-                return;
-              }
-              const signProof = () => jwt.sign({ id: candidate.id }, secret, {
-                algorithm: "HS256",
-                expiresIn: "2m",
-                jwtid: randomUUID(),
-              });
+            async function runQualification({
+              proof,
+              probe = probeEnsure,
+              sleepImpl = sleep,
+              cacheTtlMs,
+            }) {
+              if (cacheTtlMs !== 30_000) throw new Error("unattested cache contract");
               const cold = [];
               const warm = [];
               const concurrent = [];
               for (let batchIndex = 0; batchIndex < batchPlans.length; batchIndex += 1) {
                 const plan = batchPlans[batchIndex];
-                let warmProof;
-                for (let index = 0; index < plan.cold; index += 1) {
-                  warmProof = signProof();
-                  cold.push(await probeEnsure({ proof: warmProof }));
-                }
+                cold.push(await probe({ proof }));
                 for (let index = 0; index < plan.warm; index += 1) {
-                  warm.push(await probeEnsure({ proof: warmProof }));
+                  warm.push(await probe({ proof }));
                 }
                 concurrent.push(...await Promise.all(Array.from(
                   { length: plan.concurrent },
-                  () => probeEnsure({ proof: warmProof }),
+                  () => probe({ proof }),
                 )));
-                if (batchIndex < batchPlans.length - 1) await sleep(61_000);
+                if (batchIndex < batchPlans.length - 1) await sleepImpl(cacheTtlMs + 1_000);
               }
-              const evaluation = evaluateSlo({ cold, warm, concurrent });
+              return { cold, warm, concurrent };
+            }
+
+            async function main() {
+              const proof = process.env.MUSIC_SLO_STRAPI_USER_TOKEN;
+              delete process.env.MUSIC_SLO_STRAPI_USER_TOKEN;
+              const cacheTtlMs = Number(process.env.MUSIC_IDENTITY_CACHE_TTL_MS);
+              const rateLimitPerMinute = Number(process.env.MUSIC_RATE_LIMIT_PER_MINUTE);
+              if (typeof proof !== "string" || !/^[A-Za-z0-9._~-]{16,4096}$/.test(proof)
+                  || cacheTtlMs !== 30_000 || rateLimitPerMinute !== 30) {
+                throw new Error("unavailable qualification contract");
+              }
+              const qualification = await runQualification({ proof, cacheTtlMs });
+              const evaluation = evaluateSlo(qualification);
               const { passed, ...metrics } = evaluation;
               finish({
                 schemaVersion,
@@ -384,7 +451,7 @@ jobs:
               }, passed);
             }
 
-            module.exports = { evaluateSlo, probeEnsure, validateEnsurePayload };
+            module.exports = { evaluateSlo, probeEnsure, runQualification, validateEnsurePayload };
             if (process.env.MUSIC_SLO_EXECUTE === "1") {
               main().catch(() => finish({
                 schemaVersion,
@@ -396,6 +463,8 @@ jobs:
               }, false));
             }
             NODE
+            unset MUSIC_SLO_STRAPI_USER_TOKEN
+            exit "$sampling_status"
 
   diagnose-last-attempt:
     if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.diagnose_last_attempt && !inputs.confirm_test_deploy && !inputs.run_authenticated_identity_slo

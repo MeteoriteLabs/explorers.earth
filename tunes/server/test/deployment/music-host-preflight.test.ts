@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Script, createContext } from "node:vm";
@@ -10,17 +10,35 @@ const read = (path: string) => readFileSync(resolve(repoRoot, path), "utf8");
 const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
-interface Sample { success: boolean; latencyMs: number }
+type StatusCategory = "success" | "client_error" | "server_error" | "transport_or_validation_error";
+interface Sample { success: boolean; latencyMs: number; statusCategory: StatusCategory }
 interface ProbeLibrary {
   validateEnsurePayload: (text: string, nowMs: number) => unknown;
   evaluateSlo: (samples: { cold: Sample[]; warm: Sample[]; concurrent: Sample[] }) => {
     passed: boolean; sampleCount: number; successCount: number; successRatePercent: number;
-    gatewayProofCacheColdP95Ms: number; warmP95Ms: number; concurrentP95Ms: number;
+    gatewayProofCacheTtlColdP95Ms: number; warmP95Ms: number; concurrentP95Ms: number;
+    statusCategoryCounts: Record<StatusCategory, number>;
   };
   probeEnsure: (input: {
     proof: string; fetchImpl: typeof fetch; monotonicNow?: () => number;
     wallNow?: () => number; timeoutMs?: number;
   }) => Promise<Sample>;
+  runQualification: (input: {
+    proof: string;
+    probe?: (input: { proof: string }) => Promise<Sample>;
+    sleepImpl?: (milliseconds: number) => Promise<void>;
+    cacheTtlMs: number;
+  }) => Promise<{ cold: Sample[]; warm: Sample[]; concurrent: Sample[] }>;
+}
+
+interface PreflightLibrary {
+  validateProvisionedBearer: (input: {
+    proof: string;
+    expectedMusicUserId: number;
+    fetchImpl: typeof fetch;
+    wallNow?: () => number;
+    timeoutMs?: number;
+  }) => Promise<void>;
 }
 
 function sloJob() {
@@ -35,8 +53,14 @@ function remoteScript(): string {
 }
 
 function embeddedNodeSource(): string {
-  const match = /docker exec -e MUSIC_SLO_EXECUTE=1 -i tunes-app-1 node <<'NODE'\n([\s\S]*?)\nNODE(?:\n|$)/.exec(remoteScript());
+  const match = /docker exec -e MUSIC_SLO_EXECUTE=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node <<'NODE' \|\| sampling_status=\$\?\n([\s\S]*?)\nNODE(?:\n|$)/.exec(remoteScript());
   if (!match) throw new Error("embedded probe source missing");
+  return match[1];
+}
+
+function preflightNodeSource(): string {
+  const match = /docker exec -e MUSIC_SLO_PREFLIGHT=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node <<'PREFLIGHT'\n([\s\S]*?)\nPREFLIGHT(?:\n|$)/.exec(remoteScript());
+  if (!match) throw new Error("embedded bearer preflight source missing");
   return match[1];
 }
 
@@ -71,13 +95,31 @@ function probeLibrary(): ProbeLibrary {
   return module.exports as ProbeLibrary;
 }
 
+function preflightLibrary(): PreflightLibrary {
+  const module = { exports: {} as unknown };
+  const context = createContext({
+    AbortController, AbortSignal, Buffer, URL, clearTimeout,
+    fetch: vi.fn(async () => { throw new Error("unexpected fetch"); }),
+    module,
+    process: { env: {}, exitCode: 0 },
+    require,
+    setTimeout,
+  });
+  new Script(preflightNodeSource(), { filename: "embedded-music-identity-bearer-preflight.cjs" }).runInContext(context);
+  return module.exports as PreflightLibrary;
+}
+
 const credentialToken = `${"a".repeat(24)}.${"b".repeat(24)}.${"c".repeat(32)}`;
 const validPayload = (expiresAt = 2_000_000_000_000) => JSON.stringify({
   version: "music-identity/v1",
   identity: { musicUserId: 17, status: "active" },
   credential: { token: credentialToken, expiresAt },
 });
-const sample = (latencyMs: number, success = true): Sample => ({ success, latencyMs });
+const sample = (
+  latencyMs: number,
+  success = true,
+  statusCategory: StatusCategory = success ? "success" : "transport_or_validation_error",
+): Sample => ({ success, latencyMs, statusCategory });
 
 afterEach(() => vi.useRealTimers());
 
@@ -94,11 +136,14 @@ describe("Tunes authenticated identity SLO preflight", () => {
     expect(job.if).toContain("inputs.run_authenticated_identity_slo");
     expect(job.if).toContain("!inputs.confirm_test_deploy");
     expect(job.if).toContain("!inputs.diagnose_last_attempt");
-    expect(job.env).toEqual({ EXPECTED_DEPLOYED_COMMIT: "${{ inputs.expected_deployed_commit }}" });
+    expect(job.env).toEqual({
+      EXPECTED_DEPLOYED_COMMIT: "${{ inputs.expected_deployed_commit }}",
+      MUSIC_SLO_STRAPI_USER_TOKEN: "${{ secrets.MUSIC_SLO_STRAPI_USER_TOKEN }}",
+    });
     expect(workflow.jobs["diagnose-last-attempt"].if).toContain("!inputs.run_authenticated_identity_slo");
     expect(workflow.jobs["build-arm64"].if).toContain("!inputs.run_authenticated_identity_slo");
     expect(job["runs-on"]).toBe("ubuntu-24.04");
-    expect(job["timeout-minutes"]).toBe(25);
+    expect(job["timeout-minutes"]).toBe(35);
     expect(job.permissions).toEqual({ contents: "read" });
   });
 
@@ -109,7 +154,7 @@ describe("Tunes authenticated identity SLO preflight", () => {
     expect(remote.with).toMatchObject({
       host: "${{ secrets.TUNES_DEPLOY_HOST }}", username: "deploy", key: "${{ secrets.TUNES_DEPLOY_KEY }}",
       fingerprint: "SHA256:mkzoRIglhalq6lNwNgM2kyuRLFGLeIbpLQpypShYMSw",
-      command_timeout: "22m", envs: "EXPECTED_DEPLOYED_COMMIT",
+      command_timeout: "30m", envs: "EXPECTED_DEPLOYED_COMMIT,MUSIC_SLO_STRAPI_USER_TOKEN",
     });
     const script = remoteScript();
     expect(script).toContain('[[ "$EXPECTED_DEPLOYED_COMMIT" =~ ^[a-f0-9]{40}$ ]]');
@@ -121,22 +166,36 @@ describe("Tunes authenticated identity SLO preflight", () => {
     expect(script.match(/docker restart --time 30 tunes-app-1/g)).toHaveLength(1);
     expect(script).toContain("docker restart --time 30 tunes-app-1 >/dev/null");
     expect(script).toContain(`test "$ready" = true`);
-    expect(script).toContain("docker exec -e MUSIC_SLO_EXECUTE=1 -i tunes-app-1 node");
+    expect(script).toContain("docker exec -e MUSIC_SLO_EXECUTE=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node");
     expect(script).not.toContain("MUSIC_SLO_UNIT_TEST");
     expect(script).not.toMatch(/docker\s+compose\s+(?:up|down|restart|rm|pull|build)/);
     expect(script).not.toMatch(/docker\s+(?:stop|rm|rmi|prune)/);
   });
 
+  it("passes only a masked dedicated user bearer by environment name and contains it after use", () => {
+    const script = remoteScript();
+    expect(script).toContain('[[ "${MUSIC_SLO_STRAPI_USER_TOKEN:-}" =~ ^[A-Za-z0-9._~-]{16,4096}$ ]]');
+    expect(script).toContain("docker exec -e MUSIC_SLO_PREFLIGHT=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node");
+    expect(script).toContain("docker exec -e MUSIC_SLO_EXECUTE=1 -e MUSIC_SLO_STRAPI_USER_TOKEN -i tunes-app-1 node");
+    expect(script).not.toMatch(/-e MUSIC_SLO_STRAPI_USER_TOKEN=/);
+    expect(script).not.toContain("${{ secrets.MUSIC_SLO_STRAPI_USER_TOKEN }}");
+    expect(script.match(/delete process\.env\.MUSIC_SLO_STRAPI_USER_TOKEN/g)).toHaveLength(2);
+    expect(script).toContain("unset MUSIC_SLO_STRAPI_USER_TOKEN");
+    expect(script).not.toContain("STRAPI_JWT_SECRET");
+    expect(script).not.toContain('require("jsonwebtoken")');
+    expect(script).not.toContain("jwt.sign");
+  });
+
   it("derives and guards the published test-app readiness binding while probing ensure inside the container", () => {
     const script = remoteScript();
-    const shell = script.slice(0, script.indexOf("docker exec -e MUSIC_SLO_EXECUTE=1"));
+    const shell = script.slice(0, script.indexOf("docker exec -e MUSIC_SLO_PREFLIGHT=1"));
     expect(shell).toContain(`published_binding_rows="$(docker inspect --format '{{range (index .NetworkSettings.Ports "5000/tcp")}}{{printf "%s|%s\\n" .HostIp .HostPort}}{{end}}' tunes-app-1)"`);
     expect(shell).toContain('published_binding_selection="$(select_published_readiness_binding <<< "$published_binding_rows")"');
     expect(shell).toContain('published_probe_host="${published_binding_selection%%|*}"');
     expect(shell).toContain('published_host_port="${published_binding_selection##*|}"');
     expect(shell).toContain('published_ready_url="http://${published_probe_host}:${published_host_port}/health/ready"');
-    expect(shell).toContain('curl --fail --silent --show-error --max-time 2 "$published_ready_url"');
-    expect(shell).not.toContain("http://127.0.0.1:5000");
+    expect(script).toContain('curl --fail --silent --show-error --max-time 2 "$published_ready_url"');
+    expect(script).not.toContain("curl --fail --silent --show-error --max-time 2 http://127.0.0.1:5000");
     expect(embeddedNodeSource()).toContain('new URL("/api/music/identity/ensure", "http://127.0.0.1:5000")');
   });
 
@@ -181,19 +240,42 @@ describe("Tunes authenticated identity SLO preflight", () => {
     expect(diagnostic).not.toContain("published_binding_rows");
   });
 
-  it("starts from one provisioned active Music identity and verifies the exact Strapi identity", () => {
+  it("silently proves the real bearer maps to the selected provisioned Music identity before restart", async () => {
     const script = remoteScript();
-    expect(script).toContain("require(\"pg\")");
-    expect(script).toMatch(/SELECT\s+strapi_user_document_id,strapi_account_document_id\s+FROM users\s+WHERE identity_status='active'/);
-    expect(script).toContain("filters[documentId][$eq]");
-    expect(script).toContain("candidate.documentId !== provisioned.userDocumentId");
-    expect(script).toContain("completedAccounts[0].documentId !== provisioned.accountDocumentId");
-    expect(script).not.toContain("sort=id%3Aasc");
-    expect(script).toContain("process.env.STRAPI_ACCESS_TOKEN");
-    expect(script).toContain("process.env.STRAPI_JWT_SECRET");
-    expect(script).toContain('algorithm: "HS256"');
-    expect(script).toContain('method: "POST"');
-    expect(script).not.toMatch(/body\s*:/);
+    expect(preflightNodeSource()).toMatch(/SELECT\s+id\s+FROM users\s+WHERE identity_status='active'\s+ORDER BY id ASC LIMIT 1/);
+    expect(script.indexOf("MUSIC_SLO_PREFLIGHT=1")).toBeLessThan(script.indexOf("docker restart --time 30"));
+    const { validateProvisionedBearer } = preflightLibrary();
+    let authorization = "";
+    const fetchMock = vi.fn(async (_url, init) => {
+      authorization = new Headers(init?.headers).get("authorization") ?? "";
+      return { status: 200, text: async () => validPayload(), body: { locked: false, cancel: vi.fn() } } as unknown as Response;
+    });
+    const fetchImpl = fetchMock as unknown as typeof fetch;
+    await expect(validateProvisionedBearer({
+      proof: "real-strapi-user-bearer",
+      expectedMusicUserId: 17,
+      fetchImpl,
+      wallNow: () => 1_900_000_000_000,
+    })).resolves.toBeUndefined();
+    expect(authorization).toBe("Bearer real-strapi-user-bearer");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
+    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("body");
+
+    const unauthorized = vi.fn(async () => ({
+      status: 401, text: async () => "not read", body: { locked: false, cancel: vi.fn() },
+    })) as unknown as typeof fetch;
+    await expect(validateProvisionedBearer({
+      proof: "expired-real-user-bearer", expectedMusicUserId: 17, fetchImpl: unauthorized,
+    })).rejects.toThrow("bearer preflight failed");
+    const mismatch = vi.fn(async () => ({
+      status: 200, text: async () => validPayload().replace('"musicUserId":17', '"musicUserId":18'),
+      body: { locked: false, cancel: vi.fn() },
+    })) as unknown as typeof fetch;
+    await expect(validateProvisionedBearer({
+      proof: "wrong-user-real-bearer", expectedMusicUserId: 17, fetchImpl: mismatch,
+      wallNow: () => 1_900_000_000_000,
+    })).rejects.toThrow("bearer preflight failed");
   });
 
   it("exports executable credential validation and SLO predicate helpers for contract tests", () => {
@@ -231,7 +313,7 @@ describe("Tunes authenticated identity SLO preflight", () => {
       monotonicNow: () => bodyRead ? 145 : 100,
       wallNow: () => 1_900_000_000_000,
     });
-    expect(valid).toEqual({ success: true, latencyMs: 45 });
+    expect(valid).toEqual({ success: true, latencyMs: 45, statusCategory: "success" });
 
     const malformed = await probeEnsure({
       proof: credentialToken,
@@ -241,7 +323,17 @@ describe("Tunes authenticated identity SLO preflight", () => {
       monotonicNow: () => 100,
       wallNow: () => 1_900_000_000_000,
     });
-    expect(malformed.success).toBe(false);
+    expect(malformed).toEqual({ success: false, latencyMs: 0, statusCategory: "transport_or_validation_error" });
+
+    const unauthorized = await probeEnsure({
+      proof: credentialToken,
+      fetchImpl: vi.fn(async () => ({ status: 401, text: async () => "not read",
+        body: { locked: false, cancel: vi.fn() },
+      })) as unknown as typeof fetch,
+      monotonicNow: () => 100,
+      wallNow: () => 1_900_000_000_000,
+    });
+    expect(unauthorized).toEqual({ success: false, latencyMs: 0, statusCategory: "client_error" });
   });
 
   it("fails stalled reads and cannot preserve 200 success when read and cancellation fail", async () => {
@@ -258,7 +350,9 @@ describe("Tunes authenticated identity SLO preflight", () => {
       timeoutMs: 25,
     });
     await vi.advanceTimersByTimeAsync(30);
-    await expect(stalled).resolves.toEqual({ success: false, latencyMs: 0 });
+    await expect(stalled).resolves.toEqual({
+      success: false, latencyMs: 0, statusCategory: "transport_or_validation_error",
+    });
 
     const rejected = probeEnsure({
       proof: credentialToken,
@@ -269,7 +363,9 @@ describe("Tunes authenticated identity SLO preflight", () => {
       monotonicNow: () => 100,
       wallNow: () => 1_900_000_000_000,
     });
-    await expect(rejected).resolves.toEqual({ success: false, latencyMs: 0 });
+    await expect(rejected).resolves.toEqual({
+      success: false, latencyMs: 0, statusCategory: "transport_or_validation_error",
+    });
   });
 
   it("settles a timed-out read even when response cancellation never settles", async () => {
@@ -290,7 +386,9 @@ describe("Tunes authenticated identity SLO preflight", () => {
       new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), 50)),
     ]);
     await vi.advanceTimersByTimeAsync(60);
-    await expect(bounded).resolves.toEqual({ success: false, latencyMs: 0 });
+    await expect(bounded).resolves.toEqual({
+      success: false, latencyMs: 0, statusCategory: "transport_or_validation_error",
+    });
   });
 
   it("requires 199 of 200 and gates cold, sequential warm, and concurrent p95 independently", () => {
@@ -302,7 +400,10 @@ describe("Tunes authenticated identity SLO preflight", () => {
     });
     expect(passing).toMatchObject({
       passed: true, sampleCount: 200, successCount: 199, successRatePercent: 99.5,
-      gatewayProofCacheColdP95Ms: 100, warmP95Ms: 900, concurrentP95Ms: 950,
+      gatewayProofCacheTtlColdP95Ms: 100, warmP95Ms: 900, concurrentP95Ms: 950,
+      statusCategoryCounts: {
+        success: 199, client_error: 0, server_error: 0, transport_or_validation_error: 1,
+      },
     });
 
     const insufficientSuccess = evaluateSlo({
@@ -321,20 +422,86 @@ describe("Tunes authenticated identity SLO preflight", () => {
       ],
     });
     expect(slowConcurrent).toMatchObject({ passed: false, concurrentP95Ms: 1_001 });
+
+    const observedAuthenticationFailure = evaluateSlo({
+      cold: Array.from({ length: 20 }, () => sample(180, false, "client_error")),
+      warm: Array.from({ length: 90 }, () => sample(180, false, "client_error")),
+      concurrent: Array.from({ length: 90 }, () => sample(180, false, "client_error")),
+    });
+    expect(observedAuthenticationFailure).toMatchObject({
+      passed: false,
+      sampleCount: 200,
+      successCount: 0,
+      statusCategoryCounts: {
+        success: 0, client_error: 200, server_error: 0, transport_or_validation_error: 0,
+      },
+    });
   });
 
-  it("paces 200 measurements below the fixed source limiter and emits aggregate fields only", () => {
+  it("measures 20 TTL-cold cycles from prior-cycle completion within source and fingerprint limits", async () => {
+    const { runQualification } = probeLibrary();
+    let now = 0;
+    let active = 0;
+    let maxActive = 0;
+    let sequence = 0;
+    const calls: Array<{ at: number; sequence: number }> = [];
+    const sleeps: Array<{ at: number; milliseconds: number }> = [];
+    const qualification = await runQualification({
+      proof: "one-real-user-bearer",
+      cacheTtlMs: 30_000,
+      probe: async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        sequence += 1;
+        calls.push({ at: now, sequence });
+        await Promise.resolve();
+        active -= 1;
+        return { ...sample(100), sequence } as Sample;
+      },
+      sleepImpl: async (milliseconds) => {
+        sleeps.push({ at: now, milliseconds });
+        now += milliseconds;
+      },
+    });
+    expect(qualification).toMatchObject({
+      cold: { length: 20 }, warm: { length: 90 }, concurrent: { length: 90 },
+    });
+    expect(qualification.cold.map((entry) => (entry as Sample & { sequence: number }).sequence))
+      .toEqual(Array.from({ length: 20 }, (_, index) => index * 10 + 1));
+    expect(sleeps).toHaveLength(19);
+    expect(sleeps.every((entry) => entry.milliseconds === 31_000)).toBe(true);
+    expect(maxActive).toBe(5);
+    for (let index = 1; index < qualification.cold.length; index += 1) {
+      const previousCycleCompletion = sleeps[index - 1]!.at;
+      const coldCall = calls[(index * 10)]!;
+      expect(coldCall.at - previousCycleCompletion).toBe(31_000);
+    }
+    let bucketStart = calls[0]!.at;
+    let bucketCount = 0;
+    let maximumFixedWindowCount = 0;
+    for (const call of calls) {
+      if (call.at >= bucketStart + 60_000) {
+        bucketStart = call.at;
+        bucketCount = 0;
+      }
+      bucketCount += 1;
+      maximumFixedWindowCount = Math.max(maximumFixedWindowCount, bucketCount);
+    }
+    expect(maximumFixedWindowCount).toBe(20);
+    expect(maximumFixedWindowCount).toBeLessThanOrEqual(30);
+  });
+
+  it("attests the deployed cache and limiter contract and emits aggregate fields only", () => {
     const script = remoteScript();
-    expect(script).toContain("const batchPlans = [");
-    expect(script).toContain("cold: 3, warm: 13, concurrent: 14");
-    expect(script).toContain("cold: 2, warm: 12, concurrent: 6");
-    expect(script).toContain("await sleep(61_000)");
-    expect(script).toContain('const coldMode = "gateway_proof_cache_cold"');
+    expect(script).toContain('test "$container_cache_ttl_ms" = 30000');
+    expect(script).toContain('test "$container_identity_rate_limit" = 30');
+    expect(script).toContain('const coldMode = "gateway_proof_cache_ttl_cold"');
     expect(script).toContain("restartCount: 1");
     expect(script).toContain('const ensureMutation = "identity_snapshots_and_sync_timestamps"');
     expect(script.match(/console\.log/g)).toHaveLength(1);
     for (const aggregate of [
-      "sampleCount", "successCount", "successRatePercent", "gatewayProofCacheColdP95Ms", "warmP95Ms", "concurrentP95Ms",
+      "sampleCount", "successCount", "successRatePercent", "gatewayProofCacheTtlColdP95Ms", "warmP95Ms",
+      "concurrentP95Ms", "statusCategoryCounts",
     ]) expect(script).toContain(aggregate);
     for (const forbidden of [
       "requestId", "responseBody", "console.log(candidate", "console.log(provisioned", "console.log(response", "console.log(error",
@@ -343,10 +510,11 @@ describe("Tunes authenticated identity SLO preflight", () => {
 
   it("fails closed without logging raw errors or identity data", () => {
     const script = remoteScript();
-    expect(script).toContain('reason: "no_provisioned_eligible_identity"');
+    expect(script).toContain("failure_stage=probe_authority_attestation");
     expect(script).toContain('reason: "probe_failed_closed"');
     expect(script).toContain("process.exitCode = 1");
     expect(script).not.toMatch(/console\.(?:error|warn|debug|info)/);
-    expect(script).not.toMatch(/JSON\.stringify\((?:candidate|users|response|error|cause)/);
+    expect(script).not.toMatch(/JSON\.stringify\((?:candidate|users|response|error|cause|proof)/);
+    expect(preflightNodeSource()).not.toContain("console.");
   });
 });
