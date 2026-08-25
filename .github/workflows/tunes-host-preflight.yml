@@ -55,6 +55,23 @@ jobs:
               | grep '"event":"music_identity_ensure"' \
               | sed -E 's#://[^/@[:space:]]+@#://***@#g' \
               | tail -n 50 || true
+            printf '%s\n' '=== sanitized Strapi account collection contract ==='
+            docker exec tunes-app-1 node -e '
+              const base = process.env.STRAPI_URL;
+              const token = process.env.STRAPI_ACCESS_TOKEN;
+              fetch(new URL("/api/accounts?pagination[page]=1&pagination[pageSize]=50&pagination[withCount]=true", base), {
+                headers: { authorization: `Bearer ${token}`, accept: "application/json" }
+              }).then(async response => {
+                const value = await response.json().catch(() => null);
+                console.log(JSON.stringify({
+                  status: response.status,
+                  topKeys: value && typeof value === "object" ? Object.keys(value).sort() : [],
+                  dataKind: Array.isArray(value?.data) ? "array" : typeof value?.data,
+                  firstKeys: value?.data?.[0] && typeof value.data[0] === "object" ? Object.keys(value.data[0]).sort() : [],
+                  pagination: value?.meta?.pagination ?? null
+                }));
+              }).catch(() => { console.log(JSON.stringify({ status: "network_error" })); process.exitCode = 1; });
+            '
             printf '%s\n' '=== compose services ==='
             cd /home/deploy/tunes/tunes
             docker compose -p tunes -f docker-compose.yml config --services
