@@ -862,3 +862,92 @@ This appendix is committed in the follow-up documentation commit containing the 
 ### Remaining external gate
 
 The corrected workflow was not pushed or triggered in this fix. A new authorized run against an explicitly attested deployed commit is still required to establish the live 200-sample success-rate and p95 gates.
+
+## Dual-stack published-binding follow-up (2026-08-26)
+
+### Live evidence and diagnosis
+
+GitHub Actions run `32888977145` was a manual dispatch on `codex/tunes-fingerprint-diagnostic` at commit `ddec74b227a21aaf84a919836cf2c32044828dbd`. GitHub reports conclusion `failure`, created at `2026-08-25T19:20:08Z`, updated at `19:20:19Z`, with the remote process exiting status 1 at `19:20:17.751Z`. The failed log contains the one-binding contract:
+
+```text
+published_binding_count="$(docker inspect --format '{{with index .NetworkSettings.Ports "5000/tcp"}}{{len .}}{{else}}0{{end}}' tunes-app-1)"
+test "$published_binding_count" = 1
+2026-08-25T19:20:17.7511098Z 2026/08/25 19:20:17 Process exited with status 1
+```
+
+The action intentionally did not print the inspected binding count, IPs, or ports, so the log cannot directly prove the exact topology. Its early exit is consistent with Docker's normal dual IPv4/IPv6 published entries being rejected by the new `count = 1` assertion. The workflow contract was therefore too narrow even though both entries can safely describe the same published port. This fix addresses that concrete contract defect without logging topology.
+
+### RED evidence
+
+The first command was invoked from the repository root with the wrong package runner and established only an environment invocation error, not the behavioral RED:
+
+```text
+pnpm exec vitest run tunes/server/test/deployment/music-host-preflight.test.ts
+
+'vitest' is not recognized as an internal or external command
+ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found
+```
+
+The corrected focused command exercised the new regressions against the old single-binding implementation:
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 failed (1)
+Tests       4 failed | 11 passed (15)
+```
+
+The failures required the workflow to derive a validated selection from all published bindings, execute single/dual pass and invalid-input fail cases, and emit a sanitized pre-sampling failure stage. During the first implementation pass, one executable rejection regression remained red. It exposed that validation inside command substitution must not rely on the caller's `set -e`; each selector guard was then changed to explicit `|| return 1` fail-closed control flow.
+
+### Minimal fix and safety contract
+
+The pre-restart SSH shell now obtains newline-delimited `HostIp|HostPort` rows from Docker inspect and runs an executable Bash selector. It accepts exactly one or two rows only when:
+
+- every IP is exactly `127.0.0.1`, `0.0.0.0`, `::1`, or `::`;
+- every port contains one to five decimal digits and is in the range 1–65535;
+- all rows have exactly one unique port.
+
+The selector uses host loopback `127.0.0.1` whenever an IPv4 binding exists, otherwise bracketed IPv6 loopback `[::1]`. Missing bindings, more than two rows, unexpected IPs, malformed/out-of-range ports, extra fields, and different ports fail closed before restart. The in-container authenticated ensure probe remains unchanged at `http://127.0.0.1:5000`.
+
+Pre-sampling shell failures now emit one aggregate JSON stage record with schema `music-identity-slo-stage/v1`, outcome `failed_closed`, and only a fixed stage name (`target_attestation`, `published_binding_attestation`, `restart`, or `restart_readiness`). It contains no raw binding values, response body, request ID, identity field, token, or secret. The trap is removed before the embedded identity sampler, whose existing aggregate-only output remains authoritative.
+
+### GREEN and verification evidence
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 passed (1)
+Tests       15 passed (15)
+```
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts server/test/deployment/music-deploy-workflow-security.test.ts
+
+Test Files  2 passed (2)
+Tests       27 passed (27)
+```
+
+```text
+npm run music:types:scoped --prefix tunes
+
+> tsc --project tsconfig.music-c0.json --pretty false --incremental false
+exit 0
+```
+
+The workflow parsed successfully with the repository's `js-yaml`; the complete extracted remote shell, including its Node heredoc, passed Git Bash `bash -n`; and `git diff --check` exited 0. The diff was reviewed to confirm the host readiness URL is derived, the internal ensure URL remains port 5000, and no deploy/dispatch behavior was added.
+
+### Files and commits
+
+- `.github/workflows/tunes-host-preflight.yml`
+- `tunes/server/test/deployment/music-host-preflight.test.ts`
+- `.superpowers/sdd/2026-08-25-complete-music-experience-restoration/task-10-report.md` (this appendix)
+
+Implementation and executable regressions: `b414f21 fix(music): accept safe dual-stack readiness bindings`.
+
+This appendix is committed in the follow-up documentation commit. The untracked `.gstack` files were neither modified nor staged.
+
+### Self-review and concerns
+
+- The selector contract is narrower than general Docker publishing by design: only one or two loopback/wildcard IPv4/IPv6 entries sharing one port are accepted. Unexpected topology fails before the controlled restart.
+- Run `32888977145` did not expose the actual binding rows, so dual-stack is a strongly supported diagnosis from timing and workflow order, not a raw-log-confirmed topology fact. The fixed stage vocabulary will make a future early failure diagnosable without weakening data sanitization.
+- This fix was not pushed, deployed, or triggered. The external live 200-sample SLO gate still requires an authorized manual workflow run against an explicitly attested test-app commit.
