@@ -1070,3 +1070,69 @@ This appendix is committed in the follow-up documentation commit. The two untrac
 
 - The repository cannot create the external Strapi user bearer. An authorized operator must configure `MUSIC_SLO_STRAPI_USER_TOKEN` for the exact first active, already-provisioned eligible Music identity, with validity longer than the bounded job duration. Missing, expired, wrong-user, or ineligible authority fails closed.
 - This correction was not pushed, deployed, or triggered. Run `32890004373` proves the old architecture failed authentication; it does not qualify any SLO. A new authorized manual run against an explicitly attested deployed commit is still required to establish success ≥99.5%, TTL-cold p95 ≤5 seconds, sequential warm p95 ≤1 second, and concurrent p95 ≤1 second.
+
+## SLO bearer lifetime and authentication-category hardening (2026-08-26)
+
+### Reviewer finding and bounded design
+
+The real-bearer architecture verified authenticity before restart, but it did not prove the bearer would remain valid for the entire long-running qualification. A token could pass preflight and expire during the 20 TTL-cold cycles, producing authentication failures partway through the run. In addition, the 99.5% overall predicate could previously treat one authentication rejection as the single allowable failure.
+
+The preflight now performs a local JWT payload decode solely for lifetime sanity. It splits the token into three segments, base64url-decodes and JSON-parses segment two, and accepts only a numeric safe-integer `exp` whose multiplication to milliseconds remains safe. No decoded subject, user ID, role, issuer, signature, or other claim is trusted or used. This decode is explicitly not an authenticity check: the subsequent bodyless live ensure remains the authority verification and exact provisioned-identity mapping gate.
+
+Remaining validity must be strictly greater than 40 minutes at preflight time. The bound is derived as the complete 35-minute job deadline plus an explicit 5-minute safety margin, conservatively exceeding the 30-minute SSH/full-run deadline budget and all per-request deadlines. Exactly 40 minutes, expired tokens, string `exp`, unsafe numeric `exp`, and malformed payloads fail before the authority request and therefore before restart/sampling. The existing shell trap emits only sanitized stage `probe_authority_attestation`; the bearer and decoded claims are never logged.
+
+The SLO predicate still permits one non-auth transient failure through the overall `successRatePercent >= 99.5` rule, but additionally requires `statusCategoryCounts.client_error === 0`. Since every HTTP 401 is categorized as `client_error`, 199 successes plus one authentication failure can no longer pass.
+
+### RED evidence
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 failed (1)
+Tests       2 failed | 16 passed (18)
+```
+
+The failures were exact: `assertBearerLifetime` was absent, and a 199-success/one-client-error fixture incorrectly returned `passed: true`.
+
+### GREEN and verification evidence
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 passed (1)
+Tests       18 passed (18)
+```
+
+```text
+npm test --prefix tunes -- server/test/deployment/music-host-preflight.test.ts server/test/deployment/music-deploy-workflow-security.test.ts
+
+Test Files  2 passed (2)
+Tests       30 passed (30)
+```
+
+```text
+npm run test:music-critical-coverage --prefix tunes
+
+Test Files  24 passed (24)
+Tests       548 passed | 1 skipped (549)
+Statements  100% (1888/1888)
+Branches    100% (1695/1695)
+Functions   100% (274/274)
+Lines       100% (1647/1647)
+```
+
+`npm run music:types:scoped --prefix tunes` exited 0. The workflow parsed with `js-yaml`, the complete remote script passed Git Bash `bash -n`, and `git diff --check` exited 0.
+
+### Files and commits
+
+- `.github/workflows/tunes-host-preflight.yml`
+- `tunes/server/test/deployment/music-host-preflight.test.ts`
+- `.superpowers/sdd/2026-08-25-complete-music-experience-restoration/task-10-report.md` (this appendix)
+
+Implementation and regressions: `7058fe0 fix(music): require durable SLO bearer lifetime`.
+
+This appendix is committed in the follow-up documentation commit. The untracked `.gstack` files were neither modified nor staged.
+
+### Remaining external gate
+
+The workflow was not pushed or triggered. An authorized operator must still configure a real bearer with more than 40 minutes remaining and run the manual SLO job against an explicitly attested deployed commit.
