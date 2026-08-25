@@ -46,6 +46,22 @@ jobs:
             sed -E 's#://[^/@[:space:]]+@#://***@#g' "$candidate_log" | tail -n 120
             printf '%s\n' '=== current restored app ==='
             docker inspect --format 'image_id={{.Image}} configured_image={{.Config.Image}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1
+            printf '%s\n' '=== current app environment names only ==='
+            docker inspect tunes-app-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed 's/=.*//' | sort -u
+            printf '%s\n' '=== current app mount destinations only ==='
+            docker inspect tunes-app-1 --format '{{range .Mounts}}{{println .Type .Destination}}{{end}}' | sort -u
+            printf '%s\n' '=== compose services ==='
+            cd /home/deploy/tunes/tunes
+            docker compose -p tunes -f docker-compose.yml config --services
+            db_user="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_USER=//p' | head -n 1)"
+            db_name="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_DB=//p' | head -n 1)"
+            test -n "$db_user"
+            test -n "$db_name"
+            printf '%s\n' '=== database role capabilities ==='
+            docker exec tunes-db-1 psql -X -U "$db_user" -d "$db_name" -At -F '|' -c "SELECT rolname,rolcanlogin,rolsuper,rolcreaterole,rolcreatedb FROM pg_roles WHERE rolname IN ('music_runtime','music_runtime_login','music_migrator','postgres') ORDER BY rolname"
+            printf '%s\n' '=== migration journal marker ==='
+            docker exec tunes-db-1 psql -X -U "$db_user" -d "$db_name" -At -F '|' -c "SELECT CASE WHEN to_regclass('public.music_schema_migrations') IS NULL THEN 'absent' ELSE 'present' END"
+            docker exec tunes-db-1 psql -X -U "$db_user" -d "$db_name" -At -F '|' -c "SELECT id FROM music_schema_migrations ORDER BY applied_at DESC LIMIT 3" 2>/dev/null || true
             curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/ >/dev/null
             printf '%s\n' 'public_endpoint=ok'
 
