@@ -532,3 +532,140 @@ Neither untracked `.gstack` file was staged or modified.
 - The deployed cold/warm/concurrent SLO probe remains explicitly external and unchanged: release still requires success rate at least 99.5%, warm p95 at most 1 second, and cold p95 at most 5 seconds under the required concurrency profile.
 - Round-2 scoped ESLint exits successfully with two existing warnings (the `AuthSyncManager` hook dependency warning and one unused legacy test local); no lint errors were introduced.
 - The unrelated repository-wide Tunes TypeScript baseline remains outside this fix; the required Music-scoped typecheck exits 0.
+
+## Authenticated live identity SLO workflow extension (2026-08-26)
+
+### Scope and safety contract
+
+The existing manual `.github/workflows/tunes-host-preflight.yml` now exposes a separate `run_authenticated_identity_slo` boolean input. Its job is restricted to `refs/heads/codex/tunes-fingerprint-diagnostic` and is mutually exclusive with both the diagnostic and test-deploy paths. The job uses the existing pinned SSH action, host/key secrets, deploy user, fingerprint, and `tunes-app-1` container authority.
+
+Before mutation, the remote script requires the existing container to be the running, healthy `tunes/app` Compose service. It permits exactly one suppressed `docker restart --time 30 tunes-app-1`, then waits for running state, healthy state, and `/health/ready` for at most 45 bounded attempts before measuring the cold ensure. No deploy, image, database, filesystem, or Strapi mutation was added.
+
+The probe executes entirely inside `tunes-app-1`. It reads `STRAPI_ACCESS_TOKEN`, `STRAPI_URL`, and `STRAPI_JWT_SECRET` there; selects the first eligible local-confirmed or Google user with exactly one complete account using bounded, ID-ordered pagination; and signs an ephemeral five-minute HS256 JWT. Neither the selection authority, JWT secret, JWT, user ID, account identity, response body, nor request ID is emitted.
+
+The SLO set is exactly 30 bodyless `POST /api/music/identity/ensure` calls: one cold, 14 sequential warm, and 15 concurrent. This stays at the route's default 30-request window. The gate requires all 30 requests to succeed in practice (`>=99.5%` over 30 samples), warm p95 `<=1000ms`, and cold latency `<=5000ms`. The single JSON output contains schema/outcome/reason plus aggregate counts and latencies only. Missing eligibility, exhausted selection bounds, unavailable authority, malformed responses, and probe errors fail closed without raw error output.
+
+The workflow was not triggered, deployed, or run against the server in this coding task.
+
+### RED evidence
+
+The original preflight test was stale against the already-existing one-shot deploy workflow (`workflow.jobs.preflight` did not exist). It was replaced with a contract for the actual workflow before implementation. The first implementation-driving run was:
+
+```text
+cd tunes
+npm test -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 failed (1)
+Tests       5 failed (5)
+```
+
+The failures established that the explicit input/job, guarded restart/readiness loop, in-container authority and ephemeral JWT, cold/warm/concurrent threshold checks, and sanitized fail-closed output did not yet exist.
+
+Three focused self-review regressions were also written and observed RED before their minimal fixes:
+
+```text
+# Exact provider eligibility (confirmed non-local providers must not be selected)
+Test Files  1 failed (1)
+Tests       1 failed | 4 passed (5)
+Expected: (provider === "local" && candidate.confirmed === true) || provider === "google"
+
+# Mutual exclusion from the existing diagnose/deploy paths
+Test Files  1 failed (1)
+Tests       1 failed | 4 passed (5)
+Expected: !inputs.run_authenticated_identity_slo
+
+# Bounded pagination rather than searching only the first 100 Strapi users
+Test Files  1 failed (1)
+Tests       1 failed | 4 passed (5)
+Expected: const selectionPageSize = 100
+```
+
+An intermediate run after the initial workflow implementation had three passing contracts and two assertion-code defects. Those defects were corrected (`job["runs-on"]` for the hyphenated YAML key and matching the actual schema constant declaration) before GREEN was accepted; they did not require production behavior changes.
+
+### GREEN evidence
+
+Final focused and neighboring workflow security contracts:
+
+```text
+cd tunes
+npm test -- server/test/deployment/music-host-preflight.test.ts server/test/deployment/music-deploy-workflow-security.test.ts
+
+Test Files  2 passed (2)
+Tests       17 passed (17)
+```
+
+Music-scoped type verification:
+
+```text
+cd tunes
+npm run music:types:scoped
+
+> tsc --project tsconfig.music-c0.json --pretty false --incremental false
+exit 0
+```
+
+Critical coverage verification:
+
+```text
+cd tunes
+npm run test:music-critical-coverage
+
+Test Files  24 passed (24)
+Tests       548 passed | 1 skipped (549)
+Statements  100% (1888/1888)
+Branches    100% (1695/1695)
+Functions   100% (274/274)
+Lines       100% (1647/1647)
+```
+
+Embedded JavaScript syntax and diff hygiene:
+
+```text
+# Extract the single-quoted NODE heredoc and pipe it to `node --check -`
+exit 0
+
+git diff --check
+exit 0
+```
+
+The workflow contract itself parses the YAML with `js-yaml`. The Tunes package has no `lint` script or installed ESLint/Prettier dependency, and `actionlint` is unavailable in this environment:
+
+```text
+npm run lint
+npm error Missing script: "lint"
+exit 1
+
+actionlint: unavailable
+```
+
+No ad-hoc package was downloaded to manufacture a lint result. YAML parsing, 17 static workflow/security assertions, embedded Node syntax validation, scoped TypeScript, critical coverage, and diff hygiene are the available local static gates.
+
+### Files changed
+
+- `.github/workflows/tunes-host-preflight.yml`
+- `tunes/server/test/deployment/music-host-preflight.test.ts`
+- `.superpowers/sdd/2026-08-25-complete-music-experience-restoration/task-10-report.md` (this appendix)
+
+The untracked `.gstack/browse-audit.jsonl` and `.gstack/claude-available.json` files were neither modified nor staged.
+
+### Commits
+
+- `0d693bb test(music): add authenticated identity SLO probe`
+- `3f0db39 test(music): bound SLO identity selection`
+- This appended evidence is committed in the follow-up documentation commit containing this report.
+
+### Self-review
+
+- Input exclusivity prevents a single dispatch from combining the SLO restart with diagnostic output or an image deployment.
+- The restart is guarded by immutable Compose identity plus current running/healthy state, happens exactly once, and is followed by a bounded running+healthy+readiness gate.
+- Candidate pagination is deterministic and bounded at 100 pages of 100. Exhausting that bound without a candidate fails closed instead of selecting an unverified user.
+- Candidate validation mirrors the Music gateway's provider/confirmation, blocked, single-account, and account-completeness rules.
+- JWT minting and authenticated calls happen only inside the container. The token is ephemeral and never exported through SSH action environment inputs or output.
+- Ensure requests have no body, each response body is canceled without inspection, and individual status codes/request IDs are not emitted.
+- The only probe `console.log` serializes a fixed aggregate object; catches intentionally discard raw errors.
+- With 30 total samples, one failure yields 96.667%, so the 99.5% requirement is unambiguously fail-closed while respecting the current default per-source route limit.
+
+### Concerns / external gate
+
+- Local code now supplies the authenticated cold/warm/concurrent qualification path, but the real SLO result remains an external release gate until an authorized operator manually dispatches it against the test server. Per instruction, this task did not trigger or deploy the workflow and makes no claim that the live thresholds pass.
+- The repository does not provide a Tunes lint script and this machine does not have `actionlint`; the exact unavailable evidence is recorded above. All available scoped static and test gates pass.
