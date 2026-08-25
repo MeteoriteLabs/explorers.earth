@@ -62,7 +62,11 @@ describe("Tunes authenticated identity SLO preflight", () => {
     const script = String(job.steps.find((step: any) => step.name === "Probe authenticated identity SLO without identity output").with.script);
     expect(script).toContain("process.env.STRAPI_ACCESS_TOKEN");
     expect(script).toContain("process.env.STRAPI_JWT_SECRET");
-    expect(script).toContain("/api/users?pagination[page]=1&pagination[pageSize]=100&populate=accounts");
+    expect(script).toContain("const selectionPageSize = 100");
+    expect(script).toContain("for (let page = 1; page <= 100; page += 1)");
+    expect(script).toContain("/api/users?pagination[page]=${page}&pagination[pageSize]=${selectionPageSize}&sort=id%3Aasc&populate=accounts");
+    expect(script).toContain("if (users.length < selectionPageSize) selectionExhausted = true");
+    expect(script).toContain("if (!candidate && !selectionExhausted) throw new Error(\"selection limit reached\")");
     expect(script).toContain("if (!Number.isSafeInteger(candidate.id) || candidate.id < 1 || candidate.blocked !== false) return false");
     expect(script).toContain('(provider === "local" && candidate.confirmed === true) || provider === "google"');
     expect(script).toContain("completedAccounts.length === 1");

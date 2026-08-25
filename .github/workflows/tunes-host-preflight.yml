@@ -87,28 +87,36 @@ jobs:
               if (!accessAuthority || !secret || secret.length < 32
                   || !["http:", "https:"].includes(strapiOrigin.protocol)
                   || strapiOrigin.username || strapiOrigin.password) throw new Error("unavailable authority");
-              const selectionResponse = await fetch(new URL(
-                "/api/users?pagination[page]=1&pagination[pageSize]=100&populate=accounts",
-                strapiOrigin,
-              ), {
-                headers: { authorization: `Bearer ${accessAuthority}`, accept: "application/json" },
-                redirect: "error",
-                signal: AbortSignal.timeout(5_000),
-              });
-              if (!selectionResponse.ok) throw new Error("selection unavailable");
-              const users = await selectionResponse.json();
-              if (!Array.isArray(users)) throw new Error("selection malformed");
-              const candidate = users.filter((candidate) => {
-                const provider = typeof candidate.provider === "string" ? candidate.provider.toLowerCase() : "";
-                const completedAccounts = Array.isArray(candidate.accounts) ? candidate.accounts.filter((account) =>
-                  typeof account?.documentId === "string" && account.documentId.length > 0
-                  && typeof account?.Account_Name === "string" && account.Account_Name.trim().length > 0
-                  && typeof account?.Account_Type === "string" && account.Account_Type.trim().length > 0
-                  && typeof account?.mobile_number === "string" && account.mobile_number.trim().length > 0) : [];
-                if (!Number.isSafeInteger(candidate.id) || candidate.id < 1 || candidate.blocked !== false) return false;
-                return ((provider === "local" && candidate.confirmed === true) || provider === "google")
-                  && completedAccounts.length === 1;
-              }).sort((left, right) => left.id - right.id)[0];
+              const selectionPageSize = 100;
+              let candidate;
+              let selectionExhausted = false;
+              for (let page = 1; page <= 100; page += 1) {
+                const selectionResponse = await fetch(new URL(
+                  `/api/users?pagination[page]=${page}&pagination[pageSize]=${selectionPageSize}&sort=id%3Aasc&populate=accounts`,
+                  strapiOrigin,
+                ), {
+                  headers: { authorization: `Bearer ${accessAuthority}`, accept: "application/json" },
+                  redirect: "error",
+                  signal: AbortSignal.timeout(5_000),
+                });
+                if (!selectionResponse.ok) throw new Error("selection unavailable");
+                const users = await selectionResponse.json();
+                if (!Array.isArray(users)) throw new Error("selection malformed");
+                candidate = users.filter((candidate) => {
+                  const provider = typeof candidate.provider === "string" ? candidate.provider.toLowerCase() : "";
+                  const completedAccounts = Array.isArray(candidate.accounts) ? candidate.accounts.filter((account) =>
+                    typeof account?.documentId === "string" && account.documentId.length > 0
+                    && typeof account?.Account_Name === "string" && account.Account_Name.trim().length > 0
+                    && typeof account?.Account_Type === "string" && account.Account_Type.trim().length > 0
+                    && typeof account?.mobile_number === "string" && account.mobile_number.trim().length > 0) : [];
+                  if (!Number.isSafeInteger(candidate.id) || candidate.id < 1 || candidate.blocked !== false) return false;
+                  return ((provider === "local" && candidate.confirmed === true) || provider === "google")
+                    && completedAccounts.length === 1;
+                }).sort((left, right) => left.id - right.id)[0];
+                if (users.length < selectionPageSize) selectionExhausted = true;
+                if (candidate || selectionExhausted) break;
+              }
+              if (!candidate && !selectionExhausted) throw new Error("selection limit reached");
               if (!candidate) {
                 finish({ schemaVersion, outcome: "failed_closed", reason: "no_eligible_identity" }, false);
                 return;
