@@ -170,6 +170,8 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).toContain("inputs.operation == 'bootstrap'");
     expect(deploy).toContain("gh attestation verify");
     expect(deploy).toContain('gh attestation verify "oci://${IMAGE_REPOSITORY}@${DIGEST}"');
+    expect(deploy).toContain("docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9");
+    expect(deploy).toContain("password: ${{ github.token }}");
     expect(deploy).toContain('git merge-base --is-ancestor "$commit" "$GITHUB_SHA"');
     expect(deploy).toContain('--signer-workflow "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/tunes.yml"');
     expect(deploy).toContain("--source-ref refs/heads/main");

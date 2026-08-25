@@ -51,6 +51,7 @@ function harness() {
   const gateway = {
     resolveUser: vi.fn(async () => ({ userDocumentId: identity.userDocumentId })),
     resolve: vi.fn(async () => identity),
+    clear: vi.fn(),
   };
   const disconnectOwner = vi.fn(async () => undefined);
   return { status, repository, gateway, disconnectOwner };
@@ -263,6 +264,9 @@ describe("MusicLifecycleService", () => {
     await expect(service.reactivateFromProof("authoritative-proof", "request-resume")).resolves.toMatchObject({
       id: 41, identityStatus: "active", sessionVersion: 9,
     });
+    expect(h.gateway.clear).toHaveBeenCalledOnce();
+    expect(h.gateway.clear).toHaveBeenCalledWith(expect.stringMatching(/^[a-f0-9]{64}$/));
+    expect(h.gateway.clear.mock.invocationCallOrder[0]).toBeLessThan(h.gateway.resolve.mock.invocationCallOrder[0]);
     expect(h.gateway.resolve).toHaveBeenCalledWith("authoritative-proof", "request-resume");
     expect(h.repository.reactivateIdentity).toHaveBeenCalledWith({
       userDocumentId: identity.userDocumentId,

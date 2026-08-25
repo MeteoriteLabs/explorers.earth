@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ResolvedStrapiIdentity } from "./strapiIdentityGateway";
+import { fingerprintStrapiProof, type ResolvedStrapiIdentity } from "./strapiIdentityGateway";
 import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
 import { MusicIdentityError } from "../../shared/musicError";
 
@@ -36,6 +36,7 @@ type LifecycleBinding = {
 interface LifecycleGateway {
   resolve(proof: string, requestId: string): Promise<ResolvedStrapiIdentity>;
   resolveUser(proof: string, requestId: string): Promise<{ userDocumentId: string }>;
+  clear(fingerprint?: string): void;
 }
 
 interface LifecycleRepository {
@@ -146,6 +147,7 @@ export class MusicLifecycleService {
   }
 
   async reactivateFromProof(proof: string, requestId: string): Promise<MusicIdentityProjection | MusicIdentityNotPresentProjection> {
+    this.gateway.clear(fingerprintStrapiProof(proof));
     const authoritative = await this.gateway.resolve(proof, requestId);
     return this.repository.reactivateIdentity({
       userDocumentId: authoritative.userDocumentId,

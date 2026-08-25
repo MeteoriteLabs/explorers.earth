@@ -74,6 +74,7 @@ interface RunOptions {
   fixtureRootOverride?: string;
   legacyComposeProject?: string;
   legacyComposeService?: string;
+  legacyService?: string;
 }
 
 describe("checked-in production Music deploy executable", () => {
@@ -363,7 +364,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       `digest=${requestedDigest}`,
       `commit=${requestedCommit}`,
       `compose_project=${composeProject}`,
-      `legacy_service=${operation === "bootstrap" ? "legacy-tunes" : "-"}`,
+      `legacy_service=${operation === "bootstrap" ? (options.legacyService ?? "legacy-tunes") : "-"}`,
       ...(options.extraRequestLines ?? []),
       "",
     ].join("\n"));
@@ -951,6 +952,23 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("legacy container Compose project mismatch");
     expect(existsSync(join(root, "deployment-routing/music-router.yml"))).toBe(false);
+  });
+
+  it("matches a dotted legacy route as a fixed string during bootstrap", () => {
+    writeFileSync(join(root, "deployment-routing/music-router.yml"), [
+      "http:",
+      "  services:",
+      "    tunes-active:",
+      "      loadBalancer:",
+      "        servers:",
+      "          - url: http://legacyXtunes:5000",
+      "",
+    ].join("\n"));
+    const result = run("bootstrap", digest("a"), commit("a"), { legacyService: "legacy.tunes" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("bootstrap legacy route does not match observed service");
+    expect(existsSync(eventLog)).toBe(false);
+    expect(existsSync(join(root, "deployment-state/music-state.tsv"))).toBe(false);
   });
 
   it("keeps the production entrypoint GHCR-only and refuses direct fixture authority", () => {

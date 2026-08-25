@@ -608,7 +608,7 @@ if [[ "$operation" == bootstrap ]]; then
   music_deploy_validate_compose_project "$compose_project"
   if [[ -e "$route_file" ]]; then
     require_regular_file "$route_file"
-    [[ "$(grep -Ec "url: http://${legacy_service}:5000$" "$route_file")" == 1 ]] \
+    [[ "$(grep -Fxc "            url: http://${legacy_service}:5000" "$route_file")" == 1 ]] \
       || fail "bootstrap legacy route does not match observed service"
   else
     write_route "$legacy_service" false

@@ -137,6 +137,14 @@ jobs:
             echo "source=$IMAGE_SOURCE"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Authenticate the private GHCR image for provenance verification
+        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'bootstrap'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Verify GitHub build provenance for deploy or bootstrap
         if: github.event_name != 'workflow_dispatch' || inputs.operation == 'bootstrap'
         env:
