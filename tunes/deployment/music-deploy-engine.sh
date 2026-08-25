@@ -609,9 +609,19 @@ if [[ "$operation" == bootstrap ]]; then
   if [[ -e "$route_file" ]]; then
     require_regular_file "$route_file"
     awk -v expected="http://${legacy_service}:5000" '
-      $0 == "    tunes-active:" { active_sections += 1; in_active = 1; next }
-      in_active && $0 ~ /^    [^ ]/ { in_active = 0 }
-      in_active && $0 == "            url: " expected { active_matches += 1 }
+      $0 ~ /^[^ ]/ { in_http = ($0 == "http:"); in_services = in_active = in_load_balancer = in_servers = 0 }
+      in_http && $0 ~ /^  [^ ]/ {
+        in_services = ($0 == "  services:"); in_active = in_load_balancer = in_servers = 0
+      }
+      in_services && $0 ~ /^    [^ ]/ {
+        in_active = ($0 == "    tunes-active:"); in_load_balancer = in_servers = 0
+        if (in_active) active_sections += 1
+      }
+      in_active && $0 ~ /^      [^ ]/ {
+        in_load_balancer = ($0 == "      loadBalancer:"); in_servers = 0
+      }
+      in_load_balancer && $0 ~ /^        [^ ]/ { in_servers = ($0 == "        servers:") }
+      in_servers && $0 == "          - url: " expected { active_matches += 1 }
       END { exit !(active_sections == 1 && active_matches == 1) }
     ' "$route_file" \
       || fail "bootstrap legacy route does not match observed service"
