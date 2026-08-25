@@ -147,18 +147,26 @@ describe("private Music query identity isolation", () => {
     expect(musicIdentityCoordinator.retry).toHaveBeenCalledOnce();
   });
 
-  it("reports an explicit retry error at the hook boundary", async () => {
+  it("does not republish an account A retry error after rendering account B", async () => {
     const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
-    const error = Object.assign(new Error("contained"), { requestId: "retry-request-7" });
-    vi.mocked(musicIdentityCoordinator.retry).mockRejectedValueOnce(error);
+    let rejectRetry!: (reason?: unknown) => void;
+    const retryFlight = new Promise<void>((_resolve, reject) => { rejectRetry = reject; });
+    vi.mocked(musicIdentityCoordinator.retry).mockReturnValueOnce(retryFlight);
+    vi.mocked(musicIdentityCoordinator.reportFailure).mockImplementation((error: unknown) => {
+      coordinatorState.diagnostic = { requestId: (error as { requestId?: string }).requestId };
+    });
     const queryClient = new QueryClient();
     vi.spyOn(musicWorkspaceClient, "load").mockResolvedValue(workspace("Ready"));
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-    render(<><RetryProbe scope={scopeA} /><CorrelationProbe scope={scopeA} /></>, { wrapper });
+    const view = render(<RetryProbe scope={scopeA} />, { wrapper });
 
     fireEvent.click(screen.getByRole("button", { name: "Retry identity" }));
+    view.rerender(<RetryProbe scope={scopeB} />);
+    rejectRetry(Object.assign(new Error("contained"), { requestId: "account-a-request" }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
-    await waitFor(() => expect(musicIdentityCoordinator.reportFailure).toHaveBeenCalledWith(error));
+    expect(musicIdentityCoordinator.reportFailure).not.toHaveBeenCalled();
+    expect(coordinatorState.diagnostic).toEqual({});
   });
 
   it("exposes the coordinator's sanitized request ID to UI state", () => {

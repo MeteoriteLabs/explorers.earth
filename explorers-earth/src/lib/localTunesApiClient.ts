@@ -51,16 +51,31 @@ export interface LocalTunesApiClient {
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 const STRAPI_PROOF_PATTERN = /^[A-Za-z0-9._~-]{16,4096}$/;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
-const MUSIC_ERROR_ACTIONS = new Set(["authenticate", "complete_onboarding", "contact_support", "retry", "none"]);
-const ENSURE_ERROR_CODES = new Map<number, ReadonlySet<string>>([
-  [400, new Set(["REQUEST_INVALID"])],
-  [401, new Set(["AUTH_REQUIRED", "AUTH_INVALID"])],
-  [403, new Set(["IDENTITY_INELIGIBLE", "ONBOARDING_INCOMPLETE", "IDENTITY_SUSPENDED"])],
-  [409, new Set(["ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT", "IDENTITY_CONFLICT", "IDENTITY_TOMBSTONED", "IDENTITY_PENDING_DELETION"])],
-  [429, new Set(["RATE_LIMITED"])],
-  [500, new Set(["INTERNAL_ERROR"])],
-  [502, new Set(["UPSTREAM_MALFORMED"])],
-  [503, new Set(["UPSTREAM_UNAVAILABLE", "DATABASE_UNAVAILABLE", "ENTRY_DISABLED"])],
+type MusicIdentityErrorAction = "authenticate" | "complete_onboarding" | "contact_support" | "retry" | "none";
+interface MusicIdentityErrorPolicy {
+  status: number;
+  code: string;
+  action: MusicIdentityErrorAction;
+  retryable: boolean;
+}
+const MUSIC_IDENTITY_ERROR_POLICY: readonly MusicIdentityErrorPolicy[] = Object.freeze([
+  { status: 400, code: "REQUEST_INVALID", action: "none", retryable: false },
+  { status: 401, code: "AUTH_REQUIRED", action: "authenticate", retryable: false },
+  { status: 401, code: "AUTH_INVALID", action: "authenticate", retryable: false },
+  { status: 403, code: "IDENTITY_INELIGIBLE", action: "complete_onboarding", retryable: false },
+  { status: 403, code: "IDENTITY_SUSPENDED", action: "contact_support", retryable: false },
+  { status: 409, code: "ONBOARDING_INCOMPLETE", action: "complete_onboarding", retryable: false },
+  { status: 409, code: "ACCOUNT_AMBIGUOUS", action: "contact_support", retryable: false },
+  { status: 409, code: "ACCOUNT_SWITCH_CONFLICT", action: "contact_support", retryable: false },
+  { status: 409, code: "IDENTITY_CONFLICT", action: "contact_support", retryable: false },
+  { status: 409, code: "IDENTITY_TOMBSTONED", action: "contact_support", retryable: false },
+  { status: 409, code: "IDENTITY_PENDING_DELETION", action: "contact_support", retryable: false },
+  { status: 429, code: "RATE_LIMITED", action: "retry", retryable: true },
+  { status: 500, code: "INTERNAL_ERROR", action: "retry", retryable: true },
+  { status: 502, code: "UPSTREAM_MALFORMED", action: "retry", retryable: true },
+  { status: 503, code: "UPSTREAM_UNAVAILABLE", action: "retry", retryable: true },
+  { status: 503, code: "DATABASE_UNAVAILABLE", action: "retry", retryable: true },
+  { status: 503, code: "ENTRY_DISABLED", action: "retry", retryable: true },
 ]);
 const AUTHORITY_ABORT = Object.freeze({ kind: "authority" });
 const DEADLINE_ABORT = Object.freeze({ kind: "deadline" });
@@ -246,7 +261,8 @@ async function containedEnsureError(response: Response, signal: AbortSignal): Pr
   );
   try {
     const body = await abortable(Promise.resolve(response.json()), signal) as unknown;
-    if (!validEnsureErrorEnvelope(body, response.status, requestId)) return fallback();
+    const validated = validateEnsureErrorEnvelope(body, response.status, requestId);
+    if (!validated) return fallback();
     const retryAfterHeader = response.headers.get("retry-after");
     if ((response.status === 429 || response.status === 503) && !retryAfterHeader) return fallback();
     if (retryAfterHeader && !/^[1-9][0-9]*$/.test(retryAfterHeader)) return fallback();
@@ -256,8 +272,8 @@ async function containedEnsureError(response: Response, signal: AbortSignal): Pr
       response.status,
       response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
       retryAfterSeconds,
-      body.error.code,
-      body.error.retryable,
+      validated.code,
+      validated.retryable,
       requestId,
     );
   } catch (cause) {
@@ -266,27 +282,23 @@ async function containedEnsureError(response: Response, signal: AbortSignal): Pr
   }
 }
 
-interface ContainedEnsureErrorEnvelope {
-  version: "music-error/v1";
-  error: { code: string; message: string; action: string; retryable: boolean; requestId: string };
-}
-
-function validEnsureErrorEnvelope(
+function validateEnsureErrorEnvelope(
   value: unknown,
   status: number,
   requestId: string | undefined,
-): value is ContainedEnsureErrorEnvelope {
-  if (!value || typeof value !== "object" || !hasExactKeys(value, ["version", "error"])) return false;
+): Pick<MusicIdentityErrorPolicy, "code" | "retryable"> | undefined {
+  if (!value || typeof value !== "object" || !hasExactKeys(value, ["version", "error"])) return undefined;
   const envelope = value as { version?: unknown; error?: unknown };
   if (envelope.version !== "music-error/v1" || !envelope.error || typeof envelope.error !== "object"
-      || !hasExactKeys(envelope.error, ["code", "message", "action", "retryable", "requestId"])) return false;
+      || !hasExactKeys(envelope.error, ["code", "message", "action", "retryable", "requestId"])) return undefined;
   const error = envelope.error as Record<string, unknown>;
-  if (typeof error.code !== "string" || !ENSURE_ERROR_CODES.get(status)?.has(error.code)
-      || typeof error.message !== "string" || error.message.length < 1 || error.message.length > 160
-      || typeof error.action !== "string" || !MUSIC_ERROR_ACTIONS.has(error.action)
-      || typeof error.retryable !== "boolean" || (error.retryable !== (error.action === "retry"))
-      || typeof error.requestId !== "string" || error.requestId !== requestId) return false;
-  return status !== 401 && status !== 403 || error.retryable === false;
+  const policy = typeof error.code === "string"
+    ? MUSIC_IDENTITY_ERROR_POLICY.find((candidate) => candidate.status === status && candidate.code === error.code)
+    : undefined;
+  if (!policy || typeof error.message !== "string" || error.message.length < 1 || error.message.length > 160
+      || error.action !== policy.action || error.retryable !== policy.retryable
+      || typeof error.requestId !== "string" || error.requestId !== requestId) return undefined;
+  return { code: policy.code, retryable: policy.retryable };
 }
 
 function hasExactKeys(value: object, expected: readonly string[]): boolean {

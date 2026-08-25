@@ -373,15 +373,18 @@ describe("local Tunes API client", () => {
   it.each([
     { label: "lying 401", status: 401, code: "AUTH_INVALID", retryable: true, retryAfter: undefined },
     { label: "lying 403", status: 403, code: "IDENTITY_INELIGIBLE", retryable: true, retryAfter: undefined },
+    { label: "retryable 400 request", status: 400, code: "REQUEST_INVALID", retryable: true, action: "retry", retryAfter: undefined },
+    { label: "retryable 409 conflict", status: 409, code: "IDENTITY_CONFLICT", retryable: true, action: "retry", retryAfter: undefined },
     { label: "unversioned 503", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: "1", version: "legacy-error" },
     { label: "contradictory 503 code", status: 503, code: "AUTH_INVALID", retryable: true, retryAfter: "1" },
     { label: "mismatched correlation", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: "1", headerRequestId: "header-request" },
     { label: "missing rate-limit Retry-After", status: 429, code: "RATE_LIMITED", retryable: true, retryAfter: undefined },
     { label: "missing Retry-After", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: undefined },
     { label: "invalid Retry-After", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: "invalid" },
-  ])("fails closed without retrying a $label envelope", async ({ status, code, retryable, retryAfter, version, headerRequestId }) => {
+  ])("fails closed without retrying a $label envelope", async ({ status, code, retryable, action, retryAfter, version, headerRequestId }) => {
     const fetchImpl = vi.fn(async () => identityErrorResponse(status, code, {
       retryable,
+      action,
       retryAfter,
       version,
       requestId: "body-request",
@@ -399,6 +402,64 @@ describe("local Tunes API client", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(error).toMatchObject({ status, retryable: false, upstreamCode: undefined });
+  });
+
+  it("fails a fully shaped non-string identity code closed", async () => {
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl: async () => json({
+        version: "music-error/v1",
+        error: {
+          code: 503,
+          message: "Contained.",
+          action: "retry",
+          retryable: true,
+          requestId: "non-string-code",
+        },
+      }, 503, { "retry-after": "1", "x-request-id": "non-string-code" }),
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+
+    await expect(client.ensureIdentity()).rejects.toMatchObject({ retryable: false, upstreamCode: undefined });
+  });
+
+  it.each([
+    { status: 400, code: "REQUEST_INVALID", action: "none", retryable: false },
+    { status: 401, code: "AUTH_REQUIRED", action: "authenticate", retryable: false },
+    { status: 401, code: "AUTH_INVALID", action: "authenticate", retryable: false },
+    { status: 403, code: "IDENTITY_INELIGIBLE", action: "complete_onboarding", retryable: false },
+    { status: 403, code: "IDENTITY_SUSPENDED", action: "contact_support", retryable: false },
+    { status: 409, code: "ONBOARDING_INCOMPLETE", action: "complete_onboarding", retryable: false },
+    { status: 409, code: "ACCOUNT_AMBIGUOUS", action: "contact_support", retryable: false },
+    { status: 409, code: "ACCOUNT_SWITCH_CONFLICT", action: "contact_support", retryable: false },
+    { status: 409, code: "IDENTITY_CONFLICT", action: "contact_support", retryable: false },
+    { status: 409, code: "IDENTITY_TOMBSTONED", action: "contact_support", retryable: false },
+    { status: 409, code: "IDENTITY_PENDING_DELETION", action: "contact_support", retryable: false },
+    { status: 429, code: "RATE_LIMITED", action: "retry", retryable: true },
+    { status: 500, code: "INTERNAL_ERROR", action: "retry", retryable: true },
+    { status: 502, code: "UPSTREAM_MALFORMED", action: "retry", retryable: true },
+    { status: 503, code: "UPSTREAM_UNAVAILABLE", action: "retry", retryable: true },
+    { status: 503, code: "DATABASE_UNAVAILABLE", action: "retry", retryable: true },
+    { status: 503, code: "ENTRY_DISABLED", action: "retry", retryable: true },
+  ] as const)("accepts emitted $status $code policy and preserves its code", async ({ status, code, action, retryable }) => {
+    const fetchImpl = vi.fn(async () => identityErrorResponse(status, code, {
+      action,
+      retryable,
+      ...(status === 429 || status === 503 ? { retryAfter: "1" } : {}),
+    }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async () => undefined,
+    });
+
+    const error = await client.ensureIdentity().catch((cause) => cause);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(retryable ? 3 : 1);
+    expect(error).toMatchObject({ status, upstreamCode: code, retryable });
   });
 
   it("enforces one total deadline when an ensure fetch ignores AbortSignal", async () => {
