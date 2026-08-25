@@ -196,6 +196,8 @@ jobs:
               status=$?
               trap - ERR
               echo 'Candidate verification failed; restoring retained application image.'
+              docker logs --tail 300 tunes-app-1 > "$backup_dir/candidate-log-$stamp.txt" 2>&1 || true
+              curl --silent --show-error --max-time 5 http://127.0.0.1:5001/health/ready > "$backup_dir/readiness-$stamp.json" || true
               write_override "$rollback_image"
               for retry in $(seq 1 3); do
                 date +%s > "$heartbeat_file"
