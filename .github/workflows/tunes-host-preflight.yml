@@ -31,7 +31,7 @@ jobs:
           host: ${{ secrets.TUNES_DEPLOY_HOST }}
           username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
-          fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}
+          fingerprint: SHA256:mkzoRIglhalq6lNwNgM2kyuRLFGLeIbpLQpypShYMSw
           command_timeout: 2m
           script: |
             set -euo pipefail
@@ -130,9 +130,8 @@ jobs:
           host: ${{ secrets.TUNES_DEPLOY_HOST }}
           username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
-          fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}
+          fingerprint: SHA256:mkzoRIglhalq6lNwNgM2kyuRLFGLeIbpLQpypShYMSw
           command_timeout: 12m
-          script_stop: true
           envs: CANDIDATE_IMAGE,CANDIDATE_COMMIT,GHCR_USER,GHCR_TOKEN
           script: |
             set -euo pipefail
@@ -145,6 +144,8 @@ jobs:
             success_flag="$backup_dir/deploy-success-$stamp"
             heartbeat_file="$backup_dir/deploy-heartbeat-$stamp"
             watchdog_script="$backup_dir/watchdog-$stamp.sh"
+            authority_dir="$compose_dir/.music-live-authority"
+            attestation_dir="$authority_dir/attestations"
             cd "$compose_dir"
             test -f "$compose_file"
             test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-app-1)" = tunes
@@ -156,7 +157,7 @@ jobs:
             db_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-db-1)"
             shared_network=false
             for network in $app_networks; do
-              if printf '%s\n' "$db_networks" | grep -Fqw "$network"; then shared_network=true; fi
+              if printf '%s\n' "$db_networks" | grep -Fqw "$network"; then shared_network=true; shared_network_name="$network"; fi
             done
             test "$shared_network" = true
             mkdir -p "$backup_dir"
@@ -179,9 +180,99 @@ jobs:
             docker pull "$CANDIDATE_IMAGE"
             test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{.Architecture}}')" = arm64
             test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$CANDIDATE_COMMIT"
-            write_override() {
+            write_rollback_override() {
               image="$1"
               printf 'services:\n  app:\n    image: %s\n    pull_policy: never\n' "$image" > "$override_file"
+              chmod 600 "$override_file"
+            }
+            install -d -m 700 "$authority_dir" "$attestation_dir"
+            create_authority() {
+              target="$1"
+              if [ ! -s "$target" ]; then openssl rand -hex 24 > "$target"; fi
+              chmod 600 "$target"
+              test "$(wc -c < "$target")" -ge 43
+            }
+            create_authority "$authority_dir/db-migrator"
+            create_authority "$authority_dir/db-runtime"
+            create_authority "$authority_dir/music-token"
+            create_authority "$authority_dir/publication-response"
+            create_authority "$authority_dir/lifecycle-proof"
+            create_authority "$authority_dir/strapi-jwt"
+            create_authority "$authority_dir/gate-key"
+            db_name="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_DB=//p' | head -n 1)"
+            test -n "$db_name"
+            migrator_password="$(cat "$authority_dir/db-migrator")"
+            docker exec -i tunes-db-1 psql -X -v ON_ERROR_STOP=1 -U "$db_user" -d "$db_name" -v password="$migrator_password" <<'SQL'
+            DO $$ BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='music_migrator') THEN
+                CREATE ROLE music_migrator LOGIN SUPERUSER CREATEROLE CREATEDB;
+              END IF;
+            END $$;
+            ALTER ROLE music_migrator WITH LOGIN SUPERUSER CREATEROLE CREATEDB PASSWORD :'password';
+            SQL
+            candidate_digest="${CANDIDATE_IMAGE##*@}"
+            docker run --rm --user "$(id -u):$(id -g)" --network "$shared_network_name" \
+              --entrypoint node \
+              -e MUSIC_MODE=live -e MUSIC_DATABASE_HOST=db -e MUSIC_DATABASE_PORT=5432 \
+              -e MUSIC_DATABASE_NAME="$db_name" -e MUSIC_DATABASE_USER=music_migrator \
+              -e MUSIC_DATABASE_PASSWORD_FILE=/run/secrets/db-migrator \
+              -e MUSIC_RUNTIME_DATABASE_USER=music_runtime_login \
+              -e MUSIC_RUNTIME_DATABASE_PASSWORD_FILE=/run/secrets/db-runtime \
+              -e MUSIC_IMAGE_DIGEST="$candidate_digest" -e MUSIC_IMAGE_COMMIT="$CANDIDATE_COMMIT" \
+              -e MUSIC_MIGRATION_MARKER=0017_publication_idempotency_key_retirement \
+              -e MUSIC_GATE_ATTESTATION_KEY="$(cat "$authority_dir/gate-key")" \
+              -e MUSIC_GATE_ATTESTATION_PATH="/deployment-gates/$candidate_digest.json" \
+              -v "$authority_dir/db-migrator:/run/secrets/db-migrator:ro" \
+              -v "$authority_dir/db-runtime:/run/secrets/db-runtime:ro" \
+              -v "$attestation_dir:/deployment-gates" \
+              "$CANDIDATE_IMAGE" dist/server/deployment/run-migration-gate.js
+            proxy_ip="$(docker network inspect "$shared_network_name" --format '{{(index .IPAM.Config 0).Gateway}}')"
+            strapi_url="$(docker inspect tunes-app-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^STRAPI_URL=//p' | head -n 1)"
+            test -n "$strapi_url"
+            strapi_origin="$(printf '%s' "$strapi_url" | sed -E 's#^(https://[^/]+).*$#\1#')"
+            test "${strapi_origin#https://}" != "$strapi_origin"
+            write_candidate_override() {
+              cat > "$override_file" <<EOF
+            services:
+              app:
+                image: $CANDIDATE_IMAGE
+                pull_policy: never
+                user: "$(id -u):$(id -g)"
+                environment:
+                  DATABASE_URL: ""
+                  MUSIC_MODE: live
+                  MUSIC_DATABASE_HOST: db
+                  MUSIC_DATABASE_PORT: "5432"
+                  MUSIC_DATABASE_NAME: $db_name
+                  MUSIC_DATABASE_USER: music_runtime_login
+                  MUSIC_DATABASE_MIGRATOR_USER: music_migrator
+                  MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
+                  MUSIC_STRAPI_ALLOWED_ORIGINS: $strapi_origin
+                  TRUST_PROXY_HOPS: "1"
+                  MUSIC_TRUSTED_PROXY_IP: $proxy_ip
+                  STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: /run/secrets/lifecycle-proof
+                  STRAPI_JWT_SECRET: $(cat "$authority_dir/strapi-jwt")
+                  MUSIC_GATE_ATTESTATION_KEY: $(cat "$authority_dir/gate-key")
+                  MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
+                  MUSIC_NEW_ENTRY_KILL_SWITCH: "true"
+                  MUSIC_COHORT_ENABLED: "false"
+                  MUSIC_TOKEN_CURRENT_KID: test-current-v1
+                  MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token
+                  MUSIC_TOKEN_LIFETIME_SECONDS: "600"
+                  MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15"
+                  MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: test-publication-v1
+                  MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: /run/secrets/publication-response
+                  MUSIC_IMAGE_DIGEST: $candidate_digest
+                  MUSIC_IMAGE_COMMIT: $CANDIDATE_COMMIT
+                  MUSIC_MIGRATION_MARKER: 0017_publication_idempotency_key_retirement
+                  MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/$candidate_digest.json
+                volumes:
+                  - $authority_dir/db-runtime:/run/secrets/music-db-runtime:ro
+                  - $authority_dir/music-token:/run/secrets/music-token:ro
+                  - $authority_dir/publication-response:/run/secrets/publication-response:ro
+                  - $authority_dir/lifecycle-proof:/run/secrets/lifecycle-proof:ro
+                  - $attestation_dir:/deployment-gates:ro
+            EOF
               chmod 600 "$override_file"
             }
             cat > "$watchdog_script" <<EOF
@@ -218,7 +309,7 @@ jobs:
               echo 'Candidate verification failed; restoring retained application image.'
               docker logs --tail 300 tunes-app-1 > "$backup_dir/candidate-log-$stamp.txt" 2>&1 || true
               curl --silent --show-error --max-time 5 http://127.0.0.1:5001/health/ready > "$backup_dir/readiness-$stamp.json" || true
-              write_override "$rollback_image"
+              write_rollback_override "$rollback_image"
               for retry in $(seq 1 3); do
                 date +%s > "$heartbeat_file"
                 timeout 90s docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
@@ -238,7 +329,7 @@ jobs:
               exit 1
             }
             trap rollback ERR
-            write_override "$CANDIDATE_IMAGE"
+            write_candidate_override
             date +%s > "$heartbeat_file"
             timeout 90s docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app
             for attempt in $(seq 1 45); do
@@ -252,7 +343,6 @@ jobs:
               sleep 2
             done
             test "$(docker inspect --format '{{.Config.Image}}' tunes-app-1)" = "$CANDIDATE_IMAGE"
-            candidate_digest="${CANDIDATE_IMAGE##*@}"
             docker run --rm --entrypoint node -v "$backup_dir/readiness-$stamp.json:/readiness.json:ro" --env EXPECTED_COMMIT="$CANDIDATE_COMMIT" --env EXPECTED_DIGEST="$candidate_digest" "$CANDIDATE_IMAGE" -e '
               const fs=require("node:fs");
               const value=JSON.parse(fs.readFileSync("/readiness.json","utf8"));
