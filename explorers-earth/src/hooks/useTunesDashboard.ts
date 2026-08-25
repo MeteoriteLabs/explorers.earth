@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
 import {
@@ -82,9 +82,6 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     staleTime: 30_000,
     retry: retryWorkspaceFailure,
   });
-  useEffect(() => {
-    if (query.error) musicIdentityCoordinator.reportFailure(query.error);
-  }, [query.error]);
   const visibleData = query.error ? undefined : query.data;
   const dashboard = visibleData?.dashboard ?? null;
   return {
@@ -99,13 +96,6 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     isLoading: identityStatus === "setting_up" || (scope !== undefined && query.isLoading),
     error: query.error ? "Music is temporarily unavailable." : null,
     refetch: query.refetch,
-    retryIdentity: async () => {
-      try {
-        await musicIdentityCoordinator.retry();
-      } catch (cause) {
-        musicIdentityCoordinator.reportFailure(cause);
-        throw cause;
-      }
-    },
+    retryIdentity: () => musicIdentityCoordinator.retry(),
   };
 }

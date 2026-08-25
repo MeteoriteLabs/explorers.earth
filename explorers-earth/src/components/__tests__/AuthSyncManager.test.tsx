@@ -41,6 +41,16 @@ vi.mock("../../features/music/musicSessionBoundary", () => ({ musicSessionBounda
 
 const complete = (documentId: string) => ({ documentId, Account_Name: "Ready", Account_Type: "Personal", mobile_number: "+10000000001" });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("AuthSyncManager immutable authority selection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -156,16 +166,37 @@ describe("AuthSyncManager immutable authority selection", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
-  it("forwards a contained automatic ensure failure into coordinator diagnostics", async () => {
-    const error = Object.assign(new Error("contained"), { requestId: "auth-sync-request" });
-    reconcile.mockRejectedValueOnce(error);
-    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: { usersPermissionsUser: {
+  it("cannot republish account A diagnostics after account B becomes active", async () => {
+    const accountA = deferred<void>();
+    const accountB = deferred<void>();
+    const diagnostic = { status: "idle", requestId: undefined as string | undefined };
+    reconcile.mockImplementation(async (input: { account: { documentId: string } }) => {
+      diagnostic.status = "setting_up";
+      return input.account.documentId === "account-a" ? accountA.promise : accountB.promise;
+    });
+    reportFailure.mockImplementation((error: { requestId?: string }) => {
+      diagnostic.status = "retryable";
+      diagnostic.requestId = error.requestId;
+    });
+    const query = useQuery as unknown as ReturnType<typeof vi.fn>;
+    query.mockReturnValue({ data: { usersPermissionsUser: {
       documentId: "user-document", provider: "local", confirmed: true, blocked: false,
       accounts: [complete("account-a")],
     } } });
+    const view = render(<AuthSyncManager />);
+    await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1));
 
-    render(<AuthSyncManager />);
+    query.mockReturnValue({ data: { usersPermissionsUser: {
+      documentId: "user-document", provider: "local", confirmed: true, blocked: false,
+      accounts: [complete("account-b")],
+    } } });
+    view.rerender(<AuthSyncManager />);
+    await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(2));
+    accountA.reject(Object.assign(new Error("contained"), { requestId: "account-a-request" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    await waitFor(() => expect(reportFailure).toHaveBeenCalledWith(error));
+    expect(diagnostic).toEqual({ status: "setting_up", requestId: undefined });
+    expect(reportFailure).not.toHaveBeenCalled();
+    accountB.resolve();
   });
 });
