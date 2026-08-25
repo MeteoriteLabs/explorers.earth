@@ -72,6 +72,20 @@ jobs:
                 }));
               }).catch(() => { console.log(JSON.stringify({ status: "network_error" })); process.exitCode = 1; });
             '
+            printf '%s\n' '=== sanitized Strapi relation-filter contract ==='
+            docker exec tunes-app-1 node -e '
+              const base = process.env.STRAPI_URL;
+              const headers = { authorization: `Bearer ${process.env.STRAPI_ACCESS_TOKEN}`, accept: "application/json" };
+              const probe = async relation => {
+                const params = new URLSearchParams({ [`filters[${relation}][documentId][$eq]`]: "diagnostic-nonexistent-document" });
+                const response = await fetch(new URL(`/api/accounts?${params}`, base), { headers });
+                await response.body?.cancel();
+                return response.status;
+              };
+              Promise.all([probe("users_permissions_user"), probe("users_permissions_users")])
+                .then(([singular, plural]) => console.log(JSON.stringify({ singular, plural })))
+                .catch(() => { console.log(JSON.stringify({ status: "network_error" })); process.exitCode = 1; });
+            '
             printf '%s\n' '=== compose services ==='
             cd /home/deploy/tunes/tunes
             docker compose -p tunes -f docker-compose.yml config --services
