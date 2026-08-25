@@ -7,6 +7,7 @@ import AuthSyncManager from "../AuthSyncManager";
 const setAuthority = vi.hoisted(() => vi.fn());
 const reconcile = vi.hoisted(() => vi.fn(async () => undefined));
 const reset = vi.hoisted(() => vi.fn());
+const reportFailure = vi.hoisted(() => vi.fn());
 const publish = vi.hoisted(() => vi.fn());
 const clearWorkspaceScope = vi.hoisted(() => vi.fn(async () => undefined));
 const clearAllWorkspaceQueries = vi.hoisted(() => vi.fn(async () => undefined));
@@ -19,7 +20,7 @@ vi.mock("@apollo/client", () => ({ useQuery: vi.fn(), gql: () => ({}) }));
 vi.mock("../../store/store", () => ({ default: vi.fn() }));
 vi.mock("../../features/music/musicApi", () => ({
   musicApi: { setAuthority },
-  musicIdentityCoordinator: { reconcile, reset },
+  musicIdentityCoordinator: { reconcile, reset, reportFailure },
 }));
 vi.mock("../../hooks/useTunesDashboard", () => ({
   clearMusicWorkspaceScope: clearWorkspaceScope,
@@ -153,5 +154,18 @@ describe("AuthSyncManager immutable authority selection", () => {
     await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(2));
     expect(reset).toHaveBeenCalledTimes(2);
     expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("forwards a contained automatic ensure failure into coordinator diagnostics", async () => {
+    const error = Object.assign(new Error("contained"), { requestId: "auth-sync-request" });
+    reconcile.mockRejectedValueOnce(error);
+    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: { usersPermissionsUser: {
+      documentId: "user-document", provider: "local", confirmed: true, blocked: false,
+      accounts: [complete("account-a")],
+    } } });
+
+    render(<AuthSyncManager />);
+
+    await waitFor(() => expect(reportFailure).toHaveBeenCalledWith(error));
   });
 });

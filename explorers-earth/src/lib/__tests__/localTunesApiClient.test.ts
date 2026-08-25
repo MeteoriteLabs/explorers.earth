@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { clearMusicCredential, getMusicCredential, setMusicCredential } from "../musicCredentialStore";
 import { createLocalTunesApiClient, MusicClientError } from "../localTunesApiClient";
+import { createMusicIdentityCoordinator } from "../../features/music/musicIdentityCoordinator";
 
 const NOW = 1_800_000_000_000;
 const freshCredential = { token: "fresh.music.credential", expiresAt: NOW + 600_000 };
@@ -37,6 +38,34 @@ function tokenResponse(code: "TOKEN_EXPIRED" | "TOKEN_INVALID" | "TOKEN_REVOKED"
     version: "music-error/v1",
     error: { code, message: "Contained.", action: "authenticate", retryable: false, requestId: `request-${code}` },
   }, 401);
+}
+
+function identityErrorResponse(
+  status: number,
+  code: string,
+  options: {
+    retryable?: boolean;
+    action?: string;
+    requestId?: string;
+    version?: string;
+    headerRequestId?: string;
+    retryAfter?: string;
+  } = {},
+): Response {
+  const requestId = options.requestId ?? `identity-request-${status}`;
+  return json({
+    version: options.version ?? "music-error/v1",
+    error: {
+      code,
+      message: "Contained.",
+      action: options.action ?? (options.retryable ? "retry" : "authenticate"),
+      retryable: options.retryable ?? false,
+      requestId,
+    },
+  }, status, {
+    "x-request-id": options.headerRequestId ?? requestId,
+    ...(options.retryAfter ? { "retry-after": options.retryAfter } : {}),
+  });
 }
 
 function deferred<T>() {
@@ -178,12 +207,15 @@ describe("local Tunes API client", () => {
 
   it("honors bounded Retry-After for retryable 503 identity failures and stops after two retries", async () => {
     let elapsedMs = 0;
-    const fetchImpl = vi.fn(async () => json({
+    const fetchImpl = vi.fn(async () => {
+      const requestId = `retry-request-${fetchImpl.mock.calls.length}`;
+      return json({
       version: "music-error/v1",
       error: {
-        code: "UPSTREAM_UNAVAILABLE", message: "Contained.", action: "retry", retryable: true, requestId: "body-request",
+        code: "UPSTREAM_UNAVAILABLE", message: "Contained.", action: "retry", retryable: true, requestId,
       },
-    }, 503, { "retry-after": "3600", "x-request-id": `retry-request-${fetchImpl.mock.calls.length}` }));
+      }, 503, { "retry-after": "3600", "x-request-id": requestId });
+    });
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
@@ -195,7 +227,7 @@ describe("local Tunes API client", () => {
     const error = await client.ensureIdentity().catch((cause) => cause);
 
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(elapsedMs).toBe(4_000);
+    expect(elapsedMs).toBe(2_000);
     expect(error).toMatchObject({
       status: 503,
       retryable: true,
@@ -211,9 +243,9 @@ describe("local Tunes API client", () => {
     const fetchImpl = vi.fn(async () => json({
       version: "music-error/v1",
       error: {
-        code: "UPSTREAM_UNAVAILABLE", message: "Contained.", action: "retry", retryable: true, requestId: "body-request",
+        code: "INTERNAL_ERROR", message: "Contained.", action: "retry", retryable: true, requestId: "retry-without-header",
       },
-    }, 503, { "x-request-id": "retry-without-header" }));
+    }, 500, { "x-request-id": "retry-without-header" }));
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
@@ -237,8 +269,66 @@ describe("local Tunes API client", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("uses the real default delay without exceeding the shared deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(async () => fetchImpl.mock.calls.length === 1
+        ? identityErrorResponse(500, "INTERNAL_ERROR", { retryable: true, action: "retry" })
+        : ensureResponse());
+      const client = createLocalTunesApiClient({
+        baseUrl: "https://music.example",
+        fetchImpl,
+        getStrapiBearer: async () => "authoritative-strapi-proof",
+        now: () => NOW,
+      });
+      const outcome = client.ensureIdentity();
+      await vi.advanceTimersByTimeAsync(999);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(outcome).resolves.toBeUndefined();
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("handles an authority abort that happens synchronously inside a retry delay", async () => {
+    let abortAuthority = () => undefined;
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl: async () => identityErrorResponse(500, "INTERNAL_ERROR", {
+        retryable: true,
+        action: "retry",
+      }),
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async () => { abortAuthority(); },
+    });
+    abortAuthority = () => client.setAuthority("user-b:account-b");
+    client.setAuthority("user-a:account-a");
+
+    await expect(client.ensureIdentity()).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
+  });
+
+  it("fails a malformed 400 ensure response closed as request-invalid", async () => {
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl: async () => json({ error: { code: "REQUEST_INVALID" } }, 400),
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+
+    await expect(client.ensureIdentity()).rejects.toMatchObject({
+      code: "REQUEST_INVALID",
+      status: 400,
+      retryable: false,
+    });
+  });
+
   it.each([401, 403] as const)("does not retry non-retryable %s identity failures and returns a safe request ID", async (status) => {
     let elapsedMs = 0;
+    const requestId = `safe-request-${status}`;
     const fetchImpl = vi.fn(async () => json({
       version: "music-error/v1",
       error: {
@@ -246,9 +336,9 @@ describe("local Tunes API client", () => {
         message: "Contained.",
         action: status === 401 ? "authenticate" : "complete_onboarding",
         retryable: false,
-        requestId: "body-request-must-not-win",
+        requestId,
       },
-    }, status, { "x-request-id": `safe-request-${status}` }));
+    }, status, { "x-request-id": requestId }));
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
@@ -280,6 +370,143 @@ describe("local Tunes API client", () => {
     await expect(client.ensureIdentity()).rejects.toMatchObject({ requestId: undefined });
   });
 
+  it.each([
+    { label: "lying 401", status: 401, code: "AUTH_INVALID", retryable: true, retryAfter: undefined },
+    { label: "lying 403", status: 403, code: "IDENTITY_INELIGIBLE", retryable: true, retryAfter: undefined },
+    { label: "unversioned 503", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: "1", version: "legacy-error" },
+    { label: "contradictory 503 code", status: 503, code: "AUTH_INVALID", retryable: true, retryAfter: "1" },
+    { label: "mismatched correlation", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: "1", headerRequestId: "header-request" },
+    { label: "missing rate-limit Retry-After", status: 429, code: "RATE_LIMITED", retryable: true, retryAfter: undefined },
+    { label: "missing Retry-After", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: undefined },
+    { label: "invalid Retry-After", status: 503, code: "UPSTREAM_UNAVAILABLE", retryable: true, retryAfter: "invalid" },
+  ])("fails closed without retrying a $label envelope", async ({ status, code, retryable, retryAfter, version, headerRequestId }) => {
+    const fetchImpl = vi.fn(async () => identityErrorResponse(status, code, {
+      retryable,
+      retryAfter,
+      version,
+      requestId: "body-request",
+      headerRequestId,
+    }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async () => undefined,
+    });
+
+    const error = await client.ensureIdentity().catch((cause) => cause);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(error).toMatchObject({ status, retryable: false, upstreamCode: undefined });
+  });
+
+  it("enforces one total deadline when an ensure fetch ignores AbortSignal", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(() => new Promise<Response>(() => undefined));
+      const client = createLocalTunesApiClient({
+        baseUrl: "https://music.example",
+        fetchImpl,
+        getStrapiBearer: async () => "authoritative-strapi-proof",
+        now: () => NOW,
+      });
+      let outcome: unknown = "pending";
+      void client.ensureIdentity().then(
+        () => { outcome = "resolved"; },
+        (error) => { outcome = error; },
+      );
+      await vi.advanceTimersByTimeAsync(4_500);
+
+      expect(outcome).toMatchObject({ code: "AUTH_UNAVAILABLE", status: 503, retryable: false });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("enforces the same total deadline while decoding an ensure response", async () => {
+    vi.useFakeTimers();
+    try {
+      const response = {
+        status: 503,
+        headers: new Headers({ "x-request-id": "decode-request", "retry-after": "1" }),
+        json: () => new Promise<unknown>(() => undefined),
+      } as Response;
+      const client = createLocalTunesApiClient({
+        baseUrl: "https://music.example",
+        fetchImpl: async () => response,
+        getStrapiBearer: async () => "authoritative-strapi-proof",
+        now: () => NOW,
+      });
+      let outcome: unknown = "pending";
+      void client.ensureIdentity().catch((error) => { outcome = error; });
+      await vi.advanceTimersByTimeAsync(4_500);
+
+      expect(outcome).toMatchObject({ code: "AUTH_UNAVAILABLE", status: 503, retryable: false });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("settles an old authority promptly when account switch aborts an active retry wait", async () => {
+    const delayEntered = deferred<void>();
+    const releaseDelay = deferred<void>();
+    const fetchImpl = vi.fn(async () => identityErrorResponse(503, "UPSTREAM_UNAVAILABLE", {
+      retryable: true,
+      action: "retry",
+      retryAfter: "3600",
+    }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async () => {
+        delayEntered.resolve();
+        await releaseDelay.promise;
+      },
+    });
+    client.setAuthority("user-a:account-a");
+    const oldResult = client.ensureIdentity().catch((error) => error);
+    await delayEntered.promise;
+    client.setAuthority("user-b:account-b");
+
+    const promptlySettled = await Promise.race([
+      oldResult.then((error) => ({ settled: true, error })),
+      new Promise<{ settled: false }>((resolve) => setTimeout(() => resolve({ settled: false }), 75)),
+    ]);
+    releaseDelay.resolve();
+    await oldResult;
+
+    expect(promptlySettled).toMatchObject({ settled: true, error: { code: "AUTH_REQUIRED" } });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("caps one composed coordinator entry at three ensure HTTP calls", async () => {
+    const fetchImpl = vi.fn(async () => identityErrorResponse(503, "UPSTREAM_UNAVAILABLE", {
+      retryable: true,
+      action: "retry",
+      retryAfter: "1",
+    }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async () => undefined,
+    });
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity: () => client.ensureIdentity() });
+
+    await coordinator.reconcile({
+      provider: "email", authenticated: true, verified: true,
+      userDocumentId: "user-1", account: { documentId: "account-1" },
+    }).catch(() => undefined);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(coordinator.getSnapshot()).toBe("retryable");
+  });
+
   it("contains typed identity errors for the state selector without leaking upstream messages", async () => {
     const fetchImpl = vi.fn(async () => json({
       version: "music-error/v1",
@@ -290,7 +517,7 @@ describe("local Tunes API client", () => {
         retryable: false,
         requestId: "request-conflict",
       },
-    }, 409));
+    }, 409, { "x-request-id": "request-conflict" }));
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
