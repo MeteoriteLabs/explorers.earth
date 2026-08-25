@@ -50,6 +50,11 @@ jobs:
             docker inspect tunes-app-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed 's/=.*//' | sort -u
             printf '%s\n' '=== current app mount destinations only ==='
             docker inspect tunes-app-1 --format '{{range .Mounts}}{{println .Type .Destination}}{{end}}' | sort -u
+            printf '%s\n' '=== recent sanitized music identity outcomes ==='
+            docker logs --since 30m tunes-app-1 2>&1 \
+              | grep '"event":"music_identity_ensure"' \
+              | sed -E 's#://[^/@[:space:]]+@#://***@#g' \
+              | tail -n 50 || true
             printf '%s\n' '=== compose services ==='
             cd /home/deploy/tunes/tunes
             docker compose -p tunes -f docker-compose.yml config --services
