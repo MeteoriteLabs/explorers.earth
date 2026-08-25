@@ -622,8 +622,7 @@ direct invocation. In particular, a caller cannot provide its root, Compose
 model, expected-image map, HMAC key, source checkout, registry, or request.
 
 The rehearsal derives the canonical repository from its executing tracked
-script, requires a clean checkout with no hidden tracked-index flags, and
-verifies the loaded script against the exact 40-character `HEAD`. It obtains
+script and requires a clean checkout. It obtains
 the Tunes build context and shared deployment-engine files from that commit's
 Git objects, not from mutable working-tree paths. Only after those checks and
 local Docker endpoint validation does it create an unpredictable private root.
@@ -664,8 +663,13 @@ macOS and user-writable/nvm Node installations are not qualification authority:
 /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh qualification
 ```
 
-Only the sanitized `music-operation/v1` result is release evidence. Generated
-roots, ports, credentials, container names, and developer paths are not evidence.
+The native launcher and its sanitized `music-operation/v1` result are local QA
+evidence only. They are loaded from a mutable checkout and therefore cannot
+authenticate that checkout against a malicious local writer. Production release
+authority comes only from the protected `main` GitHub Actions workflow, its
+immutable image digest/provenance, the `tunes-production` environment policy,
+and required independent approval. Generated roots, ports, credentials,
+container names, and developer paths are not evidence.
 
 The exact executable process suite injects crashes after journal creation,
 route replacement, manifest write, floor write, state write, and durable commit;
@@ -675,8 +679,9 @@ owners, OCI mismatches, journal/state/security-floor/schema-floor tamper, an old
 C2 image against the C3 schema, and duplicate/malformed/
 truncated/reordered manifests.
 
-Before `GATE_PROD` can open, retain output from the disposable real-Docker
-rehearsal showing:
+Before `GATE_PROD` can open, retain the protected-workflow image/deployment
+contract evidence. A disposable real-Docker rehearsal may supplement that
+evidence, but cannot replace it or authorize production. It should show:
 
 - no database host port or default credential in rendered Compose;
 - the candidate remains private before readiness;

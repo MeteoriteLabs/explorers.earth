@@ -1,4 +1,9 @@
-# Music identity release qualification evidence
+# Music identity local qualification evidence
+
+This template records non-authoritative QA evidence from a mutable checkout.
+It cannot authorize production. Production authority is the protected `main`
+GitHub Actions run, immutable image provenance, the `tunes-production`
+environment policy, and independent approval.
 
 This template records C10 qualification for independent review. It does not
 authorize production access, routing changes, reconciliation apply, image
@@ -123,5 +128,6 @@ bodies, URLs, and console output.
 | Minor findings | `{{minor_findings}}` |
 | Review evidence reference | `{{review_evidence}}` |
 
-Task completion is not approval. Promotion remains blocked until the separate
-reviewer and the later release task accept the exact evidence.
+Task completion is not approval. Promotion remains blocked until the protected
+production workflow and environment reviewers accept the exact immutable-image
+evidence; this local report is supplemental only.

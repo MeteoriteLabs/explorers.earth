@@ -9,6 +9,32 @@ const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Tunes workflow provenance and input boundary", () => {
+  it("pins every privileged production action to an immutable commit", () => {
+    for (const path of [".github/workflows/tunes.yml", ".github/workflows/tunes-deploy.yml"]) {
+      const workflow = parseYaml(read(path));
+      const visit = (value: unknown): void => {
+        if (Array.isArray(value)) return value.forEach(visit);
+        if (!value || typeof value !== "object") return;
+        for (const [key, nested] of Object.entries(value)) {
+          if (key === "uses" && typeof nested === "string" && !nested.startsWith("./")) {
+            expect(nested, `${path} contains mutable action authority`).toMatch(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[0-9a-f]{40}$/);
+          }
+          visit(nested);
+        }
+      };
+      visit(workflow);
+    }
+  });
+
+  it("bounds full-suite worker contention before image qualification", () => {
+    // Break caught: unconstrained process-heavy Vitest files starve each other
+    // and fail their bounded filesystem/subprocess deadlines before image scan.
+    const workflow = parseYaml(read(".github/workflows/tunes.yml"));
+    const step = workflow.jobs["build-test-scan-push"].steps
+      .find((candidate: any) => candidate.name === "Test Tunes");
+    expect(step.run).toContain("npm test -- --maxWorkers=2");
+  });
+
   it("blocks fixable high vulnerabilities and retains a complete disclosure scan", () => {
     const workflow = parseYaml(read(".github/workflows/tunes.yml"));
     const steps = workflow.jobs["build-test-scan-push"].steps;
@@ -43,7 +69,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     const deploy = read(".github/workflows/tunes-deploy.yml");
     const dockerfile = read("tunes/Dockerfile");
     const executable = `${read("tunes/deployment/music-deploy.sh")}\n${read("tunes/deployment/music-deploy-engine.sh")}`;
-    expect(ci).toContain("actions/attest-build-provenance@v3");
+    expect(ci).toContain("actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a");
     expect(deploy).toContain('IMAGE_REPOSITORY="ghcr.io/${owner}/explorers-tunes"');
     expect(deploy).toContain("gh attestation verify");
     expect(executable).toContain("org.opencontainers.image.source");

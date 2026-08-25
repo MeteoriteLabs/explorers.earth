@@ -13,6 +13,7 @@ import {
 } from "../../../scripts/music-fixture-secret";
 import * as fixtureSecrets from "../../../scripts/music-fixture-secret";
 
+const fixtureCleanupContentionTimeoutMs = 30_000;
 let roots: string[] = [];
 afterEach(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
@@ -941,7 +942,7 @@ STRAPI_ACCESS_TOKEN=dedicated-fixture-access
     expect(swapped).toBe(true);
     expect(readFileSync(pointer)).toEqual(attacker);
     expect(lstatSync(displaced).size).toBeGreaterThan(0);
-  });
+  }, fixtureCleanupContentionTimeoutMs);
 
   it("rejects an added recognized target after authentication before erasing the original bundle", () => {
     const root = fixtureRoot();

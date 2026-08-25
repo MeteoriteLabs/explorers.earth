@@ -465,7 +465,7 @@ describe("portable Music qualification lanes", () => {
       "../deployment/music-deploy-executable.test.ts",
     ), "utf8");
     expect(source).toContain(
-      'const deploymentProcessRecoveryTimeoutMs = process.platform === "win32" ? 30_000 : 20_000;',
+      "const deploymentProcessRecoveryTimeoutMs = 60_000;",
     );
     expect(source).not.toMatch(/\}, 20_000\);/);
     expect(source.match(/deploymentProcessRecoveryTimeoutMs/g)?.length).toBeGreaterThan(20);

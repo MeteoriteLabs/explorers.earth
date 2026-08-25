@@ -417,6 +417,30 @@ describe("C5 browser credential adapter", () => {
     expect(sessionStorage.removeItem).toHaveBeenCalledWith("musicGuestCapability:owner-a");
   });
 
+  it("submits a public song request when a legacy caller supplies an empty capability", async () => {
+    // Break caught: public request callers normalize missing session authority to "",
+    // which must remain an absent header rather than becoming malformed authority.
+    const response = new Response(JSON.stringify({ accepted: true }), {
+      status: 202,
+      headers: { "Content-Type": "application/json" },
+    });
+    const fetchMock = vi.fn(async () => response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(guestMusicRequest("", {
+      youtubeId: "public-song",
+      title: "Public song",
+      artist: "Public artist",
+      thumbnailUrl: "https://img.example/public-song.jpg",
+    }, "public-owner")).resolves.toBe(response);
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("/api/playlist/public-owner/requests");
+    expect(init).toEqual(expect.objectContaining({ method: "POST" }));
+    expect(init?.headers).toEqual(expect.objectContaining({ "Content-Type": "application/json" }));
+    expect(init?.headers).not.toHaveProperty("X-Music-Guest-Capability");
+  });
+
   it("rejects malformed guest capability before fetch", async () => {
     vi.stubGlobal("fetch", vi.fn());
     await expect(guestMusicRequest("short", { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }, "owner-a"))

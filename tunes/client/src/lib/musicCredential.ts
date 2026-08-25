@@ -205,9 +205,10 @@ export async function guestMusicRequest(
   song: { youtubeId: string; title: string; artist: string; thumbnailUrl: string },
   guestUrl: string,
 ): Promise<Response> {
-  if (capability !== undefined && !GUEST_CAPABILITY_PATTERN.test(capability)) throw new Error("A valid guest capability is required.");
+  const normalizedCapability = capability || undefined;
+  if (normalizedCapability !== undefined && !GUEST_CAPABILITY_PATTERN.test(normalizedCapability)) throw new Error("A valid guest capability is required.");
   if (!GUEST_SLUG_PATTERN.test(guestUrl)) throw new Error("A valid guest playlist slug is required.");
-  return guestMusicFetch(capability, guestUrl, "requests", song);
+  return guestMusicFetch(normalizedCapability, guestUrl, "requests", song);
 }
 
 export async function guestMusicSearch(

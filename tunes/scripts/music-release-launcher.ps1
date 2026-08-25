@@ -21,7 +21,6 @@ $gitPath = "C:\Program Files\Git\cmd\git.exe"
 $channelPath = Join-Path $scriptRoot "music-release-channel.mjs"
 $registerPath = Join-Path $scriptRoot "music-native-typescript-register.mjs"
 $resolverPath = Join-Path $scriptRoot "music-native-typescript-loader.mjs"
-$gitAuthorityPreflightPath = Join-Path $scriptRoot "music-git-authority-preflight.ps1"
 $targetPath = if ($Mode -eq "qualification") {
   Join-Path $scriptRoot "music-cli.ts"
 } else {
@@ -56,7 +55,6 @@ $authorities = @(
   Get-NativeAuthority $registerPath
   Get-NativeAuthority $resolverPath
   Get-NativeAuthority $targetPath
-  Get-NativeAuthority $gitAuthorityPreflightPath
 )
 
 $nodeVersionLines = @(& $nodePath --version 2>$null)
@@ -118,15 +116,6 @@ foreach ($entry in $preserved.GetEnumerator()) {
   [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, "Process")
 }
 Set-Location -LiteralPath $repositoryRoot
-
-& $gitAuthorityPreflightPath -RepositoryRoot $repositoryRoot -GitPath $gitPath -Authority @(
-    "tunes/scripts/music-release-launcher.ps1",
-    "tunes/scripts/music-release-channel.mjs",
-    "tunes/scripts/music-native-typescript-register.mjs",
-    "tunes/scripts/music-native-typescript-loader.mjs",
-    "tunes/scripts/$([IO.Path]::GetFileName($targetPath))",
-    "tunes/scripts/music-git-authority-preflight.ps1"
-)
 
 $gitEnvironment = @{
   "GIT_CONFIG_NOSYSTEM" = "1"

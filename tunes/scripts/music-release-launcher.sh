@@ -38,24 +38,18 @@ channel_path=$script_root/music-release-channel.mjs
 register_path=$script_root/music-native-typescript-register.mjs
 resolver_path=$script_root/music-native-typescript-loader.mjs
 preflight_path=$script_root/music-linux-qualification-preflight.sh
-git_authority_preflight_path=$script_root/music-git-authority-preflight.sh
 if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
   target_path=$script_root/music-cli.ts
 else
   target_path=$script_root/music-docker-release-rehearsal.ts
 fi
-for authority in "$0" "$channel_path" "$register_path" "$resolver_path" "$target_path" "$preflight_path" "$git_authority_preflight_path"; do
+for authority in "$0" "$channel_path" "$register_path" "$resolver_path" "$target_path" "$preflight_path"; do
   if [ ! -f "$authority" ] || [ -L "$authority" ]; then
     printf '%s\n' 'trusted native release source authority is unavailable' >&2
     exit 78
   fi
 done
 cd -- "$repository_root"
-"$git_authority_preflight_path" "$repository_root" "$git_path" \
-  "tunes/scripts/music-release-launcher.sh" "tunes/scripts/music-release-channel.mjs" \
-  "tunes/scripts/music-native-typescript-register.mjs" "tunes/scripts/music-native-typescript-loader.mjs" \
-  "tunes/scripts/$(/usr/bin/basename "$target_path")" "tunes/scripts/music-linux-qualification-preflight.sh" \
-  "tunes/scripts/music-git-authority-preflight.sh"
 
 npm_authority_root=/opt/explorers-music-node-v22.12.0
 npm_root=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm

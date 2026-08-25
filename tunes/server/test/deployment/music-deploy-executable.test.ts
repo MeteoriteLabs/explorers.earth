@@ -19,7 +19,11 @@ const source = "https://github.com/explorers-earth/explorers.earth";
 const hmacSentinel = "state-hmac-key-with-at-least-thirty-two-bytes";
 const publicationAuthority = Buffer.alloc(32, 0x70).toString("base64url");
 const publicResponseSentinel = "UNTRUSTED_PUBLIC_RESPONSE_SENTINEL";
-const deploymentProcessRecoveryTimeoutMs = process.platform === "win32" ? 30_000 : 20_000;
+// These tests execute the real shell deployment engine through several
+// subprocess boundaries. The full Vitest lane runs many process-heavy files in
+// parallel, so allow the measured CI contention without weakening any engine
+// deadline or assertion.
+const deploymentProcessRecoveryTimeoutMs = 60_000;
 const fixtureTunesImage = `127.0.0.1:5001/explorers-tunes@${digest("a")}`;
 const fixtureTraefikImage = `127.0.0.1:5001/fixture-traefik@${digest("c")}`;
 const fixturePostgresImage = `127.0.0.1:5001/fixture-postgres@${digest("d")}`;

@@ -111,6 +111,22 @@ describe("native Music release launch boundary", () => {
     ? spawnSync("C:/Program Files/nodejs/node.exe", ["--version"], { encoding: "utf8", windowsHide: true }).stdout.trim()
     : "";
 
+  it("keeps mutable-checkout qualification outside the production release trust boundary", () => {
+    // Break caught: a verifier loaded from the checkout claims to authenticate
+    // that same checkout, making local qualification evidence self-attesting.
+    const linuxLauncher = readFileSync(join(tunesRoot, "scripts", "music-release-launcher.sh"), "utf8");
+    const windowsLauncher = readFileSync(join(tunesRoot, "scripts", "music-release-launcher.ps1"), "utf8");
+    const imageWorkflow = readFileSync(join(repositoryRoot, ".github", "workflows", "tunes.yml"), "utf8");
+    const deployWorkflow = readFileSync(join(repositoryRoot, ".github", "workflows", "tunes-deploy.yml"), "utf8");
+
+    expect(existsSync(join(tunesRoot, "scripts", "music-git-authority-preflight.sh"))).toBe(false);
+    expect(existsSync(join(tunesRoot, "scripts", "music-git-authority-preflight.ps1"))).toBe(false);
+    expect(linuxLauncher).not.toContain("music-git-authority-preflight");
+    expect(windowsLauncher).not.toContain("music-git-authority-preflight");
+    expect(imageWorkflow).not.toContain("music-release-launcher");
+    expect(deployWorkflow).not.toContain("music-release-launcher");
+  });
+
   it.skipIf(process.platform !== "win32" || installedWindowsNodeVersion === "v22.12.0")(
     "rejects a signed host Node that is not exact v22.12.0 before reaching the target",
     () => {
@@ -239,45 +255,6 @@ describe("native Music release launch boundary", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("native Music release launcher attestation is required");
     expect(result.stderr).not.toContain("external fixture deployment authority is forbidden");
-  });
-
-  it.skipIf(!existsSync(posixShell))("rejects committed authority hidden by an assume-unchanged index flag", () => {
-    const root = mkdtempSync(join(tmpdir(), "music-git-authority-"));
-    sandboxes.push(root);
-    const authority = join(root, "authority.mjs");
-    writeFileSync(authority, "export const trusted = true;\n");
-    for (const args of [["init"], ["config", "user.email", "test@example.com"], ["config", "user.name", "Test"], ["add", "authority.mjs"], ["commit", "-m", "fixture"]]) {
-      const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
-      expect(result.status, result.stderr).toBe(0);
-    }
-    expect(spawnSync("git", ["update-index", "--assume-unchanged", "authority.mjs"], { cwd: root }).status).toBe(0);
-    writeFileSync(authority, "export const trusted = false;\n");
-
-    const helper = join(tunesRoot, "scripts", "music-git-authority-preflight.sh");
-    const result = spawnSync(posixShell, [shellPath(helper), shellPath(root), "git", "authority.mjs"], { encoding: "utf8" });
-
-    expect(result.status).toBe(78);
-    expect(result.stderr).toContain("trusted native release source authority is unavailable");
-  });
-
-  it.skipIf(process.platform !== "win32")("rejects hidden committed authority through the Windows preflight", () => {
-    const root = mkdtempSync(join(tmpdir(), "music-win-git-authority-"));
-    sandboxes.push(root);
-    const authority = join(root, "authority.mjs");
-    writeFileSync(authority, "export const trusted = true;\n");
-    for (const args of [["init"], ["config", "user.email", "test@example.com"], ["config", "user.name", "Test"], ["add", "authority.mjs"], ["commit", "-m", "fixture"]]) {
-      expect(spawnSync("git", args, { cwd: root }).status).toBe(0);
-    }
-    expect(spawnSync("git", ["update-index", "--assume-unchanged", "authority.mjs"], { cwd: root }).status).toBe(0);
-    writeFileSync(authority, "export const trusted = false;\n");
-    const helper = join(tunesRoot, "scripts", "music-git-authority-preflight.ps1");
-    const gitPath = spawnSync("where.exe", ["git.exe"], { encoding: "utf8" }).stdout.trim().split(/\r?\n/)[0]!;
-    const result = spawnSync("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", [
-      "-NoLogo", "-NoProfile", "-NonInteractive", "-File", helper,
-      "-RepositoryRoot", root, "-GitPath", gitPath, "-Authority", "authority.mjs",
-    ], { encoding: "utf8" });
-    expect(result.status).toBe(78);
-    expect(result.stderr).toContain("trusted native release source authority is unavailable");
   });
 
   it("rejects a caller-forged nonce even when the anonymous channel matches", () => {

@@ -54,13 +54,13 @@ jobs:
       digest: ${{ steps.push.outputs.digest }}
       commit: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
       - name: Prove C1 containment ancestry
         shell: bash
         run: git merge-base --is-ancestor d226f7e4dc5a54195a59804ec729f72b5e8f10d7 "$GITHUB_SHA"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.12.0
           cache: npm
@@ -74,13 +74,13 @@ jobs:
           DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture
         run: |
           npm ci --legacy-peer-deps
-          npm test
+          npm test -- --maxWorkers=2
           npm run test:integration
           npm run test:music-c8:coverage
           npm run test:music-c8:repository-coverage
           npm run music:types:scoped
           npm run music:types:baseline
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Resolve immutable image name
         id: image
         shell: bash
@@ -88,7 +88,7 @@ jobs:
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "name=ghcr.io/${owner}/explorers-tunes" >> "$GITHUB_OUTPUT"
       - name: Build Tunes exactly once
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./tunes
           file: ./tunes/Dockerfile
@@ -114,7 +114,7 @@ jobs:
             "${{ steps.image.outputs.name }}:${{ github.sha }}" \
             dist/server/deployment/run-production-graph-smoke.js
       - name: Block fixable high and critical image vulnerabilities
-        uses: anchore/scan-action@v7
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: true
@@ -123,7 +123,7 @@ jobs:
       - name: Report all high and critical image vulnerabilities
         if: always()
         continue-on-error: true
-        uses: anchore/scan-action@v7
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: false
@@ -140,7 +140,7 @@ jobs:
           if-no-files-found: error
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -161,7 +161,7 @@ jobs:
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
       - name: Attest the pushed image provenance
         if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.push.outputs.digest }}

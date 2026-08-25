@@ -22,6 +22,15 @@ const baseEnvironment = {
   GH_TOKEN: "test-actions-token",
 };
 
+const protectedMainPolicy = {
+  deployment_branch_policy: { protected_branches: true, custom_branch_policies: false },
+};
+const independentApprovalRule = {
+  type: "required_reviewers",
+  prevent_self_review: true,
+  reviewers: [{ type: "Team", reviewer: { id: 17, slug: "production-approvers" } }],
+};
+
 function requestFor(input: { environmentPolicy?: unknown; protectedBranches?: unknown; branch?: unknown }) {
   const calls: string[] = [];
   const request = async (url: string) => {
@@ -64,10 +73,26 @@ describe("production environment policy preflight", () => {
     await expect(verify({ environment: baseEnvironment, request: boundary.request })).rejects.toThrow("protected-main production policy required");
   });
 
+  it.each([
+    ["missing reviewers", { ...protectedMainPolicy, protection_rules: [] }],
+    ["empty reviewers", { ...protectedMainPolicy, protection_rules: [{ ...independentApprovalRule, reviewers: [] }] }],
+    ["self review", { ...protectedMainPolicy, protection_rules: [{ ...independentApprovalRule, prevent_self_review: false }] }],
+    ["malformed reviewer", { ...protectedMainPolicy, protection_rules: [{ ...independentApprovalRule, reviewers: [{ type: "Team", reviewer: {} }] }] }],
+  ])("refuses %s in the production approval policy", async (_case, environmentPolicy) => {
+    const verify = await loadVerifier();
+    const boundary = requestFor({
+      environmentPolicy,
+      protectedBranches: [{ name: "main", protected: true }],
+      branch: { name: "main", protected: true },
+    });
+    await expect(verify({ environment: baseEnvironment, request: boundary.request }))
+      .rejects.toThrow("independent production approval policy required");
+  });
+
   it("accepts protected-branches-only only when main is the sole protected branch", async () => {
     const verify = await loadVerifier();
     const boundary = requestFor({
-      environmentPolicy: { deployment_branch_policy: { protected_branches: true, custom_branch_policies: false } },
+      environmentPolicy: { ...protectedMainPolicy, protection_rules: [independentApprovalRule] },
       protectedBranches: [{ name: "main", protected: true }],
       branch: { name: "main", protected: true },
     });
