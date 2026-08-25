@@ -314,6 +314,9 @@ jobs:
                   MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
                   MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
                   MUSIC_COHORT_ENABLED: "false"
+                  MUSIC_CONNECT_TIMEOUT_MS: "5000"
+                  MUSIC_READ_TIMEOUT_MS: "10000"
+                  MUSIC_IDENTITY_OVERALL_TIMEOUT_MS: "15000"
                   MUSIC_TOKEN_CURRENT_KID: test-current-v1
                   MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token
                   MUSIC_TOKEN_LIFETIME_SECONDS: "600"
