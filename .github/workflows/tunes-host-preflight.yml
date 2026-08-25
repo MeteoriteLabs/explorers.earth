@@ -210,7 +210,17 @@ jobs:
               END IF;
             END $$;
             ALTER ROLE music_migrator WITH LOGIN SUPERUSER CREATEROLE CREATEDB PASSWORD :'password';
-            REASSIGN OWNED BY :"legacy_owner" TO music_migrator;
+            SELECT format('ALTER %s %I.%I OWNER TO music_migrator',
+              CASE relkind WHEN 'S' THEN 'SEQUENCE' WHEN 'v' THEN 'VIEW'
+                WHEN 'm' THEN 'MATERIALIZED VIEW' WHEN 'f' THEN 'FOREIGN TABLE' ELSE 'TABLE' END,
+              nspname,relname)
+            FROM pg_class JOIN pg_namespace ON pg_namespace.oid=pg_class.relnamespace
+            WHERE nspname='public' AND relkind IN ('r','p','S','v','m','f')
+            ORDER BY relkind,relname;
+            \gexec
+            SELECT format('ALTER FUNCTION %s OWNER TO music_migrator',oid::regprocedure)
+            FROM pg_proc WHERE pronamespace='public'::regnamespace ORDER BY oid;
+            \gexec
             ALTER DATABASE :"database_name" OWNER TO music_migrator;
             SQL
             candidate_digest="${CANDIDATE_IMAGE##*@}"
