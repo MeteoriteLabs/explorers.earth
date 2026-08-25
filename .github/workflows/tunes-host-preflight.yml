@@ -39,3 +39,13 @@ jobs:
             ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub
             ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
             ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub
+            printf '%s\n' '=== legacy app identity ==='
+            docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-app-1
+            printf '%s\n' '=== listeners ==='
+            ss -lnt
+            printf '%s\n' '=== ingress services ==='
+            for service in nginx caddy traefik; do
+              if systemctl is-active --quiet "$service"; then printf 'active=%s\n' "$service"; else printf 'active=no service=%s\n' "$service"; fi
+            done
+            printf '%s\n' '=== provisioning authority ==='
+            if sudo -n true; then printf '%s\n' 'sudo_nopasswd=yes'; else printf '%s\n' 'sudo_nopasswd=no'; fi
