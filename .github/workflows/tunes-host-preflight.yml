@@ -125,6 +125,23 @@ jobs:
             const exactKeys = (value, keys) => record(value)
               && Object.keys(value).sort().join("|") === [...keys].sort().join("|");
             const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+            const maximumFullJobDurationMs = 35 * 60 * 1_000;
+            const bearerLifetimeSafetyMarginMs = 5 * 60 * 1_000;
+
+            function assertBearerLifetime(proof, nowMs) {
+              try {
+                const segments = proof.split(".");
+                if (segments.length !== 3 || !Number.isSafeInteger(nowMs)) throw new Error();
+                const claims = JSON.parse(Buffer.from(segments[1], "base64url").toString("utf8"));
+                if (!record(claims) || !Number.isSafeInteger(claims.exp)
+                    || claims.exp > Math.floor(Number.MAX_SAFE_INTEGER / 1_000)
+                    || claims.exp * 1_000 - nowMs <= maximumFullJobDurationMs + bearerLifetimeSafetyMarginMs) {
+                  throw new Error();
+                }
+              } catch {
+                throw new Error("bearer lifetime insufficient");
+              }
+            }
 
             function validateEnsurePayload(text, nowMs) {
               let value;
@@ -173,6 +190,8 @@ jobs:
               const controller = new AbortController();
               let response;
               try {
+                const nowMs = wallNow();
+                assertBearerLifetime(proof, nowMs);
                 response = await within(fetchImpl(new URL("/api/music/identity/ensure", "http://127.0.0.1:5000"), {
                   method: "POST",
                   headers: { authorization: `Bearer ${proof}` },
@@ -181,7 +200,7 @@ jobs:
                 }), timeoutMs, controller);
                 if (response.status !== 200) throw new Error("bearer preflight failed");
                 const text = await within(Promise.resolve(response.text()), timeoutMs, controller);
-                const value = validateEnsurePayload(text, wallNow());
+                const value = validateEnsurePayload(text, nowMs);
                 if (value.identity.musicUserId !== expectedMusicUserId) throw new Error("bearer preflight failed");
               } catch {
                 try {
@@ -234,7 +253,7 @@ jobs:
               await validateProvisionedBearer({ proof, expectedMusicUserId });
             }
 
-            module.exports = { validateProvisionedBearer };
+            module.exports = { assertBearerLifetime, validateProvisionedBearer };
             if (process.env.MUSIC_SLO_PREFLIGHT === "1") {
               main().catch(() => { process.exitCode = 1; });
             }
@@ -390,7 +409,8 @@ jobs:
               }
               const passed = all.length === 200 && cold.length === 20 && warm.length === 90 && concurrent.length === 90
                 && successRatePercent >= 99.5 && gatewayProofCacheTtlColdP95Ms <= 5000
-                && warmP95Ms <= 1000 && concurrentP95Ms <= 1000;
+                && warmP95Ms <= 1000 && concurrentP95Ms <= 1000
+                && statusCategoryCounts.client_error === 0;
               return {
                 passed,
                 sampleCount: all.length,

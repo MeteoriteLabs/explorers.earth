@@ -32,6 +32,7 @@ interface ProbeLibrary {
 }
 
 interface PreflightLibrary {
+  assertBearerLifetime: (proof: string, nowMs: number) => void;
   validateProvisionedBearer: (input: {
     proof: string;
     expectedMusicUserId: number;
@@ -110,6 +111,12 @@ function preflightLibrary(): PreflightLibrary {
 }
 
 const credentialToken = `${"a".repeat(24)}.${"b".repeat(24)}.${"c".repeat(32)}`;
+const preflightNowMs = 1_900_000_000_000;
+const bearerWithExpiration = (expiresAtSeconds: number | string) => [
+  Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+  Buffer.from(JSON.stringify({ exp: expiresAtSeconds })).toString("base64url"),
+  "signature-not-verified-locally",
+].join(".");
 const validPayload = (expiresAt = 2_000_000_000_000) => JSON.stringify({
   version: "music-identity/v1",
   identity: { musicUserId: 17, status: "active" },
@@ -245,6 +252,7 @@ describe("Tunes authenticated identity SLO preflight", () => {
     expect(preflightNodeSource()).toMatch(/SELECT\s+id\s+FROM users\s+WHERE identity_status='active'\s+ORDER BY id ASC LIMIT 1/);
     expect(script.indexOf("MUSIC_SLO_PREFLIGHT=1")).toBeLessThan(script.indexOf("docker restart --time 30"));
     const { validateProvisionedBearer } = preflightLibrary();
+    const longLivedBearer = bearerWithExpiration(preflightNowMs / 1_000 + 2_401);
     let authorization = "";
     const fetchMock = vi.fn(async (_url, init) => {
       authorization = new Headers(init?.headers).get("authorization") ?? "";
@@ -252,12 +260,12 @@ describe("Tunes authenticated identity SLO preflight", () => {
     });
     const fetchImpl = fetchMock as unknown as typeof fetch;
     await expect(validateProvisionedBearer({
-      proof: "real-strapi-user-bearer",
+      proof: longLivedBearer,
       expectedMusicUserId: 17,
       fetchImpl,
-      wallNow: () => 1_900_000_000_000,
+      wallNow: () => preflightNowMs,
     })).resolves.toBeUndefined();
-    expect(authorization).toBe("Bearer real-strapi-user-bearer");
+    expect(authorization).toBe(`Bearer ${longLivedBearer}`);
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
     expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("body");
@@ -266,16 +274,41 @@ describe("Tunes authenticated identity SLO preflight", () => {
       status: 401, text: async () => "not read", body: { locked: false, cancel: vi.fn() },
     })) as unknown as typeof fetch;
     await expect(validateProvisionedBearer({
-      proof: "expired-real-user-bearer", expectedMusicUserId: 17, fetchImpl: unauthorized,
+      proof: longLivedBearer, expectedMusicUserId: 17, fetchImpl: unauthorized,
+      wallNow: () => preflightNowMs,
     })).rejects.toThrow("bearer preflight failed");
     const mismatch = vi.fn(async () => ({
       status: 200, text: async () => validPayload().replace('"musicUserId":17', '"musicUserId":18'),
       body: { locked: false, cancel: vi.fn() },
     })) as unknown as typeof fetch;
     await expect(validateProvisionedBearer({
-      proof: "wrong-user-real-bearer", expectedMusicUserId: 17, fetchImpl: mismatch,
-      wallNow: () => 1_900_000_000_000,
+      proof: longLivedBearer, expectedMusicUserId: 17, fetchImpl: mismatch,
+      wallNow: () => preflightNowMs,
     })).rejects.toThrow("bearer preflight failed");
+  });
+
+  it("rejects unsafe or near-expiry JWT lifetimes before the authority request", async () => {
+    const { assertBearerLifetime, validateProvisionedBearer } = preflightLibrary();
+    const sufficientlyLongLived = bearerWithExpiration(preflightNowMs / 1_000 + 2_401);
+    expect(() => assertBearerLifetime(sufficientlyLongLived, preflightNowMs)).not.toThrow();
+    for (const bearer of [
+      bearerWithExpiration(preflightNowMs / 1_000 + 2_400),
+      bearerWithExpiration(preflightNowMs / 1_000 - 1),
+      bearerWithExpiration("1900003000"),
+      bearerWithExpiration(Number.MAX_SAFE_INTEGER),
+      `${"a".repeat(20)}.not-json.${"b".repeat(20)}`,
+    ]) expect(() => assertBearerLifetime(bearer, preflightNowMs)).toThrow("bearer lifetime insufficient");
+
+    const fetchImpl = vi.fn(async () => ({
+      status: 200, text: async () => validPayload(), body: { locked: false, cancel: vi.fn() },
+    })) as unknown as typeof fetch;
+    await expect(validateProvisionedBearer({
+      proof: bearerWithExpiration(preflightNowMs / 1_000 + 2_400),
+      expectedMusicUserId: 17,
+      fetchImpl,
+      wallNow: () => preflightNowMs,
+    })).rejects.toThrow("bearer preflight failed");
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("exports executable credential validation and SLO predicate helpers for contract tests", () => {
@@ -412,6 +445,18 @@ describe("Tunes authenticated identity SLO preflight", () => {
       concurrent: Array.from({ length: 90 }, () => sample(950)),
     });
     expect(insufficientSuccess).toMatchObject({ passed: false, successCount: 198, successRatePercent: 99 });
+
+    const authenticationFailure = evaluateSlo({
+      cold: [sample(100, false, "client_error"), ...Array.from({ length: 19 }, () => sample(100))],
+      warm: Array.from({ length: 90 }, () => sample(900)),
+      concurrent: Array.from({ length: 90 }, () => sample(950)),
+    });
+    expect(authenticationFailure).toMatchObject({
+      passed: false,
+      successCount: 199,
+      successRatePercent: 99.5,
+      statusCategoryCounts: { client_error: 1 },
+    });
 
     const slowConcurrent = evaluateSlo({
       cold: Array.from({ length: 20 }, () => sample(4_900)),
