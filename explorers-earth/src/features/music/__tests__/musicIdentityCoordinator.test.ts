@@ -141,7 +141,7 @@ describe("automatic Music identity coordinator", () => {
     expect(coordinator.getSnapshot()).toBe("retryable");
     await coordinator.retry().catch(() => undefined);
     expect(coordinator.getSnapshot()).toBe("conflict");
-    await coordinator.retry();
+    await coordinator.reconcile({ ...input, account: { documentId: "account-2" } });
     expect(coordinator.getSnapshot()).toBe("ready");
     expect(changes).toEqual(["setting_up", "retryable", "setting_up", "conflict", "setting_up", "ready"]);
     unsubscribe();
@@ -155,6 +155,22 @@ describe("automatic Music identity coordinator", () => {
     await coordinator.retry().catch(() => undefined);
     await coordinator.retry().catch(() => undefined);
     expect(coordinator.getSnapshot()).toBe("unavailable");
+  });
+
+  it("does not retry an explicitly non-retryable identity failure on retry or rerender", async () => {
+    const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { retryable: false }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const input = {
+      provider: "email" as const, authenticated: true, verified: true,
+      userDocumentId: "user-1", account: { documentId: "account-1" },
+    };
+
+    await coordinator.reconcile(input).catch(() => undefined);
+    await coordinator.retry().catch(() => undefined);
+    await coordinator.reconcile(input).catch(() => undefined);
+
+    expect(coordinator.getSnapshot()).toBe("unavailable");
+    expect(ensureIdentity).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -239,6 +255,31 @@ describe("automatic Music identity coordinator", () => {
     reject(new Error("safe"));
     await pending.catch(() => undefined);
     expect(coordinator.getSnapshot()).toBe("idle");
+  });
+
+  it("detaches an old account flight so only the new account can publish readiness", async () => {
+    let releaseFirst!: () => void;
+    let releaseSecond!: () => void;
+    const ensureIdentity = vi.fn()
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { releaseFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { releaseSecond = resolve; }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const first = coordinator.reconcile({
+      provider: "email", authenticated: true, verified: true,
+      userDocumentId: "user-1", account: { documentId: "account-1" },
+    });
+    const second = coordinator.reconcile({
+      provider: "email", authenticated: true, verified: true,
+      userDocumentId: "user-1", account: { documentId: "account-2" },
+    });
+
+    releaseFirst();
+    await first;
+    expect(coordinator.getSnapshot()).toBe("setting_up");
+    releaseSecond();
+    await second;
+    expect(coordinator.getSnapshot()).toBe("ready");
+    expect(ensureIdentity).toHaveBeenCalledTimes(2);
   });
 
   it.each([

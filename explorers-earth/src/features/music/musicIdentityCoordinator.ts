@@ -116,6 +116,8 @@ export function createMusicIdentityCoordinator(dependencies: {
   let lastEligible: MusicIdentityEligibility | undefined;
   let status: MusicIdentityCoordinatorStatus = "idle";
   let retryableFailures = 0;
+  let failedKey: string | undefined;
+  let canRetry = false;
   let generation = 0;
   const listeners = new Set<() => void>();
 
@@ -135,30 +137,50 @@ export function createMusicIdentityCoordinator(dependencies: {
     const code = typeof error?.code === "string" ? error.code : "";
     const upstreamCode = typeof error?.upstreamCode === "string" ? error.upstreamCode : "";
     const canonicalCodes = new Set([code, upstreamCode]);
-    if (canonicalCodes.has("IDENTITY_PENDING_DELETION") || canonicalCodes.has("IDENTITY_TOMBSTONED")) publish("pending_deletion");
-    else if (canonicalCodes.has("IDENTITY_SUSPENDED")) publish("suspended");
-    else if (code === "AUTH_REQUIRED" || upstreamCode === "AUTH_REQUIRED" || upstreamCode === "AUTH_INVALID") publish("auth_required");
-    else if (["IDENTITY_CONFLICT", "ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT"].includes(upstreamCode)) publish("conflict");
+    canRetry = error?.retryable === true;
+    if (canonicalCodes.has("IDENTITY_PENDING_DELETION") || canonicalCodes.has("IDENTITY_TOMBSTONED")) {
+      canRetry = false;
+      publish("pending_deletion");
+    } else if (canonicalCodes.has("IDENTITY_SUSPENDED")) {
+      canRetry = false;
+      publish("suspended");
+    } else if (code === "AUTH_REQUIRED" || upstreamCode === "AUTH_REQUIRED" || upstreamCode === "AUTH_INVALID") {
+      canRetry = false;
+      publish("auth_required");
+    } else if (["IDENTITY_CONFLICT", "ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT"].includes(upstreamCode)) {
+      canRetry = false;
+      publish("conflict");
+    }
     else {
-      retryableFailures += 1;
-      publish(retryableFailures >= 3 ? "unavailable" : "retryable");
+      if (canRetry) retryableFailures += 1;
+      publish(canRetry && retryableFailures < 3 ? "retryable" : "unavailable");
     }
   };
 
   const start = (key: string, force = false): Promise<void> => {
     if (!force && completedKey === key) return Promise.resolve();
     if (flight && activeKey === key) return flight;
-    if (activeKey !== key) retryableFailures = 0;
+    if (!force && failedKey === key) return Promise.resolve();
+    if (activeKey !== key) {
+      generation += 1;
+      completedKey = undefined;
+      failedKey = undefined;
+      canRetry = false;
+      retryableFailures = 0;
+    }
     activeKey = key;
     const startedGeneration = generation;
     publish("setting_up");
     const current = Promise.resolve(dependencies.ensureIdentity()).then(() => {
       if (generation !== startedGeneration) return;
       completedKey = key;
+      failedKey = undefined;
+      canRetry = false;
       retryableFailures = 0;
       publish("ready");
     }).catch((cause: unknown) => {
       if (generation !== startedGeneration) throw cause;
+      failedKey = key;
       publishFailure(cause);
       throw cause;
     }).finally(() => {
@@ -177,7 +199,7 @@ export function createMusicIdentityCoordinator(dependencies: {
     },
     retry() {
       const key = lastEligible && eligibleKey(lastEligible);
-      return key ? start(key, true) : Promise.resolve();
+      return key && canRetry ? start(key, true) : Promise.resolve();
     },
     reportFailure(error) {
       publishFailure(error);
@@ -186,9 +208,11 @@ export function createMusicIdentityCoordinator(dependencies: {
       generation += 1;
       activeKey = undefined;
       completedKey = undefined;
+      failedKey = undefined;
       flight = undefined;
       lastEligible = undefined;
       retryableFailures = 0;
+      canRetry = false;
       publish("idle");
     },
     getSnapshot: () => status,
