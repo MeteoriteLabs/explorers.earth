@@ -7,6 +7,11 @@ on:
         required: true
         default: false
         type: boolean
+      diagnose_last_attempt:
+        description: Read the sanitized readiness result and current rollback state only
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -14,6 +19,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  diagnose-last-attempt:
+    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.diagnose_last_attempt && !inputs.confirm_test_deploy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Inspect sanitized result without mutation
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        with:
+          host: ${{ secrets.TUNES_DEPLOY_HOST }}
+          username: deploy
+          key: ${{ secrets.TUNES_DEPLOY_KEY }}
+          fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            backup_dir=/home/deploy/tunes/tunes/deployment-backups
+            readiness="$(find "$backup_dir" -maxdepth 1 -type f -name 'readiness-*.json' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)"
+            test -n "$readiness"
+            printf '%s\n' '=== saved candidate readiness ==='
+            cat "$readiness"
+            printf '%s\n' '=== current restored app ==='
+            docker inspect --format 'image_id={{.Image}} configured_image={{.Config.Image}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1
+            curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/ >/dev/null
+            printf '%s\n' 'public_endpoint=ok'
+
   build-arm64:
     if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.confirm_test_deploy
     runs-on: ubuntu-24.04
