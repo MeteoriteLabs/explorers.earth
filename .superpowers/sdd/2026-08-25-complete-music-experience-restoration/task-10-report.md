@@ -373,3 +373,162 @@ Neither untracked `.gstack` file was staged or modified.
 - The deployed cold/warm/concurrent SLO probe is explicitly outside this coding task and remains a release gate. Do not claim restoration complete until deployed evidence demonstrates success rate at least 99.5%, warm p95 at most 1 second, and cold p95 at most 5 seconds under the required concurrency profile.
 - Scoped ESLint exits successfully but still reports seven warnings already present in the touched files (hook dependency, fast-refresh export shape, test `any`, and unused legacy test helpers/locals). No lint errors were introduced.
 - Repository-wide Tunes TypeScript remains subject to the unrelated legacy baseline described above; the required Music-scoped Tunes typecheck exits 0.
+
+---
+
+## Review fix round 2/5 — policy-derived retries and stale-account isolation
+
+### Outcome
+
+Identity retryability is now derived exclusively from one explicit server-compatible status/code/action policy table. The response body must agree with that policy, but its `retryable` boolean never grants retry authority. All consumer-level `reportFailure` calls were removed from `AuthSyncManager` and `useTunesDashboard`; only the coordinator's generation-checked reconcile/retry flight may publish identity failures or request IDs.
+
+### RED evidence
+
+Command:
+
+```text
+cd explorers-earth
+npm run test:unit -- src/lib/__tests__/localTunesApiClient.test.ts src/components/__tests__/AuthSyncManager.test.tsx src/hooks/__tests__/useTunesDashboardIsolation.test.tsx
+```
+
+Result:
+
+```text
+Test Files  3 failed (3)
+Tests       5 failed | 78 passed (83)
+```
+
+Expected failures:
+
+- contradictory `400 REQUEST_INVALID` + `action: retry` + `retryable: true` made three ensure calls instead of one;
+- contradictory `409 IDENTITY_CONFLICT` + `action: retry` + `retryable: true` made three ensure calls instead of one;
+- the legitimate server-emitted `409 ONBOARDING_INCOMPLETE` envelope failed closed and lost `upstreamCode` instead of being accepted as non-retryable;
+- after A→B account switch, delayed account A rejection changed the simulated active diagnostic from B `setting_up`/no request ID to A `retryable`/`account-a-request` through `AuthSyncManager`'s external catch;
+- delayed explicit retry rejection from account A called `reportFailure` after the hook rendered account B, republishing A's request ID.
+
+The first critical-coverage run after behavior became green identified one unexercised malformed-code branch:
+
+```text
+Test Files  14 passed (14)
+Tests       264 passed (264)
+Statements  100%
+Branches    99.82% (572/573)
+Functions   100%
+Lines       100%
+```
+
+A fully shaped non-string code regression was added, bringing the strict fail-closed validator back to the required per-file 100% threshold.
+
+### GREEN evidence
+
+Final focused command:
+
+```text
+cd explorers-earth
+npm run test:unit -- src/lib/__tests__/localTunesApiClient.test.ts src/features/music/__tests__/musicIdentityCoordinator.test.ts src/components/__tests__/AuthSyncManager.test.tsx src/hooks/__tests__/useTunesDashboardIsolation.test.tsx src/pages/__tests__/MusicPage.test.tsx
+```
+
+Result:
+
+```text
+Test Files  5 passed (5)
+Tests       132 passed (132)
+```
+
+Final Explorers critical coverage:
+
+```text
+cd explorers-earth
+npm run test:music-critical-coverage
+
+Test Files  14 passed (14)
+Tests       265 passed (265)
+Statements  100% (619/619)
+Branches    100% (573/573)
+Functions   100% (133/133)
+Lines       100% (516/516)
+```
+
+Final Tunes critical coverage:
+
+```text
+cd tunes
+npm run test:music-critical-coverage
+
+Test Files  24 passed (24)
+Tests       548 passed | 1 skipped (549)
+Statements  100% (1888/1888)
+Branches    100% (1695/1695)
+Functions   100% (274/274)
+Lines       100% (1647/1647)
+```
+
+Static verification:
+
+```text
+cd explorers-earth && npx tsc -b --pretty false
+exit 0
+
+cd tunes && npm run music:types:scoped
+exit 0
+
+cd explorers-earth && npx eslint <6 round-2 scoped source/test files>
+exit 0; 2 existing warnings, 0 errors
+
+git diff --check
+exit 0
+```
+
+### Server-emitted ensure policy covered
+
+The client table and parameterized regression cover every concrete pair emitted by the ensure route, Strapi gateway, or ensure repository:
+
+- `400 REQUEST_INVALID / none / non-retryable`
+- `401 AUTH_REQUIRED / authenticate / non-retryable`
+- `401 AUTH_INVALID / authenticate / non-retryable`
+- `403 IDENTITY_INELIGIBLE / complete_onboarding / non-retryable`
+- `403 IDENTITY_SUSPENDED / contact_support / non-retryable`
+- `409 ONBOARDING_INCOMPLETE / complete_onboarding / non-retryable`
+- `409 ACCOUNT_AMBIGUOUS / contact_support / non-retryable`
+- `409 ACCOUNT_SWITCH_CONFLICT / contact_support / non-retryable`
+- `409 IDENTITY_CONFLICT / contact_support / non-retryable`
+- `409 IDENTITY_TOMBSTONED / contact_support / non-retryable`
+- `409 IDENTITY_PENDING_DELETION / contact_support / non-retryable`
+- `429 RATE_LIMITED / retry / retryable`
+- `500 INTERNAL_ERROR / retry / retryable`
+- `502 UPSTREAM_MALFORMED / retry / retryable`
+- `503 UPSTREAM_UNAVAILABLE / retry / retryable`
+- `503 DATABASE_UNAVAILABLE / retry / retryable`
+- `503 ENTRY_DISABLED / retry / retryable`
+
+Every valid case asserts exact call count and preservation of `upstreamCode`. Contradictory status/code/action/body combinations fail closed and omit the untrusted upstream code.
+
+### Files changed in review fix round 2/5
+
+- `explorers-earth/src/lib/localTunesApiClient.ts`
+- `explorers-earth/src/lib/__tests__/localTunesApiClient.test.ts`
+- `explorers-earth/src/components/AuthSyncManager.tsx`
+- `explorers-earth/src/components/__tests__/AuthSyncManager.test.tsx`
+- `explorers-earth/src/hooks/useTunesDashboard.ts`
+- `explorers-earth/src/hooks/__tests__/useTunesDashboardIsolation.test.tsx`
+
+Neither untracked `.gstack` file was staged or modified.
+
+### Commits
+
+- Round-2 implementation and tests: `971c374 fix(music): scope identity failure policy`
+- This appended evidence is committed in the follow-up documentation commit that contains this report.
+
+### Self-review
+
+- The policy lookup first matches exact status and code, then requires the exact policy action and body boolean. Returned `MusicClientError.retryable` is copied from the trusted policy entry, never from the body.
+- The prior incorrect `403 ONBOARDING_INCOMPLETE` association is removed. The concrete gateway contract, `409 ONBOARDING_INCOMPLETE / complete_onboarding / false`, is accepted and retains its sanitized upstream code.
+- Automatic reconcile failures and explicit retry failures already pass through the coordinator's `startedGeneration` guard. Removing the two redundant consumer catches prevents a stale generation from bypassing that guard.
+- Workspace query errors remain locally contained by React Query and the hook's safe generic error state; they no longer mutate identity coordinator state without an immutable account/generation token.
+- The A→B component regression leaves B in `setting_up` with no request ID when A rejects, and the hook regression proves an A explicit-retry rejection cannot call external failure publication after B renders.
+
+### Concerns / external gate
+
+- The deployed cold/warm/concurrent SLO probe remains explicitly external and unchanged: release still requires success rate at least 99.5%, warm p95 at most 1 second, and cold p95 at most 5 seconds under the required concurrency profile.
+- Round-2 scoped ESLint exits successfully with two existing warnings (the `AuthSyncManager` hook dependency warning and one unused legacy test local); no lint errors were introduced.
+- The unrelated repository-wide Tunes TypeScript baseline remains outside this fix; the required Music-scoped typecheck exits 0.
