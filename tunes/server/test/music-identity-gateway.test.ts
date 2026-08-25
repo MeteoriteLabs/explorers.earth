@@ -61,6 +61,22 @@ function gateway(fetchImpl: typeof fetch, overrides: Partial<ConstructorParamete
 }
 
 describe("Strapi identity gateway", () => {
+  it("uses the deployed plural users-permissions Account relation filter", async () => {
+    // Regression: deployed Strapi rejects users_permissions_user with 400 and
+    // exposes the Account relation as users_permissions_users.
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/api/users/me") return response(user);
+      if (url.searchParams.has("filters[users_permissions_users][documentId][$eq]")) {
+        return accountsResponse([completeAccount]);
+      }
+      return response({ error: { name: "ValidationError" } }, 400);
+    });
+
+    await expect(gateway(fetchImpl, { retries: 0 }).resolve("deployed-relation-proof", "relation-request"))
+      .resolves.toMatchObject({ accountDocumentId: completeAccount.documentId });
+  });
+
   it("reads every authoritative Account page before selecting a sole completed identity", async () => {
     const incomplete = { ...completeAccount, documentId: "account-doc-incomplete", mobile_number: null };
     const firstPage = Array.from({ length: 50 }, (_, index) => ({ ...incomplete, documentId: `incomplete-${index}` }));
