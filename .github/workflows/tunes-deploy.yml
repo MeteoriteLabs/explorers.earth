@@ -5,11 +5,35 @@ on:
     inputs:
       digest: { type: string, required: true }
       commit: { type: string, required: true }
+    secrets:
+      TUNES_DEPLOY_HOST: { required: true }
+      TUNES_DEPLOY_KEY: { required: true }
   workflow_dispatch:
     inputs:
-      target_digest:
-        description: "Previously retained secure digest to roll back to"
+      operation:
+        description: "One-time bootstrap or a retained-digest rollback"
         required: true
+        default: rollback
+        type: choice
+        options: [rollback, bootstrap]
+      target_digest:
+        description: "Attested bootstrap digest or previously retained rollback digest"
+        required: true
+        type: string
+      target_commit:
+        description: "Full attested commit for bootstrap; empty for rollback"
+        required: false
+        default: ""
+        type: string
+      compose_project:
+        description: "Observed legacy Compose project for bootstrap; empty for rollback"
+        required: false
+        default: ""
+        type: string
+      legacy_service:
+        description: "Observed live Tunes container for bootstrap; empty for rollback"
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -50,6 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          fetch-depth: 0
           sparse-checkout: |
             tunes/deployment/music-deploy.sh
             tunes/deployment/music-deploy-engine.sh
@@ -63,7 +88,11 @@ jobs:
         env:
           CALL_DIGEST: ${{ inputs.digest }}
           CALL_COMMIT: ${{ inputs.commit }}
-          ROLLBACK_DIGEST: ${{ inputs.target_digest }}
+          DISPATCH_OPERATION: ${{ inputs.operation }}
+          TARGET_DIGEST: ${{ inputs.target_digest }}
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+          BOOTSTRAP_COMPOSE_PROJECT: ${{ inputs.compose_project }}
+          BOOTSTRAP_LEGACY_SERVICE: ${{ inputs.legacy_service }}
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -71,14 +100,30 @@ jobs:
           IMAGE_REPOSITORY="ghcr.io/${owner}/explorers-tunes"
           IMAGE_SOURCE="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
           if [[ "$GITHUB_EVENT_NAME" = workflow_dispatch ]]; then
-            operation=rollback
-            digest="$ROLLBACK_DIGEST"
-            commit=-
+            operation="$DISPATCH_OPERATION"
+            digest="$TARGET_DIGEST"
+            if [[ "$operation" = bootstrap ]]; then
+              commit="$TARGET_COMMIT"
+              compose_project="$BOOTSTRAP_COMPOSE_PROJECT"
+              legacy_service="$BOOTSTRAP_LEGACY_SERVICE"
+              [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
+              git merge-base --is-ancestor "$commit" "$GITHUB_SHA"
+              [[ "$compose_project" =~ ^[a-z0-9][a-z0-9_-]{0,62}$ ]]
+              [[ "$legacy_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
+            else
+              [[ "$operation" = rollback ]]
+              commit=-
+              compose_project=-
+              legacy_service=-
+              [[ -z "$TARGET_COMMIT" && -z "$BOOTSTRAP_COMPOSE_PROJECT" && -z "$BOOTSTRAP_LEGACY_SERVICE" ]]
+            fi
           else
             [[ "$GITHUB_WORKFLOW_REF" == "$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main" ]]
             operation=deploy
             digest="$CALL_DIGEST"
             commit="$CALL_COMMIT"
+            compose_project=-
+            legacy_service=-
             [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
           fi
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
@@ -86,23 +131,31 @@ jobs:
             echo "operation=$operation"
             echo "digest=$digest"
             echo "commit=$commit"
+            echo "compose_project=$compose_project"
+            echo "legacy_service=$legacy_service"
             echo "repository=$IMAGE_REPOSITORY"
             echo "source=$IMAGE_SOURCE"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Verify GitHub build provenance for normal deploy
-        if: github.event_name != 'workflow_dispatch'
+      - name: Verify GitHub build provenance for deploy or bootstrap
+        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'bootstrap'
         env:
           GH_TOKEN: ${{ github.token }}
           IMAGE_REPOSITORY: ${{ steps.request.outputs.repository }}
           DIGEST: ${{ steps.request.outputs.digest }}
-        run: gh attestation verify "${IMAGE_REPOSITORY}@${DIGEST}" --repo "$GITHUB_REPOSITORY"
+          COMMIT: ${{ steps.request.outputs.commit }}
+        run: >-
+          gh attestation verify "oci://${IMAGE_REPOSITORY}@${DIGEST}"
+          --repo "$GITHUB_REPOSITORY"
+          --signer-workflow "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/tunes.yml"
+          --source-ref refs/heads/main
+          --source-digest "$COMMIT"
 
       - name: Configure pinned SSH host identity
         shell: bash
         env:
-          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_SSH_KNOWN_HOSTS }}
+          SSH_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.TUNES_DEPLOY_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           install -d -m 700 "$HOME/.ssh"
@@ -113,14 +166,16 @@ jobs:
       - name: Run checked-in transactional deploy executable
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.HETZNER_HOST }}
-          DEPLOY_USER: ${{ secrets.HETZNER_USER }}
-          GHCR_DEPLOY_USER: ${{ secrets.GHCR_DEPLOY_USER }}
-          GHCR_DEPLOY_READ_TOKEN: ${{ secrets.GHCR_DEPLOY_READ_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
+          DEPLOY_USER: deploy
+          GHCR_DEPLOY_USER: ${{ github.actor }}
+          GHCR_DEPLOY_READ_TOKEN: ${{ github.token }}
           MUSIC_DEPLOY_STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
           OPERATION: ${{ steps.request.outputs.operation }}
           DIGEST: ${{ steps.request.outputs.digest }}
           COMMIT: ${{ steps.request.outputs.commit }}
+          COMPOSE_PROJECT: ${{ steps.request.outputs.compose_project }}
+          LEGACY_SERVICE: ${{ steps.request.outputs.legacy_service }}
           IMAGE_REPOSITORY: ${{ steps.request.outputs.repository }}
           IMAGE_SOURCE: ${{ steps.request.outputs.source }}
         run: |
@@ -143,7 +198,7 @@ jobs:
           install -m 700 tunes/deployment/music-deploy-engine.sh "$bundle/music-deploy-engine.sh"
           install -m 600 tunes/deployment/music-hmac.mjs "$bundle/music-hmac.mjs"
           install -m 600 tunes/deployment/verify-publication-authority.mjs "$bundle/verify-publication-authority.mjs"
-          printf '%s\n' music-deploy-request-v2 "operation=$OPERATION" "digest=$DIGEST" "commit=$COMMIT" compose_project=- legacy_service=- > "$bundle/request.txt"
+          printf '%s\n' music-deploy-request-v2 "operation=$OPERATION" "digest=$DIGEST" "commit=$COMMIT" "compose_project=$COMPOSE_PROJECT" "legacy_service=$LEGACY_SERVICE" > "$bundle/request.txt"
           printf '%s\n' music-deploy-authority-v1 "repository=$IMAGE_REPOSITORY" "source=$IMAGE_SOURCE" "ghcr_user=$GHCR_DEPLOY_USER" > "$bundle/authority.txt"
           printf '%s' "$hmac_key_value" > "$bundle/hmac.key"
           unset hmac_key_value

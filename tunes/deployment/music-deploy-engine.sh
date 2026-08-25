@@ -605,6 +605,7 @@ if [[ "$operation" == bootstrap ]]; then
   recover_schema_epoch
   compose_project="$requested_compose_project"
   legacy_service="$requested_legacy_service"
+  music_deploy_validate_compose_project "$compose_project"
   if [[ -e "$route_file" ]]; then
     require_regular_file "$route_file"
     [[ "$(grep -Ec "url: http://${legacy_service}:5000$" "$route_file")" == 1 ]] \

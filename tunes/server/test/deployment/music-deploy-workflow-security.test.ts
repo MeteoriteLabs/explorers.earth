@@ -52,10 +52,18 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(steps.indexOf(actionable)).toBeLessThan(steps.findIndex((step: any) => step.name === "Push and expose registry digest"));
   });
 
-  it("makes manual dispatch rollback-only and keeps deploy inputs internal to workflow_call", () => {
+  it("limits manual dispatch to one-time bootstrap or rollback and keeps normal deploy internal", () => {
     // Production break caught: a manual caller selects an arbitrary package or commit for production deploy.
     const workflow = parseYaml(read(".github/workflows/tunes-deploy.yml"));
-    expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual(["target_digest"]);
+    expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual([
+      "operation",
+      "target_digest",
+      "target_commit",
+      "compose_project",
+      "legacy_service",
+    ]);
+    expect(workflow.on.workflow_dispatch.inputs.operation.options).toEqual(["rollback", "bootstrap"]);
+    expect(workflow.on.workflow_dispatch.inputs.operation.options).not.toContain("deploy");
     expect(workflow.on.workflow_dispatch.inputs.target_digest.required).toBe(true);
     expect(workflow.on.workflow_call.inputs).toEqual({
       digest: { type: "string", required: true },
@@ -148,7 +156,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).not.toMatch(/ssh[^\n]*\$\{\{\s*inputs\./);
     expect(deploy).not.toContain('ghcr.io/*/explorers-tunes');
     expect(deploy).not.toContain("inputs.image_ref");
-    expect(deploy).not.toContain("inputs.operation");
+    expect(deploy).not.toMatch(/ssh[^\n]*\$\{\{\s*inputs\./);
   });
 
   it("admits normal deploys only from the pinned main CI caller with attestation permission", () => {
@@ -159,6 +167,13 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).toContain("$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main");
     expect(ci).toContain("github.event_name == 'push'");
     expect(ci).toMatch(/deploy-production:[\s\S]*?permissions:[\s\S]*?attestations: read/);
+    expect(deploy).toContain("inputs.operation == 'bootstrap'");
+    expect(deploy).toContain("gh attestation verify");
+    expect(deploy).toContain('gh attestation verify "oci://${IMAGE_REPOSITORY}@${DIGEST}"');
+    expect(deploy).toContain('git merge-base --is-ancestor "$commit" "$GITHUB_SHA"');
+    expect(deploy).toContain('--signer-workflow "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/tunes.yml"');
+    expect(deploy).toContain("--source-ref refs/heads/main");
+    expect(deploy).toContain('--source-digest "$COMMIT"');
   });
 
   it("cleans only the fixed bundle files without recursive deletion", () => {
@@ -210,7 +225,9 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(prose).toContain("protected branches only");
     expect(prose).toContain("main must be the sole protected branch");
     expect(prose).toContain("main is protected");
-    expect(prose).toContain("production credentials are environment-scoped only");
+    expect(prose).toContain("legacy repository-scoped `TUNES_DEPLOY_HOST` and `TUNES_DEPLOY_KEY`");
+    expect(prose).toContain("job-scoped GitHub token");
+    expect(prose).toContain("new production credentials are environment-scoped only");
     expect(prose).toContain("YAML check is not the security boundary");
     expect(prose).toContain("GATE_PROD must remain closed");
   });

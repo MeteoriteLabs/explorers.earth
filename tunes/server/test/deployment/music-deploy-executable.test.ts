@@ -72,6 +72,8 @@ interface RunOptions {
   fixtureImageAuthorityMode?: "missing" | "invalid-mac";
   coherentFixtureAuthoritySubstitution?: boolean;
   fixtureRootOverride?: string;
+  legacyComposeProject?: string;
+  legacyComposeService?: string;
 }
 
 describe("checked-in production Music deploy executable", () => {
@@ -258,6 +260,9 @@ describe("checked-in production Music deploy executable", () => {
 set -euo pipefail
 if [[ "$1" == "context" && "$2" == "show" ]]; then printf 'default\\n'; exit 0; fi
 if [[ "$1" == "context" && "$2" == "inspect" ]]; then printf '%s\\n' "\${MUSIC_DEPLOY_TEST_DOCKER_ENDPOINT:-unix:///var/run/docker.sock}"; exit 0; fi
+if [[ "$1" == "inspect" && "$*" == *".State.Running"* ]]; then printf 'true\\n'; exit 0; fi
+if [[ "$1" == "inspect" && "$*" == *"com.docker.compose.project"* ]]; then printf '%s\\n' "$MUSIC_DEPLOY_TEST_LEGACY_COMPOSE_PROJECT"; exit 0; fi
+if [[ "$1" == "inspect" && "$*" == *"com.docker.compose.service"* ]]; then printf '%s\\n' "$MUSIC_DEPLOY_TEST_LEGACY_COMPOSE_SERVICE"; exit 0; fi
 route="$MUSIC_DEPLOY_ROOT/deployment-routing/music-router.yml"
 current_route="none"; if [[ -f "$route" ]]; then current_route="$(grep -Eo 'http://[^ ]+:5000' "$route" | tail -1)"; fi
 printf 'docker %s | route=%s\\n' "$*" "$current_route" >> "$MUSIC_DEPLOY_TEST_EVENT_LOG"
@@ -394,6 +399,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_NODE_ARGV_LOG: shellPath(join(sandbox, "node-argv.log")),
         MUSIC_DEPLOY_TEST_NODE_ENV_LOG: shellPath(join(sandbox, "node-env.log")),
         MUSIC_DEPLOY_TEST_COMPOSE_MODEL_FILE: shellPath(join(sandbox, "compose-model.json")),
+        MUSIC_DEPLOY_TEST_LEGACY_COMPOSE_PROJECT: options.legacyComposeProject ?? "legacy-project",
+        MUSIC_DEPLOY_TEST_LEGACY_COMPOSE_SERVICE: options.legacyComposeService ?? "tunes",
         MUSIC_DEPLOY_TEST_MODE: "1",
         MUSIC_DEPLOY_FAILPOINT: options.failpoint ?? "",
     });
@@ -937,6 +944,13 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(result.stderr).toContain("invalid deployment request");
     expect(existsSync(eventLog)).toBe(false);
     expect(existsSync(join(sandbox, "touch-pwned"))).toBe(false);
+  });
+
+  it("refuses bootstrap before routing when the observed legacy container belongs to another Compose project", () => {
+    const result = run("bootstrap", digest("a"), commit("a"), { legacyComposeProject: "other-project" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("legacy container Compose project mismatch");
+    expect(existsSync(join(root, "deployment-routing/music-router.yml"))).toBe(false);
   });
 
   it("keeps the production entrypoint GHCR-only and refuses direct fixture authority", () => {

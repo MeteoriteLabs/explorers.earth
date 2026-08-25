@@ -4,7 +4,7 @@
 
 `.github/workflows/tunes.yml` is the sole image-build and publication authority. A protected `main` push runs the release dependency chain, builds the checked-in multi-stage Dockerfile, verifies the runtime and migration artifacts, scans the image, publishes provenance, pushes the canonical GHCR package with a full-commit tag, and exposes the immutable registry digest. Production promotion then calls the internal reusable `.github/workflows/tunes-deploy.yml` with that digest.
 
-Operators must follow the [immutable deployment runbook](../operations/music-deploy-runbook.md). The checked-in `tunes/deployment/music-deploy.sh` wrapper is the only deploy and rollback entrypoint. It admits only the canonical digest-qualified image, verifies provenance and OCI labels, authenticates the request and retained state, runs ordered migration/readiness gates, and promotes only after all controls pass. Manual dispatch is rollback-only and selects an already retained digest.
+Operators must follow the [immutable deployment runbook](../operations/music-deploy-runbook.md). The checked-in `tunes/deployment/music-deploy.sh` wrapper is the only bootstrap, deploy, and rollback entrypoint. It admits only the canonical digest-qualified image, verifies provenance and OCI labels, authenticates the request and retained state, runs ordered migration/readiness gates, and promotes only after all controls pass. Manual dispatch permits the one-time attested legacy bootstrap or a retained-digest rollback; normal deployment remains internal to the protected main workflow.
 
 Local `npm run build` or `npm run start` may verify developer changes, but local builds, branch names, mutable tags, and ad hoc infrastructure commands are not production authority.
 

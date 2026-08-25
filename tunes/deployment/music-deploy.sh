@@ -92,7 +92,18 @@ music_deploy_registry_cleanup() {
 }
 
 music_deploy_validate_compose_project() {
-  return 0
+  local compose_project="$1" observed_project observed_service running
+  [[ "${operation:-}" == bootstrap ]] || return 0
+  running="$(docker inspect --format '{{.State.Running}}' "$requested_legacy_service")" \
+    || fail "legacy container unavailable"
+  [[ "$running" == true ]] || fail "legacy container is not running"
+  observed_project="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$requested_legacy_service")" \
+    || fail "legacy container Compose project unavailable"
+  [[ "$observed_project" == "$compose_project" ]] \
+    || fail "legacy container Compose project mismatch"
+  observed_service="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.service" }}' "$requested_legacy_service")" \
+    || fail "legacy container Compose service unavailable"
+  [[ "$observed_service" == tunes ]] || fail "legacy container is not the Tunes Compose service"
 }
 
 music_deploy_router_security() {

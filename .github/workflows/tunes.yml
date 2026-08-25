@@ -179,4 +179,6 @@ jobs:
     with:
       digest: ${{ needs.build-test-scan-push.outputs.digest }}
       commit: ${{ needs.build-test-scan-push.outputs.commit }}
-    secrets: inherit
+    secrets:
+      TUNES_DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
+      TUNES_DEPLOY_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}

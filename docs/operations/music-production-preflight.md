@@ -6,10 +6,18 @@ rotation evidence without secret values, verify old credentials are rejected,
 and keep PostgreSQL private with no published host port. This implementation
 does not perform production rotation or any other production mutation.
 
-Status: **BLOCKED; no production probe was attempted.** Production mutation is
-forbidden in C0. No safe separately supplied read-only Strapi or database
-credential was available in this worktree, so no topology, row-count,
-container/volume, access-log, backup timestamp, or restore result is claimed.
+Status: **BLOCKED pending the protected read-only host preflight.** The manually
+dispatched `.github/workflows/tunes-host-preflight.yml` workflow reuses the
+proven `TUNES_DEPLOY_HOST` and `TUNES_DEPLOY_KEY` connection inside the
+`tunes-production` environment. Its checked contract permits only sanitized
+identity, SSH fingerprint, Docker/Compose version, storage, directory-mode,
+container, network, volume, and Compose-label observations. It cannot restart
+Docker, write files, change traffic, or execute SQL. The connection itself is
+authenticated against the independently captured environment-scoped
+`TUNES_DEPLOY_SSH_FINGERPRINT`; printing the server fingerprint after connection
+is evidence, not the trust decision. Until that workflow runs,
+no topology, row-count, container/volume, access-log, backup timestamp, or
+restore result is claimed.
 No direct/session-affine PostgreSQL and dedicated `LISTEN` capacity proof was
 available either; transaction pooling or a stateless HTTP database transport
 cannot satisfy the reconciliation advisory-lock/listener contract.

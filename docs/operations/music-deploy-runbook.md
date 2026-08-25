@@ -6,9 +6,17 @@
 builds once, scans the exact image, pushes only the full-commit tag to the
 canonical `ghcr.io/<repository-owner>/explorers-tunes` package, publishes GitHub
 build provenance for the resolved digest, and calls
-`.github/workflows/tunes-deploy.yml`. Manual dispatch is rollback-only and
-accepts only a retained digest; it cannot deploy a new image or select a package,
-owner, or commit.
+`.github/workflows/tunes-deploy.yml`. Manual dispatch admits only the one-time
+legacy bootstrap or a retained-digest rollback; normal deploy remains callable
+only by the protected main workflow. Bootstrap requires an attested digest and
+full commit plus the exact Compose project and live legacy service observed by
+the read-only host preflight. Verification binds the attestation signer to
+`.github/workflows/tunes.yml`, the source ref to `refs/heads/main`, the source
+digest to that commit, and requires the commit to be in main's ancestry. Before
+the first route write, the production wrapper also proves that the named live
+container is running with the requested Compose-project label and the exact
+`tunes` service label. The deployment engine permanently refuses a second
+bootstrap after authenticated state exists.
 
 The reusable workflow verifies GitHub provenance before a normal deploy. The
 checked-in `tunes/deployment/music-deploy.sh` executable then verifies the pulled
@@ -31,8 +39,14 @@ no-environment preflight verifies all of those facts through the GitHub API
 before the environment-bearing job is eligible. A
 non-main dispatch fails in that preflight, and the deploy job also has a
 job-level `refs/heads/main` condition evaluated before environment access. The
-production credentials are environment-scoped only; repository- or
-organization-scoped copies of those credentials are forbidden. The
+legacy repository-scoped `TUNES_DEPLOY_HOST` and `TUNES_DEPLOY_KEY` are reused
+only by environment-bearing jobs during this migration from the proven SSH
+route, and the reusable caller passes only those two named secrets rather than
+inheriting the repository secret set. GHCR access uses the short-lived
+job-scoped GitHub token. The pinned host
+identity, deployment-state HMAC, and all other new production credentials are
+environment-scoped only; repository- or organization-scoped copies of those new
+credentials are forbidden. The
 YAML check is not the security boundary: a branch can edit its own YAML, while
 the external environment policy cannot be bypassed by that branch copy.
 `GATE_PROD must remain closed` if the API check is unavailable, the policy is
@@ -168,9 +182,11 @@ legacy_project="$(docker inspect --format '{{ index .Config.Labels "com.docker.c
 test -n "$legacy_service" && test -n "$legacy_project"
 ```
 
-Obtain the `read:packages`-only GHCR credential and the independent deployment
-state HMAC key through the approved secret channel. Do not put either in shell
-history. In a mode-0700 temporary directory create four mode-0600 files:
+For the protected GitHub workflow, use its job-scoped `packages: read` token and
+the independent deployment-state HMAC key from the `tunes-production`
+environment. An operator running the wrapper outside GitHub instead needs a
+time-bounded `read:packages`-only credential. Do not put either credential in
+shell history. In a mode-0700 temporary directory create four mode-0600 files:
 
 ```text
 request.txt:

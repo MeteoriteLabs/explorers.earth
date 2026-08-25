@@ -123,13 +123,26 @@ describe("Music deployment authority files", () => {
     expect(runbook).toContain("never substitutes the default `previous` alias");
   });
 
-  it("uses a read-packages-only remote GHCR credential and always logs it out", () => {
+  it("reuses the proven Tunes SSH authority and an ephemeral package-read credential", () => {
+    const ci = read(".github/workflows/tunes.yml");
     const deploy = read(".github/workflows/tunes-deploy.yml");
     const executable = read("tunes/deployment/music-deploy.sh");
-    expect(deploy).toContain("GHCR_DEPLOY_READ_TOKEN");
+    expect(deploy).toContain("secrets.TUNES_DEPLOY_HOST");
+    expect(deploy).toContain("secrets.TUNES_DEPLOY_KEY");
+    expect(deploy).toContain("DEPLOY_USER: deploy");
+    expect(deploy).toContain("GHCR_DEPLOY_USER: ${{ github.actor }}");
+    expect(deploy).toContain("GHCR_DEPLOY_READ_TOKEN: ${{ github.token }}");
+    expect(deploy).not.toContain("secrets.HETZNER_HOST");
+    expect(deploy).not.toContain("secrets.HETZNER_USER");
+    expect(deploy).not.toContain("secrets.HETZNER_SSH_KEY");
+    expect(deploy).not.toContain("secrets.GHCR_DEPLOY_USER");
+    expect(deploy).not.toContain("secrets.GHCR_DEPLOY_READ_TOKEN");
+    expect(ci).not.toContain("secrets: inherit");
+    expect(ci).toContain("TUNES_DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}");
+    expect(ci).toContain("TUNES_DEPLOY_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}");
+    expect(Object.keys(parseYaml(deploy).on.workflow_call.secrets)).toEqual(["TUNES_DEPLOY_HOST", "TUNES_DEPLOY_KEY"]);
     expect(executable).toContain("--password-stdin");
     expect(executable).toContain("logout ghcr.io");
-    expect(deploy).not.toContain("secrets.GITHUB_TOKEN");
   });
 
   it("finds no competing Tunes host deployment authority in another workflow", () => {
@@ -208,10 +221,18 @@ describe("Music deployment authority files", () => {
     expect(promotion.http.services["tunes-active"].loadBalancer.servers[0].url).toBe("http://tunes-green:5000");
   });
 
-  it("keeps reusable deploy inputs internal and manual dispatch rollback-only", () => {
+  it("keeps normal deploy internal and exposes only bootstrap or rollback manually", () => {
     const workflow = parseYaml(read(".github/workflows/tunes-deploy.yml"));
     expect(Object.keys(workflow.on.workflow_call.inputs)).toEqual(["digest", "commit"]);
-    expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual(["target_digest"]);
+    expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual([
+      "operation",
+      "target_digest",
+      "target_commit",
+      "compose_project",
+      "legacy_service",
+    ]);
+    expect(workflow.on.workflow_dispatch.inputs.operation.options).toEqual(["rollback", "bootstrap"]);
+    expect(read("tunes/deployment/music-deploy-engine.sh")).toContain("bootstrap refuses existing deployment authority");
   });
 
   it("retains a byte-exact route backup under an armed error trap until durable commit", () => {

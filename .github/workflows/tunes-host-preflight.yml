@@ -1,0 +1,71 @@
+name: Tunes read-only host preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_read_only:
+        description: "Confirm that this run may inspect sanitized host metadata"
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tunes-host-preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/main' && inputs.confirm_read_only
+    environment: tunes-production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect Tunes host without mutation
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.TUNES_DEPLOY_HOST }}
+          username: deploy
+          key: ${{ secrets.TUNES_DEPLOY_KEY }}
+          fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}
+          port: 22
+          command_timeout: 2m
+          script_stop: true
+          script: |
+            set -euo pipefail
+            printf '%s\n' '=== identity ==='
+            id
+            uname -a
+            printf '%s\n' '=== ssh host fingerprints ==='
+            ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+            ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub
+            printf '%s\n' '=== runtime ==='
+            docker version --format 'client={{.Client.Version}} server={{.Server.Version}}'
+            docker compose version
+            printf '%s\n' '=== storage ==='
+            df -P /
+            for path in /home/deploy/tunes /home/deploy/tunes/tunes /opt /opt/explorers; do
+              if [ -e "$path" ]; then
+                stat -c '%A %U:%G %n' "$path"
+                if [ -w "$path" ]; then
+                  printf 'writable=yes path=%s\n' "$path"
+                else
+                  printf 'writable=no path=%s\n' "$path"
+                fi
+              else
+                printf 'present=no path=%s\n' "$path"
+              fi
+            done
+            printf '%s\n' '=== compose projects ==='
+            docker compose ls
+            printf '%s\n' '=== containers ==='
+            docker ps --format 'name={{.Names}} image={{.Image}} status={{.Status}} ports={{.Ports}}'
+            printf '%s\n' '=== networks ==='
+            docker network ls --format 'name={{.Name}} driver={{.Driver}} scope={{.Scope}}'
+            printf '%s\n' '=== volumes ==='
+            docker volume ls --format 'name={{.Name}} driver={{.Driver}}'
+            printf '%s\n' '=== tunes compose labels ==='
+            for container in $(docker ps --filter label=com.docker.compose.service=tunes --format '{{.ID}}'); do
+              docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$container"
+            done
