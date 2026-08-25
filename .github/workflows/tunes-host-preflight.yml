@@ -1,50 +1,213 @@
-name: Tunes read-only host preflight
-
+name: One-shot Tunes test server direct deploy
 on:
   workflow_dispatch:
     inputs:
-      confirm_read_only:
-        description: "Confirm that this run may inspect sanitized host metadata"
+      confirm_test_deploy:
+        description: Replace only the existing test-server app service with automatic rollback
         required: true
+        default: false
         type: boolean
-
 permissions:
   contents: read
-
 concurrency:
-  group: tunes-host-preflight
+  group: tunes-test-server-one-shot
   cancel-in-progress: false
 
 jobs:
-  preflight:
-    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.confirm_read_only
+  build-arm64:
+    if: github.ref == 'refs/heads/codex/tunes-fingerprint-diagnostic' && inputs.confirm_test_deploy
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.repository }}@${{ steps.build.outputs.digest }}
+      commit: ${{ steps.meta.outputs.commit }}
     steps:
-      - name: Inspect Tunes host without mutation
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+      - id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit="$(git rev-parse HEAD)"
+          [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
+          repository="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/explorers-tunes-test"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build immutable ARM64 candidate
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: ./tunes
+          file: ./tunes/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.repository }}:${{ steps.meta.outputs.commit }}
+          build-args: |
+            BUILD_COMMIT=${{ steps.meta.outputs.commit }}
+            BUILD_SOURCE=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=tunes-test-arm64
+          cache-to: type=gha,mode=max,scope=tunes-test-arm64
+
+  deploy-test-server:
+    needs: build-arm64
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 15
+    steps:
+      - name: Back up, replace app, verify, and automatically roll back on failure
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        env:
+          CANDIDATE_IMAGE: ${{ needs.build-arm64.outputs.image }}
+          CANDIDATE_COMMIT: ${{ needs.build-arm64.outputs.commit }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
         with:
           host: ${{ secrets.TUNES_DEPLOY_HOST }}
           username: deploy
           key: ${{ secrets.TUNES_DEPLOY_KEY }}
-          port: 22
-          command_timeout: 2m
+          fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}
+          command_timeout: 12m
+          script_stop: true
+          envs: CANDIDATE_IMAGE,CANDIDATE_COMMIT,GHCR_USER,GHCR_TOKEN
           script: |
             set -euo pipefail
-            printf '%s\n' '=== identity ==='
-            id
-            uname -a
-            printf '%s\n' '=== ssh host fingerprints ==='
-            ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub
-            ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
-            ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub
-            printf '%s\n' '=== legacy app identity ==='
-            docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-app-1
-            printf '%s\n' '=== listeners ==='
-            ss -lnt
-            printf '%s\n' '=== ingress services ==='
-            for service in nginx caddy traefik; do
-              if systemctl is-active --quiet "$service"; then printf 'active=%s\n' "$service"; else printf 'active=no service=%s\n' "$service"; fi
+            compose_dir=/home/deploy/tunes/tunes
+            compose_file="$compose_dir/docker-compose.yml"
+            override_file="$compose_dir/.codex-test-image.override.yml"
+            backup_dir="$compose_dir/deployment-backups"
+            stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+            rollback_image="local/tunes-app-rollback:$stamp"
+            success_flag="$backup_dir/deploy-success-$stamp"
+            heartbeat_file="$backup_dir/deploy-heartbeat-$stamp"
+            watchdog_script="$backup_dir/watchdog-$stamp.sh"
+            cd "$compose_dir"
+            test -f "$compose_file"
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-app-1)" = tunes
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-app-1)" = app
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-db-1)" = tunes
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-db-1)" = db
+            test "$(docker inspect --format '{{.State.Status}}' tunes-db-1)" = running
+            app_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-app-1)"
+            db_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-db-1)"
+            shared_network=false
+            for network in $app_networks; do
+              if printf '%s\n' "$db_networks" | grep -Fqw "$network"; then shared_network=true; fi
             done
-            printf '%s\n' '=== provisioning authority ==='
-            if sudo -n true; then printf '%s\n' 'sudo_nopasswd=yes'; else printf '%s\n' 'sudo_nopasswd=no'; fi
+            test "$shared_network" = true
+            mkdir -p "$backup_dir"
+            chmod 700 "$backup_dir"
+            old_image_id="$(docker inspect --format '{{.Image}}' tunes-app-1)"
+            docker tag "$old_image_id" "$rollback_image"
+            printf '%s\n' "$old_image_id" > "$backup_dir/app-image-$stamp.txt"
+            chmod 600 "$backup_dir/app-image-$stamp.txt"
+            db_user="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_USER=//p' | head -n 1)"
+            test -n "$db_user"
+            umask 077
+            docker exec tunes-db-1 pg_dumpall -U "$db_user" | gzip -9 > "$backup_dir/postgres-$stamp.sql.gz"
+            test -s "$backup_dir/postgres-$stamp.sql.gz"
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            unset GHCR_TOKEN
+            cleanup() {
+              docker logout ghcr.io >/dev/null 2>&1 || true
+            }
+            trap cleanup EXIT
+            docker pull "$CANDIDATE_IMAGE"
+            test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{.Architecture}}')" = arm64
+            test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$CANDIDATE_COMMIT"
+            write_override() {
+              image="$1"
+              printf 'services:\n  app:\n    image: %s\n    pull_policy: never\n' "$image" > "$override_file"
+              chmod 600 "$override_file"
+            }
+            cat > "$watchdog_script" <<EOF
+            #!/usr/bin/env bash
+            set -euo pipefail
+            rollback_verified=false
+            for attempt in \$(seq 1 180); do
+              test -f "$success_flag" && exit 0
+              now=\$(date +%s)
+              heartbeat=\$(cat "$heartbeat_file" 2>/dev/null || printf '0')
+              if (( now - heartbeat <= 120 )); then sleep 5; continue; fi
+              printf 'services:\n  app:\n    image: %s\n    pull_policy: never\n' "$rollback_image" > "$override_file"
+              chmod 600 "$override_file"
+              for retry in \$(seq 1 3); do
+                docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
+                for check in \$(seq 1 30); do
+                  image=\$(docker inspect --format '{{.Image}}' tunes-app-1 2>/dev/null || true)
+                  state=\$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)
+                  health=\$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1 2>/dev/null || true)
+                  if [ "\$image" = "$old_image_id" ] && [ "\$state" = running ] && { [ "\$health" = healthy ] || [ "\$health" = none ]; } && curl --fail --silent --max-time 5 http://127.0.0.1:5001/ >/dev/null; then rollback_verified=true; break 3; fi
+                  sleep 2
+                done
+              done
+              break
+            done
+            if [ "\$rollback_verified" != true ]; then touch "$backup_dir/WATCHDOG-ROLLBACK-FAILED-$stamp"; exit 1; fi
+            EOF
+            chmod 700 "$watchdog_script"
+            date +%s > "$heartbeat_file"
+            nohup bash "$watchdog_script" > "$backup_dir/watchdog-$stamp.log" 2>&1 &
+            rollback() {
+              status=$?
+              trap - ERR
+              echo 'Candidate verification failed; restoring retained application image.'
+              write_override "$rollback_image"
+              for retry in $(seq 1 3); do
+                date +%s > "$heartbeat_file"
+                timeout 90s docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
+                for attempt in $(seq 1 30); do
+                  image="$(docker inspect --format '{{.Image}}' tunes-app-1 2>/dev/null || true)"
+                  state="$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)"
+                  health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1 2>/dev/null || true)"
+                  if [ "$image" = "$old_image_id" ] && [ "$state" = running ] && { [ "$health" = healthy ] || [ "$health" = none ]; } && curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/ >/dev/null; then
+                    touch "$success_flag"
+                    echo 'Rollback verified.'
+                    exit "$status"
+                  fi
+                  sleep 2
+                done
+              done
+              echo 'Rollback container did not recover the public endpoint.'
+              exit 1
+            }
+            trap rollback ERR
+            write_override "$CANDIDATE_IMAGE"
+            date +%s > "$heartbeat_file"
+            timeout 90s docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app
+            for attempt in $(seq 1 45); do
+              date +%s > "$heartbeat_file"
+              state="$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)"
+              health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1 2>/dev/null || true)"
+              if [ "$state" = running ] && [ "$health" = healthy ] && curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/health/live >/dev/null && curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/health/ready > "$backup_dir/readiness-$stamp.json" && curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/ >/dev/null; then
+                break
+              fi
+              test "$attempt" -lt 45
+              sleep 2
+            done
+            test "$(docker inspect --format '{{.Config.Image}}' tunes-app-1)" = "$CANDIDATE_IMAGE"
+            candidate_digest="${CANDIDATE_IMAGE##*@}"
+            docker run --rm --entrypoint node -v "$backup_dir/readiness-$stamp.json:/readiness.json:ro" --env EXPECTED_COMMIT="$CANDIDATE_COMMIT" --env EXPECTED_DIGEST="$candidate_digest" "$CANDIDATE_IMAGE" -e '
+              const fs=require("node:fs");
+              const value=JSON.parse(fs.readFileSync("/readiness.json","utf8"));
+              if(value.ready!==true||value.commit!==process.env.EXPECTED_COMMIT||value.digest!==process.env.EXPECTED_DIGEST||value.migrationMarker!=="0017_publication_idempotency_key_retirement")process.exit(1);
+            '
+            touch "$success_flag"
+            trap - ERR
+            printf 'deployed_commit=%s\n' "$CANDIDATE_COMMIT"
+            printf 'deployed_image=%s\n' "$CANDIDATE_IMAGE"
+            printf 'database_backup=%s\n' "$backup_dir/postgres-$stamp.sql.gz"
+            printf 'rollback_image=%s\n' "$rollback_image"
