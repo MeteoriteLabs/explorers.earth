@@ -608,7 +608,12 @@ if [[ "$operation" == bootstrap ]]; then
   music_deploy_validate_compose_project "$compose_project"
   if [[ -e "$route_file" ]]; then
     require_regular_file "$route_file"
-    [[ "$(grep -Fxc "            url: http://${legacy_service}:5000" "$route_file")" == 1 ]] \
+    awk -v expected="http://${legacy_service}:5000" '
+      $0 == "    tunes-active:" { active_sections += 1; in_active = 1; next }
+      in_active && $0 ~ /^    [^ ]/ { in_active = 0 }
+      in_active && $0 == "            url: " expected { active_matches += 1 }
+      END { exit !(active_sections == 1 && active_matches == 1) }
+    ' "$route_file" \
       || fail "bootstrap legacy route does not match observed service"
   else
     write_route "$legacy_service" false

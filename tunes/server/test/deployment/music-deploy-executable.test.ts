@@ -962,6 +962,10 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       "      loadBalancer:",
       "        servers:",
       "          - url: http://legacyXtunes:5000",
+      "    auxiliary:",
+      "      loadBalancer:",
+      "        servers:",
+      "          - url: http://legacy.tunes:5000",
       "",
     ].join("\n"));
     const result = run("bootstrap", digest("a"), commit("a"), { legacyService: "legacy.tunes" });
