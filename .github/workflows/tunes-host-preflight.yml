@@ -204,6 +204,8 @@ jobs:
             create_authority "$authority_dir/lifecycle-proof"
             create_authority "$authority_dir/strapi-jwt"
             create_authority "$authority_dir/gate-key"
+            create_authority "$authority_dir/session-secret"
+            create_authority "$authority_dir/cookie-secret"
             db_name="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_DB=//p' | head -n 1)"
             test -n "$db_name"
             migrator_password="$(cat "$authority_dir/db-migrator")"
@@ -271,6 +273,8 @@ jobs:
                   MUSIC_TRUSTED_PROXY_IP: $proxy_ip
                   STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: /run/secrets/lifecycle-proof
                   STRAPI_JWT_SECRET: $(cat "$authority_dir/strapi-jwt")
+                  SESSION_SECRET: $(cat "$authority_dir/session-secret")
+                  COOKIE_SECRET: $(cat "$authority_dir/cookie-secret")
                   MUSIC_GATE_ATTESTATION_KEY: $(cat "$authority_dir/gate-key")
                   MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
                   MUSIC_NEW_ENTRY_KILL_SWITCH: "true"
