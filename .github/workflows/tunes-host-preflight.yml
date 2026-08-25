@@ -37,9 +37,13 @@ jobs:
             set -euo pipefail
             backup_dir=/home/deploy/tunes/tunes/deployment-backups
             readiness="$(find "$backup_dir" -maxdepth 1 -type f -name 'readiness-*.json' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)"
+            candidate_log="$(find "$backup_dir" -maxdepth 1 -type f -name 'candidate-log-*.txt' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)"
             test -n "$readiness"
             printf '%s\n' '=== saved candidate readiness ==='
             cat "$readiness"
+            printf '%s\n' '=== sanitized candidate startup log ==='
+            test -n "$candidate_log"
+            sed -E 's#://[^/@[:space:]]+@#://***@#g' "$candidate_log" | tail -n 120
             printf '%s\n' '=== current restored app ==='
             docker inspect --format 'image_id={{.Image}} configured_image={{.Config.Image}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1
             curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/ >/dev/null
