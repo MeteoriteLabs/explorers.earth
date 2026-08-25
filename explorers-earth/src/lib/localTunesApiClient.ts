@@ -24,6 +24,7 @@ export class MusicClientError extends Error {
     readonly retryAfterSeconds?: number,
     readonly upstreamCode?: string,
     readonly retryable = false,
+    readonly requestId?: string,
   ) {
     super(message);
     this.name = "MusicClientError";
@@ -35,6 +36,8 @@ export interface LocalTunesApiClientDependencies {
   fetchImpl?: typeof fetch;
   getStrapiBearer: () => Promise<string | undefined>;
   now?: () => number;
+  refreshWindowMs?: number;
+  delay?: (milliseconds: number) => Promise<void>;
 }
 
 export interface LocalTunesApiClient {
@@ -47,10 +50,19 @@ export interface LocalTunesApiClient {
 
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 const STRAPI_PROOF_PATTERN = /^[A-Za-z0-9._~-]{16,4096}$/;
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+export const MUSIC_IDENTITY_RELIABILITY_CONTRACT = Object.freeze({
+  refreshWindowMs: 60_000,
+  maxAttempts: 3,
+  defaultRetryAfterMs: 1_000,
+  maxRetryAfterMs: 2_000,
+});
 
 export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDependencies): LocalTunesApiClient {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   const now = dependencies.now ?? Date.now;
+  const refreshWindowMs = dependencies.refreshWindowMs ?? MUSIC_IDENTITY_RELIABILITY_CONTRACT.refreshWindowMs;
+  const delay = dependencies.delay ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   const baseUrl = normalizedBaseUrl(dependencies.baseUrl);
   let authoritySubject: string | undefined;
   let authorityGeneration = 0;
@@ -83,25 +95,36 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
         const proof = await dependencies.getStrapiBearer();
         if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
         if (!proof || !STRAPI_PROOF_PATTERN.test(proof)) throw new Error("proof unavailable");
-        const response = await fetchImpl(`${baseUrl}/api/music/identity/ensure`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${proof}` },
-          signal: controller.signal,
-        });
-        if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
-        if (response.status !== 200) throw await containedEnsureError(response);
-        const body = await response.json() as {
-          credential?: { token?: unknown; expiresAt?: unknown };
-        };
-        const credential = body.credential;
-        if (!credential || typeof credential.token !== "string"
-            || typeof credential.expiresAt !== "number"
-            || !Number.isSafeInteger(credential.expiresAt)
-            || credential.expiresAt <= now()) throw new Error("credential malformed");
-        const result = { token: credential.token, expiresAt: credential.expiresAt };
-        if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
-        setMusicCredential(result);
-        return result;
+        for (let attempt = 1; ; attempt += 1) {
+          const response = await fetchImpl(`${baseUrl}/api/music/identity/ensure`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${proof}` },
+            signal: controller.signal,
+          });
+          if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
+          if (response.status !== 200) {
+            const error = await containedEnsureError(response);
+            if (!error.retryable || attempt === MUSIC_IDENTITY_RELIABILITY_CONTRACT.maxAttempts) throw error;
+            await delay(Math.min(
+              (error.retryAfterSeconds ?? MUSIC_IDENTITY_RELIABILITY_CONTRACT.defaultRetryAfterMs / 1_000) * 1_000,
+              MUSIC_IDENTITY_RELIABILITY_CONTRACT.maxRetryAfterMs,
+            ));
+            if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
+            continue;
+          }
+          const body = await response.json() as {
+            credential?: { token?: unknown; expiresAt?: unknown };
+          };
+          const credential = body.credential;
+          if (!credential || typeof credential.token !== "string"
+              || typeof credential.expiresAt !== "number"
+              || !Number.isSafeInteger(credential.expiresAt)
+              || credential.expiresAt <= now()) throw new Error("credential malformed");
+          const result = { token: credential.token, expiresAt: credential.expiresAt };
+          if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
+          setMusicCredential(result);
+          return result;
+        }
       } catch (cause) {
         if (authorityStillCurrent(generation, subject)) clearMusicCredential();
         if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
@@ -118,7 +141,11 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
   }
 
   async function credential(): Promise<MusicCredential> {
-    return getMusicCredential(now()) ?? refresh();
+    const timestamp = now();
+    const current = getMusicCredential(timestamp);
+    if (current && current.expiresAt - timestamp > refreshWindowMs) return current;
+    if (current) clearMusicCredential();
+    return refresh();
   }
 
   async function send(input: LocalMusicRequest, active: MusicCredential): Promise<Response> {
@@ -184,13 +211,17 @@ async function containedEnsureError(response: Response): Promise<MusicClientErro
     const body = await response.json() as { error?: { code?: unknown; retryable?: unknown } };
     const upstreamCode = typeof body.error?.code === "string" ? body.error.code : undefined;
     const retryAfter = Number(response.headers.get("retry-after"));
+    const retryAfterSeconds = Number.isSafeInteger(retryAfter) && retryAfter > 0 ? retryAfter : undefined;
+    const requestIdHeader = response.headers.get("x-request-id");
+    const requestId = requestIdHeader && REQUEST_ID_PATTERN.test(requestIdHeader) ? requestIdHeader : undefined;
     return new MusicClientError(
       response.status === 401 ? "AUTH_REQUIRED" : "AUTH_UNAVAILABLE",
       response.status,
       response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
-      Number.isSafeInteger(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      retryAfterSeconds,
       upstreamCode,
       body.error?.retryable === true,
+      requestId,
     );
   } catch (cause) {
     if (cause instanceof MusicClientError) return cause;

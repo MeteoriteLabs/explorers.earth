@@ -40,6 +40,24 @@ function appFor(ensure = vi.fn(async () => ({
   return { app, ensure, logs };
 }
 
+function appWithClock(now: () => number) {
+  const app = express();
+  setupMusicIdentityBodylessPreflight(app);
+  const logs: unknown[] = [];
+  const dependencies = {
+    ...routeCredentialDependencies,
+    ensure: vi.fn(async () => ({
+      id: 41, strapiUserDocumentId: "user-doc", strapiAccountDocumentId: "account-doc",
+      identityStatus: "active" as const, sessionVersion: 1,
+    })),
+    limiter: new BoundedIdentityRateLimiter({ limit: 20, windowMs: 1_000, maxEntries: 100 }),
+    logger: (entry: unknown) => logs.push(entry),
+    now,
+  };
+  setupMusicIdentityRoutes(app, dependencies);
+  return { app, logs };
+}
+
 function proxyAppFor(ensure: ReturnType<typeof vi.fn>) {
   const app = express();
   const isTrustedProxy = (peer: string | undefined) => peer === "127.0.0.1" || peer === "::ffff:127.0.0.1" || peer === "::1";
@@ -169,6 +187,28 @@ describe("POST /api/music/identity/ensure", () => {
     expect(serialized).not.toContain("sentinel-secret-proof");
     expect(serialized).not.toContain("unsafe");
     expect(serialized).not.toContain("stack");
+  });
+
+  it("emits deterministic SLO evidence with only sanitized correlation metadata", async () => {
+    const timestamps = [10_000, 10_037];
+    const { app, logs } = appWithClock(() => timestamps.shift() ?? 10_037);
+
+    await request(app).post("/api/music/identity/ensure")
+      .set("authorization", "Bearer sentinel-secret-proof")
+      .set("x-request-id", "qualified-request-1")
+      .expect(200);
+
+    expect(logs).toEqual([{
+      event: "music_identity_ensure",
+      outcome: "success",
+      status: 200,
+      latencyMs: 37,
+      requestId: "qualified-request-1",
+    }]);
+    expect(Object.keys(logs[0] as object).sort()).toEqual([
+      "event", "latencyMs", "outcome", "requestId", "status",
+    ]);
+    expect(JSON.stringify(logs)).not.toContain("sentinel-secret-proof");
   });
 
   it("keeps every runtime status, body, and mandatory header in shared/OpenAPI client parity", async () => {

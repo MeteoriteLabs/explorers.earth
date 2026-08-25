@@ -8,8 +8,11 @@ const NOW = 1_800_000_000_000;
 const freshCredential = { token: "fresh.music.credential", expiresAt: NOW + 600_000 };
 const rotatedCredential = { token: "rotated.music.credential", expiresAt: NOW + 600_000 };
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+function json(body: unknown, status = 200, headers?: Record<string, string>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", ...headers },
+  });
 }
 
 function ensureResponse(credential = freshCredential): Response {
@@ -152,6 +155,129 @@ describe("local Tunes API client", () => {
       signal: expect.any(AbortSignal),
     }));
     expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
+  });
+
+  it("refreshes one near-expiry credential once for concurrent callers within the configured window", async () => {
+    setMusicCredential({ token: "near-expiry.music.credential", expiresAt: NOW + 30_000 });
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/ensure")
+      ? ensureResponse(rotatedCredential) : json({ ok: true }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      refreshWindowMs: 60_000,
+    });
+
+    await Promise.all(Array.from({ length: 20 }, () => client.request({ method: "GET", path: "/api/music/dashboard" })));
+
+    expect(fetchImpl.mock.calls.filter(([input]) => String(input).endsWith("/ensure"))).toHaveLength(1);
+    expect(fetchImpl.mock.calls.filter(([input]) => String(input).endsWith("/dashboard"))).toHaveLength(20);
+    expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
+  });
+
+  it("honors bounded Retry-After for retryable 503 identity failures and stops after two retries", async () => {
+    let elapsedMs = 0;
+    const fetchImpl = vi.fn(async () => json({
+      version: "music-error/v1",
+      error: {
+        code: "UPSTREAM_UNAVAILABLE", message: "Contained.", action: "retry", retryable: true, requestId: "body-request",
+      },
+    }, 503, { "retry-after": "3600", "x-request-id": `retry-request-${fetchImpl.mock.calls.length}` }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async (milliseconds) => { elapsedMs += milliseconds; },
+    });
+
+    const error = await client.ensureIdentity().catch((cause) => cause);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(elapsedMs).toBe(4_000);
+    expect(error).toMatchObject({
+      status: 503,
+      retryable: true,
+      retryAfterSeconds: 3_600,
+      requestId: "retry-request-3",
+    });
+  });
+
+  it("uses the bounded default retry delay and cancels the old authority before another attempt", async () => {
+    const delayEntered = deferred<void>();
+    const releaseDelay = deferred<void>();
+    let observedDelayMs = 0;
+    const fetchImpl = vi.fn(async () => json({
+      version: "music-error/v1",
+      error: {
+        code: "UPSTREAM_UNAVAILABLE", message: "Contained.", action: "retry", retryable: true, requestId: "body-request",
+      },
+    }, 503, { "x-request-id": "retry-without-header" }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async (milliseconds) => {
+        observedDelayMs = milliseconds;
+        delayEntered.resolve();
+        await releaseDelay.promise;
+      },
+    });
+    client.setAuthority("user-a:account-a");
+
+    const oldFlight = client.ensureIdentity();
+    await delayEntered.promise;
+    client.setAuthority("user-b:account-b");
+    releaseDelay.resolve();
+
+    await expect(oldFlight).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
+    expect(observedDelayMs).toBe(1_000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([401, 403] as const)("does not retry non-retryable %s identity failures and returns a safe request ID", async (status) => {
+    let elapsedMs = 0;
+    const fetchImpl = vi.fn(async () => json({
+      version: "music-error/v1",
+      error: {
+        code: status === 401 ? "AUTH_INVALID" : "IDENTITY_INELIGIBLE",
+        message: "Contained.",
+        action: status === 401 ? "authenticate" : "complete_onboarding",
+        retryable: false,
+        requestId: "body-request-must-not-win",
+      },
+    }, status, { "x-request-id": `safe-request-${status}` }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+      delay: async (milliseconds) => { elapsedMs += milliseconds; },
+    });
+
+    const error = await client.ensureIdentity().catch((cause) => cause);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(elapsedMs).toBe(0);
+    expect(error).toMatchObject({ status, retryable: false, requestId: `safe-request-${status}` });
+  });
+
+  it("drops an unsafe response request ID from the contained UI error", async () => {
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl: async () => json({
+        version: "music-error/v1",
+        error: {
+          code: "AUTH_INVALID", message: "Contained.", action: "authenticate", retryable: false, requestId: "safe-body-id",
+        },
+      }, 401, { "x-request-id": "unsafe/request-id" }),
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+
+    await expect(client.ensureIdentity()).rejects.toMatchObject({ requestId: undefined });
   });
 
   it("contains typed identity errors for the state selector without leaking upstream messages", async () => {
