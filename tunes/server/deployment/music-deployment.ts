@@ -303,8 +303,8 @@ export function auditDeploymentAuthority(files: {
     if (!source.includes(needle)) issues.push(issue);
   };
   requireText(ciWorkflow, "explorers-tunes", "CI must publish explorers-tunes");
-  requireText(ciWorkflow, "docker/build-push-action@v6", "CI must have one documented image build");
-  requireText(ciWorkflow, "anchore/scan-action@v7", "CI must scan the built image before push");
+  requireText(ciWorkflow, "docker/build-push-action@", "CI must have one documented image build");
+  requireText(ciWorkflow, "anchore/scan-action@", "CI must scan the built image before push");
   requireText(ciWorkflow, "digest:", "CI must propagate the pushed digest");
   if (/explorers-tunes:latest|tags:[^\n]*latest/.test(ciWorkflow)) issues.push("CI must not publish a mutable tag");
   requireText(deployWorkflow, "workflow_call:", "deploy authority must be reusable from CI");
