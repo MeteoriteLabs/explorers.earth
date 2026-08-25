@@ -89,7 +89,7 @@ const AuthSyncManager = () => {
       verified: authoritative.confirmed === true || authoritative.provider === "google",
       userDocumentId: authoritative.documentId,
       account,
-    }).catch(() => undefined);
+    }).catch((cause: unknown) => musicIdentityCoordinator.reportFailure(cause));
   }, [isAuthenticated, user]);
 
   useEffect(() => {

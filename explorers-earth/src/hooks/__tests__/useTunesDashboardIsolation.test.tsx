@@ -3,10 +3,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const coordinatorState = vi.hoisted(() => ({ diagnostic: {} as { requestId?: string } }));
+
 vi.mock("../../features/music/musicApi", () => ({
   musicApi: { request: vi.fn() },
   musicIdentityCoordinator: {
     getSnapshot: () => "ready",
+    getDiagnosticSnapshot: () => coordinatorState.diagnostic,
     subscribe: () => () => undefined,
     retry: vi.fn(async () => undefined),
     reportFailure: vi.fn(),
@@ -39,7 +42,12 @@ function ErrorProbe({ scope }: { scope: typeof scopeA }) {
 
 function RetryProbe({ scope }: { scope: typeof scopeA }) {
   const result = useTunesDashboard(scope);
-  return <button onClick={() => void result.retryIdentity()}>Retry identity</button>;
+  return <button onClick={() => void result.retryIdentity().catch(() => undefined)}>Retry identity</button>;
+}
+
+function CorrelationProbe({ scope }: { scope: typeof scopeA }) {
+  const result = useTunesDashboard(scope);
+  return <div>{(result as typeof result & { requestId?: string }).requestId ?? "no request"}</div>;
 }
 
 function NoScopeProbe() {
@@ -51,6 +59,7 @@ describe("private Music query identity isolation", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    coordinatorState.diagnostic = {};
   });
 
   it("never renders identity A data while the same QueryClient switches through logout to identity B", async () => {
@@ -136,6 +145,31 @@ describe("private Music query identity isolation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry identity" }));
     const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
     expect(musicIdentityCoordinator.retry).toHaveBeenCalledOnce();
+  });
+
+  it("reports an explicit retry error at the hook boundary", async () => {
+    const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
+    const error = Object.assign(new Error("contained"), { requestId: "retry-request-7" });
+    vi.mocked(musicIdentityCoordinator.retry).mockRejectedValueOnce(error);
+    const queryClient = new QueryClient();
+    vi.spyOn(musicWorkspaceClient, "load").mockResolvedValue(workspace("Ready"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    render(<><RetryProbe scope={scopeA} /><CorrelationProbe scope={scopeA} /></>, { wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry identity" }));
+
+    await waitFor(() => expect(musicIdentityCoordinator.reportFailure).toHaveBeenCalledWith(error));
+  });
+
+  it("exposes the coordinator's sanitized request ID to UI state", () => {
+    coordinatorState.diagnostic = { requestId: "safe-request-8" };
+    const queryClient = new QueryClient();
+    vi.spyOn(musicWorkspaceClient, "load").mockResolvedValue(workspace("Ready"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+
+    render(<CorrelationProbe scope={scopeA} />, { wrapper });
+
+    expect(screen.getByText("safe-request-8")).toBeInTheDocument();
   });
 
   it.each([

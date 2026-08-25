@@ -136,6 +136,12 @@ export function MusicPageContent({
                 {actionLabels[state.secondaryAction]}
               </button>
             )}
+            {data.requestId && (
+              <details className="mt-4 text-sm text-dashboard-light">
+                <summary className="cursor-pointer">Technical details</summary>
+                <p className="mt-2">Request ID: {data.requestId}</p>
+              </details>
+            )}
           </section>
         ) : (
           <div className="mt-5 space-y-5">
@@ -179,7 +185,7 @@ const MusicPage = () => {
 
   const action = (value: keyof typeof actionLabels) => {
     if (value === "try_again") {
-      void data.retryIdentity().then(() => data.refetch()).finally(() => statusRef.current?.focus());
+      void data.retryIdentity().then(() => data.refetch()).catch(() => undefined).finally(() => statusRef.current?.focus());
       return;
     }
     if (value === "sign_in") navigate("/login");

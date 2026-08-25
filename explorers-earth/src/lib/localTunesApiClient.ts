@@ -37,7 +37,7 @@ export interface LocalTunesApiClientDependencies {
   getStrapiBearer: () => Promise<string | undefined>;
   now?: () => number;
   refreshWindowMs?: number;
-  delay?: (milliseconds: number) => Promise<void>;
+  delay?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
 }
 
 export interface LocalTunesApiClient {
@@ -51,11 +51,25 @@ export interface LocalTunesApiClient {
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 const STRAPI_PROOF_PATTERN = /^[A-Za-z0-9._~-]{16,4096}$/;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const MUSIC_ERROR_ACTIONS = new Set(["authenticate", "complete_onboarding", "contact_support", "retry", "none"]);
+const ENSURE_ERROR_CODES = new Map<number, ReadonlySet<string>>([
+  [400, new Set(["REQUEST_INVALID"])],
+  [401, new Set(["AUTH_REQUIRED", "AUTH_INVALID"])],
+  [403, new Set(["IDENTITY_INELIGIBLE", "ONBOARDING_INCOMPLETE", "IDENTITY_SUSPENDED"])],
+  [409, new Set(["ACCOUNT_AMBIGUOUS", "ACCOUNT_SWITCH_CONFLICT", "IDENTITY_CONFLICT", "IDENTITY_TOMBSTONED", "IDENTITY_PENDING_DELETION"])],
+  [429, new Set(["RATE_LIMITED"])],
+  [500, new Set(["INTERNAL_ERROR"])],
+  [502, new Set(["UPSTREAM_MALFORMED"])],
+  [503, new Set(["UPSTREAM_UNAVAILABLE", "DATABASE_UNAVAILABLE", "ENTRY_DISABLED"])],
+]);
+const AUTHORITY_ABORT = Object.freeze({ kind: "authority" });
+const DEADLINE_ABORT = Object.freeze({ kind: "deadline" });
 export const MUSIC_IDENTITY_RELIABILITY_CONTRACT = Object.freeze({
   refreshWindowMs: 60_000,
   maxAttempts: 3,
   defaultRetryAfterMs: 1_000,
-  maxRetryAfterMs: 2_000,
+  maxRetryAfterMs: 1_000,
+  deadlineMs: 4_500,
 });
 
 export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDependencies): LocalTunesApiClient {
@@ -78,9 +92,9 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     if (!force && subject === authoritySubject) return;
     authoritySubject = subject;
     authorityGeneration += 1;
-    refreshFlight?.controller.abort();
+    refreshFlight?.controller.abort(AUTHORITY_ABORT);
     refreshFlight = undefined;
-    for (const controller of requestControllers.keys()) controller.abort();
+    for (const controller of requestControllers.keys()) controller.abort(AUTHORITY_ABORT);
     requestControllers.clear();
     clearMusicCredential();
   }
@@ -90,29 +104,29 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     const subject = authoritySubject;
     if (refreshFlight && refreshFlight.generation === generation && refreshFlight.subject === subject) return refreshFlight.promise;
     const controller = new AbortController();
+    let lastError: MusicClientError | undefined;
+    const deadline = setTimeout(() => controller.abort(DEADLINE_ABORT), MUSIC_IDENTITY_RELIABILITY_CONTRACT.deadlineMs);
     const flight = (async () => {
       try {
-        const proof = await dependencies.getStrapiBearer();
-        if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
+        const proof = await abortable(Promise.resolve(dependencies.getStrapiBearer()), controller.signal);
         if (!proof || !STRAPI_PROOF_PATTERN.test(proof)) throw new Error("proof unavailable");
         for (let attempt = 1; ; attempt += 1) {
-          const response = await fetchImpl(`${baseUrl}/api/music/identity/ensure`, {
+          const response = await abortable(Promise.resolve(fetchImpl(`${baseUrl}/api/music/identity/ensure`, {
             method: "POST",
             headers: { Authorization: `Bearer ${proof}` },
             signal: controller.signal,
-          });
-          if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
+          })), controller.signal);
           if (response.status !== 200) {
-            const error = await containedEnsureError(response);
+            const error = await containedEnsureError(response, controller.signal);
+            lastError = error;
             if (!error.retryable || attempt === MUSIC_IDENTITY_RELIABILITY_CONTRACT.maxAttempts) throw error;
-            await delay(Math.min(
+            await abortable(delay(Math.min(
               (error.retryAfterSeconds ?? MUSIC_IDENTITY_RELIABILITY_CONTRACT.defaultRetryAfterMs / 1_000) * 1_000,
               MUSIC_IDENTITY_RELIABILITY_CONTRACT.maxRetryAfterMs,
-            ));
-            if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
+            ), controller.signal), controller.signal);
             continue;
           }
-          const body = await response.json() as {
+          const body = await abortable(Promise.resolve(response.json()), controller.signal) as {
             credential?: { token?: unknown; expiresAt?: unknown };
           };
           const credential = body.credential;
@@ -121,15 +135,27 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
               || !Number.isSafeInteger(credential.expiresAt)
               || credential.expiresAt <= now()) throw new Error("credential malformed");
           const result = { token: credential.token, expiresAt: credential.expiresAt };
-          if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
           setMusicCredential(result);
           return result;
         }
       } catch (cause) {
         if (authorityStillCurrent(generation, subject)) clearMusicCredential();
-        if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
+        if (!authorityStillCurrent(generation, subject) || controller.signal.reason === AUTHORITY_ABORT) throw staleAuthority();
+        if (controller.signal.reason === DEADLINE_ABORT) {
+          throw new MusicClientError(
+            "AUTH_UNAVAILABLE",
+            503,
+            "Music authorization is temporarily unavailable.",
+            lastError?.retryAfterSeconds,
+            lastError?.upstreamCode,
+            false,
+            lastError?.requestId,
+          );
+        }
         if (cause instanceof MusicClientError) throw cause;
         throw new MusicClientError("AUTH_UNAVAILABLE", 503, "Music authorization is temporarily unavailable.", 1);
+      } finally {
+        clearTimeout(deadline);
       }
     })();
     refreshFlight = { generation, subject, controller, promise: flight };
@@ -206,27 +232,75 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
   };
 }
 
-async function containedEnsureError(response: Response): Promise<MusicClientError> {
+async function containedEnsureError(response: Response, signal: AbortSignal): Promise<MusicClientError> {
+  const requestIdHeader = response.headers.get("x-request-id");
+  const requestId = requestIdHeader && REQUEST_ID_PATTERN.test(requestIdHeader) ? requestIdHeader : undefined;
+  const fallback = () => new MusicClientError(
+    response.status === 401 ? "AUTH_REQUIRED" : response.status === 400 ? "REQUEST_INVALID" : "AUTH_UNAVAILABLE",
+    response.status,
+    response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
+    undefined,
+    undefined,
+    false,
+    requestId,
+  );
   try {
-    const body = await response.json() as { error?: { code?: unknown; retryable?: unknown } };
-    const upstreamCode = typeof body.error?.code === "string" ? body.error.code : undefined;
-    const retryAfter = Number(response.headers.get("retry-after"));
-    const retryAfterSeconds = Number.isSafeInteger(retryAfter) && retryAfter > 0 ? retryAfter : undefined;
-    const requestIdHeader = response.headers.get("x-request-id");
-    const requestId = requestIdHeader && REQUEST_ID_PATTERN.test(requestIdHeader) ? requestIdHeader : undefined;
+    const body = await abortable(Promise.resolve(response.json()), signal) as unknown;
+    if (!validEnsureErrorEnvelope(body, response.status, requestId)) return fallback();
+    const retryAfterHeader = response.headers.get("retry-after");
+    if ((response.status === 429 || response.status === 503) && !retryAfterHeader) return fallback();
+    if (retryAfterHeader && !/^[1-9][0-9]*$/.test(retryAfterHeader)) return fallback();
+    const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : undefined;
     return new MusicClientError(
       response.status === 401 ? "AUTH_REQUIRED" : "AUTH_UNAVAILABLE",
       response.status,
       response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
       retryAfterSeconds,
-      upstreamCode,
-      body.error?.retryable === true,
+      body.error.code,
+      body.error.retryable,
       requestId,
     );
   } catch (cause) {
-    if (cause instanceof MusicClientError) return cause;
-    return new MusicClientError("AUTH_UNAVAILABLE", response.status, "Music authorization is temporarily unavailable.");
+    if (signal.aborted) throw cause;
+    return fallback();
   }
+}
+
+interface ContainedEnsureErrorEnvelope {
+  version: "music-error/v1";
+  error: { code: string; message: string; action: string; retryable: boolean; requestId: string };
+}
+
+function validEnsureErrorEnvelope(
+  value: unknown,
+  status: number,
+  requestId: string | undefined,
+): value is ContainedEnsureErrorEnvelope {
+  if (!value || typeof value !== "object" || !hasExactKeys(value, ["version", "error"])) return false;
+  const envelope = value as { version?: unknown; error?: unknown };
+  if (envelope.version !== "music-error/v1" || !envelope.error || typeof envelope.error !== "object"
+      || !hasExactKeys(envelope.error, ["code", "message", "action", "retryable", "requestId"])) return false;
+  const error = envelope.error as Record<string, unknown>;
+  if (typeof error.code !== "string" || !ENSURE_ERROR_CODES.get(status)?.has(error.code)
+      || typeof error.message !== "string" || error.message.length < 1 || error.message.length > 160
+      || typeof error.action !== "string" || !MUSIC_ERROR_ACTIONS.has(error.action)
+      || typeof error.retryable !== "boolean" || (error.retryable !== (error.action === "retry"))
+      || typeof error.requestId !== "string" || error.requestId !== requestId) return false;
+  return status !== 401 && status !== 403 || error.retryable === false;
+}
+
+function hasExactKeys(value: object, expected: readonly string[]): boolean {
+  const keys = Object.keys(value);
+  return keys.length === expected.length && expected.every((key) => keys.includes(key));
+}
+
+function abortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    operation.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
 }
 
 function validateRequest(input: LocalMusicRequest): void {

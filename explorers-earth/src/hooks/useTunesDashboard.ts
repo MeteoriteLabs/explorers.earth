@@ -16,6 +16,7 @@ export interface TunesDashboardData {
   guestUrl: string | null;
   localUser: null;
   identityStatus: ReturnType<typeof musicIdentityCoordinator.getSnapshot>;
+  requestId?: string;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<unknown>;
@@ -69,6 +70,11 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     musicIdentityCoordinator.getSnapshot,
     musicIdentityCoordinator.getSnapshot,
   );
+  const identityDiagnostic = useSyncExternalStore(
+    musicIdentityCoordinator.subscribe,
+    musicIdentityCoordinator.getDiagnosticSnapshot,
+    musicIdentityCoordinator.getDiagnosticSnapshot,
+  );
   const query = useQuery({
     queryKey: scope ? musicWorkspaceQueryKey(scope) : ["music-workspace", "no-user", "no-account"],
     queryFn: () => musicWorkspaceClient.load(),
@@ -89,9 +95,17 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     guestUrl: dashboard?.publication.publicSlug ?? null,
     localUser: null,
     identityStatus,
+    requestId: identityDiagnostic.requestId,
     isLoading: identityStatus === "setting_up" || (scope !== undefined && query.isLoading),
     error: query.error ? "Music is temporarily unavailable." : null,
     refetch: query.refetch,
-    retryIdentity: () => musicIdentityCoordinator.retry(),
+    retryIdentity: async () => {
+      try {
+        await musicIdentityCoordinator.retry();
+      } catch (cause) {
+        musicIdentityCoordinator.reportFailure(cause);
+        throw cause;
+      }
+    },
   };
 }

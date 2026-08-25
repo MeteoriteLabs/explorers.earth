@@ -47,6 +47,19 @@ describe("Music page state hierarchy", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("shows a sanitized correlation ID only under Technical details", () => {
+    render(<MusicPageContent authenticated onboarding="complete" data={{
+      ...data,
+      identityStatus: "unavailable",
+      isLoading: false,
+      requestId: "safe-request-42",
+    }} onAction={vi.fn()} />);
+
+    const details = screen.getByText("Technical details").closest("details");
+    expect(details).toHaveTextContent("Request ID: safe-request-42");
+    expect(screen.queryByText("Request ID: safe-request-42", { selector: "section > p" })).not.toBeInTheDocument();
+  });
+
   it.each(["suspended", "pending_deletion"] as const)("hides cached workspace content after terminal %s authority", (identityStatus) => {
     render(<MusicPageContent
       authenticated

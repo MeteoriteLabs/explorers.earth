@@ -147,14 +147,14 @@ describe("automatic Music identity coordinator", () => {
     unsubscribe();
   });
 
-  it("moves repeated retryable setup failures to the exhausted state", async () => {
+  it("does not own a second automatic attempt budget for retryable client failures", async () => {
     const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { retryable: true }));
     const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
     const input = { provider: "email" as const, authenticated: true, verified: true, userDocumentId: "user-1", account: { documentId: "account-1" } };
     await coordinator.reconcile(input).catch(() => undefined);
     await coordinator.retry().catch(() => undefined);
     await coordinator.retry().catch(() => undefined);
-    expect(coordinator.getSnapshot()).toBe("unavailable");
+    expect(coordinator.getSnapshot()).toBe("retryable");
   });
 
   it("does not retry an explicitly non-retryable identity failure on retry or rerender", async () => {
@@ -171,6 +171,27 @@ describe("automatic Music identity coordinator", () => {
 
     expect(coordinator.getSnapshot()).toBe("unavailable");
     expect(ensureIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("publishes only a sanitized request ID in the failure diagnostic snapshot", async () => {
+    const ensureIdentity = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error("safe"), { retryable: true, requestId: "safe-request-42" }))
+      .mockRejectedValueOnce(Object.assign(new Error("safe"), { retryable: true, requestId: "unsafe/request" }));
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    const diagnosticChanges: Array<{ requestId?: string }> = [];
+    const unsubscribe = coordinator.subscribe(() => diagnosticChanges.push(coordinator.getDiagnosticSnapshot()));
+    const diagnostic = () => coordinator.getDiagnosticSnapshot();
+
+    await coordinator.reconcile({
+      provider: "email", authenticated: true, verified: true,
+      userDocumentId: "user-1", account: { documentId: "account-1" },
+    }).catch(() => undefined);
+    expect(diagnostic()).toEqual({ requestId: "safe-request-42" });
+
+    await coordinator.retry().catch(() => undefined);
+    expect(diagnostic()).toEqual({ requestId: undefined });
+    expect(diagnosticChanges).toContainEqual({ requestId: "safe-request-42" });
+    unsubscribe();
   });
 
   it.each([
