@@ -23,11 +23,71 @@
 - Do not modify unrelated dashboard or public-URL code; coordinate before editing shared public routing.
 - Keep the current minimal Music workspace available behind the rollback flag until production canary approval.
 
+## Accepted Cross-Model Review Corrections
+
+The following corrections override any conflicting wording in the task bodies below:
+
+1. **Execution is vertical and gated.** Slice A proves identity and restores owner search → queue → play → history. Slice B adds saved playlists. Slice C adds capability-only guest views and requests after owners explicitly reconfirm sharing. Slice D adds provider-approved imports and optional guest-local playback. No slice waits for every later slice before producing testable value.
+2. **Identity is the first technical gate.** Execute Task 10 before Tasks 1-9. Proceed only after cold, warm, and concurrent probes establish ensure success ≥99.5%, warm entry p95 ≤1 second, cold entry p95 ≤5 seconds, and a bounded maximum retry delay. Revisit the cross-service boundary through an ADR if those gates cannot be met.
+3. **Flags are runtime controls, not `VITE_*` build constants.** Use independently evaluated `ownerWorkspace`, `guestWorkspace`, and `playlistImports` flags with stable account allowlists/percentage cohorts, exposure telemetry, server kill switches, documented cache/propagation behavior, and rollback without rebuilding frontend assets.
+4. **Queue replacement is server-transactional.** Add `POST /api/music/queue/replace` with `Idempotency-Key`, expected queue revision, owner/playlist predicates, all-or-nothing database semantics, and a canonical queue response. The client must not stop/delete/add/play through multiple calls while calling that sequence atomic.
+5. **Guest playback is local only.** Rename the restored setting to `allowGuestLocalPlayback`; it permits media playback only in the guest browser. Remote control of an owner device is excluded and requires a separate lease/consent design.
+6. **Historic sharing fails closed.** Preserve stored publication data, but do not expose newly restored playlists/history until the owner accepts the current sharing policy and previews the result. Guest requests default off; public discovery follows capability-only validation.
+7. **Provider work has a pre-build gate.** Before imports, verify real YouTube embed/API behavior in Chromium and WebKit, Spotify/YouTube credentials, quota/cost, attribution, storage and policy constraints, and rate-limit UX. Keep Spotify/imports independently disabled if the gate fails.
+8. **Testing is split by determinism.** CI uses provider/OAuth fakes; staging uses live-provider desktop/mobile smoke tests; controlled Google authentication runs outside every-PR deterministic CI. Real media smoke tests assert playback time advances.
+9. **Production activation is separate authority.** This implementation plan ends at a merge-ready artifact plus test-environment evidence. A separate release checklist names the release owner, cohort, observation window, numeric abort thresholds, activation approval, and rollback authority.
+
+## Revised Slice Gates
+
+| Slice | User value | Entry gate | Exit evidence |
+|---|---|---|---|
+| A | Reliable entry and owner search/queue/player/history | Identity SLOs above | playback-start success ≥99%, no unexpected Music 5xx in UAT, desktop + WebKit smoke green |
+| B | Saved playlist lifecycle | Slice A canary stable | playlist create/edit/reorder/play transaction tests and UAT green |
+| C | Capability-only guest collaboration | Owner sharing reconfirmation and abuse controls | request completion, capability revoke/rotate, privacy matrix, rate-limit UAT green |
+| D | Imports and guest-local playback | Provider readiness and entitlement gates | provider success/quota telemetry and live smoke green |
+
+Each runtime flag records exposure. Canary configuration must specify cohort membership, minimum 24-hour observation (or 100 successful qualified sessions, whichever is later), decision owner, and automatic rollback triggers: identity success <99.5%, playback-start success <99%, unexpected Music 5xx >0.5%, or any cross-account/privacy violation.
+
+## Mandatory Execution Order
+
+The numeric task labels preserve review history; executors follow this dependency order:
+
+1. **Foundation:** Task 10 (identity SLO gate), then the runtime-decision work in Task 8.
+2. **Owner core / Slice A:** Task 1 queue transaction subset → Task 3 queue/search clients → Tasks 5 and 6 → Task 8 owner composition.
+3. **Saved playlists / Slice B:** remaining Task 1 settings/schema work → Task 7.
+4. **Guest collaboration / Slice C:** Task 9, capability-only and requests-off by default.
+5. **Provider features / Slice D:** provider readiness spike → Task 2 imports → guest-local playback.
+6. **Qualification:** Task 4 invalidation-only sockets, Task 11 deterministic/live test lanes, then Task 12 merge-ready handoff.
+
+No later slice starts until the prior slice’s entry and exit gates are recorded. Sockets carry invalidation and opaque guest-request notifications only; synchronized multi-device playback is excluded until a separate lease/revision design exists.
+
+## Runtime Feature Decision Contract
+
+Create `tunes/server/services/musicFeatureDecisionService.ts`, `tunes/server/routes/musicFeatureRoutes.ts`, and matching tests. `GET /api/music/features` returns `{ ownerWorkspace, guestWorkspace, playlistImports, exposureId, expiresAt }` for the verified account. Decision precedence is emergency server kill switch → explicit account allowlist → stable salted percentage cohort → false. Cache TTL is at most 60 seconds; account switch clears it; malformed/unavailable responses fail closed. Public guest bootstrap returns only the applicable guest flag after capability authorization. Exposure logs contain flag, boolean decision, cohort version, and opaque exposure ID—never account PII or capability material.
+
+## Persistence and Idempotency Contract
+
+Add Drizzle schema and additive migrations for fail-closed Music settings, `sharingPolicyVersionAcceptedAt`, queue revision, and durable owner-scoped operations. The operation key is `(musicUserId, operation, idempotencyKey)` and stores request hash, status, response, and expiry. Exact replay returns the stored status/body; key reuse with different input returns `409`; simultaneous duplicates serialize. Settings columns are `NOT NULL DEFAULT false`. Migrations must remain compatible with the previous server image and require no destructive down-migration.
+
+## UI Implementation Contract
+
+- Desktop: persistent player region, search above the primary content, Queue default, then Playlists and History; sharing/guest controls live in the secondary settings area.
+- Tablet: player, search, then content tabs. Mobile: sticky mini-player, Player/Queue/Search/More navigation, safe-area handling, card rows, no horizontal page scroll, and 44×44px touch targets.
+- Empty accounts minimize inactive player chrome and focus “Add your first song.” Background refresh preserves content. Stale/offline state disables unsafe canonical mutations but retains local pause/mute/volume.
+- Tabs use ARIA tab relationships and arrow navigation; sliders expose values; mutation/import status uses live regions; dialogs restore focus; reorder always provides Move up/down controls; visible focus, reduced motion, WCAG AA contrast, 200% zoom, keyboard-only, and axe checks are release gates.
+- Guest capability bootstrap uses an approved one-time fragment/route token, moves it into session-scoped memory, removes it from visible URL/history immediately, and sends it only as `X-Music-Guest-Capability`. Wrong, missing, revoked, and private resources render the same neutral unavailable page.
+- Guest copy says: “Let visitors play shared songs on their own device. This never controls your player.” Guest play/pause/seek cannot mutate owner queue, history, or player state.
+- Panel errors stay adjacent to the affected control; request IDs appear only under Technical details. Toasts supplement rather than replace durable feedback.
+
+## Provider and Test-Lane Gate
+
+Before Task 2, run a read-only provider spike covering strict provider host/path parsing, redirect/size/time/item bounds, SSRF protections, quota/cost, credentials ownership, attribution/storage policy, autoplay and actual media-time advancement in Chromium and WebKit. CI uses deterministic provider/OAuth fakes. Staging uses controlled live-provider smoke tests. Google authentication uses scheduled controlled-account tests rather than every-PR live OAuth. Expected `401/403/404/409/429/503` responses are asserted per test; only unexpected responses fail the network audit.
+
 ## File Structure
 
 ### Tunes canonical domain
 
-- Modify `tunes/server/repositories/musicDomainRepository.ts`: persist and retrieve guest settings and bounded imported songs under owner predicates.
+- Modify `tunes/server/repositories/musicDomainRepository.ts`: persist and retrieve guest settings, perform transactional queue replacement, and write bounded imports under owner predicates.
 - Create `tunes/server/services/musicPlaylistImportService.ts`: normalize YouTube/Spotify imports and enforce item limits without accepting owner authority.
 - Modify `tunes/server/routes/musicSurfaceRoutes.ts`: expose canonical settings and import routes.
 - Modify `tunes/server/routes/musicOpenApiRoutes.ts`: document exact request/response contracts.
@@ -69,14 +129,14 @@
 
 **Interfaces:**
 - Consumes: `req.musicPrincipal.musicUserId` from `createMusicPrincipalMiddleware`.
-- Produces: `MusicGuestSettings`, `repository.getGuestSettings(ownerId)`, `repository.updateGuestSettings(ownerId, patch)`, `GET /api/music/settings`, and `PATCH /api/music/settings`.
+- Produces: `MusicGuestSettings`, settings repository methods/routes, `repository.replaceQueue(ownerId, expectedRevision, songs)`, and `POST /api/music/queue/replace`.
 
 - [ ] **Step 1: Write failing repository and route tests**
 
 ```ts
 const settings = {
   allowSongRequests: true,
-  allowGuestPlayOnDevice: false,
+  allowGuestLocalPlayback: false,
   allowPlaylistSharing: true,
   allowRecentlyPlayedVisibility: false,
 };
@@ -93,6 +153,8 @@ await request(app)
 
 Add negative cases for unknown keys, non-booleans, absent principal, forbidden origin, and an injected `ownerId`/`username` field. Assert another owner remains unchanged.
 
+Add queue-replacement tests for success, stale revision `409`, idempotent replay, foreign playlist/song denial, injected failure rollback, and the canonical ordered queue response.
+
 - [ ] **Step 2: Run the focused tests and confirm red**
 
 Run: `cd tunes && npm test -- server/test/music-domain-repository.test.ts server/test/music-surface-routes.test.ts server/test/contracts/music-openapi-contract.test.ts`
@@ -104,7 +166,7 @@ Expected: FAIL because settings methods/routes and OpenAPI paths do not exist.
 ```ts
 export interface MusicGuestSettings {
   allowSongRequests: boolean;
-  allowGuestPlayOnDevice: boolean;
+  allowGuestLocalPlayback: boolean;
   allowPlaylistSharing: boolean;
   allowRecentlyPlayedVisibility: boolean;
 }
@@ -112,7 +174,7 @@ export interface MusicGuestSettings {
 type MusicGuestSettingsPatch = Partial<MusicGuestSettings>;
 ```
 
-Use an exact allowlist of the four keys. Read and update by `ownerId` only, return the complete settings object, and add OpenAPI schemas and `200/400/401/403/503` responses.
+Use an exact allowlist of the four keys. Read and update by `ownerId` only, return the complete settings object, default every restored guest capability to false, and add OpenAPI schemas and `200/400/401/403/503` responses. Add migration/backfill coverage proving existing accounts do not gain exposure. Implement queue replacement inside one database transaction with expected revision and durable idempotency-result storage.
 
 - [ ] **Step 4: Verify the focused contract is green**
 
@@ -392,7 +454,7 @@ Expected: FAIL because the components do not exist.
 
 - [ ] **Step 3: Implement playlist and guest-control modules**
 
-Use existing `Button`, modal/confirmation, tabs, toast, and publication registry primitives. Replace queue atomically in the UI sequence: stop current playback, bulk-remove current queued IDs, add ordered playlist songs, then set the first returned queue song as playing; surface a recoverable partial-failure state and refetch canonical dashboard.
+Use existing `Button`, modal/confirmation, tabs, toast, and publication registry primitives. Replace the queue only through `POST /api/music/queue/replace`, passing the expected queue revision and an idempotency key. On `409`, refetch and ask the owner to retry; no partial queue state may commit.
 
 - [ ] **Step 4: Verify playlist/control tests**
 
@@ -414,27 +476,33 @@ git commit -m "feat(music): complete playlists and guest controls"
 - Modify: `explorers-earth/src/components/MusicDashboard.tsx`
 - Modify: `explorers-earth/src/pages/Music.tsx`
 - Create: `explorers-earth/src/features/music/musicRollout.ts`
+- Create: `tunes/server/services/musicFeatureDecisionService.ts`
+- Create: `tunes/server/routes/musicFeatureRoutes.ts`
+- Test: `tunes/server/test/music-feature-decision-service.test.ts`
+- Test: `tunes/server/test/music-feature-routes.test.ts`
 - Test: `explorers-earth/src/components/__tests__/MusicDashboard.test.tsx`
 - Test: `explorers-earth/src/pages/__tests__/MusicPage.test.tsx`
 - Test: `explorers-earth/src/features/music/__tests__/musicRollout.test.ts`
 
 **Interfaces:**
 - Consumes: Tasks 3-7 clients/components and current `musicState` precedence.
-- Produces: `isCompleteMusicWorkspaceEnabled(env, override): boolean` and the complete owner page.
+- Produces: runtime `MusicFeatureExposure` for `ownerWorkspace`, `guestWorkspace`, and `playlistImports`, plus the complete owner page.
 
 - [ ] **Step 1: Write failing composition and flag tests**
 
-Assert the player is the visual anchor; tabs are Queue, Guest controls, Recently played, and Playlists; search is reachable; empty state leads with “Add your first song”; mobile navigation exposes player/queue/search; loading preserves the shell; stale content is read-only; identity retry remains contained; and `VITE_COMPLETE_MUSIC_WORKSPACE=false` renders the existing minimal workspace.
+Assert the player is the visual anchor; tabs are Queue, Guest controls, Recently played, and Playlists; search is reachable; empty state leads with “Add your first song”; mobile navigation exposes player/queue/search; loading preserves the shell; stale content is read-only; identity retry remains contained; and runtime `ownerWorkspace=false` renders the existing minimal workspace without an asset rebuild.
 
 - [ ] **Step 2: Run composition tests and confirm red**
 
 Run: `cd explorers-earth && npm run test:unit -- src/components/__tests__/MusicDashboard.test.tsx src/pages/__tests__/MusicPage.test.tsx src/features/music/__tests__/musicRollout.test.ts`
 
+Run: `cd tunes && npm test -- server/test/music-feature-decision-service.test.ts server/test/music-feature-routes.test.ts`
+
 Expected: FAIL because the shell and rollout selector do not exist.
 
 - [ ] **Step 3: Compose the workspace without restoring the monolith**
 
-Keep `MusicDashboard` responsible for query composition and tab selection only. Render each module with typed props and stable callbacks. Set the production default to `false`; test/test-server deployment explicitly enables it.
+Keep `MusicDashboard` responsible for query composition and tab selection only. Render each module with typed props and stable callbacks. Resolve runtime exposure from the authenticated account and server response, default every flag to false, record exposure, and honor the kill switch without rebuilding assets.
 
 - [ ] **Step 4: Verify owner UI and legacy security boundary**
 
@@ -447,7 +515,7 @@ Expected: PASS; bundle check reports no retired Music surface.
 - [ ] **Step 5: Commit owner composition**
 
 ```bash
-git add explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx explorers-earth/src/components/MusicDashboard.tsx explorers-earth/src/pages/Music.tsx explorers-earth/src/features/music/musicRollout.ts explorers-earth/src/components/__tests__/MusicDashboard.test.tsx explorers-earth/src/pages/__tests__/MusicPage.test.tsx explorers-earth/src/features/music/__tests__/musicRollout.test.ts
+git add explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx explorers-earth/src/components/MusicDashboard.tsx explorers-earth/src/pages/Music.tsx explorers-earth/src/features/music/musicRollout.ts explorers-earth/src/components/__tests__/MusicDashboard.test.tsx explorers-earth/src/pages/__tests__/MusicPage.test.tsx explorers-earth/src/features/music/__tests__/musicRollout.test.ts tunes/server/services/musicFeatureDecisionService.ts tunes/server/routes/musicFeatureRoutes.ts tunes/server/test/music-feature-decision-service.test.ts tunes/server/test/music-feature-routes.test.ts
 git commit -m "feat(music): compose complete owner workspace"
 ```
 
@@ -491,7 +559,7 @@ git add explorers-earth/src/features/music/publicMusicClient.ts explorers-earth/
 git commit -m "feat(music): restore secured guest workspace"
 ```
 
-### Task 10: Harden identity retries and diagnostics
+### Task 10: Establish the identity reliability gate before domain/UI execution
 
 **Files:**
 - Modify: `explorers-earth/src/features/music/musicIdentityCoordinator.ts`
@@ -574,7 +642,7 @@ git add explorers-earth/e2e/music-complete-experience.spec.ts explorers-earth/pl
 git commit -m "test(music): qualify complete owner and guest journeys"
 ```
 
-### Task 12: Run full review, deploy to test, UAT, canary, and production activation
+### Task 12: Run full review, deploy to test, UAT, and prepare release handoff
 
 **Files:**
 - Modify: `docs/operations/music-deploy-runbook.md`
@@ -582,11 +650,11 @@ git commit -m "test(music): qualify complete owner and guest journeys"
 
 **Interfaces:**
 - Consumes: Tasks 1-11, existing immutable Tunes deployment workflow, Explorers deployment workflow, test-server approval, and rollback image/flag.
-- Produces: merge-ready PR, test UAT evidence, canary evidence, and reversible production activation.
+- Produces: merge-ready PR, test UAT evidence, immutable artifact evidence, and a separate release checklist awaiting explicit production approval.
 
 - [ ] **Step 1: Document exact rollout and rollback controls**
 
-Record `VITE_COMPLETE_MUSIC_WORKSPACE`, expected Tunes commit/digest/migration marker, test URL, readiness endpoints, identity request-ID lookup, flag rollback, and immutable image rollback. State that disabling the flag preserves all Music data.
+Record the three runtime flags, cohort/allowlist source, propagation SLA, expected Tunes commit/digest/migration marker, test URL, readiness endpoints, identity request-ID lookup, kill-switch rollback, and immutable image rollback. State that disabling a flag preserves all Music data.
 
 - [ ] **Step 2: Run the complete local qualification matrix**
 
@@ -608,7 +676,7 @@ Push only this branch’s commits, create a draft PR with behavior/security/UX/t
 
 - [ ] **Step 5: Deploy Tunes and Explorers to the test environment**
 
-Use the existing immutable deployment route. Confirm the deployed Tunes readiness commit/digest/migration marker and the Explorers asset revision. Enable `VITE_COMPLETE_MUSIC_WORKSPACE=true` only on the test deployment.
+Use the existing immutable deployment route. Confirm the deployed Tunes readiness commit/digest/migration marker and the Explorers asset revision. Enable only the current slice’s runtime flag for the named test accounts.
 
 - [ ] **Step 6: Perform authenticated test-server UAT**
 
@@ -616,11 +684,11 @@ Run all Task 11 journeys against the actual test URL using existing, email, Goog
 
 - [ ] **Step 7: Promote through canary**
 
-Remove draft only when CI, review, and UAT are green. Merge through the protected branch process. Deploy immutable artifacts with the production flag initially disabled, verify readiness, enable for the bounded canary, and monitor identity success/latency, Music route `5xx`, socket authorization failures, and player startup failures.
+Remove draft only when CI, review, and UAT are green. Merge through the protected branch process with every runtime flag disabled. Stop this implementation workflow after immutable artifact and test-environment evidence are recorded; production canary requires the separately approved release checklist and named release owner.
 
 - [ ] **Step 8: Activate production or roll back**
 
-Activate for all users only if canary thresholds remain green and the critical owner/guest journeys pass in production. On regression, disable `VITE_COMPLETE_MUSIC_WORKSPACE` immediately; if the server is implicated, redeploy the prior immutable Tunes digest. Verify the minimal workspace and identity readiness after rollback.
+In the separate release workflow, activate one slice only after its numeric gate remains green for the required observation window. On regression, use the server kill switch immediately; if the server is implicated, redeploy the prior immutable Tunes digest. Verify the minimal workspace and identity readiness after rollback.
 
 - [ ] **Step 9: Commit operational documentation**
 
@@ -649,3 +717,41 @@ git commit -m "docs(music): add complete workspace rollout runbook"
 - No retired authority surface appears in source or production bundle.
 - Identity telemetry shows bounded, explainable outcomes with no secret exposure.
 - Canary passes and production activation remains reversible through the flag and immutable image rollback.
+
+## Decision Audit Trail
+
+| # | Phase | Decision | Classification | Rationale | Rejected |
+|---|---|---|---|---|---|
+| 1 | CEO | Deliver complete parity as gated vertical slices | User-approved challenge | Preserves the goal while reducing blast radius and enabling stop/go evidence | All-at-once activation |
+| 2 | CEO/Eng/DX | Replace Vite flag with runtime account/cohort decisions and kill switches | Confirmed correction | Build-time flags cannot provide bounded canary or rollback without rebuild | `VITE_COMPLETE_MUSIC_WORKSPACE` |
+| 3 | CEO/Eng | Execute identity qualification first with numeric SLOs | Confirmed correction | Every UI flow depends on a reliable credential boundary | Identity hardening after UI |
+| 4 | CEO/Eng/Design/DX | Add transactional queue replacement | Confirmed correction | Multi-call replacement can destroy queue state | Client-orchestrated delete/add/play |
+| 5 | All | Define guest playback as guest-browser-local only | Confirmed correction | Prevents misleading UX and owner-device authority regression | Remote owner player control |
+| 6 | CEO/Eng | Fail historic sharing closed pending owner reconfirmation | Confirmed correction | Prevents silent republication of old playlists/history | Automatic legacy exposure |
+| 7 | CEO/Eng/DX | Gate providers before import work | Confirmed correction | Quota, policy, credentials, SSRF, and mobile media behavior require proof | Treating imports as unconditional parity |
+| 8 | Design | Make responsive, accessibility, state, and capability-link behavior explicit | Auto-decided completeness | Removes major UI implementation ambiguity | Visual parity without acceptance contracts |
+| 9 | Eng/DX | Use durable owner-scoped idempotency and additive compatible migrations | Auto-decided safety | Required for retries, concurrency, rollback compatibility, and multi-instance operation | In-memory or unspecified replay |
+| 10 | CEO | Separate merge-ready implementation from production activation authority | Confirmed correction | Production activation requires named approval and abort ownership | Implicit deploy authority inside coding task |
+
+## Cross-Phase Review Summary
+
+- **CEO:** Initial 5/10 → revised 9/10. Strategy is now a staged validation/restoration program with product and operational gates rather than an all-at-once parity rewrite.
+- **Design:** Initial 5/10 → revised 8/10. Hierarchy, responsive layout, accessibility, surface states, guest-link handling, and durable feedback are now specified; implementation must validate them with visual/manual UAT.
+- **Engineering:** Initial 4/10 → revised 8/10. Identity sequencing, runtime flags, queue transactions, fail-closed sharing, durable idempotency, provider controls, socket scope, and schema compatibility are now explicit.
+- **DX:** Initial 4/10 → revised 8/10. A mandatory execution order and concrete contracts replace the conflicting override-only plan. Local E2E orchestration and troubleshooting must be implemented with Task 11.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/autoplan` | Scope & strategy | 2 voices | CLEAR | 10 accepted corrections; staged release retained complete goal |
+| Codex Review | independent Codex | Adversarial second opinion | 1 | CLEAR | 15 findings analyzed; blockers incorporated |
+| Eng Review | `/autoplan` | Architecture & tests | 1 | CLEAR | 16 findings; P0 contracts incorporated |
+| Design Review | `/autoplan` | UI/UX gaps | 1 | CLEAR | 14 findings; core acceptance contracts incorporated |
+| DX Review | `/autoplan` | Implementer experience | 1 | CLEAR | 14 findings; execution order and contracts incorporated |
+
+**CROSS-MODEL:** Runtime rollout, identity-first sequencing, queue atomicity, guest-local semantics, fail-closed sharing, staged delivery, and provider gates were independently confirmed.
+
+**VERDICT:** CEO + DESIGN + ENG + DX CLEARED — ready for task-by-task implementation with slice gates.
+
+NO UNRESOLVED DECISIONS
