@@ -804,3 +804,61 @@ This appendix is committed in the follow-up documentation commit containing the 
 - The workflow was deliberately not dispatched or deployed. Local tests prove the executable probe logic and workflow contract, but only an authorized manual test-server run against an explicitly attested commit can establish the real success rate and p95 values.
 - The probe requires at least one active Music identity whose exact Strapi user/account remains eligible. Absence or mismatch fails closed with aggregate reason `no_provisioned_eligible_identity` and does not provision a replacement.
 - The manual probe is intentionally long-running because the loopback source limit creates a hard lower bound above six minutes for 200 requests. Shortening the pacing would invalidate the result or weaken the production limiter.
+
+## Published readiness binding live-run fix (2026-08-26)
+
+### Live evidence and root cause
+
+GitHub Actions run `32888146424` failed after the single controlled app restart and before identity sampling began. The SLO readiness loop curled `http://127.0.0.1:5000/health/ready` from the host. Port 5000 is the app's container-internal listener; this test deployment publishes that listener on host port 5001. The workflow's existing diagnostic, rollback, and deploy-readiness paths already use host port 5001, so the failure was isolated to the newly added SLO restart-readiness boundary.
+
+Sanitized recovery run `32888360286` passed, establishing that the test app recovered and the deployment's published health path was available. It was not a completed 200-sample SLO run and is not reported as SLO qualification.
+
+### RED evidence
+
+The regression separates the pre-`docker exec` host shell from the embedded container probe. It requires the host readiness path to derive and validate the published `5000/tcp` binding and prohibits host use of `127.0.0.1:5000`, while independently requiring the in-container ensure client to retain `http://127.0.0.1:5000`.
+
+```text
+cd tunes
+npm test -- server/test/deployment/music-host-preflight.test.ts
+
+Test Files  1 failed (1)
+Tests       1 failed | 11 passed (12)
+Expected: published_binding_count from .NetworkSettings.Ports["5000/tcp"]
+Received: host curl http://127.0.0.1:5000/health/ready
+```
+
+### Minimal fix
+
+Before restart, the SSH script now reads `.NetworkSettings.Ports["5000/tcp"]` through `docker inspect` and fails closed unless:
+
+- exactly one published binding exists;
+- its host IP is `127.0.0.1` or `0.0.0.0`, both reachable through host loopback;
+- its host port is one to five decimal digits in the range 1–65535.
+
+The readiness URL is then built as `http://127.0.0.1:<attested published port>/health/ready`. On the current test deployment this resolves to host port 5001 without hardcoding it. The authenticated ensure measurements still execute through `docker exec` and still target the container-local `http://127.0.0.1:5000/api/music/identity/ensure` endpoint.
+
+### GREEN evidence
+
+```text
+cd tunes
+npm test -- server/test/deployment/music-host-preflight.test.ts server/test/deployment/music-deploy-workflow-security.test.ts
+
+Test Files  2 passed (2)
+Tests       24 passed (24)
+```
+
+The exact embedded Node heredoc passed `node --check -`, the focused test parsed the workflow with `js-yaml`, and `git diff --check` exited 0.
+
+### Files and commits
+
+- `.github/workflows/tunes-host-preflight.yml`
+- `tunes/server/test/deployment/music-host-preflight.test.ts`
+- `.superpowers/sdd/2026-08-25-complete-music-experience-restoration/task-10-report.md` (this appendix)
+
+Implementation and regression: `cfb1fd6 fix(music): probe published readiness binding`.
+
+This appendix is committed in the follow-up documentation commit containing the report. The untracked `.gstack` files were neither modified nor staged.
+
+### Remaining external gate
+
+The corrected workflow was not pushed or triggered in this fix. A new authorized run against an explicitly attested deployed commit is still required to establish the live 200-sample success-rate and p95 gates.
