@@ -61,6 +61,15 @@ jobs:
             test "$container_commit" = "$EXPECTED_DEPLOYED_COMMIT"
             test "$image_revision" = "$EXPECTED_DEPLOYED_COMMIT"
             test "$container_digest" = "${configured_image##*@}"
+            published_binding_count="$(docker inspect --format '{{with index .NetworkSettings.Ports "5000/tcp"}}{{len .}}{{else}}0{{end}}' tunes-app-1)"
+            test "$published_binding_count" = 1
+            published_host_ip="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostIp}}' tunes-app-1)"
+            published_host_port="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}' tunes-app-1)"
+            case "$published_host_ip" in 0.0.0.0|127.0.0.1) ;; *) exit 1 ;; esac
+            [[ "$published_host_port" =~ ^[0-9]{1,5}$ ]]
+            test "$published_host_port" -ge 1
+            test "$published_host_port" -le 65535
+            published_ready_url="http://127.0.0.1:${published_host_port}/health/ready"
             docker restart --time 30 tunes-app-1 >/dev/null
             ready=false
             readiness_deadline=$((SECONDS + 60))
@@ -68,7 +77,7 @@ jobs:
               state="$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)"
               health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' tunes-app-1 2>/dev/null || true)"
               if [ "$state" = running ] && [ "$health" = healthy ] \
-                  && curl --fail --silent --show-error --max-time 2 http://127.0.0.1:5000/health/ready >/dev/null; then
+                  && curl --fail --silent --show-error --max-time 2 "$published_ready_url" >/dev/null; then
                 ready=true
                 break
               fi

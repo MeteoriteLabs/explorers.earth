@@ -103,12 +103,27 @@ describe("Tunes authenticated identity SLO preflight", () => {
     expect(script).toContain(`test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-app-1)" = app`);
     expect(script.match(/docker restart --time 30 tunes-app-1/g)).toHaveLength(1);
     expect(script).toContain("docker restart --time 30 tunes-app-1 >/dev/null");
-    expect(script).toContain("http://127.0.0.1:5000/health/ready");
     expect(script).toContain(`test "$ready" = true`);
     expect(script).toContain("docker exec -e MUSIC_SLO_EXECUTE=1 -i tunes-app-1 node");
     expect(script).not.toContain("MUSIC_SLO_UNIT_TEST");
     expect(script).not.toMatch(/docker\s+compose\s+(?:up|down|restart|rm|pull|build)/);
     expect(script).not.toMatch(/docker\s+(?:stop|rm|rmi|prune)/);
+  });
+
+  it("derives and guards the published test-app readiness binding while probing ensure inside the container", () => {
+    const script = remoteScript();
+    const shell = script.slice(0, script.indexOf("docker exec -e MUSIC_SLO_EXECUTE=1"));
+    expect(shell).toContain(`published_binding_count="$(docker inspect --format '{{with index .NetworkSettings.Ports "5000/tcp"}}{{len .}}{{else}}0{{end}}' tunes-app-1)"`);
+    expect(shell).toContain('test "$published_binding_count" = 1');
+    expect(shell).toContain(`published_host_ip="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostIp}}' tunes-app-1)"`);
+    expect(shell).toContain('case "$published_host_ip" in 0.0.0.0|127.0.0.1) ;; *) exit 1 ;; esac');
+    expect(shell).toContain('[[ "$published_host_port" =~ ^[0-9]{1,5}$ ]]');
+    expect(shell).toContain('test "$published_host_port" -ge 1');
+    expect(shell).toContain('test "$published_host_port" -le 65535');
+    expect(shell).toContain('published_ready_url="http://127.0.0.1:${published_host_port}/health/ready"');
+    expect(shell).toContain('curl --fail --silent --show-error --max-time 2 "$published_ready_url"');
+    expect(shell).not.toContain("http://127.0.0.1:5000");
+    expect(embeddedNodeSource()).toContain('new URL("/api/music/identity/ensure", "http://127.0.0.1:5000")');
   });
 
   it("starts from one provisioned active Music identity and verifies the exact Strapi identity", () => {
