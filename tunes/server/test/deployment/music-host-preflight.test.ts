@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Script, createContext } from "node:vm";
@@ -37,6 +38,22 @@ function embeddedNodeSource(): string {
   const match = /docker exec -e MUSIC_SLO_EXECUTE=1 -i tunes-app-1 node <<'NODE'\n([\s\S]*?)\nNODE(?:\n|$)/.exec(remoteScript());
   if (!match) throw new Error("embedded probe source missing");
   return match[1];
+}
+
+function publishedBindingSelectorSource(): string {
+  const script = remoteScript();
+  const start = script.indexOf("select_published_readiness_binding() {");
+  const end = script.indexOf("\n}", start);
+  if (start < 0 || end < 0) throw new Error("published binding selector missing");
+  return script.slice(start, end + 2);
+}
+
+function selectPublishedBinding(bindings: string) {
+  const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "bash";
+  const encoded = Buffer.from(bindings, "utf8").toString("base64");
+  return spawnSync(bash, ["-c", `${publishedBindingSelectorSource()}\nbindings="$(printf '%s' "$1" | base64 --decode)"\nselect_published_readiness_binding <<< "$bindings"`, "--", encoded], {
+    encoding: "utf8",
+  });
 }
 
 function probeLibrary(): ProbeLibrary {
@@ -113,17 +130,55 @@ describe("Tunes authenticated identity SLO preflight", () => {
   it("derives and guards the published test-app readiness binding while probing ensure inside the container", () => {
     const script = remoteScript();
     const shell = script.slice(0, script.indexOf("docker exec -e MUSIC_SLO_EXECUTE=1"));
-    expect(shell).toContain(`published_binding_count="$(docker inspect --format '{{with index .NetworkSettings.Ports "5000/tcp"}}{{len .}}{{else}}0{{end}}' tunes-app-1)"`);
-    expect(shell).toContain('test "$published_binding_count" = 1');
-    expect(shell).toContain(`published_host_ip="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostIp}}' tunes-app-1)"`);
-    expect(shell).toContain('case "$published_host_ip" in 0.0.0.0|127.0.0.1) ;; *) exit 1 ;; esac');
-    expect(shell).toContain('[[ "$published_host_port" =~ ^[0-9]{1,5}$ ]]');
-    expect(shell).toContain('test "$published_host_port" -ge 1');
-    expect(shell).toContain('test "$published_host_port" -le 65535');
-    expect(shell).toContain('published_ready_url="http://127.0.0.1:${published_host_port}/health/ready"');
+    expect(shell).toContain(`published_binding_rows="$(docker inspect --format '{{range (index .NetworkSettings.Ports "5000/tcp")}}{{printf "%s|%s\\n" .HostIp .HostPort}}{{end}}' tunes-app-1)"`);
+    expect(shell).toContain('published_binding_selection="$(select_published_readiness_binding <<< "$published_binding_rows")"');
+    expect(shell).toContain('published_probe_host="${published_binding_selection%%|*}"');
+    expect(shell).toContain('published_host_port="${published_binding_selection##*|}"');
+    expect(shell).toContain('published_ready_url="http://${published_probe_host}:${published_host_port}/health/ready"');
     expect(shell).toContain('curl --fail --silent --show-error --max-time 2 "$published_ready_url"');
     expect(shell).not.toContain("http://127.0.0.1:5000");
     expect(embeddedNodeSource()).toContain('new URL("/api/music/identity/ensure", "http://127.0.0.1:5000")');
+  });
+
+  it("executes the published binding guard for single and dual-stack same-port bindings", () => {
+    expect(selectPublishedBinding("127.0.0.1|5001")).toMatchObject({
+      status: 0,
+      stdout: "127.0.0.1|5001\n",
+    });
+    expect(selectPublishedBinding("0.0.0.0|5001\n::|5001")).toMatchObject({
+      status: 0,
+      stdout: "127.0.0.1|5001\n",
+    });
+    expect(selectPublishedBinding("::1|5001")).toMatchObject({
+      status: 0,
+      stdout: "[::1]|5001\n",
+    });
+  });
+
+  it("fails closed for absent, excessive, unsafe, malformed, or conflicting published bindings", () => {
+    for (const bindings of [
+      "",
+      "0.0.0.0|5001\n::|5001\n127.0.0.1|5001",
+      "192.168.1.20|5001",
+      "0.0.0.0|nope",
+      "0.0.0.0|0",
+      "0.0.0.0|65536",
+      "0.0.0.0|5001\n::|5002",
+    ]) {
+      const result = selectPublishedBinding(bindings);
+      expect(result.status, bindings || "<absent>").not.toBe(0);
+    }
+  });
+
+  it("reports only a fixed sanitized shell failure stage before sampling", () => {
+    const shell = remoteScript().slice(0, remoteScript().indexOf("docker exec -e MUSIC_SLO_EXECUTE=1"));
+    const diagnostic = shell.split("\n").find((line) => line.includes("music-identity-slo-stage/v1"));
+    expect(diagnostic).toContain('"schemaVersion":"music-identity-slo-stage/v1"');
+    expect(diagnostic).toContain('"outcome":"failed_closed"');
+    expect(shell).toContain('failure_stage=published_binding_attestation');
+    expect(diagnostic).not.toContain("hostIp");
+    expect(diagnostic).not.toContain("hostPort");
+    expect(diagnostic).not.toContain("published_binding_rows");
   });
 
   it("starts from one provisioned active Music identity and verifies the exact Strapi identity", () => {

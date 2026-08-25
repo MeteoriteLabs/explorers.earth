@@ -48,6 +48,48 @@ jobs:
           envs: EXPECTED_DEPLOYED_COMMIT
           script: |
             set -euo pipefail
+            failure_stage=target_attestation
+            report_shell_failure() {
+              local status=$?
+              trap - EXIT
+              if [ "$status" -ne 0 ]; then
+                printf '{"schemaVersion":"music-identity-slo-stage/v1","outcome":"failed_closed","stage":"%s"}\n' "$failure_stage"
+              fi
+              exit "$status"
+            }
+            trap report_shell_failure EXIT
+            select_published_readiness_binding() {
+              local count=0
+              local selected_port=
+              local has_ipv4=false
+              local host_ip host_port extra
+              while IFS='|' read -r host_ip host_port extra; do
+                test -n "$host_ip" || return 1
+                test -n "$host_port" || return 1
+                test -z "$extra" || return 1
+                count=$((count + 1))
+                test "$count" -le 2 || return 1
+                case "$host_ip" in
+                  127.0.0.1|0.0.0.0) has_ipv4=true ;;
+                  ::1|::) ;;
+                  *) return 1 ;;
+                esac
+                [[ "$host_port" =~ ^[0-9]{1,5}$ ]] || return 1
+                test "$host_port" -ge 1 || return 1
+                test "$host_port" -le 65535 || return 1
+                if [ -z "$selected_port" ]; then
+                  selected_port="$host_port"
+                else
+                  test "$selected_port" = "$host_port" || return 1
+                fi
+              done
+              test "$count" -ge 1 || return 1
+              if [ "$has_ipv4" = true ]; then
+                printf '127.0.0.1|%s\n' "$selected_port"
+              else
+                printf '[::1]|%s\n' "$selected_port"
+              fi
+            }
             [[ "$EXPECTED_DEPLOYED_COMMIT" =~ ^[a-f0-9]{40}$ ]]
             test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-app-1)" = tunes
             test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-app-1)" = app
@@ -61,16 +103,15 @@ jobs:
             test "$container_commit" = "$EXPECTED_DEPLOYED_COMMIT"
             test "$image_revision" = "$EXPECTED_DEPLOYED_COMMIT"
             test "$container_digest" = "${configured_image##*@}"
-            published_binding_count="$(docker inspect --format '{{with index .NetworkSettings.Ports "5000/tcp"}}{{len .}}{{else}}0{{end}}' tunes-app-1)"
-            test "$published_binding_count" = 1
-            published_host_ip="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostIp}}' tunes-app-1)"
-            published_host_port="$(docker inspect --format '{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}' tunes-app-1)"
-            case "$published_host_ip" in 0.0.0.0|127.0.0.1) ;; *) exit 1 ;; esac
-            [[ "$published_host_port" =~ ^[0-9]{1,5}$ ]]
-            test "$published_host_port" -ge 1
-            test "$published_host_port" -le 65535
-            published_ready_url="http://127.0.0.1:${published_host_port}/health/ready"
+            failure_stage=published_binding_attestation
+            published_binding_rows="$(docker inspect --format '{{range (index .NetworkSettings.Ports "5000/tcp")}}{{printf "%s|%s\n" .HostIp .HostPort}}{{end}}' tunes-app-1)"
+            published_binding_selection="$(select_published_readiness_binding <<< "$published_binding_rows")"
+            published_probe_host="${published_binding_selection%%|*}"
+            published_host_port="${published_binding_selection##*|}"
+            published_ready_url="http://${published_probe_host}:${published_host_port}/health/ready"
+            failure_stage=restart
             docker restart --time 30 tunes-app-1 >/dev/null
+            failure_stage=restart_readiness
             ready=false
             readiness_deadline=$((SECONDS + 60))
             while [ "$SECONDS" -lt "$readiness_deadline" ]; do
@@ -84,6 +125,7 @@ jobs:
               sleep 1
             done
             test "$ready" = true
+            trap - EXIT
             docker exec -e MUSIC_SLO_EXECUTE=1 -i tunes-app-1 node <<'NODE'
             const { randomUUID } = require("node:crypto");
             const { readFileSync } = require("node:fs");
