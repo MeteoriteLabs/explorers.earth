@@ -189,6 +189,9 @@ jobs:
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
           # Full-stack Music authority suites belong to the provisioned qualification lanes.
           PLAYWRIGHT_PR_SAFE: true
+          # Keep billing requests same-origin so the deterministic Playwright
+          # fixture can intercept them instead of constructing /undefined URLs.
+          VITE_PAYMENT_API_URL: http://localhost:5173
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
