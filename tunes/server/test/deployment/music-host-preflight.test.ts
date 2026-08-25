@@ -30,6 +30,7 @@ describe("Tunes host preflight authority", () => {
   it("limits the remote script to sanitized read-only observations", () => {
     const workflow = parseYaml(read(".github/workflows/tunes-host-preflight.yml"));
     const remote = workflow.jobs.preflight.steps.find((step: any) => step.name === "Inspect Tunes host without mutation");
+    expect(remote.with).not.toHaveProperty("script_stop");
     const script = String(remote.with.script);
     for (const evidence of ["id", "docker version", "docker compose version", "docker ps", "docker compose ls", "df -P", "stat -c"]) {
       expect(script).toContain(evidence);
