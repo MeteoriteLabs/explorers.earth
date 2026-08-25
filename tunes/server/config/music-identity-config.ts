@@ -626,7 +626,7 @@ function createPinnedHttpsFetch(origin: string, hostname: string, addresses: str
         }));
       });
       request.once("error", reject);
-      request.end();
+      request.end(init.body ?? undefined);
     });
   }) as typeof fetch;
 }

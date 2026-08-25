@@ -1,10 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { StrapiIdentityAbsenceProof } from "../services/strapiIdentityAbsenceProof";
 
 const identity = { userDocumentId: "user-document-a", accountDocumentId: "account-document-a" };
 
 describe("Strapi identity absence proof", () => {
+  it("forwards the GraphQL POST body through the pinned live transport", () => {
+    const source = readFileSync(resolve(import.meta.dirname, "../config/music-identity-config.ts"), "utf8");
+    expect(source).toContain("request.end(init.body ?? undefined)");
+  });
   it("cancels non-success and oversized streams before returning", async () => {
     for (const fixture of [
       { status: 503, chunks: [new Uint8Array([1])], expected: "outage" },
