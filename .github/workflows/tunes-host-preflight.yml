@@ -258,7 +258,6 @@ jobs:
                 image: $CANDIDATE_IMAGE
                 pull_policy: never
                 user: "$(id -u):$(id -g)"
-                command: ["node", "-e", "const u=require('node:util');const e=console.error.bind(console);console.error=(...a)=>e(...a.map(v=>v&&typeof v==='object'?u.inspect(v,{depth:8,showHidden:true}):v));import('./dist/server/index.js')"]
                 environment:
                   DATABASE_URL: ""
                   MUSIC_MODE: live
