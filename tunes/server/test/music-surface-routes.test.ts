@@ -21,7 +21,15 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     reorderPlaylistSong: vi.fn(async (owner: number, playlist: number, song: number, position: number) => { calls.push(["playlist-song-reorder", owner, playlist, song, position]); return playlist === 9; }),
     setPlaylistVisibility: vi.fn(async (owner: number, playlist: number, visible: boolean) => { calls.push(["playlist-visibility", owner, playlist, visible]); return playlist === 9; }),
     listQueue: vi.fn(async (owner: number) => { calls.push(["queue", owner]); return []; }),
-    ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { songs: [], playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } }; }),
+    replaceQueue: vi.fn(async (owner: number, key: string, revision: number, songs: unknown[]) => {
+      calls.push(["replace-queue", owner, key, revision, songs]);
+      if (key === "conflict-key") return { status: "conflict" as const };
+      if (revision !== 4) return { status: "stale" as const, revision: 4 };
+      return { status: "completed" as const, replayed: key === "replay-key", response: { version: "music-queue/v1", revision: 5, songs: [
+        { id: 1, user_id: owner, youtube_id: "yt", title: "Song", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "queued", played_at: null },
+      ] } };
+    }),
+    ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { queueRevision: 4, songs: [], playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } }; }),
     addSong: vi.fn(async (owner: number, input: unknown) => { calls.push(["add-song", owner, input]); return { id: 1 }; }),
     setPlaying: vi.fn(async (owner: number, id: number | null) => { calls.push(["playing", owner, id]); return id === null ? null : { id }; }),
     updateSongPosition: vi.fn(async (owner: number, id: number, position: number) => { calls.push(["position", owner, id, position]); return { id, position }; }),
@@ -79,7 +87,7 @@ describe("canonical Music REST surfaces", () => {
     expect((await request(app).get("/api/music/dashboard")).status).toBe(401);
     const response = await request(app).get("/api/music/dashboard").set("Authorization", "Bearer aaa.bbb.ccc");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
+    expect(response.body).toEqual({ queueRevision: 4, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
     expect(calls).toContainEqual(["dashboard", 11]);
   });
 
@@ -132,6 +140,24 @@ describe("canonical Music REST surfaces", () => {
     expect((await request(app).delete("/api/playlist/history").set(headers)).status).toBe(204);
     expect(calls.filter((entry) => ["queue", "add-song", "position", "remove-song", "remove-songs", "history"].includes(String(entry[0])))
       .every((entry) => entry[1] === 11)).toBe(true);
+  });
+
+  it("atomically replaces the principal queue and rejects stale, reused, targeted, unauthenticated, and cross-origin requests", async () => {
+    // Break caught: replacement trusts owner input or loses typed concurrency/idempotency failures.
+    const { app, calls } = appFor();
+    const body = { expectedRevision: 4, songs: [{ playlistId: 9, songId: 31 }] };
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": "replace-key" };
+    const success = await request(app).post("/api/music/queue/replace").set(headers).send(body);
+    expect(success.status).toBe(200);
+    expect(success.body).toEqual({ version: "music-queue/v1", revision: 5, songs: [{ id: 1, userId: 11, youtubeId: "yt", title: "Song", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "queued", playedAt: null }] });
+    expect(calls).toContainEqual(["replace-queue", 11, "replace-key", 4, [{ playlistId: 9, songId: 31 }]]);
+    expect((await request(app).post("/api/music/queue/replace").set({ ...headers, "Idempotency-Key": "replay-key" }).send(body)).status).toBe(200);
+    expect((await request(app).post("/api/music/queue/replace").set(headers).send({ ...body, expectedRevision: 3 })).body.error.code).toBe("QUEUE_REVISION_CONFLICT");
+    expect((await request(app).post("/api/music/queue/replace").set({ ...headers, "Idempotency-Key": "conflict-key" }).send(body)).body.error.code).toBe("IDEMPOTENCY_CONFLICT");
+    expect((await request(app).post("/api/music/queue/replace").set(headers).send({ ...body, ownerId: 99 })).status).toBe(400);
+    expect((await request(app).post("/api/music/queue/replace").set(headers).send({ ...body, username: "other" })).status).toBe(400);
+    expect((await request(app).post("/api/music/queue/replace").set("Origin", "https://explorers.example").set("Idempotency-Key", "x").send(body)).status).toBe(401);
+    expect((await request(app).post("/api/music/queue/replace").set("Authorization", headers.Authorization).set("Origin", "https://evil.example").set("Idempotency-Key", "x").send(body)).status).toBe(403);
   });
 
   it("clears completed playback through the owner-predicated C5 mutation", async () => {

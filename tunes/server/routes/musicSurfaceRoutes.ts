@@ -23,6 +23,12 @@ interface CanonicalMusicRepository {
   reorderPlaylistSong(ownerId: number, playlistId: number, songId: number, position: number): Promise<boolean>;
   setPlaylistVisibility(ownerId: number, playlistId: number, visible: boolean): Promise<boolean>;
   listQueue(ownerId: number): Promise<unknown[]>;
+  replaceQueue(ownerId: number, idempotencyKey: string, expectedRevision: number, songs: Array<{ playlistId: number; songId: number }>): Promise<
+    | { status: "completed"; replayed: boolean; response: { version: "music-queue/v1"; revision: number; songs: unknown[] } }
+    | { status: "stale"; revision: number }
+    | { status: "conflict" }
+    | { status: "not_found" }
+  >;
   ownerDashboard(ownerId: number): Promise<unknown>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
   setPlaying(ownerId: number, songId: number | null): Promise<unknown | null | undefined>;
@@ -178,8 +184,31 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     try { res.status(200).json((await dependencies.repository.listQueue(req.musicPrincipal!.musicUserId)).map(songDto)); } catch (error) { next(error); }
   }));
 
+  app.post("/api/music/queue/replace", ...mutation(async (req, res, next) => {
+    try {
+      const idempotencyKey = req.get("idempotency-key");
+      const input = queueReplaceInput(req.body);
+      if (!idempotencyKey || idempotencyKey.length > 128) throw invalidQueue();
+      const result = await dependencies.repository.replaceQueue(
+        req.musicPrincipal!.musicUserId, idempotencyKey, input.expectedRevision, input.songs,
+      );
+      if (result.status === "stale") throw new MusicIdentityError(
+        "QUEUE_REVISION_CONFLICT", 409, "The queue changed before replacement.", "retry", false,
+      );
+      if (result.status === "conflict") throw new MusicIdentityError(
+        "IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false,
+      );
+      if (result.status === "not_found") throw notFound();
+      res.status(200).json({
+        version: "music-queue/v1",
+        revision: result.response.revision,
+        songs: result.response.songs.map(songDto),
+      });
+    } catch (error) { next(error); }
+  }));
+
   app.get("/api/music/dashboard", ...owner(async (req, res, next) => {
-    try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId))); } catch (error) { next(error); }
+    try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId), true)); } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/songs", ...mutation(async (req, res, next) => {
@@ -481,13 +510,14 @@ function playlistDto(value: unknown) {
   };
 }
 
-function dashboardDto(value: unknown) {
+function dashboardDto(value: unknown, includeQueueRevision = false) {
   const source = record(value);
   const songs = property(source, "songs");
   const playedSongs = property(source, "playedSongs", "played_songs");
   const currentlyPlaying = property(source, "currentlyPlaying", "currently_playing");
   const publication = record(property(source, "publication"));
   return {
+    ...(includeQueueRevision ? { queueRevision: Number(property(source, "queueRevision", "queue_revision") ?? 0) } : {}),
     songs: Array.isArray(songs) ? songs.map(songDto) : [],
     currentlyPlaying: currentlyPlaying ? songDto(currentlyPlaying) : null,
     playedSongs: Array.isArray(playedSongs) ? playedSongs.map(songDto) : [],
@@ -546,6 +576,23 @@ function songInput(value: unknown) {
     throw invalidQueue();
   }
   return { youtubeId: body.youtubeId as string, title: body.title as string, artist: body.artist as string, thumbnailUrl: body.thumbnailUrl as string };
+}
+
+function queueReplaceInput(value: unknown): { expectedRevision: number; songs: Array<{ playlistId: number; songId: number }> } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some((key) => !["expectedRevision", "songs"].includes(key))
+      || !Number.isSafeInteger(body.expectedRevision) || Number(body.expectedRevision) < 0
+      || !Array.isArray(body.songs) || body.songs.length > 500) throw invalidQueue();
+  const songs = body.songs.map((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
+    const source = value as Record<string, unknown>;
+    if (Object.keys(source).some((key) => !["playlistId", "songId"].includes(key))
+        || !Number.isSafeInteger(source.playlistId) || Number(source.playlistId) < 1
+        || !Number.isSafeInteger(source.songId) || Number(source.songId) < 1) throw invalidQueue();
+    return { playlistId: Number(source.playlistId), songId: Number(source.songId) };
+  });
+  return { expectedRevision: Number(body.expectedRevision), songs };
 }
 
 function invalidQueue() {

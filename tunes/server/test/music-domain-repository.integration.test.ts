@@ -54,6 +54,50 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await admin?.end();
   });
 
+  it("serializes concurrent duplicate queue replacements and durably replays the exact result", async () => {
+    // Break caught: two retries both delete/insert, or replay returns newly generated row IDs.
+    const owner = await identities.ensureIdentity(identityInput("queue-replace"));
+    const playlist = await domain.createPlaylist(owner.id, { name: "Saved", description: null }) as { id: number };
+    const first = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "first", title: "First", artist: "A", thumbnailUrl: "https://img/first" }) as { id: number };
+    const second = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "second", title: "Second", artist: "B", thumbnailUrl: "https://img/second" }) as { id: number };
+    const sources = [{ playlistId: playlist.id, songId: second.id }, { playlistId: playlist.id, songId: first.id }];
+
+    const [a, b] = await Promise.all([
+      domain.replaceQueue(owner.id, "same-concurrent-key", 0, sources),
+      domain.replaceQueue(owner.id, "same-concurrent-key", 0, sources),
+    ]);
+    expect([a, b].filter((result) => result.status === "completed" && result.replayed)).toHaveLength(1);
+    expect([a, b].filter((result) => result.status === "completed" && !result.replayed)).toHaveLength(1);
+    expect(a.status === "completed" && b.status === "completed" ? a.response : undefined)
+      .toEqual(b.status === "completed" ? b.response : undefined);
+    expect((await pool.query("SELECT youtube_id,position FROM songs WHERE user_id=$1 AND status='queued' ORDER BY position", [owner.id])).rows)
+      .toEqual([{ youtube_id: "second", position: 0 }, { youtube_id: "first", position: 1 }]);
+    expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1 AND operation='queue.replace'", [owner.id])).rows[0].count)).toBe(1);
+
+    await expect(domain.replaceQueue(owner.id, "same-concurrent-key", 0, sources.slice().reverse()))
+      .resolves.toEqual({ status: "conflict" });
+    await expect(domain.replaceQueue(owner.id, "fresh-stale-key", 0, sources))
+      .resolves.toEqual({ status: "stale", revision: 1 });
+
+    await domain.addSong(owner.id, { youtubeId: "added", title: "Added", artist: "A", thumbnailUrl: "https://img/added" });
+    await expect(domain.replaceQueue(owner.id, "stale-after-add", 1, sources))
+      .resolves.toEqual({ status: "stale", revision: 2 });
+    const active = (await pool.query("SELECT id FROM songs WHERE user_id=$1 AND status='queued' ORDER BY position", [owner.id])).rows;
+    await domain.updateSongPosition(owner.id, active.at(-1).id, 0);
+    await expect(domain.replaceQueue(owner.id, "stale-after-reorder", 2, sources))
+      .resolves.toEqual({ status: "stale", revision: 3 });
+    await domain.setPlaying(owner.id, active[0].id);
+    await expect(domain.replaceQueue(owner.id, "stale-after-play", 3, sources))
+      .resolves.toEqual({ status: "stale", revision: 4 });
+    await domain.removeSong(owner.id, active[0].id);
+    await expect(domain.replaceQueue(owner.id, "stale-after-remove", 4, sources))
+      .resolves.toEqual({ status: "stale", revision: 5 });
+
+    const foreignOwner = await identities.ensureIdentity(identityInput("queue-foreign"));
+    await expect(domain.replaceQueue(foreignOwner.id, "foreign-source", 0, sources))
+      .resolves.toEqual({ status: "not_found" });
+  });
+
   it("isolates playlist and queue read/update/delete families between A and B", async () => {
     // Break caught: a known playlist/song ID bypasses a missing owner predicate on real PostgreSQL.
     const a = await identities.ensureIdentity(identityInput("a"));
@@ -90,8 +134,8 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.setPlaying(a.id, null);
     expect(await domain.listQueue(a.id)).toEqual([expect.objectContaining({ id: aSong.id, status: "played" })]);
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, status: "played" })]);
-    expect(await domain.ownerDashboard(a.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-a" }) });
-    expect(await domain.ownerDashboard(b.id)).toEqual({ songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-b" }) });
+    expect(await domain.ownerDashboard(a.id)).toEqual({ queueRevision: 3, songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-a" }) });
+    expect(await domain.ownerDashboard(b.id)).toEqual({ queueRevision: 1, songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-b" }) });
   });
 
   it("isolates entitlement, publication, capability rotation, and guest resolution", async () => {

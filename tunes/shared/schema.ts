@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, bigint, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -66,7 +66,19 @@ export const users = pgTable("users", {
   guestCapabilityRotatedAt: timestamp("guest_capability_rotated_at", { withTimezone: true }),
   guestCapabilityRevokedAt: timestamp("guest_capability_revoked_at", { withTimezone: true }),
   guestDiscoverable: boolean("guest_discoverable").notNull().default(false),
+  musicQueueRevision: bigint("music_queue_revision", { mode: "number" }).notNull().default(0),
 });
+
+export const musicOwnerOperations = pgTable("music_owner_operations", {
+  musicUserId: integer("music_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  operation: text("operation").notNull(),
+  idempotencyKeyHash: text("idempotency_key_hash").notNull(),
+  requestHash: text("request_hash").notNull(),
+  statusCode: integer("status_code").notNull(),
+  responseBody: jsonb("response_body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (table) => [primaryKey({ columns: [table.musicUserId, table.operation, table.idempotencyKeyHash] })]);
 
 // Migration-owned idempotency history. `musicUserId` deliberately has no
 // reference to users: it must survive the user row and bind deletion replay to

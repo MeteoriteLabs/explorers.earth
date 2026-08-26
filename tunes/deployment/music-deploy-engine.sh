@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0017_publication_idempotency_key_retirement"
+readonly production_current_marker="0018_transactional_queue_replacement"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"

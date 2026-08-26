@@ -26,6 +26,91 @@ function recordingPool(rows: unknown[] = []) {
 }
 
 describe("MusicDomainRepository owner predicates", () => {
+  it("replaces an owner queue in one locked transaction and returns canonical ordered state", async () => {
+    // Break caught: queue replacement becomes a delete/add sequence outside one owner lock.
+    const calls: Array<{ text: string; values: unknown[] }> = [];
+    let select = 0;
+    const client = {
+      async query(text: string, values: unknown[] = []) {
+        calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
+        if (/SELECT request_hash,status_code,response_body/.test(text)) return { rows: [], rowCount: 0 };
+        if (/SELECT u\.music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 4 }], rowCount: 1 };
+        if (/SELECT ps\.id/.test(text)) return { rows: [
+          { id: 31, youtube_id: "b", title: "B", artist: "Artist B", thumbnail_url: "https://img/b" },
+          { id: 30, youtube_id: "a", title: "A", artist: "Artist A", thumbnail_url: "https://img/a" },
+        ], rowCount: 2 };
+        if (/INSERT INTO songs/.test(text)) return { rows: [
+          { id: 101, user_id: 7, youtube_id: "b", title: "B", artist: "Artist B", thumbnail_url: "https://img/b", position: 0, status: "queued", played_at: null },
+          { id: 102, user_id: 7, youtube_id: "a", title: "A", artist: "Artist A", thumbnail_url: "https://img/a", position: 1, status: "queued", played_at: null },
+        ], rowCount: 2 };
+        if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 5 }], rowCount: 1 };
+        if (/SELECT id,user_id/.test(text)) { select += 1; return { rows: [], rowCount: 0 }; }
+        return { rows: [], rowCount: 1 };
+      },
+      release() {},
+    };
+    const repository = new MusicDomainRepository({ query: async () => { throw new Error("outside transaction"); }, connect: async () => client } as never);
+    await expect(repository.replaceQueue(7, "replace-key", 4, [
+      { playlistId: 9, songId: 31 }, { playlistId: 9, songId: 30 },
+    ])).resolves.toEqual({
+      status: "completed", replayed: false,
+      response: { version: "music-queue/v1", revision: 5, songs: [
+        { id: 101, userId: 7, youtubeId: "b", title: "B", artist: "Artist B", thumbnailUrl: "https://img/b", position: 0, status: "queued", playedAt: null },
+        { id: 102, userId: 7, youtubeId: "a", title: "A", artist: "Artist A", thumbnailUrl: "https://img/a", position: 1, status: "queued", playedAt: null },
+      ] },
+    });
+    expect(calls[0].text).toBe("BEGIN");
+    expect(calls.some(({ text }) => /pg_advisory_xact_lock/.test(text))).toBe(true);
+    expect(calls.some(({ text }) => /JOIN playlists p/.test(text) && /p.user_id=\$1/.test(text))).toBe(true);
+    expect(calls.some(({ text }) => /DELETE FROM songs/.test(text) && /status IN \('queued','playing'\)/.test(text))).toBe(true);
+    expect(calls.at(-1)?.text).toBe("COMMIT");
+    expect(select).toBe(0);
+  });
+
+  it("rejects stale revisions and foreign playlist songs before deleting the active queue", async () => {
+    const results = [
+      { rows: [], rowCount: 0 }, { rows: [{ music_queue_revision: 8 }], rowCount: 1 },
+    ];
+    const statements: string[] = [];
+    const client = { async query(text: string) {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (/^(BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(text)) return { rows: [], rowCount: 0 };
+      return results.shift() ?? { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    await expect(repository.replaceQueue(7, "stale", 7, [{ playlistId: 9, songId: 31 }]))
+      .resolves.toEqual({ status: "stale", revision: 8 });
+    expect(statements.some((text) => /DELETE FROM songs/.test(text))).toBe(false);
+
+    const foreignStatements: string[] = [];
+    const foreignClient = { async query(text: string) {
+      foreignStatements.push(text.replace(/\s+/g, " ").trim());
+      if (/SELECT request_hash/.test(text)) return { rows: [], rowCount: 0 };
+      if (/SELECT u\.music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 0 }], rowCount: 1 };
+      if (/SELECT ps\.id/.test(text)) return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const foreign = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => foreignClient } as never);
+    await expect(foreign.replaceQueue(7, "foreign", 0, [{ playlistId: 99, songId: 31 }]))
+      .resolves.toEqual({ status: "not_found" });
+    expect(foreignStatements.some((text) => /DELETE FROM songs/.test(text))).toBe(false);
+  });
+
+  it("rolls back an injected queue replacement failure", async () => {
+    const statements: string[] = [];
+    const client = { async query(text: string) {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (/SELECT request_hash/.test(text)) return { rows: [], rowCount: 0 };
+      if (/SELECT u\.music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 0 }], rowCount: 1 };
+      if (/SELECT ps\.id/.test(text)) return { rows: [{ id: 1, youtube_id: "a", title: "A", artist: "A", thumbnail_url: "https://img" }], rowCount: 1 };
+      if (/INSERT INTO songs/.test(text)) throw new Error("injected queue failure");
+      return { rows: [], rowCount: 1 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    await expect(repository.replaceQueue(7, "failure", 0, [{ playlistId: 9, songId: 1 }])).rejects.toThrow("injected queue failure");
+    expect(statements).toContain("ROLLBACK");
+    expect(statements).not.toContain("COMMIT");
+  });
   it("owner-predicates every playlist read/update/delete family", async () => {
     // Break caught: a resource ID alone can observe or mutate another owner's playlist.
     const harness = recordingPool();
@@ -35,7 +120,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await repository.updatePlaylist(17, 44, { name: "safe", description: null });
     await repository.deletePlaylist(17, 44);
     for (const call of harness.calls) {
-      expect(call.text.toLowerCase()).toMatch(/user_id\s*=\s*\$1/);
+      expect(call.text.toLowerCase()).toMatch(/(?:user_id|id)\s*=\s*\$1/);
       expect(call.values[0]).toBe(17);
     }
     expect(harness.calls.slice(1).every((call) => call.text.toLowerCase().includes("id=$2") || call.text.toLowerCase().includes("id = $2"))).toBe(true);
@@ -60,12 +145,11 @@ describe("MusicDomainRepository owner predicates", () => {
         expect(call.values[0]).toBe(23);
         continue;
       }
-      expect(call.text.toLowerCase()).toMatch(/user_id\s*=\s*\$1/);
+      expect(call.text.toLowerCase()).toMatch(/(?:user_id|id)\s*=\s*\$1/);
       expect(call.values[0]).toBe(23);
     }
-    expect(harness.calls[2].text.toLowerCase()).toMatch(/id\s*=\s*\$2/);
-    expect(harness.calls[3].text.toLowerCase()).toContain("status in ('queued','playing')");
-    expect(harness.calls[4].text.toLowerCase()).toMatch(/id\s*=\s*\$2/);
+    expect(harness.calls.some((call) => /id\s*=\s*\$2/.test(call.text.toLowerCase()))).toBe(true);
+    expect(harness.calls.some((call) => call.text.toLowerCase().includes("status in ('queued','playing')"))).toBe(true);
   });
 
   it("builds the private owner dashboard from only owner-predicated rows", async () => {
@@ -81,8 +165,32 @@ describe("MusicDomainRepository owner predicates", () => {
       songs: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
       currentlyPlaying: expect.objectContaining({ id: 2 }),
       playedSongs: [expect.objectContaining({ id: 3 })],
+      queueRevision: 0,
       publication: { mode: "private", publicSlug: "" },
     });
+  });
+
+  it("advances the owner queue revision inside each canonical active-queue mutation transaction", async () => {
+    // Break caught: a stale tab can replace over an add/play/reorder/remove because its expected revision stayed current.
+    for (const execute of [
+      (repository: MusicDomainRepository) => repository.addSong(7, { youtubeId: "a", title: "A", artist: "A", thumbnailUrl: "https://img" }),
+      (repository: MusicDomainRepository) => repository.setPlaying(7, 1),
+      (repository: MusicDomainRepository) => repository.updateSongPosition(7, 1, 0),
+      (repository: MusicDomainRepository) => repository.removeSong(7, 1),
+      (repository: MusicDomainRepository) => repository.removeSongs(7, [1, 2]),
+    ]) {
+      const statements: string[] = [];
+      const client = { async query(text: string) {
+        statements.push(text.replace(/\s+/g, " ").trim());
+        if (/SELECT id,status FROM songs/.test(text)) return { rows: [{ id: 1, status: "queued" }], rowCount: 1 };
+        if (/DELETE FROM songs/.test(text)) return { rows: [{ status: "queued" }], rowCount: 1 };
+        if (/RETURNING id,user_id/.test(text)) return { rows: [{ id: 1, user_id: 7, position: 0, status: "queued" }], rowCount: 1 };
+        return { rows: [], rowCount: 1 };
+      }, release() {} };
+      await execute(new MusicDomainRepository({ query: async () => { throw new Error("outside transaction"); }, connect: async () => client } as never));
+      expect(statements.some((text) => /UPDATE users SET music_queue_revision=music_queue_revision\+1 WHERE id=\$1/.test(text))).toBe(true);
+      expect(statements.at(-1)).toBe("COMMIT");
+    }
   });
 
   it.each([

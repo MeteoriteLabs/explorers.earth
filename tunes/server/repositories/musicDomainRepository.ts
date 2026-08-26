@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSurfacePolicy";
 import { MusicPublicationOperationRepository } from "./musicPublicationOperationRepository";
@@ -169,6 +170,110 @@ export class MusicDomainRepository {
     )).rows;
   }
 
+  private async advanceQueueRevision(client: PoolClient, musicUserId: number): Promise<void> {
+    await client.query(
+      "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1",
+      [musicUserId],
+    );
+  }
+
+  async replaceQueue(
+    musicUserId: number,
+    idempotencyKey: string,
+    expectedRevision: number,
+    songs: Array<{ playlistId: number; songId: number }>,
+  ): Promise<
+    | { status: "completed"; replayed: boolean; response: { version: "music-queue/v1"; revision: number; songs: unknown[] } }
+    | { status: "stale"; revision: number }
+    | { status: "conflict" }
+    | { status: "not_found" }
+  > {
+    const operation = "queue.replace";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256")
+      .update(JSON.stringify({ expectedRevision, songs }), "utf8")
+      .digest("hex");
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const existing = (await client.query(
+        `SELECT request_hash,status_code,response_body
+           FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+          FOR UPDATE`,
+        [musicUserId, operation, keyHash],
+      )).rows[0];
+      if (existing) {
+        if (existing.request_hash !== requestHash) return { status: "conflict" as const };
+        return { status: "completed" as const, replayed: true, response: existing.response_body };
+      }
+
+      const owner = (await client.query(
+        "SELECT u.music_queue_revision FROM users u WHERE u.id=$1 FOR UPDATE",
+        [musicUserId],
+      )).rows[0];
+      if (!owner) return { status: "not_found" as const };
+      const revision = Number(owner.music_queue_revision);
+      if (revision !== expectedRevision) return { status: "stale" as const, revision };
+
+      const playlistIds = songs.map(({ playlistId }) => playlistId);
+      const songIds = songs.map(({ songId }) => songId);
+      const sources = songs.length === 0 ? [] : (await client.query(
+        `SELECT ps.id,ps.youtube_id,ps.title,ps.artist,ps.thumbnail_url,source.ordinality
+           FROM unnest($2::integer[],$3::integer[]) WITH ORDINALITY AS source(playlist_id,song_id,ordinality)
+           JOIN playlists p ON p.id=source.playlist_id AND p.user_id=$1
+           JOIN playlist_songs ps ON ps.playlist_id=p.id AND ps.id=source.song_id
+          ORDER BY source.ordinality`,
+        [musicUserId, playlistIds, songIds],
+      )).rows;
+      if (sources.length !== songs.length) return { status: "not_found" as const };
+
+      await client.query(
+        "DELETE FROM songs WHERE user_id=$1 AND status IN ('queued','playing')",
+        [musicUserId],
+      );
+      const inserted = sources.length === 0 ? [] : (await client.query(
+        `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
+         SELECT $1,source.youtube_id,source.title,source.artist,source.thumbnail_url,(source.ordinality-1)::integer,'queued'
+           FROM unnest($2::text[],$3::text[],$4::text[],$5::text[]) WITH ORDINALITY
+             AS source(youtube_id,title,artist,thumbnail_url,ordinality)
+          ORDER BY source.ordinality
+         RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
+        [
+          musicUserId,
+          sources.map(({ youtube_id }) => youtube_id),
+          sources.map(({ title }) => title),
+          sources.map(({ artist }) => artist),
+          sources.map(({ thumbnail_url }) => thumbnail_url),
+        ],
+      )).rows.sort((left, right) => Number(left.position) - Number(right.position));
+      const nextRevision = Number((await client.query(
+        "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 RETURNING music_queue_revision",
+        [musicUserId],
+      )).rows[0].music_queue_revision);
+      const response = {
+        version: "music-queue/v1" as const,
+        revision: nextRevision,
+        songs: inserted.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          youtubeId: row.youtube_id,
+          title: row.title,
+          artist: row.artist,
+          thumbnailUrl: row.thumbnail_url,
+          position: row.position,
+          status: row.status,
+          playedAt: row.played_at instanceof Date ? row.played_at.toISOString() : row.played_at ?? null,
+        })),
+      };
+      await client.query(
+        `INSERT INTO music_owner_operations(
+           music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
+         ) VALUES ($1,$2,$3,$4,200,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash, JSON.stringify(response)],
+      );
+      return { status: "completed" as const, replayed: false, response };
+    });
+  }
+
   async ownerDashboard(musicUserId: number) {
     const rows = (await this.pool.query(
       `SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
@@ -178,12 +283,14 @@ export class MusicDomainRepository {
     )).rows;
     const publication = (await this.pool.query(
       `SELECT guest_url,
+              music_queue_revision,
               guest_discoverable,
               (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
          FROM users WHERE id=$1`,
       [musicUserId],
     )).rows[0];
     return {
+      queueRevision: Number(publication?.music_queue_revision ?? 0),
       songs: rows.filter((row) => row.status === "queued" || row.status === "playing"),
       currentlyPlaying: rows.find((row) => row.status === "playing"),
       playedSongs: rows.filter((row) => row.status === "played"),
@@ -196,7 +303,8 @@ export class MusicDomainRepository {
   }
 
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
-    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => (await client.query(
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const song = (await client.query(
         `WITH ordered AS (
            SELECT id,(row_number() OVER (ORDER BY position,id)-1)::integer AS desired_position
              FROM songs WHERE user_id=$1 AND status IN ('queued','playing')
@@ -207,17 +315,21 @@ export class MusicDomainRepository {
          VALUES ($1,$2,$3,$4,$5,(SELECT count(*)::integer FROM ordered),'queued')
          RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
         [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
-      )).rows[0]);
+      )).rows[0];
+      await this.advanceQueueRevision(client, musicUserId);
+      return song;
+    });
   }
 
   async setPlaying(musicUserId: number, songId: number | null) {
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
       if (songId === null) {
-        await client.query(
+        const completed = await client.query(
           "UPDATE songs SET status='played',played_at=now() WHERE user_id=$1 AND status='playing'",
           [musicUserId],
         );
         await this.normalizeActiveQueue(client, musicUserId);
+        if ((completed.rowCount ?? 0) > 0) await this.advanceQueueRevision(client, musicUserId);
         return null;
       }
       const activated = (await client.query(
@@ -235,6 +347,7 @@ export class MusicDomainRepository {
       )).rows[0];
       if (!activated) return undefined;
       await this.normalizeActiveQueue(client, musicUserId);
+      await this.advanceQueueRevision(client, musicUserId);
       return (await client.query(
         "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='playing'",
         [musicUserId, songId],
@@ -259,6 +372,7 @@ export class MusicDomainRepository {
          UPDATE songs s SET position=d.position FROM desired d WHERE s.user_id=$1 AND s.id=d.id`,
         [musicUserId, rows.map(({ id }) => id)],
       );
+      await this.advanceQueueRevision(client, musicUserId);
       return (await client.query(
         "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='queued'",
         [musicUserId, songId],
@@ -267,11 +381,31 @@ export class MusicDomainRepository {
   }
 
   async removeSong(musicUserId: number, songId: number): Promise<boolean> {
-    return (await this.pool.query("DELETE FROM songs WHERE user_id=$1 AND id=$2", [musicUserId, songId])).rowCount === 1;
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const removed = await client.query(
+        "DELETE FROM songs WHERE user_id=$1 AND id=$2 RETURNING status",
+        [musicUserId, songId],
+      );
+      if ((removed.rowCount ?? 0) > 0 && removed.rows.some(({ status }) => status === "queued" || status === "playing")) {
+        await this.normalizeActiveQueue(client, musicUserId);
+        await this.advanceQueueRevision(client, musicUserId);
+      }
+      return removed.rowCount === 1;
+    });
   }
 
   async removeSongs(musicUserId: number, songIds: number[]): Promise<number> {
-    return (await this.pool.query("DELETE FROM songs WHERE user_id=$1 AND id=ANY($2::integer[])", [musicUserId, songIds])).rowCount ?? 0;
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const removed = await client.query(
+        "DELETE FROM songs WHERE user_id=$1 AND id=ANY($2::integer[]) RETURNING status",
+        [musicUserId, songIds],
+      );
+      if (removed.rows.some(({ status }) => status === "queued" || status === "playing")) {
+        await this.normalizeActiveQueue(client, musicUserId);
+        await this.advanceQueueRevision(client, musicUserId);
+      }
+      return removed.rowCount ?? 0;
+    });
   }
 
   async clearHistory(musicUserId: number): Promise<number> {
