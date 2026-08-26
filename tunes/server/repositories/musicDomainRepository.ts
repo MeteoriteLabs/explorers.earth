@@ -146,6 +146,21 @@ export class MusicDomainRepository {
     });
   }
 
+  private async withReadSnapshot<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const result = await operation(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async removePlaylistSong(musicUserId: number, playlistId: number, songId: number): Promise<boolean> {
     return (await this.pool.query(
       `DELETE FROM playlist_songs ps USING playlists p
@@ -235,8 +250,7 @@ export class MusicDomainRepository {
         `SELECT request_hash,status_code,response_body
            FROM music_owner_operations
           WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
-            AND expires_at>transaction_timestamp()
-          FOR UPDATE`,
+            AND expires_at>transaction_timestamp()`,
         [musicUserId, operation, keyHash],
       )).rows[0];
       if (existing) {
@@ -313,36 +327,38 @@ export class MusicDomainRepository {
   }
 
   async ownerDashboard(musicUserId: number) {
-    const rows = (await this.pool.query(
-      `SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
-              thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
-         FROM songs WHERE user_id=$1 ORDER BY position`,
-      [musicUserId],
-    )).rows;
-    const publication = (await this.pool.query(
-      `SELECT guest_url,
-              music_queue_revision,
-              guest_discoverable,
-              (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
-         FROM users WHERE id=$1`,
-      [musicUserId],
-    )).rows[0];
-    return {
-      queueRevision: Number(publication?.music_queue_revision ?? 0),
-      songs: rows.filter((row) => row.status === "queued" || row.status === "playing"),
-      currentlyPlaying: rows.find((row) => row.status === "playing"),
-      playedSongs: rows.filter((row) => row.status === "played").sort((left, right) => {
-        const leftTime = left.playedAt instanceof Date ? left.playedAt.getTime() : Date.parse(String(left.playedAt ?? ""));
-        const rightTime = right.playedAt instanceof Date ? right.playedAt.getTime() : Date.parse(String(right.playedAt ?? ""));
-        const timeDifference = (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
-        return timeDifference || Number(right.id) - Number(left.id);
-      }).slice(0, 500),
-      publication: {
-        mode: publication?.guest_discoverable === true ? "public"
-          : publication?.has_guest_capability === true ? "unlisted" : "private",
-        publicSlug: String(publication?.guest_url ?? ""),
-      },
-    };
+    return this.withReadSnapshot(async (client) => {
+      const rows = (await client.query(
+        `SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
+                thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
+           FROM songs WHERE user_id=$1 ORDER BY position`,
+        [musicUserId],
+      )).rows;
+      const publication = (await client.query(
+        `SELECT guest_url,
+                music_queue_revision,
+                guest_discoverable,
+                (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
+           FROM users WHERE id=$1`,
+        [musicUserId],
+      )).rows[0];
+      return {
+        queueRevision: Number(publication?.music_queue_revision ?? 0),
+        songs: rows.filter((row) => row.status === "queued" || row.status === "playing"),
+        currentlyPlaying: rows.find((row) => row.status === "playing"),
+        playedSongs: rows.filter((row) => row.status === "played").sort((left, right) => {
+          const leftTime = left.playedAt instanceof Date ? left.playedAt.getTime() : Date.parse(String(left.playedAt ?? ""));
+          const rightTime = right.playedAt instanceof Date ? right.playedAt.getTime() : Date.parse(String(right.playedAt ?? ""));
+          const timeDifference = (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+          return timeDifference || Number(right.id) - Number(left.id);
+        }).slice(0, 500),
+        publication: {
+          mode: publication?.guest_discoverable === true ? "public"
+            : publication?.has_guest_capability === true ? "unlisted" : "private",
+          publicSlug: String(publication?.guest_url ?? ""),
+        },
+      };
+    });
   }
 
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {

@@ -98,6 +98,28 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       .resolves.toEqual({ status: "not_found" });
   });
 
+  it("replays queue replacement under the least-privilege runtime role without table UPDATE", async () => {
+    const owner = await identities.ensureIdentity(identityInput("runtime-replay"));
+    const playlist = await domain.createPlaylist(owner.id, { name: "Runtime replay", description: null }) as { id: number };
+    const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "runtime00001", title: "Runtime", artist: "R", thumbnailUrl: "https://img/runtime" }) as { id: number };
+    const selection = [{ playlistId: playlist.id, songId: source.id }];
+    const client = await pool.connect();
+    try {
+      await client.query("SET ROLE music_runtime");
+      const runtime = new MusicDomainRepository({
+        query: (text: string, values?: unknown[]) => client.query(text, values),
+        connect: async () => ({ query: client.query.bind(client), release() {} }),
+      } as never);
+      await expect(runtime.replaceQueue(owner.id, "runtime-replay-key", 0, selection))
+        .resolves.toMatchObject({ status: "completed", replayed: false });
+      await expect(runtime.replaceQueue(owner.id, "runtime-replay-key", 0, selection))
+        .resolves.toMatchObject({ status: "completed", replayed: true });
+    } finally {
+      await client.query("RESET ROLE");
+      client.release();
+    }
+  });
+
   it("rolls back an injected mid-replacement failure without changing queue, revision, or operation history", async () => {
     const owner = await identities.ensureIdentity(identityInput("queue-rollback"));
     const playlist = await domain.createPlaylist(owner.id, { name: "Rollback", description: null }) as { id: number };

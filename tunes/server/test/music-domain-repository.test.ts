@@ -61,6 +61,7 @@ describe("MusicDomainRepository owner predicates", () => {
     });
     expect(calls[0].text).toBe("BEGIN");
     expect(calls.some(({ text }) => /pg_advisory_xact_lock/.test(text))).toBe(true);
+    expect(calls.find(({ text }) => /SELECT request_hash,status_code,response_body/.test(text))?.text).not.toMatch(/FOR UPDATE/);
     expect(calls.some(({ text }) => /JOIN playlists p/.test(text) && /p.user_id=\$1/.test(text))).toBe(true);
     expect(calls.some(({ text }) => /DELETE FROM songs/.test(text) && /status IN \('queued','playing'\)/.test(text))).toBe(true);
     expect(calls.at(-1)?.text).toBe("COMMIT");
@@ -294,13 +295,19 @@ describe("MusicDomainRepository owner predicates", () => {
   ] as const)("returns owner-readable publication link state without capability material", async (publicationRow, mode) => {
     const calls: Array<{ text: string; values: unknown[] }> = [];
     let index = 0;
+    const query = async (text: string, values: unknown[] = []) => {
+      calls.push({ text, values });
+      index += 1;
+      return { rows: index === 1 ? [] : [publicationRow], rowCount: index === 1 ? 0 : 1 };
+    };
     const pool = {
-      query: async (text: string, values: unknown[] = []) => {
-        calls.push({ text, values });
-        index += 1;
-        return { rows: index === 1 ? [] : [publicationRow], rowCount: index === 1 ? 0 : 1 };
-      },
-      connect: async () => { throw new Error("not used"); },
+      query,
+      connect: async () => ({
+        query: async (text: string, values: unknown[] = []) => /^(?:BEGIN|COMMIT|ROLLBACK)/.test(text)
+          ? { rows: [], rowCount: 0 }
+          : query(text, values),
+        release() {},
+      }),
     };
     const result = await new MusicDomainRepository(pool).ownerDashboard(41);
     expect(result.publication).toEqual({ mode, publicSlug: "random-public-slug" });
@@ -308,6 +315,23 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(calls).toHaveLength(2);
     expect(calls.every((call) => call.values[0] === 41)).toBe(true);
     expect(calls[1].text.toLowerCase()).not.toMatch(/guest_capability_hash\s+as/);
+  });
+
+  it("reads dashboard songs and revision from one repeatable-read snapshot", async () => {
+    const statements: string[] = [];
+    let read = 0;
+    const client = { async query(text: string) {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)/.test(text)) return { rows: [], rowCount: 0 };
+      read += 1;
+      return read === 1
+        ? { rows: [{ id: 1, userId: 41, status: "queued" }], rowCount: 1 }
+        : { rows: [{ music_queue_revision: 3, guest_url: "snapshot-slug", guest_discoverable: false, has_guest_capability: false }], rowCount: 1 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => { throw new Error("outside snapshot"); }, connect: async () => client } as never);
+    await expect(repository.ownerDashboard(41)).resolves.toMatchObject({ queueRevision: 3, songs: [{ id: 1 }] });
+    expect(statements[0]).toBe("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    expect(statements.at(-1)).toBe("COMMIT");
   });
 
   it("owner-predicates every saved-playlist song and visibility mutation", async () => {
