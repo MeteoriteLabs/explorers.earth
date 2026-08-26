@@ -75,11 +75,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
       transitionLock.current = false; if (mounted.current) setTransitionPending(false);
       return;
     }
-    if (generation.current !== operationGeneration) {
-      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
-      return;
-    }
-    playAfterChange.current = song.id;
+    if (generation.current === operationGeneration) playAfterChange.current = song.id;
     try { await onChanged(); }
     catch { if (generation.current === operationGeneration) setError("Song changed, but the latest queue could not be loaded."); }
     finally {
@@ -100,11 +96,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
       transitionLock.current = false; if (mounted.current) setTransitionPending(false);
       return;
     }
-    if (generation.current !== operationGeneration) {
-      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
-      return;
-    }
-    await broadcast(currentSong.id, false);
+    if (generation.current === operationGeneration) await broadcast(currentSong.id, false);
     try { await onChanged(); }
     catch { if (generation.current === operationGeneration) setError("Song finished, but the latest history could not be loaded."); }
     finally { transitionLock.current = false; if (mounted.current) setTransitionPending(false); }
@@ -146,7 +138,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         muted={muted}
         width="100%"
         height="auto"
-        onPlay={() => { clearRecovery(); recoveryAttempts.current = 0; setPlaying(true); void broadcast(currentSong.id, true); }}
+        onPlay={() => { clearRecovery(); setPlaying(true); void broadcast(currentSong.id, true); }}
         onPause={() => { setPlaying(false); void broadcast(currentSong.id, false); }}
         onEnded={() => { if (queuedSongs[0]) void transition(queuedSongs[0], "next"); else void finish(); }}
         onError={handleMediaError}

@@ -224,14 +224,43 @@ describe("MusicPlayer", () => {
     expect(screen.getByRole("button", { name: "Next song" })).toBeEnabled();
   });
 
-  it("does not broadcast or refresh a completed-song command after its song becomes stale", async () => {
+  it("reconciles a completed-song command after its song becomes stale without stale local effects", async () => {
     const command = deferred<void>(); const broadcastPlayerState = vi.fn(); const onChanged = vi.fn();
     const { props, rerender } = setup({ queuedSongs: [], queueClient: { setPlaying: vi.fn().mockReturnValue(command.promise) }, broadcastPlayerState, onChanged });
     act(() => (playerProps.onEnded as () => void)());
     rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
     await act(async () => command.resolve());
     expect(broadcastPlayerState).not.toHaveBeenCalled();
-    expect(onChanged).not.toHaveBeenCalled();
+    expect(onChanged).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reconciles a stale target command without autoplay, broadcast, or stale error", async () => {
+    const command = deferred<void>(); const broadcastPlayerState = vi.fn(); const onChanged = vi.fn().mockResolvedValue(undefined);
+    const { props, rerender } = setup({ queueClient: { setPlaying: vi.fn().mockReturnValue(command.promise) }, broadcastPlayerState, onChanged });
+    fireEvent.click(screen.getByRole("button", { name: "Next song" }));
+    rerender(<MusicPlayer {...props} currentSong={previous} queuedSongs={[next]} />);
+    await act(async () => command.resolve());
+    expect(onChanged).toHaveBeenCalledOnce();
+    expect(broadcastPlayerState).not.toHaveBeenCalled();
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the per-song recovery budget across transient onPlay callbacks", async () => {
+    vi.useFakeTimers(); const { props } = setup();
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("one")));
+    await act(async () => vi.runAllTimersAsync());
+    act(() => (playerProps.onPlay as () => void)());
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("two")));
+    await act(async () => vi.runAllTimersAsync());
+    act(() => (playerProps.onPlay as () => void)());
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("three")));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(props.queueClient.setPlaying).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(screen.getByRole("status")).toHaveTextContent("First song is unavailable. Skipping once.");
   });
 
   it("discards autoplay intent when a different canonical song wins", async () => {
