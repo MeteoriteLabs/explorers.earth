@@ -20,6 +20,9 @@ const envelope = (operation: LifecycleOperation) => ({
   },
 });
 
+const openSettings = (page: Page) => page.goto("/settings", { waitUntil: "domcontentloaded" });
+const reloadSettings = (page: Page) => page.reload({ waitUntil: "domcontentloaded" });
+
 async function mockSettings(
   context: BrowserContext,
   operation: LifecycleOperation,
@@ -165,7 +168,7 @@ test("a never-provisioned Explorer identity treats exact Music absence as a safe
     operationId: "delete-operation-durable", status: "not_present", phase: "prepared", state: "cancelled",
     boundaryCrossed: false, retryable: false, deadLetter: false,
   }, events, { musicNotPresent: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Deactivate your account?" }).click();
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -179,7 +182,7 @@ for (const provider of ["google", "local"] as const) {
       operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
       boundaryCrossed: false, retryable: false, deadLetter: false,
     }, events, { provider });
-    await page.goto("/settings");
+    await openSettings(page);
     await page.getByRole("button", { name: "Deactivate your account?" }).click();
     if (provider === "local") await page.getByPlaceholder("Enter your current password").fill("valid-password");
     await page.getByRole("button", { name: "Deactivate My Account" }).click();
@@ -196,7 +199,7 @@ test("Music suspension outage leaves Strapi and browser authority active for ret
     operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
     boundaryCrossed: false, retryable: false, deadLetter: false,
   }, events, { suspensionUnavailable: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Deactivate your account?" }).click();
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
   await expect(page).toHaveURL(/\/settings$/);
@@ -211,7 +214,7 @@ test("pending Music deletion prevents Strapi deactivation and browser auth clean
     operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
     boundaryCrossed: false, retryable: false, deadLetter: false,
   }, events, { suspensionPendingDeletion: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Deactivate your account?" }).click();
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
   await expect(page).toHaveURL(/\/settings$/);
@@ -225,7 +228,7 @@ test("an unconfirmed Strapi block compensates Music without reporting success", 
     operationId: "delete-operation-durable", status: "suspended", phase: "prepared", state: "cancelled",
     boundaryCrossed: false, retryable: false, deadLetter: false,
   }, events, { strapiBlockUnconfirmed: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Deactivate your account?" }).click();
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
   await expect.poll(() => events.filter((event) => event === "strapi-block").length).toBe(1);
@@ -251,12 +254,12 @@ test("pending deletion survives reload and a second tab, then cancels only befor
     boundaryCrossed: false, retryable: false, deadLetter: false,
   };
   await mockSettings(context, pending);
-  await page.goto("/settings");
+  await openSettings(page);
   await expect(page.getByText("Account deletion is prepared. Music access is paused.")).toBeVisible();
-  await page.reload();
+  await reloadSettings(page);
   await expect(page.getByRole("button", { name: "Cancel deletion" })).toBeVisible();
   const secondTab = await context.newPage();
-  await secondTab.goto("/settings");
+  await openSettings(secondTab);
   await expect(secondTab.getByText("Account deletion is prepared. Music access is paused.")).toBeVisible();
   await assertNoLifecyclePersistence(page);
   await page.getByRole("button", { name: "Cancel deletion" }).click();
@@ -270,10 +273,10 @@ test("a lost nullable cancel response reloads the exact cancelled terminal state
     operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "completed",
     boundaryCrossed: false, retryable: false, deadLetter: false,
   }, events, { cancelAsNotPresent: true, loseCancelResponseOnce: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Cancel deletion" }).click();
   await expect.poll(() => events.filter((event) => event === "cancel").length).toBe(1);
-  await page.reload();
+  await reloadSettings(page);
   await expect(page.getByText("Account deletion is prepared. Music access is paused.")).toBeHidden();
   await expect(page.getByRole("button", { name: "Delete your account?" })).toBeVisible();
   expect(events.filter((event) => event === "prepare")).toEqual([]);
@@ -286,7 +289,7 @@ test("a crossed-boundary retry preserves ordering and completes at login", async
     operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "requested",
     boundaryCrossed: true, retryable: true, deadLetter: false,
   }, events);
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Retry account deletion" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event)).slice(-4))
@@ -299,7 +302,7 @@ test("a crossed-boundary retry refuses any additional Account outside the durabl
     operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "requested",
     boundaryCrossed: true, retryable: true, deadLetter: false,
   }, events, { additionalAccount: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Retry account deletion" }).click();
   await expect(page.getByText("The Explorer Account state could not be verified. Try again without signing out.")).toBeVisible();
   await expect(page).toHaveURL(/\/settings$/);
@@ -313,14 +316,14 @@ test("a lost Account mutation response keeps user authority and reload resumes w
     operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "requested",
     boundaryCrossed: true, retryable: true, deadLetter: false,
   }, events, { loseAccountDeleteResponseOnce: true });
-  await page.goto("/settings");
+  await openSettings(page);
   await page.getByRole("button", { name: "Retry account deletion" }).click();
   await expect.poll(() => events.filter((event) => event === "account-delete").length).toBe(1);
   await expect(page).toHaveURL(/\/settings$/);
   expect(events.filter((event) => event === "account-delete")).toHaveLength(1);
   expect(events.filter((event) => event === "user-delete")).toHaveLength(0);
 
-  await page.reload();
+  await reloadSettings(page);
   await page.getByRole("button", { name: "Retry account deletion" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(events.filter((event) => event === "account-delete")).toHaveLength(1);
@@ -333,7 +336,7 @@ test("dead-letter escalation is typed and offers no destructive retry", async ({
     operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "failed",
     boundaryCrossed: true, retryable: false, deadLetter: true,
   }, events);
-  await page.goto("/settings");
+  await openSettings(page);
   await expect(page.getByRole("alert")).toContainText("manual review");
   await expect(page.getByRole("button", { name: /retry account deletion|cancel deletion/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /delete (?:your|my) account/i })).toHaveCount(0);
@@ -348,7 +351,7 @@ test("finalized deletion hides every ordinary delete entry point and performs no
     operationId: "delete-operation-durable", status: "tombstoned", phase: "finalized", state: "completed",
     boundaryCrossed: true, retryable: false, deadLetter: false,
   }, events);
-  await page.goto("/settings");
+  await openSettings(page);
   await expect(page.getByRole("button", { name: /delete (?:your|my) account/i })).toHaveCount(0);
   expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event))).toEqual([]);
   await assertNoLifecyclePersistence(page);
@@ -361,7 +364,7 @@ for (const statusMode of ["delayed", "error"] as const) {
       operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "completed",
       boundaryCrossed: false, retryable: false, deadLetter: false,
     }, events, { statusMode });
-    await page.goto("/settings");
+    await openSettings(page);
     await page.waitForTimeout(500);
     await expect(page.getByRole("button", { name: /delete (?:your|my) account/i })).toHaveCount(0);
     expect(events.filter((event) => ["prepare", "boundary", "account-delete", "user-delete"].includes(event))).toEqual([]);
