@@ -109,8 +109,8 @@ jobs:
             test -s "$authority_dir/db-migrator"
             test -s "$authority_dir/db-runtime"
             test -s "$authority_dir/gate-key"
-            test "$(docker inspect --format '{{index .Config.Labels \"com.docker.compose.project\"}}' tunes-app-1)" = tunes
-            test "$(docker inspect --format '{{index .Config.Labels \"com.docker.compose.service\"}}' tunes-app-1)" = app
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' tunes-app-1)" = tunes
+            test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' tunes-app-1)" = app
             test "$(docker inspect --format '{{.State.Status}}' tunes-db-1)" = running
             mkdir -p "$backup_dir"
             chmod 700 "$backup_dir"
@@ -130,7 +130,7 @@ jobs:
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             docker pull "$CANDIDATE_IMAGE"
             test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{.Architecture}}')" = arm64
-            test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{index .Config.Labels \"org.opencontainers.image.revision\"}}')" = "$CANDIDATE_COMMIT"
+            test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$CANDIDATE_COMMIT"
             current_readiness="$backup_dir/current-readiness-$stamp.json"
             curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/health/ready > "$current_readiness"
             CURRENT_MIGRATION_MARKER="$(docker run --rm --entrypoint node \

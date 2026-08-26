@@ -135,7 +135,6 @@ describePg("C9 durable publication idempotency on real PostgreSQL 15", () => {
   afterAll(async () => {
     await runtimePool?.end();
     await pool?.end();
-    await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await admin?.query(`DROP ROLE IF EXISTS ${runtimeUser}`);
     await admin?.end();
