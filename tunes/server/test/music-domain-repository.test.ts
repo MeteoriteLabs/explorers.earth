@@ -25,6 +25,26 @@ function recordingPool(rows: unknown[] = []) {
   };
 }
 
+function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: number; [key: string]: unknown }>) {
+  const calls: Array<{ text: string; values: unknown[] }> = [];
+  const query = async (text: string, values: unknown[] = []) => {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    calls.push({ text: normalized, values });
+    if (/status IN \('queued','playing'\)/.test(normalized)) {
+      const active = rows.filter((row) => row.status === "queued" || row.status === "playing");
+      return { rows: active, rowCount: active.length };
+    }
+    if (/status='played'/.test(normalized)) {
+      const played = rows.filter((row) => row.status === "played")
+        .sort((left, right) => Date.parse(right.playedAt ?? "") - Date.parse(left.playedAt ?? "") || right.id - left.id)
+        .slice(0, 500);
+      return { rows: played, rowCount: played.length };
+    }
+    return { rows: [], rowCount: 0 };
+  };
+  return { calls, pool: { query, connect: async () => ({ query, release() {} }) } };
+}
+
 describe("MusicDomainRepository owner predicates", () => {
   it("replaces an owner queue in one locked transaction and returns canonical ordered state", async () => {
     // Break caught: queue replacement becomes a delete/add sequence outside one owner lock.
@@ -177,14 +197,16 @@ describe("MusicDomainRepository owner predicates", () => {
   });
 
   it("builds the private owner dashboard from only owner-predicated rows", async () => {
-    const harness = recordingPool([
+    const harness = dashboardPool([
       { id: 1, userId: 23, youtubeId: "q", status: "queued" },
       { id: 2, userId: 23, youtubeId: "p", status: "playing" },
       { id: 3, userId: 23, youtubeId: "h", status: "played" },
     ]);
     const result = await new MusicDomainRepository(harness.pool).ownerDashboard(23);
-    expect(harness.calls[0].text.toLowerCase()).toMatch(/user_id\s*=\s*\$1/);
-    expect(harness.calls[0].values).toEqual([23]);
+    const songReads = harness.calls.filter((call) => /FROM songs/.test(call.text));
+    expect(songReads).toHaveLength(2);
+    expect(songReads.every((call) => /user_id\s*=\s*\$1/i.test(call.text))).toBe(true);
+    expect(songReads.every((call) => call.values[0] === 23)).toBe(true);
     expect(result).toEqual({
       songs: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
       currentlyPlaying: expect.objectContaining({ id: 2 }),
@@ -195,7 +217,7 @@ describe("MusicDomainRepository owner predicates", () => {
   });
 
   it("orders owner played history by most recent play time", async () => {
-    const harness = recordingPool([
+    const harness = dashboardPool([
       { id: 3, userId: 23, status: "played", playedAt: "2026-08-25T10:00:00.000Z" },
       { id: 4, userId: 23, status: "played", playedAt: "2026-08-25T11:00:00.000Z" },
     ]);
@@ -251,7 +273,7 @@ describe("MusicDomainRepository owner predicates", () => {
       status: "played",
       playedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
     }));
-    const result = await new MusicDomainRepository(recordingPool(rows).pool).ownerDashboard(23);
+    const result = await new MusicDomainRepository(dashboardPool(rows).pool).ownerDashboard(23);
     expect(result.playedSongs).toHaveLength(500);
     expect(result.playedSongs[0].id).toBe(501);
     expect(result.playedSongs.at(-1)?.id).toBe(2);
@@ -298,7 +320,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const query = async (text: string, values: unknown[] = []) => {
       calls.push({ text, values });
       index += 1;
-      return { rows: index === 1 ? [] : [publicationRow], rowCount: index === 1 ? 0 : 1 };
+      return { rows: index < 3 ? [] : [publicationRow], rowCount: index < 3 ? 0 : 1 };
     };
     const pool = {
       query,
@@ -312,9 +334,9 @@ describe("MusicDomainRepository owner predicates", () => {
     const result = await new MusicDomainRepository(pool).ownerDashboard(41);
     expect(result.publication).toEqual({ mode, publicSlug: "random-public-slug" });
     expect(JSON.stringify(result)).not.toMatch(/capability|hash/i);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     expect(calls.every((call) => call.values[0] === 41)).toBe(true);
-    expect(calls[1].text.toLowerCase()).not.toMatch(/guest_capability_hash\s+as/);
+    expect(calls[2].text.toLowerCase()).not.toMatch(/guest_capability_hash\s+as/);
   });
 
   it("reads dashboard songs and revision from one repeatable-read snapshot", async () => {
@@ -324,13 +346,14 @@ describe("MusicDomainRepository owner predicates", () => {
       statements.push(text.replace(/\s+/g, " ").trim());
       if (/^(?:BEGIN|COMMIT|ROLLBACK)/.test(text)) return { rows: [], rowCount: 0 };
       read += 1;
-      return read === 1
-        ? { rows: [{ id: 1, userId: 41, status: "queued" }], rowCount: 1 }
-        : { rows: [{ music_queue_revision: 3, guest_url: "snapshot-slug", guest_discoverable: false, has_guest_capability: false }], rowCount: 1 };
+      if (read === 1) return { rows: [{ id: 1, userId: 41, status: "queued" }], rowCount: 1 };
+      if (read === 2) return { rows: [{ id: 2, userId: 41, status: "played", playedAt: "2026-08-25T10:00:00.000Z" }], rowCount: 1 };
+      return { rows: [{ music_queue_revision: 3, guest_url: "snapshot-slug", guest_discoverable: false, has_guest_capability: false }], rowCount: 1 };
     }, release() {} };
     const repository = new MusicDomainRepository({ query: async () => { throw new Error("outside snapshot"); }, connect: async () => client } as never);
     await expect(repository.ownerDashboard(41)).resolves.toMatchObject({ queueRevision: 3, songs: [{ id: 1 }] });
     expect(statements[0]).toBe("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    expect(statements.find((text) => /status='played'/.test(text))).toMatch(/ORDER BY played_at DESC NULLS LAST,id DESC LIMIT 500/);
     expect(statements.at(-1)).toBe("COMMIT");
   });
 

@@ -328,10 +328,21 @@ export class MusicDomainRepository {
 
   async ownerDashboard(musicUserId: number) {
     return this.withReadSnapshot(async (client) => {
-      const rows = (await client.query(
+      const activeRows = (await client.query(
         `SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
                 thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
-           FROM songs WHERE user_id=$1 ORDER BY position`,
+           FROM songs
+          WHERE user_id=$1 AND status IN ('queued','playing')
+          ORDER BY position,id`,
+        [musicUserId],
+      )).rows;
+      const playedRows = (await client.query(
+        `SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
+                thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
+           FROM songs
+          WHERE user_id=$1 AND status='played'
+          ORDER BY played_at DESC NULLS LAST,id DESC
+          LIMIT 500`,
         [musicUserId],
       )).rows;
       const publication = (await client.query(
@@ -344,14 +355,9 @@ export class MusicDomainRepository {
       )).rows[0];
       return {
         queueRevision: Number(publication?.music_queue_revision ?? 0),
-        songs: rows.filter((row) => row.status === "queued" || row.status === "playing"),
-        currentlyPlaying: rows.find((row) => row.status === "playing"),
-        playedSongs: rows.filter((row) => row.status === "played").sort((left, right) => {
-          const leftTime = left.playedAt instanceof Date ? left.playedAt.getTime() : Date.parse(String(left.playedAt ?? ""));
-          const rightTime = right.playedAt instanceof Date ? right.playedAt.getTime() : Date.parse(String(right.playedAt ?? ""));
-          const timeDifference = (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
-          return timeDifference || Number(right.id) - Number(left.id);
-        }).slice(0, 500),
+        songs: activeRows,
+        currentlyPlaying: activeRows.find((row) => row.status === "playing"),
+        playedSongs: playedRows,
         publication: {
           mode: publication?.guest_discoverable === true ? "public"
             : publication?.has_guest_capability === true ? "unlisted" : "private",
