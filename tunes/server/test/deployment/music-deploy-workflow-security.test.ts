@@ -37,6 +37,18 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(source).toContain("CURRENT_MIGRATION_MARKER");
     expect(source).toContain("0017_publication_idempotency_key_retirement");
     expect(source).toContain("rollback refused: current app is older than schema compatibility floor");
+    // Production break caught: the image deploy succeeds while the owner Music
+    // workspace remains fail-closed, hiding player, search, queue, and history.
+    expect(source).toContain('environment_file="$compose_dir/.env"');
+    expect(source).toContain('environment_backup="$backup_dir/environment-$stamp.env"');
+    expect(source).toContain('cp "$environment_file" "$environment_backup"');
+    expect(source).toContain('cp "$environment_backup" "$environment_file"');
+    expect(source).toContain('set_environment_value MUSIC_WORKSPACE_KILL_SWITCH false');
+    expect(source).toContain('set_environment_value MUSIC_FEATURE_COHORT_SALT explorers-owner-workspace-production-v1');
+    expect(source).toContain('set_environment_value MUSIC_FEATURE_COHORT_VERSION owner-workspace-production-v1');
+    expect(source).toContain('set_environment_value MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT 100');
+    expect(source).toContain('MUSIC_WORKSPACE_KILL_SWITCH=false');
+    expect(source).toContain('MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT=100');
     expect(source).not.toContain('\\"');
     expect(source).toContain(
       `'{{index .Config.Labels "com.docker.compose.project"}}'`,
