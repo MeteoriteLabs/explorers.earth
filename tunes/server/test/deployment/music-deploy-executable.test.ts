@@ -627,6 +627,18 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(rolledBack.status, rolledBack.stderr).toBe(0);
   }, deploymentProcessRecoveryTimeoutMs);
 
+  it("accepts repeated successful 0018 images and an authorized compatible 0017 rollback", () => {
+    seedVersionedAuthority("0017_publication_idempotency_key_retirement");
+    const first = run("deploy", digest("b"), commit("b"));
+    expect(first.status, first.stderr).toBe(0);
+    const second = run("deploy", digest("c"), commit("c"), { slot: "blue" });
+    expect(second.status, second.stderr).toBe(0);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
+      .toContain(`\t${digest("c")}\t${commit("c")}\t0018_transactional_queue_replacement\t`);
+    const rollback = run("rollback", digest("a"), "-", { expectedMarkerOverride: "0017_publication_idempotency_key_retirement" });
+    expect(rollback.status, rollback.stderr).toBe(0);
+  }, deploymentProcessRecoveryTimeoutMs);
+
   it.each([
     "containment-no-schema-change",
     "0002_identity_lifecycle",

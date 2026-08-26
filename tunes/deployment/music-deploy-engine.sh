@@ -237,6 +237,7 @@ declare -a ledger_markers=()
 declare -A ledger_seen=()
 ledger_last_mac=""
 ledger_max_marker_rank=-1
+ledger_max_compatibility_marker_rank=-1
 
 validate_ledger() {
   require_regular_file "$ledger_file"
@@ -248,12 +249,16 @@ validate_ledger() {
   ledger_seen=()
   ledger_last_mac=""
   ledger_max_marker_rank=-1
+  ledger_max_compatibility_marker_rank=-1
   local expected_sequence=1
   local previous_marker_rank=-1
-  local row schema sequence digest_value commit_value marker_value marker_value_rank previous_mac mac extra expected_mac
+  local row schema sequence digest_value commit_value marker_value marker_value_rank compatibility_marker_value compatibility_marker_rank previous_mac mac extra expected_mac
   for row in "${ledger_rows[@]}"; do
     IFS=$'\t' read -r schema sequence digest_value commit_value marker_value previous_mac mac extra <<< "$row"
     marker_value_rank="$(marker_rank "$marker_value")" || fail "secure ledger contains unknown migration marker"
+    compatibility_marker_value="$(compatibility_marker_for "$marker_value")"
+    compatibility_marker_rank="$(marker_rank "$compatibility_marker_value")" \
+      || fail "secure ledger contains unknown compatibility migration marker"
     [[ "$schema" == "$ledger_schema" && -z "${extra:-}" \
       && "$sequence" == "$expected_sequence" \
       && "$digest_value" =~ ^sha256:[a-f0-9]{64}$ \
@@ -275,6 +280,9 @@ validate_ledger() {
     ledger_last_mac="$mac"
     previous_marker_rank="$marker_value_rank"
     ledger_max_marker_rank="$marker_value_rank"
+    if [[ "$compatibility_marker_rank" -gt "$ledger_max_compatibility_marker_rank" ]]; then
+      ledger_max_compatibility_marker_rank="$compatibility_marker_rank"
+    fi
     expected_sequence=$((expected_sequence + 1))
   done
 }
@@ -662,7 +670,7 @@ else
   fi
   if [[ -e "$schema_epoch_file" ]]; then validate_schema_epoch; fi
   if [[ -e "$compatibility_floor_file" ]]; then
-    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_marker_rank" ]] \
+    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_compatibility_marker_rank" ]] \
       || fail "schema compatibility floor is older than secure ledger authority"
   else
     [[ "$ledger_max_marker_rank" -le 1 ]] \
@@ -671,7 +679,7 @@ else
   recover_schema_epoch
   if [[ -e "$compatibility_floor_file" ]]; then
     validate_compatibility_floor
-    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_marker_rank" ]] \
+    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_compatibility_marker_rank" ]] \
       || fail "schema compatibility floor is older than secure ledger authority"
   else
     for known_marker in "${ledger_markers[@]}"; do
@@ -702,7 +710,8 @@ else
     candidate_commit="${ledger_commits[target_sequence-1]}"
     candidate_marker="${ledger_markers[target_sequence-1]}"
     if [[ -e "$compatibility_floor_file" ]]; then
-      candidate_marker_rank="$(marker_rank "$candidate_marker")" || fail "rollback refused: unknown migration marker"
+      candidate_compatibility_marker="$(compatibility_marker_for "$candidate_marker")"
+      candidate_marker_rank="$(marker_rank "$candidate_compatibility_marker")" || fail "rollback refused: unknown migration marker"
       [[ "$candidate_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
         || fail "rollback refused: digest older than schema compatibility floor"
     fi
