@@ -101,7 +101,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
   it("replays queue replacement under the least-privilege runtime role without table UPDATE", async () => {
     const owner = await identities.ensureIdentity(identityInput("runtime-replay"));
     const playlist = await domain.createPlaylist(owner.id, { name: "Runtime replay", description: null }) as { id: number };
-    const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "runtime00001", title: "Runtime", artist: "R", thumbnailUrl: "https://img/runtime" }) as { id: number };
+    const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "runtime0000", title: "Runtime", artist: "R", thumbnailUrl: "https://img/runtime" }) as { id: number };
     const selection = [{ playlistId: playlist.id, songId: source.id }];
     const client = await pool.connect();
     try {
