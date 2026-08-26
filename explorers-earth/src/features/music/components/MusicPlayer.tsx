@@ -99,6 +99,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
     try { await queueClient.setPlaying(null, idempotencyKey("ended")); }
     catch {
       if (generation.current === operationGeneration) {
+        skippedSongId.current = null;
         setError("Could not finish this song. Try again.");
       }
       transitionLock.current = false; if (mounted.current) setTransitionPending(false);

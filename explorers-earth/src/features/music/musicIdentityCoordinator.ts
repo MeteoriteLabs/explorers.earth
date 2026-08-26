@@ -212,7 +212,7 @@ export function createMusicIdentityCoordinator(dependencies: {
     },
     retry() {
       const key = lastEligible && eligibleKey(lastEligible);
-      return key && canRetry ? start(key, true) : Promise.resolve();
+      return key && (canRetry || status === "unavailable") ? start(key, true) : Promise.resolve();
     },
     reportFailure(error) {
       publishFailure(error);

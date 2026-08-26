@@ -157,8 +157,10 @@ describe("automatic Music identity coordinator", () => {
     expect(coordinator.getSnapshot()).toBe("retryable");
   });
 
-  it("does not retry an explicitly non-retryable identity failure on retry or rerender", async () => {
-    const ensureIdentity = vi.fn().mockRejectedValue(Object.assign(new Error("safe"), { retryable: false }));
+  it("allows an explicit manual retry after a generic unavailable identity failure", async () => {
+    const ensureIdentity = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error("safe"), { retryable: false }))
+      .mockResolvedValueOnce(undefined);
     const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
     const input = {
       provider: "email" as const, authenticated: true, verified: true,
@@ -166,11 +168,12 @@ describe("automatic Music identity coordinator", () => {
     };
 
     await coordinator.reconcile(input).catch(() => undefined);
-    await coordinator.retry().catch(() => undefined);
+    expect(coordinator.getSnapshot()).toBe("unavailable");
+    await coordinator.retry();
     await coordinator.reconcile(input).catch(() => undefined);
 
-    expect(coordinator.getSnapshot()).toBe("unavailable");
-    expect(ensureIdentity).toHaveBeenCalledTimes(1);
+    expect(coordinator.getSnapshot()).toBe("ready");
+    expect(ensureIdentity).toHaveBeenCalledTimes(2);
   });
 
   it("publishes only a sanitized request ID in the failure diagnostic snapshot", async () => {

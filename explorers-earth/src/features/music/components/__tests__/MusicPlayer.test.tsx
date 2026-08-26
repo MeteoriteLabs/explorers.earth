@@ -150,6 +150,25 @@ describe("MusicPlayer", () => {
     vi.useRealTimers();
   });
 
+  it("retries finishing an unavailable last song after a transient finish failure", async () => {
+    vi.useFakeTimers();
+    const queueClient = { setPlaying: vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(undefined) };
+    setup({ queuedSongs: [], queueClient });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("one")));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("two")));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("three")));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not finish this song. Try again.");
+
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("retry")));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(queueClient.setPlaying).toHaveBeenCalledTimes(2);
+    expect(queueClient.setPlaying).toHaveBeenLastCalledWith(null, expect.stringMatching(/^music-player-ended-/));
+    vi.useRealTimers();
+  });
+
   it("cancels recovery timers on song change and unmount", async () => {
     vi.useFakeTimers(); const { props, rerender, unmount } = setup();
     act(() => (playerProps.onError as (error: Error) => void)(new Error("media unavailable")));
