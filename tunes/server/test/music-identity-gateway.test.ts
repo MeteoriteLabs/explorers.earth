@@ -67,6 +67,8 @@ describe("Strapi identity gateway", () => {
     const fetchImpl = vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input));
       if (url.pathname === "/api/users/me") return response(user);
+      expect(url.searchParams.get("filters[users_permissions_users][documentId][$eq]")).toBe(user.documentId);
+      expect(url.searchParams.has("filters[users_permissions_user][documentId][$eq]")).toBe(false);
       const page = Number(url.searchParams.get("pagination[page]"));
       expect(url.searchParams.get("sort[0]")).toBe("documentId:asc");
       if (page === 1) return response({
