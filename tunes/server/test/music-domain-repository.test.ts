@@ -31,7 +31,8 @@ function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: numb
     const normalized = text.replace(/\s+/g, " ").trim();
     calls.push({ text: normalized, values });
     if (/status IN \('queued','playing'\)/.test(normalized)) {
-      const active = rows.filter((row) => row.status === "queued" || row.status === "playing");
+      const active = rows.filter((row) => row.status === "queued" || row.status === "playing")
+        .slice(0, /LIMIT 500/.test(normalized) ? 500 : undefined);
       return { rows: active, rowCount: active.length };
     }
     if (/status='played'/.test(normalized)) {
@@ -277,6 +278,19 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(result.playedSongs).toHaveLength(500);
     expect(result.playedSongs[0].id).toBe(501);
     expect(result.playedSongs.at(-1)?.id).toBe(2);
+  });
+
+  it("caps a legacy oversized active queue so the owner dashboard remains usable for recovery", async () => {
+    const harness = dashboardPool(Array.from({ length: 501 }, (_, index) => ({
+      id: index + 1,
+      userId: 23,
+      status: "queued",
+      position: index,
+    })));
+    const result = await new MusicDomainRepository(harness.pool).ownerDashboard(23);
+    const activeRead = harness.calls.find((call) => /status IN \('queued','playing'\)/.test(call.text));
+    expect(activeRead?.text).toMatch(/ORDER BY position,id LIMIT 500/);
+    expect(result.songs).toHaveLength(500);
   });
 
   it.each(["abcdefghij", "abcdefghijkl", "A".repeat(65)])("rejects noncanonical repository YouTube ID %s before a query", async (youtubeId) => {

@@ -333,7 +333,8 @@ export class MusicDomainRepository {
                 thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
            FROM songs
           WHERE user_id=$1 AND status IN ('queued','playing')
-          ORDER BY position,id`,
+          ORDER BY position,id
+          LIMIT 500`,
         [musicUserId],
       )).rows;
       const playedRows = (await client.query(
