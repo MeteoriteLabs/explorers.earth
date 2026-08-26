@@ -288,7 +288,7 @@ export class StrapiIdentityGateway {
     let authoritative: { pageCount: number; total: number } | undefined;
     for (let page = 1; page <= (authoritative?.pageCount || 1); page += 1) {
       const params = new URLSearchParams({
-        "filters[users_permissions_user][documentId][$eq]": user.documentId,
+        "filters[users_permissions_users][documentId][$eq]": user.documentId,
         "sort[0]": "documentId:asc",
         "pagination[page]": String(page),
         "pagination[pageSize]": String(ACCOUNT_PAGE_SIZE),

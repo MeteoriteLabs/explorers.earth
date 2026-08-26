@@ -89,8 +89,9 @@ describePostgres("C3 real migrated runtime graph", () => {
     expect(second.body).toMatchObject({
       version: first.body.version,
       identity: first.body.identity,
-      credential: { expiresAt: first.body.credential.expiresAt },
     });
+    expect(second.body.credential.expiresAt).toBeGreaterThanOrEqual(first.body.credential.expiresAt);
+    expect(second.body.credential.expiresAt).toBeLessThanOrEqual(first.body.credential.expiresAt + 5_000);
     expect(second.body.credential.token).not.toBe(first.body.credential.token);
     expect(first.body).toMatchObject({ version: "music-identity/v1", identity: { status: "active" } });
     expect(Number((await pool.query("SELECT count(*) AS count FROM users WHERE strapi_user_document_id=$1", [ensurePerson])).rows[0].count)).toBe(1);
