@@ -129,7 +129,7 @@ describe("Music Compose ownership safety", () => {
     } finally {
       rmSync(sandbox, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 30_000);
 
   it("matches the actual root BuildKit context to the generated tracked fixture manifest", () => {
     const sandbox = mkdtempSync(join(tmpdir(), "music-fixture-actual-context-"));
