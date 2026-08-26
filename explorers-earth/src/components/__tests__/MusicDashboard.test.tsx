@@ -65,6 +65,28 @@ describe("Music workspace UI", () => {
     await userEvent.click(screen.getByRole("button", { name: "Confirm playlist deletion" }));
     expect(removePlaylist).toHaveBeenCalledWith(1, expect.stringMatching(/^playlist-delete-/));
   });
+
+  it("reuses the queue replacement key and refreshes after an uncertain failure", async () => {
+    const playlist = {
+      id: 1, name: "Saved mix", description: null, isVisibleToGuests: false,
+      songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }],
+    };
+    const request = vi.spyOn(musicApi, "request")
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        version: "music-queue/v1", revision: 8, songs: [],
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+    const refetch = vi.fn(async () => undefined);
+    render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with Saved mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+
+    expect(request.mock.calls[0][0].idempotencyKey).toBe(request.mock.calls[1][0].idempotencyKey);
+  });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
     expect(screen.getByRole("heading", { name: "Create your first playlist" })).toBeInTheDocument();

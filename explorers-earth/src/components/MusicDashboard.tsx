@@ -291,6 +291,10 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
   const renameOpener = useRef<HTMLButtonElement>(null);
   const replaceOpener = useRef<HTMLButtonElement>(null);
   const deleteOpener = useRef<HTMLButtonElement>(null);
+  const pendingQueueReplacement = useRef<{ key: string; expectedRevision: number } | undefined>(undefined);
+  useEffect(() => {
+    if (pendingQueueReplacement.current?.expectedRevision !== queueRevision) pendingQueueReplacement.current = undefined;
+  }, [queueRevision]);
   const setVisible = async () => {
     try {
       await musicWorkspaceClient.setPlaylistVisibility(playlist.id, !playlist.isVisibleToGuests, operationKey("playlist-visibility"));
@@ -307,16 +311,25 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
   };
   const replaceQueue = async () => {
     setSaving(true);
+    const operation = pendingQueueReplacement.current ?? {
+      key: operationKey("queue-replace"),
+      expectedRevision: queueRevision,
+    };
+    pendingQueueReplacement.current = operation;
     try {
       await completeQueueClient.replaceQueue(
-        queueRevision,
+        operation.expectedRevision,
         playlist.songs.map((song) => ({ playlistId: playlist.id, songId: song.id })),
-        operationKey("queue-replace"),
+        operation.key,
       );
       await onChanged();
+      pendingQueueReplacement.current = undefined;
       toast.success(`Queue replaced with ${playlist.name}.`);
       setConfirmAction(undefined);
-    } catch { toast.error("Music is temporarily unavailable."); }
+    } catch {
+      try { await onChanged(); } catch { /* Keep the original operation available for an explicit retry. */ }
+      toast.error("Music is temporarily unavailable.");
+    }
     finally { setSaving(false); }
   };
   const removeSong = async (songId: number, title: string) => {
