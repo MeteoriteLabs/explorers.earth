@@ -64,6 +64,7 @@ export const musicErrorCodeSchema = z.enum([
   "DATABASE_UNAVAILABLE",
   "RATE_LIMITED",
   "ENTRY_DISABLED",
+  "SERVICE_UNAVAILABLE",
   "INTERNAL_ERROR",
 ]);
 
