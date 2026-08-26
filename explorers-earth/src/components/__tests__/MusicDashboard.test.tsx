@@ -25,12 +25,16 @@ function deferred<T>() {
 describe("Music workspace UI", () => {
   afterEach(() => vi.restoreAllMocks());
   it("composes the approved owner player, search, queue, and history surface", () => {
-    render(<MusicDashboard data={{ ...base, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
+    const playlists = [{ id: 1, name: "Saved mix", description: null, isVisibleToGuests: false, songs: [] }];
+    render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
     expect(screen.getByLabelText("Music player region")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Find music" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Queue" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Recently played" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add your first song" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Saved mix" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create playlist" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sharing settings" })).toBeInTheDocument();
   });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
     render(<MusicDashboard data={base} scope={scope} />);

@@ -38,6 +38,12 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   const playAfterChange = useRef<number | null>(null);
   const mounted = useRef(true);
   const currentSongId = currentSong?.id ?? null;
+  const previousSong = playedSongs.reduce<MusicSong | undefined>((latest, song) => {
+    if (!latest) return song;
+    const latestTime = latest.playedAt ? Date.parse(latest.playedAt) : 0;
+    const songTime = song.playedAt ? Date.parse(song.playedAt) : 0;
+    return songTime > latestTime || (songTime === latestTime && song.id > latest.id) ? song : latest;
+  }, undefined);
 
   const clearRecovery = useCallback(() => {
     recoveryTimers.current.forEach((timer) => window.clearTimeout(timer));
@@ -148,7 +154,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
       />
       <div>
-        <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !playedSongs[0] || transitionPending} onClick={() => { void transition(playedSongs[0], "previous"); }}>Previous</button>
+        <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !previousSong || transitionPending} onClick={() => { void transition(previousSong, "previous"); }}>Previous</button>
         <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }}>{playing ? "Pause" : "Play"}</button>
         <button type="button" style={controlSize} aria-label="Next song" disabled={readOnly || !queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }}>Next</button>
       </div>

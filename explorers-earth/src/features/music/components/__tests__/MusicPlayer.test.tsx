@@ -64,11 +64,12 @@ describe("MusicPlayer", () => {
   });
 
   it("persists next and previous-from-history transitions before refreshing", async () => {
-    const user = userEvent.setup(); const { props } = setup();
+    const latestPrevious = { ...previous, id: 4, title: "Latest previous", playedAt: "2026-08-25T11:00:00.000Z" };
+    const user = userEvent.setup(); const { props } = setup({ playedSongs: [previous, latestPrevious] });
     await user.click(screen.getByRole("button", { name: "Next song" }));
     expect(props.queueClient.setPlaying).toHaveBeenCalledWith(2, expect.stringMatching(/^music-player-next-/));
     await user.click(screen.getByRole("button", { name: "Previous song" }));
-    expect(props.queueClient.setPlaying).toHaveBeenCalledWith(3, expect.stringMatching(/^music-player-previous-/));
+    expect(props.queueClient.setPlaying).toHaveBeenCalledWith(4, expect.stringMatching(/^music-player-previous-/));
     expect(props.onChanged).toHaveBeenCalledTimes(2);
   });
 

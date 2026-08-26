@@ -361,10 +361,9 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
     document.getElementById(`music-playlist-tab-${data.playlists[next].id}`)?.focus();
   };
 
-  if (complete) return <CompleteMusicDashboard data={data} readOnly={readOnly} />;
-
   return (
     <div className="space-y-5">
+      {complete && <CompleteMusicDashboard data={data} readOnly={readOnly} />}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <button ref={sharingOpener} type="button" disabled={readOnly} onClick={() => setSharingOpen(true)} className={`${buttonClass} w-full bg-dashboard-muted text-dashboard sm:w-auto`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
         {data.playlists.length > 0 && <button ref={createOpener} type="button" onClick={() => setCreateOpen(true)} disabled={readOnly} className={`${buttonClass} w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}><Plus className="mr-2 inline h-4 w-4" />Create playlist</button>}

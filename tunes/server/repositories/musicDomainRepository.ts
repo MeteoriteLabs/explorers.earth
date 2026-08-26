@@ -311,7 +311,12 @@ export class MusicDomainRepository {
       queueRevision: Number(publication?.music_queue_revision ?? 0),
       songs: rows.filter((row) => row.status === "queued" || row.status === "playing"),
       currentlyPlaying: rows.find((row) => row.status === "playing"),
-      playedSongs: rows.filter((row) => row.status === "played"),
+      playedSongs: rows.filter((row) => row.status === "played").sort((left, right) => {
+        const leftTime = left.playedAt instanceof Date ? left.playedAt.getTime() : Date.parse(String(left.playedAt ?? ""));
+        const rightTime = right.playedAt instanceof Date ? right.playedAt.getTime() : Date.parse(String(right.playedAt ?? ""));
+        const timeDifference = (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+        return timeDifference || Number(right.id) - Number(left.id);
+      }),
       publication: {
         mode: publication?.guest_discoverable === true ? "public"
           : publication?.has_guest_capability === true ? "unlisted" : "private",

@@ -193,6 +193,15 @@ describe("MusicDomainRepository owner predicates", () => {
     });
   });
 
+  it("orders owner played history by most recent play time", async () => {
+    const harness = recordingPool([
+      { id: 3, userId: 23, status: "played", playedAt: "2026-08-25T10:00:00.000Z" },
+      { id: 4, userId: 23, status: "played", playedAt: "2026-08-25T11:00:00.000Z" },
+    ]);
+    const result = await new MusicDomainRepository(harness.pool).ownerDashboard(23);
+    expect(result.playedSongs.map((song) => song.id)).toEqual([4, 3]);
+  });
+
   it.each(["abcdefghij", "abcdefghijkl", "A".repeat(65)])("rejects noncanonical repository YouTube ID %s before a query", async (youtubeId) => {
     const harness = recordingPool();
     const repository = new MusicDomainRepository(harness.pool);
