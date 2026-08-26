@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const fixtureUser = {
   id: "fixture-user-document-id",
@@ -11,6 +11,27 @@ const fixtureVideos = [
   { id: { videoId: "abcdefghijk" }, snippet: { title: "UAT First song", channelTitle: "Fixture artist", thumbnails: { default: { url: "https://img.example/first.jpg" } } } },
   { id: { videoId: "lmnopqrstuv" }, snippet: { title: "UAT Second song", channelTitle: "Fixture artist", thumbnails: { default: { url: "https://img.example/second.jpg" } } } },
 ];
+
+function monitorBrowserJourney(page: Page) {
+  const browserErrors: string[] = [];
+  const failedMusicResponses: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    // The sandboxed YouTube iframe emits this opaque player-state diagnostic
+    // when playback is driven headlessly; it is not an application exception.
+    if (/^\{target: [A-Za-z], data: \d+\}$/.test(message.text())) return;
+    browserErrors.push(message.text());
+  });
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.hostname === "music-fixture.invalid" && response.status() >= 400) failedMusicResponses.push(`${response.status()} ${url.pathname}`);
+  });
+  return () => {
+    expect(failedMusicResponses).toEqual([]);
+    expect(browserErrors).toEqual([]);
+  };
+}
 
 test.beforeEach(async ({ context }) => {
   await context.route("**/api/users/me", (route) => route.fulfill({
@@ -73,20 +94,7 @@ test.afterEach(async ({ page }, testInfo) => {
 
 test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL owner authority", async ({ page }) => {
   const requests: Array<{ path: string; authorization?: string; xUsername?: string }> = [];
-  const browserErrors: string[] = [];
-  const failedMusicResponses: string[] = [];
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() !== "error") return;
-    // The sandboxed YouTube iframe emits this opaque player-state diagnostic
-    // when playback is driven headlessly; it is not an application exception.
-    if (/^\{target: [A-Za-z], data: \d+\}$/.test(message.text())) return;
-    browserErrors.push(message.text());
-  });
-  page.on("response", (response) => {
-    const url = new URL(response.url());
-    if (url.hostname === "music-fixture.invalid" && response.status() >= 400) failedMusicResponses.push(`${response.status()} ${url.pathname}`);
-  });
+  const assertCleanJourney = monitorBrowserJourney(page);
   page.on("request", (request) => {
     const path = new URL(request.url()).pathname;
     if (path.startsWith("/api/music/") || path === "/api/playlists") {
@@ -149,14 +157,17 @@ test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL 
 
   await page.reload();
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Music player", exact: true })).toContainText("UAT Second song");
+  await page.getByRole("tab", { name: "Recently played" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Recently played" })).toContainText("UAT First song");
   expect(requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBeGreaterThanOrEqual(2);
   const browserStorage = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(browserStorage).not.toMatch(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
-  expect(failedMusicResponses).toEqual([]);
-  expect(browserErrors).toEqual([]);
+  assertCleanJourney();
 });
 
 test("full owner workspace remains usable at a mobile viewport", async ({ page }, testInfo) => {
+  const assertCleanJourney = monitorBrowserJourney(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/google-auth/callback?access_token=fixture-read-only-token");
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
@@ -173,4 +184,5 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await mobileNavigation.getByRole("button", { name: "More" }).click();
   await expect(page.getByRole("tabpanel", { name: "Recently played" })).toBeVisible();
   await testInfo.attach("mobile-owner-workspace", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+  assertCleanJourney();
 });
