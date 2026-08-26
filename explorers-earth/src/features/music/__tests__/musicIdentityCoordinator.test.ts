@@ -169,6 +169,8 @@ describe("automatic Music identity coordinator", () => {
 
     await coordinator.reconcile(input).catch(() => undefined);
     expect(coordinator.getSnapshot()).toBe("unavailable");
+    await coordinator.reconcile(input);
+    expect(ensureIdentity).toHaveBeenCalledTimes(1);
     await coordinator.retry();
     await coordinator.reconcile(input).catch(() => undefined);
 
