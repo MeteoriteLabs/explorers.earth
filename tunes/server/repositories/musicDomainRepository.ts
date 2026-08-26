@@ -328,6 +328,11 @@ export class MusicDomainRepository {
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
     assertCanonicalYouTubeVideoId(input.youtubeId);
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const activeCount = Number((await client.query(
+        "SELECT count(*)::integer AS count FROM songs WHERE user_id=$1 AND status IN ('queued','playing')",
+        [musicUserId],
+      )).rows[0]?.count ?? 0);
+      if (activeCount >= 500) return undefined;
       const song = (await client.query(
         `WITH ordered AS (
            SELECT id,(row_number() OVER (ORDER BY position,id)-1)::integer AS desired_position

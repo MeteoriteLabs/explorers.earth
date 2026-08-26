@@ -216,7 +216,11 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   }));
 
   app.post("/api/playlist/songs", ...mutation(async (req, res, next) => {
-    try { res.status(201).json(songDto(await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body)))); } catch (error) { next(error); }
+    try {
+      const song = await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body));
+      if (!song) throw queueLimitReached();
+      res.status(201).json(songDto(song));
+    } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/currently-playing", ...mutation(async (req, res, next) => {
@@ -407,7 +411,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       }
       const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capabilityValid ? capability : undefined);
       if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
-      res.status(201).json(songDto(await dependencies.repository.addSong(authority.musicUserId, songInput(req.body))));
+      const song = await dependencies.repository.addSong(authority.musicUserId, songInput(req.body));
+      if (!song) throw queueLimitReached();
+      res.status(201).json(songDto(song));
     } catch (error) { next(error); }
   });
 
@@ -602,6 +608,10 @@ function queueReplaceInput(value: unknown): { expectedRevision: number; songs: A
 
 function invalidQueue() {
   return new MusicIdentityError("REQUEST_INVALID", 400, "The queue input is invalid.", "none", false);
+}
+
+function queueLimitReached() {
+  return new MusicIdentityError("REQUEST_INVALID", 400, "The Music queue can contain at most 500 songs.", "none", false);
 }
 
 function notFound() {

@@ -61,6 +61,19 @@ describe("GET /api/music/features", () => {
     expect(decide).not.toHaveBeenCalled();
   });
 
+  it("uses the canonical authenticate action for credential failures", async () => {
+    const app = express();
+    setupMusicFeatureRoutes(app, {
+      resolvePrincipal: async () => { throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid."); },
+      decide: vi.fn(), requestIdFactory: () => "feature-request",
+      allowedOrigins: ["https://explorers.example"],
+    });
+    const response = await request(app).get("/api/music/features")
+      .set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example");
+    expect(response.status).toBe(401);
+    expect(response.body.error).toMatchObject({ code: "TOKEN_INVALID", action: "authenticate", retryable: false });
+  });
+
   it.each([undefined, "https://attacker.example"])("rejects missing or forbidden exact Origin %s before evaluating a decision", async (origin) => {
     const decide = vi.fn(); const app = express();
     setupMusicFeatureRoutes(app, {

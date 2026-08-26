@@ -163,6 +163,15 @@ describe("canonical Music REST surfaces", () => {
     expect(calls.some((entry) => entry[0] === "add-song")).toBe(false);
   });
 
+  it("returns a contained client error when the active queue is full", async () => {
+    const { app } = appFor({ addSong: vi.fn(async () => undefined) });
+    const response = await request(app).post("/api/playlist/songs")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" })
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
+  });
+
   it("atomically replaces the principal queue and rejects stale, reused, targeted, unauthenticated, and cross-origin requests", async () => {
     // Break caught: replacement trusts owner input or loses typed concurrency/idempotency failures.
     const { app, calls } = appFor();

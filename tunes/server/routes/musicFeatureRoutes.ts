@@ -26,7 +26,7 @@ export function setupMusicFeatureRoutes(app: Express, dependencies: {
         res.status(503).json({ version: "music-error/v1", error: { code: "SERVICE_UNAVAILABLE", message: "Music features are temporarily unavailable.", action: "retry", retryable: true, requestId } });
         return;
       }
-      res.status(cause.status).json({ version: "music-error/v1", error: { code: cause.code, message: cause.message, action: cause.status === 403 ? "contact_support" : "sign_in", retryable: false, requestId } });
+      res.status(cause.status).json({ version: "music-error/v1", error: { code: cause.code, message: cause.message, action: cause.status === 403 ? "contact_support" : "authenticate", retryable: false, requestId } });
       return;
     }
     try {

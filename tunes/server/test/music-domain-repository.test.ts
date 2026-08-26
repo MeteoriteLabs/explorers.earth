@@ -162,8 +162,8 @@ describe("MusicDomainRepository owner predicates", () => {
     await repository.removeSong(23, 71);
     await repository.removeSongs(23, [71, 72]);
     await repository.clearHistory(23);
-    for (const [index, call] of harness.calls.entries()) {
-      if (index === 1) {
+    for (const call of harness.calls) {
+      if (call.text.toLowerCase().includes("insert into songs")) {
         expect(call.text.toLowerCase()).toContain("insert into songs(user_id");
         expect(call.values[0]).toBe(23);
         continue;
@@ -200,6 +200,20 @@ describe("MusicDomainRepository owner predicates", () => {
     ]);
     const result = await new MusicDomainRepository(harness.pool).ownerDashboard(23);
     expect(result.playedSongs.map((song) => song.id)).toEqual([4, 3]);
+  });
+
+  it("refuses to insert a 501st active queue song under the owner mutation lock", async () => {
+    const statements: string[] = [];
+    const client = { async query(text: string) {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (/count\(\*\)/i.test(text)) return { rows: [{ count: 500 }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    await expect(repository.addSong(23, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" }))
+      .resolves.toBeUndefined();
+    expect(statements.some((text) => /INSERT INTO songs/i.test(text))).toBe(false);
+    expect(statements.some((text) => /music_queue_revision=music_queue_revision\+1/i.test(text))).toBe(false);
   });
 
   it("caps owner played history at the client contract after ordering newest first", async () => {
