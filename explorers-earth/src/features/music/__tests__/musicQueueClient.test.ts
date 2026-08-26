@@ -67,7 +67,7 @@ describe("credential-aware Music queue client", () => {
     const request = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "RATE_LIMITED", retryable: true } }), { status: 429, headers: { "retry-after": "999999" } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "HOSTILE_CODE!", retryable: true } }), { status: 503, headers: { "retry-after": "1" } }));
-    await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 1 });
+    await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 3_600 });
     await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ upstreamCode: undefined, retryable: false, retryAfterSeconds: undefined });
   });
 

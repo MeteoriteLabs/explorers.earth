@@ -218,6 +218,24 @@ describe("canonical Music workspace client", () => {
   });
 
   it.each([
+    ["7", 7],
+    ["60", 60],
+    ["3600", 3_600],
+    ["3601", 3_600],
+    ["999999999999999999999", 3_600],
+    ["1.5", undefined],
+    ["-1", undefined],
+    ["nope", undefined],
+  ] as const)("bounds canonical Retry-After %s without trusting the body", async (retryAfter, expected) => {
+    const response = new Response(JSON.stringify({ error: { code: "UPSTREAM_UNAVAILABLE", retryable: false, retryAfterSeconds: 9 } }), {
+      status: 503,
+      headers: { "retry-after": retryAfter },
+    });
+    await expect(createMusicWorkspaceClient(vi.fn().mockResolvedValue(response)).load())
+      .rejects.toMatchObject({ retryable: true, retryAfterSeconds: expected });
+  });
+
+  it.each([
     ["unknown", false],
     ["included", false],
     ["eligible", false],

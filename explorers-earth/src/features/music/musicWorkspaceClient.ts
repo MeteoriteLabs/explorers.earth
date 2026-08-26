@@ -53,6 +53,8 @@ export interface MusicDashboardResponse {
 
 export type MusicRequest = (input: LocalMusicRequest) => Promise<Response>;
 
+export const MAX_RETRY_AFTER_SECONDS = 3_600;
+
 export async function requestMusicJson<T>(request: MusicRequest, input: LocalMusicRequest, parse?: (value: unknown) => T): Promise<T> {
   const response = await request(input);
   if (!response.ok) throw await containedWorkspaceError(response);
@@ -86,7 +88,7 @@ export async function containedWorkspaceError(response: Response): Promise<Music
   retryable = trustedRetry;
   const retryAfterHeader = response.headers.get("retry-after");
   const retryAfter = trustedRetry && retryAfterHeader && /^[1-9][0-9]*$/.test(retryAfterHeader)
-    ? Math.min(Number(retryAfterHeader), 1)
+    ? Number(BigInt(retryAfterHeader) > BigInt(MAX_RETRY_AFTER_SECONDS) ? MAX_RETRY_AFTER_SECONDS : BigInt(retryAfterHeader))
     : undefined;
   const requestIdHeader = response.headers.get("x-request-id");
   const requestId = requestIdHeader && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(requestIdHeader)

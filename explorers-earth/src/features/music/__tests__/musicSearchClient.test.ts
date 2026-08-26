@@ -30,7 +30,7 @@ describe("credential-aware Music search client", () => {
 
   it("contains unsuccessful search responses", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "RATE_LIMITED", retryable: true } }), { status: 429, headers: { "retry-after": "7", "x-request-id": "search-request" } }));
-    await expect(createMusicSearchClient(request).searchYouTube("music")).rejects.toMatchObject({ status: 429, upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 1, requestId: "search-request" });
+    await expect(createMusicSearchClient(request).searchYouTube("music")).rejects.toMatchObject({ status: 429, upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 7, requestId: "search-request" });
   });
 
   it("rejects a malformed successful video DTO without reflecting it", async () => {
