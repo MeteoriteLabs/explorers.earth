@@ -64,4 +64,28 @@ describe("MusicQueue", () => {
     await waitFor(() => expect(value.onChanged).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("alert")).toHaveTextContent("Queue update failed");
   });
+
+  it("does not offer reorder controls for playing or played songs", () => {
+    const value = props();
+    const immutable = [
+      { ...songs[0], status: "playing" as const },
+      { ...songs[1], status: "played" as const },
+    ];
+    render(<MusicQueue {...value} songs={immutable} />);
+    expect(screen.queryByRole("button", { name: /Move .* (up|down)/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps canonical rerendered props after a failed optimistic move", async () => {
+    const value = props();
+    let rejectMove!: (reason: unknown) => void;
+    value.client.moveSong.mockReturnValue(new Promise((_, reject) => { rejectMove = reject; }));
+    const canonical = [{ ...songs[1], position: 0 }, { ...songs[0], position: 1 }];
+    const view = render(<MusicQueue {...value} />);
+    await userEvent.click(screen.getByRole("button", { name: "Move Second song up" }));
+    view.rerender(<MusicQueue {...value} songs={canonical} />);
+    rejectMove(new Error("conflict"));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("Second song");
+    expect(value.onChanged).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MusicSong } from "../musicWorkspaceClient";
 
 type QueueClient = {
@@ -20,7 +20,12 @@ export function MusicQueue({ songs, client, onChanged }: MusicQueueProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
-  useEffect(() => setOrdered(songs), [songs]);
+  const canonicalRevision = useRef(0);
+  const operationRevision = useRef(0);
+  useEffect(() => {
+    canonicalRevision.current += 1;
+    setOrdered(songs);
+  }, [songs]);
 
   async function mutate(operation: () => Promise<unknown>, failure = "Queue update failed. Try again.") {
     if (busy) return false;
@@ -40,17 +45,27 @@ export function MusicQueue({ songs, client, onChanged }: MusicQueueProps) {
   }
 
   async function move(index: number, target: number) {
-    if (busy || target < 0 || target >= ordered.length) return;
+    if (busy || target < 0 || target >= ordered.length || ordered[index]?.status !== "queued" || ordered[target]?.status !== "queued") return;
     const previous = ordered;
+    const canonicalAtStart = canonicalRevision.current;
+    const operation = ++operationRevision.current;
     const next = [...ordered];
     const [song] = next.splice(index, 1);
     next.splice(target, 0, song);
     setOrdered(next);
     setAnnouncement(`Moved ${song.title} to position ${target + 1}.`);
-    const ok = await mutate(() => client.moveSong(song.id, target, key("move")));
-    if (!ok) {
-      setOrdered(previous);
+    setBusy(true);
+    setError(null);
+    try {
+      await client.moveSong(song.id, target, key("move"));
+      await onChanged();
+    } catch {
+      if (operationRevision.current === operation && canonicalRevision.current === canonicalAtStart) setOrdered(previous);
       setAnnouncement(`Could not move ${song.title}; the previous order was restored.`);
+      setError("Queue update failed. Try again.");
+      try { await onChanged(); } catch { /* The visible error contains reconciliation failure. */ }
+    } finally {
+      if (operationRevision.current === operation) setBusy(false);
     }
   }
 
@@ -64,8 +79,10 @@ export function MusicQueue({ songs, client, onChanged }: MusicQueueProps) {
         <input type="checkbox" aria-label={`Select ${song.title}`} checked={selected.has(song.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(song.id)) next.delete(song.id); else next.add(song.id); return next; })} className="min-h-11 min-w-11" />
         <span className="flex-1"><strong>{song.title}</strong> <span>{song.artist}</span></span>
         <button type="button" disabled={busy} onClick={() => void mutate(() => client.setPlaying(song.id, key("play")))} aria-label={`Play ${song.title}`} className="min-h-11 min-w-11">Play</button>
-        <button type="button" disabled={busy || index === 0} onClick={() => void move(index, index - 1)} aria-label={`Move ${song.title} up`} className="min-h-11 min-w-11">↑</button>
-        <button type="button" disabled={busy || index === ordered.length - 1} onClick={() => void move(index, index + 1)} aria-label={`Move ${song.title} down`} className="min-h-11 min-w-11">↓</button>
+        {song.status === "queued" && <>
+          <button type="button" disabled={busy || index === 0 || ordered[index - 1]?.status !== "queued"} onClick={() => void move(index, index - 1)} aria-label={`Move ${song.title} up`} className="min-h-11 min-w-11">↑</button>
+          <button type="button" disabled={busy || index === ordered.length - 1 || ordered[index + 1]?.status !== "queued"} onClick={() => void move(index, index + 1)} aria-label={`Move ${song.title} down`} className="min-h-11 min-w-11">↓</button>
+        </>}
         <button type="button" disabled={busy} onClick={() => void mutate(() => client.removeSong(song.id, key("remove")))} aria-label={`Remove ${song.title}`} className="min-h-11 min-w-11">Remove</button>
       </li>)}</ul>
       <div className="flex gap-2">
