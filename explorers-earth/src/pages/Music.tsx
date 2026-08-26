@@ -1,5 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
-import { useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import MusicDashboard from "../components/MusicDashboard";
 import SEO from "../components/SEO";
@@ -15,6 +15,10 @@ import { useTunesDashboard, type TunesDashboardData } from "../hooks/useTunesDas
 import useAuthStore from "../store/store";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import type { MusicPublicationOwnerScope } from "../features/music/musicPublicationCommandRegistry";
+import { createMusicRolloutClient, type MusicRolloutScope } from "../features/music/musicRollout";
+import { musicApi } from "../features/music/musicApi";
+
+const musicRollout = createMusicRolloutClient((input) => musicApi.request(input));
 
 const musicPageEligibilityQuery = gql`
   query MusicPageEligibility($documentId: ID!) {
@@ -88,6 +92,7 @@ export function MusicPageContent({
   scope,
   onAction,
   statusRef,
+  ownerWorkspace = false,
 }: {
   authenticated: boolean;
   onboarding: MusicOnboarding;
@@ -95,6 +100,7 @@ export function MusicPageContent({
   scope?: MusicPublicationOwnerScope;
   onAction: (action: keyof typeof actionLabels) => void;
   statusRef?: RefObject<HTMLDivElement>;
+  ownerWorkspace?: boolean;
 }) {
   const state = selectMusicSurfaceState({
     lifecycle: lifecycleFrom(data),
@@ -149,7 +155,7 @@ export function MusicPageContent({
                 {actionLabels[state.secondaryAction]}
               </button>
             )}
-            <MusicDashboard data={data} scope={scope!} readOnly={state.kind === "content_stale"} />
+            <MusicDashboard data={data} scope={scope!} readOnly={state.kind === "content_stale"} complete={ownerWorkspace} />
           </div>
         )}
       </div>
@@ -175,6 +181,18 @@ const MusicPage = () => {
     accountDocumentId: selection.account.documentId,
   } : undefined;
   const data = useTunesDashboard(scope);
+  const [ownerWorkspace, setOwnerWorkspace] = useState(false);
+  const previousScope = useRef<MusicRolloutScope>();
+  useEffect(() => {
+    const previous = previousScope.current;
+    if (previous && (!scope || previous.userDocumentId !== scope.userDocumentId || previous.accountDocumentId !== scope.accountDocumentId)) musicRollout.clear(previous);
+    previousScope.current = scope;
+    setOwnerWorkspace(false);
+    if (!scope || data.identityStatus !== "ready") return;
+    let active = true;
+    void musicRollout.get(scope).then((exposure) => { if (active) setOwnerWorkspace(exposure.ownerWorkspace); });
+    return () => { active = false; };
+  }, [scope?.userDocumentId, scope?.accountDocumentId, data.identityStatus]);
   const onboarding = onboardingFromEligibility(eligibility);
 
   const action = (value: keyof typeof actionLabels) => {
@@ -198,7 +216,7 @@ const MusicPage = () => {
         noIndex
         siteName="explorers"
       />
-      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} scope={scope} onAction={action} statusRef={statusRef} />
+      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} scope={scope} onAction={action} statusRef={statusRef} ownerWorkspace={ownerWorkspace} />
     </>
   );
 };

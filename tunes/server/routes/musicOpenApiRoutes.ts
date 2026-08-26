@@ -210,6 +210,23 @@ const paths = {
     get: ownerOperation({ summary: "List the owner queue", status: "200", response: { type: "array", items: ref("Song") } }),
     post: ownerOperation({ summary: "Add to the owner queue", status: "201", response: ref("Song"), request: body(ref("SongInput"), "Queue song input") }),
   },
+  "/api/music/features": {
+    get: ownerOperation({
+      summary: "Resolve fail-closed runtime Music feature decisions for the verified account",
+      status: "200",
+      response: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ownerWorkspace", "guestWorkspace", "playlistImports", "exposureId", "expiresAt"],
+        properties: {
+          ownerWorkspace: { type: "boolean" }, guestWorkspace: { type: "boolean" }, playlistImports: { type: "boolean" },
+          exposureId: { type: "string", minLength: 1, maxLength: 128 }, expiresAt: { type: "string", format: "date-time" },
+        },
+      },
+      description: "Decisions expire within 60 seconds. Emergency kill switches override account allowlists and stable salted cohorts.",
+      errors: { "503": failure("Runtime Music decisions are temporarily unavailable and fail closed.", ["SERVICE_UNAVAILABLE"], true) },
+    }),
+  },
   "/api/music/queue/replace": {
     post: ownerOperation({
       summary: "Atomically replace the owner queue from saved playlist songs",

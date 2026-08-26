@@ -10,11 +10,41 @@ import {
   getOrCreateMusicPublicationCommand,
   type MusicPublicationOwnerScope,
 } from "../features/music/musicPublicationCommandRegistry";
+import { createMusicQueueClient } from "../features/music/musicQueueClient";
+import { createMusicSearchClient } from "../features/music/musicSearchClient";
+import { musicApi } from "../features/music/musicApi";
+import { MusicWorkspaceShell } from "../features/music/components/MusicWorkspaceShell";
+import { MusicSearch } from "../features/music/components/MusicSearch";
+import { MusicQueue } from "../features/music/components/MusicQueue";
+import { MusicPlayer } from "../features/music/components/MusicPlayer";
+import { MusicHistory } from "../features/music/components/MusicHistory";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
   scope: MusicPublicationOwnerScope;
   readOnly?: boolean;
+  complete?: boolean;
+}
+
+const completeQueueClient = createMusicQueueClient((input) => musicApi.request(input));
+const completeSearchClient = createMusicSearchClient((input) => musicApi.request(input));
+
+function CompleteMusicDashboard({ data, readOnly }: Pick<MusicDashboardProps, "data" | "readOnly">) {
+  const dashboard = data.dashboard ?? { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private" as const, publicSlug: "" } };
+  const refresh = async () => { await data.refetch(); };
+  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} onChanged={refresh} />;
+  const queue = <MusicQueue songs={dashboard.songs} client={completeQueueClient} onChanged={refresh} />;
+  const history = <MusicHistory songs={dashboard.playedSongs} loading={data.isLoading} queueClient={completeQueueClient} onChanged={refresh} />;
+  return <MusicWorkspaceShell
+    loading={data.isLoading}
+    stale={readOnly}
+    empty={!data.isLoading && dashboard.songs.length === 0 && !dashboard.currentlyPlaying}
+    onAddFirstSong={() => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus()}
+    player={<MusicPlayer currentSong={dashboard.currentlyPlaying} queuedSongs={dashboard.songs.filter((song) => song.status === "queued")} playedSongs={dashboard.playedSongs} queueClient={completeQueueClient} onChanged={refresh} readOnly={readOnly} />}
+    search={readOnly ? <fieldset disabled aria-label="Music search unavailable">{discovery}</fieldset> : discovery}
+    queue={readOnly ? <fieldset disabled aria-label="Queue changes unavailable">{queue}</fieldset> : queue}
+    history={readOnly ? <fieldset disabled aria-label="History changes unavailable">{history}</fieldset> : history}
+  />;
 }
 
 const buttonClass = "min-h-11 min-w-11 rounded-xl px-4 text-sm font-semibold outline-none ring-offset-2 ring-offset-dashboard-bg focus-visible:ring-2 focus-visible:ring-dashboard-accent disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none";
@@ -309,7 +339,7 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
   );
 }
 
-export default function MusicDashboard({ data, scope, readOnly = false }: MusicDashboardProps) {
+export default function MusicDashboard({ data, scope, readOnly = false, complete = false }: MusicDashboardProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [sharingOpen, setSharingOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | undefined>(data.playlists[0]?.id);
@@ -331,6 +361,8 @@ export default function MusicDashboard({ data, scope, readOnly = false }: MusicD
     setActiveId(data.playlists[next].id);
     document.getElementById(`music-playlist-tab-${data.playlists[next].id}`)?.focus();
   };
+
+  if (complete) return <CompleteMusicDashboard data={data} readOnly={readOnly} />;
 
   return (
     <div className="space-y-5">

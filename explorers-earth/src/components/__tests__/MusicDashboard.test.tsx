@@ -24,6 +24,14 @@ function deferred<T>() {
 
 describe("Music workspace UI", () => {
   afterEach(() => vi.restoreAllMocks());
+  it("composes the approved owner player, search, queue, and history surface", () => {
+    render(<MusicDashboard data={{ ...base, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
+    expect(screen.getByLabelText("Music player region")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Find music" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Queue" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Recently played" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add your first song" })).toBeInTheDocument();
+  });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
     expect(screen.getByRole("heading", { name: "Create your first playlist" })).toBeInTheDocument();

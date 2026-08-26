@@ -72,6 +72,16 @@ describe("MusicPlayer", () => {
     expect(props.onChanged).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps local playback controls available while stale but disables canonical transitions", async () => {
+    const user = userEvent.setup(); const { props } = setup({ readOnly: true });
+    expect(screen.getByRole("button", { name: "Previous song" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next song" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Play" }));
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+    act(() => (playerProps.onEnded as () => void)());
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
+  });
+
   it("requests autoplay for the confirmed next song but broadcasts true only after media plays", async () => {
     const user = userEvent.setup(); const broadcastPlayerState = vi.fn(); const { props, rerender } = setup({ broadcastPlayerState });
     await user.click(screen.getByRole("button", { name: "Next song" }));

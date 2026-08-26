@@ -418,7 +418,17 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 188
+      "line": 206
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/features",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicFeatureRoutes.ts",
+      "line": 11
     },
     {
       "method": "GET",
@@ -518,7 +528,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicOpenApiRoutes.ts",
-      "line": 503
+      "line": 520
     },
     {
       "method": "GET",
@@ -980,7 +990,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
-      "line": 171
+      "line": 189
     },
     {
       "kind": "setTimeout",

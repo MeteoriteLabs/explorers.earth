@@ -13,13 +13,14 @@ export interface MusicPlayerProps {
   queueClient: PlayerQueueClient;
   onChanged: () => void | Promise<void>;
   broadcastPlayerState?: (state: { songId: number; playing: boolean }) => void | Promise<void>;
+  readOnly?: boolean;
 }
 
 const controlSize = { minWidth: "44px", minHeight: "44px" };
 const idempotencyKey = (operation: string) => `music-player-${operation}-${crypto.randomUUID()}`;
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
 
-export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient, onChanged, broadcastPlayerState }: MusicPlayerProps) {
+export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient, onChanged, broadcastPlayerState, readOnly = false }: MusicPlayerProps) {
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
@@ -58,8 +59,9 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   }, [clearRecovery]);
 
   const broadcast = useCallback(async (songId: number, isPlaying: boolean) => {
+    if (readOnly) return;
     try { await broadcastPlayerState?.({ songId, playing: isPlaying }); } catch { /* Socket notification is optional. */ }
-  }, [broadcastPlayerState]);
+  }, [broadcastPlayerState, readOnly]);
 
   const transition = useCallback(async (song: MusicSong | undefined, operation: "next" | "previous" | "skip") => {
     if (!song || transitionLock.current) return;
@@ -140,15 +142,15 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         height="auto"
         onPlay={() => { clearRecovery(); setPlaying(true); void broadcast(currentSong.id, true); }}
         onPause={() => { setPlaying(false); void broadcast(currentSong.id, false); }}
-        onEnded={() => { if (queuedSongs[0]) void transition(queuedSongs[0], "next"); else void finish(); }}
+        onEnded={() => { if (readOnly) { setPlaying(false); setMessage("Reconnect to continue the queue."); } else if (queuedSongs[0]) void transition(queuedSongs[0], "next"); else void finish(); }}
         onError={handleMediaError}
         onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
       />
       <div>
-        <button type="button" style={controlSize} aria-label="Previous song" disabled={!playedSongs[0] || transitionPending} onClick={() => { void transition(playedSongs[0], "previous"); }}>Previous</button>
+        <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !playedSongs[0] || transitionPending} onClick={() => { void transition(playedSongs[0], "previous"); }}>Previous</button>
         <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }}>{playing ? "Pause" : "Play"}</button>
-        <button type="button" style={controlSize} aria-label="Next song" disabled={!queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }}>Next</button>
+        <button type="button" style={controlSize} aria-label="Next song" disabled={readOnly || !queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }}>Next</button>
       </div>
       <label>Playback position
         <input style={{ minHeight: "44px" }} aria-label="Playback position" type="range" min="0" max={duration || 0} value={progress} aria-valuetext={`${clock(progress)} of ${clock(duration)}`} onChange={(event) => {
