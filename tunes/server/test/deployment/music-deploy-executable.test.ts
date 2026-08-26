@@ -748,7 +748,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
       .toContain("\t0017_publication_idempotency_key_retirement\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0017_publication_idempotency_key_retirement\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0018_transactional_queue_replacement\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1143,7 +1143,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0017_publication_idempotency_key_retirement", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0018_transactional_queue_replacement", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));
