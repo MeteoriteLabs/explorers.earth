@@ -75,12 +75,19 @@ export async function containedWorkspaceError(response: Response): Promise<Music
   let retryable = false;
   try {
     const body = await response.clone().json() as { error?: { code?: unknown; retryable?: unknown } };
-    upstreamCode = typeof body.error?.code === "string" ? body.error.code : undefined;
-    retryable = body.error?.retryable === true;
+    upstreamCode = typeof body.error?.code === "string" && /^[A-Z][A-Z0-9_]{0,63}$/.test(body.error.code) ? body.error.code : undefined;
   } catch {
     // The response body is intentionally contained; status remains canonical.
   }
-  const retryAfter = Number(response.headers.get("retry-after"));
+  const trustedRetry = (response.status === 429 && upstreamCode === "RATE_LIMITED")
+    || (response.status === 500 && upstreamCode === "INTERNAL_ERROR")
+    || (response.status === 502 && ["UPSTREAM_MALFORMED", "UPSTREAM_UNAVAILABLE"].includes(upstreamCode ?? ""))
+    || (response.status === 503 && ["UPSTREAM_UNAVAILABLE", "DATABASE_UNAVAILABLE"].includes(upstreamCode ?? ""));
+  retryable = trustedRetry;
+  const retryAfterHeader = response.headers.get("retry-after");
+  const retryAfter = trustedRetry && retryAfterHeader && /^[1-9][0-9]*$/.test(retryAfterHeader)
+    ? Math.min(Number(retryAfterHeader), 1)
+    : undefined;
   const requestIdHeader = response.headers.get("x-request-id");
   const requestId = requestIdHeader && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(requestIdHeader)
     ? requestIdHeader
@@ -92,7 +99,7 @@ export async function containedWorkspaceError(response: Response): Promise<Music
     code,
     response.status,
     response.status === 401 ? "Music authorization is required." : "Music is temporarily unavailable.",
-    Number.isSafeInteger(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+    retryAfter,
     upstreamCode,
     retryable,
     requestId,
@@ -107,12 +114,12 @@ const boundedText = (maximum: number) => z.string().min(1).max(maximum);
 const dateTime = z.string().datetime({ offset: true }).max(40);
 const songSchema = z.object({
   id: z.number().int().positive(), userId: z.number().int().positive().optional(),
-  youtubeId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/), title: boundedText(1_024), artist: boundedText(1_024),
+  youtubeId: z.string().regex(/^[A-Za-z0-9_-]{11}$/), title: boundedText(1_024), artist: boundedText(1_024),
   thumbnailUrl: boundedText(2_048), position: z.number().int().nonnegative(),
   status: z.enum(["queued", "playing", "played"]), playedAt: dateTime.nullable(),
 }).strict();
 const playlistSongSchema = z.object({
-  id: z.number().int().positive(), playlistId: z.number().int().positive(), youtubeId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  id: z.number().int().positive(), playlistId: z.number().int().positive(), youtubeId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
   title: boundedText(1_024), artist: boundedText(1_024), thumbnailUrl: boundedText(2_048),
   position: z.number().int().nonnegative(), addedAt: dateTime,
 }).strict();

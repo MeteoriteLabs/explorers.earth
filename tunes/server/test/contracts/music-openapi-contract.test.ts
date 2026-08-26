@@ -88,6 +88,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/paid/import"].post.responses)).toContain("ENTITLEMENT_REQUIRED");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("publication");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("queueRevision");
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Song.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PlaylistSong.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).toContain("publicSlug");
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).not.toMatch(/capability|secret|hash/i);
     expect(MUSIC_OPENAPI_DOCUMENT.paths).toHaveProperty("/api/music/publication");
@@ -125,11 +128,11 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     // Break caught: syntax-valid documentation advertises camelCase/enum shapes that live route bodies do not return.
     const addedAt = new Date("2026-08-14T10:00:00.000Z");
     const queueRow = {
-      id: 21, user_id: 11, youtube_id: "queue-video", title: "Queue", artist: "Artist",
+      id: 21, user_id: 11, youtube_id: "abcdefghijk", title: "Queue", artist: "Artist",
       thumbnail_url: "https://img/queue", position: 0, status: "queued", played_at: null,
     };
     const savedRow = {
-      id: 31, playlist_id: 7, youtube_id: "saved-video", title: "Saved", artist: "Artist",
+      id: 31, playlist_id: 7, youtube_id: "lmnopqrstuv", title: "Saved", artist: "Artist",
       thumbnail_url: "https://img/saved", position: 0, added_at: addedAt,
     };
     const playlistRow = {
@@ -145,8 +148,8 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       },
     };
     const publicPlaylist = {
-      songs: [{ id: 41, userId: 11, youtubeId: "public-video", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null }],
-      currentlyPlaying: { id: 41, userId: 11, youtubeId: "public-video", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null },
+      songs: [{ id: 41, userId: 11, youtubeId: "zyxwvutsrqp", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null }],
+      currentlyPlaying: { id: 41, userId: 11, youtubeId: "zyxwvutsrqp", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null },
       playedSongs: [],
       user: {
         id: 11, username: "display", guestUrl: "public-owner", venueName: "Venue", theme: { primary: "#123456" },
@@ -154,7 +157,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       },
       allowGuestPlayOnDevice: false,
       allowRecentlyPlayedVisibility: true,
-      playlists: [{ id: 7, userId: 11, name: "Saved list", description: null, isVisibleToGuests: true, createdAt: addedAt.toISOString(), updatedAt: addedAt.toISOString(), songs: [{ id: 31, playlistId: 7, youtubeId: "saved-video", title: "Saved", artist: "Artist", thumbnailUrl: "https://img/saved", position: 0, addedAt: addedAt.toISOString() }] }],
+      playlists: [{ id: 7, userId: 11, name: "Saved list", description: null, isVisibleToGuests: true, createdAt: addedAt.toISOString(), updatedAt: addedAt.toISOString(), songs: [{ id: 31, playlistId: 7, youtubeId: "lmnopqrstuv", title: "Saved", artist: "Artist", thumbnailUrl: "https://img/saved", position: 0, addedAt: addedAt.toISOString() }] }],
     };
     const repository = {
       listPlaylists: async () => [playlistRow], getPlaylist: async () => playlistRow,
@@ -193,7 +196,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     const ownerRead = { Authorization: "Bearer aaa.bbb.ccc" };
     const ownerWrite = { ...ownerRead, Origin: "https://explorers.example" };
     const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
-    const songInput = { youtubeId: "video", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
+    const songInput = { youtubeId: "abcdefghijk", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
     const cases = [
       ["get", "/api/playlists", "/api/playlists", 200, undefined, ownerRead],
       ["post", "/api/playlists", "/api/playlists", 201, { name: "Saved list", description: null }, ownerWrite],

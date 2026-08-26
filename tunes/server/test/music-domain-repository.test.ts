@@ -156,7 +156,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const harness = recordingPool();
     const repository = new MusicDomainRepository(harness.pool);
     await repository.listQueue(23);
-    await repository.addSong(23, { youtubeId: "yt", title: "title", artist: "artist", thumbnailUrl: "https://img" });
+    await repository.addSong(23, { youtubeId: "abcdefghijk", title: "title", artist: "artist", thumbnailUrl: "https://img" });
     await repository.setPlaying(23, 71);
     await repository.updateSongPosition(23, 71, 2);
     await repository.removeSong(23, 71);
@@ -193,10 +193,18 @@ describe("MusicDomainRepository owner predicates", () => {
     });
   });
 
+  it.each(["abcdefghij", "abcdefghijkl", "A".repeat(65)])("rejects noncanonical repository YouTube ID %s before a query", async (youtubeId) => {
+    const harness = recordingPool();
+    const repository = new MusicDomainRepository(harness.pool);
+    await expect(repository.addSong(23, { youtubeId, title: "title", artist: "artist", thumbnailUrl: "https://img" })).rejects.toThrow("canonical YouTube video ID");
+    await expect(repository.addPlaylistSong(23, 7, { youtubeId, title: "title", artist: "artist", thumbnailUrl: "https://img" })).rejects.toThrow("canonical YouTube video ID");
+    expect(harness.calls).toEqual([]);
+  });
+
   it("advances the owner queue revision inside each canonical active-queue mutation transaction", async () => {
     // Break caught: a stale tab can replace over an add/play/reorder/remove because its expected revision stayed current.
     for (const execute of [
-      (repository: MusicDomainRepository) => repository.addSong(7, { youtubeId: "a", title: "A", artist: "A", thumbnailUrl: "https://img" }),
+      (repository: MusicDomainRepository) => repository.addSong(7, { youtubeId: "abcdefghijk", title: "A", artist: "A", thumbnailUrl: "https://img" }),
       (repository: MusicDomainRepository) => repository.setPlaying(7, 1),
       (repository: MusicDomainRepository) => repository.updateSongPosition(7, 1, 0),
       (repository: MusicDomainRepository) => repository.removeSong(7, 1),
@@ -243,7 +251,7 @@ describe("MusicDomainRepository owner predicates", () => {
     // Break caught: the child song ID is ownerless even though the parent playlist was checked elsewhere.
     const harness = recordingPool();
     const repository = new MusicDomainRepository(harness.pool);
-    await repository.addPlaylistSong(29, 80, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    await repository.addPlaylistSong(29, 80, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     await repository.removePlaylistSong(29, 80, 91);
     await repository.reorderPlaylistSong(29, 80, 91, 3);
     await repository.setPlaylistVisibility(29, 80, true);

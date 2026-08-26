@@ -93,6 +93,17 @@ describe("canonical Music workspace client", () => {
     expect(JSON.stringify(result.dashboard)).not.toContain("userId");
   });
 
+  it("fails closed without mutating when a legacy row has a noncanonical YouTube ID", async () => {
+    const legacy = { id: 1, youtubeId: "legacy-id", title: "Legacy", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "queued", playedAt: null };
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
+      ? new Response("[]")
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify({ queueRevision: 2, songs: [legacy], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "public-slug" } }))
+        : new Response(JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 })));
+    await expect(createMusicWorkspaceClient(request).load()).rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+    expect(request.mock.calls.every(([input]) => (input as { method: string }).method === "GET")).toBe(true);
+  });
+
   it("changes to unlisted with one atomic owner-derived command and returns only the new in-memory capability", async () => {
     const request = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       version: "music-publication/v1", publication: { mode: "unlisted", publicSlug: "public-slug" }, capability: "A".repeat(43),
@@ -143,7 +154,7 @@ describe("canonical Music workspace client", () => {
 
     const error = await createMusicWorkspaceClient(failed).load().catch((cause) => cause);
     expect(error).toBeInstanceOf(MusicClientError);
-    expect(error).toMatchObject({ status: 403, upstreamCode: "IDENTITY_SUSPENDED", retryable: false, retryAfterSeconds: 19 });
+    expect(error).toMatchObject({ status: 403, upstreamCode: "IDENTITY_SUSPENDED", retryable: false, retryAfterSeconds: undefined });
     expect(error.message).not.toContain("sensitive");
   });
 
@@ -152,7 +163,7 @@ describe("canonical Music workspace client", () => {
       status: 401,
       body: JSON.stringify({ error: { code: "AUTH_INVALID", retryable: true } }),
       retryAfter: "7",
-      expected: { code: "AUTH_REQUIRED", upstreamCode: "AUTH_INVALID", retryable: true, retryAfterSeconds: 7 },
+      expected: { code: "AUTH_REQUIRED", upstreamCode: "AUTH_INVALID", retryable: false, retryAfterSeconds: undefined },
       message: "Music authorization is required.",
     },
     {
@@ -201,8 +212,8 @@ describe("canonical Music workspace client", () => {
         code: "AUTH_UNAVAILABLE",
         status: 409,
         upstreamCode: "PUBLICATION_CONFLICT",
-        retryable: true,
-        retryAfterSeconds: 3,
+        retryable: false,
+        retryAfterSeconds: undefined,
       });
   });
 

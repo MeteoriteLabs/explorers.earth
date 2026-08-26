@@ -42,7 +42,38 @@ describe("credential-aware Music queue client", () => {
 
   it("preserves contained retry metadata", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "QUEUE_REVISION_CONFLICT", retryable: false } }), { status: 409, headers: { "retry-after": "2", "x-request-id": "queue-request" } }));
-    await expect(createMusicQueueClient(request).replaceQueue(1, [], "replace-queue-2")).rejects.toMatchObject({ status: 409, upstreamCode: "QUEUE_REVISION_CONFLICT", retryable: false, retryAfterSeconds: 2, requestId: "queue-request" });
+    await expect(createMusicQueueClient(request).replaceQueue(1, [], "replace-queue-2")).rejects.toMatchObject({ status: 409, upstreamCode: "QUEUE_REVISION_CONFLICT", retryable: false, retryAfterSeconds: undefined, requestId: "queue-request" });
+  });
+
+  it.each([
+    { youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img", ownerId: 99 },
+    { youtubeId: "abcdefghij", title: "Song", artist: "Artist", thumbnailUrl: "https://img" },
+    { youtubeId: "abcdefghijkl", title: "Song", artist: "Artist", thumbnailUrl: "https://img" },
+  ])("rejects hostile or noncanonical add input before transport %#", async (input) => {
+    const request = vi.fn();
+    await expect(createMusicQueueClient(request).addSong(input as never, "add-song-safe"))
+      .rejects.toMatchObject({ status: 400, code: "REQUEST_INVALID" });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("rejects nested queue authority before transport", async () => {
+    const request = vi.fn();
+    await expect(createMusicQueueClient(request).replaceQueue(1, [{ playlistId: 8, songId: 9, username: "other" } as never], "replace-safe"))
+      .rejects.toMatchObject({ status: 400, code: "REQUEST_INVALID" });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("trusts only allowlisted bounded retry metadata", async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "RATE_LIMITED", retryable: true } }), { status: 429, headers: { "retry-after": "999999" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "HOSTILE_CODE!", retryable: true } }), { status: 503, headers: { "retry-after": "1" } }));
+    await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 1 });
+    await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ upstreamCode: undefined, retryable: false, retryAfterSeconds: undefined });
+  });
+
+  it.each([[500, "INTERNAL_ERROR"], [502, "UPSTREAM_MALFORMED"], [503, "DATABASE_UNAVAILABLE"]] as const)("derives retryability for trusted %s %s", async (status, code) => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code, retryable: false } }), { status, headers: { "retry-after": "1" } }));
+    await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ upstreamCode: code, retryable: true, retryAfterSeconds: 1 });
   });
 
   it("does not expose an invalid upstream request identifier", async () => {

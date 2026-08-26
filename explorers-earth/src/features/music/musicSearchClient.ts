@@ -31,12 +31,24 @@ function parseSearch(value: unknown): YouTubeSearchResponse {
 }
 
 export function createMusicSearchClient(request: MusicRequest) {
+  const parseInput = <T>(schema: z.ZodType<T>, value: unknown): T => {
+    const result = schema.safeParse(value);
+    if (!result.success) throw new MusicClientError("REQUEST_INVALID", 400, "The Music request is invalid.");
+    return result.data;
+  };
   return {
-    searchYouTube: (query: string, pageToken?: string) => requestMusicJson<YouTubeSearchResponse>(request, {
-      method: "POST", path: "/api/youtube/search", body: { query, ...(pageToken === undefined ? {} : { pageToken }) },
-    }, parseSearch),
-    videoFromUrl: (url: string) => requestMusicJson<YouTubeVideo>(request, {
-      method: "POST", path: "/api/youtube/video-from-url", body: { url },
-    }, parseVideo),
+    searchYouTube: async (query: string, pageToken?: string) => {
+      const safeQuery = parseInput(z.string().min(1).max(200), query);
+      const safePage = pageToken === undefined ? undefined : parseInput(z.string().max(256), pageToken);
+      return requestMusicJson<YouTubeSearchResponse>(request, {
+        method: "POST", path: "/api/youtube/search", body: { query: safeQuery, ...(safePage === undefined ? {} : { pageToken: safePage }) },
+      }, parseSearch);
+    },
+    videoFromUrl: async (url: string) => {
+      const safeUrl = parseInput(z.string().url().max(2_048), url);
+      return requestMusicJson<YouTubeVideo>(request, {
+        method: "POST", path: "/api/youtube/video-from-url", body: { url: safeUrl },
+      }, parseVideo);
+    },
   };
 }

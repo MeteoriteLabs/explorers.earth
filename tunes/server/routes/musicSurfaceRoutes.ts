@@ -572,7 +572,8 @@ function songInput(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
   const body = value as Record<string, unknown>;
   if (Object.keys(body).some((key) => !["youtubeId", "title", "artist", "thumbnailUrl"].includes(key))
-      || ![body.youtubeId, body.title, body.artist, body.thumbnailUrl].every((entry) => typeof entry === "string" && entry.length >= 1 && entry.length <= 1_024)) {
+      || typeof body.youtubeId !== "string" || !/^[A-Za-z0-9_-]{11}$/.test(body.youtubeId)
+      || ![body.title, body.artist, body.thumbnailUrl].every((entry) => typeof entry === "string" && entry.length >= 1 && entry.length <= 1_024)) {
     throw invalidQueue();
   }
   return { youtubeId: body.youtubeId as string, title: body.title as string, artist: body.artist as string, thumbnailUrl: body.thumbnailUrl as string };

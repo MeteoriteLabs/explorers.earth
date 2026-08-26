@@ -30,7 +30,7 @@ describe("credential-aware Music search client", () => {
 
   it("contains unsuccessful search responses", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "RATE_LIMITED", retryable: true } }), { status: 429, headers: { "retry-after": "7", "x-request-id": "search-request" } }));
-    await expect(createMusicSearchClient(request).searchYouTube("music")).rejects.toMatchObject({ status: 429, upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 7, requestId: "search-request" });
+    await expect(createMusicSearchClient(request).searchYouTube("music")).rejects.toMatchObject({ status: 429, upstreamCode: "RATE_LIMITED", retryable: true, retryAfterSeconds: 1, requestId: "search-request" });
   });
 
   it("rejects a malformed successful video DTO without reflecting it", async () => {
@@ -38,5 +38,18 @@ describe("credential-aware Music search client", () => {
     const error = await createMusicSearchClient(request).videoFromUrl("https://youtu.be/abcdefghijk").catch((cause) => cause);
     expect(error).toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
     expect(error.message).not.toContain("secret");
+  });
+
+  it.each([
+    [{ query: "music", ownerId: 7 }, "searchYouTube"],
+    [{ url: "https://youtu.be/abcdefghijk", username: "other" }, "videoFromUrl"],
+  ])("rejects hostile %s input before transport", async (input, method) => {
+    const request = vi.fn();
+    const client = createMusicSearchClient(request);
+    const call = method === "searchYouTube"
+      ? client.searchYouTube(input as never)
+      : client.videoFromUrl(input as never);
+    await expect(call).rejects.toMatchObject({ status: 400, code: "REQUEST_INVALID" });
+    expect(request).not.toHaveBeenCalled();
   });
 });

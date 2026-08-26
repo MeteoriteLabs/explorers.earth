@@ -108,6 +108,7 @@ export class MusicDomainRepository {
   }
 
   async addPlaylistSong(musicUserId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
+    assertCanonicalYouTubeVideoId(input.youtubeId);
     return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => (await client.query(
         `WITH owned AS (
            SELECT id FROM playlists WHERE user_id=$1 AND id=$2
@@ -320,6 +321,7 @@ export class MusicDomainRepository {
   }
 
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
+    assertCanonicalYouTubeVideoId(input.youtubeId);
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
       const song = (await client.query(
         `WITH ordered AS (
@@ -589,4 +591,8 @@ export class MusicDomainRepository {
         ORDER BY u.guest_url`,
     )).rows;
   }
+}
+
+function assertCanonicalYouTubeVideoId(value: string): void {
+  if (!/^[A-Za-z0-9_-]{11}$/.test(value)) throw new TypeError("A canonical YouTube video ID is required.");
 }
