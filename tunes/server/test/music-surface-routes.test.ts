@@ -163,6 +163,21 @@ describe("canonical Music REST surfaces", () => {
     expect(calls.some((entry) => entry[0] === "add-song")).toBe(false);
   });
 
+  it("accepts the shared 2048-character thumbnail bound and rejects the next byte", async () => {
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+    expect((await request(appFor().app).post("/api/playlist/songs").set(headers)
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "x".repeat(2_048) })).status).toBe(201);
+    expect((await request(appFor().app).post("/api/playlist/songs").set(headers)
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "x".repeat(2_049) })).status).toBe(400);
+  });
+
+  it("accepts one atomic bulk removal for the full 500-song queue", async () => {
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+    const songIds = Array.from({ length: 500 }, (_, index) => index + 1);
+    expect((await request(appFor().app).delete("/api/playlist/songs/bulk").set(headers).send({ songIds })).status).toBe(204);
+    expect((await request(appFor().app).delete("/api/playlist/songs/bulk").set(headers).send({ songIds: [...songIds, 501] })).status).toBe(400);
+  });
+
   it("returns a contained client error when the active queue is full", async () => {
     const { app } = appFor({ addSong: vi.fn(async () => undefined) });
     const response = await request(app).post("/api/playlist/songs")

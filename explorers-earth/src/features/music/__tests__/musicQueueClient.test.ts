@@ -40,6 +40,22 @@ describe("credential-aware Music queue client", () => {
     expect(JSON.stringify(request.mock.calls)).not.toMatch(/username|email|ownerId|accountId|documentId|musicUserId/i);
   });
 
+  it("accepts the full 500-song queue for one bounded bulk removal", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const ids = Array.from({ length: 500 }, (_, index) => index + 1);
+    await createMusicQueueClient(request).removeSongs(ids, "remove-500");
+    expect(request).toHaveBeenCalledWith({ method: "DELETE", path: "/api/playlist/songs/bulk", body: { songIds: ids }, idempotencyKey: "remove-500" });
+    expect(() => createMusicQueueClient(request).removeSongs([...ids, 501], "remove-501"))
+      .toThrow(expect.objectContaining({ status: 400, code: "REQUEST_INVALID" }));
+  });
+
+  it("accepts a discovery thumbnail at the shared 2048-character limit", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(song), { status: 201 }));
+    const thumbnailUrl = "x".repeat(2_048);
+    await createMusicQueueClient(request).addSong({ youtubeId: song.youtubeId, title: song.title, artist: song.artist, thumbnailUrl }, "thumbnail-2048");
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({ thumbnailUrl }) }));
+  });
+
   it("preserves contained retry metadata", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "QUEUE_REVISION_CONFLICT", retryable: false } }), { status: 409, headers: { "retry-after": "2", "x-request-id": "queue-request" } }));
     await expect(createMusicQueueClient(request).replaceQueue(1, [], "replace-queue-2")).rejects.toMatchObject({ status: 409, upstreamCode: "QUEUE_REVISION_CONFLICT", retryable: false, retryAfterSeconds: undefined, requestId: "queue-request" });

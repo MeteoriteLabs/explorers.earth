@@ -50,7 +50,7 @@ export function createMusicQueueClient(request: MusicRequest) {
       method: "DELETE", path: `/api/playlist/songs/${input(positiveId, songId)}`, idempotencyKey,
     }),
     removeSongs: (songIds: number[], idempotencyKey: string) => requestMusicEmpty(request, {
-      method: "DELETE", path: "/api/playlist/songs/bulk", body: { songIds: input(z.array(positiveId).min(1).max(100), songIds) }, idempotencyKey,
+      method: "DELETE", path: "/api/playlist/songs/bulk", body: { songIds: input(z.array(positiveId).min(1).max(500), songIds) }, idempotencyKey,
     }),
     moveSong: (songId: number, position: number, idempotencyKey: string) => requestMusicJson<MusicSong>(request, {
       method: "PATCH", path: `/api/playlist/songs/${input(positiveId, songId)}/position`, body: { position: input(z.number().int().nonnegative(), position) }, idempotencyKey,

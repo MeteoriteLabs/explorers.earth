@@ -240,7 +240,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   app.delete("/api/playlist/songs/bulk", ...mutation(async (req, res, next) => {
     try {
       const songIds = Array.isArray(req.body?.songIds) ? req.body.songIds.map((value: unknown) => positiveId(String(value))) : undefined;
-      if (!songIds?.length || songIds.length > 100 || Object.keys(req.body).some((key) => key !== "songIds")) throw invalidQueue();
+      if (!songIds?.length || songIds.length > 500 || Object.keys(req.body).some((key) => key !== "songIds")) throw invalidQueue();
       await dependencies.repository.removeSongs(req.musicPrincipal!.musicUserId, songIds);
       res.status(204).end();
     } catch (error) { next(error); }
@@ -586,7 +586,8 @@ function songInput(value: unknown) {
   const body = value as Record<string, unknown>;
   if (Object.keys(body).some((key) => !["youtubeId", "title", "artist", "thumbnailUrl"].includes(key))
       || typeof body.youtubeId !== "string" || !/^[A-Za-z0-9_-]{11}$/.test(body.youtubeId)
-      || ![body.title, body.artist, body.thumbnailUrl].every((entry) => typeof entry === "string" && entry.length >= 1 && entry.length <= 1_024)) {
+      || ![body.title, body.artist].every((entry) => typeof entry === "string" && entry.length >= 1 && entry.length <= 1_024)
+      || typeof body.thumbnailUrl !== "string" || body.thumbnailUrl.length < 1 || body.thumbnailUrl.length > 2_048) {
     throw invalidQueue();
   }
   return { youtubeId: body.youtubeId as string, title: body.title as string, artist: body.artist as string, thumbnailUrl: body.thumbnailUrl as string };
