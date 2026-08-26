@@ -45,6 +45,7 @@ export class MusicFeatureDecisionService {
     for (const flag of musicFeatureFlags) this.options.log?.({ flag, decision: decision[flag], cohortVersion: this.options.cohortVersion, exposureId });
     const value = { ...decision, exposureId, expiresAt: new Date(expires).toISOString() };
     const maxEntries = Math.min(Math.max(Math.trunc(this.options.cacheMaxEntries ?? 10_000), 1), 10_000);
+    if (cached) this.cache.delete(cacheKey);
     while (this.cache.size >= maxEntries) {
       const oldest = this.cache.keys().next().value;
       if (oldest === undefined) break;

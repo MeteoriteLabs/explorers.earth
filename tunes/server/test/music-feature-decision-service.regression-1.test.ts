@@ -33,4 +33,30 @@ describe("Music feature decision renewal regression", () => {
     expect(renewed.exposureId).not.toBe(first.exposureId);
     expect(renewed.expiresAt).toBe(new Date(119_000).toISOString());
   });
+
+  it("renews a full-cache exposure without evicting another live principal", () => {
+    let now = 0;
+    let exposure = 0;
+    const service = new MusicFeatureDecisionService({
+      killSwitch: () => false,
+      salt: "production-rollout",
+      cohortVersion: "owner-v1",
+      percentages: { ownerWorkspace: 100 },
+      cacheTtlMs: 60_000,
+      cacheMaxEntries: 2,
+      now: () => now,
+      exposureId: () => `exposure-${++exposure}`,
+    });
+    const otherPrincipal = { ...principal, musicUserId: "music-user-2", accountDocumentId: "account-2" };
+
+    service.decide(otherPrincipal);
+    const first = service.decide(principal);
+    now = 59_000;
+    const renewed = service.decide(principal);
+    const cache = (service as unknown as { cache: Map<string, unknown> }).cache;
+
+    expect(renewed.exposureId).not.toBe(first.exposureId);
+    expect(cache.size).toBe(2);
+    expect(cache.has("music-user-2:account-2:1")).toBe(true);
+  });
 });
