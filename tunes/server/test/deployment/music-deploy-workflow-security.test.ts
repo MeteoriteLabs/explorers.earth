@@ -19,7 +19,7 @@ describe("Tunes workflow provenance and input boundary", () => {
       default: false,
     });
     expect(workflow.concurrency).toMatchObject({
-      group: "tunes-test-server-one-shot",
+      group: "tunes-production-deploy",
       "cancel-in-progress": false,
     });
     expect(source).toContain("github.ref == 'refs/heads/main'");
@@ -34,6 +34,9 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(source).toContain("/health/ready");
     expect(source).toContain("EXPECTED_COMMIT");
     expect(source).toContain("EXPECTED_DIGEST");
+    expect(source).toContain("CURRENT_MIGRATION_MARKER");
+    expect(source).toContain("0017_publication_idempotency_key_retirement");
+    expect(source).toContain("rollback refused: current app is older than schema compatibility floor");
     expect(source).toContain('today="$(date -u +%F)"');
     expect(source).toContain('[[ "$today" < "$TEMPORARY_DIRECT_DEPLOY_EXPIRES" || "$today" == "$TEMPORARY_DIRECT_DEPLOY_EXPIRES" ]]');
 

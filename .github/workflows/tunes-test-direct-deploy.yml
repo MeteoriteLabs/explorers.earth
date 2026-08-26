@@ -16,7 +16,7 @@ env:
   TEMPORARY_DIRECT_DEPLOY_EXPIRES: "2026-08-28"
 
 concurrency:
-  group: tunes-test-server-one-shot
+  group: tunes-production-deploy
   cancel-in-progress: false
 
 jobs:
@@ -131,6 +131,19 @@ jobs:
             docker pull "$CANDIDATE_IMAGE"
             test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{.Architecture}}')" = arm64
             test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{index .Config.Labels \"org.opencontainers.image.revision\"}}')" = "$CANDIDATE_COMMIT"
+            current_readiness="$backup_dir/current-readiness-$stamp.json"
+            curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5001/health/ready > "$current_readiness"
+            CURRENT_MIGRATION_MARKER="$(docker run --rm --entrypoint node \
+              -v "$current_readiness:/readiness.json:ro" "$CANDIDATE_IMAGE" -e '
+                const fs=require("node:fs");
+                const value=JSON.parse(fs.readFileSync("/readiness.json","utf8"));
+                if(typeof value.migrationMarker!=="string")process.exit(1);
+                process.stdout.write(value.migrationMarker);
+              ')"
+            case "$CURRENT_MIGRATION_MARKER" in
+              0017_publication_idempotency_key_retirement|0018_transactional_queue_replacement) ;;
+              *) echo 'rollback refused: current app is older than schema compatibility floor' >&2; exit 1 ;;
+            esac
             candidate_digest="${CANDIDATE_IMAGE##*@}"
             app_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-app-1)"
             db_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' tunes-db-1)"
