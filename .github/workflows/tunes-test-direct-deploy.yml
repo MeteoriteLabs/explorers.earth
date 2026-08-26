@@ -93,11 +93,13 @@ jobs:
             compose_dir=/home/deploy/tunes/tunes
             compose_file="$compose_dir/docker-compose.yml"
             override_file="$compose_dir/.codex-test-image.override.yml"
+            environment_file="$compose_dir/.env"
             authority_dir="$compose_dir/.music-live-authority"
             attestation_dir="$authority_dir/attestations"
             backup_dir="$compose_dir/deployment-backups"
             stamp="$(date -u +%Y%m%dT%H%M%SZ)"
             override_backup="$backup_dir/override-$stamp.yml"
+            environment_backup="$backup_dir/environment-$stamp.env"
             rollback_image="local/tunes-app-rollback:$stamp"
             success_flag="$backup_dir/deploy-success-$stamp"
             heartbeat_file="$backup_dir/deploy-heartbeat-$stamp"
@@ -105,6 +107,7 @@ jobs:
             cd "$compose_dir"
             test -f "$compose_file"
             test -s "$override_file"
+            test -s "$environment_file"
             test -d "$authority_dir"
             test -s "$authority_dir/db-migrator"
             test -s "$authority_dir/db-runtime"
@@ -116,6 +119,25 @@ jobs:
             chmod 700 "$backup_dir"
             cp "$override_file" "$override_backup"
             chmod 600 "$override_backup"
+            cp "$environment_file" "$environment_backup"
+            chmod 600 "$environment_backup"
+            set_environment_value() {
+              local key="$1"
+              local value="$2"
+              local target="$3"
+              local temporary="$target.tmp-$stamp"
+              awk -v key="$key" -v value="$value" '
+                BEGIN { found = 0 }
+                index($0, key "=") == 1 {
+                  if (!found) { print key "=" value; found = 1 }
+                  next
+                }
+                { print }
+                END { if (!found) print key "=" value }
+              ' "$target" > "$temporary"
+              chmod 600 "$temporary"
+              mv "$temporary" "$target"
+            }
             old_image_id="$(docker inspect --format '{{.Image}}' tunes-app-1)"
             docker tag "$old_image_id" "$rollback_image"
             db_user="$(docker inspect tunes-db-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_USER=//p' | head -n 1)"
@@ -177,6 +199,8 @@ jobs:
               if (( now - heartbeat <= 120 )); then sleep 5; continue; fi
               cp "$override_backup" "$override_file"
               chmod 600 "$override_file"
+              cp "$environment_backup" "$environment_file"
+              chmod 600 "$environment_file"
               for retry in \$(seq 1 3); do
                 docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
                 for check in \$(seq 1 30); do
@@ -197,6 +221,8 @@ jobs:
               status=$?
               trap - ERR
               cp "$override_backup" "$override_file"
+              cp "$environment_backup" "$environment_file"
+              chmod 600 "$environment_file"
               docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
               for attempt in $(seq 1 45); do
                 image="$(docker inspect --format '{{.Image}}' tunes-app-1 2>/dev/null || true)"
@@ -212,6 +238,10 @@ jobs:
               exit 1
             }
             trap rollback ERR
+            set_environment_value MUSIC_WORKSPACE_KILL_SWITCH false "$environment_file"
+            set_environment_value MUSIC_FEATURE_COHORT_SALT explorers-owner-workspace-production-v1 "$environment_file"
+            set_environment_value MUSIC_FEATURE_COHORT_VERSION owner-workspace-production-v1 "$environment_file"
+            set_environment_value MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT 100 "$environment_file"
             sed -E \
               -e "s#^([[:space:]]*image:).*#\\1 $CANDIDATE_IMAGE#" \
               -e "s#^([[:space:]]*MUSIC_IMAGE_DIGEST:).*#\\1 $candidate_digest#" \
@@ -236,6 +266,11 @@ jobs:
               sleep 2
             done
             test "$(docker inspect --format '{{.Config.Image}}' tunes-app-1)" = "$CANDIDATE_IMAGE"
+            running_environment="$(docker inspect tunes-app-1 --format '{{range .Config.Env}}{{println .}}{{end}}')"
+            printf '%s\n' "$running_environment" | grep -Fxq 'MUSIC_WORKSPACE_KILL_SWITCH=false'
+            printf '%s\n' "$running_environment" | grep -Fxq 'MUSIC_FEATURE_COHORT_SALT=explorers-owner-workspace-production-v1'
+            printf '%s\n' "$running_environment" | grep -Fxq 'MUSIC_FEATURE_COHORT_VERSION=owner-workspace-production-v1'
+            printf '%s\n' "$running_environment" | grep -Fxq 'MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT=100'
             docker run --rm --entrypoint node -v "$readiness:/readiness.json:ro" \
               --env EXPECTED_COMMIT="$CANDIDATE_COMMIT" --env EXPECTED_DIGEST="$candidate_digest" \
               "$CANDIDATE_IMAGE" -e '
