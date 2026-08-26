@@ -4,6 +4,7 @@ FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa3
 WORKDIR /app
 
 # Install dependencies for Puppeteer
+RUN apk upgrade --no-cache
 RUN apk add --no-cache \
       chromium \
       nss \
