@@ -13,8 +13,8 @@
 | Area | Baseline result | Evidence / follow-up |
 | --- | --- | --- |
 | Identity and workspace bootstrap | Pass | Owner workspace loads after identity establishment. |
-| Search | Partial | `Daft Punk Get Lucky`, `Coldplay Yellow`, and `Beatles Hey Jude` returned results. Pagination/empty/no-result still pending after ISSUE-001. |
-| Player | Partial | Play-now starts the selected YouTube item and renders controls; blocked from sustained testing by ISSUE-001. |
+| Search | Partial | `Daft Punk Get Lucky`, `Coldplay Yellow`, `Beatles Hey Jude`, and `Radiohead Creep` returned results. Pagination/empty/no-result still pending after ISSUE-001. |
+| Player | Partial | Play-now started `Radiohead - Creep`; play/pause and the embedded player responded correctly. Sustained testing remains blocked by ISSUE-001. |
 | Queue | Partial | Added one and two selected results, persisted across reload, and moved `Hey Jude (Remastered 2015)` upward with the correct live-region update. Remove/clear still pending. |
 | Recently played | Partial | Empty-state loads correctly; completion/history lifecycle still pending. |
 | Playlist creation | Pass | Created `Codex UAT 2026-08-27` with a description and confirmed persistence. |
@@ -37,6 +37,8 @@
 5. At the cached exposure boundary, the workspace, search results, player and queue disappear and the page returns to `Checking what's included…`.
 
 Measured reproduction: results remained visible for 13 seconds and disappeared at second 14, aligned with the original server-issued exposure expiry.
+
+The failure was reconfirmed after the successful PR #110 deployment at exact main commit `1f8d571214d2a18e7e8cc6714e6bd8306af15fce`: explicit retry restored the complete workspace, `Radiohead Creep` search and playback worked, and the workspace disappeared again while exercising URL discovery at the next decision boundary. This confirms the deployment configuration is healthy and the still-undeployed PR #111 renewal repair is the required next gate.
 
 ### Root cause
 
