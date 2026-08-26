@@ -533,6 +533,9 @@ describe("portable Music qualification lanes", () => {
     const compose = readFileSync(resolve(root, "docker-compose.music-test.yml"), "utf8");
     const dockerfile = readFileSync(resolve(root, "explorers-earth/Dockerfile.music-fixture"), "utf8");
     expect(compose).toContain("VITE_LOCAL_TUNES_API_URL: https://music-fixture.invalid");
+    expect(compose).toContain('MUSIC_WORKSPACE_KILL_SWITCH: "false"');
+    expect(compose).toContain('MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace');
+    expect(compose).toContain('MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"');
     expect(compose).not.toContain("VITE_LOCAL_TUNES_URL:");
     expect(dockerfile).toContain("ARG VITE_LOCAL_TUNES_API_URL");
     expect(dockerfile).toContain("VITE_LOCAL_TUNES_API_URL=$VITE_LOCAL_TUNES_API_URL");

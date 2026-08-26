@@ -24,7 +24,7 @@ export function MusicWorkspaceShell({ player, search, queue, history, loading = 
     const next = nextIndex === 0 ? "queue" : "history";
     choose(next, true);
   };
-  return <div role="region" aria-label="Music workspace" aria-readonly={stale || undefined} className="relative max-w-full overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+  return <div role="region" aria-label="Music workspace" aria-readonly={stale || undefined} className="relative max-w-full overflow-x-hidden pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-0">
     {loading && <p role="status" aria-live="polite" className="mb-3 text-sm text-dashboard-light">Refreshing Music…</p>}
     {stale && <p role="status" className="mb-3 rounded-xl border border-dashboard p-3 text-sm text-dashboard-light">Showing saved Music. Changes are unavailable until the connection returns.</p>}
     <section id="music-player-region" aria-label="Music player region" className={`${mobile === "player" ? "block" : "hidden"} sticky top-0 z-20 rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 shadow-lg md:block md:p-5`}>{player}</section>
@@ -36,7 +36,7 @@ export function MusicWorkspaceShell({ player, search, queue, history, loading = 
       </div>
       <div role="tabpanel" id={`music-${tab}-panel`} aria-labelledby={`music-${tab}-tab`} className="mt-3 rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 md:p-5">{mobile === "more" || tab === "history" ? history : queue}</div>
     </section>
-    <nav aria-label="Music workspace" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-dashboard bg-dashboard-sidebar pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav aria-label="Music workspace" className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 grid grid-cols-4 border-y border-dashboard bg-dashboard-sidebar md:hidden">
       {(["player", "queue", "search", "more"] as const).map((value) => {
         const controls = value === "player" ? "music-player-region" : value === "search" ? "music-search-region" : value === "queue" ? "music-queue-panel" : "music-history-panel";
         return <button key={value} type="button" aria-controls={controls} aria-current={mobile === value ? "page" : undefined} onClick={() => { setMobile(value); if (value === "queue") choose("queue"); if (value === "more") choose("history"); }} className="min-h-11 min-w-11 px-2 py-3 text-sm capitalize focus-visible:ring-2">{value[0].toUpperCase() + value.slice(1)}</button>;

@@ -124,6 +124,12 @@ services:
       MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
       MUSIC_COHORT_ENABLED: "false"
       MUSIC_COHORT_USER_DOCUMENT_IDS: ""
+      # Disposable local UAT exercises the complete owner workspace. Production
+      # remains fail-closed unless its independently managed rollout enables it.
+      MUSIC_WORKSPACE_KILL_SWITCH: "false"
+      MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
+      MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
+      MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
       MUSIC_EXPECTED_MIGRATION_ID: 0018_transactional_queue_replacement
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"

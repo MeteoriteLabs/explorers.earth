@@ -41,6 +41,7 @@ describe("MusicWorkspaceShell", () => {
   it("provides mobile Player, Queue, Search, and More navigation without horizontal page overflow", () => {
     render(<MusicWorkspaceShell {...panels} />);
     const nav = screen.getByRole("navigation", { name: "Music workspace" });
+    expect(nav).toHaveClass("bottom-[calc(4rem+env(safe-area-inset-bottom))]");
     expect(nav).toHaveTextContent("Player"); expect(nav).toHaveTextContent("Queue"); expect(nav).toHaveTextContent("Search"); expect(nav).toHaveTextContent("More");
     const more = screen.getByRole("button", { name: "More" });
     expect(more).toHaveAttribute("aria-controls", "music-history-panel");
