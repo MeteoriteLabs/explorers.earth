@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
 import {
@@ -64,6 +64,13 @@ export function retryWorkspaceFailure(failureCount: number, error: unknown): boo
   return failureCount < 1;
 }
 
+function isTerminalWorkspaceFailure(error: unknown): boolean {
+  const failure = error as { code?: unknown; upstreamCode?: unknown };
+  const code = typeof failure?.code === "string" ? failure.code : "";
+  const upstreamCode = typeof failure?.upstreamCode === "string" ? failure.upstreamCode : "";
+  return terminalWorkspaceCodes.has(code) || terminalWorkspaceCodes.has(upstreamCode);
+}
+
 export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardData {
   const identityStatus = useSyncExternalStore(
     musicIdentityCoordinator.subscribe,
@@ -82,6 +89,11 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     staleTime: 30_000,
     retry: retryWorkspaceFailure,
   });
+  useEffect(() => {
+    if (query.error && isTerminalWorkspaceFailure(query.error)) {
+      musicIdentityCoordinator.reportFailure(query.error);
+    }
+  }, [query.error]);
   const visibleData = query.error ? undefined : query.data;
   const dashboard = visibleData?.dashboard ?? null;
   return {

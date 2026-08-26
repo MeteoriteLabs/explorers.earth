@@ -123,16 +123,30 @@ describe("private Music query identity isolation", () => {
   });
 
   it("does not put terminal lifecycle authority errors through the generic query retry loop", async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
-    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(Object.assign(new Error("contained"), {
+    const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
+    const terminalError = Object.assign(new Error("contained"), {
       status: 403,
       upstreamCode: "IDENTITY_SUSPENDED",
       retryable: false,
-    }));
+      requestId: "suspended-request",
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
+    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(terminalError);
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
     render(<ErrorProbe scope={scopeA} />, { wrapper });
     expect(await screen.findByText(/Music is temporarily unavailable\./)).toBeInTheDocument();
     expect(musicWorkspaceClient.load).toHaveBeenCalledTimes(1);
+    expect(musicIdentityCoordinator.reportFailure).toHaveBeenCalledWith(terminalError);
+  });
+
+  it("keeps ordinary workspace failures scoped to content state", async () => {
+    const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
+    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(new Error("contained"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    render(<ErrorProbe scope={scopeA} />, { wrapper });
+    expect(await screen.findByText(/Music is temporarily unavailable\./)).toBeInTheDocument();
+    expect(musicIdentityCoordinator.reportFailure).not.toHaveBeenCalled();
   });
 
   it("retains the one generic retry budget and exposes explicit identity retry", async () => {
