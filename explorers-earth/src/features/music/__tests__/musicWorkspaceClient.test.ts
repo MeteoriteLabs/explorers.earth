@@ -139,6 +139,12 @@ describe("canonical Music workspace client", () => {
     expect(request).toHaveBeenCalledWith({ method: "DELETE", path: "/api/playlists/11", idempotencyKey: "delete-playlist-1" });
   });
 
+  it("removes an owner saved song through the canonical playlist route", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    await createMusicWorkspaceClient(request).removePlaylistSong(11, 12, "remove-playlist-song-1");
+    expect(request).toHaveBeenCalledWith({ method: "DELETE", path: "/api/playlists/11/songs/12", idempotencyKey: "remove-playlist-song-1" });
+  });
+
   it("contains unsuccessful JSON and empty responses", async () => {
     const failed = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
     const client = createMusicWorkspaceClient(failed);

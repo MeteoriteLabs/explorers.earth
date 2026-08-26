@@ -31,8 +31,13 @@ function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: numb
     const normalized = text.replace(/\s+/g, " ").trim();
     calls.push({ text: normalized, values });
     if (/status IN \('queued','playing'\)/.test(normalized)) {
-      const active = rows.filter((row) => row.status === "queued" || row.status === "playing")
-        .slice(0, /LIMIT 500/.test(normalized) ? 500 : undefined);
+      let active = rows.filter((row) => row.status === "queued" || row.status === "playing");
+      if (/ORDER BY \(status='playing'\) DESC,position,id/.test(normalized)) {
+        active = active.sort((left, right) => Number(right.status === "playing") - Number(left.status === "playing")
+          || Number(left.position) - Number(right.position) || left.id - right.id);
+      }
+      active = active.slice(0, /LIMIT 500/.test(normalized) ? 500 : undefined)
+        .sort((left, right) => Number(left.position) - Number(right.position) || left.id - right.id);
       return { rows: active, rowCount: active.length };
     }
     if (/status='played'/.test(normalized)) {
@@ -170,7 +175,9 @@ describe("MusicDomainRepository owner predicates", () => {
     }
     expect(harness.calls.slice(1).every((call) => call.text.toLowerCase().includes("id=$2") || call.text.toLowerCase().includes("id = $2"))).toBe(true);
     expect(harness.calls[0].text.toLowerCase()).toContain("jsonb_agg");
-    expect(harness.calls[0].text.toLowerCase()).toContain("left join playlist_songs");
+    expect(harness.calls[0].text.toLowerCase()).toContain("left join lateral");
+    expect(harness.calls[0].text).toMatch(/FROM playlists[\s\S]*WHERE user_id=\$1[\s\S]*LIMIT 200/i);
+    expect(harness.calls[0].text).toMatch(/FROM playlist_songs[\s\S]*WHERE playlist_id=p\.id[\s\S]*LIMIT 500/i);
   });
 
   it("owner-predicates every queue read/update/delete family", async () => {
@@ -284,13 +291,15 @@ describe("MusicDomainRepository owner predicates", () => {
     const harness = dashboardPool(Array.from({ length: 501 }, (_, index) => ({
       id: index + 1,
       userId: 23,
-      status: "queued",
+      status: index === 500 ? "playing" : "queued",
       position: index,
     })));
     const result = await new MusicDomainRepository(harness.pool).ownerDashboard(23);
     const activeRead = harness.calls.find((call) => /status IN \('queued','playing'\)/.test(call.text));
-    expect(activeRead?.text).toMatch(/ORDER BY position,id LIMIT 500/);
+    expect(activeRead?.text).toMatch(/ORDER BY \(status='playing'\) DESC,position,id LIMIT 500/);
+    expect(activeRead?.text).toMatch(/ORDER BY position,id$/);
     expect(result.songs).toHaveLength(500);
+    expect(result.currentlyPlaying).toMatchObject({ id: 501 });
   });
 
   it.each(["abcdefghij", "abcdefghijkl", "A".repeat(65)])("rejects noncanonical repository YouTube ID %s before a query", async (youtubeId) => {

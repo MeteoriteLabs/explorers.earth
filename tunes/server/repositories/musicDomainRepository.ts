@@ -72,15 +72,26 @@ export class MusicDomainRepository {
                     'thumbnailUrl', ps.thumbnail_url,
                     'position', ps.position,
                     'addedAt', ps.added_at
-                  ) ORDER BY ps.position
+                  ) ORDER BY ps.position,ps.id
                 ) FILTER (WHERE ps.id IS NOT NULL),
                 '[]'::jsonb
               ) AS songs
-         FROM playlists p
-         LEFT JOIN playlist_songs ps ON ps.playlist_id=p.id
-        WHERE p.user_id=$1
-        GROUP BY p.id
-        ORDER BY p.created_at DESC`,
+         FROM (
+           SELECT id,user_id,name,description,is_visible_to_guests,created_at,updated_at
+             FROM playlists
+            WHERE user_id=$1
+            ORDER BY created_at DESC,id DESC
+            LIMIT 200
+         ) p
+         LEFT JOIN LATERAL (
+           SELECT id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at
+             FROM playlist_songs
+            WHERE playlist_id=p.id
+            ORDER BY position,id
+            LIMIT 500
+         ) ps ON true
+        GROUP BY p.id,p.user_id,p.name,p.description,p.is_visible_to_guests,p.created_at,p.updated_at
+        ORDER BY p.created_at DESC,p.id DESC`,
       [musicUserId],
     )).rows;
   }
@@ -329,12 +340,15 @@ export class MusicDomainRepository {
   async ownerDashboard(musicUserId: number) {
     return this.withReadSnapshot(async (client) => {
       const activeRows = (await client.query(
-        `SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
-                thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
-           FROM songs
-          WHERE user_id=$1 AND status IN ('queued','playing')
-          ORDER BY position,id
-          LIMIT 500`,
+        `WITH bounded AS (
+           SELECT id,user_id AS "userId",youtube_id AS "youtubeId",title,artist,
+                  thumbnail_url AS "thumbnailUrl",position,status,played_at AS "playedAt"
+             FROM songs
+            WHERE user_id=$1 AND status IN ('queued','playing')
+            ORDER BY (status='playing') DESC,position,id
+            LIMIT 500
+         )
+         SELECT * FROM bounded ORDER BY position,id`,
         [musicUserId],
       )).rows;
       const playedRows = (await client.query(

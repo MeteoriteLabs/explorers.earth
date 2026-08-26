@@ -284,9 +284,13 @@ function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardD
   );
 }
 
-function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: MusicPlaylist; readOnly: boolean; onChanged: () => Promise<unknown>; announce: (message: string) => void }) {
+function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce }: { playlist: MusicPlaylist; queueRevision: number; readOnly: boolean; onChanged: () => Promise<unknown>; announce: (message: string) => void }) {
   const [renameOpen, setRenameOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"replace" | "delete">();
   const renameOpener = useRef<HTMLButtonElement>(null);
+  const replaceOpener = useRef<HTMLButtonElement>(null);
+  const deleteOpener = useRef<HTMLButtonElement>(null);
   const setVisible = async () => {
     try {
       await musicWorkspaceClient.setPlaylistVisibility(playlist.id, !playlist.isVisibleToGuests, operationKey("playlist-visibility"));
@@ -301,15 +305,51 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
       await onChanged();
     } catch { toast.error("Music is temporarily unavailable."); }
   };
+  const replaceQueue = async () => {
+    setSaving(true);
+    try {
+      await completeQueueClient.replaceQueue(
+        queueRevision,
+        playlist.songs.map((song) => ({ playlistId: playlist.id, songId: song.id })),
+        operationKey("queue-replace"),
+      );
+      await onChanged();
+      toast.success(`Queue replaced with ${playlist.name}.`);
+      setConfirmAction(undefined);
+    } catch { toast.error("Music is temporarily unavailable."); }
+    finally { setSaving(false); }
+  };
+  const removeSong = async (songId: number, title: string) => {
+    setSaving(true);
+    try {
+      await musicWorkspaceClient.removePlaylistSong(playlist.id, songId, operationKey("playlist-song-remove"));
+      await onChanged();
+      announce(`${title} removed from ${playlist.name}.`);
+    } catch { toast.error("Music is temporarily unavailable."); }
+    finally { setSaving(false); }
+  };
+  const deletePlaylist = async () => {
+    setSaving(true);
+    try {
+      await musicWorkspaceClient.deletePlaylist(playlist.id, operationKey("playlist-delete"));
+      await onChanged();
+      toast.success("Playlist deleted.");
+      setConfirmAction(undefined);
+    } catch { toast.error("Music is temporarily unavailable."); }
+    finally { setSaving(false); }
+  };
   return (
+    <>
     <section role="tabpanel" aria-label={playlist.name} className="rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h3 className="font-semibold text-dashboard">{playlist.name}</h3>{playlist.description && <p className="mt-1 text-sm text-dashboard-muted">{playlist.description}</p>}</div>
         <div className="flex flex-wrap gap-2">
-          <button ref={renameOpener} type="button" onClick={() => setRenameOpen(true)} disabled={readOnly} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Rename playlist</button>
-          <button type="button" onClick={() => void setVisible()} disabled={readOnly} aria-pressed={playlist.isVisibleToGuests} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>
+          <button ref={replaceOpener} type="button" onClick={() => setConfirmAction("replace")} disabled={readOnly || saving || playlist.songs.length === 0} aria-label={`Replace queue with ${playlist.name}`} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>Replace queue</button>
+          <button ref={renameOpener} type="button" onClick={() => setRenameOpen(true)} disabled={readOnly || saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Rename playlist</button>
+          <button type="button" onClick={() => void setVisible()} disabled={readOnly || saving} aria-pressed={playlist.isVisibleToGuests} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>
             {playlist.isVisibleToGuests ? "Shared" : "Private"}
           </button>
+          <button ref={deleteOpener} type="button" onClick={() => setConfirmAction("delete")} disabled={readOnly || saving} aria-label={`Delete playlist ${playlist.name}`} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Delete playlist</button>
         </div>
       </div>
       {playlist.songs.length === 0 ? <p className="mt-6 text-sm text-dashboard-muted">This playlist is empty.</p> : (
@@ -319,8 +359,9 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
               <img src={song.thumbnailUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-dashboard">{song.title}</p><p className="truncate text-xs text-dashboard-muted">{song.artist}</p></div>
               <div className="flex gap-1">
-                <button type="button" aria-label={`Move ${song.title} up`} disabled={readOnly || index === 0} onClick={() => void move(song.id, index - 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↑</button>
-                <button type="button" aria-label={`Move ${song.title} down`} disabled={readOnly || index === playlist.songs.length - 1} onClick={() => void move(song.id, index + 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↓</button>
+                <button type="button" aria-label={`Move ${song.title} up`} disabled={readOnly || saving || index === 0} onClick={() => void move(song.id, index - 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↑</button>
+                <button type="button" aria-label={`Move ${song.title} down`} disabled={readOnly || saving || index === playlist.songs.length - 1} onClick={() => void move(song.id, index + 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↓</button>
+                <button type="button" aria-label={`Remove ${song.title} from ${playlist.name}`} disabled={readOnly || saving} onClick={() => void removeSong(song.id, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>Remove</button>
               </div>
             </li>
           ))}
@@ -335,6 +376,23 @@ function PlaylistPanel({ playlist, readOnly, onChanged, announce }: { playlist: 
         />
       )}
     </section>
+    {confirmAction === "replace" && (
+      <WorkspaceDialog title="Replace active queue" description={`Replace the current queue with all songs from ${playlist.name}?`} onClose={() => setConfirmAction(undefined)} opener={replaceOpener} closeDisabled={saving}>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={() => setConfirmAction(undefined)} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+          <button data-autofocus type="button" aria-label="Confirm queue replacement" onClick={() => void replaceQueue()} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Replacing…" : "Replace queue"}</button>
+        </div>
+      </WorkspaceDialog>
+    )}
+    {confirmAction === "delete" && (
+      <WorkspaceDialog title={`Delete ${playlist.name}`} description="Delete this playlist and all of its saved songs? This cannot be undone." onClose={() => setConfirmAction(undefined)} opener={deleteOpener} closeDisabled={saving}>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={() => setConfirmAction(undefined)} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+          <button data-autofocus type="button" aria-label="Confirm playlist deletion" onClick={() => void deletePlaylist()} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Deleting…" : "Delete playlist"}</button>
+        </div>
+      </WorkspaceDialog>
+    )}
+    </>
   );
 }
 
@@ -383,7 +441,7 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
               <button id={`music-playlist-tab-${playlist.id}`} key={playlist.id} role="tab" aria-selected={playlist.id === active?.id} tabIndex={playlist.id === active?.id ? 0 : -1} onClick={() => setActiveId(playlist.id)} onKeyDown={(event) => tabKey(event, index)} className={`${buttonClass} shrink-0 ${playlist.id === active?.id ? "bg-dashboard-accent text-[var(--dash-accent-text)]" : "bg-dashboard-muted text-dashboard"}`}>{playlist.name}</button>
             ))}
           </div>
-          {active && <PlaylistPanel playlist={active} readOnly={readOnly} onChanged={data.refetch} announce={setAnnouncement} />}
+          {active && <PlaylistPanel playlist={active} queueRevision={data.dashboard?.queueRevision ?? 0} readOnly={readOnly} onChanged={data.refetch} announce={setAnnouncement} />}
         </>
       )}
 

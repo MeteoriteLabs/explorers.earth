@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import MusicDashboard from "../MusicDashboard";
 import { musicWorkspaceClient } from "../../hooks/useTunesDashboard";
 import { MusicClientError } from "../../lib/localTunesApiClient";
+import { musicApi } from "../../features/music/musicApi";
 
 const base = {
   playlists: [] as Array<any>,
@@ -35,6 +36,34 @@ describe("Music workspace UI", () => {
     expect(screen.getByRole("tab", { name: "Saved mix" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create playlist" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sharing settings" })).toBeInTheDocument();
+  });
+
+  it("exposes saved-playlist recovery and atomic queue replacement actions", async () => {
+    const playlist = {
+      id: 1, name: "Saved mix", description: null, isVisibleToGuests: false,
+      songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }],
+    };
+    const remove = vi.spyOn(musicWorkspaceClient, "removePlaylistSong").mockResolvedValue(undefined);
+    const removePlaylist = vi.spyOn(musicWorkspaceClient, "deletePlaylist").mockResolvedValue(undefined);
+    const request = vi.spyOn(musicApi, "request").mockResolvedValue(new Response(JSON.stringify({
+      version: "music-queue/v1", revision: 8, songs: [],
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const data = { ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) };
+    render(<MusicDashboard data={data} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with Saved mix" }));
+    expect(screen.getByRole("dialog", { name: "Replace active queue" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: "POST", path: "/api/music/queue/replace",
+      body: { expectedRevision: 7, songs: [{ playlistId: 1, songId: 11 }] },
+    }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove A from Saved mix" }));
+    expect(remove).toHaveBeenCalledWith(1, 11, expect.stringMatching(/^playlist-song-remove-/));
+    await userEvent.click(screen.getByRole("button", { name: "Delete playlist Saved mix" }));
+    expect(screen.getByRole("dialog", { name: "Delete Saved mix" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Confirm playlist deletion" }));
+    expect(removePlaylist).toHaveBeenCalledWith(1, expect.stringMatching(/^playlist-delete-/));
   });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
     render(<MusicDashboard data={base} scope={scope} />);

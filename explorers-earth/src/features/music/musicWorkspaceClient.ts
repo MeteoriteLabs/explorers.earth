@@ -188,6 +188,9 @@ export function createMusicWorkspaceClient(request: MusicRequest) {
     deletePlaylist(playlistId: number, idempotencyKey: string) {
       return requestMusicEmpty(request, { method: "DELETE", path: `/api/playlists/${playlistId}`, idempotencyKey });
     },
+    removePlaylistSong(playlistId: number, songId: number, idempotencyKey: string) {
+      return requestMusicEmpty(request, { method: "DELETE", path: `/api/playlists/${playlistId}/songs/${songId}`, idempotencyKey });
+    },
     setPlaylistVisibility(playlistId: number, isVisibleToGuests: boolean, idempotencyKey: string) {
       return requestMusicEmpty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/visibility`, body: { isVisibleToGuests }, idempotencyKey });
     },
