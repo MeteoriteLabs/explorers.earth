@@ -125,7 +125,10 @@ describe("MusicDomainRepository owner predicates", () => {
     }, release() {} };
     const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
     await expect(repository.replaceQueue(7, "expired-key", 2, [])).resolves.toMatchObject({ status: "completed", replayed: false });
-    const cleanup = statements.find(({ text }) => /DELETE FROM music_owner_operations/.test(text));
+    const targeted = statements.find(({ text }) => /DELETE FROM music_owner_operations\s+WHERE music_user_id=\$1 AND operation=\$2 AND idempotency_key_hash=\$3/.test(text));
+    expect(targeted?.text).toMatch(/expires_at<=transaction_timestamp\(\)/);
+    expect(targeted?.values).toHaveLength(3);
+    const cleanup = statements.find(({ text }) => /WITH expired AS/.test(text));
     expect(cleanup?.text).toMatch(/music_user_id=\$1[\s\S]*expires_at<=transaction_timestamp\(\)[\s\S]*LIMIT 100/i);
     expect(cleanup?.values).toEqual([7]);
     expect(statements.find(({ text }) => /SELECT request_hash/.test(text))?.text)

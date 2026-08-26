@@ -392,7 +392,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0017_publication_idempotency_key_retirement",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0018_transactional_queue_replacement",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -431,7 +431,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0017_publication_idempotency_key_retirement",
+          "migration=0018_transactional_queue_replacement",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -615,6 +615,16 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
     expect(readFileSync(join(root, "deployment-transactions/schema-epoch.tsv"), "utf8"))
       .toContain("\t0005_resource_bound_deletion_history\tcurrent\t");
+  }, deploymentProcessRecoveryTimeoutMs);
+
+  it("keeps additive 0018 at the 0017 floor after readiness failure and permits rollback", () => {
+    seedVersionedAuthority("0017_publication_idempotency_key_retirement");
+    const failed = run("deploy", digest("b"), commit("b"), { candidateReadinessFailure: true });
+    expect(failed.status).not.toBe(0);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0017_publication_idempotency_key_retirement\tcurrent\t");
+    const rolledBack = run("rollback", digest("a"), "-", { expectedMarkerOverride: "0017_publication_idempotency_key_retirement" });
+    expect(rolledBack.status, rolledBack.stderr).toBe(0);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([

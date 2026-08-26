@@ -13,6 +13,7 @@ const expectedRuntimeTables = [
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
   "music_identity_tombstones",
+  "music_owner_operations",
   "music_publication_operation_archive",
   "music_publication_operations",
   "music_reactivation_tokens",
@@ -519,6 +520,9 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_publication_operations FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT,UPDATE ON music_publication_operations TO ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER
+      ON music_owner_operations FROM ${capabilityRole}`);
+    await client.query(`GRANT SELECT,INSERT,DELETE ON music_owner_operations TO ${capabilityRole}`);
     await client.query(`REVOKE ALL PRIVILEGES ON music_publication_operation_archive FROM ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_identity_tombstones,music_reactivation_tokens FROM ${capabilityRole}`);
@@ -594,6 +598,7 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
     "DELETE FROM music_publication_operations WHERE false",
+    "UPDATE music_owner_operations SET status_code=status_code WHERE false",
     "SELECT * FROM music_publication_operation_archive LIMIT 0",
     "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
     "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
@@ -641,6 +646,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true, true, false, false]
       : row.object_name === "music_publication_operations"
           ? [true, true, true, false]
+      : row.object_name === "music_owner_operations"
+          ? [true, true, false, true]
         : row.object_name === "music_identity_tombstones" || row.object_name === "music_reactivation_tokens"
           ? [true, true, true, false]
         : [true, true, true, true];

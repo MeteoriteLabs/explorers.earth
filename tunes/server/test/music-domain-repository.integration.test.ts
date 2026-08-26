@@ -121,6 +121,29 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count)).toBe(beforeOperations);
   });
 
+  it("reuses an expired selected key beyond the 100-row sweep without deleting another owner's rows", async () => {
+    const owner = await identities.ensureIdentity(identityInput("expiry-owner"));
+    const other = await identities.ensureIdentity(identityInput("expiry-other"));
+    const selectedKey = "expired-selected-outside-sweep";
+    const selectedHash = createHash("sha256").update(selectedKey).digest("hex");
+    await pool.query(`INSERT INTO music_owner_operations
+      (music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,created_at,expires_at)
+      SELECT $1,'queue.replace',md5(series::text)||md5(series::text),repeat('1',64),200,'{}',
+             transaction_timestamp()-interval '4 days',
+             transaction_timestamp()-interval '2 days'-series*interval '1 second'
+        FROM generate_series(1,101) series`, [owner.id]);
+    await pool.query(`INSERT INTO music_owner_operations
+      (music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,created_at,expires_at)
+      VALUES ($1,'queue.replace',$2,repeat('2',64),200,'{}',transaction_timestamp()-interval '2 hours',transaction_timestamp()-interval '1 hour'),
+             ($3,'queue.replace',repeat('f',64),repeat('3',64),200,'{}',transaction_timestamp()-interval '4 days',transaction_timestamp()-interval '3 days')`,
+      [owner.id, selectedHash, other.id]);
+
+    await expect(domain.replaceQueue(owner.id, selectedKey, 0, [])).resolves.toMatchObject({ status: "completed", replayed: false });
+    expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()", [owner.id])).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [other.id])).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1 AND idempotency_key_hash=$2 AND expires_at>transaction_timestamp()", [owner.id, selectedHash])).rows[0].count)).toBe(1);
+  });
+
   it("isolates playlist and queue read/update/delete families between A and B", async () => {
     // Break caught: a known playlist/song ID bypasses a missing owner predicate on real PostgreSQL.
     const a = await identities.ensureIdentity(identityInput("a"));

@@ -195,6 +195,12 @@ export class MusicDomainRepository {
       .digest("hex");
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
       await client.query(
+        `DELETE FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at<=transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      );
+      await client.query(
         `WITH expired AS (
            SELECT ctid FROM music_owner_operations
             WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()
