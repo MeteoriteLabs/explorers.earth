@@ -3,10 +3,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const coordinatorState = vi.hoisted(() => ({ diagnostic: {} as { requestId?: string } }));
+
 vi.mock("../../features/music/musicApi", () => ({
   musicApi: { request: vi.fn() },
   musicIdentityCoordinator: {
     getSnapshot: () => "ready",
+    getDiagnosticSnapshot: () => coordinatorState.diagnostic,
     subscribe: () => () => undefined,
     retry: vi.fn(async () => undefined),
     reportFailure: vi.fn(),
@@ -39,7 +42,12 @@ function ErrorProbe({ scope }: { scope: typeof scopeA }) {
 
 function RetryProbe({ scope }: { scope: typeof scopeA }) {
   const result = useTunesDashboard(scope);
-  return <button onClick={() => void result.retryIdentity()}>Retry identity</button>;
+  return <button onClick={() => void result.retryIdentity().catch(() => undefined)}>Retry identity</button>;
+}
+
+function CorrelationProbe({ scope }: { scope: typeof scopeA }) {
+  const result = useTunesDashboard(scope);
+  return <div>{(result as typeof result & { requestId?: string }).requestId ?? "no request"}</div>;
 }
 
 function NoScopeProbe() {
@@ -51,6 +59,7 @@ describe("private Music query identity isolation", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    coordinatorState.diagnostic = {};
   });
 
   it("never renders identity A data while the same QueryClient switches through logout to identity B", async () => {
@@ -103,7 +112,7 @@ describe("private Music query identity isolation", () => {
     vi.mocked(musicApi.request).mockImplementation(async ({ path }) => {
       if (path === "/api/playlists") return new Response("[]", { status: 200 });
       if (path === "/api/music/dashboard") return new Response(JSON.stringify({
-        songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" },
+        queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" },
       }), { status: 200 });
       return new Response(JSON.stringify({
         state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600,
@@ -114,16 +123,30 @@ describe("private Music query identity isolation", () => {
   });
 
   it("does not put terminal lifecycle authority errors through the generic query retry loop", async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
-    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(Object.assign(new Error("contained"), {
+    const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
+    const terminalError = Object.assign(new Error("contained"), {
       status: 403,
       upstreamCode: "IDENTITY_SUSPENDED",
       retryable: false,
-    }));
+      requestId: "suspended-request",
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
+    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(terminalError);
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
     render(<ErrorProbe scope={scopeA} />, { wrapper });
     expect(await screen.findByText(/Music is temporarily unavailable\./)).toBeInTheDocument();
     expect(musicWorkspaceClient.load).toHaveBeenCalledTimes(1);
+    expect(musicIdentityCoordinator.reportFailure).toHaveBeenCalledWith(terminalError);
+  });
+
+  it("keeps ordinary workspace failures scoped to content state", async () => {
+    const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
+    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(new Error("contained"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    render(<ErrorProbe scope={scopeA} />, { wrapper });
+    expect(await screen.findByText(/Music is temporarily unavailable\./)).toBeInTheDocument();
+    expect(musicIdentityCoordinator.reportFailure).not.toHaveBeenCalled();
   });
 
   it("retains the one generic retry budget and exposes explicit identity retry", async () => {
@@ -136,6 +159,39 @@ describe("private Music query identity isolation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry identity" }));
     const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
     expect(musicIdentityCoordinator.retry).toHaveBeenCalledOnce();
+  });
+
+  it("does not republish an account A retry error after rendering account B", async () => {
+    const { musicIdentityCoordinator } = await import("../../features/music/musicApi");
+    let rejectRetry!: (reason?: unknown) => void;
+    const retryFlight = new Promise<void>((_resolve, reject) => { rejectRetry = reject; });
+    vi.mocked(musicIdentityCoordinator.retry).mockReturnValueOnce(retryFlight);
+    vi.mocked(musicIdentityCoordinator.reportFailure).mockImplementation((error: unknown) => {
+      coordinatorState.diagnostic = { requestId: (error as { requestId?: string }).requestId };
+    });
+    const queryClient = new QueryClient();
+    vi.spyOn(musicWorkspaceClient, "load").mockResolvedValue(workspace("Ready"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    const view = render(<RetryProbe scope={scopeA} />, { wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry identity" }));
+    view.rerender(<RetryProbe scope={scopeB} />);
+    rejectRetry(Object.assign(new Error("contained"), { requestId: "account-a-request" }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(musicIdentityCoordinator.reportFailure).not.toHaveBeenCalled();
+    expect(coordinatorState.diagnostic).toEqual({});
+  });
+
+  it("exposes the coordinator's sanitized request ID to UI state", () => {
+    coordinatorState.diagnostic = { requestId: "safe-request-8" };
+    const queryClient = new QueryClient();
+    vi.spyOn(musicWorkspaceClient, "load").mockResolvedValue(workspace("Ready"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+
+    render(<CorrelationProbe scope={scopeA} />, { wrapper });
+
+    expect(screen.getByText("safe-request-8")).toBeInTheDocument();
   });
 
   it.each([

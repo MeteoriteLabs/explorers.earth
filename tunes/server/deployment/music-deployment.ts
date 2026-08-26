@@ -3,6 +3,7 @@ import {
   DEPLOYABLE_MUSIC_MIGRATION_MARKERS,
   EXPECTED_MUSIC_MIGRATION_ID,
   LEGACY_CONTAINMENT_MIGRATION_MARKER,
+  musicMigrationMarkerRank,
   type DeployableMusicMigrationMarker,
 } from "../../shared/music-migration-contract";
 
@@ -10,6 +11,12 @@ export const CONTAINMENT_MIGRATION_MARKER = LEGACY_CONTAINMENT_MIGRATION_MARKER;
 export const CURRENT_MIGRATION_MARKER = EXPECTED_MUSIC_MIGRATION_ID;
 export const GATE_KIND = "music-schema-deployment-gate-v2" as const;
 export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
+
+export function rollbackCompatibilityFloorMarker(marker: DeployableMusicMigrationMarker): DeployableMusicMigrationMarker {
+  return marker === "0018_transactional_queue_replacement"
+    ? "0017_publication_idempotency_key_retirement"
+    : marker;
+}
 
 export interface ImageCandidate {
   digest: string;
@@ -31,6 +38,7 @@ export interface DeploymentState {
   rollbackFloorDigest: string;
   /** Image provenance that first completed the irreversible current-schema gate. */
   migrationCompatibilityFloorDigest?: string;
+  migrationCompatibilityFloorMarker?: DeployableMusicMigrationMarker;
 }
 
 export interface DeploymentRuntime {
@@ -110,18 +118,22 @@ export class DeploymentController {
     let candidateStarted = false;
     let promotionAttempted = false;
     let migrationFloorAdvanced = false;
+    const candidateFloorMarker = rollbackCompatibilityFloorMarker(candidate.migrationMarker);
     try {
       await this.runtime.pull(candidate);
       const attestation = await this.runtime.runContainmentGate(candidate);
       if (!verifyGateAttestation(attestation, candidate, this.attestationKey)) {
         throw new Error("gate attestation mismatch");
       }
-      if (candidate.migrationMarker === CURRENT_MIGRATION_MARKER && !previous.migrationCompatibilityFloorDigest) {
+      const previousFloorImage = previous.secureHistory.find((image) => image.digest === previous.migrationCompatibilityFloorDigest);
+      const previousFloorMarker = previous.migrationCompatibilityFloorMarker
+        ?? (previousFloorImage ? rollbackCompatibilityFloorMarker(previousFloorImage.migrationMarker) : LEGACY_CONTAINMENT_MIGRATION_MARKER);
+      if ((musicMigrationMarkerRank(candidateFloorMarker) ?? -1) > (musicMigrationMarkerRank(previousFloorMarker) ?? -1)) {
         // The schema gate is irreversible even if candidate readiness or
         // promotion later fails. Preserve this floor while old traffic stays
         // serving so no subsequent rollback can start a pre-schema image.
         migrationFloorAdvanced = true;
-        this.state = { ...previous, migrationCompatibilityFloorDigest: candidate.digest };
+        this.state = { ...previous, migrationCompatibilityFloorDigest: candidate.digest, migrationCompatibilityFloorMarker: candidateFloorMarker };
       }
       await this.runtime.startPrivateCandidate(candidateSlot, candidate);
       candidateStarted = true;
@@ -140,11 +152,14 @@ export class DeploymentController {
         migrationCompatibilityFloorDigest: migrationFloorAdvanced
           ? candidate.digest
           : previous.migrationCompatibilityFloorDigest,
+        migrationCompatibilityFloorMarker: migrationFloorAdvanced
+          ? candidateFloorMarker
+          : previous.migrationCompatibilityFloorMarker,
       };
       return this.snapshot();
     } catch (error) {
       this.state = migrationFloorAdvanced
-        ? { ...previous, migrationCompatibilityFloorDigest: candidate.digest }
+        ? { ...previous, migrationCompatibilityFloorDigest: candidate.digest, migrationCompatibilityFloorMarker: candidateFloorMarker }
         : previous;
       if (candidateStarted) {
         if (promotionAttempted) await this.runtime.restoreTraffic(previous.activeSlot, previous.active);
@@ -159,8 +174,11 @@ export class DeploymentController {
     if (targetIndex < 0) throw new Error("rollback refused: unknown secure digest");
     const floorIndex = this.state.secureHistory.findIndex((image) => image.digest === this.state.rollbackFloorDigest);
     if (targetIndex < floorIndex) throw new Error("rollback refused: digest is older than rollback floor");
-    if (this.state.migrationCompatibilityFloorDigest
-        && this.state.secureHistory[targetIndex].migrationMarker !== CURRENT_MIGRATION_MARKER) {
+    const floorImage = this.state.secureHistory.find((image) => image.digest === this.state.migrationCompatibilityFloorDigest);
+    const floorMarker = this.state.migrationCompatibilityFloorMarker
+      ?? (floorImage ? rollbackCompatibilityFloorMarker(floorImage.migrationMarker) : undefined);
+    if (floorMarker && (musicMigrationMarkerRank(rollbackCompatibilityFloorMarker(this.state.secureHistory[targetIndex].migrationMarker)) ?? -1)
+        < (musicMigrationMarkerRank(floorMarker) ?? -1)) {
       throw new Error("rollback refused: digest is older than schema compatibility floor");
     }
     return this.deploy(this.state.secureHistory[targetIndex]);

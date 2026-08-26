@@ -87,6 +87,12 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get)).toMatch(/unlisted.*noindex/i);
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/paid/import"].post.responses)).toContain("ENTITLEMENT_REQUIRED");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("publication");
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("queueRevision");
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.thumbnailUrl).toMatchObject({ minLength: 1, maxLength: 2_048 });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.BulkSongInput.properties.songIds).toMatchObject({ minItems: 1, maxItems: 500, uniqueItems: true });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Song.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PlaylistSong.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).toContain("publicSlug");
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).not.toMatch(/capability|secret|hash/i);
     expect(MUSIC_OPENAPI_DOCUMENT.paths).toHaveProperty("/api/music/publication");
@@ -95,6 +101,14 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty("/api/music/guest-capability/revoke");
     expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/publication"].post.parameters)
       .toContainEqual(expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }));
+    const queueReplace = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/queue/replace"].post;
+    expect(queueReplace.parameters).toContainEqual(expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }));
+    expect(Object.keys(queueReplace.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "409", "503"]));
+    expect(JSON.stringify(queueReplace)).toContain("QUEUE_REVISION_CONFLICT");
+    expect(JSON.stringify(queueReplace)).toMatch(/24 hours.*expired.*reused/i);
+    expect(queueReplace.requestBody).toMatchObject({ content: { "application/json": { schema: {
+      required: ["expectedRevision", "songs"], additionalProperties: false,
+    } } } });
     const publicationContract = JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/publication"].post);
     expect(publicationContract).toContain("PUBLICATION_REPLAY_EXPIRED");
     expect(publicationContract).toMatch(/24 hours|86400/i);
@@ -116,11 +130,11 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     // Break caught: syntax-valid documentation advertises camelCase/enum shapes that live route bodies do not return.
     const addedAt = new Date("2026-08-14T10:00:00.000Z");
     const queueRow = {
-      id: 21, user_id: 11, youtube_id: "queue-video", title: "Queue", artist: "Artist",
+      id: 21, user_id: 11, youtube_id: "abcdefghijk", title: "Queue", artist: "Artist",
       thumbnail_url: "https://img/queue", position: 0, status: "queued", played_at: null,
     };
     const savedRow = {
-      id: 31, playlist_id: 7, youtube_id: "saved-video", title: "Saved", artist: "Artist",
+      id: 31, playlist_id: 7, youtube_id: "lmnopqrstuv", title: "Saved", artist: "Artist",
       thumbnail_url: "https://img/saved", position: 0, added_at: addedAt,
     };
     const playlistRow = {
@@ -136,8 +150,8 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       },
     };
     const publicPlaylist = {
-      songs: [{ id: 41, userId: 11, youtubeId: "public-video", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null }],
-      currentlyPlaying: { id: 41, userId: 11, youtubeId: "public-video", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null },
+      songs: [{ id: 41, userId: 11, youtubeId: "zyxwvutsrqp", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null }],
+      currentlyPlaying: { id: 41, userId: 11, youtubeId: "zyxwvutsrqp", title: "Public", artist: "Artist", thumbnailUrl: "https://img/public", position: 0, status: "playing", playedAt: null },
       playedSongs: [],
       user: {
         id: 11, username: "display", guestUrl: "public-owner", venueName: "Venue", theme: { primary: "#123456" },
@@ -145,13 +159,14 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       },
       allowGuestPlayOnDevice: false,
       allowRecentlyPlayedVisibility: true,
-      playlists: [{ id: 7, userId: 11, name: "Saved list", description: null, isVisibleToGuests: true, createdAt: addedAt.toISOString(), updatedAt: addedAt.toISOString(), songs: [{ id: 31, playlistId: 7, youtubeId: "saved-video", title: "Saved", artist: "Artist", thumbnailUrl: "https://img/saved", position: 0, addedAt: addedAt.toISOString() }] }],
+      playlists: [{ id: 7, userId: 11, name: "Saved list", description: null, isVisibleToGuests: true, createdAt: addedAt.toISOString(), updatedAt: addedAt.toISOString(), songs: [{ id: 31, playlistId: 7, youtubeId: "lmnopqrstuv", title: "Saved", artist: "Artist", thumbnailUrl: "https://img/saved", position: 0, addedAt: addedAt.toISOString() }] }],
     };
     const repository = {
       listPlaylists: async () => [playlistRow], getPlaylist: async () => playlistRow,
       createPlaylist: async () => playlistRow, updatePlaylist: async () => playlistRow, deletePlaylist: async () => true,
       addPlaylistSong: async () => savedRow, removePlaylistSong: async () => true, reorderPlaylistSong: async () => true,
-      setPlaylistVisibility: async () => true, listQueue: async () => [queueRow], ownerDashboard: async () => ({ songs: [queueRow], currentlyPlaying: queueRow, playedSongs: [], publication: { mode: "public", publicSlug: "public-owner" } }),
+      setPlaylistVisibility: async () => true, listQueue: async () => [queueRow], ownerDashboard: async () => ({ queueRevision: 0, songs: [queueRow], currentlyPlaying: queueRow, playedSongs: [], publication: { mode: "public", publicSlug: "public-owner" } }),
+      replaceQueue: async () => ({ status: "completed" as const, replayed: false, response: { version: "music-queue/v1" as const, revision: 1, songs: [queueRow] } }),
       addSong: async () => queueRow, setPlaying: async (_owner: number, songId: number | null) => songId === null ? null : queueRow,
       updateSongPosition: async () => queueRow, removeSong: async () => true, removeSongs: async () => 1, clearHistory: async () => 1,
       rotateGuestCapability: async () => ({}), revokeGuestCapability: async () => undefined, setDiscoverable: async () => undefined,
@@ -183,7 +198,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     const ownerRead = { Authorization: "Bearer aaa.bbb.ccc" };
     const ownerWrite = { ...ownerRead, Origin: "https://explorers.example" };
     const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
-    const songInput = { youtubeId: "video", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
+    const songInput = { youtubeId: "abcdefghijk", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
     const cases = [
       ["get", "/api/playlists", "/api/playlists", 200, undefined, ownerRead],
       ["post", "/api/playlists", "/api/playlists", 201, { name: "Saved list", description: null }, ownerWrite],
@@ -192,6 +207,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       ["post", "/api/playlists/{playlistId}/songs", "/api/playlists/7/songs", 201, songInput, ownerWrite],
       ["get", "/api/playlist/songs", "/api/playlist/songs", 200, undefined, ownerRead],
       ["post", "/api/playlist/songs", "/api/playlist/songs", 201, songInput, ownerWrite],
+      ["post", "/api/music/queue/replace", "/api/music/queue/replace", 200, { expectedRevision: 0, songs: [{ playlistId: 7, songId: 31 }] }, { ...ownerWrite, "Idempotency-Key": "openapi-queue-replace" }],
       ["post", "/api/playlist/currently-playing", "/api/playlist/currently-playing", 200, { songId: 21 }, ownerWrite],
       ["patch", "/api/playlist/songs/{songId}/position", "/api/playlist/songs/21/position", 200, { position: 0 }, ownerWrite],
       ["get", "/api/music/dashboard", "/api/music/dashboard", 200, undefined, ownerRead],

@@ -51,6 +51,15 @@ x-tunes-environment: &tunes-environment
   MUSIC_NEW_ENTRY_KILL_SWITCH: ${MUSIC_NEW_ENTRY_KILL_SWITCH:-true}
   MUSIC_COHORT_ENABLED: ${MUSIC_COHORT_ENABLED:-false}
   MUSIC_COHORT_USER_DOCUMENT_IDS: ${MUSIC_COHORT_USER_DOCUMENT_IDS:-}
+  MUSIC_WORKSPACE_KILL_SWITCH: ${MUSIC_WORKSPACE_KILL_SWITCH:-true}
+  MUSIC_FEATURE_COHORT_SALT: ${MUSIC_FEATURE_COHORT_SALT:-}
+  MUSIC_FEATURE_COHORT_VERSION: ${MUSIC_FEATURE_COHORT_VERSION:-disabled-v1}
+  MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST: ${MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST:-}
+  MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: ${MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT:-0}
+  MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST: ${MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST:-}
+  MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT: ${MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT:-0}
+  MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST: ${MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST:-}
+  MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT: ${MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT:-0}
   MUSIC_IDENTITY_MAX_CONCURRENCY: ${MUSIC_IDENTITY_MAX_CONCURRENCY:-8}
   MUSIC_IDENTITY_MAX_PENDING: ${MUSIC_IDENTITY_MAX_PENDING:-32}
   MUSIC_IDENTITY_MAX_INFLIGHT: ${MUSIC_IDENTITY_MAX_INFLIGHT:-32}
@@ -151,13 +160,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0017_publication_idempotency_key_retirement}
+      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0018_transactional_queue_replacement}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}.json
     labels:
       com.explorers.music.slot: blue
       com.explorers.music.commit: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
       com.explorers.music.digest: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0017_publication_idempotency_key_retirement}
+      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0018_transactional_queue_replacement}
 
   tunes-green:
     <<: *tunes-service
@@ -166,13 +175,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0017_publication_idempotency_key_retirement}
+      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0018_transactional_queue_replacement}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}.json
     labels:
       com.explorers.music.slot: green
       com.explorers.music.commit: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
       com.explorers.music.digest: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0017_publication_idempotency_key_retirement}
+      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0018_transactional_queue_replacement}
 
   tunes-gate:
     profiles: [deployment]
@@ -190,7 +199,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: ${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_CANDIDATE_COMMIT:?TUNES_CANDIDATE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0017_publication_idempotency_key_retirement}
+      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0018_transactional_queue_replacement}
       MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}.json
     depends_on:

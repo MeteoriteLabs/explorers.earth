@@ -45,7 +45,8 @@
     "0014_durable_reactivation_authority",
     "0015_publication_operation_archive",
     "0016_publication_operation_retention",
-    "0017_publication_idempotency_key_retirement"
+    "0017_publication_idempotency_key_retirement",
+    "0018_transactional_queue_replacement"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

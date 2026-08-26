@@ -21,7 +21,7 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
   it("retains the append-only database-owned publication clock before durable reactivation and archive authority", () => {
-    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0017_publication_idempotency_key_retirement");
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0018_transactional_queue_replacement");
     const migration = loadMusicMigrations().find(({ id }) => id === "0013_publication_operation_database_clock");
     expect(migration?.id).toBe("0013_publication_operation_database_clock");
     expect(migration?.sql).toMatch(/CREATE OR REPLACE FUNCTION enforce_music_publication_operation_immutability/i);
@@ -52,10 +52,24 @@ describe("Music migration authority contracts", () => {
       "0015_publication_operation_archive",
       "0016_publication_operation_retention",
       "0017_publication_idempotency_key_retirement",
+      "0018_transactional_queue_replacement",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
     expect(() => loadMusicMigrations(resolve(repositoryRoot, "tunes/server/test/fixtures/migrations-missing"))).toThrow();
+  });
+
+  it("adds backward-compatible queue revision and durable owner-scoped replacement operations", () => {
+    const migration = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations")).at(-1);
+    expect(migration?.id).toBe("0018_transactional_queue_replacement");
+    expect(migration?.sql).toMatch(/ADD COLUMN music_queue_revision BIGINT NOT NULL DEFAULT 0/i);
+    expect(migration?.sql).toMatch(/CREATE TABLE music_owner_operations/i);
+    expect(migration?.sql).toMatch(/PRIMARY KEY \(music_user_id, operation, idempotency_key_hash\)/i);
+    expect(migration?.sql).toMatch(/request_hash TEXT NOT NULL/i);
+    expect(migration?.sql).toMatch(/response_body JSONB NOT NULL/i);
+    expect(migration?.sql).toMatch(/GRANT SELECT, INSERT, DELETE ON music_owner_operations TO music_runtime/i);
+    expect(migration?.sql).toMatch(/REVOKE ALL ON music_owner_operations FROM music_runtime/i);
+    expect(migration?.sql).not.toMatch(/DROP TABLE|DROP COLUMN/i);
   });
 
   it("defines one explicit ordered deployment marker authority", () => {
@@ -77,8 +91,9 @@ describe("Music migration authority contracts", () => {
       "0015_publication_operation_archive",
       "0016_publication_operation_retention",
       "0017_publication_idempotency_key_retirement",
+      "0018_transactional_queue_replacement",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
@@ -201,7 +216,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0018_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0019_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

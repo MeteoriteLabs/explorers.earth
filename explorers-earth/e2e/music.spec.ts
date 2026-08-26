@@ -77,11 +77,25 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
     if (options.ensureGate?.call === ensureCalls) await options.ensureGate.wait;
     if (options.ensureDelayMs) await new Promise((resolveDelay) => setTimeout(resolveDelay, options.ensureDelayMs));
     if (ensureCalls <= (options.ensureFailures ?? 0)) {
+      const requestId = `music-e2e-ensure-${ensureCalls}`;
       await route.fulfill({
         status: 503,
         contentType: "application/json",
-        headers: { "retry-after": "1" },
-        body: JSON.stringify({ error: { code: "IDENTITY_UPSTREAM_UNAVAILABLE", retryable: true } }),
+        headers: {
+          "retry-after": "1",
+          "x-request-id": requestId,
+          "access-control-expose-headers": "Retry-After, X-Request-Id",
+        },
+        body: JSON.stringify({
+          version: "music-error/v1",
+          error: {
+            code: "UPSTREAM_UNAVAILABLE",
+            message: "Contained fixture failure.",
+            action: "retry",
+            retryable: true,
+            requestId,
+          },
+        }),
       });
       return;
     }
@@ -107,6 +121,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
+      queueRevision: 0,
       songs: [],
       currentlyPlaying: null,
       playedSongs: [],
@@ -315,8 +330,14 @@ test("playlist tabs, keyboard reorder, and polite announcement work without muta
       description: "For the drive",
       isVisibleToGuests: false,
       songs: [
-        { id: 1, title: "North", artist: "Sky", thumbnailUrl: "https://images.example/north.jpg", position: 0 },
-        { id: 2, title: "South", artist: "Sea", thumbnailUrl: "https://images.example/south.jpg", position: 1 },
+        {
+          id: 1, playlistId: 10, youtubeId: "northSong01", title: "North", artist: "Sky",
+          thumbnailUrl: "https://images.example/north.jpg", position: 0, addedAt: "2026-08-26T00:00:00.000Z",
+        },
+        {
+          id: 2, playlistId: 10, youtubeId: "southSong02", title: "South", artist: "Sea",
+          thumbnailUrl: "https://images.example/south.jpg", position: 1, addedAt: "2026-08-26T00:00:00.000Z",
+        },
       ],
     },
     { id: 11, name: "Quiet", description: null, isVisibleToGuests: true, songs: [] },
@@ -333,13 +354,14 @@ test("playlist tabs, keyboard reorder, and polite announcement work without muta
 });
 
 test("a Music outage keeps the Explorer shell usable and explicit retry recovers", async ({ page }) => {
-  const audit = await installMusicMocks(page, { ensureFailures: 1 });
+  // Exhaust the client's three-attempt reliability budget; the explicit UI retry is call four.
+  const audit = await installMusicMocks(page, { ensureFailures: 3 });
   await page.goto("/recommendations/music");
   await expect(page.getByText("Music is taking longer than expected. Your Explorers account is ready.")).toBeVisible();
   await expect(page.getByRole("link", { name: /Home/i }).or(page.getByRole("button", { name: /Home/i })).first()).toBeVisible();
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
-  expect(audit.ensureCalls()).toBe(2);
+  expect(audit.ensureCalls()).toBe(4);
 });
 
 test("Music loading animation respects reduced-motion preference", async ({ page }) => {

@@ -16,6 +16,7 @@ export interface TunesDashboardData {
   guestUrl: string | null;
   localUser: null;
   identityStatus: ReturnType<typeof musicIdentityCoordinator.getSnapshot>;
+  requestId?: string;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<unknown>;
@@ -63,11 +64,23 @@ export function retryWorkspaceFailure(failureCount: number, error: unknown): boo
   return failureCount < 1;
 }
 
+function isTerminalWorkspaceFailure(error: unknown): boolean {
+  const failure = error as { code?: unknown; upstreamCode?: unknown };
+  const code = typeof failure?.code === "string" ? failure.code : "";
+  const upstreamCode = typeof failure?.upstreamCode === "string" ? failure.upstreamCode : "";
+  return terminalWorkspaceCodes.has(code) || terminalWorkspaceCodes.has(upstreamCode);
+}
+
 export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardData {
   const identityStatus = useSyncExternalStore(
     musicIdentityCoordinator.subscribe,
     musicIdentityCoordinator.getSnapshot,
     musicIdentityCoordinator.getSnapshot,
+  );
+  const identityDiagnostic = useSyncExternalStore(
+    musicIdentityCoordinator.subscribe,
+    musicIdentityCoordinator.getDiagnosticSnapshot,
+    musicIdentityCoordinator.getDiagnosticSnapshot,
   );
   const query = useQuery({
     queryKey: scope ? musicWorkspaceQueryKey(scope) : ["music-workspace", "no-user", "no-account"],
@@ -77,7 +90,9 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     retry: retryWorkspaceFailure,
   });
   useEffect(() => {
-    if (query.error) musicIdentityCoordinator.reportFailure(query.error);
+    if (query.error && isTerminalWorkspaceFailure(query.error)) {
+      musicIdentityCoordinator.reportFailure(query.error);
+    }
   }, [query.error]);
   const visibleData = query.error ? undefined : query.data;
   const dashboard = visibleData?.dashboard ?? null;
@@ -89,6 +104,7 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     guestUrl: dashboard?.publication.publicSlug ?? null,
     localUser: null,
     identityStatus,
+    requestId: identityDiagnostic.requestId,
     isLoading: identityStatus === "setting_up" || (scope !== undefined && query.isLoading),
     error: query.error ? "Music is temporarily unavailable." : null,
     refetch: query.refetch,

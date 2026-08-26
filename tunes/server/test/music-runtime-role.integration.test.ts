@@ -204,7 +204,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       expectedSessionVersion: 1,
       reason: "logout_all",
     })).resolves.toMatchObject({ resultSessionVersion: 2 });
-    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(17);
+    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(18);
 
     for (const statement of [
       "SET session_replication_role='replica'",
@@ -252,6 +252,11 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       name: "capability UPDATE grant option on one column",
       grant: `GRANT UPDATE (username) ON TABLE users TO ${runtimeCapabilityRole} WITH GRANT OPTION`,
       revoke: `REVOKE UPDATE (username) ON TABLE users FROM ${runtimeCapabilityRole}`,
+    },
+    {
+      name: "capability UPDATE on owner idempotency operations",
+      grant: `GRANT UPDATE ON TABLE music_owner_operations TO ${runtimeCapabilityRole}`,
+      revoke: `REVOKE UPDATE ON TABLE music_owner_operations FROM ${runtimeCapabilityRole}`,
     },
     {
       name: "PUBLIC SELECT on one column",

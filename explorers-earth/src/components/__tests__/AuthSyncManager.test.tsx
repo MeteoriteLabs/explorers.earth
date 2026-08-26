@@ -7,6 +7,7 @@ import AuthSyncManager from "../AuthSyncManager";
 const setAuthority = vi.hoisted(() => vi.fn());
 const reconcile = vi.hoisted(() => vi.fn(async () => undefined));
 const reset = vi.hoisted(() => vi.fn());
+const reportFailure = vi.hoisted(() => vi.fn());
 const publish = vi.hoisted(() => vi.fn());
 const clearWorkspaceScope = vi.hoisted(() => vi.fn(async () => undefined));
 const clearAllWorkspaceQueries = vi.hoisted(() => vi.fn(async () => undefined));
@@ -19,7 +20,7 @@ vi.mock("@apollo/client", () => ({ useQuery: vi.fn(), gql: () => ({}) }));
 vi.mock("../../store/store", () => ({ default: vi.fn() }));
 vi.mock("../../features/music/musicApi", () => ({
   musicApi: { setAuthority },
-  musicIdentityCoordinator: { reconcile, reset },
+  musicIdentityCoordinator: { reconcile, reset, reportFailure },
 }));
 vi.mock("../../hooks/useTunesDashboard", () => ({
   clearMusicWorkspaceScope: clearWorkspaceScope,
@@ -39,6 +40,16 @@ vi.mock("../../features/music/musicSessionBoundary", () => ({ musicSessionBounda
 } }));
 
 const complete = (documentId: string) => ({ documentId, Account_Name: "Ready", Account_Type: "Personal", mobile_number: "+10000000001" });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 describe("AuthSyncManager immutable authority selection", () => {
   beforeEach(() => {
@@ -153,5 +164,39 @@ describe("AuthSyncManager immutable authority selection", () => {
     await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(2));
     expect(reset).toHaveBeenCalledTimes(2);
     expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("cannot republish account A diagnostics after account B becomes active", async () => {
+    const accountA = deferred<void>();
+    const accountB = deferred<void>();
+    const diagnostic = { status: "idle", requestId: undefined as string | undefined };
+    reconcile.mockImplementation(async (input: { account: { documentId: string } }) => {
+      diagnostic.status = "setting_up";
+      return input.account.documentId === "account-a" ? accountA.promise : accountB.promise;
+    });
+    reportFailure.mockImplementation((error: { requestId?: string }) => {
+      diagnostic.status = "retryable";
+      diagnostic.requestId = error.requestId;
+    });
+    const query = useQuery as unknown as ReturnType<typeof vi.fn>;
+    query.mockReturnValue({ data: { usersPermissionsUser: {
+      documentId: "user-document", provider: "local", confirmed: true, blocked: false,
+      accounts: [complete("account-a")],
+    } } });
+    const view = render(<AuthSyncManager />);
+    await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1));
+
+    query.mockReturnValue({ data: { usersPermissionsUser: {
+      documentId: "user-document", provider: "local", confirmed: true, blocked: false,
+      accounts: [complete("account-b")],
+    } } });
+    view.rerender(<AuthSyncManager />);
+    await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(2));
+    accountA.reject(Object.assign(new Error("contained"), { requestId: "account-a-request" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(diagnostic).toEqual({ status: "setting_up", requestId: undefined });
+    expect(reportFailure).not.toHaveBeenCalled();
+    accountB.resolve();
   });
 });

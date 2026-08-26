@@ -5,7 +5,7 @@ import { MusicPageContent } from "../Music";
 import * as MusicPageModule from "../Music";
 
 vi.mock("../../components/SEO", () => ({ default: () => null }));
-vi.mock("../../components/MusicDashboard", () => ({ default: () => <div data-testid="music-content" /> }));
+vi.mock("../../components/MusicDashboard", () => ({ default: ({ complete }: { complete?: boolean }) => <div data-testid="music-content" data-complete={complete ? "true" : "false"} /> }));
 
 const data: any = {
   playlists: [], dashboard: null, entitlement: null, playlist: null, guestUrl: null, localUser: null,
@@ -13,6 +13,14 @@ const data: any = {
 };
 
 describe("Music page state hierarchy", () => {
+  it("keeps the existing minimal workspace unless the runtime owner decision is true", () => {
+    const ready = { ...data, identityStatus: "ready", isLoading: false, dashboard: { songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" } }, entitlement: { state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 } };
+    const first = render(<MusicPageContent authenticated onboarding="complete" data={ready} ownerWorkspace={false} onAction={vi.fn()} />);
+    expect(screen.getByTestId("music-content")).toHaveAttribute("data-complete", "false");
+    first.unmount();
+    render(<MusicPageContent authenticated onboarding="complete" data={ready} ownerWorkspace onAction={vi.fn()} />);
+    expect(screen.getByTestId("music-content")).toHaveAttribute("data-complete", "true");
+  });
   it("treats eligibility errors and partial/cache-and-network results as unknown until authoritative recovery", () => {
     const select = (MusicPageModule as any).onboardingFromEligibility;
     expect(typeof select).toBe("function");
@@ -45,6 +53,19 @@ describe("Music page state hierarchy", () => {
     render(<MusicPageContent authenticated onboarding="complete" data={{ ...data, identityStatus: "retryable", isLoading: false }} onAction={vi.fn()} />);
     expect(screen.getByRole("status")).toHaveTextContent("Music is taking longer than expected. Your Explorers account is ready.");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("shows a sanitized correlation ID only under Technical details", () => {
+    render(<MusicPageContent authenticated onboarding="complete" data={{
+      ...data,
+      identityStatus: "unavailable",
+      isLoading: false,
+      requestId: "safe-request-42",
+    }} onAction={vi.fn()} />);
+
+    const details = screen.getByText("Technical details").closest("details");
+    expect(details).toHaveTextContent("Request ID: safe-request-42");
+    expect(screen.queryByText("Request ID: safe-request-42", { selector: "section > p" })).not.toBeInTheDocument();
   });
 
   it.each(["suspended", "pending_deletion"] as const)("hides cached workspace content after terminal %s authority", (identityStatus) => {
@@ -88,7 +109,7 @@ describe("Music page state hierarchy", () => {
     const loaded = await createMusicWorkspaceClient(async (input) => input.path === "/api/playlists"
       ? new Response("[]", { status: 200 })
       : input.path === "/api/music/dashboard"
-        ? new Response(JSON.stringify({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        ? new Response(JSON.stringify({ queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
         : new Response(JSON.stringify({ state: entitlementState, coreRead: true, coreMutation: true, paidMutation: entitlementState === "entitled", maxAgeSeconds: 600, ...(entitlementState === "entitled" ? { sourceUpdatedAt: "2026-08-20T17:00:00.000Z" } : {}) }), { status: 200 })).load();
     const ready = {
       ...data,

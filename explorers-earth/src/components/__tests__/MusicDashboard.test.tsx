@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import MusicDashboard from "../MusicDashboard";
 import { musicWorkspaceClient } from "../../hooks/useTunesDashboard";
 import { MusicClientError } from "../../lib/localTunesApiClient";
+import { musicApi } from "../../features/music/musicApi";
 
 const base = {
   playlists: [] as Array<any>,
@@ -24,6 +25,95 @@ function deferred<T>() {
 
 describe("Music workspace UI", () => {
   afterEach(() => vi.restoreAllMocks());
+  it("composes the approved owner player, search, queue, and history surface", () => {
+    const playlists = [{ id: 1, name: "Saved mix", description: null, isVisibleToGuests: false, songs: [] }];
+    render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
+    expect(screen.getByLabelText("Music player region")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Find music" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Queue" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Recently played" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add your first song" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Saved mix" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create playlist" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sharing settings" })).toBeInTheDocument();
+  });
+
+  it("exposes saved-playlist recovery and atomic queue replacement actions", async () => {
+    const playlist = {
+      id: 1, name: "Saved mix", description: null, isVisibleToGuests: false,
+      songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }],
+    };
+    const remove = vi.spyOn(musicWorkspaceClient, "removePlaylistSong").mockResolvedValue(undefined);
+    const removePlaylist = vi.spyOn(musicWorkspaceClient, "deletePlaylist").mockResolvedValue(undefined);
+    const request = vi.spyOn(musicApi, "request").mockResolvedValue(new Response(JSON.stringify({
+      version: "music-queue/v1", revision: 8, songs: [],
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const data = { ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) };
+    render(<MusicDashboard data={data} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with Saved mix" }));
+    expect(screen.getByRole("dialog", { name: "Replace active queue" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: "POST", path: "/api/music/queue/replace",
+      body: { expectedRevision: 7, songs: [{ playlistId: 1, songId: 11 }] },
+    }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove A from Saved mix" }));
+    expect(remove).toHaveBeenCalledWith(1, 11, expect.stringMatching(/^playlist-song-remove-/));
+    await userEvent.click(screen.getByRole("button", { name: "Delete playlist Saved mix" }));
+    expect(screen.getByRole("dialog", { name: "Delete Saved mix" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Confirm playlist deletion" }));
+    expect(removePlaylist).toHaveBeenCalledWith(1, expect.stringMatching(/^playlist-delete-/));
+  });
+
+  it("reuses the queue replacement key and refreshes after an uncertain failure", async () => {
+    const playlist = {
+      id: 1, name: "Saved mix", description: null, isVisibleToGuests: false,
+      songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }],
+    };
+    const request = vi.spyOn(musicApi, "request")
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        version: "music-queue/v1", revision: 8, songs: [],
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+    const refetch = vi.fn(async () => undefined);
+    render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with Saved mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+
+    expect(request.mock.calls[0][0].idempotencyKey).toBe(request.mock.calls[1][0].idempotencyKey);
+  });
+
+  it("starts a new queue replacement operation after switching playlists", async () => {
+    const song = (id: number, title: string) => ({ id, playlistId: id, youtubeId: "abcdefghijk", title, artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" });
+    const playlists = [
+      { id: 1, name: "First mix", description: null, isVisibleToGuests: false, songs: [song(11, "A")] },
+      { id: 2, name: "Second mix", description: null, isVisibleToGuests: false, songs: [song(22, "C")] },
+    ];
+    const request = vi.spyOn(musicApi, "request")
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        version: "music-queue/v1", revision: 8, songs: [],
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+    const refetch = vi.fn(async () => undefined);
+    render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with First mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Second mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with Second mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+
+    expect(request.mock.calls[1][0]).toMatchObject({ body: { expectedRevision: 7, songs: [{ playlistId: 2, songId: 22 }] } });
+    expect(request.mock.calls[1][0].idempotencyKey).not.toBe(request.mock.calls[0][0].idempotencyKey);
+  });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
     expect(screen.getByRole("heading", { name: "Create your first playlist" })).toBeInTheDocument();

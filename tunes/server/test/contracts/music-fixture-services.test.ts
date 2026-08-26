@@ -29,6 +29,13 @@ describe("deterministic Music fixture services", () => {
       { path: "/api/users/me", method: "DELETE", authorization: "Bearer fixture-read-only-token" },
       { path: "/api/accounts", method: "POST", authorization: "Bearer fixture-read-only-token" },
     ]) expect(fixtureResponse(denied).status).not.toBe(200);
+
+    expect(fixtureResponse({
+      path: "/api/accounts", method: "GET", authorization: "Bearer fixture-read-only-token",
+    })).toMatchObject({
+      status: 200,
+      body: { meta: { pagination: { page: 1, pageCount: 1, pageSize: 50, total: 1 } } },
+    });
   });
 
   it("allows only the exact immutable-ID absence proof for the deterministic credential", () => {

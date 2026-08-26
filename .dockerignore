@@ -170,6 +170,8 @@ explorers-earth/src/features/Movies/hooks/*
 explorers-earth/src/features/Movies/types/*
 !explorers-earth/src/features/Movies/utils/
 explorers-earth/src/features/Movies/utils/*
+!explorers-earth/src/features/music/components/
+explorers-earth/src/features/music/components/*
 !explorers-earth/src/features/People/api/
 explorers-earth/src/features/People/api/*
 !explorers-earth/src/features/People/components/
@@ -787,10 +789,18 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Settings/components/AccountDeletionLifecyclePanel.tsx
 !explorers-earth/src/features/Settings/components/BillingTab.tsx
 !explorers-earth/src/features/Settings/components/LanguageSelector.tsx
+!explorers-earth/src/features/music/components/MusicHistory.tsx
+!explorers-earth/src/features/music/components/MusicPlayer.tsx
+!explorers-earth/src/features/music/components/MusicQueue.tsx
+!explorers-earth/src/features/music/components/MusicSearch.tsx
+!explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx
 !explorers-earth/src/features/music/musicApi.ts
 !explorers-earth/src/features/music/musicEntitlementContract.ts
 !explorers-earth/src/features/music/musicIdentityCoordinator.ts
 !explorers-earth/src/features/music/musicPublicationCommandRegistry.ts
+!explorers-earth/src/features/music/musicQueueClient.ts
+!explorers-earth/src/features/music/musicRollout.ts
+!explorers-earth/src/features/music/musicSearchClient.ts
 !explorers-earth/src/features/music/musicSessionBoundary.ts
 !explorers-earth/src/features/music/musicShareUrl.ts
 !explorers-earth/src/features/music/musicState.ts

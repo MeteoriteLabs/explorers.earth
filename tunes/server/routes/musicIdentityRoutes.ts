@@ -40,6 +40,7 @@ export interface MusicIdentityRouteDependencies {
   logger?: (entry: Record<string, unknown>) => void;
   fingerprint?: (proof: string) => string;
   requestIdFactory?: () => string;
+  now?: () => number;
   entryEnabled?: (proof: string, requestId: string) => boolean | Promise<boolean>;
   trustedProxyHops?: 0 | 1;
   isTrustedProxy?: (peerAddress: string | undefined) => boolean;
@@ -62,7 +63,6 @@ export interface MusicIdentityRouteDependencies {
     conflict: string;
   }) => void;
 }
-
 /** Reject bytes before the global JSON/urlencoded parsers can inspect them. */
 export function setupMusicIdentityBodylessPreflight(app: Express): void {
   app.use((req, res, next) => {
@@ -79,10 +79,10 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
   const logger = dependencies.logger ?? ((entry) => console.info(JSON.stringify(entry)));
   const fingerprint = dependencies.fingerprint ?? fingerprintStrapiProof;
   const requestIdFactory = dependencies.requestIdFactory ?? randomUUID;
-
+  const now = dependencies.now ?? Date.now;
   app.post("/api/music/identity/ensure", async (req: Request, res: Response) => {
     if (req.path !== "/api/music/identity/ensure") return res.status(404).end();
-    const startedAt = Date.now();
+    const startedAt = now();
     const before = dependencies.telemetry?.();
     const requestId = validRequestId(req.get("x-request-id")) ?? requestIdFactory();
     res.setHeader("X-Request-Id", requestId);
@@ -127,7 +127,7 @@ export function setupMusicIdentityRoutes(app: Express, dependencies: MusicIdenti
       }
       return res.status(status).json(musicErrorEnvelope(error, requestId));
     } finally {
-      const latencyMs = Math.max(0, Date.now() - startedAt);
+      const latencyMs = Math.max(0, now() - startedAt);
       logger({
         event: "music_identity_ensure",
         requestId,

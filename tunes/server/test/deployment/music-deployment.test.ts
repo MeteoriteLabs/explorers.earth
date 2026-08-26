@@ -25,6 +25,11 @@ const schemaCandidate: ImageCandidate = {
   commit: "4444444444444444444444444444444444444444",
   migrationMarker: "0017_publication_idempotency_key_retirement",
 };
+const currentAdditiveCandidate: ImageCandidate = {
+  digest: `sha256:${"5".repeat(64)}`,
+  commit: "5555555555555555555555555555555555555555",
+  migrationMarker: "0018_transactional_queue_replacement",
+};
 
 function initialState(): DeploymentState {
   return {
@@ -146,6 +151,26 @@ describe("immutable Music deployment rehearsal", () => {
     expect(controller.snapshot().migrationCompatibilityFloorDigest).toBe(schemaCandidate.digest);
     expect(fake.serving()).toBe(prior.digest);
     await expect(controller.rollback(prior.digest)).rejects.toThrow(/schema compatibility floor/i);
+  });
+
+  it("does not advance the 0017 rollback floor when additive 0018 candidate readiness fails", async () => {
+    // Break caught: additive 0018 is treated as a new schema epoch and strands the healthy 0017 image.
+    const prior17 = { ...schemaCandidate, digest: `sha256:${"6".repeat(64)}`, commit: "6666666666666666666666666666666666666666" };
+    const state = initialState();
+    state.active = prior17;
+    state.secureHistory = [prior17];
+    state.rollbackFloorDigest = prior17.digest;
+    state.migrationCompatibilityFloorDigest = prior17.digest;
+    const fake = runtime("readiness");
+    fake.implementation.runContainmentGate = async (image) => createGateAttestation(image, "test-attestation-key-that-is-long-enough", "a".repeat(64));
+    const controller = new DeploymentController(state, fake.implementation, "test-attestation-key-that-is-long-enough");
+
+    await expect(controller.deploy(currentAdditiveCandidate)).rejects.toThrow("candidate readiness failed");
+    expect(controller.snapshot().migrationCompatibilityFloorDigest).toBe(prior17.digest);
+    const rollbackRuntime = runtime();
+    rollbackRuntime.implementation.runContainmentGate = async (image) => createGateAttestation(image, "test-attestation-key-that-is-long-enough", "b".repeat(64));
+    const rollbackController = new DeploymentController(controller.snapshot(), rollbackRuntime.implementation, "test-attestation-key-that-is-long-enough");
+    await expect(rollbackController.rollback(prior17.digest)).resolves.toMatchObject({ active: prior17 });
   });
 });
 

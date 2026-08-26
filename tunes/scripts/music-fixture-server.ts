@@ -56,7 +56,7 @@ export function fixtureResponse(input: {
     if (input.method !== "GET") return { status: 405, body: { error: "fixture identity operation denied" } };
   }
   if (input.path === "/api/users/me") return { status: 200, body: user };
-  if (input.path === "/api/accounts") return { status: 200, body: { data: user.accounts, meta: { pagination: { page: 1, pageCount: 1, pageSize: 100, total: 1 } } } };
+  if (input.path === "/api/accounts") return { status: 200, body: { data: user.accounts, meta: { pagination: { page: 1, pageCount: 1, pageSize: 50, total: 1 } } } };
   return { status: 404, body: { error: "fixture route not found" } };
 }
 

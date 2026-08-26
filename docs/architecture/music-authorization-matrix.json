@@ -173,6 +173,25 @@
     },
     {
       "method": "GET",
+      "path": "/api/music/features",
+      "source": "tunes/server/routes/musicFeatureRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/music-fixture/readiness",
       "source": "tunes/server/routes/musicFixtureProbe.ts",
       "decision": "public",
@@ -535,6 +554,25 @@
     {
       "method": "GET",
       "path": "/api/playlist/songs",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/queue/replace",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "decision": "owner",
       "allowed": {

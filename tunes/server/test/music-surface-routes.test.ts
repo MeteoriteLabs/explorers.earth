@@ -21,7 +21,15 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     reorderPlaylistSong: vi.fn(async (owner: number, playlist: number, song: number, position: number) => { calls.push(["playlist-song-reorder", owner, playlist, song, position]); return playlist === 9; }),
     setPlaylistVisibility: vi.fn(async (owner: number, playlist: number, visible: boolean) => { calls.push(["playlist-visibility", owner, playlist, visible]); return playlist === 9; }),
     listQueue: vi.fn(async (owner: number) => { calls.push(["queue", owner]); return []; }),
-    ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { songs: [], playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } }; }),
+    replaceQueue: vi.fn(async (owner: number, key: string, revision: number, songs: unknown[]) => {
+      calls.push(["replace-queue", owner, key, revision, songs]);
+      if (key === "conflict-key") return { status: "conflict" as const };
+      if (revision !== 4) return { status: "stale" as const, revision: 4 };
+      return { status: "completed" as const, replayed: key === "replay-key", response: { version: "music-queue/v1", revision: 5, songs: [
+        { id: 1, user_id: owner, youtube_id: "abcdefghijk", title: "Song", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "queued", played_at: null },
+      ] } };
+    }),
+    ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { queueRevision: 4, songs: [], playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } }; }),
     addSong: vi.fn(async (owner: number, input: unknown) => { calls.push(["add-song", owner, input]); return { id: 1 }; }),
     setPlaying: vi.fn(async (owner: number, id: number | null) => { calls.push(["playing", owner, id]); return id === null ? null : { id }; }),
     updateSongPosition: vi.fn(async (owner: number, id: number, position: number) => { calls.push(["position", owner, id, position]); return { id, position }; }),
@@ -65,8 +73,8 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     requestIdFactory: () => "route-request-id",
     allowedOrigins: ["https://explorers.example"],
     youtube: {
-      search: vi.fn(async () => ({ items: [{ id: { videoId: "yt" }, snippet: { title: "safe" } }], nextPageToken: null })),
-      videoFromUrl: vi.fn(async () => ({ id: { videoId: "yt" }, snippet: { title: "safe" } })),
+      search: vi.fn(async () => ({ items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "safe" } }], nextPageToken: null })),
+      videoFromUrl: vi.fn(async () => ({ id: { videoId: "abcdefghijk" }, snippet: { title: "safe" } })),
     },
     ...routeOverrides,
   });
@@ -79,7 +87,7 @@ describe("canonical Music REST surfaces", () => {
     expect((await request(app).get("/api/music/dashboard")).status).toBe(401);
     const response = await request(app).get("/api/music/dashboard").set("Authorization", "Bearer aaa.bbb.ccc");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
+    expect(response.body).toEqual({ queueRevision: 4, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
     expect(calls).toContainEqual(["dashboard", 11]);
   });
 
@@ -125,13 +133,90 @@ describe("canonical Music REST surfaces", () => {
     const { app, calls } = appFor();
     const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
     expect((await request(app).get("/api/playlist/songs").set("Authorization", headers.Authorization)).status).toBe(200);
-    expect((await request(app).post("/api/playlist/songs").set(headers).send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" })).status).toBe(201);
+    expect((await request(app).post("/api/playlist/songs").set(headers).send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" })).status).toBe(201);
     expect((await request(app).patch("/api/playlist/songs/7/position").set(headers).send({ position: 2 })).status).toBe(200);
     expect((await request(app).delete("/api/playlist/songs/7").set(headers)).status).toBe(204);
     expect((await request(app).delete("/api/playlist/songs/bulk").set(headers).send({ songIds: [7, 8] })).status).toBe(204);
     expect((await request(app).delete("/api/playlist/history").set(headers)).status).toBe(204);
     expect(calls.filter((entry) => ["queue", "add-song", "position", "remove-song", "remove-songs", "history"].includes(String(entry[0])))
       .every((entry) => entry[1] === 11)).toBe(true);
+  });
+
+  it.each(["abcdefghij", "abcdefghijkl", "A".repeat(65)])("rejects noncanonical YouTube ID %s before mutation", async (youtubeId) => {
+    const { app, calls } = appFor();
+    const response = await request(app).post("/api/playlist/songs")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" })
+      .send({ youtubeId, title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(response.status).toBe(400);
+    expect(calls.some((entry) => entry[0] === "add-song")).toBe(false);
+  });
+
+  it("accepts an exact canonical YouTube ID and returns a readable song", async () => {
+    const { app, calls } = appFor({
+      addSong: vi.fn(async (owner: number, input: any) => ({ id: 1, user_id: owner, ...input, position: 0, status: "queued", played_at: null })),
+    });
+    const response = await request(app).post("/api/playlist/songs")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" })
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(response.status).toBe(201);
+    expect(response.body.youtubeId).toBe("abcdefghijk");
+    expect(calls.some((entry) => entry[0] === "add-song")).toBe(false);
+  });
+
+  it("accepts the shared 2048-character thumbnail bound and rejects the next byte", async () => {
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+    expect((await request(appFor().app).post("/api/playlist/songs").set(headers)
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "x".repeat(2_048) })).status).toBe(201);
+    expect((await request(appFor().app).post("/api/playlist/songs").set(headers)
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "x".repeat(2_049) })).status).toBe(400);
+  });
+
+  it("accepts one atomic bulk removal for the full 500-song queue", async () => {
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+    const songIds = Array.from({ length: 500 }, (_, index) => index + 1);
+    expect((await request(appFor().app).delete("/api/playlist/songs/bulk").set(headers).send({ songIds })).status).toBe(204);
+    expect((await request(appFor().app).delete("/api/playlist/songs/bulk").set(headers).send({ songIds: [...songIds, 501] })).status).toBe(400);
+  });
+
+  it("returns a contained client error when the active queue is full", async () => {
+    const { app } = appFor({ addSong: vi.fn(async () => undefined) });
+    const response = await request(app).post("/api/playlist/songs")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" })
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
+  });
+
+  it("contains saved playlist and saved-song capacity failures", async () => {
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+    const playlistResponse = await request(appFor({ createPlaylist: vi.fn(async () => undefined) }).app)
+      .post("/api/playlists").set(headers).send({ name: "Full", description: null });
+    expect(playlistResponse.status).toBe(400);
+    expect(playlistResponse.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
+
+    const songResponse = await request(appFor({ addPlaylistSong: vi.fn(async () => null) }).app)
+      .post("/api/playlists/9/songs").set(headers)
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(songResponse.status).toBe(400);
+    expect(songResponse.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
+  });
+
+  it("atomically replaces the principal queue and rejects stale, reused, targeted, unauthenticated, and cross-origin requests", async () => {
+    // Break caught: replacement trusts owner input or loses typed concurrency/idempotency failures.
+    const { app, calls } = appFor();
+    const body = { expectedRevision: 4, songs: [{ playlistId: 9, songId: 31 }] };
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example", "Idempotency-Key": "replace-key" };
+    const success = await request(app).post("/api/music/queue/replace").set(headers).send(body);
+    expect(success.status).toBe(200);
+    expect(success.body).toEqual({ version: "music-queue/v1", revision: 5, songs: [{ id: 1, userId: 11, youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "queued", playedAt: null }] });
+    expect(calls).toContainEqual(["replace-queue", 11, "replace-key", 4, [{ playlistId: 9, songId: 31 }]]);
+    expect((await request(app).post("/api/music/queue/replace").set({ ...headers, "Idempotency-Key": "replay-key" }).send(body)).status).toBe(200);
+    expect((await request(app).post("/api/music/queue/replace").set(headers).send({ ...body, expectedRevision: 3 })).body.error.code).toBe("QUEUE_REVISION_CONFLICT");
+    expect((await request(app).post("/api/music/queue/replace").set({ ...headers, "Idempotency-Key": "conflict-key" }).send(body)).body.error.code).toBe("IDEMPOTENCY_CONFLICT");
+    expect((await request(app).post("/api/music/queue/replace").set(headers).send({ ...body, ownerId: 99 })).status).toBe(400);
+    expect((await request(app).post("/api/music/queue/replace").set(headers).send({ ...body, username: "other" })).status).toBe(400);
+    expect((await request(app).post("/api/music/queue/replace").set("Origin", "https://explorers.example").set("Idempotency-Key", "x").send(body)).status).toBe(401);
+    expect((await request(app).post("/api/music/queue/replace").set("Authorization", headers.Authorization).set("Origin", "https://evil.example").set("Idempotency-Key", "x").send(body)).status).toBe(403);
   });
 
   it("clears completed playback through the owner-predicated C5 mutation", async () => {
@@ -151,10 +236,10 @@ describe("canonical Music REST surfaces", () => {
     const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
     const search = await request(app).post("/api/youtube/search").set(headers).send({ query: "music", pageToken: "next" });
     expect(search.status).toBe(200);
-    expect(search.body.items[0].id.videoId).toBe("yt");
+    expect(search.body.items[0].id.videoId).toBe("abcdefghijk");
     const video = await request(app).post("/api/youtube/video-from-url").set(headers).send({ url: "https://youtu.be/abcdefghijk" });
     expect(video.status).toBe(200);
-    expect(video.body.id.videoId).toBe("yt");
+    expect(video.body.id.videoId).toBe("abcdefghijk");
     expect((await request(app).post("/api/youtube/search").send({ query: "music" })).status).toBe(401);
   });
 
@@ -162,7 +247,7 @@ describe("canonical Music REST surfaces", () => {
     // Break caught: a browser playlist ID selects another owner's saved playlist.
     const { app, calls } = appFor();
     const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
-    expect((await request(app).post("/api/playlists/9/songs").set(headers).send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" })).status).toBe(201);
+    expect((await request(app).post("/api/playlists/9/songs").set(headers).send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" })).status).toBe(201);
     expect((await request(app).delete("/api/playlists/9/songs/12").set(headers)).status).toBe(204);
     expect((await request(app).patch("/api/playlists/9/reorder").set(headers).send({ songId: 12, position: 2 })).status).toBe(204);
     expect((await request(app).patch("/api/playlists/9/visibility").set(headers).send({ isVisibleToGuests: true })).status).toBe(204);
@@ -409,7 +494,7 @@ describe("canonical Music REST surfaces", () => {
     const crossOwner = await request(app).post("/api/playlist/owner-b/requests")
       .set("Origin", "https://explorers.example")
       .set("X-Music-Guest-Capability", "G".repeat(43))
-      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(crossOwner.status).toBe(403);
     expect(crossOwner.body.error.code).toBe("GUEST_CAPABILITY_INVALID");
     expect(calls).not.toContainEqual(expect.arrayContaining(["add-song"]));
@@ -417,14 +502,14 @@ describe("canonical Music REST surfaces", () => {
     const response = await request(app).post("/api/playlist/owner-a/requests")
       .set("Origin", "https://explorers.example")
       .set("X-Music-Guest-Capability", "G".repeat(43))
-      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(response.status).toBe(201);
-    expect(calls).toContainEqual(["add-song", 77, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
+    expect(calls).toContainEqual(["add-song", 77, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
 
     const invalid = await request(app).post("/api/playlist/owner-a/requests")
       .set("Origin", "https://explorers.example")
       .set("X-Music-Guest-Capability", "public-slug")
-      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(invalid.status).toBe(403);
     expect(invalid.body.error.code).toBe("GUEST_CAPABILITY_INVALID");
   });
@@ -437,14 +522,14 @@ describe("canonical Music REST surfaces", () => {
     const { app, calls } = appFor({ resolveGuestRequestAuthority });
     const response = await request(app).post("/api/playlist/public-owner/requests")
       .set("Origin", "https://explorers.example")
-      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(response.status).toBe(201);
     expect(resolveGuestRequestAuthority).toHaveBeenCalledWith("public-owner", undefined);
-    expect(calls).toContainEqual(["add-song", 88, { youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
+    expect(calls).toContainEqual(["add-song", 88, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
 
     const unlisted = await request(app).post("/api/playlist/unlisted-owner/requests")
       .set("Origin", "https://explorers.example")
-      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(unlisted.status).toBe(403);
   });
 
@@ -454,7 +539,7 @@ describe("canonical Music REST surfaces", () => {
     const headers = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
     const search = await request(app).post("/api/playlist/owner-a/youtube/search").set(headers).send({ query: "music" });
     expect(search.status).toBe(200);
-    expect(search.body.items[0].id.videoId).toBe("yt");
+    expect(search.body.items[0].id.videoId).toBe("abcdefghijk");
     const video = await request(app).post("/api/playlist/owner-a/youtube/video-from-url").set(headers)
       .send({ url: "https://youtu.be/abcdefghijk" });
     expect(video.status).toBe(200);
@@ -473,7 +558,7 @@ describe("canonical Music REST surfaces", () => {
       .set("Authorization", "Bearer aaa.bbb.ccc")
       .set("Origin", "https://explorers.example")
       .set("X-Request-Id", "safe-route-request")
-      .send({ youtubeId: "yt", title: "t", artist: "a", thumbnailUrl: "https://img" });
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
 
     expect(response.status).toBe(500);
     expect(response.headers["x-request-id"]).toBe("safe-route-request");

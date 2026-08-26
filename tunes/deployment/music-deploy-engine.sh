@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0017_publication_idempotency_key_retirement"
+readonly production_current_marker="0018_transactional_queue_replacement"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -35,6 +35,7 @@ readonly -a known_markers=(
   "0014_durable_reactivation_authority"
   "0015_publication_operation_archive"
   "0016_publication_operation_retention"
+  "0017_publication_idempotency_key_retirement"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
@@ -58,6 +59,13 @@ marker_rank() {
     fi
   done
   return 1
+}
+
+compatibility_marker_for() {
+  case "$1" in
+    "0018_transactional_queue_replacement") printf '%s\n' "0017_publication_idempotency_key_retirement" ;;
+    *) printf '%s\n' "$1" ;;
+  esac
 }
 
 current_marker_rank="$(marker_rank "$current_marker")" || fail "current migration marker is unknown"
@@ -229,6 +237,7 @@ declare -a ledger_markers=()
 declare -A ledger_seen=()
 ledger_last_mac=""
 ledger_max_marker_rank=-1
+ledger_max_compatibility_marker_rank=-1
 
 validate_ledger() {
   require_regular_file "$ledger_file"
@@ -240,12 +249,16 @@ validate_ledger() {
   ledger_seen=()
   ledger_last_mac=""
   ledger_max_marker_rank=-1
+  ledger_max_compatibility_marker_rank=-1
   local expected_sequence=1
   local previous_marker_rank=-1
-  local row schema sequence digest_value commit_value marker_value marker_value_rank previous_mac mac extra expected_mac
+  local row schema sequence digest_value commit_value marker_value marker_value_rank compatibility_marker_value compatibility_marker_rank previous_mac mac extra expected_mac
   for row in "${ledger_rows[@]}"; do
     IFS=$'\t' read -r schema sequence digest_value commit_value marker_value previous_mac mac extra <<< "$row"
     marker_value_rank="$(marker_rank "$marker_value")" || fail "secure ledger contains unknown migration marker"
+    compatibility_marker_value="$(compatibility_marker_for "$marker_value")"
+    compatibility_marker_rank="$(marker_rank "$compatibility_marker_value")" \
+      || fail "secure ledger contains unknown compatibility migration marker"
     [[ "$schema" == "$ledger_schema" && -z "${extra:-}" \
       && "$sequence" == "$expected_sequence" \
       && "$digest_value" =~ ^sha256:[a-f0-9]{64}$ \
@@ -267,6 +280,9 @@ validate_ledger() {
     ledger_last_mac="$mac"
     previous_marker_rank="$marker_value_rank"
     ledger_max_marker_rank="$marker_value_rank"
+    if [[ "$compatibility_marker_rank" -gt "$ledger_max_compatibility_marker_rank" ]]; then
+      ledger_max_compatibility_marker_rank="$compatibility_marker_rank"
+    fi
     expected_sequence=$((expected_sequence + 1))
   done
 }
@@ -654,7 +670,7 @@ else
   fi
   if [[ -e "$schema_epoch_file" ]]; then validate_schema_epoch; fi
   if [[ -e "$compatibility_floor_file" ]]; then
-    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_marker_rank" ]] \
+    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_compatibility_marker_rank" ]] \
       || fail "schema compatibility floor is older than secure ledger authority"
   else
     [[ "$ledger_max_marker_rank" -le 1 ]] \
@@ -663,7 +679,7 @@ else
   recover_schema_epoch
   if [[ -e "$compatibility_floor_file" ]]; then
     validate_compatibility_floor
-    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_marker_rank" ]] \
+    [[ "$compatibility_floor_marker_rank" -ge "$ledger_max_compatibility_marker_rank" ]] \
       || fail "schema compatibility floor is older than secure ledger authority"
   else
     for known_marker in "${ledger_markers[@]}"; do
@@ -694,7 +710,8 @@ else
     candidate_commit="${ledger_commits[target_sequence-1]}"
     candidate_marker="${ledger_markers[target_sequence-1]}"
     if [[ -e "$compatibility_floor_file" ]]; then
-      candidate_marker_rank="$(marker_rank "$candidate_marker")" || fail "rollback refused: unknown migration marker"
+      candidate_compatibility_marker="$(compatibility_marker_for "$candidate_marker")"
+      candidate_marker_rank="$(marker_rank "$candidate_compatibility_marker")" || fail "rollback refused: unknown migration marker"
       [[ "$candidate_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
         || fail "rollback refused: digest older than schema compatibility floor"
     fi
@@ -717,11 +734,14 @@ fi
 music_deploy_validate_compose_project "$compose_project"
 
 candidate_marker_rank="$(marker_rank "$candidate_marker")" || fail "candidate migration marker is unknown"
+candidate_compatibility_marker="$(compatibility_marker_for "$candidate_marker")"
+candidate_compatibility_marker_rank="$(marker_rank "$candidate_compatibility_marker")" \
+  || fail "candidate compatibility migration marker is unknown"
 if [[ -e "$compatibility_floor_file" ]]; then
-  [[ "$candidate_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
+  [[ "$candidate_compatibility_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
     || fail "candidate refused: migration marker older than schema compatibility floor"
   if [[ "$compatibility_floor_state" == pending ]]; then
-    [[ "$candidate_marker_rank" -eq "$compatibility_floor_marker_rank" \
+    [[ "$candidate_compatibility_marker_rank" -eq "$compatibility_floor_marker_rank" \
       && "$candidate_digest" == "$compatibility_floor_digest" \
       && "$candidate_commit" == "$compatibility_floor_commit" ]] \
       || fail "candidate refused: pending schema epoch must be retried exactly"
@@ -819,7 +839,7 @@ fi
 
 if [[ ! -e "$compatibility_floor_file" ]]; then
   if [[ ! -e "$schema_epoch_file" ]]; then
-    write_schema_epoch "$candidate_digest" "$candidate_commit" preparing
+    write_schema_epoch "$candidate_digest" "$candidate_commit" preparing "$candidate_compatibility_marker"
   else
     validate_schema_epoch
     [[ "$schema_epoch_state" == preparing && "$schema_epoch_digest" == "$candidate_digest" \
@@ -827,17 +847,17 @@ if [[ ! -e "$compatibility_floor_file" ]]; then
   fi
   install_registration_compatibility_route
   maybe_failpoint before_epoch
-  write_schema_epoch "$candidate_digest" "$candidate_commit" pending
-  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending
+  write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
+  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
   maybe_failpoint after_epoch_before_gate
 else
-  if [[ "$operation" != rollback && "$candidate_marker_rank" -gt "$compatibility_floor_marker_rank" ]]; then
+  if [[ "$operation" != rollback && "$candidate_compatibility_marker_rank" -gt "$compatibility_floor_marker_rank" ]]; then
     install_registration_compatibility_route
     maybe_failpoint before_epoch
     # The higher signed epoch is durable first. Recovery recognizes this one
     # direction as an interrupted monotonic upgrade and advances the floor.
-    write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_marker"
-    write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_marker"
+    write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
+    write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
     maybe_failpoint after_epoch_before_gate
   else
     probe_registration_denial '{}'
@@ -847,7 +867,7 @@ fi
 compose --profile deployment run --rm --no-deps tunes-gate
 validate_compatibility_floor
 if [[ "$compatibility_floor_state" == pending ]]; then
-  [[ "$candidate_marker_rank" -eq "$compatibility_floor_marker_rank" \
+  [[ "$candidate_compatibility_marker_rank" -eq "$compatibility_floor_marker_rank" \
     && "$candidate_digest" == "$compatibility_floor_digest" \
     && "$candidate_commit" == "$compatibility_floor_commit" ]] \
     || fail "gate candidate does not match pending schema epoch"

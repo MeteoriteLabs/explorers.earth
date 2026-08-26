@@ -229,7 +229,7 @@ describe("local Tunes client critical edge coverage", () => {
     expect(bearer).not.toHaveBeenCalled();
   });
 
-  it("preserves a contained Music error thrown by ensure response decoding", async () => {
+  it("fails closed when ensure response decoding throws", async () => {
     const contained = new MusicClientError("AUTH_REQUIRED", 401, "contained");
     const response = { status: 401, headers: new Headers(), json: async () => { throw contained; } } as Response;
     const client = createLocalTunesApiClient({
@@ -238,7 +238,12 @@ describe("local Tunes client critical edge coverage", () => {
       getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
       now: () => NOW,
     });
-    await expect(client.ensureIdentity()).rejects.toBe(contained);
+    await expect(client.ensureIdentity()).rejects.toMatchObject({
+      code: "AUTH_REQUIRED",
+      status: 401,
+      retryable: false,
+      upstreamCode: undefined,
+    });
   });
 
   it("contains malformed ensure error JSON", async () => {
@@ -257,7 +262,16 @@ describe("local Tunes client critical edge coverage", () => {
 
   it.each([
     [401, { error: { code: 42, retryable: false } }, {}, "AUTH_REQUIRED", undefined],
-    [503, { error: { code: "UPSTREAM_UNAVAILABLE", retryable: true } }, { "retry-after": "3" }, "AUTH_UNAVAILABLE", 3],
+    [503, {
+      version: "music-error/v1",
+      error: {
+        code: "UPSTREAM_UNAVAILABLE",
+        message: "Contained.",
+        action: "retry",
+        retryable: true,
+        requestId: "coverage-request",
+      },
+    }, { "retry-after": "3", "x-request-id": "coverage-request" }, "AUTH_UNAVAILABLE", 3],
     [503, { error: { code: "UPSTREAM_UNAVAILABLE", retryable: false } }, { "retry-after": "invalid" }, "AUTH_UNAVAILABLE", undefined],
   ] as const)("contains ensure status %s with bounded retry metadata", async (status, body, headers, code, retryAfterSeconds) => {
     const client = createLocalTunesApiClient({
@@ -265,6 +279,7 @@ describe("local Tunes client critical edge coverage", () => {
       fetchImpl: async () => json(body, status, headers),
       getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
       now: () => NOW,
+      delay: async () => undefined,
     });
     await expect(client.ensureIdentity()).rejects.toMatchObject({ code, retryAfterSeconds });
   });

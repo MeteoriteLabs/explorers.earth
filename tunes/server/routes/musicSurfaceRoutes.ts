@@ -15,14 +15,20 @@ import { matchRetiredMusicSurface } from "../policies/musicRetirementPolicy";
 interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
   getPlaylist(ownerId: number, playlistId: number): Promise<unknown | undefined>;
-  createPlaylist(ownerId: number, input: { name: string; description: string | null }): Promise<unknown>;
+  createPlaylist(ownerId: number, input: { name: string; description: string | null }): Promise<unknown | undefined>;
   updatePlaylist(ownerId: number, playlistId: number, input: { name: string; description: string | null }): Promise<unknown | undefined>;
   deletePlaylist(ownerId: number, playlistId: number): Promise<boolean>;
-  addPlaylistSong(ownerId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown | undefined>;
+  addPlaylistSong(ownerId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown | null | undefined>;
   removePlaylistSong(ownerId: number, playlistId: number, songId: number): Promise<boolean>;
   reorderPlaylistSong(ownerId: number, playlistId: number, songId: number, position: number): Promise<boolean>;
   setPlaylistVisibility(ownerId: number, playlistId: number, visible: boolean): Promise<boolean>;
   listQueue(ownerId: number): Promise<unknown[]>;
+  replaceQueue(ownerId: number, idempotencyKey: string, expectedRevision: number, songs: Array<{ playlistId: number; songId: number }>): Promise<
+    | { status: "completed"; replayed: boolean; response: { version: "music-queue/v1"; revision: number; songs: unknown[] } }
+    | { status: "stale"; revision: number }
+    | { status: "conflict" }
+    | { status: "not_found" }
+  >;
   ownerDashboard(ownerId: number): Promise<unknown>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
   setPlaying(ownerId: number, songId: number | null): Promise<unknown | null | undefined>;
@@ -65,6 +71,11 @@ const OWNER_KEYS = new Set([
   "strapiUser", "strapiUserDocumentId", "strapiAccountDocumentId",
 ]);
 
+export function isExactMusicOriginAllowed(req: Pick<Request, "get">, allowedOrigins: readonly string[]): boolean {
+  const origin = req.get("origin");
+  return typeof origin === "string" && allowedOrigins.includes(origin);
+}
+
 export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalMusicRouteDependencies): void {
   const requestIdFactory = dependencies.requestIdFactory ?? randomUUID;
   const principal = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);
@@ -87,8 +98,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     next();
   };
   const originGuard: RequestHandler = (req, _res, next) => {
-    const origin = req.get("origin");
-    if (!origin || !dependencies.allowedOrigins.includes(origin)) return next(new MusicIdentityError(
+    if (!isExactMusicOriginAllowed(req, dependencies.allowedOrigins)) return next(new MusicIdentityError(
       "ORIGIN_FORBIDDEN", 403, "The request origin is not allowed.", "none", false,
     ));
     next();
@@ -102,7 +112,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   app.post("/api/playlists", ...mutation(async (req, res, next) => {
     try {
       const input = playlistInput(req.body);
-      res.status(201).json(playlistDto(await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input)));
+      const playlist = await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input);
+      if (!playlist) throw playlistLimitReached();
+      res.status(201).json(playlistDto(playlist));
     } catch (error) { next(error); }
   }));
 
@@ -138,6 +150,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       const song = await dependencies.repository.addPlaylistSong(
         req.musicPrincipal!.musicUserId, positiveId(req.params.playlistId), songInput(req.body),
       );
+      if (song === null) throw savedPlaylistLimitReached();
       if (!song) throw notFound();
       res.status(201).json(playlistSongDto(song));
     } catch (error) { next(error); }
@@ -178,12 +191,39 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     try { res.status(200).json((await dependencies.repository.listQueue(req.musicPrincipal!.musicUserId)).map(songDto)); } catch (error) { next(error); }
   }));
 
+  app.post("/api/music/queue/replace", ...mutation(async (req, res, next) => {
+    try {
+      const idempotencyKey = req.get("idempotency-key");
+      const input = queueReplaceInput(req.body);
+      if (!idempotencyKey || idempotencyKey.length > 128) throw invalidQueue();
+      const result = await dependencies.repository.replaceQueue(
+        req.musicPrincipal!.musicUserId, idempotencyKey, input.expectedRevision, input.songs,
+      );
+      if (result.status === "stale") throw new MusicIdentityError(
+        "QUEUE_REVISION_CONFLICT", 409, "The queue changed before replacement.", "retry", false,
+      );
+      if (result.status === "conflict") throw new MusicIdentityError(
+        "IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false,
+      );
+      if (result.status === "not_found") throw notFound();
+      res.status(200).json({
+        version: "music-queue/v1",
+        revision: result.response.revision,
+        songs: result.response.songs.map(songDto),
+      });
+    } catch (error) { next(error); }
+  }));
+
   app.get("/api/music/dashboard", ...owner(async (req, res, next) => {
-    try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId))); } catch (error) { next(error); }
+    try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId), true)); } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/songs", ...mutation(async (req, res, next) => {
-    try { res.status(201).json(songDto(await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body)))); } catch (error) { next(error); }
+    try {
+      const song = await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body));
+      if (!song) throw queueLimitReached();
+      res.status(201).json(songDto(song));
+    } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/currently-playing", ...mutation(async (req, res, next) => {
@@ -200,7 +240,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   app.delete("/api/playlist/songs/bulk", ...mutation(async (req, res, next) => {
     try {
       const songIds = Array.isArray(req.body?.songIds) ? req.body.songIds.map((value: unknown) => positiveId(String(value))) : undefined;
-      if (!songIds?.length || songIds.length > 100 || Object.keys(req.body).some((key) => key !== "songIds")) throw invalidQueue();
+      if (!songIds?.length || songIds.length > 500 || Object.keys(req.body).some((key) => key !== "songIds")) throw invalidQueue();
       await dependencies.repository.removeSongs(req.musicPrincipal!.musicUserId, songIds);
       res.status(204).end();
     } catch (error) { next(error); }
@@ -374,7 +414,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       }
       const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capabilityValid ? capability : undefined);
       if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
-      res.status(201).json(songDto(await dependencies.repository.addSong(authority.musicUserId, songInput(req.body))));
+      const song = await dependencies.repository.addSong(authority.musicUserId, songInput(req.body));
+      if (!song) throw queueLimitReached();
+      res.status(201).json(songDto(song));
     } catch (error) { next(error); }
   });
 
@@ -481,13 +523,14 @@ function playlistDto(value: unknown) {
   };
 }
 
-function dashboardDto(value: unknown) {
+function dashboardDto(value: unknown, includeQueueRevision = false) {
   const source = record(value);
   const songs = property(source, "songs");
   const playedSongs = property(source, "playedSongs", "played_songs");
   const currentlyPlaying = property(source, "currentlyPlaying", "currently_playing");
   const publication = record(property(source, "publication"));
   return {
+    ...(includeQueueRevision ? { queueRevision: Number(property(source, "queueRevision", "queue_revision") ?? 0) } : {}),
     songs: Array.isArray(songs) ? songs.map(songDto) : [],
     currentlyPlaying: currentlyPlaying ? songDto(currentlyPlaying) : null,
     playedSongs: Array.isArray(playedSongs) ? playedSongs.map(songDto) : [],
@@ -542,14 +585,45 @@ function songInput(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
   const body = value as Record<string, unknown>;
   if (Object.keys(body).some((key) => !["youtubeId", "title", "artist", "thumbnailUrl"].includes(key))
-      || ![body.youtubeId, body.title, body.artist, body.thumbnailUrl].every((entry) => typeof entry === "string" && entry.length >= 1 && entry.length <= 1_024)) {
+      || typeof body.youtubeId !== "string" || !/^[A-Za-z0-9_-]{11}$/.test(body.youtubeId)
+      || ![body.title, body.artist].every((entry) => typeof entry === "string" && entry.length >= 1 && entry.length <= 1_024)
+      || typeof body.thumbnailUrl !== "string" || body.thumbnailUrl.length < 1 || body.thumbnailUrl.length > 2_048) {
     throw invalidQueue();
   }
   return { youtubeId: body.youtubeId as string, title: body.title as string, artist: body.artist as string, thumbnailUrl: body.thumbnailUrl as string };
 }
 
+function queueReplaceInput(value: unknown): { expectedRevision: number; songs: Array<{ playlistId: number; songId: number }> } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some((key) => !["expectedRevision", "songs"].includes(key))
+      || !Number.isSafeInteger(body.expectedRevision) || Number(body.expectedRevision) < 0
+      || !Array.isArray(body.songs) || body.songs.length > 500) throw invalidQueue();
+  const songs = body.songs.map((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
+    const source = value as Record<string, unknown>;
+    if (Object.keys(source).some((key) => !["playlistId", "songId"].includes(key))
+        || !Number.isSafeInteger(source.playlistId) || Number(source.playlistId) < 1
+        || !Number.isSafeInteger(source.songId) || Number(source.songId) < 1) throw invalidQueue();
+    return { playlistId: Number(source.playlistId), songId: Number(source.songId) };
+  });
+  return { expectedRevision: Number(body.expectedRevision), songs };
+}
+
 function invalidQueue() {
   return new MusicIdentityError("REQUEST_INVALID", 400, "The queue input is invalid.", "none", false);
+}
+
+function queueLimitReached() {
+  return new MusicIdentityError("REQUEST_INVALID", 400, "The Music queue can contain at most 500 songs.", "none", false);
+}
+
+function playlistLimitReached() {
+  return new MusicIdentityError("REQUEST_INVALID", 400, "Music can contain at most 200 saved playlists.", "none", false);
+}
+
+function savedPlaylistLimitReached() {
+  return new MusicIdentityError("REQUEST_INVALID", 400, "A saved playlist can contain at most 500 songs.", "none", false);
 }
 
 function notFound() {

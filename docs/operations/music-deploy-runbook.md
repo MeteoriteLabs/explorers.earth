@@ -709,3 +709,19 @@ evidence, but cannot replace it or authorize production. It should show:
 - disposable volumes are removed only after label verification.
 
 No static or fake-process result substitutes for this runtime evidence.
+
+## Owner-workspace legacy YouTube ID prerequisite
+
+Before enabling `ownerWorkspace` locally or in any deployed cohort, run this read-only audit against the target Tunes database:
+
+```sql
+SELECT 'songs' AS source, count(*) AS noncanonical_count
+FROM songs
+WHERE youtube_id !~ '^[A-Za-z0-9_-]{11}$'
+UNION ALL
+SELECT 'playlist_songs' AS source, count(*) AS noncanonical_count
+FROM playlist_songs
+WHERE youtube_id !~ '^[A-Za-z0-9_-]{11}$';
+```
+
+Both counts must be zero. Any nonzero result keeps `ownerWorkspace` disabled and requires a separately reviewed, backed-up remediation plan; this rollout does not rewrite or delete historic rows. Clients intentionally fail closed on a dashboard or playlist containing a noncanonical legacy ID, and no mutation is attempted.

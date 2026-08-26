@@ -27,6 +27,7 @@ describe("Music deployment authority files", () => {
       "FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
     );
     expect(dockerfile).toContain("FROM base AS prod-deps");
+    expect(dockerfile).toContain("RUN apk upgrade --no-cache");
     expect(dockerfile).toContain("RUN npm ci --omit=dev --legacy-peer-deps");
     expect(dockerfile).toContain("COPY --from=prod-deps /app/node_modules ./node_modules");
     expect(dockerfile).not.toContain("COPY --from=deps /app/node_modules ./node_modules");
@@ -95,7 +96,8 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain("/app/migrations/0014_durable_reactivation_authority.sql");
     expect(ci).toContain("/app/migrations/0015_publication_operation_archive.sql");
     expect(ci).toContain("/app/migrations/0017_publication_idempotency_key_retirement.sql");
-    expect(read("tunes/deployment/music-deploy-engine.sh")).toContain('production_current_marker="0017_publication_idempotency_key_retirement"');
+    expect(ci).toContain("/app/migrations/0018_transactional_queue_replacement.sql");
+    expect(read("tunes/deployment/music-deploy-engine.sh")).toContain('production_current_marker="0018_transactional_queue_replacement"');
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain("verify-publication-authority.mjs");
     expect(read(".github/workflows/tunes-deploy.yml")).toContain("verify-publication-authority.mjs");
     expect(ci).toContain("/app/dist/server/deployment/run-registration-compat.js");

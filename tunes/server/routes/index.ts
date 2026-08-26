@@ -33,6 +33,11 @@ import {
   type AuthoritativeAbsence,
 } from "../workers/musicLifecycleWorker";
 import { startMusicReconciliationSuspensionListener } from "../services/musicReconciliationSuspensionListener";
+import { MusicFeatureDecisionService, type MusicFeatureFlag } from "../services/musicFeatureDecisionService";
+import { setupMusicFeatureRoutes } from "./musicFeatureRoutes";
+
+const featureAllowlist = (value?: string) => new Set((value ?? "").split(",").map((item) => item.trim()).filter(Boolean));
+const featurePercentage = (value?: string) => { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 0; };
 
 export async function registerRoutes(
   app: Express,
@@ -116,6 +121,19 @@ export async function registerRoutes(
     isTrustedProxy: musicConfig.isTrustedProxy,
     youtube: createYouTubeReadService(process.env.YOUTUBE_API_KEY),
   };
+  const featureFlags: MusicFeatureFlag[] = ["ownerWorkspace", "guestWorkspace", "playlistImports"];
+  const featureEnvironment: Record<MusicFeatureFlag, string> = { ownerWorkspace: "OWNER_WORKSPACE", guestWorkspace: "GUEST_WORKSPACE", playlistImports: "PLAYLIST_IMPORTS" };
+  const allowlists = Object.fromEntries(featureFlags.map((flag) => [flag, featureAllowlist(process.env[`MUSIC_FEATURE_${featureEnvironment[flag]}_ALLOWLIST`])])) as Record<MusicFeatureFlag, Set<string>>;
+  const percentages = Object.fromEntries(featureFlags.map((flag) => [flag, featurePercentage(process.env[`MUSIC_FEATURE_${featureEnvironment[flag]}_PERCENT`])])) as Record<MusicFeatureFlag, number>;
+  const featureDecisions = new MusicFeatureDecisionService({
+    killSwitch: () => process.env.MUSIC_WORKSPACE_KILL_SWITCH !== "false",
+    salt: process.env.MUSIC_FEATURE_COHORT_SALT ?? "",
+    cohortVersion: process.env.MUSIC_FEATURE_COHORT_VERSION ?? "disabled-v1",
+    allowlists,
+    percentages,
+    log: (entry) => console.info("music_feature_exposure", entry),
+  });
+  setupMusicFeatureRoutes(app, { resolvePrincipal: (token) => musicPrincipals.resolve(token), decide: (principal) => featureDecisions.decide(principal), allowedOrigins: canonicalDependencies.allowedOrigins });
   setupCanonicalMusicRoutes(app, canonicalDependencies);
   setupMusicOpenApiRoutes(app);
   setupAuthRoutes(app);
