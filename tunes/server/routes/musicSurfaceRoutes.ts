@@ -71,6 +71,11 @@ const OWNER_KEYS = new Set([
   "strapiUser", "strapiUserDocumentId", "strapiAccountDocumentId",
 ]);
 
+export function isExactMusicOriginAllowed(req: Pick<Request, "get">, allowedOrigins: readonly string[]): boolean {
+  const origin = req.get("origin");
+  return typeof origin === "string" && allowedOrigins.includes(origin);
+}
+
 export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalMusicRouteDependencies): void {
   const requestIdFactory = dependencies.requestIdFactory ?? randomUUID;
   const principal = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);
@@ -93,8 +98,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     next();
   };
   const originGuard: RequestHandler = (req, _res, next) => {
-    const origin = req.get("origin");
-    if (!origin || !dependencies.allowedOrigins.includes(origin)) return next(new MusicIdentityError(
+    if (!isExactMusicOriginAllowed(req, dependencies.allowedOrigins)) return next(new MusicIdentityError(
       "ORIGIN_FORBIDDEN", 403, "The request origin is not allowed.", "none", false,
     ));
     next();

@@ -12,6 +12,7 @@ export interface LocalMusicRequest {
   path: string;
   body?: unknown;
   idempotencyKey?: string;
+  signal?: AbortSignal;
 }
 
 export type MusicClientErrorCode = "AUTH_REQUIRED" | "AUTH_UNAVAILABLE" | "SERVICE_UNAVAILABLE" | "REQUEST_INVALID";
@@ -132,15 +133,19 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     const generation = authorityGeneration;
     const subject = authoritySubject;
     const controller = new AbortController();
+    const abortFromCaller = () => controller.abort(input.signal?.reason);
+    if (input.signal?.aborted) { abortFromCaller(); throw staleAuthority(); }
+    else input.signal?.addEventListener("abort", abortFromCaller, { once: true });
     requestControllers.set(controller, generation);
     try {
       const response = await fetchImpl(`${baseUrl}${input.path}`, { method: input.method, headers, body, signal: controller.signal });
-      if (!authorityStillCurrent(generation, subject)) throw staleAuthority();
+      if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
       return response;
     } catch {
       if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
       throw new MusicClientError("SERVICE_UNAVAILABLE", 503, "Music is temporarily unavailable.", 1);
     } finally {
+      input.signal?.removeEventListener("abort", abortFromCaller);
       requestControllers.delete(controller);
     }
   }

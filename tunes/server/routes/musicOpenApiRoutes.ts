@@ -224,6 +224,7 @@ const paths = {
         },
       },
       description: "Decisions expire within 60 seconds. Emergency kill switches override account allowlists and stable salted cohorts.",
+      origin: true,
       errors: { "503": failure("Runtime Music decisions are temporarily unavailable and fail closed.", ["SERVICE_UNAVAILABLE"], true) },
     }),
   },

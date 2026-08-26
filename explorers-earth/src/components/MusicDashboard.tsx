@@ -39,7 +39,6 @@ function CompleteMusicDashboard({ data, readOnly }: Pick<MusicDashboardProps, "d
     loading={data.isLoading}
     stale={readOnly}
     empty={!data.isLoading && dashboard.songs.length === 0 && !dashboard.currentlyPlaying}
-    onAddFirstSong={() => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus()}
     player={<MusicPlayer currentSong={dashboard.currentlyPlaying} queuedSongs={dashboard.songs.filter((song) => song.status === "queued")} playedSongs={dashboard.playedSongs} queueClient={completeQueueClient} onChanged={refresh} readOnly={readOnly} />}
     search={readOnly ? <fieldset disabled aria-label="Music search unavailable">{discovery}</fieldset> : discovery}
     queue={readOnly ? <fieldset disabled aria-label="Queue changes unavailable">{queue}</fieldset> : queue}

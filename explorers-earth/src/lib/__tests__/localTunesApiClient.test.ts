@@ -335,4 +335,29 @@ describe("local Tunes API client", () => {
     client.logout();
     expect(getMusicCredential(NOW)).toBeUndefined();
   });
+
+  it("propagates a caller abort signal into an in-flight credentialed request", async () => {
+    setMusicCredential(freshCredential);
+    const pending = deferred<Response>(); let transportSignal: AbortSignal | undefined;
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example", now: () => NOW, getStrapiBearer: async () => "unused",
+      fetchImpl: vi.fn((_input, init) => { transportSignal = init?.signal as AbortSignal; return pending.promise; }),
+    });
+    const controller = new AbortController();
+    const operation = client.request({ method: "GET", path: "/api/music/features", signal: controller.signal } as never);
+    for (let attempt = 0; attempt < 10 && !transportSignal; attempt += 1) await Promise.resolve();
+    expect(transportSignal).toBeDefined();
+    controller.abort(); pending.resolve(json({ ok: true }));
+    await expect(operation).rejects.toBeInstanceOf(MusicClientError);
+    expect(transportSignal?.aborted).toBe(true);
+  });
+
+  it("fails closed before transport when the caller signal is already aborted", async () => {
+    setMusicCredential(freshCredential);
+    const fetchImpl = vi.fn(async () => json({ ok: true }));
+    const client = createLocalTunesApiClient({ baseUrl: "https://music.example", now: () => NOW, getStrapiBearer: async () => "unused", fetchImpl });
+    const controller = new AbortController(); controller.abort();
+    await expect(client.request({ method: "GET", path: "/api/music/features", signal: controller.signal })).rejects.toBeInstanceOf(MusicClientError);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
 });

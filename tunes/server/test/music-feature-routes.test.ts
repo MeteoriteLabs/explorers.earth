@@ -15,9 +15,10 @@ describe("GET /api/music/features", () => {
       },
       decide,
       requestIdFactory: () => "feature-request",
+      allowedOrigins: ["https://explorers.example"],
     });
-    expect((await request(app).get("/api/music/features")).status).toBe(401);
-    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc");
+    expect((await request(app).get("/api/music/features").set("Origin", "https://explorers.example")).status).toBe(401);
+    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ownerWorkspace: false, guestWorkspace: false, playlistImports: false, exposureId: "opaque", expiresAt: "2026-08-26T00:00:00.000Z" });
     expect(decide).toHaveBeenCalledWith(expect.objectContaining({ musicUserId: 11, accountDocumentId: "account" }));
@@ -28,10 +29,23 @@ describe("GET /api/music/features", () => {
     setupMusicFeatureRoutes(app, {
       resolvePrincipal: async () => ({ musicUserId: 11, subject: "subject", accountDocumentId: "account", sessionVersion: 2 }),
       decide: () => { throw new Error("unavailable"); }, requestIdFactory: () => "feature-request",
+      allowedOrigins: ["https://explorers.example"],
     });
-    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc");
+    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example");
     expect(response.status).toBe(503);
     expect(response.body.error).toMatchObject({ code: "SERVICE_UNAVAILABLE", retryable: true, requestId: "feature-request" });
+  });
+
+  it("contains unexpected principal repository failures as retryable service unavailability", async () => {
+    const app = express();
+    setupMusicFeatureRoutes(app, {
+      resolvePrincipal: async () => { throw new Error("database connection secret"); }, decide: vi.fn(),
+      requestIdFactory: () => "feature-request", allowedOrigins: ["https://explorers.example"],
+    });
+    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example");
+    expect(response.status).toBe(503);
+    expect(response.body.error).toEqual({ code: "SERVICE_UNAVAILABLE", message: "Music features are temporarily unavailable.", action: "retry", retryable: true, requestId: "feature-request" });
+    expect(JSON.stringify(response.body)).not.toContain("database connection secret");
   });
 
   it("preserves fail-closed lifecycle authority errors and never evaluates a decision", async () => {
@@ -39,10 +53,25 @@ describe("GET /api/music/features", () => {
     setupMusicFeatureRoutes(app, {
       resolvePrincipal: async () => { throw new MusicPrincipalError("IDENTITY_SUSPENDED", 403, "This Music identity is suspended."); },
       decide, requestIdFactory: () => "feature-request",
+      allowedOrigins: ["https://explorers.example"],
     });
-    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc");
+    const response = await request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example");
     expect(response.status).toBe(403);
     expect(response.body.error).toMatchObject({ code: "IDENTITY_SUSPENDED", retryable: false });
+    expect(decide).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, "https://attacker.example"])("rejects missing or forbidden exact Origin %s before evaluating a decision", async (origin) => {
+    const decide = vi.fn(); const app = express();
+    setupMusicFeatureRoutes(app, {
+      resolvePrincipal: async () => ({ musicUserId: 11, subject: "subject", accountDocumentId: "account", sessionVersion: 2 }),
+      decide, requestIdFactory: () => "feature-request", allowedOrigins: ["https://explorers.example"],
+    });
+    let operation = request(app).get("/api/music/features").set("Authorization", "Bearer aaa.bbb.ccc");
+    if (origin) operation = operation.set("Origin", origin);
+    const response = await operation;
+    expect(response.status).toBe(403);
+    expect(response.body.error).toMatchObject({ code: "ORIGIN_FORBIDDEN", retryable: false, requestId: "feature-request" });
     expect(decide).not.toHaveBeenCalled();
   });
 });

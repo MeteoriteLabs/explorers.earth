@@ -32,4 +32,26 @@ describe("music runtime rollout", () => {
     await rollout.get(scopeA);
     expect(request).toHaveBeenCalledTimes(2);
   });
+
+  it("invalidates and aborts an in-flight A decision across A to B to A without populating A cache", async () => {
+    const scopeB = { userDocumentId: "user-a", accountDocumentId: "account-b" };
+    let resolveOldA!: (response: Response) => void;
+    const signals: AbortSignal[] = [];
+    const request = vi.fn((input: { signal?: AbortSignal }) => {
+      signals.push(input.signal!);
+      if (request.mock.calls.length === 1) return new Promise<Response>((resolve) => { resolveOldA = resolve; });
+      const enabled = request.mock.calls.length === 2;
+      return Promise.resolve(new Response(JSON.stringify({ ...closed, ownerWorkspace: enabled }), { status: 200 }));
+    });
+    const rollout = createMusicRolloutClient(request as never, () => Date.parse("2026-08-26T00:00:00.000Z"));
+    const oldA = rollout.get(scopeA);
+    rollout.clear(scopeA);
+    expect(signals[0].aborted).toBe(true);
+    expect((await rollout.get(scopeB)).ownerWorkspace).toBe(true);
+    expect((await rollout.get(scopeA)).ownerWorkspace).toBe(false);
+    resolveOldA(new Response(JSON.stringify({ ...closed, ownerWorkspace: true }), { status: 200 }));
+    expect((await oldA).ownerWorkspace).toBe(false);
+    await rollout.get(scopeA);
+    expect(request).toHaveBeenCalledTimes(3);
+  });
 });
