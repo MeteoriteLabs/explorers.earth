@@ -27,59 +27,111 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   const [duration, setDuration] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [transitionPending, setTransitionPending] = useState(false);
   const recoveryAttempts = useRef(0);
   const skippedSongId = useRef<number | null>(null);
   const mediaRef = useRef<HTMLVideoElement | null>(null);
+  const recoveryTimers = useRef(new Set<number>());
+  const generation = useRef(0);
+  const transitionLock = useRef(false);
+  const playAfterChange = useRef<number | null>(null);
+  const mounted = useRef(true);
+  const currentSongId = currentSong?.id ?? null;
+
+  const clearRecovery = useCallback(() => {
+    recoveryTimers.current.forEach((timer) => window.clearTimeout(timer));
+    recoveryTimers.current.clear();
+  }, []);
 
   useEffect(() => {
-    setPlaying(false); setProgress(0); setDuration(0); setMessage(""); setError("");
+    generation.current += 1;
+    clearRecovery();
+    const shouldPlay = currentSongId !== null && playAfterChange.current === currentSongId;
+    playAfterChange.current = null;
+    setPlaying(shouldPlay); setProgress(0); setDuration(0); setMessage(""); setError("");
     recoveryAttempts.current = 0; skippedSongId.current = null;
-  }, [currentSong?.id]);
+  }, [clearRecovery, currentSongId]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; generation.current += 1; clearRecovery(); transitionLock.current = false; };
+  }, [clearRecovery]);
 
   const broadcast = useCallback(async (songId: number, isPlaying: boolean) => {
     try { await broadcastPlayerState?.({ songId, playing: isPlaying }); } catch { /* Socket notification is optional. */ }
   }, [broadcastPlayerState]);
 
   const transition = useCallback(async (song: MusicSong | undefined, operation: "next" | "previous" | "skip") => {
-    if (!song) return;
-    setError("");
+    if (!song || transitionLock.current) return;
+    transitionLock.current = true; setTransitionPending(true); setError("");
+    const operationGeneration = generation.current;
     try {
       await queueClient.setPlaying(song.id, idempotencyKey(operation));
     } catch {
-      setError("Could not change songs. Try again.");
+      if (operation === "skip") clearRecovery();
+      if (generation.current === operationGeneration) {
+        setError("Could not change songs. Try again.");
+      }
+      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
       return;
     }
-    await broadcast(song.id, true);
+    if (generation.current !== operationGeneration) {
+      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
+      return;
+    }
+    playAfterChange.current = song.id;
     try { await onChanged(); }
-    catch { setError("Song changed, but the latest queue could not be loaded."); }
-  }, [broadcast, onChanged, queueClient]);
+    catch { if (generation.current === operationGeneration) setError("Song changed, but the latest queue could not be loaded."); }
+    finally {
+      if (operation === "skip") clearRecovery();
+      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
+    }
+  }, [clearRecovery, onChanged, queueClient]);
 
   const finish = useCallback(async () => {
-    if (!currentSong) return;
-    setError(""); setPlaying(false);
+    if (!currentSong || transitionLock.current) return;
+    transitionLock.current = true; setTransitionPending(true); setError(""); setPlaying(false); clearRecovery();
+    const operationGeneration = generation.current;
     try { await queueClient.setPlaying(null, idempotencyKey("ended")); }
-    catch { setError("Could not finish this song. Try again."); return; }
+    catch {
+      if (generation.current === operationGeneration) {
+        setError("Could not finish this song. Try again.");
+      }
+      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
+      return;
+    }
+    if (generation.current !== operationGeneration) {
+      transitionLock.current = false; if (mounted.current) setTransitionPending(false);
+      return;
+    }
     await broadcast(currentSong.id, false);
     try { await onChanged(); }
-    catch { setError("Song finished, but the latest history could not be loaded."); }
-  }, [broadcast, currentSong, onChanged, queueClient]);
+    catch { if (generation.current === operationGeneration) setError("Song finished, but the latest history could not be loaded."); }
+    finally { transitionLock.current = false; if (mounted.current) setTransitionPending(false); }
+  }, [broadcast, clearRecovery, currentSong, onChanged, queueClient]);
 
   const handleMediaError = useCallback((cause: unknown) => {
     if (cause instanceof DOMException && cause.name === "NotAllowedError") {
-      setPlaying(false); setMessage("Press play to start this song."); return;
+      clearRecovery(); setPlaying(false); setMessage("Press play to start this song."); return;
     }
-    if (!currentSong || skippedSongId.current === currentSong.id) return;
+    if (!currentSong || skippedSongId.current === currentSong.id || transitionLock.current) return;
     if (recoveryAttempts.current < 2) {
       recoveryAttempts.current += 1;
       setPlaying(false);
-      window.setTimeout(() => setPlaying(true), 250 * recoveryAttempts.current);
+      const songGeneration = generation.current;
+      const recoverySongId = currentSong.id;
+      const timer = window.setTimeout(() => {
+        recoveryTimers.current.delete(timer);
+        if (generation.current === songGeneration && skippedSongId.current !== recoverySongId) setPlaying(true);
+      }, 250 * recoveryAttempts.current);
+      recoveryTimers.current.add(timer);
       return;
     }
     skippedSongId.current = currentSong.id;
-    setPlaying(false);
+    clearRecovery(); setPlaying(false);
     setMessage(`${currentSong.title} is unavailable. Skipping once.`);
     void transition(queuedSongs[0], "skip");
-  }, [currentSong, queuedSongs, transition]);
+  }, [clearRecovery, currentSong, queuedSongs, transition]);
 
   if (!currentSong) return <section aria-label="Music player"><p role="status">Choose a song to start listening.</p></section>;
 
@@ -94,7 +146,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         muted={muted}
         width="100%"
         height="auto"
-        onPlay={() => { setPlaying(true); void broadcast(currentSong.id, true); }}
+        onPlay={() => { clearRecovery(); recoveryAttempts.current = 0; setPlaying(true); void broadcast(currentSong.id, true); }}
         onPause={() => { setPlaying(false); void broadcast(currentSong.id, false); }}
         onEnded={() => { if (queuedSongs[0]) void transition(queuedSongs[0], "next"); else void finish(); }}
         onError={handleMediaError}
@@ -102,9 +154,9 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
       />
       <div>
-        <button type="button" style={controlSize} aria-label="Previous song" disabled={!playedSongs[0]} onClick={() => { void transition(playedSongs[0], "previous"); }}>Previous</button>
+        <button type="button" style={controlSize} aria-label="Previous song" disabled={!playedSongs[0] || transitionPending} onClick={() => { void transition(playedSongs[0], "previous"); }}>Previous</button>
         <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }}>{playing ? "Pause" : "Play"}</button>
-        <button type="button" style={controlSize} aria-label="Next song" disabled={!queuedSongs[0]} onClick={() => { void transition(queuedSongs[0], "next"); }}>Next</button>
+        <button type="button" style={controlSize} aria-label="Next song" disabled={!queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }}>Next</button>
       </div>
       <label>Playback position
         <input style={{ minHeight: "44px" }} aria-label="Playback position" type="range" min="0" max={duration || 0} value={progress} aria-valuetext={`${clock(progress)} of ${clock(duration)}`} onChange={(event) => {

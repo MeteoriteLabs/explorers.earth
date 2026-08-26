@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MusicPlayer } from "../MusicPlayer";
 import type { MusicSong } from "../../musicWorkspaceClient";
 
@@ -20,6 +20,7 @@ vi.mock("react-player", async () => {
 const current: MusicSong = { id: 1, youtubeId: "abcdefghijk", title: "First song", artist: "Artist one", thumbnailUrl: "https://img/1", position: 0, status: "playing", playedAt: null };
 const next: MusicSong = { id: 2, youtubeId: "lmnopqrstuv", title: "Next song", artist: "Artist two", thumbnailUrl: "https://img/2", position: 1, status: "queued", playedAt: null };
 const previous: MusicSong = { id: 3, youtubeId: "zyxwvutsrqp", title: "Previous song", artist: "Artist three", thumbnailUrl: "https://img/3", position: 0, status: "played", playedAt: "2026-08-25T10:00:00.000Z" };
+const deferred = <T,>() => { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 
 function setup(overrides: Partial<React.ComponentProps<typeof MusicPlayer>> = {}) {
   const props: React.ComponentProps<typeof MusicPlayer> = {
@@ -35,6 +36,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof MusicPlayer>> = {}
 
 describe("MusicPlayer", () => {
   beforeEach(() => { playerProps = {}; seekTo.mockReset(); });
+  afterEach(() => vi.useRealTimers());
 
   it("plays, pauses, changes volume, mutes, and exposes accessible values", async () => {
     const user = userEvent.setup(); setup();
@@ -70,10 +72,25 @@ describe("MusicPlayer", () => {
     expect(props.onChanged).toHaveBeenCalledTimes(2);
   });
 
-  it("moves to the next song when media ends and broadcasts only after confirmation", async () => {
-    const broadcastPlayerState = vi.fn(); const { props } = setup({ broadcastPlayerState });
+  it("requests autoplay for the confirmed next song but broadcasts true only after media plays", async () => {
+    const user = userEvent.setup(); const broadcastPlayerState = vi.fn(); const { props, rerender } = setup({ broadcastPlayerState });
+    await user.click(screen.getByRole("button", { name: "Next song" }));
+    await waitFor(() => expect(props.queueClient.setPlaying).toHaveBeenCalledWith(2, expect.any(String)));
+    expect(broadcastPlayerState).not.toHaveBeenCalledWith(expect.objectContaining({ playing: true }));
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+    act(() => (playerProps.onPlay as () => void)());
+    expect(broadcastPlayerState).toHaveBeenCalledWith({ songId: 2, playing: true });
+  });
+
+  it("requests autoplay after an ended transition but waits for onPlay to broadcast", async () => {
+    const broadcastPlayerState = vi.fn(); const { props, rerender } = setup({ broadcastPlayerState });
     act(() => (playerProps.onEnded as () => void)());
     await waitFor(() => expect(props.queueClient.setPlaying).toHaveBeenCalledWith(2, expect.any(String)));
+    expect(broadcastPlayerState).not.toHaveBeenCalledWith(expect.objectContaining({ playing: true }));
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+    act(() => (playerProps.onPlay as () => void)());
     expect(broadcastPlayerState).toHaveBeenCalledWith({ songId: 2, playing: true });
   });
 
@@ -110,6 +127,35 @@ describe("MusicPlayer", () => {
     vi.useRealTimers();
   });
 
+  it("cancels recovery timers on song change and unmount", async () => {
+    vi.useFakeTimers(); const { props, rerender, unmount } = setup();
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("media unavailable")));
+    expect(vi.getTimerCount()).toBe(1);
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => { await vi.runAllTimersAsync(); });
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("media unavailable")));
+    expect(vi.getTimerCount()).toBe(1);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it("clears earlier recovery timers when skip starts so they cannot restart playback", async () => {
+    vi.useFakeTimers(); const { props } = setup();
+    act(() => {
+      (playerProps.onError as (error: Error) => void)(new Error("one"));
+      (playerProps.onError as (error: Error) => void)(new Error("two"));
+      (playerProps.onError as (error: Error) => void)(new Error("three"));
+    });
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => { await vi.runAllTimersAsync(); await Promise.resolve(); });
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+    expect(props.queueClient.setPlaying).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
+
   it("resets media state and recovery budget when the current song changes", () => {
     const { rerender, props } = setup();
     act(() => (playerProps.onDurationChange as (event: { currentTarget: { duration: number } }) => void)({ currentTarget: { duration: 200 } }));
@@ -132,7 +178,69 @@ describe("MusicPlayer", () => {
     await user.click(screen.getByRole("button", { name: "Next song" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Song changed, but the latest queue could not be loaded.");
     expect(props.queueClient.setPlaying).toHaveBeenCalledOnce();
-    expect(broadcastPlayerState).toHaveBeenCalledWith({ songId: 2, playing: true });
+    expect(broadcastPlayerState).not.toHaveBeenCalledWith(expect.objectContaining({ playing: true }));
+  });
+
+  it("serializes rapid navigation and disables navigation while pending", async () => {
+    const command = deferred<void>(); const user = userEvent.setup();
+    const { props } = setup({ queueClient: { setPlaying: vi.fn().mockReturnValue(command.promise) } });
+    await user.click(screen.getByRole("button", { name: "Next song" }));
+    expect(screen.getByRole("button", { name: "Next song" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous song" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Previous song" }));
+    act(() => { (playerProps.onEnded as () => void)(); (playerProps.onEnded as () => void)(); });
+    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+    await act(async () => command.resolve());
+  });
+
+  it("serializes unavailable skip against an ended event", async () => {
+    const command = deferred<void>(); const { props } = setup({ queueClient: { setPlaying: vi.fn().mockReturnValue(command.promise) } });
+    act(() => {
+      (playerProps.onError as (error: Error) => void)(new Error("one"));
+      (playerProps.onError as (error: Error) => void)(new Error("two"));
+      (playerProps.onError as (error: Error) => void)(new Error("three"));
+      (playerProps.onEnded as () => void)();
+    });
+    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+    await act(async () => command.resolve());
+  });
+
+  it("ignores stale refresh failure after the current song changes", async () => {
+    const refresh = deferred<void>(); const user = userEvent.setup(); const { props, rerender } = setup({ onChanged: vi.fn().mockReturnValue(refresh.promise) });
+    await user.click(screen.getByRole("button", { name: "Next song" }));
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
+    await act(async () => refresh.reject(new Error("stale")));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("holds the transition lock through refresh after the target song renders", async () => {
+    const refresh = deferred<void>(); const user = userEvent.setup(); const { props, rerender } = setup({ onChanged: vi.fn().mockReturnValue(refresh.promise) });
+    await user.click(screen.getByRole("button", { name: "Next song" }));
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[current]} />);
+    expect(screen.getByRole("button", { name: "Next song" })).toBeDisabled();
+    act(() => (playerProps.onEnded as () => void)());
+    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+    await act(async () => refresh.resolve());
+    expect(screen.getByRole("button", { name: "Next song" })).toBeEnabled();
+  });
+
+  it("does not broadcast or refresh a completed-song command after its song becomes stale", async () => {
+    const command = deferred<void>(); const broadcastPlayerState = vi.fn(); const onChanged = vi.fn();
+    const { props, rerender } = setup({ queuedSongs: [], queueClient: { setPlaying: vi.fn().mockReturnValue(command.promise) }, broadcastPlayerState, onChanged });
+    act(() => (playerProps.onEnded as () => void)());
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
+    await act(async () => command.resolve());
+    expect(broadcastPlayerState).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it("discards autoplay intent when a different canonical song wins", async () => {
+    const user = userEvent.setup(); const { props, rerender } = setup();
+    await user.click(screen.getByRole("button", { name: "Next song" }));
+    rerender(<MusicPlayer {...props} currentSong={previous} queuedSongs={[next]} />);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} />);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
   });
 
   it("renders a stable empty state", () => {
