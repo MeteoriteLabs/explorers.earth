@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MusicSearch } from "../MusicSearch";
@@ -127,5 +127,74 @@ describe("MusicSearch", () => {
     resolveSearch({ items: [first], nextPageToken: "stale" });
     await waitFor(() => expect(screen.getByRole("tabpanel")).toHaveAttribute("id", "music-url-panel"));
     expect(screen.queryByText("First song")).not.toBeInTheDocument();
+  });
+
+  it("wraps ArrowRight and ArrowLeft cyclically while Home and End remain absolute", async () => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+    const search = screen.getByRole("tab", { name: "Search" });
+    const url = screen.getByRole("tab", { name: "URL" });
+    url.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(search).toHaveFocus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(url).toHaveFocus();
+    await userEvent.keyboard("{Home}");
+    expect(search).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(url).toHaveFocus();
+  });
+
+  it("treats refresh failure after successful play-now as committed and retries refresh only", async () => {
+    const props = clients();
+    props.onChanged.mockRejectedValueOnce(new Error("refresh failed")).mockResolvedValueOnce(undefined);
+    render(<MusicSearch {...props} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("played, but the latest queue could not be loaded");
+    await userEvent.click(screen.getByRole("button", { name: "Retry refreshing queue" }));
+    await waitFor(() => expect(props.onChanged).toHaveBeenCalledTimes(2));
+    expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
+    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a successful retry-play committed when only its refresh fails", async () => {
+    const props = clients();
+    props.queueClient.setPlaying.mockRejectedValueOnce(new Error("play failed")).mockResolvedValueOnce({ id: 7 });
+    props.onChanged.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("refresh failed")).mockResolvedValueOnce(undefined);
+    render(<MusicSearch {...props} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Retry playing First song" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Retry refreshing queue" }));
+    expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
+    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(2);
+  });
+
+  it("synchronously locks duplicate search submits", async () => {
+    const props = clients();
+    props.searchClient.searchYouTube.mockReturnValue(new Promise(() => undefined));
+    render(<MusicSearch {...props} />);
+    const input = screen.getByRole("searchbox", { name: "Search music" });
+    await userEvent.type(input, "roads");
+    fireEvent.submit(input.closest("form")!);
+    fireEvent.submit(input.closest("form")!);
+    expect(props.searchClient.searchYouTube).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
+  });
+
+  it("synchronously locks duplicate URL submits", async () => {
+    const props = clients();
+    props.searchClient.videoFromUrl.mockReturnValue(new Promise(() => undefined));
+    render(<MusicSearch {...props} />);
+    await userEvent.click(screen.getByRole("tab", { name: "URL" }));
+    const input = screen.getByRole("textbox", { name: "YouTube URL" });
+    await userEvent.type(input, "https://youtu.be/abcdefghijk");
+    fireEvent.submit(input.closest("form")!);
+    fireEvent.submit(input.closest("form")!);
+    expect(props.searchClient.videoFromUrl).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Look up" })).toBeDisabled();
   });
 });
