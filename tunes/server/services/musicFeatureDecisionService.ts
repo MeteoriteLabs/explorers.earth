@@ -12,6 +12,7 @@ export interface MusicFeatureDecisionOptions {
   allowlists?: Partial<Record<MusicFeatureFlag, ReadonlySet<string>>>;
   percentages?: Partial<Record<MusicFeatureFlag, number>>;
   cacheTtlMs?: number;
+  cacheRefreshWindowMs?: number;
   cacheMaxEntries?: number;
   now?: () => number;
   exposureId?: () => string;
@@ -34,9 +35,10 @@ export class MusicFeatureDecisionService {
       return { ownerWorkspace: false, guestWorkspace: false, playlistImports: false, exposureId, expiresAt: new Date(now).toISOString() };
     }
     const cacheKey = `${principal.musicUserId}:${principal.accountDocumentId}:${principal.sessionVersion}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached && cached.expires > now) return cached.value;
     const ttl = Math.min(Math.max(this.options.cacheTtlMs ?? 60_000, 0), 60_000);
+    const refreshWindow = Math.min(Math.max(this.options.cacheRefreshWindowMs ?? 5_000, 0), 5_000, ttl);
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expires - now > refreshWindow) return cached.value;
     const expires = now + ttl;
     const exposureId = this.options.exposureId?.() ?? randomUUID();
     const decision = Object.fromEntries(musicFeatureFlags.map((flag) => [flag, this.flag(flag, principal)])) as Record<MusicFeatureFlag, boolean>;
