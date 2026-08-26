@@ -7,7 +7,7 @@ describe("canonical Music workspace client", () => {
     const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
       ? new Response("[]", { status: 200 })
       : input.path === "/api/music/dashboard"
-        ? new Response(JSON.stringify({ songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        ? new Response(JSON.stringify({ queueRevision: 6, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
         : input.path === "/api/music/entitlement"
           ? new Response(JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }), { status: 200 })
           : input.path === "/api/music/publication"
@@ -19,7 +19,7 @@ describe("canonical Music workspace client", () => {
             ? new Response(JSON.stringify({ id: 7, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] }), { status: 200 })
             : new Response(null, { status: 204 }));
     const client = createMusicWorkspaceClient(request);
-    await client.load();
+    await expect(client.load()).resolves.toMatchObject({ dashboard: { queueRevision: 6 } });
     await client.createPlaylist("Road songs", "For later", "create-playlist-1");
     await client.renamePlaylist(7, "Renamed", null, "rename-playlist-1");
     await client.setPlaylistVisibility(7, true, "visibility-playlist-1");

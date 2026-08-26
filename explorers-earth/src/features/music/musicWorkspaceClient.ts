@@ -12,10 +12,13 @@ export type { MusicEntitlementResponse, MusicEntitlementState } from "./musicEnt
 
 export interface MusicSong {
   id: number;
+  youtubeId: string;
   title: string;
   artist: string;
   thumbnailUrl: string;
   position: number;
+  status: "queued" | "playing" | "played";
+  playedAt: string | null;
 }
 
 export interface MusicPlaylist {
@@ -29,26 +32,27 @@ export interface MusicPlaylist {
 export type { MusicPublicationMode } from "../../../../tunes/shared/musicPublicationContract";
 
 export interface MusicDashboardResponse {
+  queueRevision: number;
   songs: MusicSong[];
   currentlyPlaying: MusicSong | null;
   playedSongs: MusicSong[];
   publication: { mode: MusicPublicationMode; publicSlug: string };
 }
 
-type Request = (input: LocalMusicRequest) => Promise<Response>;
+export type MusicRequest = (input: LocalMusicRequest) => Promise<Response>;
 
-async function json<T>(request: Request, input: LocalMusicRequest): Promise<T> {
+export async function requestMusicJson<T>(request: MusicRequest, input: LocalMusicRequest): Promise<T> {
   const response = await request(input);
   if (!response.ok) throw await containedWorkspaceError(response);
   return response.json() as Promise<T>;
 }
 
-async function empty(request: Request, input: LocalMusicRequest): Promise<void> {
+export async function requestMusicEmpty(request: MusicRequest, input: LocalMusicRequest): Promise<void> {
   const response = await request(input);
   if (!response.ok) throw await containedWorkspaceError(response);
 }
 
-async function containedWorkspaceError(response: Response): Promise<MusicClientError> {
+export async function containedWorkspaceError(response: Response): Promise<MusicClientError> {
   let upstreamCode: string | undefined;
   let retryable = false;
   try {
@@ -59,6 +63,10 @@ async function containedWorkspaceError(response: Response): Promise<MusicClientE
     // The response body is intentionally contained; status remains canonical.
   }
   const retryAfter = Number(response.headers.get("retry-after"));
+  const requestIdHeader = response.headers.get("x-request-id");
+  const requestId = requestIdHeader && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(requestIdHeader)
+    ? requestIdHeader
+    : undefined;
   const code: MusicClientErrorCode = response.status === 401 ? "AUTH_REQUIRED"
     : response.status === 400 ? "REQUEST_INVALID"
       : response.status === 403 || response.status === 409 ? "AUTH_UNAVAILABLE" : "SERVICE_UNAVAILABLE";
@@ -69,33 +77,34 @@ async function containedWorkspaceError(response: Response): Promise<MusicClientE
     Number.isSafeInteger(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     upstreamCode,
     retryable,
+    requestId,
   );
 }
 
-export function createMusicWorkspaceClient(request: Request) {
+export function createMusicWorkspaceClient(request: MusicRequest) {
   return {
     async load() {
       const [playlists, dashboard, entitlement] = await Promise.all([
-        json<MusicPlaylist[]>(request, { method: "GET", path: "/api/playlists" }),
-        json<MusicDashboardResponse>(request, { method: "GET", path: "/api/music/dashboard" }),
-        json<unknown>(request, { method: "GET", path: "/api/music/entitlement" }).then(parseMusicEntitlementResponse),
+        requestMusicJson<MusicPlaylist[]>(request, { method: "GET", path: "/api/playlists" }),
+        requestMusicJson<MusicDashboardResponse>(request, { method: "GET", path: "/api/music/dashboard" }),
+        requestMusicJson<unknown>(request, { method: "GET", path: "/api/music/entitlement" }).then(parseMusicEntitlementResponse),
       ]);
       return { playlists, dashboard, entitlement };
     },
     createPlaylist(name: string, description: string | null, idempotencyKey: string) {
-      return json<MusicPlaylist>(request, { method: "POST", path: "/api/playlists", body: { name, description }, idempotencyKey });
+      return requestMusicJson<MusicPlaylist>(request, { method: "POST", path: "/api/playlists", body: { name, description }, idempotencyKey });
     },
     renamePlaylist(playlistId: number, name: string, description: string | null, idempotencyKey: string) {
-      return json<MusicPlaylist>(request, { method: "PATCH", path: `/api/playlists/${playlistId}`, body: { name, description }, idempotencyKey });
+      return requestMusicJson<MusicPlaylist>(request, { method: "PATCH", path: `/api/playlists/${playlistId}`, body: { name, description }, idempotencyKey });
     },
     deletePlaylist(playlistId: number, idempotencyKey: string) {
-      return empty(request, { method: "DELETE", path: `/api/playlists/${playlistId}`, idempotencyKey });
+      return requestMusicEmpty(request, { method: "DELETE", path: `/api/playlists/${playlistId}`, idempotencyKey });
     },
     setPlaylistVisibility(playlistId: number, isVisibleToGuests: boolean, idempotencyKey: string) {
-      return empty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/visibility`, body: { isVisibleToGuests }, idempotencyKey });
+      return requestMusicEmpty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/visibility`, body: { isVisibleToGuests }, idempotencyKey });
     },
     reorderPlaylistSong(playlistId: number, songId: number, position: number, idempotencyKey: string) {
-      return empty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/reorder`, body: { songId, position }, idempotencyKey });
+      return requestMusicEmpty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/reorder`, body: { songId, position }, idempotencyKey });
     },
     async setPublication(mode: MusicPublicationMode, idempotencyKey: string): Promise<MusicPublicationCommandResponse> {
       const response = await request({

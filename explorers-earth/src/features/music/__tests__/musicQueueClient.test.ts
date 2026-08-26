@@ -1,0 +1,52 @@
+import { describe, expect, it, vi } from "vitest";
+import { createMusicQueueClient } from "../musicQueueClient";
+
+const song = { id: 3, youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "queued", playedAt: null };
+
+describe("credential-aware Music queue client", () => {
+  it("uses the exact owner-derived queue routes and DTOs", async () => {
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/music/dashboard"
+      ? new Response(JSON.stringify({ queueRevision: 4, songs: [song], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" } }))
+      : input.path === "/api/music/queue/replace"
+        ? new Response(JSON.stringify({ version: "music-queue/v1", revision: 5, songs: [song] }))
+        : input.path === "/api/playlist/currently-playing" && (input as { body?: { songId?: number | null } }).body?.songId === null
+          ? new Response(null, { status: 204 })
+          : input.path === "/api/playlist/songs/3" || input.path === "/api/playlist/songs/bulk" || input.path === "/api/playlist/history"
+            ? new Response(null, { status: 204 })
+            : new Response(JSON.stringify(song), { status: input.path === "/api/playlist/songs" ? 201 : 200 }));
+    const client = createMusicQueueClient(request);
+
+    await expect(client.loadDashboard()).resolves.toMatchObject({ queueRevision: 4, songs: [song] });
+    await client.addSong({ youtubeId: song.youtubeId, title: song.title, artist: song.artist, thumbnailUrl: song.thumbnailUrl }, "add-song-1");
+    await client.setPlaying(3, "set-playing-1");
+    await client.setPlaying(null, "stop-playing-1");
+    await client.removeSong(3, "remove-song-1");
+    await client.removeSongs([3, 4], "remove-songs-1");
+    await client.moveSong(3, 2, "move-song-1");
+    await client.clearHistory("clear-history-1");
+    await expect(client.replaceQueue(4, [{ playlistId: 8, songId: 9 }], "replace-queue-1")).resolves.toEqual({ version: "music-queue/v1", revision: 5, songs: [song] });
+
+    expect(request.mock.calls.map(([input]) => input)).toEqual([
+      { method: "GET", path: "/api/music/dashboard" },
+      { method: "POST", path: "/api/playlist/songs", body: { youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img" }, idempotencyKey: "add-song-1" },
+      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: 3 }, idempotencyKey: "set-playing-1" },
+      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: null }, idempotencyKey: "stop-playing-1" },
+      { method: "DELETE", path: "/api/playlist/songs/3", idempotencyKey: "remove-song-1" },
+      { method: "DELETE", path: "/api/playlist/songs/bulk", body: { songIds: [3, 4] }, idempotencyKey: "remove-songs-1" },
+      { method: "PATCH", path: "/api/playlist/songs/3/position", body: { position: 2 }, idempotencyKey: "move-song-1" },
+      { method: "DELETE", path: "/api/playlist/history", idempotencyKey: "clear-history-1" },
+      { method: "POST", path: "/api/music/queue/replace", body: { expectedRevision: 4, songs: [{ playlistId: 8, songId: 9 }] }, idempotencyKey: "replace-queue-1" },
+    ]);
+    expect(JSON.stringify(request.mock.calls)).not.toMatch(/username|email|ownerId|accountId|documentId|musicUserId/i);
+  });
+
+  it("preserves contained retry metadata", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "QUEUE_REVISION_CONFLICT", retryable: false } }), { status: 409, headers: { "retry-after": "2", "x-request-id": "queue-request" } }));
+    await expect(createMusicQueueClient(request).replaceQueue(1, [], "replace-queue-2")).rejects.toMatchObject({ status: 409, upstreamCode: "QUEUE_REVISION_CONFLICT", retryable: false, retryAfterSeconds: 2, requestId: "queue-request" });
+  });
+
+  it("does not expose an invalid upstream request identifier", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(null, { status: 503, headers: { "x-request-id": "unsafe request id" } }));
+    await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ requestId: undefined });
+  });
+});
