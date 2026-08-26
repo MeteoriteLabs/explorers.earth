@@ -293,8 +293,8 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
   const deleteOpener = useRef<HTMLButtonElement>(null);
   const pendingQueueReplacement = useRef<{ key: string; expectedRevision: number } | undefined>(undefined);
   useEffect(() => {
-    if (pendingQueueReplacement.current?.expectedRevision !== queueRevision) pendingQueueReplacement.current = undefined;
-  }, [queueRevision]);
+    pendingQueueReplacement.current = undefined;
+  }, [playlist.id, queueRevision]);
   const setVisible = async () => {
     try {
       await musicWorkspaceClient.setPlaylistVisibility(playlist.id, !playlist.isVisibleToGuests, operationKey("playlist-visibility"));

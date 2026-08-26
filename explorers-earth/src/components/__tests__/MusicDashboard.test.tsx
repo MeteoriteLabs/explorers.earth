@@ -87,6 +87,33 @@ describe("Music workspace UI", () => {
 
     expect(request.mock.calls[0][0].idempotencyKey).toBe(request.mock.calls[1][0].idempotencyKey);
   });
+
+  it("starts a new queue replacement operation after switching playlists", async () => {
+    const song = (id: number, title: string) => ({ id, playlistId: id, youtubeId: "abcdefghijk", title, artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" });
+    const playlists = [
+      { id: 1, name: "First mix", description: null, isVisibleToGuests: false, songs: [song(11, "A")] },
+      { id: 2, name: "Second mix", description: null, isVisibleToGuests: false, songs: [song(22, "C")] },
+    ];
+    const request = vi.spyOn(musicApi, "request")
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        version: "music-queue/v1", revision: 8, songs: [],
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+    const refetch = vi.fn(async () => undefined);
+    render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with First mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Second mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Replace queue with Second mix" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+
+    expect(request.mock.calls[1][0]).toMatchObject({ body: { expectedRevision: 7, songs: [{ playlistId: 2, songId: 22 }] } });
+    expect(request.mock.calls[1][0].idempotencyKey).not.toBe(request.mock.calls[0][0].idempotencyKey);
+  });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
     expect(screen.getByRole("heading", { name: "Create your first playlist" })).toBeInTheDocument();
