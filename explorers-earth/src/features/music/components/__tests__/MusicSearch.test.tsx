@@ -197,4 +197,23 @@ describe("MusicSearch", () => {
     expect(props.searchClient.videoFromUrl).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Look up" })).toBeDisabled();
   });
+
+  it("preserves committed refresh recovery across mode, input, and discovery changes", async () => {
+    const props = clients();
+    props.onChanged.mockRejectedValueOnce(new Error("refresh failed")).mockResolvedValueOnce(undefined);
+    render(<MusicSearch {...props} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("played, but the latest queue could not be loaded");
+
+    await userEvent.click(screen.getByRole("tab", { name: "URL" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "YouTube URL" }), "https://youtu.be/abcdefghijk");
+    await userEvent.click(screen.getByRole("button", { name: "Look up" }));
+    expect(await screen.findByRole("button", { name: "Retry refreshing queue" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry refreshing queue" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Retry refreshing queue" })).not.toBeInTheDocument());
+    expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
+    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+  });
 });
