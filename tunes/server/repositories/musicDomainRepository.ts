@@ -8,7 +8,10 @@ type QueryPool = Pick<Pool, "query" | "connect">;
 
 const QUEUE_MUTATION_LOCK = 0x4d51;
 const SAVED_PLAYLIST_LOCK = 0x4d53;
+const PLAYLIST_COLLECTION_LOCK = 0x4d54;
 const PUBLICATION_LOCK = 0x4d50;
+const MAX_SAVED_PLAYLISTS = 200;
+const MAX_SONGS_PER_PLAYLIST = 500;
 
 export class MusicDomainRepository {
   constructor(
@@ -90,10 +93,17 @@ export class MusicDomainRepository {
   }
 
   async createPlaylist(musicUserId: number, input: { name: string; description: string | null }) {
-    return (await this.pool.query(
-      "INSERT INTO playlists(user_id,name,description,is_visible_to_guests) VALUES ($1,$2,$3,false) RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at",
-      [musicUserId, input.name, input.description],
-    )).rows[0];
+    return this.withAdvisoryLock(PLAYLIST_COLLECTION_LOCK, musicUserId, async (client) => {
+      const count = Number((await client.query(
+        "SELECT count(*)::integer AS count FROM playlists WHERE user_id=$1",
+        [musicUserId],
+      )).rows[0]?.count ?? 0);
+      if (count >= MAX_SAVED_PLAYLISTS) return undefined;
+      return (await client.query(
+        "INSERT INTO playlists(user_id,name,description,is_visible_to_guests) VALUES ($1,$2,$3,false) RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at",
+        [musicUserId, input.name, input.description],
+      )).rows[0];
+    });
   }
 
   async updatePlaylist(musicUserId: number, playlistId: number, input: { name: string; description: string | null }) {
@@ -109,7 +119,16 @@ export class MusicDomainRepository {
 
   async addPlaylistSong(musicUserId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
     assertCanonicalYouTubeVideoId(input.youtubeId);
-    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => (await client.query(
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      const owned = (await client.query(
+        `SELECT p.id,count(ps.id)::integer AS count
+           FROM playlists p LEFT JOIN playlist_songs ps ON ps.playlist_id=p.id
+          WHERE p.user_id=$1 AND p.id=$2 GROUP BY p.id`,
+        [musicUserId, playlistId],
+      )).rows[0];
+      if (!owned) return undefined;
+      if (Number(owned.count) >= MAX_SONGS_PER_PLAYLIST) return null;
+      return (await client.query(
         `WITH owned AS (
            SELECT id FROM playlists WHERE user_id=$1 AND id=$2
          ), ordered AS (
@@ -123,7 +142,8 @@ export class MusicDomainRepository {
          FROM owned p
          RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
         [musicUserId, playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
-      )).rows[0]);
+      )).rows[0];
+    });
   }
 
   async removePlaylistSong(musicUserId: number, playlistId: number, songId: number): Promise<boolean> {

@@ -15,10 +15,10 @@ import { matchRetiredMusicSurface } from "../policies/musicRetirementPolicy";
 interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
   getPlaylist(ownerId: number, playlistId: number): Promise<unknown | undefined>;
-  createPlaylist(ownerId: number, input: { name: string; description: string | null }): Promise<unknown>;
+  createPlaylist(ownerId: number, input: { name: string; description: string | null }): Promise<unknown | undefined>;
   updatePlaylist(ownerId: number, playlistId: number, input: { name: string; description: string | null }): Promise<unknown | undefined>;
   deletePlaylist(ownerId: number, playlistId: number): Promise<boolean>;
-  addPlaylistSong(ownerId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown | undefined>;
+  addPlaylistSong(ownerId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown | null | undefined>;
   removePlaylistSong(ownerId: number, playlistId: number, songId: number): Promise<boolean>;
   reorderPlaylistSong(ownerId: number, playlistId: number, songId: number, position: number): Promise<boolean>;
   setPlaylistVisibility(ownerId: number, playlistId: number, visible: boolean): Promise<boolean>;
@@ -112,7 +112,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   app.post("/api/playlists", ...mutation(async (req, res, next) => {
     try {
       const input = playlistInput(req.body);
-      res.status(201).json(playlistDto(await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input)));
+      const playlist = await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input);
+      if (!playlist) throw playlistLimitReached();
+      res.status(201).json(playlistDto(playlist));
     } catch (error) { next(error); }
   }));
 
@@ -148,6 +150,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       const song = await dependencies.repository.addPlaylistSong(
         req.musicPrincipal!.musicUserId, positiveId(req.params.playlistId), songInput(req.body),
       );
+      if (song === null) throw savedPlaylistLimitReached();
       if (!song) throw notFound();
       res.status(201).json(playlistSongDto(song));
     } catch (error) { next(error); }
@@ -612,6 +615,14 @@ function invalidQueue() {
 
 function queueLimitReached() {
   return new MusicIdentityError("REQUEST_INVALID", 400, "The Music queue can contain at most 500 songs.", "none", false);
+}
+
+function playlistLimitReached() {
+  return new MusicIdentityError("REQUEST_INVALID", 400, "Music can contain at most 200 saved playlists.", "none", false);
+}
+
+function savedPlaylistLimitReached() {
+  return new MusicIdentityError("REQUEST_INVALID", 400, "A saved playlist can contain at most 500 songs.", "none", false);
 }
 
 function notFound() {

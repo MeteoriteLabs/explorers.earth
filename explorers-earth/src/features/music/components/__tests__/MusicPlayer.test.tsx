@@ -138,6 +138,18 @@ describe("MusicPlayer", () => {
     vi.useRealTimers();
   });
 
+  it("finishes an unavailable song after recovery is exhausted when the queue is empty", async () => {
+    vi.useFakeTimers(); const { props } = setup({ queuedSongs: [] });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("one")));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("two")));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("three")));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(props.queueClient.setPlaying).toHaveBeenCalledWith(null, expect.stringMatching(/^music-player-ended-/));
+    vi.useRealTimers();
+  });
+
   it("cancels recovery timers on song change and unmount", async () => {
     vi.useFakeTimers(); const { props, rerender, unmount } = setup();
     act(() => (playerProps.onError as (error: Error) => void)(new Error("media unavailable")));

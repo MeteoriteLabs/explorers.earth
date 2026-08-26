@@ -172,6 +172,20 @@ describe("canonical Music REST surfaces", () => {
     expect(response.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
   });
 
+  it("contains saved playlist and saved-song capacity failures", async () => {
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+    const playlistResponse = await request(appFor({ createPlaylist: vi.fn(async () => undefined) }).app)
+      .post("/api/playlists").set(headers).send({ name: "Full", description: null });
+    expect(playlistResponse.status).toBe(400);
+    expect(playlistResponse.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
+
+    const songResponse = await request(appFor({ addPlaylistSong: vi.fn(async () => null) }).app)
+      .post("/api/playlists/9/songs").set(headers)
+      .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
+    expect(songResponse.status).toBe(400);
+    expect(songResponse.body.error).toMatchObject({ code: "REQUEST_INVALID", action: "none", retryable: false });
+  });
+
   it("atomically replaces the principal queue and rejects stale, reused, targeted, unauthenticated, and cross-origin requests", async () => {
     // Break caught: replacement trusts owner input or loses typed concurrency/idempotency failures.
     const { app, calls } = appFor();

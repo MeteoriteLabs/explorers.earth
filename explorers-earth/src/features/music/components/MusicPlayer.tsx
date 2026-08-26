@@ -129,9 +129,14 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
     }
     skippedSongId.current = currentSong.id;
     clearRecovery(); setPlaying(false);
-    setMessage(`${currentSong.title} is unavailable. Skipping once.`);
-    void transition(queuedSongs[0], "skip");
-  }, [clearRecovery, currentSong, queuedSongs, transition]);
+    if (queuedSongs[0]) {
+      setMessage(`${currentSong.title} is unavailable. Skipping once.`);
+      void transition(queuedSongs[0], "skip");
+    } else {
+      setMessage(`${currentSong.title} is unavailable. Finishing playback.`);
+      void finish();
+    }
+  }, [clearRecovery, currentSong, finish, queuedSongs, transition]);
 
   if (!currentSong) return <section aria-label="Music player"><p role="status">Choose a song to start listening.</p></section>;
 

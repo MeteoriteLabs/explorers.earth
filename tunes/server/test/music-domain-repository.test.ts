@@ -216,6 +216,33 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(statements.some((text) => /music_queue_revision=music_queue_revision\+1/i.test(text))).toBe(false);
   });
 
+  it("refuses to create a 201st saved playlist under an owner collection lock", async () => {
+    const statements: string[] = [];
+    const client = { async query(text: string) {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (/count\(\*\)/i.test(text)) return { rows: [{ count: 200 }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    await expect(repository.createPlaylist(23, { name: "Too many", description: null })).resolves.toBeUndefined();
+    expect(statements.some((text) => /INSERT INTO playlists/i.test(text))).toBe(false);
+  });
+
+  it("distinguishes a full saved playlist from an unowned playlist without inserting", async () => {
+    for (const owned of [true, false]) {
+      const statements: string[] = [];
+      const client = { async query(text: string) {
+        statements.push(text.replace(/\s+/g, " ").trim());
+        if (/SELECT p\.id,count/i.test(text)) return { rows: owned ? [{ id: 7, count: 500 }] : [], rowCount: owned ? 1 : 0 };
+        return { rows: [], rowCount: 0 };
+      }, release() {} };
+      const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+      await expect(repository.addPlaylistSong(23, 7, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" }))
+        .resolves.toBe(owned ? null : undefined);
+      expect(statements.some((text) => /INSERT INTO playlist_songs/i.test(text))).toBe(false);
+    }
+  });
+
   it("caps owner played history at the client contract after ordering newest first", async () => {
     const rows = Array.from({ length: 501 }, (_, index) => ({
       id: index + 1,
