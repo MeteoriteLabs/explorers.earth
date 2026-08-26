@@ -37,6 +37,13 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(source).toContain("CURRENT_MIGRATION_MARKER");
     expect(source).toContain("0017_publication_idempotency_key_retirement");
     expect(source).toContain("rollback refused: current app is older than schema compatibility floor");
+    expect(source).not.toContain('\\"');
+    expect(source).toContain(
+      `'{{index .Config.Labels "com.docker.compose.project"}}'`,
+    );
+    expect(source).toContain(
+      `'{{index .Config.Labels "org.opencontainers.image.revision"}}'`,
+    );
     expect(source).toContain('today="$(date -u +%F)"');
     expect(source).toContain('[[ "$today" < "$TEMPORARY_DIRECT_DEPLOY_EXPIRES" || "$today" == "$TEMPORARY_DIRECT_DEPLOY_EXPIRES" ]]');
 
