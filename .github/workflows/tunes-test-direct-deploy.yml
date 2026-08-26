@@ -93,13 +93,16 @@ jobs:
             compose_dir=/home/deploy/tunes/tunes
             compose_file="$compose_dir/docker-compose.yml"
             override_file="$compose_dir/.codex-test-image.override.yml"
+            rollout_override_file="$compose_dir/.codex-owner-workspace.override.yml"
             environment_file="$compose_dir/.env"
             authority_dir="$compose_dir/.music-live-authority"
             attestation_dir="$authority_dir/attestations"
             backup_dir="$compose_dir/deployment-backups"
             stamp="$(date -u +%Y%m%dT%H%M%SZ)"
             override_backup="$backup_dir/override-$stamp.yml"
+            rollout_override_backup="$backup_dir/owner-workspace-$stamp.yml"
             environment_backup="$backup_dir/environment-$stamp.env"
+            rollout_override_present=false
             rollback_image="local/tunes-app-rollback:$stamp"
             success_flag="$backup_dir/deploy-success-$stamp"
             heartbeat_file="$backup_dir/deploy-heartbeat-$stamp"
@@ -119,6 +122,11 @@ jobs:
             chmod 700 "$backup_dir"
             cp "$override_file" "$override_backup"
             chmod 600 "$override_backup"
+            if [ -f "$rollout_override_file" ]; then
+              cp "$rollout_override_file" "$rollout_override_backup"
+              chmod 600 "$rollout_override_backup"
+              rollout_override_present=true
+            fi
             cp "$environment_file" "$environment_backup"
             chmod 600 "$environment_backup"
             set_environment_value() {
@@ -201,8 +209,18 @@ jobs:
               chmod 600 "$override_file"
               cp "$environment_backup" "$environment_file"
               chmod 600 "$environment_file"
+              if [ "$rollout_override_present" = true ]; then
+                cp "$rollout_override_backup" "$rollout_override_file"
+                chmod 600 "$rollout_override_file"
+              else
+                rm -f "$rollout_override_file"
+              fi
               for retry in \$(seq 1 3); do
-                docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
+                if [ "$rollout_override_present" = true ]; then
+                  docker compose -p tunes -f "$compose_file" -f "$override_file" -f "$rollout_override_file" up -d --no-deps --force-recreate app || true
+                else
+                  docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
+                fi
                 for check in \$(seq 1 30); do
                   image=\$(docker inspect --format '{{.Image}}' tunes-app-1 2>/dev/null || true)
                   state=\$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)
@@ -223,7 +241,14 @@ jobs:
               cp "$override_backup" "$override_file"
               cp "$environment_backup" "$environment_file"
               chmod 600 "$environment_file"
-              docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
+              if [ "$rollout_override_present" = true ]; then
+                cp "$rollout_override_backup" "$rollout_override_file"
+                chmod 600 "$rollout_override_file"
+                docker compose -p tunes -f "$compose_file" -f "$override_file" -f "$rollout_override_file" up -d --no-deps --force-recreate app || true
+              else
+                rm -f "$rollout_override_file"
+                docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app || true
+              fi
               for attempt in $(seq 1 45); do
                 image="$(docker inspect --format '{{.Image}}' tunes-app-1 2>/dev/null || true)"
                 state="$(docker inspect --format '{{.State.Status}}' tunes-app-1 2>/dev/null || true)"
@@ -242,6 +267,16 @@ jobs:
             set_environment_value MUSIC_FEATURE_COHORT_SALT explorers-owner-workspace-production-v1 "$environment_file"
             set_environment_value MUSIC_FEATURE_COHORT_VERSION owner-workspace-production-v1 "$environment_file"
             set_environment_value MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT 100 "$environment_file"
+            cat > "$rollout_override_file" <<'EOF'
+            services:
+              app:
+                environment:
+                  MUSIC_WORKSPACE_KILL_SWITCH: "false"
+                  MUSIC_FEATURE_COHORT_SALT: explorers-owner-workspace-production-v1
+                  MUSIC_FEATURE_COHORT_VERSION: owner-workspace-production-v1
+                  MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
+            EOF
+            chmod 600 "$rollout_override_file"
             sed -E \
               -e "s#^([[:space:]]*image:).*#\\1 $CANDIDATE_IMAGE#" \
               -e "s#^([[:space:]]*MUSIC_IMAGE_DIGEST:).*#\\1 $candidate_digest#" \
@@ -252,7 +287,7 @@ jobs:
             chmod 600 "$override_file"
             grep -Fq "image: $CANDIDATE_IMAGE" "$override_file"
             grep -Fq "MUSIC_MIGRATION_MARKER: 0018_transactional_queue_replacement" "$override_file"
-            docker compose -p tunes -f "$compose_file" -f "$override_file" up -d --no-deps --force-recreate app
+            docker compose -p tunes -f "$compose_file" -f "$override_file" -f "$rollout_override_file" up -d --no-deps --force-recreate app
             readiness="$backup_dir/readiness-$stamp.json"
             for attempt in $(seq 1 60); do
               date +%s > "$heartbeat_file"

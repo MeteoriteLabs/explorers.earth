@@ -47,6 +47,13 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(source).toContain('set_environment_value MUSIC_FEATURE_COHORT_SALT explorers-owner-workspace-production-v1');
     expect(source).toContain('set_environment_value MUSIC_FEATURE_COHORT_VERSION owner-workspace-production-v1');
     expect(source).toContain('set_environment_value MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT 100');
+    // The installed host compose file can predate these variables. A dedicated
+    // Compose override must carry the rollout into the container independently.
+    expect(source).toContain('rollout_override_file="$compose_dir/.codex-owner-workspace.override.yml"');
+    expect(source).toContain('rollout_override_backup="$backup_dir/owner-workspace-$stamp.yml"');
+    expect(source).toContain('cat > "$rollout_override_file" <<\'EOF\'');
+    expect(source).toContain('-f "$rollout_override_file" up -d --no-deps --force-recreate app');
+    expect(source).toContain('rm -f "$rollout_override_file"');
     expect(source).toContain('MUSIC_WORKSPACE_KILL_SWITCH=false');
     expect(source).toContain('MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT=100');
     expect(source).not.toContain('\\"');
