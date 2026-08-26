@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMusicRolloutClient } from "../musicRollout";
+import { createMusicRolloutClient, subscribeMusicRollout } from "../musicRollout";
 
 const scopeA = { userDocumentId: "user-a", accountDocumentId: "account-a" };
 const closed = { ownerWorkspace: false, guestWorkspace: false, playlistImports: false, exposureId: "closed", expiresAt: "2026-08-26T00:01:00.000Z" };
@@ -53,5 +53,25 @@ describe("music runtime rollout", () => {
     expect((await oldA).ownerWorkspace).toBe(false);
     await rollout.get(scopeA);
     expect(request).toHaveBeenCalledTimes(3);
+  });
+
+  it("renews exposure at expiry and fails a previously enabled workspace closed", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-26T00:00:00.000Z");
+    const request = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...closed, ownerWorkspace: true, expiresAt: "2026-08-26T00:00:01.000Z" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    const rollout = createMusicRolloutClient(request);
+    const decisions: boolean[] = [];
+    const unsubscribe = subscribeMusicRollout(rollout, scopeA, (exposure) => decisions.push(exposure.ownerWorkspace));
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(decisions).toEqual([true]);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(decisions).toEqual([true, false]);
+    expect(request).toHaveBeenCalledTimes(2);
+
+    unsubscribe();
+    vi.useRealTimers();
   });
 });

@@ -316,7 +316,7 @@ export class MusicDomainRepository {
         const rightTime = right.playedAt instanceof Date ? right.playedAt.getTime() : Date.parse(String(right.playedAt ?? ""));
         const timeDifference = (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
         return timeDifference || Number(right.id) - Number(left.id);
-      }),
+      }).slice(0, 500),
       publication: {
         mode: publication?.guest_discoverable === true ? "public"
           : publication?.has_guest_capability === true ? "unlisted" : "private",

@@ -15,7 +15,7 @@ import { useTunesDashboard, type TunesDashboardData } from "../hooks/useTunesDas
 import useAuthStore from "../store/store";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import type { MusicPublicationOwnerScope } from "../features/music/musicPublicationCommandRegistry";
-import { createMusicRolloutClient, type MusicRolloutScope } from "../features/music/musicRollout";
+import { createMusicRolloutClient, subscribeMusicRollout, type MusicRolloutScope } from "../features/music/musicRollout";
 import { musicApi } from "../features/music/musicApi";
 
 const musicRollout = createMusicRolloutClient((input) => musicApi.request(input));
@@ -195,9 +195,7 @@ const MusicPage = () => {
     previousScope.current = scope;
     setOwnerWorkspace(false);
     if (!scope || data.identityStatus !== "ready") return;
-    let active = true;
-    void musicRollout.get(scope).then((exposure) => { if (active) setOwnerWorkspace(exposure.ownerWorkspace); });
-    return () => { active = false; };
+    return subscribeMusicRollout(musicRollout, scope, (exposure) => setOwnerWorkspace(exposure.ownerWorkspace));
   }, [scope?.userDocumentId, scope?.accountDocumentId, data.identityStatus]);
   const onboarding = onboardingFromEligibility(eligibility);
 

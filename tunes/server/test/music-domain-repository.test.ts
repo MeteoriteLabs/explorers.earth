@@ -202,6 +202,19 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(result.playedSongs.map((song) => song.id)).toEqual([4, 3]);
   });
 
+  it("caps owner played history at the client contract after ordering newest first", async () => {
+    const rows = Array.from({ length: 501 }, (_, index) => ({
+      id: index + 1,
+      userId: 23,
+      status: "played",
+      playedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
+    }));
+    const result = await new MusicDomainRepository(recordingPool(rows).pool).ownerDashboard(23);
+    expect(result.playedSongs).toHaveLength(500);
+    expect(result.playedSongs[0].id).toBe(501);
+    expect(result.playedSongs.at(-1)?.id).toBe(2);
+  });
+
   it.each(["abcdefghij", "abcdefghijkl", "A".repeat(65)])("rejects noncanonical repository YouTube ID %s before a query", async (youtubeId) => {
     const harness = recordingPool();
     const repository = new MusicDomainRepository(harness.pool);

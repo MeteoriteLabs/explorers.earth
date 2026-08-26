@@ -51,3 +51,27 @@ export function createMusicRolloutClient(request: MusicRequest, clock: () => num
     },
   };
 }
+
+export function subscribeMusicRollout(
+  rollout: Pick<ReturnType<typeof createMusicRolloutClient>, "get">,
+  scope: MusicRolloutScope,
+  onExposure: (exposure: MusicFeatureExposure) => void,
+  clock: () => number = Date.now,
+): () => void {
+  let active = true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const refresh = async (): Promise<void> => {
+    const exposure = await rollout.get(scope);
+    if (!active) return;
+    onExposure(exposure);
+    const now = clock();
+    const expiry = Date.parse(exposure.expiresAt);
+    const delay = Number.isFinite(expiry) && expiry > now ? expiry - now : 60_000;
+    timer = setTimeout(() => { void refresh(); }, delay);
+  };
+  void refresh();
+  return () => {
+    active = false;
+    if (timer !== undefined) clearTimeout(timer);
+  };
+}
