@@ -100,6 +100,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(queueReplace.parameters).toContainEqual(expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }));
     expect(Object.keys(queueReplace.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "409", "503"]));
     expect(JSON.stringify(queueReplace)).toContain("QUEUE_REVISION_CONFLICT");
+    expect(JSON.stringify(queueReplace)).toMatch(/24 hours.*expired.*reused/i);
     expect(queueReplace.requestBody).toMatchObject({ content: { "application/json": { schema: {
       required: ["expectedRevision", "songs"], additionalProperties: false,
     } } } });

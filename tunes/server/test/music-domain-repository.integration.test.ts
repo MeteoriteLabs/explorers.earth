@@ -98,6 +98,29 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       .resolves.toEqual({ status: "not_found" });
   });
 
+  it("rolls back an injected mid-replacement failure without changing queue, revision, or operation history", async () => {
+    const owner = await identities.ensureIdentity(identityInput("queue-rollback"));
+    const playlist = await domain.createPlaylist(owner.id, { name: "Rollback", description: null }) as { id: number };
+    const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "replacement", title: "Replacement", artist: "R", thumbnailUrl: "https://img/replacement" }) as { id: number };
+    await domain.addSong(owner.id, { youtubeId: "original", title: "Original", artist: "O", thumbnailUrl: "https://img/original" });
+    const beforeQueue = (await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows;
+    const beforeRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const beforeOperations = Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count);
+    await pool.query(`CREATE OR REPLACE FUNCTION fail_queue_replacement_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.youtube_id='replacement' THEN RAISE EXCEPTION 'injected queue replacement failure'; END IF; RETURN NEW; END $$`);
+    await pool.query("CREATE TRIGGER fail_queue_replacement_insert BEFORE INSERT ON songs FOR EACH ROW EXECUTE FUNCTION fail_queue_replacement_insert()");
+    try {
+      await expect(domain.replaceQueue(owner.id, "rollback-key", beforeRevision, [{ playlistId: playlist.id, songId: source.id }]))
+        .rejects.toThrow(/injected queue replacement failure/);
+    } finally {
+      await pool.query("DROP TRIGGER fail_queue_replacement_insert ON songs");
+      await pool.query("DROP FUNCTION fail_queue_replacement_insert()");
+    }
+    expect((await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows).toEqual(beforeQueue);
+    expect(Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision)).toBe(beforeRevision);
+    expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count)).toBe(beforeOperations);
+  });
+
   it("isolates playlist and queue read/update/delete families between A and B", async () => {
     // Break caught: a known playlist/song ID bypasses a missing owner predicate on real PostgreSQL.
     const a = await identities.ensureIdentity(identityInput("a"));

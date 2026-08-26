@@ -67,6 +67,7 @@ describe("Music migration authority contracts", () => {
     expect(migration?.sql).toMatch(/PRIMARY KEY \(music_user_id, operation, idempotency_key_hash\)/i);
     expect(migration?.sql).toMatch(/request_hash TEXT NOT NULL/i);
     expect(migration?.sql).toMatch(/response_body JSONB NOT NULL/i);
+    expect(migration?.sql).toMatch(/GRANT SELECT, INSERT, DELETE ON music_owner_operations TO music_runtime/i);
     expect(migration?.sql).not.toMatch(/DROP TABLE|DROP COLUMN/i);
   });
 

@@ -222,7 +222,7 @@ const paths = {
         "409": failure("The queue revision is stale or the replay key conflicts.", ["QUEUE_REVISION_CONFLICT", "IDEMPOTENCY_CONFLICT"]),
         "503": failure("The queue replacement is temporarily unavailable.", ["DATABASE_UNAVAILABLE"], true),
       },
-      description: "The server validates every playlist and saved song against the verified principal, replaces active queue rows in one transaction, increments the queue revision, and durably stores the exact result for replay.",
+      description: "The server validates every playlist and saved song against the verified principal, replaces active queue rows in one transaction, increments the queue revision, and durably stores the exact result for replay for 24 hours. After the database-clock window has expired, the idempotency key may be reused.",
     }),
   },
   "/api/music/dashboard": {

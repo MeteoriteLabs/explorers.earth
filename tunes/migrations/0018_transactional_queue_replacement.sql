@@ -18,5 +18,5 @@ CREATE INDEX music_owner_operations_expiry_idx
   ON music_owner_operations(expires_at, music_user_id, operation);
 
 REVOKE ALL ON music_owner_operations FROM PUBLIC;
-GRANT SELECT, INSERT ON music_owner_operations TO music_runtime;
+GRANT SELECT, INSERT, DELETE ON music_owner_operations TO music_runtime;
 GRANT SELECT, UPDATE(music_queue_revision) ON users TO music_runtime;

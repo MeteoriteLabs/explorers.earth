@@ -194,10 +194,21 @@ export class MusicDomainRepository {
       .update(JSON.stringify({ expectedRevision, songs }), "utf8")
       .digest("hex");
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         )
+         DELETE FROM music_owner_operations operation USING expired
+          WHERE operation.ctid=expired.ctid`,
+        [musicUserId],
+      );
       const existing = (await client.query(
         `SELECT request_hash,status_code,response_body
            FROM music_owner_operations
           WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at>transaction_timestamp()
           FOR UPDATE`,
         [musicUserId, operation, keyHash],
       )).rows[0];

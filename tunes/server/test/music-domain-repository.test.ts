@@ -75,6 +75,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const client = { async query(text: string) {
       statements.push(text.replace(/\s+/g, " ").trim());
       if (/^(BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(text)) return { rows: [], rowCount: 0 };
+      if (/DELETE FROM music_owner_operations/.test(text)) return { rows: [], rowCount: 0 };
       return results.shift() ?? { rows: [], rowCount: 0 };
     }, release() {} };
     const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
@@ -110,6 +111,25 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(repository.replaceQueue(7, "failure", 0, [{ playlistId: 9, songId: 1 }])).rejects.toThrow("injected queue failure");
     expect(statements).toContain("ROLLBACK");
     expect(statements).not.toContain("COMMIT");
+  });
+
+  it("uses the database clock to expire replay keys and performs only bounded owner cleanup", async () => {
+    // Break caught: expired responses replay forever, block safe reuse, or trigger an unbounded global delete.
+    const statements: Array<{ text: string; values: unknown[] }> = [];
+    const client = { async query(text: string, values: unknown[] = []) {
+      statements.push({ text: text.replace(/\s+/g, " ").trim(), values });
+      if (/SELECT request_hash,status_code,response_body/.test(text)) return { rows: [], rowCount: 0 };
+      if (/SELECT u\.music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 2 }], rowCount: 1 };
+      if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 3 }], rowCount: 1 };
+      return { rows: [], rowCount: 1 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    await expect(repository.replaceQueue(7, "expired-key", 2, [])).resolves.toMatchObject({ status: "completed", replayed: false });
+    const cleanup = statements.find(({ text }) => /DELETE FROM music_owner_operations/.test(text));
+    expect(cleanup?.text).toMatch(/music_user_id=\$1[\s\S]*expires_at<=transaction_timestamp\(\)[\s\S]*LIMIT 100/i);
+    expect(cleanup?.values).toEqual([7]);
+    expect(statements.find(({ text }) => /SELECT request_hash/.test(text))?.text)
+      .toMatch(/expires_at>transaction_timestamp\(\)/i);
   });
   it("owner-predicates every playlist read/update/delete family", async () => {
     // Break caught: a resource ID alone can observe or mutate another owner's playlist.

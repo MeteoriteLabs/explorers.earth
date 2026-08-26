@@ -35,6 +35,7 @@ readonly -a known_markers=(
   "0014_durable_reactivation_authority"
   "0015_publication_operation_archive"
   "0016_publication_operation_retention"
+  "0017_publication_idempotency_key_retirement"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
@@ -58,6 +59,13 @@ marker_rank() {
     fi
   done
   return 1
+}
+
+compatibility_marker_for() {
+  case "$1" in
+    "0018_transactional_queue_replacement") printf '%s\n' "0017_publication_idempotency_key_retirement" ;;
+    *) printf '%s\n' "$1" ;;
+  esac
 }
 
 current_marker_rank="$(marker_rank "$current_marker")" || fail "current migration marker is unknown"
@@ -717,11 +725,14 @@ fi
 music_deploy_validate_compose_project "$compose_project"
 
 candidate_marker_rank="$(marker_rank "$candidate_marker")" || fail "candidate migration marker is unknown"
+candidate_compatibility_marker="$(compatibility_marker_for "$candidate_marker")"
+candidate_compatibility_marker_rank="$(marker_rank "$candidate_compatibility_marker")" \
+  || fail "candidate compatibility migration marker is unknown"
 if [[ -e "$compatibility_floor_file" ]]; then
-  [[ "$candidate_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
+  [[ "$candidate_compatibility_marker_rank" -ge "$compatibility_floor_marker_rank" ]] \
     || fail "candidate refused: migration marker older than schema compatibility floor"
   if [[ "$compatibility_floor_state" == pending ]]; then
-    [[ "$candidate_marker_rank" -eq "$compatibility_floor_marker_rank" \
+    [[ "$candidate_compatibility_marker_rank" -eq "$compatibility_floor_marker_rank" \
       && "$candidate_digest" == "$compatibility_floor_digest" \
       && "$candidate_commit" == "$compatibility_floor_commit" ]] \
       || fail "candidate refused: pending schema epoch must be retried exactly"
@@ -819,7 +830,7 @@ fi
 
 if [[ ! -e "$compatibility_floor_file" ]]; then
   if [[ ! -e "$schema_epoch_file" ]]; then
-    write_schema_epoch "$candidate_digest" "$candidate_commit" preparing
+    write_schema_epoch "$candidate_digest" "$candidate_commit" preparing "$candidate_compatibility_marker"
   else
     validate_schema_epoch
     [[ "$schema_epoch_state" == preparing && "$schema_epoch_digest" == "$candidate_digest" \
@@ -827,17 +838,17 @@ if [[ ! -e "$compatibility_floor_file" ]]; then
   fi
   install_registration_compatibility_route
   maybe_failpoint before_epoch
-  write_schema_epoch "$candidate_digest" "$candidate_commit" pending
-  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending
+  write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
+  write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
   maybe_failpoint after_epoch_before_gate
 else
-  if [[ "$operation" != rollback && "$candidate_marker_rank" -gt "$compatibility_floor_marker_rank" ]]; then
+  if [[ "$operation" != rollback && "$candidate_compatibility_marker_rank" -gt "$compatibility_floor_marker_rank" ]]; then
     install_registration_compatibility_route
     maybe_failpoint before_epoch
     # The higher signed epoch is durable first. Recovery recognizes this one
     # direction as an interrupted monotonic upgrade and advances the floor.
-    write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_marker"
-    write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_marker"
+    write_schema_epoch "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
+    write_compatibility_floor "$candidate_digest" "$candidate_commit" pending "$candidate_compatibility_marker"
     maybe_failpoint after_epoch_before_gate
   else
     probe_registration_denial '{}'
@@ -847,7 +858,7 @@ fi
 compose --profile deployment run --rm --no-deps tunes-gate
 validate_compatibility_floor
 if [[ "$compatibility_floor_state" == pending ]]; then
-  [[ "$candidate_marker_rank" -eq "$compatibility_floor_marker_rank" \
+  [[ "$candidate_compatibility_marker_rank" -eq "$compatibility_floor_marker_rank" \
     && "$candidate_digest" == "$compatibility_floor_digest" \
     && "$candidate_commit" == "$compatibility_floor_commit" ]] \
     || fail "gate candidate does not match pending schema epoch"
