@@ -253,7 +253,7 @@ const paths = {
     } }),
   },
   "/api/playlist/songs/bulk": {
-    delete: ownerOperation({ summary: "Remove up to 100 owner queue songs", status: "204", request: body(ref("BulkSongInput"), "Owner queue identifiers") }),
+    delete: ownerOperation({ summary: "Remove up to 500 owner queue songs", status: "204", request: body(ref("BulkSongInput"), "Owner queue identifiers") }),
   },
   "/api/playlist/songs/{songId}": {
     delete: ownerOperation({ summary: "Remove one owner queue song", status: "204", parameters: [songId], errors: { "404": failure("The owner-predicated song was not found.", ["PUBLIC_NOT_FOUND"]) } }),
@@ -444,7 +444,7 @@ export const MUSIC_OPENAPI_DOCUMENT = {
         },
       },
       PlaylistInput: { type: "object", additionalProperties: false, required: ["name"], properties: { name: { type: "string", minLength: 1, maxLength: 120 }, description: { type: ["string", "null"], maxLength: 2_000 } } },
-      SongInput: { type: "object", additionalProperties: false, required: ["youtubeId", "title", "artist", "thumbnailUrl"], properties: { youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" }, title: { type: "string", minLength: 1, maxLength: 1_024 }, artist: { type: "string", minLength: 1, maxLength: 1_024 }, thumbnailUrl: { type: "string", minLength: 1, maxLength: 1_024 } } },
+      SongInput: { type: "object", additionalProperties: false, required: ["youtubeId", "title", "artist", "thumbnailUrl"], properties: { youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" }, title: { type: "string", minLength: 1, maxLength: 1_024 }, artist: { type: "string", minLength: 1, maxLength: 1_024 }, thumbnailUrl: { type: "string", minLength: 1, maxLength: 2_048 } } },
       Song: { type: "object", additionalProperties: false, required: ["id", "userId", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt"], properties: { id: { type: "integer", minimum: 1 }, userId: { type: "integer", minimum: 1 }, youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" }, title: { type: "string" }, artist: { type: "string" }, thumbnailUrl: { type: "string" }, position: { type: "integer", minimum: 0 }, status: { type: "string", enum: ["queued", "playing", "played"] }, playedAt: { type: ["string", "null"], format: "date-time" } } },
       QueueReplaceSource: { type: "object", additionalProperties: false, required: ["playlistId", "songId"], properties: { playlistId: { type: "integer", minimum: 1 }, songId: { type: "integer", minimum: 1 } } },
       QueueReplaceInput: { type: "object", additionalProperties: false, required: ["expectedRevision", "songs"], properties: { expectedRevision: { type: "integer", minimum: 0 }, songs: { type: "array", maxItems: 500, items: ref("QueueReplaceSource") } } },
@@ -458,7 +458,7 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       SavedReorderInput: { type: "object", additionalProperties: false, required: ["songId", "position"], properties: { songId: { type: "integer", minimum: 1 }, position: { type: "integer", minimum: 0 } } },
       VisibilityInput: { type: "object", additionalProperties: false, required: ["isVisibleToGuests"], properties: { isVisibleToGuests: { type: "boolean" } } },
       PlayingInput: { type: "object", additionalProperties: false, required: ["songId"], properties: { songId: { type: ["integer", "null"], minimum: 1 } } },
-      BulkSongInput: { type: "object", additionalProperties: false, required: ["songIds"], properties: { songIds: { type: "array", minItems: 1, maxItems: 100, uniqueItems: true, items: { type: "integer", minimum: 1 } } } },
+      BulkSongInput: { type: "object", additionalProperties: false, required: ["songIds"], properties: { songIds: { type: "array", minItems: 1, maxItems: 500, uniqueItems: true, items: { type: "integer", minimum: 1 } } } },
       PositionInput: { type: "object", additionalProperties: false, required: ["position"], properties: { position: { type: "integer", minimum: 0 } } },
       PublicationCommandInput: { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] } } },
       PublicationCommandResponse: {

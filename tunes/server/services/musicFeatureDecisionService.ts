@@ -12,6 +12,7 @@ export interface MusicFeatureDecisionOptions {
   allowlists?: Partial<Record<MusicFeatureFlag, ReadonlySet<string>>>;
   percentages?: Partial<Record<MusicFeatureFlag, number>>;
   cacheTtlMs?: number;
+  cacheMaxEntries?: number;
   now?: () => number;
   exposureId?: () => string;
   log?: (entry: { flag: MusicFeatureFlag; decision: boolean; cohortVersion: string; exposureId: string }) => void;
@@ -23,7 +24,11 @@ export class MusicFeatureDecisionService {
 
   decide(principal: MusicPrincipal): MusicFeatureExposure {
     const now = this.options.now?.() ?? Date.now();
+    this.cache.forEach((entry, key) => {
+      if (entry.expires <= now) this.cache.delete(key);
+    });
     if (this.options.killSwitch()) {
+      this.cache.clear();
       const exposureId = this.options.exposureId?.() ?? randomUUID();
       for (const flag of musicFeatureFlags) this.options.log?.({ flag, decision: false, cohortVersion: this.options.cohortVersion, exposureId });
       return { ownerWorkspace: false, guestWorkspace: false, playlistImports: false, exposureId, expiresAt: new Date(now).toISOString() };
@@ -37,6 +42,12 @@ export class MusicFeatureDecisionService {
     const decision = Object.fromEntries(musicFeatureFlags.map((flag) => [flag, this.flag(flag, principal)])) as Record<MusicFeatureFlag, boolean>;
     for (const flag of musicFeatureFlags) this.options.log?.({ flag, decision: decision[flag], cohortVersion: this.options.cohortVersion, exposureId });
     const value = { ...decision, exposureId, expiresAt: new Date(expires).toISOString() };
+    const maxEntries = Math.min(Math.max(Math.trunc(this.options.cacheMaxEntries ?? 10_000), 1), 10_000);
+    while (this.cache.size >= maxEntries) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest === undefined) break;
+      this.cache.delete(oldest);
+    }
     this.cache.set(cacheKey, { expires, value });
     return value;
   }

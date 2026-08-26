@@ -89,6 +89,8 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("publication");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("queueRevision");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.thumbnailUrl).toMatchObject({ minLength: 1, maxLength: 2_048 });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.BulkSongInput.properties.songIds).toMatchObject({ minItems: 1, maxItems: 500, uniqueItems: true });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Song.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PlaylistSong.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.properties.publication)).toContain("publicSlug");

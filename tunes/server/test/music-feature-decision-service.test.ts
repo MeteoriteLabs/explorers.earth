@@ -44,6 +44,24 @@ describe("MusicFeatureDecisionService", () => {
     expect(service.decide(principal)).not.toBe(first);
   });
 
+  it("evicts expired principals and bounds live feature-decision entries", () => {
+    let now = 1_000;
+    let exposure = 0;
+    const service = new MusicFeatureDecisionService({
+      killSwitch: () => false, salt: "salt", cohortVersion: "v1", now: () => now,
+      exposureId: () => `exposure-${++exposure}`, cacheTtlMs: 60_000, cacheMaxEntries: 2,
+    });
+    const first = service.decide(principal);
+    service.decide({ ...principal, musicUserId: 8, accountDocumentId: "account-b" });
+    service.decide({ ...principal, musicUserId: 9, accountDocumentId: "account-c" });
+    expect(service.decide(principal).exposureId).not.toBe(first.exposureId);
+
+    now = 61_001;
+    service.decide({ ...principal, musicUserId: 10, accountDocumentId: "account-d" });
+    const cache = (service as unknown as { cache: Map<string, unknown> }).cache;
+    expect(cache.size).toBe(1);
+  });
+
   it("logs only sanitized exposure fields", () => {
     const log = vi.fn();
     new MusicFeatureDecisionService({ killSwitch: () => false, salt: "salt", cohortVersion: "v4", log }).decide(principal);
