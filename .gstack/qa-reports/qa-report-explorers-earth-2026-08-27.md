@@ -13,12 +13,12 @@
 | Area | Baseline result | Evidence / follow-up |
 | --- | --- | --- |
 | Identity and workspace bootstrap | Pass | Owner workspace loads after identity establishment. |
-| Search | Partial | Queries return results, then the workspace disappears when the rollout exposure renews. ISSUE-001. |
+| Search | Partial | `Daft Punk Get Lucky`, `Coldplay Yellow`, and `Beatles Hey Jude` returned results. Pagination/empty/no-result still pending after ISSUE-001. |
 | Player | Partial | Play-now starts the selected YouTube item and renders controls; blocked from sustained testing by ISSUE-001. |
-| Queue | Partial | Added item persists across reload; reorder/remove/clear still pending after ISSUE-001 repair. |
+| Queue | Partial | Added one and two selected results, persisted across reload, and moved `Hey Jude (Remastered 2015)` upward with the correct live-region update. Remove/clear still pending. |
 | Recently played | Partial | Empty-state loads correctly; completion/history lifecycle still pending. |
 | Playlist creation | Pass | Created `Codex UAT 2026-08-27` with a description and confirmed persistence. |
-| Playlist editing and membership | Pending | Rename/privacy/add/remove/reorder/replace-queue remain to be tested. |
+| Playlist editing and membership | Fail | Rename/privacy controls render, but the Explorers UI has no action for adding a discovered song to a saved playlist. ISSUE-002. |
 | URL import/discovery | Pending | Must remain available for individual media URLs. Playlist imports must remain disabled by rollout. |
 | Responsive UI | Pending | Desktop and mobile visual/interaction review after functional stability. |
 | Console/network health | Partial | No app-origin exception during ISSUE-001; an unrelated browser-extension `share-modal.js` error was excluded. |
@@ -47,6 +47,20 @@ The browser refreshes at the exposure's absolute `expiresAt`. A small client/ser
 Renew cached decisions inside a bounded five-second server-side clock-skew window. This preserves fail-closed behavior and keeps the maximum cache TTL at sixty seconds.
 
 Regression coverage: `tunes/server/test/music-feature-decision-service.regression-1.test.ts`.
+
+## ISSUE-002 — Songs cannot be added to saved playlists in Explorers
+
+**Severity:** P1  
+**Status:** Confirmed by production UI and source trace; repair pending after ISSUE-001 deployment
+
+### Evidence
+
+1. Create or select a saved playlist.
+2. Search successfully and select one or more results.
+3. The only available bulk action is `Add N selected to queue`; there is no saved-playlist target or add-to-playlist action.
+4. Empty saved playlists consequently cannot exercise song reorder, removal, or queue replacement.
+
+The Tunes backend already exposes `POST /api/playlists/:playlistId/songs`, but `explorers-earth/src/features/music/musicWorkspaceClient.ts` has no corresponding client method and `MusicSearch`/`MusicDashboard` expose no owner UI for it. This is a missing frontend workflow rather than an API outage.
 
 ## Notes
 
