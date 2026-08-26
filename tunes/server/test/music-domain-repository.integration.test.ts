@@ -58,8 +58,8 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     // Break caught: two retries both delete/insert, or replay returns newly generated row IDs.
     const owner = await identities.ensureIdentity(identityInput("queue-replace"));
     const playlist = await domain.createPlaylist(owner.id, { name: "Saved", description: null }) as { id: number };
-    const first = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "first", title: "First", artist: "A", thumbnailUrl: "https://img/first" }) as { id: number };
-    const second = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "second", title: "Second", artist: "B", thumbnailUrl: "https://img/second" }) as { id: number };
+    const first = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "first000001", title: "First", artist: "A", thumbnailUrl: "https://img/first" }) as { id: number };
+    const second = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "second00001", title: "Second", artist: "B", thumbnailUrl: "https://img/second" }) as { id: number };
     const sources = [{ playlistId: playlist.id, songId: second.id }, { playlistId: playlist.id, songId: first.id }];
 
     const [a, b] = await Promise.all([
@@ -71,7 +71,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(a.status === "completed" && b.status === "completed" ? a.response : undefined)
       .toEqual(b.status === "completed" ? b.response : undefined);
     expect((await pool.query("SELECT youtube_id,position FROM songs WHERE user_id=$1 AND status='queued' ORDER BY position", [owner.id])).rows)
-      .toEqual([{ youtube_id: "second", position: 0 }, { youtube_id: "first", position: 1 }]);
+      .toEqual([{ youtube_id: "second00001", position: 0 }, { youtube_id: "first000001", position: 1 }]);
     expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1 AND operation='queue.replace'", [owner.id])).rows[0].count)).toBe(1);
 
     await expect(domain.replaceQueue(owner.id, "same-concurrent-key", 0, sources.slice().reverse()))
@@ -79,7 +79,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await expect(domain.replaceQueue(owner.id, "fresh-stale-key", 0, sources))
       .resolves.toEqual({ status: "stale", revision: 1 });
 
-    await domain.addSong(owner.id, { youtubeId: "added", title: "Added", artist: "A", thumbnailUrl: "https://img/added" });
+    await domain.addSong(owner.id, { youtubeId: "added000001", title: "Added", artist: "A", thumbnailUrl: "https://img/added" });
     await expect(domain.replaceQueue(owner.id, "stale-after-add", 1, sources))
       .resolves.toEqual({ status: "stale", revision: 2 });
     const active = (await pool.query("SELECT id FROM songs WHERE user_id=$1 AND status='queued' ORDER BY position", [owner.id])).rows;
@@ -101,13 +101,13 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
   it("rolls back an injected mid-replacement failure without changing queue, revision, or operation history", async () => {
     const owner = await identities.ensureIdentity(identityInput("queue-rollback"));
     const playlist = await domain.createPlaylist(owner.id, { name: "Rollback", description: null }) as { id: number };
-    const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "replacement", title: "Replacement", artist: "R", thumbnailUrl: "https://img/replacement" }) as { id: number };
-    await domain.addSong(owner.id, { youtubeId: "original", title: "Original", artist: "O", thumbnailUrl: "https://img/original" });
+    const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "replace0001", title: "Replacement", artist: "R", thumbnailUrl: "https://img/replacement" }) as { id: number };
+    await domain.addSong(owner.id, { youtubeId: "original001", title: "Original", artist: "O", thumbnailUrl: "https://img/original" });
     const beforeQueue = (await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows;
     const beforeRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
     const beforeOperations = Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count);
     await pool.query(`CREATE OR REPLACE FUNCTION fail_queue_replacement_insert() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN IF NEW.youtube_id='replacement' THEN RAISE EXCEPTION 'injected queue replacement failure'; END IF; RETURN NEW; END $$`);
+      BEGIN IF NEW.youtube_id='replace0001' THEN RAISE EXCEPTION 'injected queue replacement failure'; END IF; RETURN NEW; END $$`);
     await pool.query("CREATE TRIGGER fail_queue_replacement_insert BEFORE INSERT ON songs FOR EACH ROW EXECUTE FUNCTION fail_queue_replacement_insert()");
     try {
       await expect(domain.replaceQueue(owner.id, "rollback-key", beforeRevision, [{ playlistId: playlist.id, songId: source.id }]))
@@ -154,10 +154,10 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await domain.deletePlaylist(a.id, bPlaylist.id)).toBe(false);
     expect((await domain.getPlaylist(b.id, bPlaylist.id) as { name: string }).name).toBe("B private");
 
-    const bPlaylistSong = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "saved-b", title: "B saved", artist: "B", thumbnailUrl: "https://img/saved-b" }) as { id: number };
+    const bPlaylistSong = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "saved-b0000", title: "B saved", artist: "B", thumbnailUrl: "https://img/saved-b" }) as { id: number };
     expect(await domain.listPlaylists(a.id)).toEqual([]);
     expect(await domain.listPlaylists(b.id)).toEqual([
-      expect.objectContaining({ id: bPlaylist.id, songs: [expect.objectContaining({ id: bPlaylistSong.id, youtubeId: "saved-b" })] }),
+      expect.objectContaining({ id: bPlaylist.id, songs: [expect.objectContaining({ id: bPlaylistSong.id, youtubeId: "saved-b0000" })] }),
     ]);
     expect(await domain.removePlaylistSong(a.id, bPlaylist.id, bPlaylistSong.id)).toBe(false);
     expect(await domain.reorderPlaylistSong(a.id, bPlaylist.id, bPlaylistSong.id, 8)).toBe(false);
@@ -165,7 +165,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect((await pool.query("SELECT position FROM playlist_songs WHERE id=$1", [bPlaylistSong.id])).rows[0].position).toBe(0);
     expect((await pool.query("SELECT is_visible_to_guests FROM playlists WHERE id=$1", [bPlaylist.id])).rows[0].is_visible_to_guests).toBe(false);
 
-    const bSong = await domain.addSong(b.id, { youtubeId: "b-yt", title: "B song", artist: "B", thumbnailUrl: "https://img/b" }) as { id: number };
+    const bSong = await domain.addSong(b.id, { youtubeId: "b-yt0000000", title: "B song", artist: "B", thumbnailUrl: "https://img/b" }) as { id: number };
     expect(await domain.setPlaying(a.id, bSong.id)).toBeUndefined();
     expect(await domain.updateSongPosition(a.id, bSong.id, 44)).toBeUndefined();
     expect(await domain.removeSong(a.id, bSong.id)).toBe(false);
@@ -175,7 +175,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await domain.listQueue(a.id)).toEqual([]);
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, user_id: b.id, status: "played" })]);
 
-    const aSong = await domain.addSong(a.id, { youtubeId: "a-yt", title: "A song", artist: "A", thumbnailUrl: "https://img/a" }) as { id: number };
+    const aSong = await domain.addSong(a.id, { youtubeId: "a-yt0000000", title: "A song", artist: "A", thumbnailUrl: "https://img/a" }) as { id: number };
     await domain.setPlaying(a.id, aSong.id);
     await domain.setPlaying(a.id, null);
     expect(await domain.listQueue(a.id)).toEqual([expect.objectContaining({ id: aSong.id, status: "played" })]);
@@ -201,8 +201,8 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await domain.resolveGuestResource(bCapability)).toBeUndefined();
 
     const bPlaylist = await domain.createPlaylist(b.id, { name: "B guest", description: null }) as { id: number };
-    const saved = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "saved-public", title: "Saved public", artist: "B", thumbnailUrl: "https://img/saved-public" }) as { id: number };
-    const queued = await domain.addSong(b.id, { youtubeId: "queued-public", title: "Queued public", artist: "B", thumbnailUrl: "https://img/queued-public" }) as { id: number };
+    const saved = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "savedpublic", title: "Saved public", artist: "B", thumbnailUrl: "https://img/saved-public" }) as { id: number };
+    const queued = await domain.addSong(b.id, { youtubeId: "queuepublic", title: "Queued public", artist: "B", thumbnailUrl: "https://img/queued-public" }) as { id: number };
     await domain.setPlaying(b.id, queued.id);
     await pool.query("UPDATE playlists SET is_visible_to_guests=true WHERE id=$1", [bPlaylist.id]);
     await pool.query("UPDATE users SET allow_playlist_sharing=true WHERE id=$1", [b.id]);
@@ -212,10 +212,10 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       state: "public",
       noindex: false,
       playlist: {
-        songs: [expect.objectContaining({ id: queued.id, youtubeId: "queued-public" })],
-        currentlyPlaying: expect.objectContaining({ id: queued.id, youtubeId: "queued-public" }),
+        songs: [expect.objectContaining({ id: queued.id, youtubeId: "queuepublic" })],
+        currentlyPlaying: expect.objectContaining({ id: queued.id, youtubeId: "queuepublic" }),
         user: expect.objectContaining({ id: b.id, username: "c6-internal-cap-b", venueName: "C6 cap-b" }),
-        playlists: [expect.objectContaining({ id: bPlaylist.id, songs: [expect.objectContaining({ id: saved.id, youtubeId: "saved-public" })] })],
+        playlists: [expect.objectContaining({ id: bPlaylist.id, songs: [expect.objectContaining({ id: saved.id, youtubeId: "savedpublic" })] })],
       },
     });
     await domain.revokeGuestCapability(b.id);
@@ -240,10 +240,10 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const sameOwner = await domain.resolveGuestRequestAuthority("c6-public-request-a", capabilityA);
     expect(sameOwner).toEqual({ musicUserId: a.id, active: true, allowSongRequests: true });
     await domain.addSong(sameOwner!.musicUserId, {
-      youtubeId: "request-a-song", title: "A request", artist: "A", thumbnailUrl: "https://img/request-a",
+      youtubeId: "requestasng", title: "A request", artist: "A", thumbnailUrl: "https://img/request-a",
     });
     expect((await pool.query("SELECT user_id,youtube_id FROM songs WHERE user_id=ANY($1::integer[]) ORDER BY user_id", [[a.id, b.id]])).rows)
-      .toEqual([{ user_id: a.id, youtube_id: "request-a-song" }]);
+      .toEqual([{ user_id: a.id, youtube_id: "requestasng" }]);
   });
 
   it("serializes concurrent queue, saved-song, and playback mutations per owner", async () => {
@@ -253,7 +253,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const playlistA = await domain.createPlaylist(a.id, { name: "A concurrent", description: null }) as { id: number };
 
     await Promise.all(Array.from({ length: 16 }, (_, index) => domain.addSong(a.id, {
-      youtubeId: `queue-${index}`, title: `Queue ${index}`, artist: "A", thumbnailUrl: `https://img/queue-${index}`,
+      youtubeId: `queue-${String(index).padStart(5, "0")}`, title: `Queue ${index}`, artist: "A", thumbnailUrl: `https://img/queue-${index}`,
     })));
     const queue = (await pool.query(
       "SELECT id,position FROM songs WHERE user_id=$1 ORDER BY position,id",
@@ -263,7 +263,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(new Set(queue.map(({ position }) => position)).size).toBe(16);
 
     await Promise.all(Array.from({ length: 16 }, (_, index) => domain.addPlaylistSong(a.id, playlistA.id, {
-      youtubeId: `saved-${index}`, title: `Saved ${index}`, artist: "A", thumbnailUrl: `https://img/saved-${index}`,
+      youtubeId: `saved-${String(index).padStart(5, "0")}`, title: `Saved ${index}`, artist: "A", thumbnailUrl: `https://img/saved-${index}`,
     })));
     const savedPositions = (await pool.query(
       "SELECT position FROM playlist_songs WHERE playlist_id=$1 ORDER BY position,id",
@@ -273,7 +273,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(new Set(savedPositions).size).toBe(16);
 
     const bSong = await domain.addSong(b.id, {
-      youtubeId: "queue-b", title: "Queue B", artist: "B", thumbnailUrl: "https://img/queue-b",
+      youtubeId: "queue-b0000", title: "Queue B", artist: "B", thumbnailUrl: "https://img/queue-b",
     }) as { id: number };
     await Promise.all([
       ...queue.map(({ id }) => domain.setPlaying(a.id, id)),
@@ -288,11 +288,11 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const a = await identities.ensureIdentity(identityInput("reorder-a"));
     const b = await identities.ensureIdentity(identityInput("reorder-b"));
     const only = await domain.addSong(a.id, {
-      youtubeId: "only", title: "Only", artist: "A", thumbnailUrl: "https://img/only",
+      youtubeId: "only0000000", title: "Only", artist: "A", thumbnailUrl: "https://img/only",
     }) as { id: number };
     await domain.setPlaying(a.id, only.id);
     await Promise.all(Array.from({ length: 4 }, (_, index) => domain.addSong(a.id, {
-      youtubeId: `after-playing-${index}`, title: `After ${index}`, artist: "A", thumbnailUrl: `https://img/after-${index}`,
+      youtubeId: `after-${String(index).padStart(5, "0")}`, title: `After ${index}`, artist: "A", thumbnailUrl: `https://img/after-${index}`,
     })));
     const activeBeforeReorder = (await pool.query(
       "SELECT id,position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id",
@@ -316,7 +316,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
 
     const playlistA = await domain.createPlaylist(a.id, { name: "A reorder", description: null }) as { id: number };
     const saved = await Promise.all(Array.from({ length: 4 }, (_, index) => domain.addPlaylistSong(a.id, playlistA.id, {
-      youtubeId: `saved-reorder-${index}`, title: `Saved reorder ${index}`, artist: "A", thumbnailUrl: `https://img/saved-reorder-${index}`,
+      youtubeId: `reord-${String(index).padStart(5, "0")}`, title: `Saved reorder ${index}`, artist: "A", thumbnailUrl: `https://img/saved-reorder-${index}`,
     }))) as Array<{ id: number }>;
     await Promise.all([
       domain.reorderPlaylistSong(a.id, playlistA.id, saved[2].id, 1),
@@ -329,9 +329,9 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(savedAfterReorder).toEqual([0, 1, 2, 3]);
     expect(new Set(savedAfterReorder).size).toBe(4);
 
-    const bSong = await domain.addSong(b.id, { youtubeId: "b-stable", title: "B stable", artist: "B", thumbnailUrl: "https://img/b-stable" }) as { id: number };
+    const bSong = await domain.addSong(b.id, { youtubeId: "b-stable000", title: "B stable", artist: "B", thumbnailUrl: "https://img/b-stable" }) as { id: number };
     const bPlaylist = await domain.createPlaylist(b.id, { name: "B stable", description: null }) as { id: number };
-    const bSaved = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "b-saved", title: "B saved", artist: "B", thumbnailUrl: "https://img/b-saved" }) as { id: number };
+    const bSaved = await domain.addPlaylistSong(b.id, bPlaylist.id, { youtubeId: "b-saved0000", title: "B saved", artist: "B", thumbnailUrl: "https://img/b-saved" }) as { id: number };
     expect(await domain.updateSongPosition(a.id, bSong.id, 0)).toBeUndefined();
     expect(await domain.reorderPlaylistSong(a.id, bPlaylist.id, bSaved.id, 0)).toBe(false);
     expect((await pool.query("SELECT position FROM songs WHERE id=$1", [bSong.id])).rows[0].position).toBe(0);
@@ -343,16 +343,16 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const ownerA = await identities.ensureIdentity(identityInput("replay-a"));
     const ownerB = await identities.ensureIdentity(identityInput("replay-b-owner"));
     const songA = await domain.addSong(ownerA.id, {
-      youtubeId: "replay-a", title: "Replay A", artist: "A", thumbnailUrl: "https://img/replay-a",
+      youtubeId: "replay-a000", title: "Replay A", artist: "A", thumbnailUrl: "https://img/replay-a",
     }) as { id: number };
     const songB = await domain.addSong(ownerA.id, {
-      youtubeId: "replay-b", title: "Replay B", artist: "A", thumbnailUrl: "https://img/replay-b",
+      youtubeId: "replay-b000", title: "Replay B", artist: "A", thumbnailUrl: "https://img/replay-b",
     }) as { id: number };
     const songC = await domain.addSong(ownerA.id, {
-      youtubeId: "replay-c", title: "Replay C", artist: "A", thumbnailUrl: "https://img/replay-c",
+      youtubeId: "replay-c000", title: "Replay C", artist: "A", thumbnailUrl: "https://img/replay-c",
     }) as { id: number };
     const otherSongs = await Promise.all(["one", "two"].map(async (name) => domain.addSong(ownerB.id, {
-      youtubeId: `other-${name}`, title: `Other ${name}`, artist: "B", thumbnailUrl: `https://img/other-${name}`,
+      youtubeId: `other-${name}00`, title: `Other ${name}`, artist: "B", thumbnailUrl: `https://img/other-${name}`,
     }))) as Array<{ id: number }>;
     await domain.setPlaying(ownerB.id, otherSongs[1].id);
     const ownerBBefore = (await pool.query(
@@ -363,7 +363,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.setPlaying(ownerA.id, songB.id);
     await domain.setPlaying(ownerA.id, songA.id);
     const songD = await domain.addSong(ownerA.id, {
-      youtubeId: "replay-d", title: "Replay D", artist: "A", thumbnailUrl: "https://img/replay-d",
+      youtubeId: "replay-d000", title: "Replay D", artist: "A", thumbnailUrl: "https://img/replay-d",
     }) as { id: number };
     expect((await pool.query("SELECT position,status FROM songs WHERE id=$1", [songB.id])).rows[0])
       .toEqual({ position: 1, status: "played" });
@@ -417,10 +417,10 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const ownerA = await identities.ensureIdentity(identityInput("playback-target-a"));
     const ownerB = await identities.ensureIdentity(identityInput("playback-target-b"));
     const current = await domain.addSong(ownerA.id, {
-      youtubeId: "current-a", title: "Current A", artist: "A", thumbnailUrl: "https://img/current-a",
+      youtubeId: "current-a00", title: "Current A", artist: "A", thumbnailUrl: "https://img/current-a",
     }) as { id: number };
     const foreign = await domain.addSong(ownerB.id, {
-      youtubeId: "foreign-b", title: "Foreign B", artist: "B", thumbnailUrl: "https://img/foreign-b",
+      youtubeId: "foreign-b00", title: "Foreign B", artist: "B", thumbnailUrl: "https://img/foreign-b",
     }) as { id: number };
     await domain.setPlaying(ownerA.id, current.id);
 
