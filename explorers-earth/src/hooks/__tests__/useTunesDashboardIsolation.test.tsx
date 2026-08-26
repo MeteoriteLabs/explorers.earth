@@ -103,7 +103,7 @@ describe("private Music query identity isolation", () => {
     vi.mocked(musicApi.request).mockImplementation(async ({ path }) => {
       if (path === "/api/playlists") return new Response("[]", { status: 200 });
       if (path === "/api/music/dashboard") return new Response(JSON.stringify({
-        songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" },
+        queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" },
       }), { status: 200 });
       return new Response(JSON.stringify({
         state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600,
