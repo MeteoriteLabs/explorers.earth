@@ -4,8 +4,10 @@ import { MusicClientError } from "../../../lib/localTunesApiClient";
 
 describe("canonical Music workspace client", () => {
   it("uses only owner-derived canonical routes and exact DTO bodies", async () => {
-    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
-      ? new Response("[]", { status: 200 })
+    const playlistSong = { id: 9, playlistId: 7, youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" };
+    const playlist = { id: 7, userId: 11, name: "Road songs", description: null, isVisibleToGuests: false, createdAt: "2026-08-25T10:00:00.000Z", updatedAt: "2026-08-25T10:00:00.000Z", songs: [playlistSong] };
+    const request = vi.fn(async (input: { path: string; method?: string }) => input.path === "/api/playlists" && input.method === "GET"
+      ? new Response(JSON.stringify([playlist]), { status: 200 })
       : input.path === "/api/music/dashboard"
         ? new Response(JSON.stringify({ queueRevision: 6, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
         : input.path === "/api/music/entitlement"
@@ -16,10 +18,10 @@ describe("canonical Music workspace client", () => {
               publication: { mode: (input as { body?: { mode?: string } }).body?.mode, publicSlug: "public-slug" },
             }), { status: 200 })
           : (input.path === "/api/playlists" || input.path === "/api/playlists/7")
-            ? new Response(JSON.stringify({ id: 7, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] }), { status: 200 })
+            ? new Response(JSON.stringify({ ...playlist, name: input.path.endsWith("/7") ? "Renamed" : "Road songs" }), { status: 200 })
             : new Response(null, { status: 204 }));
     const client = createMusicWorkspaceClient(request);
-    await expect(client.load()).resolves.toMatchObject({ dashboard: { queueRevision: 6 } });
+    await expect(client.load()).resolves.toMatchObject({ dashboard: { queueRevision: 6 }, playlists: [{ songs: [playlistSong] }] });
     await client.createPlaylist("Road songs", "For later", "create-playlist-1");
     await client.renamePlaylist(7, "Renamed", null, "rename-playlist-1");
     await client.setPlaylistVisibility(7, true, "visibility-playlist-1");
@@ -39,6 +41,56 @@ describe("canonical Music workspace client", () => {
       [{ method: "POST", path: "/api/music/publication", body: { mode: "private" }, idempotencyKey: "publication-mode-2" }],
     ]);
     expect(JSON.stringify(request.mock.calls)).not.toMatch(/username|email|ownerId|accountId|documentId|X-Username/i);
+  });
+
+  it.each([
+    { queueRevision: -1, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } },
+    { queueRevision: 1, songs: new Array(501).fill({}), playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } },
+    { queueRevision: 1, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" }, extra: true },
+  ])("rejects a malformed successful dashboard DTO %#", async (dashboard) => {
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
+      ? new Response("[]")
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify(dashboard))
+        : new Response(JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 })));
+    await expect(createMusicWorkspaceClient(request).load()).rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("rejects queue-only fields on a saved-playlist song", async () => {
+    const saved = { id: 9, playlistId: 7, youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z", status: "queued" };
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
+      ? new Response(JSON.stringify([{ id: 7, userId: 11, name: "Road songs", description: null, isVisibleToGuests: false, createdAt: "2026-08-25T10:00:00.000Z", updatedAt: "2026-08-25T10:00:00.000Z", songs: [saved] }]))
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify({ queueRevision: 1, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }))
+        : new Response(JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 })));
+    await expect(createMusicWorkspaceClient(request).load()).rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("rejects malformed successful JSON without leaking it", async () => {
+    const request = vi.fn().mockResolvedValue(new Response("{secret-invalid-json"));
+    const error = await createMusicWorkspaceClient(request).createPlaylist("Safe", null, "safe-create").catch((cause) => cause);
+    expect(error).toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+    expect(error.message).not.toContain("secret-invalid-json");
+  });
+
+  it("rejects a malformed successful playlist DTO", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 7, name: "Unsafe", description: null, isVisibleToGuests: false, songs: [], extra: true })));
+    await expect(createMusicWorkspaceClient(request).createPlaylist("Safe", null, "safe-create"))
+      .rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("parses bounded active and played queue songs while stripping response authority", async () => {
+    const queued = { id: 1, userId: 11, youtubeId: "abcdefghijk", title: "Queued", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "queued", playedAt: null };
+    const playing = { ...queued, id: 2, status: "playing" };
+    const played = { ...queued, id: 3, status: "played", playedAt: "2026-08-25T10:00:00.000Z" };
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
+      ? new Response("[]")
+      : input.path === "/api/music/dashboard"
+        ? new Response(JSON.stringify({ queueRevision: 2, songs: [queued], currentlyPlaying: playing, playedSongs: [played], publication: { mode: "unlisted", publicSlug: "public-slug" } }))
+        : new Response(JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 })));
+    const result = await createMusicWorkspaceClient(request).load();
+    expect(result.dashboard).toMatchObject({ songs: [{ status: "queued" }], currentlyPlaying: { status: "playing" }, playedSongs: [{ status: "played" }] });
+    expect(JSON.stringify(result.dashboard)).not.toContain("userId");
   });
 
   it("changes to unlisted with one atomic owner-derived command and returns only the new in-memory capability", async () => {
@@ -165,7 +217,7 @@ describe("canonical Music workspace client", () => {
     const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
       ? new Response("[]", { status: 200 })
       : input.path === "/api/music/dashboard"
-        ? new Response(JSON.stringify({ songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        ? new Response(JSON.stringify({ queueRevision: 0, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
         : new Response(JSON.stringify({ state, coreRead: true, coreMutation: true, paidMutation, maxAgeSeconds: 600, ...(paidMutation ? { sourceUpdatedAt: "2026-08-20T17:00:00.000Z" } : {}) }), { status: 200 }));
     await expect(createMusicWorkspaceClient(request).load()).resolves.toMatchObject({
       entitlement: { state, coreRead: true, coreMutation: true, paidMutation, maxAgeSeconds: 600 },
@@ -181,7 +233,7 @@ describe("canonical Music workspace client", () => {
     const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists"
       ? new Response("[]", { status: 200 })
       : input.path === "/api/music/dashboard"
-        ? new Response(JSON.stringify({ songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
+        ? new Response(JSON.stringify({ queueRevision: 0, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: "private", publicSlug: "public-slug" } }), { status: 200 })
         : new Response(JSON.stringify(entitlement), { status: 200 }));
     await expect(createMusicWorkspaceClient(request).load()).rejects.toMatchObject({
       code: "SERVICE_UNAVAILABLE",

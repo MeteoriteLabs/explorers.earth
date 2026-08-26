@@ -1,4 +1,5 @@
 import { MusicClientError, type LocalMusicRequest, type MusicClientErrorCode } from "../../lib/localTunesApiClient";
+import { z } from "zod";
 import {
   parseMusicEntitlementResponse,
 } from "./musicEntitlementContract";
@@ -26,7 +27,18 @@ export interface MusicPlaylist {
   name: string;
   description: string | null;
   isVisibleToGuests: boolean;
-  songs: MusicSong[];
+  songs: MusicPlaylistSong[];
+}
+
+export interface MusicPlaylistSong {
+  id: number;
+  playlistId: number;
+  youtubeId: string;
+  title: string;
+  artist: string;
+  thumbnailUrl: string;
+  position: number;
+  addedAt: string;
 }
 
 export type { MusicPublicationMode } from "../../../../tunes/shared/musicPublicationContract";
@@ -41,10 +53,16 @@ export interface MusicDashboardResponse {
 
 export type MusicRequest = (input: LocalMusicRequest) => Promise<Response>;
 
-export async function requestMusicJson<T>(request: MusicRequest, input: LocalMusicRequest): Promise<T> {
+export async function requestMusicJson<T>(request: MusicRequest, input: LocalMusicRequest, parse?: (value: unknown) => T): Promise<T> {
   const response = await request(input);
   if (!response.ok) throw await containedWorkspaceError(response);
-  return response.json() as Promise<T>;
+  try {
+    const value: unknown = await response.json();
+    return parse ? parse(value) : value as T;
+  } catch (error) {
+    if (error instanceof MusicClientError) throw error;
+    throw invalidSuccessfulResponse();
+  }
 }
 
 export async function requestMusicEmpty(request: MusicRequest, input: LocalMusicRequest): Promise<void> {
@@ -81,21 +99,82 @@ export async function containedWorkspaceError(response: Response): Promise<Music
   );
 }
 
+function invalidSuccessfulResponse(): MusicClientError {
+  return new MusicClientError("SERVICE_UNAVAILABLE", 502, "Music returned an invalid response.");
+}
+
+const boundedText = (maximum: number) => z.string().min(1).max(maximum);
+const dateTime = z.string().datetime({ offset: true }).max(40);
+const songSchema = z.object({
+  id: z.number().int().positive(), userId: z.number().int().positive().optional(),
+  youtubeId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/), title: boundedText(1_024), artist: boundedText(1_024),
+  thumbnailUrl: boundedText(2_048), position: z.number().int().nonnegative(),
+  status: z.enum(["queued", "playing", "played"]), playedAt: dateTime.nullable(),
+}).strict();
+const playlistSongSchema = z.object({
+  id: z.number().int().positive(), playlistId: z.number().int().positive(), youtubeId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  title: boundedText(1_024), artist: boundedText(1_024), thumbnailUrl: boundedText(2_048),
+  position: z.number().int().nonnegative(), addedAt: dateTime,
+}).strict();
+const playlistSchema = z.object({
+  id: z.number().int().positive(), userId: z.number().int().positive().optional(), name: boundedText(120),
+  description: z.string().max(2_000).nullable(), isVisibleToGuests: z.boolean(),
+  createdAt: dateTime.optional(), updatedAt: dateTime.optional(), songs: z.array(playlistSongSchema).max(500),
+}).strict();
+const dashboardSchema = z.object({
+  queueRevision: z.number().int().nonnegative(), songs: z.array(songSchema).max(500),
+  currentlyPlaying: songSchema.nullable(), playedSongs: z.array(songSchema).max(500),
+  publication: z.object({ mode: z.enum(["private", "unlisted", "public"]), publicSlug: boundedText(128) }).strict(),
+}).strict();
+
+export function parseMusicSong(value: unknown): MusicSong {
+  const result = songSchema.safeParse(value);
+  if (!result.success) throw invalidSuccessfulResponse();
+  return {
+    id: result.data.id, youtubeId: result.data.youtubeId, title: result.data.title, artist: result.data.artist,
+    thumbnailUrl: result.data.thumbnailUrl, position: result.data.position, status: result.data.status, playedAt: result.data.playedAt,
+  };
+}
+
+export function parseMusicPlaylist(value: unknown): MusicPlaylist {
+  const result = playlistSchema.safeParse(value);
+  if (!result.success) throw invalidSuccessfulResponse();
+  return {
+    id: result.data.id, name: result.data.name, description: result.data.description,
+    isVisibleToGuests: result.data.isVisibleToGuests, songs: result.data.songs,
+  };
+}
+
+export function parseMusicDashboard(value: unknown): MusicDashboardResponse {
+  const result = dashboardSchema.safeParse(value);
+  if (!result.success) throw invalidSuccessfulResponse();
+  return {
+    ...result.data,
+    songs: result.data.songs.map(parseMusicSong),
+    currentlyPlaying: result.data.currentlyPlaying === null ? null : parseMusicSong(result.data.currentlyPlaying),
+    playedSongs: result.data.playedSongs.map(parseMusicSong),
+  };
+}
+
 export function createMusicWorkspaceClient(request: MusicRequest) {
   return {
     async load() {
       const [playlists, dashboard, entitlement] = await Promise.all([
-        requestMusicJson<MusicPlaylist[]>(request, { method: "GET", path: "/api/playlists" }),
-        requestMusicJson<MusicDashboardResponse>(request, { method: "GET", path: "/api/music/dashboard" }),
+        requestMusicJson<MusicPlaylist[]>(request, { method: "GET", path: "/api/playlists" }, (value) => {
+          const result = z.array(playlistSchema).max(200).safeParse(value);
+          if (!result.success) throw invalidSuccessfulResponse();
+          return result.data.map(parseMusicPlaylist);
+        }),
+        requestMusicJson<MusicDashboardResponse>(request, { method: "GET", path: "/api/music/dashboard" }, parseMusicDashboard),
         requestMusicJson<unknown>(request, { method: "GET", path: "/api/music/entitlement" }).then(parseMusicEntitlementResponse),
       ]);
       return { playlists, dashboard, entitlement };
     },
     createPlaylist(name: string, description: string | null, idempotencyKey: string) {
-      return requestMusicJson<MusicPlaylist>(request, { method: "POST", path: "/api/playlists", body: { name, description }, idempotencyKey });
+      return requestMusicJson<MusicPlaylist>(request, { method: "POST", path: "/api/playlists", body: { name, description }, idempotencyKey }, parseMusicPlaylist);
     },
     renamePlaylist(playlistId: number, name: string, description: string | null, idempotencyKey: string) {
-      return requestMusicJson<MusicPlaylist>(request, { method: "PATCH", path: `/api/playlists/${playlistId}`, body: { name, description }, idempotencyKey });
+      return requestMusicJson<MusicPlaylist>(request, { method: "PATCH", path: `/api/playlists/${playlistId}`, body: { name, description }, idempotencyKey }, parseMusicPlaylist);
     },
     deletePlaylist(playlistId: number, idempotencyKey: string) {
       return requestMusicEmpty(request, { method: "DELETE", path: `/api/playlists/${playlistId}`, idempotencyKey });

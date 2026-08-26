@@ -49,4 +49,15 @@ describe("credential-aware Music queue client", () => {
     const request = vi.fn().mockResolvedValue(new Response(null, { status: 503, headers: { "x-request-id": "unsafe request id" } }));
     await expect(createMusicQueueClient(request).loadDashboard()).rejects.toMatchObject({ requestId: undefined });
   });
+
+  it.each([
+    { version: "music-queue/v2", revision: 1, songs: [] },
+    { version: "music-queue/v1", revision: -1, songs: [] },
+    { version: "music-queue/v1", revision: 1, songs: [], extra: true },
+    { version: "music-queue/v1", revision: 1, songs: [{ ...song, status: "unknown" }] },
+  ])("rejects malformed successful replacement DTO %#", async (body) => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(body)));
+    await expect(createMusicQueueClient(request).replaceQueue(1, [], "replace-queue-3"))
+      .rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+  });
 });
