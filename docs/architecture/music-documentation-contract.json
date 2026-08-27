@@ -46,7 +46,8 @@
     "0015_publication_operation_archive",
     "0016_publication_operation_retention",
     "0017_publication_idempotency_key_retirement",
-    "0018_transactional_queue_replacement"
+    "0018_transactional_queue_replacement",
+    "0019_queue_visibility_control"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

@@ -392,7 +392,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0018_transactional_queue_replacement",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0019_queue_visibility_control",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -431,7 +431,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0018_transactional_queue_replacement",
+          "migration=0019_queue_visibility_control",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -627,14 +627,14 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(rolledBack.status, rolledBack.stderr).toBe(0);
   }, deploymentProcessRecoveryTimeoutMs);
 
-  it("accepts repeated successful 0018 images and an authorized compatible 0017 rollback", () => {
+  it("accepts repeated successful 0019 images and an authorized compatible 0017 rollback", () => {
     seedVersionedAuthority("0017_publication_idempotency_key_retirement");
     const first = run("deploy", digest("b"), commit("b"));
     expect(first.status, first.stderr).toBe(0);
     const second = run("deploy", digest("c"), commit("c"), { slot: "blue" });
     expect(second.status, second.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("c")}\t${commit("c")}\t0018_transactional_queue_replacement\t`);
+      .toContain(`\t${digest("c")}\t${commit("c")}\t0019_queue_visibility_control\t`);
     const rollback = run("rollback", digest("a"), "-", { expectedMarkerOverride: "0017_publication_idempotency_key_retirement" });
     expect(rollback.status, rollback.stderr).toBe(0);
   }, deploymentProcessRecoveryTimeoutMs);
@@ -748,7 +748,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
       .toContain("\t0017_publication_idempotency_key_retirement\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0018_transactional_queue_replacement\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0019_queue_visibility_control\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1143,7 +1143,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0018_transactional_queue_replacement", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0019_queue_visibility_control", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

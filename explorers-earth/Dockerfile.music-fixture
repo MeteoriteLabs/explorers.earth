@@ -9,12 +9,14 @@ ARG VITE_REST_API_URL
 ARG VITE_PUBLIC_ACCESS_TOKEN
 ARG VITE_CLARITY_PROJECT_ID
 ARG VITE_LOCAL_TUNES_API_URL
+ARG MUSIC_FIXTURE_BUNDLE_CHECK
 
 ENV VITE_API_URL=$VITE_API_URL \
     VITE_REST_API_URL=$VITE_REST_API_URL \
     VITE_PUBLIC_ACCESS_TOKEN=$VITE_PUBLIC_ACCESS_TOKEN \
     VITE_CLARITY_PROJECT_ID=$VITE_CLARITY_PROJECT_ID \
-    VITE_LOCAL_TUNES_API_URL=$VITE_LOCAL_TUNES_API_URL
+    VITE_LOCAL_TUNES_API_URL=$VITE_LOCAL_TUNES_API_URL \
+    MUSIC_FIXTURE_BUNDLE_CHECK=$MUSIC_FIXTURE_BUNDLE_CHECK
 
 COPY explorers-earth/package.json explorers-earth/package-lock.json ./
 RUN npm ci
@@ -26,7 +28,7 @@ RUN npm run build
 FROM nginx:1.27-alpine AS runner
 
 RUN rm /etc/nginx/conf.d/default.conf
-COPY explorers-earth/nginx.conf /etc/nginx/conf.d/default.conf
+COPY explorers-earth/nginx.music-fixture.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /workspace/explorers-earth/dist /usr/share/nginx/html
 
 EXPOSE 80

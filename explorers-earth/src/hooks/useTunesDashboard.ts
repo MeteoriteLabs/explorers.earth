@@ -96,7 +96,7 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
       musicIdentityCoordinator.reportFailure(query.error);
     }
   }, [query.error]);
-  const visibleData = query.error ? undefined : query.data;
+  const visibleData = query.error && isTerminalWorkspaceFailure(query.error) ? undefined : query.data;
   const dashboard = visibleData?.dashboard ?? null;
   return {
     playlists: visibleData?.playlists ?? [],

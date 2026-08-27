@@ -123,8 +123,13 @@ describe("C5 credential configuration contracts", () => {
   });
 
   it("keeps all credential material out of browser source and built-time variable names", () => {
-    const source = readFileSync(resolve(repositoryRoot, "explorers-earth/src/lib/localTunesApiClient.ts"), "utf8");
-    expect(source).not.toMatch(/MUSIC_TOKEN_|SIGNING_KEY|import\.meta\.env/);
+    const credentialSources = [
+      "explorers-earth/src/lib/localTunesApiClient.ts",
+      "explorers-earth/src/services/accountLifecycleService.ts",
+    ].map((path) => readFileSync(resolve(repositoryRoot, path), "utf8"));
+    for (const source of credentialSources) {
+      expect(source).not.toMatch(/MUSIC_TOKEN_|SIGNING_KEY|import\.meta\.env/);
+    }
     for (const service of Object.values(productionModel().services)) {
       expect(Object.keys(service.build?.args ?? {})).not.toEqual(expect.arrayContaining([
         expect.stringMatching(/MUSIC_TOKEN_|SIGNING_KEY|DATABASE|PASSWORD|SECRET/i),

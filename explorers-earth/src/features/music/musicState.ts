@@ -2,7 +2,9 @@ import type { MusicEntitlementState } from "./musicEntitlementContract";
 
 export type MusicLifecycle = "active" | "pending_deletion" | "tombstoned" | "suspended";
 export type MusicOnboarding = "complete" | "incomplete" | "unknown";
-export type MusicEntitlement = MusicEntitlementState;
+// `unknown` is a settled server entitlement value with core read/write access.
+// `unresolved` means the entitlement request has not produced a value yet.
+export type MusicEntitlement = MusicEntitlementState | "unresolved";
 export type MusicIdentity = "ready" | "setting_up" | "retryable" | "unavailable" | "conflict";
 export type MusicContent = "loading" | "failure" | "stale" | "ready";
 
@@ -50,13 +52,12 @@ export function selectMusicSurfaceState(signals: MusicSurfaceSignals): MusicSurf
   if (signals.identity === "conflict") return state("identity_conflict", "We couldn’t finish setting up Music for this account.", "get_help", "assertive");
   if (signals.identity === "setting_up") return state("setting_up", "Setting up Music…", undefined, "polite");
 
-  if (signals.entitlement === "unknown") return state("entitlement_unknown", "Checking what’s included…", undefined, "polite", false);
-
   if (signals.identity === "retryable") return state("setup_retryable", "Music is taking longer than expected. Your Explorers account is ready.", "try_again", "polite");
   if (signals.identity === "unavailable") return state("setup_unavailable", "Music is temporarily unavailable.", "try_again", "polite", true, "get_help");
   if (signals.content === "loading") return state("content_loading", "Loading Music…", undefined, "polite");
   if (signals.content === "failure") return state("content_failure", "Music is temporarily unavailable.", "try_again", "polite");
   if (signals.content === "stale") return state("content_stale", "May be out of date", "try_again", "polite", false);
+  if (signals.entitlement === "unresolved") return state("entitlement_unknown");
   if (signals.playlistCount === 0) return state("ready_empty", "Create your first playlist", undefined, "off", false);
   return state("ready_content", undefined, undefined, "off", false);
 }

@@ -1,9 +1,39 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fixtureGraphqlResponse, fixtureReconciliationResponse, fixtureResponse } from "../../../scripts/music-fixture-server.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("deterministic Music fixture services", () => {
+  it("routes authenticated browser mutations to the isolated fixture origin rather than a synthetic or production host", () => {
+    // A real browser must reach the fixture Tunes gateway through its own
+    // origin.  A Playwright-only route interception can make a broken bundle
+    // appear healthy while the browser would otherwise call an invalid host.
+    const repository = resolve(import.meta.dirname, "../../../..");
+    const compose = readFileSync(resolve(repository, "docker-compose.music-test.yml"), "utf8");
+    const nginx = readFileSync(resolve(repository, "explorers-earth/nginx.music-fixture.conf"), "utf8");
+    const dockerfile = readFileSync(resolve(repository, "explorers-earth/Dockerfile.music-fixture"), "utf8");
+
+    // `publicMusicClient` intentionally permits insecure transport only for
+    // localhost.  The fixture must use that narrow exception rather than
+    // weakening the production HTTPS/origin contract for 127.0.0.1.
+    expect(compose).toContain("VITE_LOCAL_TUNES_API_URL: http://localhost:55173");
+    expect(compose).toContain("VITE_API_URL: http://localhost:55173/graphql");
+    expect(compose).toContain("VITE_REST_API_URL: http://localhost:55173");
+    expect(compose).not.toContain("VITE_LOCAL_TUNES_API_URL: https://music-fixture.invalid");
+    expect(nginx).toMatch(/location ~ \^\/\(api\/music\(\?:\/\|\$\)\|api\/playlists\(\?:\/\|\$\)\|api\/playlist\(\?:\/\|\$\)\|api\/youtube\(\?:\/\|\$\)\)/);
+    expect(nginx).toContain("proxy_pass http://tunes:5000;");
+    // Same-origin GETs do not carry an Origin header. The fixture proxy must
+    // attest its exact local browser origin before the strict gateway guard
+    // evaluates owner rollout reads.
+    expect(nginx).toContain("proxy_set_header Origin $scheme://$http_host;");
+    expect(nginx).toContain("location = /api/users/me");
+    expect(nginx).toContain("location = /graphql");
+    expect(nginx).toContain("proxy_pass http://strapi:1337;");
+    expect(dockerfile).toContain("COPY explorers-earth/nginx.music-fixture.conf /etc/nginx/conf.d/default.conf");
+  });
+
   it("serves the repository-shaped Strapi current-user contract", () => {
     // Production break caught: fixture Strapi reports only version metadata, so
     // smoke tests never exercise identity, Account, lifecycle, or entitlement.
@@ -88,6 +118,39 @@ describe("deterministic Music fixture services", () => {
       }`,
       variables: { userDocumentId: "fixture-user-document-id", accountDocumentId: "fixture-account-document-id" },
     }).status).toBe(405);
+  });
+
+  it("serves the authenticated Explorer browser identity reads through the real fixture Strapi contract", () => {
+    const allowed = fixtureGraphqlResponse({
+      authorization: "Bearer fixture-read-only-token",
+      method: "POST",
+      query: `query MusicPageEligibility($documentId: ID!) {
+        usersPermissionsUser(documentId: $documentId) {
+          documentId provider confirmed blocked
+          accounts { documentId Account_Name Account_Type mobile_number }
+        }
+      }`,
+      variables: { documentId: "fixture-user-document-id" },
+    });
+    expect(allowed).toMatchObject({
+      status: 200,
+      body: { data: { usersPermissionsUser: {
+        documentId: "fixture-user-document-id",
+        provider: "local",
+        confirmed: true,
+        accounts: [{ documentId: "fixture-account-document-id" }],
+      } } },
+    });
+
+    for (const denied of [
+      { query: "query UnexpectedRead($documentId: ID!) { usersPermissionsUser(documentId: $documentId) { email } }", variables: { documentId: "fixture-user-document-id" } },
+      { query: "query MusicPageEligibility($documentId: ID!) { usersPermissionsUser(documentId: $documentId) { documentId } }", variables: { documentId: "other-user" } },
+      { query: "mutation MusicPageEligibility { deleteUsersPermissionsUser(documentId: \"fixture-user-document-id\") { documentId } }", variables: {} },
+    ]) {
+      expect(fixtureGraphqlResponse({
+        authorization: "Bearer fixture-read-only-token", method: "POST", ...denied,
+      }).status).not.toBe(200);
+    }
   });
 
   it("serves only the exact stable reconciliation page to its read-only authority", () => {

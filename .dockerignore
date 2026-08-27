@@ -254,6 +254,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/Dockerfile.music-fixture
 !explorers-earth/index.html
 !explorers-earth/nginx.conf
+!explorers-earth/nginx.music-fixture.conf
 !explorers-earth/package-lock.json
 !explorers-earth/package.json
 !explorers-earth/postcss.config.js
@@ -796,6 +797,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/components/MusicSearch.tsx
 !explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx
 !explorers-earth/src/features/music/musicApi.ts
+!explorers-earth/src/features/music/musicDevelopmentTransport.ts
 !explorers-earth/src/features/music/musicEntitlementContract.ts
 !explorers-earth/src/features/music/musicIdentityCoordinator.ts
 !explorers-earth/src/features/music/musicPublicationCommandRegistry.ts

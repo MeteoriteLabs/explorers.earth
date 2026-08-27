@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0018_transactional_queue_replacement"
+readonly production_current_marker="0019_queue_visibility_control"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -36,6 +36,7 @@ readonly -a known_markers=(
   "0015_publication_operation_archive"
   "0016_publication_operation_retention"
   "0017_publication_idempotency_key_retirement"
+  "0018_transactional_queue_replacement"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
@@ -64,6 +65,7 @@ marker_rank() {
 compatibility_marker_for() {
   case "$1" in
     "0018_transactional_queue_replacement") printf '%s\n' "0017_publication_idempotency_key_retirement" ;;
+    "0019_queue_visibility_control") printf '%s\n' "0018_transactional_queue_replacement" ;;
     *) printf '%s\n' "$1" ;;
   esac
 }

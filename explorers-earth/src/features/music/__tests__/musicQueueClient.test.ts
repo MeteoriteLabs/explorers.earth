@@ -7,7 +7,7 @@ describe("credential-aware Music queue client", () => {
   it("uses the exact owner-derived queue routes and DTOs", async () => {
     const request = vi.fn(async (input: { path: string }) => input.path === "/api/music/dashboard"
       ? new Response(JSON.stringify({ queueRevision: 4, songs: [song], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" } }))
-      : input.path === "/api/music/queue/replace"
+      : input.path === "/api/music/queue/replace" || input.path === "/api/music/queue/append"
         ? new Response(JSON.stringify({ version: "music-queue/v1", revision: 5, songs: [song] }))
         : input.path === "/api/playlist/currently-playing" && (input as { body?: { songId?: number | null } }).body?.songId === null
           ? new Response(null, { status: 204 })
@@ -24,7 +24,9 @@ describe("credential-aware Music queue client", () => {
     await client.removeSongs([3, 4], "remove-songs-1");
     await client.moveSong(3, 2, "move-song-1");
     await client.clearHistory("clear-history-1");
+    await client.removeHistorySong(3, "remove-history-1");
     await expect(client.replaceQueue(4, [{ playlistId: 8, songId: 9 }], "replace-queue-1")).resolves.toEqual({ version: "music-queue/v1", revision: 5, songs: [song] });
+    await expect(client.appendQueue(5, [{ playlistId: 8, songId: 10 }], "append-queue-1")).resolves.toEqual({ version: "music-queue/v1", revision: 5, songs: [song] });
 
     expect(request.mock.calls.map(([input]) => input)).toEqual([
       { method: "GET", path: "/api/music/dashboard" },
@@ -35,9 +37,52 @@ describe("credential-aware Music queue client", () => {
       { method: "DELETE", path: "/api/playlist/songs/bulk", body: { songIds: [3, 4] }, idempotencyKey: "remove-songs-1" },
       { method: "PATCH", path: "/api/playlist/songs/3/position", body: { position: 2 }, idempotencyKey: "move-song-1" },
       { method: "DELETE", path: "/api/playlist/history", idempotencyKey: "clear-history-1" },
+      { method: "DELETE", path: "/api/playlist/history/3", idempotencyKey: "remove-history-1" },
       { method: "POST", path: "/api/music/queue/replace", body: { expectedRevision: 4, songs: [{ playlistId: 8, songId: 9 }] }, idempotencyKey: "replace-queue-1" },
+      { method: "POST", path: "/api/music/queue/append", body: { expectedRevision: 5, songs: [{ playlistId: 8, songId: 10 }] }, idempotencyKey: "append-queue-1" },
     ]);
     expect(JSON.stringify(request.mock.calls)).not.toMatch(/username|email|ownerId|accountId|documentId|musicUserId/i);
+  });
+
+  it("sends and validates the revisioned playback contract without changing the legacy method", async () => {
+    // Break caught: the client timeout arbiter has no owner-scoped revision the server can verify.
+    const request = vi.fn(async () => new Response(JSON.stringify({
+      version: "music-playback/v1", revision: 8, song: { ...song, status: "playing" },
+    }), { headers: { "content-type": "application/json" } }));
+
+    await expect(createMusicQueueClient(request).setPlayingRevision(3, 7, "playback-8"))
+      .resolves.toEqual({ version: "music-playback/v1", revision: 8, song: { ...song, status: "playing" } });
+    expect(request).toHaveBeenCalledWith({
+      method: "POST", path: "/api/playlist/currently-playing",
+      body: { songId: 3, expectedRevision: 7 }, idempotencyKey: "playback-8",
+    });
+  });
+
+  it("forwards cancellation and accepts a null revisioned playback result", async () => {
+    const controller = new AbortController();
+    const request = vi.fn(async (input: { body?: { expectedRevision?: number } }) => input.body?.expectedRevision === undefined
+      ? new Response(JSON.stringify(song), { headers: { "content-type": "application/json" } })
+      : new Response(JSON.stringify({ version: "music-playback/v1", revision: 8, song: null }), { headers: { "content-type": "application/json" } }));
+    const client = createMusicQueueClient(request);
+
+    await expect(client.setPlaying(3, "legacy-cancel", controller.signal)).resolves.toEqual(song);
+    await expect(client.setPlaying(null, "legacy-stop-cancel", controller.signal)).resolves.toBeUndefined();
+    await expect(client.setPlayingRevision(null, 0, "revision-cancel", controller.signal))
+      .resolves.toEqual({ version: "music-playback/v1", revision: 8, song: null });
+    expect(request.mock.calls.map(([input]) => input)).toEqual([
+      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: 3 }, idempotencyKey: "legacy-cancel", signal: controller.signal },
+      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: null }, idempotencyKey: "legacy-stop-cancel", signal: controller.signal },
+      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: null, expectedRevision: 0 }, idempotencyKey: "revision-cancel", signal: controller.signal },
+    ]);
+  });
+
+  it("rejects malformed revisioned playback responses", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      version: "music-playback/v2", revision: 8, song: null,
+    }), { headers: { "content-type": "application/json" } }));
+
+    await expect(createMusicQueueClient(request).setPlayingRevision(null, 0, "revision-malformed"))
+      .rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
   });
 
   it("accepts the full 500-song queue for one bounded bulk removal", async () => {

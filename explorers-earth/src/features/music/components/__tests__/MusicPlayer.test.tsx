@@ -29,6 +29,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof MusicPlayer>> = {}
     playedSongs: [previous],
     queueClient: { setPlaying: vi.fn().mockResolvedValue(undefined) },
     onChanged: vi.fn().mockResolvedValue(undefined),
+    authorityGeneration: "test-authority",
     ...overrides,
   };
   return { ...render(<MusicPlayer {...props} />), props };
@@ -37,6 +38,12 @@ function setup(overrides: Partial<React.ComponentProps<typeof MusicPlayer>> = {}
 describe("MusicPlayer", () => {
   beforeEach(() => { playerProps = {}; seekTo.mockReset(); });
   afterEach(() => vi.useRealTimers());
+
+  it("renders an artwork-first media-player surface", () => {
+    setup();
+    expect(screen.getByRole("img", { name: "Now playing: First song" })).toHaveAttribute("src", "https://img/1");
+    expect(screen.getByTestId("primary-media-controls")).toContainElement(screen.getByRole("button", { name: "Play" }));
+  });
 
   it("starts audio-first and reveals video only on request", async () => {
     setup();
@@ -113,6 +120,48 @@ describe("MusicPlayer", () => {
     expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
     act(() => (playerProps.onPlay as () => void)());
     expect(broadcastPlayerState).toHaveBeenCalledWith({ songId: 2, playing: true });
+  });
+
+  it("honors an external playback request only after its song becomes canonical", () => {
+    const { props, rerender } = setup();
+    rerender(<MusicPlayer {...props} playbackRequest={{ songId: next.id, requestId: 1, authorityGeneration: "test-authority" }} /> as React.ReactElement);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+
+    rerender(<MusicPlayer {...props} currentSong={next} queuedSongs={[]} playbackRequest={{ songId: next.id, requestId: 1, authorityGeneration: "test-authority" }} /> as React.ReactElement);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+  });
+
+  it("does not honor an old authority playback request when the new account reuses the same song id", () => {
+    // Break caught: account B can autoplay from account A's late request when both database rows use the same numeric ID.
+    const { props, rerender } = setup({ authorityGeneration: "user-a:account-a" });
+    rerender(<MusicPlayer {...props} authorityGeneration="user-b:account-b" playbackRequest={{
+      songId: current.id, requestId: 4, authorityGeneration: "user-a:account-a",
+    }} /> as React.ReactElement);
+
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "false");
+  });
+
+  it("honors the new authority when its request and song ids match the previous account", () => {
+    const { props, rerender } = setup({ authorityGeneration: "user-a:account-a" });
+    rerender(<MusicPlayer {...props} authorityGeneration="user-a:account-a" playbackRequest={{
+      songId: current.id, requestId: 4, authorityGeneration: "user-a:account-a",
+    }} /> as React.ReactElement);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+
+    rerender(<MusicPlayer {...props} authorityGeneration="user-b:account-b" playbackRequest={{
+      songId: current.id, requestId: 4, authorityGeneration: "user-b:account-b",
+    }} /> as React.ReactElement);
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+  });
+
+  it("does not pause the current song while a request waits for another canonical song", async () => {
+    const { props, rerender } = setup();
+    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+
+    rerender(<MusicPlayer {...props} playbackRequest={{ songId: next.id, requestId: 2, authorityGeneration: "test-authority" }} /> as React.ReactElement);
+
+    expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
   });
 
   it("completes the current song when the queue ends", async () => {
@@ -274,6 +323,62 @@ describe("MusicPlayer", () => {
     expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
     await act(async () => refresh.resolve());
     expect(screen.getByRole("button", { name: "Next song" })).toBeEnabled();
+  });
+
+  it("routes canonical next-song writes through the shared playback arbiter", async () => {
+    const onPlaybackRequested = vi.fn().mockResolvedValue("acknowledged");
+    const beginPlaybackRequest = vi.fn(() => 71);
+    const { props } = setup({ beginPlaybackRequest, onPlaybackRequested } as unknown as Partial<React.ComponentProps<typeof MusicPlayer>>);
+
+    await userEvent.click(screen.getByRole("button", { name: "Next song" }));
+
+    expect(beginPlaybackRequest).toHaveBeenCalledOnce();
+    expect(onPlaybackRequested).toHaveBeenCalledWith(next.id, 71, "player-next");
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
+  });
+
+  it("does not mutate canonical playback when stale media recovery is exhausted", async () => {
+    vi.useFakeTimers();
+    const { props } = setup({ readOnly: true });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("one")));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("two")));
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("three")));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Playback changed elsewhere. Refresh to reconnect.");
+  });
+
+  it("routes an ended last-song write through the shared playback arbiter", async () => {
+    const onPlaybackRequested = vi.fn().mockResolvedValue("acknowledged");
+    const beginPlaybackRequest = vi.fn(() => 72);
+    const { props } = setup({ queuedSongs: [], beginPlaybackRequest, onPlaybackRequested } as unknown as Partial<React.ComponentProps<typeof MusicPlayer>>);
+
+    act(() => (playerProps.onEnded as () => void)());
+
+    await waitFor(() => expect(onPlaybackRequested).toHaveBeenCalledWith(null, 72, "player-ended"));
+    expect(beginPlaybackRequest).toHaveBeenCalledOnce();
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
+  });
+
+  it("routes exhausted media recovery for the last song through the shared playback arbiter", async () => {
+    vi.useFakeTimers();
+    const onPlaybackRequested = vi.fn().mockResolvedValue("acknowledged");
+    const beginPlaybackRequest = vi.fn(() => 73);
+    const { props } = setup({ queuedSongs: [], beginPlaybackRequest, onPlaybackRequested } as unknown as Partial<React.ComponentProps<typeof MusicPlayer>>);
+
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("one")));
+    await act(async () => vi.runAllTimersAsync());
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("two")));
+    await act(async () => vi.runAllTimersAsync());
+    act(() => (playerProps.onError as (error: Error) => void)(new Error("three")));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+    expect(onPlaybackRequested).toHaveBeenCalledWith(null, 73, "player-ended");
+    expect(beginPlaybackRequest).toHaveBeenCalledOnce();
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
   });
 
   it("reconciles a completed-song command after its song becomes stale without stale local effects", async () => {

@@ -142,8 +142,11 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain(
       "/app/migrations/0018_transactional_queue_replacement.sql",
     );
+    expect(ci).toContain(
+      "/app/migrations/0019_queue_visibility_control.sql",
+    );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0018_transactional_queue_replacement"',
+      'production_current_marker="0019_queue_visibility_control"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",

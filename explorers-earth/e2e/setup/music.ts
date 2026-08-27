@@ -160,7 +160,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
       currentlyPlaying: null,
       playedSongs: [],
       publication: { mode: publicationMode, publicSlug: "qualification-public" },
-      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
     }),
   }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({

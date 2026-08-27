@@ -71,7 +71,7 @@ export class MusicDomainRepository {
                     'artist', ps.artist,
                     'thumbnailUrl', ps.thumbnail_url,
                     'position', ps.position,
-                    'addedAt', ps.added_at
+                    'addedAt', to_char(ps.added_at, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
                   ) ORDER BY ps.position,ps.id
                 ) FILTER (WHERE ps.id IS NOT NULL),
                 '[]'::jsonb
@@ -337,6 +337,165 @@ export class MusicDomainRepository {
     });
   }
 
+  async addPlaylistSongIdempotent(
+    musicUserId: number,
+    idempotencyKey: string,
+    playlistId: number,
+    input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string },
+  ): Promise<
+    | { status: "completed"; replayed: boolean; response: unknown }
+    | { status: "conflict" }
+    | { status: "limit" }
+    | { status: "not_found" }
+  > {
+    assertCanonicalYouTubeVideoId(input.youtubeId);
+    const operation = "playlist.song.add";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256").update(JSON.stringify({ playlistId, input }), "utf8").digest("hex");
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      await client.query(
+        `DELETE FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at<=transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      );
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         )
+         DELETE FROM music_owner_operations operation USING expired
+          WHERE operation.ctid=expired.ctid`,
+        [musicUserId],
+      );
+      const existing = (await client.query(
+        `SELECT request_hash,response_body FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at>transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      )).rows[0];
+      if (existing) {
+        if (existing.request_hash !== requestHash) return { status: "conflict" as const };
+        return { status: "completed" as const, replayed: true, response: existing.response_body };
+      }
+      const owned = (await client.query(
+        `SELECT p.id,count(ps.id)::integer AS count
+           FROM playlists p LEFT JOIN playlist_songs ps ON ps.playlist_id=p.id
+          WHERE p.user_id=$1 AND p.id=$2 GROUP BY p.id`,
+        [musicUserId, playlistId],
+      )).rows[0];
+      if (!owned) return { status: "not_found" as const };
+      if (Number(owned.count) >= MAX_SONGS_PER_PLAYLIST) return { status: "limit" as const };
+      const song = (await client.query(
+        `INSERT INTO playlist_songs(playlist_id,youtube_id,title,artist,thumbnail_url,position)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
+        [playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl, Number(owned.count)],
+      )).rows[0];
+      await client.query(
+        `INSERT INTO music_owner_operations(
+           music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
+         ) VALUES ($1,$2,$3,$4,201,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash, JSON.stringify(song)],
+      );
+      return { status: "completed" as const, replayed: false, response: song };
+    });
+  }
+
+  async appendQueue(
+    musicUserId: number,
+    idempotencyKey: string,
+    expectedRevision: number,
+    songs: Array<{ playlistId: number; songId: number }>,
+  ): Promise<
+    | { status: "completed"; replayed: boolean; response: { version: "music-queue/v1"; revision: number; songs: unknown[] } }
+    | { status: "stale"; revision: number }
+    | { status: "conflict" }
+    | { status: "not_found" }
+    | { status: "limit" }
+    | { status: "empty" }
+  > {
+    if (songs.length === 0) return { status: "empty" as const };
+    const operation = "queue.append";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256").update(JSON.stringify({ expectedRevision, songs }), "utf8").digest("hex");
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      await client.query(
+        `DELETE FROM music_owner_operations WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+           AND expires_at<=transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      );
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         )
+         DELETE FROM music_owner_operations operation USING expired
+          WHERE operation.ctid=expired.ctid`,
+        [musicUserId],
+      );
+      const existing = (await client.query(
+        `SELECT request_hash,response_body FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3 AND expires_at>transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      )).rows[0];
+      if (existing) {
+        if (existing.request_hash !== requestHash) return { status: "conflict" as const };
+        return { status: "completed" as const, replayed: true, response: existing.response_body };
+      }
+
+      const owner = (await client.query("SELECT music_queue_revision FROM users WHERE id=$1 FOR UPDATE", [musicUserId])).rows[0];
+      if (!owner) return { status: "not_found" as const };
+      const revision = Number(owner.music_queue_revision);
+      if (revision !== expectedRevision) return { status: "stale" as const, revision };
+      await this.normalizeActiveQueue(client, musicUserId);
+      const currentCount = Number((await client.query(
+        "SELECT count(*)::integer AS count FROM songs WHERE user_id=$1 AND status IN ('queued','playing')",
+        [musicUserId],
+      )).rows[0]?.count ?? 0);
+      const playlistIds = songs.map(({ playlistId }) => playlistId);
+      const songIds = songs.map(({ songId }) => songId);
+      const sources = songs.length === 0 ? [] : (await client.query(
+        `SELECT ps.youtube_id,ps.title,ps.artist,ps.thumbnail_url,source.ordinality
+           FROM unnest($2::integer[],$3::integer[]) WITH ORDINALITY AS source(playlist_id,song_id,ordinality)
+           JOIN playlists p ON p.id=source.playlist_id AND p.user_id=$1
+           JOIN playlist_songs ps ON ps.playlist_id=p.id AND ps.id=source.song_id
+          ORDER BY source.ordinality`,
+        [musicUserId, playlistIds, songIds],
+      )).rows;
+      if (sources.length !== songs.length) return { status: "not_found" as const };
+      if (currentCount + sources.length > 500) return { status: "limit" as const };
+      if (sources.length) await client.query(
+        `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
+         SELECT $1,source.youtube_id,source.title,source.artist,source.thumbnail_url,$2+(source.ordinality-1)::integer,'queued'
+           FROM unnest($3::text[],$4::text[],$5::text[],$6::text[]) WITH ORDINALITY
+             AS source(youtube_id,title,artist,thumbnail_url,ordinality)`,
+        [musicUserId, currentCount, sources.map(({ youtube_id }) => youtube_id), sources.map(({ title }) => title), sources.map(({ artist }) => artist), sources.map(({ thumbnail_url }) => thumbnail_url)],
+      );
+      const nextRevision = Number((await client.query(
+        "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 RETURNING music_queue_revision", [musicUserId],
+      )).rows[0].music_queue_revision);
+      const queue = (await client.query(
+        `SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at
+           FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position,id`,
+        [musicUserId],
+      )).rows.map((row) => ({
+        id: row.id, userId: row.user_id, youtubeId: row.youtube_id, title: row.title, artist: row.artist,
+        thumbnailUrl: row.thumbnail_url, position: row.position, status: row.status,
+        playedAt: row.played_at instanceof Date ? row.played_at.toISOString() : row.played_at ?? null,
+      }));
+      const response = { version: "music-queue/v1" as const, revision: nextRevision, songs: queue };
+      await client.query(
+        `INSERT INTO music_owner_operations(music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at)
+         VALUES ($1,$2,$3,$4,200,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash, JSON.stringify(response)],
+      );
+      return { status: "completed" as const, replayed: false, response };
+    });
+  }
+
   async ownerDashboard(musicUserId: number) {
     return this.withReadSnapshot(async (client) => {
       const activeRows = (await client.query(
@@ -364,7 +523,7 @@ export class MusicDomainRepository {
         `SELECT guest_url,
                 music_queue_revision,
                 guest_discoverable,
-                allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,
+                allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility,
                 (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
            FROM users WHERE id=$1`,
         [musicUserId],
@@ -384,30 +543,33 @@ export class MusicDomainRepository {
           allowGuestPlayOnDevice: publication?.allow_guest_play_on_device === true,
           allowPlaylistSharing: publication?.allow_playlist_sharing === true,
           allowRecentlyPlayedVisibility: publication?.allow_recently_played_visibility === true,
+          allowQueueVisibility: publication?.allow_queue_visibility === true,
         },
       };
     });
   }
 
-  async updateGuestControls(musicUserId: number, controls: { allowSongRequests: boolean; allowGuestPlayOnDevice: boolean; allowPlaylistSharing: boolean; allowRecentlyPlayedVisibility: boolean }) {
+  async updateGuestControls(musicUserId: number, controls: { allowSongRequests: boolean; allowGuestPlayOnDevice: boolean; allowPlaylistSharing: boolean; allowRecentlyPlayedVisibility: boolean; allowQueueVisibility?: boolean }) {
     const row = (await this.pool.query(
       `UPDATE users SET allow_song_requests=$2,allow_guest_play_on_device=$3,
-         allow_playlist_sharing=$4,allow_recently_played_visibility=$5,updated_at=now()
+         allow_playlist_sharing=$4,allow_recently_played_visibility=$5,
+         allow_queue_visibility=COALESCE($6,allow_queue_visibility),updated_at=now()
        WHERE id=$1 AND identity_status='active'
-       RETURNING allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility`,
-      [musicUserId, controls.allowSongRequests, controls.allowGuestPlayOnDevice, controls.allowPlaylistSharing, controls.allowRecentlyPlayedVisibility],
+       RETURNING allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility`,
+      [musicUserId, controls.allowSongRequests, controls.allowGuestPlayOnDevice, controls.allowPlaylistSharing, controls.allowRecentlyPlayedVisibility, controls.allowQueueVisibility],
     )).rows[0];
     return row ? {
       allowSongRequests: row.allow_song_requests === true,
       allowGuestPlayOnDevice: row.allow_guest_play_on_device === true,
       allowPlaylistSharing: row.allow_playlist_sharing === true,
       allowRecentlyPlayedVisibility: row.allow_recently_played_visibility === true,
+      allowQueueVisibility: row.allow_queue_visibility === true,
     } : undefined;
   }
 
   async getGuestControls(musicUserId: number) {
     const row = (await this.pool.query(
-      `SELECT allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility
+      `SELECT allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility
        FROM users WHERE id=$1 AND identity_status='active'`,
       [musicUserId],
     )).rows[0];
@@ -416,6 +578,7 @@ export class MusicDomainRepository {
       allowGuestPlayOnDevice: row.allow_guest_play_on_device === true,
       allowPlaylistSharing: row.allow_playlist_sharing === true,
       allowRecentlyPlayedVisibility: row.allow_recently_played_visibility === true,
+      allowQueueVisibility: row.allow_queue_visibility === true,
     } : undefined;
   }
 
@@ -444,14 +607,32 @@ export class MusicDomainRepository {
     });
   }
 
-  async setPlaying(musicUserId: number, songId: number | null) {
+  async setPlaying(musicUserId: number, songId: number | null, expectedRevision?: number) {
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      let nextRevision: number | undefined;
+      if (expectedRevision !== undefined) {
+        const owner = (await client.query(
+          "SELECT music_queue_revision FROM users WHERE id=$1 FOR UPDATE",
+          [musicUserId],
+        )).rows[0];
+        if (!owner) return { status: "not_found" as const };
+        const currentRevision = Number(owner.music_queue_revision);
+        if (expectedRevision !== currentRevision) return { status: "stale" as const, revision: currentRevision };
+        nextRevision = currentRevision + 1;
+      }
       if (songId === null) {
         const completed = await client.query(
           "UPDATE songs SET status='played',played_at=now() WHERE user_id=$1 AND status='playing'",
           [musicUserId],
         );
         await this.normalizeActiveQueue(client, musicUserId);
+        if (nextRevision !== undefined) {
+          const advanced = (await client.query(
+            "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 AND music_queue_revision=$2 RETURNING music_queue_revision",
+            [musicUserId, expectedRevision],
+          )).rows[0];
+          return { status: "completed" as const, revision: Number(advanced.music_queue_revision), song: null };
+        }
         if ((completed.rowCount ?? 0) > 0) await this.advanceQueueRevision(client, musicUserId);
         return null;
       }
@@ -468,13 +649,80 @@ export class MusicDomainRepository {
          RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
         [musicUserId, songId],
       )).rows[0];
-      if (!activated) return undefined;
+      if (!activated) return expectedRevision === undefined ? undefined : { status: "not_found" as const };
       await this.normalizeActiveQueue(client, musicUserId);
-      await this.advanceQueueRevision(client, musicUserId);
-      return (await client.query(
+      let canonicalRevision = nextRevision;
+      if (expectedRevision === undefined) await this.advanceQueueRevision(client, musicUserId);
+      else canonicalRevision = Number((await client.query(
+        "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 AND music_queue_revision=$2 RETURNING music_queue_revision",
+        [musicUserId, expectedRevision],
+      )).rows[0].music_queue_revision);
+      const song = (await client.query(
         "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='playing'",
         [musicUserId, songId],
       )).rows[0];
+      return expectedRevision === undefined
+        ? song
+        : { status: "completed" as const, revision: canonicalRevision!, song };
+    });
+  }
+
+  async createPlaylistIdempotent(
+    musicUserId: number,
+    idempotencyKey: string,
+    input: { name: string; description: string | null },
+  ): Promise<
+    | { status: "completed"; replayed: boolean; response: unknown }
+    | { status: "conflict" }
+    | { status: "limit" }
+  > {
+    const operation = "playlist.create";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256").update(JSON.stringify(input), "utf8").digest("hex");
+    return this.withAdvisoryLock(PLAYLIST_COLLECTION_LOCK, musicUserId, async (client) => {
+      await client.query(
+        `DELETE FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at<=transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      );
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         )
+         DELETE FROM music_owner_operations operation USING expired
+          WHERE operation.ctid=expired.ctid`,
+        [musicUserId],
+      );
+      const existing = (await client.query(
+        `SELECT request_hash,status_code,response_body
+           FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at>transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      )).rows[0];
+      if (existing) {
+        if (existing.request_hash !== requestHash) return { status: "conflict" as const };
+        return { status: "completed" as const, replayed: true, response: existing.response_body };
+      }
+      const count = Number((await client.query(
+        "SELECT count(*)::integer AS count FROM playlists WHERE user_id=$1",
+        [musicUserId],
+      )).rows[0]?.count ?? 0);
+      if (count >= MAX_SAVED_PLAYLISTS) return { status: "limit" as const };
+      const playlist = (await client.query(
+        "INSERT INTO playlists(user_id,name,description,is_visible_to_guests) VALUES ($1,$2,$3,false) RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at",
+        [musicUserId, input.name, input.description],
+      )).rows[0];
+      await client.query(
+        `INSERT INTO music_owner_operations(
+           music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
+         ) VALUES ($1,$2,$3,$4,201,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash, JSON.stringify(playlist)],
+      );
+      return { status: "completed" as const, replayed: false, response: playlist };
     });
   }
 
@@ -528,6 +776,60 @@ export class MusicDomainRepository {
         await this.advanceQueueRevision(client, musicUserId);
       }
       return removed.rowCount ?? 0;
+    });
+  }
+
+  async removeHistorySong(
+    musicUserId: number,
+    idempotencyKey: string,
+    songId: number,
+  ): Promise<
+    | { status: "completed"; replayed: boolean }
+    | { status: "conflict" }
+    | { status: "not_found" }
+  > {
+    const operation = "history.remove";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256").update(JSON.stringify({ songId }), "utf8").digest("hex");
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      await client.query(
+        `DELETE FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at<=transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      );
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         )
+         DELETE FROM music_owner_operations operation USING expired
+          WHERE operation.ctid=expired.ctid`,
+        [musicUserId],
+      );
+      const existing = (await client.query(
+        `SELECT request_hash FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND idempotency_key_hash=$3
+            AND expires_at>transaction_timestamp()`,
+        [musicUserId, operation, keyHash],
+      )).rows[0];
+      if (existing) {
+        if (existing.request_hash !== requestHash) return { status: "conflict" as const };
+        return { status: "completed" as const, replayed: true };
+      }
+      const removed = await client.query(
+        "DELETE FROM songs WHERE user_id=$1 AND id=$2 AND status='played' RETURNING id",
+        [musicUserId, songId],
+      );
+      if ((removed.rowCount ?? 0) !== 1) return { status: "not_found" as const };
+      await client.query(
+        `INSERT INTO music_owner_operations(
+           music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
+         ) VALUES ($1,$2,$3,$4,204,'{}'::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash],
+      );
+      return { status: "completed" as const, replayed: false };
     });
   }
 
@@ -589,7 +891,7 @@ export class MusicDomainRepository {
     const row = (await this.pool.query(
       `SELECT u.id,u.identity_status,u.guest_capability_hash,u.guest_capability_revoked_at,
         u.guest_discoverable,u.guest_url,u.username,u.venue_name,u.theme,
-        u.allow_song_requests,u.allow_guest_play_on_device,u.allow_playlist_sharing,u.allow_recently_played_visibility,
+        u.allow_song_requests,u.allow_guest_play_on_device,u.allow_playlist_sharing,u.allow_recently_played_visibility,u.allow_queue_visibility,
         EXISTS(SELECT 1 FROM playlists vp WHERE vp.user_id=u.id AND vp.is_visible_to_guests=true) AS has_visible_playlist,
         (SELECT COALESCE(jsonb_agg(jsonb_build_object(
           'id',s.id,'userId',s.user_id,'youtubeId',s.youtube_id,'title',s.title,'artist',s.artist,
@@ -610,7 +912,7 @@ export class MusicDomainRepository {
           'createdAt',p.created_at,'updatedAt',p.updated_at,
           'songs',(SELECT COALESCE(jsonb_agg(jsonb_build_object(
             'id',j.id,'playlistId',j.playlist_id,'youtubeId',j.youtube_id,'title',j.title,'artist',j.artist,
-            'thumbnailUrl',j.thumbnail_url,'position',j.position,'addedAt',j.added_at
+            'thumbnailUrl',j.thumbnail_url,'position',j.position,'addedAt',to_char(j.added_at, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
           ) ORDER BY j.position) FILTER (WHERE j.id IS NOT NULL),'[]'::jsonb) FROM playlist_songs j WHERE j.playlist_id=p.id)
         ) ORDER BY p.id) FILTER (WHERE p.id IS NOT NULL),'[]'::jsonb)
           FROM playlists p WHERE p.user_id=u.id AND p.is_visible_to_guests=true) AS visible_playlists
@@ -628,7 +930,7 @@ export class MusicDomainRepository {
           : row.guest_capability_revoked_at && capabilityMatch ? "revoked"
             : capabilityMatch ? "unlisted" : "private";
     const publicPlaylist = {
-      songs: row.songs ?? [],
+      songs: row.allow_queue_visibility ? row.songs ?? [] : [],
       user: {
         id: row.id,
         username: row.username,
@@ -639,11 +941,13 @@ export class MusicDomainRepository {
         allowGuestPlayOnDevice: row.allow_guest_play_on_device,
         allowPlaylistSharing: row.allow_playlist_sharing,
         allowRecentlyPlayedVisibility: row.allow_recently_played_visibility,
+        allowQueueVisibility: row.allow_queue_visibility,
       },
-      currentlyPlaying: row.currently_playing ?? undefined,
+      currentlyPlaying: row.allow_queue_visibility ? row.currently_playing ?? null : null,
       playedSongs: row.allow_recently_played_visibility ? row.played_songs ?? [] : [],
       allowGuestPlayOnDevice: row.allow_guest_play_on_device,
       allowRecentlyPlayedVisibility: row.allow_recently_played_visibility,
+      allowQueueVisibility: row.allow_queue_visibility,
       playlists: row.allow_playlist_sharing ? row.visible_playlists ?? [] : undefined,
     };
     return {

@@ -52,6 +52,36 @@ function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: numb
 }
 
 describe("MusicDomainRepository owner predicates", () => {
+  it("replays one owner playlist create after its response is lost", async () => {
+    // Break caught: retrying an acknowledged-but-lost create response inserts a duplicate playlist.
+    const playlist = {
+      id: 91, user_id: 7, name: "One create", description: null, is_visible_to_guests: false,
+      created_at: "2026-08-27T10:00:00.000Z", updated_at: "2026-08-27T10:00:00.000Z",
+    };
+    let stored: { request_hash: string; status_code: number; response_body: unknown } | undefined;
+    let inserts = 0;
+    const client = { async query(text: string, values: unknown[] = []) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT request_hash,status_code,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
+      if (/SELECT count\(\*\)::integer AS count FROM playlists/.test(normalized)) return { rows: [{ count: inserts }], rowCount: 1 };
+      if (/INSERT INTO playlists/.test(normalized)) { inserts += 1; return { rows: [playlist], rowCount: 1 }; }
+      if (/INSERT INTO music_owner_operations/.test(normalized)) {
+        stored = { request_hash: String(values[3]), status_code: 201, response_body: JSON.parse(String(values[4])) };
+        return { rows: [], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    const input = { name: "One create", description: null };
+
+    await expect(repository.createPlaylistIdempotent(7, "lost-response-key", input))
+      .resolves.toEqual({ status: "completed", replayed: false, response: playlist });
+    await expect(repository.createPlaylistIdempotent(7, "lost-response-key", input))
+      .resolves.toEqual({ status: "completed", replayed: true, response: playlist });
+    expect(inserts).toBe(1);
+  });
+
   it("replaces an owner queue in one locked transaction and returns canonical ordered state", async () => {
     // Break caught: queue replacement becomes a delete/add sequence outside one owner lock.
     const calls: Array<{ text: string; values: unknown[] }> = [];
@@ -221,17 +251,88 @@ describe("MusicDomainRepository owner predicates", () => {
       playedSongs: [expect.objectContaining({ id: 3 })],
       queueRevision: 0,
       publication: { mode: "private", publicSlug: "" },
-      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
     });
   });
 
+  it("treats an empty queue append as a no-op before opening a transaction", async () => {
+    // Break caught: empty append commands spend a revision and persist a large replay response.
+    const harness = recordingPool();
+    const repository = new MusicDomainRepository(harness.pool);
+
+    await expect(repository.appendQueue(7, "empty-append", 4, []))
+      .resolves.toEqual({ status: "empty" });
+    expect(harness.calls).toEqual([]);
+  });
+
+  it("performs bounded owner expiry cleanup before a non-empty queue append", async () => {
+    // Break caught: append-only users accumulate expired owner operations forever.
+    const statements: Array<{ text: string; values: unknown[] }> = [];
+    const client = { async query(text: string, values: unknown[] = []) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      statements.push({ text: normalized, values });
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT request_hash,response_body/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT music_queue_revision FROM users/.test(normalized)) return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+
+    await expect(repository.appendQueue(7, "append-cleanup", 4, [{ playlistId: 9, songId: 31 }]))
+      .resolves.toEqual({ status: "not_found" });
+    const cleanup = statements.find(({ text }) => /WITH expired AS/.test(text));
+    expect(cleanup?.text).toMatch(/music_user_id=\$1[\s\S]*expires_at<=transaction_timestamp\(\)[\s\S]*LIMIT 100/i);
+    expect(cleanup?.values).toEqual([7]);
+  });
+
+  it("durably replays one saved-playlist song insertion and conflicts on a changed payload", async () => {
+    // Break caught: a lost 201 response inserts the same saved song twice on retry.
+    const song = {
+      id: 41, playlist_id: 9, youtube_id: "abcdefghijk", title: "Saved", artist: "Artist",
+      thumbnail_url: "https://img", position: 0, added_at: "2026-08-27T10:00:00.000Z",
+    };
+    let stored: { request_hash: string; response_body: unknown } | undefined;
+    let inserts = 0;
+    const client = { async query(text: string, values: unknown[] = []) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT request_hash,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
+      if (/SELECT p\.id,count/.test(normalized)) return { rows: [{ id: 9, count: inserts }], rowCount: 1 };
+      if (/INSERT INTO playlist_songs/.test(normalized)) { inserts += 1; return { rows: [song], rowCount: 1 }; }
+      if (/INSERT INTO music_owner_operations/.test(normalized)) {
+        stored = { request_hash: String(values[3]), response_body: JSON.parse(String(values[4])) };
+        return { rows: [], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    const input = { youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img" };
+
+    await expect(repository.addPlaylistSongIdempotent(7, "saved-song-key", 9, input))
+      .resolves.toEqual({ status: "completed", replayed: false, response: song });
+    await expect(repository.addPlaylistSongIdempotent(7, "saved-song-key", 9, input))
+      .resolves.toEqual({ status: "completed", replayed: true, response: song });
+    await expect(repository.addPlaylistSongIdempotent(7, "saved-song-key", 9, { ...input, title: "Changed" }))
+      .resolves.toEqual({ status: "conflict" });
+    expect(inserts).toBe(1);
+  });
+
   it("updates guest controls with one active-owner predicate", async () => {
-    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
-    const harness = recordingPool([{ allow_song_requests: true, allow_guest_play_on_device: false, allow_playlist_sharing: true, allow_recently_played_visibility: false }]);
+    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false };
+    const harness = recordingPool([{ allow_song_requests: true, allow_guest_play_on_device: false, allow_playlist_sharing: true, allow_recently_played_visibility: false, allow_queue_visibility: false }]);
     await expect(new MusicDomainRepository(harness.pool).updateGuestControls(23, controls)).resolves.toEqual(controls);
     expect(harness.calls[0].text).toMatch(/UPDATE users SET allow_song_requests=\$2/);
+    expect(harness.calls[0].text).toMatch(/allow_queue_visibility=COALESCE\(\$6,allow_queue_visibility\)/);
     expect(harness.calls[0].text).toMatch(/WHERE id=\$1 AND identity_status='active'/);
-    expect(harness.calls[0].values).toEqual([23, true, false, true, false]);
+    expect(harness.calls[0].values).toEqual([23, true, false, true, false, false]);
+  });
+
+  it("preserves the persisted queue visibility when a legacy four-field update arrives", async () => {
+    const legacyControls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
+    const harness = recordingPool([{ allow_song_requests: true, allow_guest_play_on_device: false, allow_playlist_sharing: true, allow_recently_played_visibility: false, allow_queue_visibility: true }]);
+
+    await expect(new MusicDomainRepository(harness.pool).updateGuestControls(23, legacyControls)).resolves.toEqual({ ...legacyControls, allowQueueVisibility: true });
+    expect(harness.calls[0].values).toEqual([23, true, false, true, false, undefined]);
   });
 
   it("orders owner played history by most recent play time", async () => {
@@ -520,6 +621,7 @@ describe("MusicDomainRepository owner predicates", () => {
       allow_guest_play_on_device: false,
       allow_playlist_sharing: true,
       allow_recently_played_visibility: true,
+      allow_queue_visibility: true,
       songs: [{ id: 1, youtubeId: "queue" }],
       currently_playing: { id: 2, youtubeId: "playing" },
       played_songs: [{ id: 3, youtubeId: "played" }],
@@ -533,10 +635,11 @@ describe("MusicDomainRepository owner predicates", () => {
       state: "public",
       playlist: {
         songs: [{ id: 1, youtubeId: "queue" }],
-        user: { username: "display", venueName: "Venue", allowPlaylistSharing: true },
+        user: { username: "display", venueName: "Venue", allowPlaylistSharing: true, allowQueueVisibility: true },
         currentlyPlaying: { id: 2, youtubeId: "playing" },
         playedSongs: [{ id: 3, youtubeId: "played" }],
         allowGuestPlayOnDevice: false,
+        allowQueueVisibility: true,
         playlists: [{ id: 7, songs: [{ id: 8, youtubeId: "saved" }] }],
       },
     });
@@ -565,6 +668,48 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(transition).toMatch(/status='playing'.*exists \(select 1 from target\)/);
   });
 
+  it("rejects an owner playback revision that is no longer newer before changing songs", async () => {
+    // Break caught: a delayed timed-out request can retire the latest canonical song after a newer command commits.
+    const statements: string[] = [];
+    const client = { async query(text: string) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      statements.push(normalized);
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/music_queue_revision/.test(normalized)) return { rows: [{ music_queue_revision: 2 }], rowCount: 1 };
+      if (/UPDATE songs SET status='playing'/.test(normalized)) return { rows: [{ id: 71 }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+
+    await expect(repository.setPlaying(23, 71, 1)).resolves.toEqual({ status: "stale", revision: 2 });
+    expect(statements.some((text) => /UPDATE songs SET status='playing'/.test(text))).toBe(false);
+  });
+
+  it("does not let a forged maximum revision poison playback and accepts the real expected revision afterward", async () => {
+    // Break caught: an authenticated browser can set the owner's revision to MAX_SAFE_INTEGER and permanently block normal playback.
+    let revision = 7;
+    const client = { async query(text: string, values: unknown[] = []) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/^SELECT music_queue_revision/.test(normalized)) return { rows: [{ music_queue_revision: revision }], rowCount: 1 };
+      if (/WITH target AS/.test(normalized)) return { rows: [{ id: 71, user_id: 23, youtube_id: "abcdefghijk", title: "Safe", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "playing", played_at: null }], rowCount: 1 };
+      if (/UPDATE users SET music_queue_revision/.test(normalized)) {
+        revision += 1;
+        return { rows: [{ music_queue_revision: revision }], rowCount: 1 };
+      }
+      if (/^SELECT id,user_id/.test(normalized)) return { rows: [{ id: 71, user_id: 23, youtube_id: "abcdefghijk", title: "Safe", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "playing", played_at: null }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+
+    await expect(repository.setPlaying(23, 71, Number.MAX_SAFE_INTEGER))
+      .resolves.toEqual({ status: "stale", revision: 7 });
+    await expect(repository.setPlaying(23, 71, 7)).resolves.toMatchObject({
+      status: "completed", revision: 8, song: { id: 71 },
+    });
+    expect(revision).toBe(8);
+  });
+
   it("keeps a public resource reachable when a supplied stale capability was revoked", async () => {
     const capability = "B".repeat(43);
     const harness = recordingPool([{
@@ -585,6 +730,7 @@ describe("MusicDomainRepository owner predicates", () => {
   });
 
   it("keeps an active discoverable owner reachable with the exact empty public playlist shape", async () => {
+    const queuedSong = { id: 8, userId: 31, youtubeId: "abcdefghijk", title: "Private queue", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "playing", playedAt: null };
     const harness = recordingPool([{
       id: 31,
       identity_status: "active",
@@ -599,15 +745,30 @@ describe("MusicDomainRepository owner predicates", () => {
       allow_guest_play_on_device: false,
       allow_playlist_sharing: true,
       allow_recently_played_visibility: false,
+      allow_queue_visibility: false,
       has_visible_playlist: false,
-      songs: [],
-      currently_playing: null,
+      songs: [queuedSong],
+      currently_playing: queuedSong,
       played_songs: [],
       visible_playlists: [],
     }]);
-    await expect(new MusicDomainRepository(harness.pool).resolveGuestResource("public-empty")).resolves.toMatchObject({
+    const result = await new MusicDomainRepository(harness.pool).resolveGuestResource("public-empty");
+    expect(result).toMatchObject({ state: "public", playlist: { songs: [], currentlyPlaying: null, playlists: [] } });
+  });
+
+  it("exposes the live queue to a public resource only after queue visibility is enabled", async () => {
+    const queuedSong = { id: 8, userId: 31, youtubeId: "abcdefghijk", title: "Visible queue", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "playing", playedAt: null };
+    const harness = recordingPool([{
+      id: 31, identity_status: "active", guest_capability_hash: null, guest_capability_revoked_at: null,
+      guest_discoverable: true, guest_url: "public-queue", username: "display", venue_name: null, theme: null,
+      allow_song_requests: false, allow_guest_play_on_device: false, allow_playlist_sharing: true,
+      allow_recently_played_visibility: false, allow_queue_visibility: true, has_visible_playlist: false,
+      songs: [queuedSong], currently_playing: queuedSong, played_songs: [], visible_playlists: [],
+    }]);
+
+    await expect(new MusicDomainRepository(harness.pool).resolveGuestResource("public-queue")).resolves.toMatchObject({
       state: "public",
-      playlist: { songs: [], playlists: [] },
+      playlist: { songs: [queuedSong], currentlyPlaying: queuedSong, allowQueueVisibility: true },
     });
   });
 

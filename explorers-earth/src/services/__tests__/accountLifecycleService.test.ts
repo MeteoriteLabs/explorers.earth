@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountLifecycleError, createAccountLifecycleService } from "../accountLifecycleService";
 import { deleteExplorerAccountMutation, deleteExplorerUserMutation } from "../../features/Settings/api/mutation";
 
@@ -23,7 +23,44 @@ const acknowledgedLifecycleFetch = async (input: string | URL | Request) => new 
   new URL(String(input)).pathname.endsWith("/boundary") ? crossed : pending,
 ), { status: 200 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
 describe("account lifecycle service", () => {
+  it("allows only the exact same-origin localhost fixture used by isolated browser UAT", async () => {
+    vi.stubGlobal("location", new URL("http://localhost:55173/"));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(pending), { status: 200 }));
+    const service = createAccountLifecycleService({
+      baseUrl: "http://localhost:55173",
+      getBearer: () => "fixture-browser-proof-123456",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    await expect(service.status()).resolves.toEqual(pending);
+    expect(fetchImpl).toHaveBeenCalledWith("http://localhost:55173/api/music/identity/lifecycle/status", {
+      method: "GET",
+      headers: { Authorization: "Bearer fixture-browser-proof-123456" },
+    });
+    for (const origin of ["http://localhost:55172", "http://127.0.0.1:55173"]) {
+      expect(() => createAccountLifecycleService({ baseUrl: origin, getBearer: () => "fixture-browser-proof-123456" }))
+        .toThrow(AccountLifecycleError);
+    }
+
+    vi.stubGlobal("location", new URL("https://explorers.earth/settings"));
+    expect(() => createAccountLifecycleService({
+      baseUrl: "http://localhost:55173",
+      getBearer: () => "fixture-browser-proof-123456",
+    })).toThrow(AccountLifecycleError);
+
+    vi.stubGlobal("location", undefined);
+    expect(() => createAccountLifecycleService({
+      baseUrl: "http://localhost:55173",
+      getBearer: () => "fixture-browser-proof-123456",
+    })).toThrow(AccountLifecycleError);
+  });
+
   it("uses distinct Account and user GraphQL operations", () => {
     // Break caught: GraphQL executes both destructive fields in one request after an Account failure.
     const operationNames = [deleteExplorerAccountMutation, deleteExplorerUserMutation].map((document) => {

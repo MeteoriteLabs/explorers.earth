@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
-import { ChevronDown, Copy, ListMusic, Plus, Settings2 } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
+import { ChevronDown, Copy, ListMusic, MoreHorizontal, Plus, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import type { TunesDashboardData } from "../hooks/useTunesDashboard";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
@@ -16,9 +16,13 @@ import { musicApi } from "../features/music/musicApi";
 import { MusicWorkspaceShell } from "../features/music/components/MusicWorkspaceShell";
 import { MusicSearch } from "../features/music/components/MusicSearch";
 import { MusicQueue } from "../features/music/components/MusicQueue";
-import { MusicPlayer } from "../features/music/components/MusicPlayer";
+import { MusicPlayer, type MusicPlaybackRequest } from "../features/music/components/MusicPlayer";
 import { MusicHistory } from "../features/music/components/MusicHistory";
 import { MusicGuestControls } from "../features/music/components/MusicGuestControls";
+import { MusicSectionTabs, type MusicSection } from "../features/music/components/MusicSectionTabs";
+import { MusicPlaylistCollection } from "../features/music/components/MusicPlaylistCollection";
+import { createMusicPlaybackArbiter, type MusicPlaybackCommand } from "../features/music/components/musicPlaybackCommand";
+import Switch from "./ui/Switch";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
@@ -30,25 +34,33 @@ interface MusicDashboardProps {
 const completeQueueClient = createMusicQueueClient((input) => musicApi.request(input));
 const completeSearchClient = createMusicSearchClient((input) => musicApi.request(input));
 
-function CompleteMusicDashboard({ data, readOnly, playlists }: Pick<MusicDashboardProps, "data" | "readOnly"> & { playlists: React.ReactNode }) {
+async function refreshMusicDashboard(refetch: TunesDashboardData["refetch"]): Promise<void> {
+  const result = await refetch();
+  if (result && typeof result === "object" && "error" in result && result.error) throw result.error;
+}
+
+function CompleteMusicDashboard({ data, readOnly, playbackRequest, authorityGeneration, beginPlaybackRequest, onPlaybackRequested }: Pick<MusicDashboardProps, "data" | "readOnly"> & { playbackRequest: MusicPlaybackRequest | null; authorityGeneration: string; beginPlaybackRequest: () => number; onPlaybackRequested: MusicPlaybackCommand }) {
   const dashboard = data.dashboard ?? { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private" as const, publicSlug: "" } };
-  const refresh = async () => { await data.refetch(); };
-  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={data.playlists.map(({ id, name }) => ({ id, name }))} playlistClient={musicWorkspaceClient} onChanged={refresh} />;
-  const queue = <MusicQueue songs={dashboard.songs} client={completeQueueClient} onChanged={refresh} />;
-  const history = <MusicHistory songs={dashboard.playedSongs} loading={data.isLoading} queueClient={completeQueueClient} onChanged={refresh} />;
+  const refresh = () => refreshMusicDashboard(data.refetch);
+  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={data.playlists.map(({ id, name }) => ({ id, name }))} playlistClient={musicWorkspaceClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />;
+  const queue = <MusicQueue songs={dashboard.songs} client={completeQueueClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />;
+  const history = <MusicHistory songs={dashboard.playedSongs} loading={data.isLoading} queueClient={completeQueueClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />;
   const guestControls = data.guestControls
-    ? <MusicGuestControls value={data.guestControls} readOnly={readOnly} onSave={async (controls) => { await musicWorkspaceClient.updateGuestControls(controls, operationKey("guest-controls")); await refresh(); }} />
+    ? <MusicGuestControls value={data.guestControls} readOnly={readOnly} onSave={async (controls) => {
+      await musicWorkspaceClient.updateGuestControls(controls, operationKey("guest-controls"));
+      try { await refresh(); return undefined; }
+      catch { return { reconciliationFailed: true }; }
+    }} />
     : <p className="text-sm text-dashboard-muted">Guest controls are temporarily unavailable.</p>;
   return <MusicWorkspaceShell
     loading={data.isLoading}
     stale={readOnly}
     empty={!data.isLoading && dashboard.songs.length === 0 && !dashboard.currentlyPlaying}
-    player={<MusicPlayer currentSong={dashboard.currentlyPlaying} queuedSongs={dashboard.songs.filter((song) => song.status === "queued")} playedSongs={dashboard.playedSongs} queueClient={completeQueueClient} onChanged={refresh} readOnly={readOnly} />}
+    player={<MusicPlayer currentSong={dashboard.currentlyPlaying} queuedSongs={dashboard.songs.filter((song) => song.status === "queued")} playedSongs={dashboard.playedSongs} queueClient={completeQueueClient} onChanged={refresh} readOnly={readOnly} playbackRequest={playbackRequest} authorityGeneration={authorityGeneration} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />}
     search={readOnly ? <fieldset disabled aria-label="Music search unavailable">{discovery}</fieldset> : discovery}
     queue={readOnly ? <fieldset disabled aria-label="Queue changes unavailable">{queue}</fieldset> : queue}
     history={readOnly ? <fieldset disabled aria-label="History changes unavailable">{history}</fieldset> : history}
     guestControls={guestControls}
-    playlists={playlists}
   />;
 }
 
@@ -129,39 +141,62 @@ function WorkspaceDialog({
   );
 }
 
-function CreatePlaylistDialog({ onClose, opener, onCreated }: { onClose: () => void; opener: RefObject<HTMLButtonElement>; onCreated: () => Promise<unknown> }) {
+function CreatePlaylistDialog({ onClose, opener, onCreated, makePublic = false }: { onClose: () => void; opener: RefObject<HTMLButtonElement>; onCreated: (message: string) => Promise<boolean>; makePublic?: boolean }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const submitLock = useRef(false);
+  const createIdempotencyKey = useRef<string | null>(null);
+  const [createdPlaylist, setCreatedPlaylist] = useState<MusicPlaylist | null>(null);
+  const [sharingError, setSharingError] = useState("");
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || submitLock.current) return;
+    submitLock.current = true;
     setSaving(true);
-    try {
-      await musicWorkspaceClient.createPlaylist(name.trim(), description.trim() || null, operationKey("playlist-create"));
-      await onCreated();
-      toast.success("Playlist created.");
-      onClose();
+    setSharingError("");
+    let created = createdPlaylist;
+    if (!created) try {
+      createIdempotencyKey.current ??= operationKey("playlist-create");
+      created = await musicWorkspaceClient.createPlaylist(name.trim(), description.trim() || null, createIdempotencyKey.current);
+      setCreatedPlaylist(created);
     } catch {
       toast.error("Music is temporarily unavailable.");
-    } finally {
+      submitLock.current = false;
       setSaving(false);
+      return;
     }
+    if (makePublic) try {
+      await musicWorkspaceClient.setPlaylistVisibility(created.id, true, operationKey("playlist-visibility"));
+    } catch {
+      setSharingError("Playlist was created, but sharing failed. Retry sharing without creating another playlist.");
+      toast.error("Playlist created, but sharing failed.");
+      submitLock.current = false;
+      setSaving(false);
+      return;
+    }
+    // Reconcile separately so a refresh error cannot invite a duplicate create submit.
+    await onCreated("Playlist was created, but the latest playlists could not be loaded.");
+    toast.success("Playlist created.");
+    onClose();
+    submitLock.current = false;
+    setSaving(false);
   };
   return (
-    <WorkspaceDialog title="Create playlist" description="Name a playlist for the music you want to keep together." onClose={onClose} opener={opener}>
+    <WorkspaceDialog title="Create playlist" description={makePublic ? "Anyone allowed into your shared Music page can see this playlist." : "Only you can see this playlist until you change its visibility."} onClose={onClose} opener={opener} closeDisabled={saving}>
       <form onSubmit={submit} className="mt-5 space-y-4">
         <label className="block text-sm text-dashboard-light">
           Playlist name
-          <input data-autofocus value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required className="mt-2 min-h-11 w-full rounded-xl border border-dashboard bg-dashboard-muted px-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+          <input data-autofocus value={name} onChange={(event) => setName(event.target.value)} disabled={createdPlaylist !== null} maxLength={120} required className="mt-2 min-h-11 w-full rounded-xl border border-dashboard bg-dashboard-muted px-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
         </label>
         <label className="block text-sm text-dashboard-light">
           Description <span className="text-dashboard-muted">(optional)</span>
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={3} className="mt-2 w-full rounded-xl border border-dashboard bg-dashboard-muted p-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} disabled={createdPlaylist !== null} maxLength={2000} rows={3} className="mt-2 w-full rounded-xl border border-dashboard bg-dashboard-muted p-3 text-dashboard outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent" />
         </label>
+        {sharingError && <p role="alert" className="text-sm text-red-400">{sharingError}</p>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
-          <button type="submit" disabled={saving || !name.trim()} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Creating…" : "Create playlist"}</button>
+          <button type="button" onClick={onClose} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
+          <button type="submit" disabled={saving || !name.trim()} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? (createdPlaylist ? "Sharing…" : "Creating…") : createdPlaylist ? "Retry sharing" : "Create playlist"}</button>
         </div>
       </form>
     </WorkspaceDialog>
@@ -177,7 +212,7 @@ function RenamePlaylistDialog({
   playlist: MusicPlaylist;
   onClose: () => void;
   opener: RefObject<HTMLButtonElement>;
-  onRenamed: () => Promise<unknown>;
+  onRenamed: (message: string) => Promise<boolean>;
 }) {
   const [name, setName] = useState(playlist.name);
   const [description, setDescription] = useState(playlist.description ?? "");
@@ -193,14 +228,15 @@ function RenamePlaylistDialog({
         description.trim() || null,
         operationKey("playlist-rename"),
       );
-      await onRenamed();
-      toast.success("Playlist renamed.");
-      onClose();
     } catch {
       toast.error("Music is temporarily unavailable.");
-    } finally {
       setSaving(false);
+      return;
     }
+    await onRenamed("Playlist was renamed, but the latest playlists could not be loaded.");
+    toast.success("Playlist renamed.");
+    onClose();
+    setSaving(false);
   };
   return (
     <WorkspaceDialog title="Rename playlist" description="Update this playlist name and description." onClose={onClose} opener={opener} closeDisabled={saving}>
@@ -243,7 +279,7 @@ function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardD
       const result = await musicWorkspaceClient.setPublication(mode, command.key);
       completeMusicPublicationCommand(scope, mode, command.key);
       setCapability("capability" in result ? result.capability : undefined);
-      await data.refetch();
+      await refreshMusicDashboard(data.refetch);
       toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
       if (mode !== "unlisted") onClose();
     } catch (cause) {
@@ -290,72 +326,136 @@ function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardD
   );
 }
 
-function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce }: { playlist: MusicPlaylist; queueRevision: number; readOnly: boolean; onChanged: () => Promise<unknown>; announce: (message: string) => void }) {
+function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, onCommitted, announce, beginPlaybackRequest, onPlaybackRequested, onQueueRevisionAcknowledged }: { playlist: MusicPlaylist; queueRevision: number; readOnly: boolean; onChanged: () => Promise<unknown>; onCommitted: (message: string) => Promise<boolean>; announce: (message: string) => void; beginPlaybackRequest: () => number; onPlaybackRequested: MusicPlaybackCommand; onQueueRevisionAcknowledged: (revision: number) => void }) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<"replace" | "delete">();
+  const [visibilityPending, setVisibilityPending] = useState(false);
+  const [reorderPending, setReorderPending] = useState(false);
+  const [visibleToGuests, setVisibleToGuests] = useState(playlist.isVisibleToGuests);
+  const [orderedSongs, setOrderedSongs] = useState(playlist.songs);
+  const visibilityLock = useRef(false);
+  const canonicalVisibility = useRef({ playlistId: playlist.id, value: playlist.isVisibleToGuests });
+  canonicalVisibility.current = { playlistId: playlist.id, value: playlist.isVisibleToGuests };
+  const reorderLock = useRef(false);
+  const [confirmAction, setConfirmAction] = useState<"replace" | "shuffle" | "delete">();
+  const [queueActionMenuOpen, setQueueActionMenuOpen] = useState(false);
   const renameOpener = useRef<HTMLButtonElement>(null);
   const replaceOpener = useRef<HTMLButtonElement>(null);
   const deleteOpener = useRef<HTMLButtonElement>(null);
-  const pendingQueueReplacement = useRef<{ key: string; expectedRevision: number } | undefined>(undefined);
+  const queueActionOpener = useRef<HTMLButtonElement>(null);
+  const queueActionMenu = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    pendingQueueReplacement.current = undefined;
-  }, [playlist.id, queueRevision]);
-  const setVisible = async () => {
+    if (!queueActionMenuOpen) return;
+    const closeOutside = (event: MouseEvent) => {
+      if (!queueActionMenu.current?.contains(event.target as Node) && !queueActionOpener.current?.contains(event.target as Node)) {
+        setQueueActionMenuOpen(false); queueActionOpener.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", closeOutside);
+    return () => document.removeEventListener("mousedown", closeOutside);
+  }, [queueActionMenuOpen]);
+  const pendingQueueReplacement = useRef<{ kind: "replace" | "shuffle"; key: string; expectedRevision: number; songs: Array<{ playlistId: number; songId: number }> } | undefined>(undefined);
+  const pendingQueueAppend = useRef<{ key: string; expectedRevision: number; songs: Array<{ playlistId: number; songId: number }> } | undefined>(undefined);
+  useEffect(() => {
+    if (!visibilityLock.current) setVisibleToGuests(playlist.isVisibleToGuests);
+  }, [playlist.id, playlist.isVisibleToGuests]);
+  useEffect(() => {
+    if (!reorderLock.current) setOrderedSongs(playlist.songs);
+  }, [playlist.id, playlist.songs]);
+  const setVisible = async (next: boolean) => {
+    if (visibilityLock.current) return;
+    visibilityLock.current = true;
+    setVisibilityPending(true);
+    setVisibleToGuests(next);
     try {
-      await musicWorkspaceClient.setPlaylistVisibility(playlist.id, !playlist.isVisibleToGuests, operationKey("playlist-visibility"));
-      await onChanged();
-    } catch { toast.error("Music is temporarily unavailable."); }
+      try { await musicWorkspaceClient.setPlaylistVisibility(playlist.id, next, operationKey("playlist-visibility")); }
+      catch {
+        const canonical = canonicalVisibility.current;
+        setVisibleToGuests(canonical.playlistId === playlist.id ? canonical.value : playlist.isVisibleToGuests);
+        toast.error("Music is temporarily unavailable.");
+        return;
+      }
+      await onCommitted("Playlist visibility was saved, but the latest playlists could not be loaded.");
+    } finally { visibilityLock.current = false; setVisibilityPending(false); }
   };
   const move = async (songId: number, to: number, title: string) => {
-    if (to < 0 || to >= playlist.songs.length) return;
+    if (reorderLock.current || to < 0 || to >= orderedSongs.length) return;
+    const previous = orderedSongs;
+    const current = previous.findIndex((song) => song.id === songId);
+    if (current < 0) return;
+    const next = [...previous];
+    const [moved] = next.splice(current, 1);
+    next.splice(to, 0, moved);
+    reorderLock.current = true;
+    setReorderPending(true);
+    setOrderedSongs(next);
     try {
-      await musicWorkspaceClient.reorderPlaylistSong(playlist.id, songId, to, operationKey("playlist-reorder"));
+      try { await musicWorkspaceClient.reorderPlaylistSong(playlist.id, songId, to, operationKey("playlist-reorder")); }
+      catch { setOrderedSongs(previous); toast.error("Music is temporarily unavailable."); return; }
       announce(`${title} moved to position ${to + 1}.`);
-      await onChanged();
-    } catch { toast.error("Music is temporarily unavailable."); }
+      await onCommitted("Playlist order was saved, but the latest playlist could not be loaded.");
+    } finally { reorderLock.current = false; setReorderPending(false); }
   };
-  const replaceQueue = async () => {
+  const [playbackRetry, setPlaybackRetry] = useState<number | null>(null);
+  const appendQueue = async () => {
     setSaving(true);
-    const operation = pendingQueueReplacement.current ?? {
+    const operation = pendingQueueAppend.current ?? { key: operationKey("queue-append"), expectedRevision: queueRevision, songs: orderedSongs.map((song) => ({ playlistId: playlist.id, songId: song.id })) };
+    pendingQueueAppend.current = operation;
+    try { const result = await completeQueueClient.appendQueue(operation.expectedRevision, operation.songs, operation.key); onQueueRevisionAcknowledged(result.revision); pendingQueueAppend.current = undefined; }
+    catch { try { await onChanged(); } catch { /* reconciliation is best effort */ } toast.error("Music is temporarily unavailable."); setSaving(false); return; }
+    await onCommitted("Queue was updated, but the latest Music workspace could not be loaded.");
+    toast.success(`Added ${playlist.name} to the queue.`); setSaving(false);
+  };
+  const replaceQueue = async (shuffle = false) => {
+    setSaving(true);
+    const kind = shuffle ? "shuffle" as const : "replace" as const;
+    const operation = pendingQueueReplacement.current?.kind === kind ? pendingQueueReplacement.current : {
+      kind,
       key: operationKey("queue-replace"),
       expectedRevision: queueRevision,
+      songs: shuffle ? [...orderedSongs].sort(() => Math.random() - 0.5).map((song) => ({ playlistId: playlist.id, songId: song.id })) : orderedSongs.map((song) => ({ playlistId: playlist.id, songId: song.id })),
     };
     pendingQueueReplacement.current = operation;
     try {
-      await completeQueueClient.replaceQueue(
+      const result = await completeQueueClient.replaceQueue(
         operation.expectedRevision,
-        playlist.songs.map((song) => ({ playlistId: playlist.id, songId: song.id })),
+        operation.songs,
         operation.key,
       );
-      await onChanged();
       pendingQueueReplacement.current = undefined;
-      toast.success(`Queue replaced with ${playlist.name}.`);
-      setConfirmAction(undefined);
+      onQueueRevisionAcknowledged(result.revision);
+      const first = result.songs[0];
+      if (first) try { await onPlaybackRequested(first.id, beginPlaybackRequest(), shuffle ? "playlist-shuffle" : "playlist-replace"); }
+      catch { setPlaybackRetry(first.id); }
     } catch {
       try { await onChanged(); } catch { /* Keep the original operation available for an explicit retry. */ }
       toast.error("Music is temporarily unavailable.");
+      setSaving(false);
+      return;
     }
-    finally { setSaving(false); }
+    await onCommitted("Queue was replaced, but the latest Music workspace could not be loaded.");
+    toast.success(`Queue replaced with ${playlist.name}.`);
+    setConfirmAction(undefined);
+    setSaving(false);
   };
   const removeSong = async (songId: number, title: string) => {
     setSaving(true);
     try {
       await musicWorkspaceClient.removePlaylistSong(playlist.id, songId, operationKey("playlist-song-remove"));
-      await onChanged();
       announce(`${title} removed from ${playlist.name}.`);
-    } catch { toast.error("Music is temporarily unavailable."); }
-    finally { setSaving(false); }
+    } catch { toast.error("Music is temporarily unavailable."); setSaving(false); return; }
+    await onCommitted(`${title} was removed from ${playlist.name}, but the latest playlist could not be loaded.`);
+    setSaving(false);
   };
   const deletePlaylist = async () => {
     setSaving(true);
     try {
       await musicWorkspaceClient.deletePlaylist(playlist.id, operationKey("playlist-delete"));
-      await onChanged();
-      toast.success("Playlist deleted.");
-      setConfirmAction(undefined);
-    } catch { toast.error("Music is temporarily unavailable."); }
-    finally { setSaving(false); }
+    } catch { toast.error("Music is temporarily unavailable."); setSaving(false); return; }
+    await onCommitted("Playlist was deleted, but the latest playlists could not be loaded.");
+    toast.success("Playlist deleted.");
+    setConfirmAction(undefined);
+    setSaving(false);
   };
   return (
     <>
@@ -363,23 +463,28 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h3 className="font-semibold text-dashboard">{playlist.name}</h3>{playlist.description && <p className="mt-1 text-sm text-dashboard-muted">{playlist.description}</p>}</div>
         <div className="flex flex-wrap gap-2">
-          <button ref={replaceOpener} type="button" onClick={() => setConfirmAction("replace")} disabled={readOnly || saving || playlist.songs.length === 0} aria-label={`Replace queue with ${playlist.name}`} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>Replace queue</button>
+          <div className="relative"><button ref={queueActionOpener} type="button" aria-label={`Queue actions for ${playlist.name}`} aria-haspopup="menu" aria-expanded={queueActionMenuOpen} aria-controls={`playlist-queue-actions-${playlist.id}`} disabled={readOnly || saving || orderedSongs.length === 0} onClick={() => setQueueActionMenuOpen((open) => !open)} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}><MoreHorizontal className="h-5 w-5" /></button>{queueActionMenuOpen && <div ref={queueActionMenu} id={`playlist-queue-actions-${playlist.id}`} role="menu" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setQueueActionMenuOpen(false); queueActionOpener.current?.focus(); } }} className="absolute right-0 top-12 z-30 min-w-52 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl"><button role="menuitem" type="button" onClick={() => { setQueueActionMenuOpen(false); void appendQueue(); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}>Add to queue</button><button ref={replaceOpener} role="menuitem" type="button" onClick={() => { setQueueActionMenuOpen(false); setConfirmAction("replace"); }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}>Replace queue</button><button role="menuitem" type="button" onClick={() => { setQueueActionMenuOpen(false); setConfirmAction("shuffle"); }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}>Shuffle and play</button></div>}</div>
           <button ref={renameOpener} type="button" onClick={() => setRenameOpen(true)} disabled={readOnly || saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Rename playlist</button>
-          <button type="button" onClick={() => void setVisible()} disabled={readOnly || saving} aria-pressed={playlist.isVisibleToGuests} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>
-            {playlist.isVisibleToGuests ? "Shared" : "Private"}
-          </button>
+          <Switch
+            checked={visibleToGuests}
+            onChange={(next) => void setVisible(next)}
+            disabled={readOnly || saving}
+            loading={visibilityPending}
+            label={visibleToGuests ? "Shared" : "Private"}
+            ariaLabel={`Make ${playlist.name} ${visibleToGuests ? "private" : "public"}`}
+          />
           <button ref={deleteOpener} type="button" onClick={() => setConfirmAction("delete")} disabled={readOnly || saving} aria-label={`Delete playlist ${playlist.name}`} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Delete playlist</button>
         </div>
       </div>
-      {playlist.songs.length === 0 ? <p className="mt-6 text-sm text-dashboard-muted">This playlist is empty.</p> : (
+      {orderedSongs.length === 0 ? <p className="mt-6 text-sm text-dashboard-muted">This playlist is empty.</p> : (
         <ol className="mt-5 space-y-2">
-          {playlist.songs.map((song, index) => (
+          {orderedSongs.map((song, index) => (
             <li key={song.id} className="flex items-center gap-3 rounded-xl bg-dashboard-muted/60 p-2">
               <img src={song.thumbnailUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-dashboard">{song.title}</p><p className="truncate text-xs text-dashboard-muted">{song.artist}</p></div>
               <div className="flex gap-1">
-                <button type="button" aria-label={`Move ${song.title} up`} disabled={readOnly || saving || index === 0} onClick={() => void move(song.id, index - 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↑</button>
-                <button type="button" aria-label={`Move ${song.title} down`} disabled={readOnly || saving || index === playlist.songs.length - 1} onClick={() => void move(song.id, index + 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↓</button>
+                <button type="button" aria-label={`Move ${song.title} up`} disabled={readOnly || saving || reorderPending || index === 0} onClick={() => void move(song.id, index - 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↑</button>
+                <button type="button" aria-label={`Move ${song.title} down`} disabled={readOnly || saving || reorderPending || index === orderedSongs.length - 1} onClick={() => void move(song.id, index + 1, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>↓</button>
                 <button type="button" aria-label={`Remove ${song.title} from ${playlist.name}`} disabled={readOnly || saving} onClick={() => void removeSong(song.id, song.title)} className={`${buttonClass} bg-dashboard-bg px-2 text-dashboard`}>Remove</button>
               </div>
             </li>
@@ -391,18 +496,20 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
           playlist={playlist}
           opener={renameOpener}
           onClose={() => setRenameOpen(false)}
-          onRenamed={onChanged}
+          onRenamed={onCommitted}
         />
       )}
+      {playbackRetry !== null && <button type="button" onClick={() => void onPlaybackRequested(playbackRetry, beginPlaybackRequest(), "playlist-retry").then(() => setPlaybackRetry(null)).catch(() => undefined)} className={`${buttonClass} mt-4 bg-dashboard-muted text-dashboard`}>Retry playback</button>}
     </section>
     {confirmAction === "replace" && (
-      <WorkspaceDialog title="Replace active queue" description={`Replace the current queue with all songs from ${playlist.name}?`} onClose={() => setConfirmAction(undefined)} opener={replaceOpener} closeDisabled={saving}>
+      <WorkspaceDialog title="Replace active queue" description={`Replace the current queue with all songs from ${playlist.name}?`} onClose={() => setConfirmAction(undefined)} opener={queueActionOpener} closeDisabled={saving}>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={() => setConfirmAction(undefined)} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
           <button data-autofocus type="button" aria-label="Confirm queue replacement" onClick={() => void replaceQueue()} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Replacing…" : "Replace queue"}</button>
         </div>
       </WorkspaceDialog>
     )}
+    {confirmAction === "shuffle" && <WorkspaceDialog title="Shuffle and replace active queue" description={`Replace the current queue with a shuffled ${playlist.name} and start playback?`} onClose={() => setConfirmAction(undefined)} opener={queueActionOpener} closeDisabled={saving}><div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setConfirmAction(undefined)} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button><button data-autofocus type="button" onClick={() => void replaceQueue(true)} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Replacing…" : "Shuffle and play"}</button></div></WorkspaceDialog>}
     {confirmAction === "delete" && (
       <WorkspaceDialog title={`Delete ${playlist.name}`} description="Delete this playlist and all of its saved songs? This cannot be undone." onClose={() => setConfirmAction(undefined)} opener={deleteOpener} closeDisabled={saving}>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -416,68 +523,108 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
 }
 
 export default function MusicDashboard({ data, scope, readOnly = false, complete = false }: MusicDashboardProps) {
+  const [section, setSection] = useState<MusicSection>("playlists");
   const [createOpen, setCreateOpen] = useState(false);
+  const [createPublic, setCreatePublic] = useState(false);
   const [sharingOpen, setSharingOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
-  const [activeId, setActiveId] = useState<number | undefined>(data.playlists[0]?.id);
+  const [activeId, setActiveId] = useState<number | undefined>();
   const [announcement, setAnnouncement] = useState("");
+  const [playlistReconciliation, setPlaylistReconciliation] = useState<string | null>(null);
+  const [playbackRequest, setPlaybackRequest] = useState<MusicPlaybackRequest | null>(null);
+  const authorityGeneration = JSON.stringify([scope.userDocumentId ?? null, scope.accountDocumentId ?? null]);
+  const currentAuthorityGeneration = useRef(authorityGeneration);
+  currentAuthorityGeneration.current = authorityGeneration;
+  const queueRevision = useRef(data.dashboard?.queueRevision ?? 0);
+  queueRevision.current = data.dashboard?.queueRevision ?? 0;
+  const playbackArbiter = useMemo(() => createMusicPlaybackArbiter({
+    write: async (songId, expectedRevision, operation, signal) => {
+      const authorityIsCurrent = () => currentAuthorityGeneration.current === authorityGeneration;
+      if (!scope.userDocumentId || !scope.accountDocumentId || !authorityIsCurrent()) throw new Error("Music playback authority is unavailable.");
+      try {
+        return await completeQueueClient.setPlayingRevision(songId, expectedRevision, operationKey(`playback-${operation}`), signal);
+      } catch (cause) {
+        if (!(cause instanceof MusicClientError) || cause.status !== 409 || cause.upstreamCode !== "PLAYBACK_REVISION_CONFLICT") throw cause;
+        if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
+        const canonical = await completeQueueClient.loadDashboard();
+        if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
+        return { revision: canonical.queueRevision, acknowledged: false };
+      }
+    },
+    currentRevision: () => queueRevision.current,
+    isAuthorityCurrent: () => currentAuthorityGeneration.current === authorityGeneration,
+    onAcknowledged: (songId, requestId) => setPlaybackRequest(songId === null ? null : { songId, requestId, authorityGeneration }),
+  }), [authorityGeneration, scope.accountDocumentId, scope.userDocumentId]);
+  const beginPlaybackRequest = playbackArbiter.beginPlaybackRequest;
+  const requestPlayback: MusicPlaybackCommand = playbackArbiter.requestPlayback;
   const createOpener = useRef<HTMLButtonElement>(null);
-  const emptyCreateOpener = useRef<HTMLButtonElement>(null);
   const [createDialogOpener, setCreateDialogOpener] = useState<RefObject<HTMLButtonElement>>(createOpener);
   const sharingOpener = useRef<HTMLButtonElement>(null);
   const sharingMenuItem = useRef<HTMLButtonElement>(null);
-  const activeIndex = Math.max(0, data.playlists.findIndex((playlist) => playlist.id === activeId));
-  const active = data.playlists[activeIndex];
+  const active = data.playlists.find((playlist) => playlist.id === activeId);
+  const refresh = async () => {
+    await refreshMusicDashboard(data.refetch);
+    setPlaylistReconciliation(null);
+  };
+  const reconcilePlaylist = async (message: string) => {
+    try { await refresh(); return true; }
+    catch { setPlaylistReconciliation(message); return false; }
+  };
 
   useEffect(() => {
-    if (!data.playlists.some((playlist) => playlist.id === activeId)) setActiveId(data.playlists[0]?.id);
+    setPlaybackRequest(null);
+    return () => playbackArbiter.cancel();
+  }, [playbackArbiter]);
+
+  useEffect(() => {
+    if (activeId !== undefined && !data.playlists.some((playlist) => playlist.id === activeId)) setActiveId(undefined);
   }, [activeId, data.playlists]);
 
   useEffect(() => {
     if (actionMenuOpen) sharingMenuItem.current?.focus();
   }, [actionMenuOpen]);
 
-  const tabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (!data.playlists.length || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    const next = event.key === "Home" ? 0 : event.key === "End" ? data.playlists.length - 1
-      : (index + (event.key === "ArrowRight" ? 1 : -1) + data.playlists.length) % data.playlists.length;
-    setActiveId(data.playlists[next].id);
-    document.getElementById(`music-playlist-tab-${data.playlists[next].id}`)?.focus();
-  };
+  const createAction = <div data-music-page-actions className="relative inline-flex w-full sm:w-auto">
+    <button ref={createOpener} type="button" onClick={() => { setCreatePublic(false); setCreateDialogOpener(createOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} flex-1 rounded-r-none bg-dashboard-accent text-[var(--dash-accent-text)] sm:flex-none`}><Plus className="mr-2 inline h-4 w-4" />New playlist</button>
+    <button ref={sharingOpener} type="button" aria-label="Open playlist and sharing menu" aria-expanded={actionMenuOpen} onClick={() => setActionMenuOpen((open) => !open)} disabled={readOnly} className={`${buttonClass} rounded-l-none border-l border-black/20 bg-dashboard-accent px-3 text-[var(--dash-accent-text)]`}><ChevronDown className="h-4 w-4" /></button>
+    {actionMenuOpen && <div role="menu" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setActionMenuOpen(false); sharingOpener.current?.focus(); } }} className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-56 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
+      <button ref={sharingMenuItem} role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setCreatePublic(false); setCreateDialogOpener(sharingOpener); setCreateOpen(true); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}><ListMusic className="mr-2 inline h-4 w-4" />Private playlist</button>
+      <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setCreatePublic(true); setCreateDialogOpener(sharingOpener); setCreateOpen(true); }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}><ListMusic className="mr-2 inline h-4 w-4" />Public playlist</button>
+      <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setSharingOpen(true); }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
+    </div>}
+  </div>;
 
-  const playlistWorkspace = data.playlists.length === 0 ? (
-    <section className="px-1 py-8 text-center sm:px-4">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-muted text-dashboard-accent"><ListMusic className="h-6 w-6" /></div>
-      <h2 className="mt-4 text-xl font-semibold text-dashboard">Create your first playlist</h2>
-      <p className="mx-auto mt-2 max-w-md text-base text-dashboard-muted">Build a playlist to collect and share the music you love.</p>
-      <button ref={emptyCreateOpener} type="button" onClick={() => { setCreateDialogOpener(emptyCreateOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} mt-6 w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}>Create playlist</button>
-    </section>
-  ) : <>
-    <div role="tablist" aria-label="Music playlists" className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
-      {data.playlists.map((playlist, index) => (
-        <button id={`music-playlist-tab-${playlist.id}`} key={playlist.id} role="tab" aria-selected={playlist.id === active?.id} tabIndex={playlist.id === active?.id ? 0 : -1} onClick={() => setActiveId(playlist.id)} onKeyDown={(event) => tabKey(event, index)} className={`${buttonClass} shrink-0 ${playlist.id === active?.id ? "bg-dashboard-accent text-[var(--dash-accent-text)]" : "bg-dashboard-muted text-dashboard"}`}>{playlist.name}</button>
-      ))}
-    </div>
-    {active && <PlaylistPanel playlist={active} queueRevision={data.dashboard?.queueRevision ?? 0} readOnly={readOnly} onChanged={data.refetch} announce={setAnnouncement} />}
-  </>;
+  const playlistWorkspace = active ? <div>
+    <button type="button" onClick={() => setActiveId(undefined)} className={`${buttonClass} mb-4 bg-dashboard-muted text-dashboard`}>← All playlists</button>
+    {complete && <section aria-label={`Add songs to ${active.name}`} className="mb-5 rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 md:p-5">
+      <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={[{ id: active.id, name: active.name }]} playlistClient={musicWorkspaceClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={requestPlayback} />
+    </section>}
+    <PlaylistPanel playlist={active} queueRevision={data.dashboard?.queueRevision ?? 0} readOnly={readOnly} onChanged={refresh} onCommitted={reconcilePlaylist} announce={setAnnouncement} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={requestPlayback} onQueueRevisionAcknowledged={(revision) => { queueRevision.current = revision; }} />
+  </div> : <MusicPlaylistCollection
+    playlists={data.playlists}
+    readOnly={readOnly}
+    onSelect={(playlist) => setActiveId(playlist.id)}
+    onCreate={() => { setCreatePublic(false); setCreateDialogOpener(createOpener); setCreateOpen(true); }}
+    onVisibilityChange={async (playlist, visible) => {
+      await musicWorkspaceClient.setPlaylistVisibility(playlist.id, visible, operationKey("playlist-visibility"));
+      try { await refresh(); return undefined; }
+      catch { return { reconciliationFailed: true }; }
+    }}
+    emptyAction={createAction}
+  />;
 
   return (
     <div className="space-y-5">
-      <div className="flex justify-end">
-        <div data-music-page-actions className="relative inline-flex w-full sm:w-auto">
-          <button ref={createOpener} type="button" onClick={() => { setCreateDialogOpener(createOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} flex-1 rounded-r-none bg-dashboard-accent text-[var(--dash-accent-text)] sm:flex-none`}><Plus className="mr-2 inline h-4 w-4" />New playlist</button>
-          <button ref={sharingOpener} type="button" aria-label="Open playlist and sharing menu" aria-expanded={actionMenuOpen} onClick={() => setActionMenuOpen((open) => !open)} disabled={readOnly} className={`${buttonClass} rounded-l-none border-l border-black/20 bg-dashboard-accent px-3 text-[var(--dash-accent-text)]`}><ChevronDown className="h-4 w-4" /></button>
-          {actionMenuOpen && <div role="menu" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setActionMenuOpen(false); sharingOpener.current?.focus(); } }} className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-56 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
-            <div className="px-3 py-2 text-sm text-dashboard-muted"><span className="block font-medium text-dashboard">Public visibility</span>{data.dashboard?.publication.mode === "public" ? "On" : "Off"}</div>
-            <button ref={sharingMenuItem} role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setSharingOpen(true); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
-          </div>}
-        </div>
-      </div>
-      {complete ? <CompleteMusicDashboard data={data} readOnly={readOnly} playlists={playlistWorkspace} /> : playlistWorkspace}
+      {playlistReconciliation && <div role="alert" aria-label="Playlist reconciliation needed" className="rounded-xl border border-dashboard bg-dashboard-sidebar p-4 text-sm text-dashboard-light">
+        <p>{playlistReconciliation}</p>
+        <button type="button" onClick={() => void refresh().catch(() => undefined)} className={`${buttonClass} mt-3 bg-dashboard-muted text-dashboard`}>Retry loading playlists</button>
+      </div>}
+      {complete && <MusicSectionTabs value={section} onChange={(next) => { setSection(next); setActionMenuOpen(false); }} />}
+      <section role={complete ? "tabpanel" : undefined} id="music-section-playlists-panel" aria-labelledby={complete ? "music-section-playlists" : undefined} hidden={complete && section !== "playlists"}>{playlistWorkspace}</section>
+      {complete && <section role="tabpanel" id="music-section-live-panel" aria-labelledby="music-section-live" hidden={section !== "live"}><CompleteMusicDashboard data={data} readOnly={readOnly} playbackRequest={playbackRequest} authorityGeneration={authorityGeneration} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={requestPlayback} /></section>}
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
-      {createOpen && <CreatePlaylistDialog onClose={() => setCreateOpen(false)} opener={createDialogOpener} onCreated={data.refetch} />}
+      {createOpen && <CreatePlaylistDialog makePublic={createPublic} onClose={() => setCreateOpen(false)} opener={createDialogOpener} onCreated={reconcilePlaylist} />}
       {sharingOpen && <SharingDialog data={data} scope={scope} onClose={() => setSharingOpen(false)} opener={sharingOpener} />}
     </div>
   );

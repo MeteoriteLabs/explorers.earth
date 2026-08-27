@@ -67,7 +67,7 @@ function entitlementFrom(data: TunesDashboardData): MusicEntitlement {
   // The workspace query cannot fetch entitlement before identity is ready. Treat
   // that absence as neutral so a retryable identity failure remains actionable;
   // once identity is ready, a missing entitlement is a real checking state.
-  if (!data.entitlement) return data.identityStatus === "ready" ? "unknown" : "included";
+  if (!data.entitlement) return data.identityStatus === "ready" ? "unresolved" : "included";
   return data.entitlement.state;
 }
 
@@ -113,23 +113,25 @@ export function MusicPageContent({
     onboarding,
     entitlement: entitlementFrom(data),
     identity: identityFrom(data),
-    content: data.error ? "failure" : data.isLoading ? "loading" : "ready",
+    content: data.error ? (data.dashboard ? "stale" : "failure") : data.isLoading ? "loading" : "ready",
     playlistCount: data.playlists.length,
   });
-  const showInlineStatus = !["ready_empty", "ready_content"].includes(state.kind);
+  const entitlementLoading = state.kind === "entitlement_unknown";
+  const showInlineStatus = !entitlementLoading && !["ready_empty", "ready_content"].includes(state.kind);
+  const blocksContent = state.blocksContent || entitlementLoading;
   const role = state.live === "assertive" ? "alert" : "status";
 
   return (
     <section aria-labelledby="music-page-title" className="dashboard-theme min-h-full bg-dashboard-bg px-4 py-5 text-dashboard sm:px-6 md:py-7">
-      <div className="mx-auto max-w-4xl">
-        <h1 id="music-page-title" className="text-2xl font-semibold tracking-tight text-dashboard sm:text-3xl">Music</h1>
+      <div className={`mx-auto ${ownerWorkspace ? "max-w-6xl" : "max-w-4xl"}`}>
+        <h1 id="music-page-title" className={ownerWorkspace ? "sr-only" : "text-2xl font-semibold tracking-tight text-dashboard sm:text-3xl"}>Music</h1>
         {showInlineStatus && (
           <div ref={statusRef} tabIndex={-1} role={role} aria-live={state.live === "off" ? undefined : state.live} aria-atomic="true" className="mt-2 min-h-6 text-base text-dashboard-light outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent">
             {state.message}
           </div>
         )}
 
-        {state.blocksContent ? (
+        {blocksContent ? (
           <section className="mt-6 rounded-2xl border border-dashboard bg-dashboard-sidebar p-5 sm:p-7">
             {["setting_up", "entitlement_unknown", "content_loading"].includes(state.kind) && (
               <div aria-hidden="true" className="space-y-3">

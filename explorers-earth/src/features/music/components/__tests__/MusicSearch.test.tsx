@@ -7,20 +7,83 @@ const first = { id: { videoId: "abcdefghijk" }, snippet: { title: "First song", 
 const second = { id: { videoId: "lmnopqrstuv" }, snippet: { title: "Second song", channelTitle: "Artist two", thumbnails: { default: { url: "https://img/2" } } } };
 
 function clients() {
+  const queueClient = {
+    addSong: vi.fn().mockResolvedValue({ id: 7, youtubeId: "abcdefghijk" }),
+    setPlaying: vi.fn().mockResolvedValue({ id: 7 }),
+  };
   return {
     searchClient: {
       searchYouTube: vi.fn().mockResolvedValue({ items: [first, second], nextPageToken: "next" }),
       videoFromUrl: vi.fn().mockResolvedValue(first),
     },
-    queueClient: {
-      addSong: vi.fn().mockResolvedValue({ id: 7, youtubeId: "abcdefghijk" }),
-      setPlaying: vi.fn().mockResolvedValue({ id: 7 }),
-    },
+    queueClient,
     onChanged: vi.fn().mockResolvedValue(undefined),
+    beginPlaybackRequest: vi.fn(() => 43),
+    onPlaybackRequested: vi.fn(async (songId: number | null) => {
+      await queueClient.setPlaying(songId, `test-play-${crypto.randomUUID()}`);
+      return "acknowledged" as const;
+    }),
   };
 }
 
 describe("MusicSearch", () => {
+  it.each([
+    ["  HTTPS://YOUTU.BE/abcdefghijk?si=tracking  "],
+    ["https://www.youtube.com/watch?v=abcdefghijk&t=90s"],
+    ["https://www.youtube.com/shorts/abcdefghijk?feature=share"],
+    ["https://music.youtube.com/watch?v=abcdefghijk"],
+    ["https://www.youtube.com:443/watch?v=abcdefghijk"],
+    ["http://www.youtube.com:80/watch?v=abcdefghijk"],
+  ])("submits a supported single-video URL as a canonical lookup: %s", async (inputValue) => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), inputValue);
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(props.searchClient.videoFromUrl).toHaveBeenCalledWith("https://www.youtube.com/watch?v=abcdefghijk"));
+    expect(props.searchClient.searchYouTube).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "https://www.youtube.com/playlist?list=PL123",
+    "https://www.youtube.com/watch?v=abcdefghijk&list=PL123",
+    "https://music.youtube.com/playlist?list=PL123",
+    "https://www.youtube.com/watch?v=abcdefghijk&list=&list=PL123",
+    "https://www.youtube.com/watch?v=abcdefghijk&list=PL123&list=%20%20",
+    "https://www.youtube.com/watch?v=abcdefghijk&list=%20%20&list=PL123",
+  ])("keeps focus and reports playlist import unavailable without a request: %s", async (inputValue) => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+    const input = screen.getByRole("searchbox", { name: "Search music or paste a URL" });
+
+    await userEvent.type(input, inputValue);
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByRole("status", { name: "Playlist import unavailable" })).toHaveTextContent("Playlist import is not currently supported");
+    expect(input).toHaveFocus();
+    expect(props.searchClient.videoFromUrl).not.toHaveBeenCalled();
+    expect(props.searchClient.searchYouTube).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["road trip", "road trip"],
+    ["  malformed https://youtube.com/%zz  ", "malformed https://youtube.com/%zz"],
+    ["https://youtube.com.evil.example/watch?v=abcdefghijk", "https://youtube.com.evil.example/watch?v=abcdefghijk"],
+    ["https://www.youtube.com/watch", "https://www.youtube.com/watch"],
+    ["https://viewer:secret@www.youtube.com/watch?v=abcdefghijk", "https://viewer:secret@www.youtube.com/watch?v=abcdefghijk"],
+    ["https://www.youtube.com:8443/watch?v=abcdefghijk", "https://www.youtube.com:8443/watch?v=abcdefghijk"],
+  ])("treats ordinary, malformed, and unsupported input as text search: %s", async (inputValue, expectedQuery) => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), inputValue);
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(props.searchClient.searchYouTube).toHaveBeenCalledWith(expectedQuery, undefined));
+    expect(props.searchClient.videoFromUrl).not.toHaveBeenCalled();
+  });
+
   it("uses one discovery input with attached URL and retired import actions", async () => {
     const props = clients();
     render(<MusicSearch {...props} />);
@@ -30,11 +93,37 @@ describe("MusicSearch", () => {
     await userEvent.type(input, "https://youtu.be/abcdefghijk");
     await userEvent.click(screen.getByRole("button", { name: "Open discovery actions" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Add from URL" }));
-    expect(props.searchClient.videoFromUrl).toHaveBeenCalledWith("https://youtu.be/abcdefghijk");
+    expect(props.searchClient.videoFromUrl).toHaveBeenCalledWith("https://www.youtube.com/watch?v=abcdefghijk");
     await userEvent.click(screen.getByRole("button", { name: "Open discovery actions" }));
     const importAction = screen.getByRole("menuitem", { name: "Import playlist unavailable" });
     expect(importAction).toBeDisabled();
     expect(screen.getByText(/playlist import is not currently supported/i)).toBeInTheDocument();
+  });
+
+  it("keeps playlist URLs unavailable when submitted from the explicit URL action", async () => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+    const input = screen.getByRole("searchbox", { name: "Search music or paste a URL" });
+
+    await userEvent.type(input, "https://www.youtube.com/watch?v=abcdefghijk&list=PL123");
+    await userEvent.click(screen.getByRole("button", { name: "Open discovery actions" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add from URL" }));
+
+    expect(await screen.findByRole("status", { name: "Playlist import unavailable" })).toBeVisible();
+    expect(props.searchClient.videoFromUrl).not.toHaveBeenCalled();
+    expect(props.searchClient.searchYouTube).not.toHaveBeenCalled();
+  });
+
+  it("treats malformed URL text as search text from the explicit URL action", async () => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "https://www.youtube.com/watch");
+    await userEvent.click(screen.getByRole("button", { name: "Open discovery actions" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add from URL" }));
+
+    await waitFor(() => expect(props.searchClient.searchYouTube).toHaveBeenCalledWith("https://www.youtube.com/watch", undefined));
+    expect(props.searchClient.videoFromUrl).not.toHaveBeenCalled();
   });
 
   it("adds selected discoveries to a chosen saved playlist", async () => {
@@ -70,8 +159,9 @@ describe("MusicSearch", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open discovery actions" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Add from URL" }));
     await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
-    await waitFor(() => expect(props.queueClient.setPlaying).toHaveBeenCalledWith(7, expect.stringMatching(/^music-play-/)));
+    await waitFor(() => expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1));
     expect(props.onChanged).toHaveBeenCalledTimes(1);
+    expect(props.onPlaybackRequested).toHaveBeenCalledWith(7, 43, "search");
   });
 
   it("contains retryable failures, announces them, and can retry", async () => {
@@ -140,6 +230,65 @@ describe("MusicSearch", () => {
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("menu")).toContainElement(screen.getByRole("menuitem", { name: "Add from URL" }));
+  });
+
+  it("keeps acknowledged queue adds committed when refresh and retry both fail", async () => {
+    const props = clients();
+    props.onChanged.mockRejectedValueOnce(new Error("refresh failed")).mockRejectedValueOnce(new Error("retry failed"));
+    render(<MusicSearch {...props} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select First song" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to queue" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Song was added, but the latest queue could not be loaded");
+    expect(screen.getByRole("button", { name: "Retry refreshing queue" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry refreshing queue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Song was added, but the latest queue could not be loaded");
+    expect(screen.queryByText(/was reloaded/i)).not.toBeInTheDocument();
+    expect(props.queueClient.addSong).toHaveBeenCalledOnce();
+  });
+
+  it("keeps acknowledged playlist adds committed when refresh fails", async () => {
+    const props = clients();
+    const playlistClient = { addPlaylistSong: vi.fn().mockResolvedValue({ id: 33 }) };
+    props.onChanged.mockRejectedValueOnce(new Error("refresh failed"));
+    render(<MusicSearch {...props} playlists={[{ id: 9, name: "Roads" }]} playlistClient={playlistClient} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select First song" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Add selected to" }), "9");
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to Roads" }));
+
+    expect(await screen.findByRole("alert", { name: "Playlist update error" })).toHaveTextContent("Song was added to Roads, but the latest playlists could not be loaded");
+    expect(screen.queryByRole("alert", { name: "Queue update error" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry refreshing playlists" }));
+    await waitFor(() => expect(screen.queryByRole("alert", { name: "Playlist update error" })).not.toBeInTheDocument());
+    expect(playlistClient.addPlaylistSong).toHaveBeenCalledOnce();
+    expect(props.queueClient.addSong).not.toHaveBeenCalled();
+  });
+
+  it("retries only the ambiguous playlist item with its original key and payload", async () => {
+    // Break caught: a lost response retries the saved-song insert under a fresh key and creates a duplicate.
+    const props = clients();
+    const playlistClient = { addPlaylistSong: vi.fn()
+      .mockResolvedValueOnce({ id: 31 })
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce({ id: 32 }) };
+    render(<MusicSearch {...props} playlists={[{ id: 9, name: "Roads" }]} playlistClient={playlistClient} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select First song" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Second song" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Add selected to" }), "9");
+    await userEvent.click(screen.getByRole("button", { name: "Add 2 selected to Roads" }));
+    expect(await screen.findByRole("alert", { name: "Playlist update error" })).toBeVisible();
+
+    const ambiguous = playlistClient.addPlaylistSong.mock.calls[1];
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to Roads" }));
+    await waitFor(() => expect(playlistClient.addPlaylistSong).toHaveBeenCalledTimes(3));
+    expect(playlistClient.addPlaylistSong.mock.calls[2]).toEqual(ambiguous);
+    expect(playlistClient.addPlaylistSong.mock.calls.filter(([, song]) => song.youtubeId === "abcdefghijk")).toHaveLength(1);
   });
 
   it("treats refresh failure after successful play-now as committed and retries refresh only", async () => {

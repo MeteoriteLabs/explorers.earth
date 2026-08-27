@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactPlayer from "react-player";
+import { Eye, EyeOff, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import type { MusicSong } from "../musicWorkspaceClient";
+import type { MusicPlaybackCommand } from "./musicPlaybackCommand";
 
 interface PlayerQueueClient {
   setPlaying(songId: number | null, idempotencyKey: string): Promise<void | MusicSong>;
 }
+
+export interface MusicPlaybackRequest { songId: number; requestId: number; authorityGeneration: string }
 
 export interface MusicPlayerProps {
   currentSong: MusicSong | null;
@@ -14,13 +18,17 @@ export interface MusicPlayerProps {
   onChanged: () => void | Promise<void>;
   broadcastPlayerState?: (state: { songId: number; playing: boolean }) => void | Promise<void>;
   readOnly?: boolean;
+  playbackRequest?: MusicPlaybackRequest | null;
+  authorityGeneration?: string;
+  beginPlaybackRequest?: () => number;
+  onPlaybackRequested?: MusicPlaybackCommand;
 }
 
 const controlSize = { minWidth: "44px", minHeight: "44px" };
 const idempotencyKey = (operation: string) => `music-player-${operation}-${crypto.randomUUID()}`;
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
 
-export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient, onChanged, broadcastPlayerState, readOnly = false }: MusicPlayerProps) {
+export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient, onChanged, broadcastPlayerState, readOnly = false, playbackRequest = null, authorityGeneration, beginPlaybackRequest, onPlaybackRequested }: MusicPlayerProps) {
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
@@ -37,6 +45,9 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   const generation = useRef(0);
   const transitionLock = useRef(false);
   const playAfterChange = useRef<number | null>(null);
+  const handledPlaybackRequest = useRef<string | null>(null);
+  const playbackRequestRef = useRef(playbackRequest);
+  playbackRequestRef.current = playbackRequest;
   const mounted = useRef(true);
   const currentSongId = currentSong?.id ?? null;
   const previousSong = playedSongs.reduce<MusicSong | undefined>((latest, song) => {
@@ -54,11 +65,33 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   useEffect(() => {
     generation.current += 1;
     clearRecovery();
-    const shouldPlay = currentSongId !== null && playAfterChange.current === currentSongId;
+    const request = playbackRequestRef.current;
+    const requestKey = request ? JSON.stringify([request.authorityGeneration ?? null, request.requestId]) : null;
+    const externalPlay = currentSongId !== null
+      && request?.songId === currentSongId
+      && request.authorityGeneration === authorityGeneration
+      && handledPlaybackRequest.current !== requestKey;
+    if (externalPlay) handledPlaybackRequest.current = requestKey;
+    const shouldPlay = currentSongId !== null && (playAfterChange.current === currentSongId || externalPlay);
     playAfterChange.current = null;
     setPlaying(shouldPlay); setProgress(0); setDuration(0); setMessage(""); setError("");
     recoveryAttempts.current = 0; skippedSongId.current = null;
-  }, [clearRecovery, currentSongId]);
+  }, [authorityGeneration, clearRecovery, currentSongId]);
+
+  useEffect(() => {
+    const requestKey = playbackRequest
+      ? JSON.stringify([playbackRequest.authorityGeneration ?? null, playbackRequest.requestId])
+      : null;
+    if (
+      currentSongId !== null
+      && playbackRequest?.songId === currentSongId
+      && playbackRequest.authorityGeneration === authorityGeneration
+      && handledPlaybackRequest.current !== requestKey
+    ) {
+      handledPlaybackRequest.current = requestKey;
+      setMessage(""); setError(""); setPlaying(true);
+    }
+  }, [authorityGeneration, currentSongId, playbackRequest]);
 
   useEffect(() => {
     mounted.current = true;
@@ -72,10 +105,17 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
 
   const transition = useCallback(async (song: MusicSong | undefined, operation: "next" | "previous" | "skip") => {
     if (!song || transitionLock.current) return;
+    const requestId = beginPlaybackRequest?.() ?? 0;
     transitionLock.current = true; setTransitionPending(true); setError("");
     const operationGeneration = generation.current;
     try {
-      await queueClient.setPlaying(song.id, idempotencyKey(operation));
+      const outcome = onPlaybackRequested
+        ? await onPlaybackRequested(song.id, requestId, `player-${operation}`)
+        : (await queueClient.setPlaying(song.id, idempotencyKey(operation)), "acknowledged");
+      if (outcome === "superseded") {
+        transitionLock.current = false; if (mounted.current) setTransitionPending(false);
+        return;
+      }
     } catch {
       if (operation === "skip") clearRecovery();
       if (generation.current === operationGeneration) {
@@ -91,13 +131,22 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
       if (operation === "skip") clearRecovery();
       transitionLock.current = false; if (mounted.current) setTransitionPending(false);
     }
-  }, [clearRecovery, onChanged, queueClient]);
+  }, [beginPlaybackRequest, clearRecovery, onChanged, onPlaybackRequested, queueClient]);
 
   const finish = useCallback(async () => {
     if (!currentSong || transitionLock.current) return;
+    const requestId = beginPlaybackRequest?.() ?? 0;
     transitionLock.current = true; setTransitionPending(true); setError(""); setPlaying(false); clearRecovery();
     const operationGeneration = generation.current;
-    try { await queueClient.setPlaying(null, idempotencyKey("ended")); }
+    try {
+      const outcome = onPlaybackRequested
+        ? await onPlaybackRequested(null, requestId, "player-ended")
+        : (await queueClient.setPlaying(null, idempotencyKey("ended")), "acknowledged");
+      if (outcome === "superseded") {
+        transitionLock.current = false; if (mounted.current) setTransitionPending(false);
+        return;
+      }
+    }
     catch {
       if (generation.current === operationGeneration) {
         skippedSongId.current = null;
@@ -110,11 +159,14 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
     try { await onChanged(); }
     catch { if (generation.current === operationGeneration) setError("Song finished, but the latest history could not be loaded."); }
     finally { transitionLock.current = false; if (mounted.current) setTransitionPending(false); }
-  }, [broadcast, clearRecovery, currentSong, onChanged, queueClient]);
+  }, [beginPlaybackRequest, broadcast, clearRecovery, currentSong, onChanged, onPlaybackRequested, queueClient]);
 
   const handleMediaError = useCallback((cause: unknown) => {
     if (cause instanceof DOMException && cause.name === "NotAllowedError") {
       clearRecovery(); setPlaying(false); setMessage("Press play to start this song."); return;
+    }
+    if (readOnly) {
+      clearRecovery(); setPlaying(false); setMessage("Playback changed elsewhere. Refresh to reconnect."); return;
     }
     if (!currentSong || skippedSongId.current === currentSong.id || transitionLock.current) return;
     if (recoveryAttempts.current < 2) {
@@ -138,13 +190,21 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
       setMessage(`${currentSong.title} is unavailable. Finishing playback.`);
       void finish();
     }
-  }, [clearRecovery, currentSong, finish, queuedSongs, transition]);
+  }, [clearRecovery, currentSong, finish, queuedSongs, readOnly, transition]);
 
   if (!currentSong) return <section aria-label="Music player"><p role="status">Choose a song to start listening.</p></section>;
 
   return (
-    <section aria-label="Music player" className="space-y-4 motion-reduce:transition-none">
-      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-lg font-semibold text-dashboard">{currentSong.title}</h2><p className="truncate text-sm text-dashboard-muted">{currentSong.artist}</p></div><button type="button" style={controlSize} aria-label={showVideo ? "Hide video" : "Show video"} aria-pressed={showVideo} onClick={() => setShowVideo((visible) => !visible)} className="shrink-0 rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold text-dashboard">{showVideo ? "Hide video" : "Show video"}</button></div>
+    <section aria-label="Music player" className="motion-reduce:transition-none">
+      <div className="grid gap-5 md:grid-cols-[9rem_minmax(0,1fr)] md:items-center">
+        <img src={currentSong.thumbnailUrl} alt={`Now playing: ${currentSong.title}`} className="mx-auto aspect-square w-32 rounded-2xl object-cover shadow-lg md:w-36" />
+        <div className="min-w-0"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-xl font-semibold text-dashboard">{currentSong.title}</h2><p className="truncate text-sm text-dashboard-muted">{currentSong.artist}</p></div><button type="button" style={controlSize} aria-label={showVideo ? "Hide video" : "Show video"} aria-pressed={showVideo} onClick={() => setShowVideo((visible) => !visible)} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold text-dashboard">{showVideo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}<span className="hidden sm:inline">{showVideo ? "Hide video" : "Show video"}</span></button></div>
+        <div data-testid="primary-media-controls" className="mt-5 flex items-center justify-center gap-4">
+          <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !previousSong || transitionPending} onClick={() => { void transition(previousSong, "previous"); }} className="inline-flex items-center justify-center rounded-full border border-dashboard bg-dashboard-muted disabled:opacity-45"><SkipBack className="h-5 w-5" /></button>
+          <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }} className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-dashboard-accent text-[var(--dash-accent-text)] shadow-lg">{playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}</button>
+          <button type="button" style={controlSize} aria-label="Next song" disabled={readOnly || !queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }} className="inline-flex items-center justify-center rounded-full border border-dashboard bg-dashboard-muted disabled:opacity-45"><SkipForward className="h-5 w-5" /></button>
+        </div></div>
+      </div>
       <div data-testid="video-surface" aria-hidden={!showVideo} className={showVideo ? "mt-4 aspect-video overflow-hidden rounded-xl" : "h-0 overflow-hidden opacity-0 pointer-events-none"}>
       <ReactPlayer
         ref={mediaRef}
@@ -162,22 +222,17 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
       />
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !previousSong || transitionPending} onClick={() => { void transition(previousSong, "previous"); }} className="rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold disabled:opacity-45">Previous</button>
-        <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }} className="rounded-xl bg-dashboard-accent px-3 text-sm font-semibold text-[var(--dash-accent-text)]">{playing ? "Pause" : "Play"}</button>
-        <button type="button" style={controlSize} aria-label="Next song" disabled={readOnly || !queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }} className="rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold disabled:opacity-45">Next</button>
-      </div>
-      <label className="grid gap-1 text-sm font-medium text-dashboard"><span className="flex justify-between"><span>Playback position</span><span className="text-dashboard-muted">{clock(progress)} / {clock(duration)}</span></span>
+      <label className="mt-5 grid gap-1 text-sm font-medium text-dashboard"><span className="flex justify-between"><span className="sr-only">Playback position</span><span className="text-dashboard-muted">{clock(progress)}</span><span className="text-dashboard-muted">{clock(duration)}</span></span>
         <input className="w-full accent-dashboard-accent" style={{ minHeight: "44px" }} aria-label="Playback position" type="range" min="0" max={duration || 0} value={progress} aria-valuetext={`${clock(progress)} of ${clock(duration)}`} onChange={(event) => {
           const nextTime = Number(event.target.value); setProgress(nextTime);
           if (mediaRef.current) mediaRef.current.currentTime = nextTime;
         }} />
       </label>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
-        <label className="grid gap-1 text-sm font-medium text-dashboard"><span>Volume</span>
+      <div className="mt-2 flex items-center justify-end gap-2">
+        <button type="button" style={controlSize} aria-label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((value) => !value)} className="inline-flex items-center justify-center rounded-full text-dashboard">{muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}</button>
+        <label className="grid w-32 gap-1 text-sm font-medium text-dashboard"><span className="sr-only">Volume</span>
           <input className="w-full accent-dashboard-accent" style={{ minHeight: "44px" }} aria-label="Volume" type="range" min="0" max="100" value={Math.round(volume * 100)} aria-valuetext={`${Math.round(volume * 100)} percent`} onChange={(event) => setVolume(Number(event.target.value) / 100)} />
         </label>
-        <button type="button" style={controlSize} aria-label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((value) => !value)} className="rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold">{muted ? "Unmute" : "Mute"}</button>
       </div>
       {message && <p role="status" aria-live="polite">{message}</p>}
       {error && <p role="alert">{error}</p>}

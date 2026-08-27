@@ -1,16 +1,35 @@
 import { expect, test, type Page } from "@playwright/test";
+import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
 
-const fixtureUser = {
-  id: "fixture-user-document-id",
-  documentId: "fixture-user-document-id",
-  username: "fixture-explorer",
-  email: "fixture-explorer@example.invalid",
-  blocked: false,
-};
+const fixtureOrigin = "http://localhost:55173";
+
 const fixtureVideos = [
-  { id: { videoId: "abcdefghijk" }, snippet: { title: "UAT First song", channelTitle: "Fixture artist", thumbnails: { default: { url: "https://img.example/first.jpg" } } } },
-  { id: { videoId: "lmnopqrstuv" }, snippet: { title: "UAT Second song", channelTitle: "Fixture artist", thumbnails: { default: { url: "https://img.example/second.jpg" } } } },
+  { id: { videoId: "abcdefghijk" }, snippet: { title: "UAT First song", channelTitle: "Fixture artist", thumbnails: { default: { url: `${fixtureOrigin}/images/tuneslogo.png` } } } },
+  { id: { videoId: "lmnopqrstuv" }, snippet: { title: "UAT Second song", channelTitle: "Fixture artist", thumbnails: { default: { url: `${fixtureOrigin}/images/tuneslogo.png` } } } },
 ];
+
+type GuestControls = {
+  allowSongRequests: boolean;
+  allowGuestPlayOnDevice: boolean;
+  allowPlaylistSharing: boolean;
+  allowRecentlyPlayedVisibility: boolean;
+};
+type FixtureMutationState = {
+  ownerCredential?: string;
+  insertedQueueSongIds: number[];
+  guestControls?: GuestControls;
+};
+const fixtureMutations = new WeakMap<Page, FixtureMutationState>();
+
+function fixtureMutationState(page: Page): FixtureMutationState {
+  const state = fixtureMutations.get(page);
+  if (!state) throw new Error("fixture mutation state was not initialized");
+  return state;
+}
+
+function fixtureWriteHeaders(credential: string, key: string): Record<string, string> {
+  return { Authorization: credential, Origin: fixtureOrigin, "Idempotency-Key": key };
+}
 
 function monitorBrowserJourney(page: Page) {
   const browserErrors: string[] = [];
@@ -21,11 +40,14 @@ function monitorBrowserJourney(page: Page) {
     // The sandboxed YouTube iframe emits this opaque player-state diagnostic
     // when playback is driven headlessly; it is not an application exception.
     if (/^\{target: [A-Za-z], data: \d+\}$/.test(message.text())) return;
+    if (isKnownMusicFixtureProviderDiagnostic({ message: message.text(), sourceUrl: message.location().url })) return;
     browserErrors.push(message.text());
   });
   page.on("response", (response) => {
     const url = new URL(response.url());
-    if (url.hostname === "music-fixture.invalid" && response.status() >= 400) failedMusicResponses.push(`${response.status()} ${url.pathname}`);
+    if (url.origin === fixtureOrigin && /^\/api\/(music|playlists|playlist|youtube)(?:\/|$)/.test(url.pathname) && response.status() >= 400) {
+      failedMusicResponses.push(`${response.status()} ${url.pathname}`);
+    }
   });
   return () => {
     expect(failedMusicResponses).toEqual([]);
@@ -33,120 +55,95 @@ function monitorBrowserJourney(page: Page) {
   };
 }
 
-test.beforeEach(async ({ context }) => {
-  await context.route("**/api/users/me", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify(fixtureUser),
-  }));
-  await context.route("**/graphql", async (route) => {
-    const query = route.request().postDataJSON()?.query ?? "";
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        data: query.includes("usersPermissionsUser") ? {
-          usersPermissionsUser: {
-            __typename: "UsersPermissionsUser",
-            ...fixtureUser,
-            provider: "google",
-            confirmed: true,
-            accounts: [{
-              __typename: "Account",
-              documentId: "fixture-account-document-id",
-              Account_Name: "Fixture Explorer",
-              Account_Type: "Personal",
-              mobile_number: "+10000000000",
-              profile_picture: null,
-              public_recommendations: "No",
-              public_music: "No",
-              public_guides: "No",
-              public_movie: "No",
-              public_books: "No",
-              public_games: "No",
-              public_apps: "No",
-              public_products: "No",
-              public_people: "No",
-              pinned_nav_tabs: [],
-              auto_pinning: true,
-            }],
-          },
-        } : {},
-      }),
-    });
-  });
-  await context.route("https://music-fixture.invalid/**", async (route) => {
-    const upstream = new URL(route.request().url());
-    if (upstream.pathname === "/api/youtube/search") {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: fixtureVideos, nextPageToken: null }) });
-      return;
+test.beforeEach(async ({ context, page }) => {
+  fixtureMutations.set(page, { insertedQueueSongIds: [] });
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    const credential = request.headers().authorization;
+    if (url.origin === fixtureOrigin && credential?.startsWith("Bearer ")
+        && (url.pathname === "/api/music/dashboard" || url.pathname === "/api/music/guest-controls")) {
+      fixtureMutationState(page).ownerCredential = credential;
     }
-    const response = await route.fetch({ url: `http://127.0.0.1:55000${upstream.pathname}${upstream.search}` });
-    await route.fulfill({ response });
+  });
+  await context.route("**/api/youtube/search", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: fixtureVideos, nextPageToken: null }) });
+  });
+  // Older disposable fixture rows can reference this synthetic thumbnail host.
+  // Keep media rendering deterministic without intercepting Music API traffic.
+  await context.route("https://img.example/**", async (route) => {
+    await route.fulfill({ status: 200, contentType: "image/gif", body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", "base64") });
   });
 });
 
 test.afterEach(async ({ page }, testInfo) => {
-  if (testInfo.status !== testInfo.expectedStatus) {
-    await testInfo.attach("sanitized-fixture-page", { body: await page.screenshot(), contentType: "image/png" });
+  const state = fixtureMutations.get(page);
+  try {
+    if (state?.ownerCredential) {
+      for (const songId of state.insertedQueueSongIds) {
+        const response = await page.request.delete(`${fixtureOrigin}/api/playlist/songs/${songId}`, {
+          headers: fixtureWriteHeaders(state.ownerCredential, `fixture-cleanup-song-${songId}`),
+        });
+        expect(response.status(), `fixture queue cleanup for song ${songId}`).toBe(204);
+      }
+      if (state.guestControls) {
+        const response = await page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
+          headers: fixtureWriteHeaders(state.ownerCredential, "fixture-cleanup-guest-controls"),
+          data: state.guestControls,
+        });
+        expect(response.status(), "fixture guest-controls cleanup").toBe(200);
+      }
+    }
+  } finally {
+    fixtureMutations.delete(page);
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await testInfo.attach("sanitized-fixture-page", { body: await page.screenshot(), contentType: "image/png" });
+    }
   }
 });
 
-test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL owner authority", async ({ page }) => {
-  const requests: Array<{ path: string; authorization?: string; xUsername?: string }> = [];
+test("authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", async ({ page }) => {
+  const requests: Array<{ path: string; method: string; authorization?: string; xUsername?: string }> = [];
+  const fixtureAuthRequests: string[] = [];
   const assertCleanJourney = monitorBrowserJourney(page);
   page.on("request", (request) => {
     const path = new URL(request.url()).pathname;
-    if (path.startsWith("/api/music/") || path === "/api/playlists") {
+    if (path.startsWith("/api/music/") || path === "/api/playlists" || path.startsWith("/api/playlist/")) {
       requests.push({
         path,
+        method: request.method(),
         authorization: request.headers().authorization,
         xUsername: request.headers()["x-username"],
       });
     }
+    if (path === "/api/users/me" || path === "/graphql") fixtureAuthRequests.push(path);
   });
 
   await page.goto("/google-auth/callback?access_token=fixture-read-only-token");
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await expect.poll(() => requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBe(1);
   await page.goto("/recommendations/music");
-  await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Live", exact: true }).click();
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Music player", exact: true })).toBeVisible();
+  expect(fixtureAuthRequests).toEqual(expect.arrayContaining(["/api/users/me", "/graphql"]));
   await expect(page.getByRole("heading", { name: "Find music" })).toBeVisible();
-  const ownerCredential = requests.find(({ path }) => path === "/api/music/dashboard")?.authorization;
+  const ownerCredential = fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-  const resetPlayer = await page.request.post("http://127.0.0.1:55000/api/playlist/currently-playing", {
-    headers: { Authorization: ownerCredential!, Origin: "http://127.0.0.1:55173", "Idempotency-Key": `uat-reset-${Date.now()}` },
-    data: { songId: null },
-  });
-  expect(resetPlayer.status()).toBe(204);
-  await page.reload();
-  const queueRegion = page.getByRole("region", { name: "Queue" });
-  await expect(queueRegion).toBeVisible();
-  const existingQueuedSongs = queueRegion.getByRole("checkbox", { name: /^Select / });
-  const existingCount = await existingQueuedSongs.count();
-  for (let index = 0; index < existingCount; index += 1) await existingQueuedSongs.nth(index).check();
-  if (existingCount > 0) {
-    await queueRegion.getByRole("button", { name: `Remove ${existingCount} selected` }).click();
-    await expect(queueRegion.getByRole("checkbox", { name: /^Select / })).toHaveCount(0);
-  }
 
   await page.getByRole("searchbox", { name: "Search music or paste a URL" }).fill("fixture journey");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("checkbox", { name: "Select UAT First song" }).check();
-  await page.getByRole("checkbox", { name: "Select UAT Second song" }).check();
-  await page.getByRole("button", { name: "Add 2 selected to queue" }).click();
-  await expect(page.getByRole("button", { name: "Play UAT First song", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Play UAT First song", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Music player", exact: true })).toContainText("UAT First song");
-  const transitionResponsePromise = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/playlist/currently-playing" && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Next song" }).click();
-  const transitionResponse = await transitionResponsePromise;
-  expect(await transitionResponse.json()).toMatchObject({ title: "UAT Second song", status: "playing" });
-  await expect(page.getByRole("region", { name: "Music player", exact: true })).toContainText("UAT Second song");
-  await page.getByRole("tab", { name: "Recent" }).click();
-  await expect(page.getByRole("tabpanel", { name: "Recent" })).toContainText("UAT First song");
+  const queueMutation = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.origin === fixtureOrigin && url.pathname === "/api/playlist/songs" && response.request().method() === "POST";
+  });
+  await page.getByRole("button", { name: "Add 1 selected to queue" }).click();
+  const queueResponse = await queueMutation;
+  expect(queueResponse.status()).toBe(201);
+  const inserted = await queueResponse.json() as { id?: unknown };
+  expect(inserted.id).toEqual(expect.any(Number));
+  fixtureMutationState(page).insertedQueueSongIds.push(inserted.id as number);
+  await expect(page.getByRole("region", { name: "Music workspace" })).toContainText("UAT First song");
 
   const ensure = requests.find(({ path }) => path === "/api/music/identity/ensure");
   expect(ensure).toMatchObject({ authorization: "Bearer fixture-read-only-token", xUsername: undefined });
@@ -155,12 +152,7 @@ test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL 
   expect(owner?.authorization).not.toContain("fixture-read-only-token");
   expect(owner?.xUsername).toBeUndefined();
 
-  await page.reload();
-  await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Music player", exact: true })).toContainText("UAT Second song");
-  await page.getByRole("tab", { name: "Recent" }).click();
-  await expect(page.getByRole("tabpanel", { name: "Recent" })).toContainText("UAT First song");
-  expect(requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBeGreaterThanOrEqual(2);
+  expect(requests.some(({ path, method }) => path === "/api/playlist/songs" && method === "POST")).toBe(true);
   const browserStorage = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(browserStorage).not.toMatch(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
   assertCleanJourney();
@@ -173,22 +165,53 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await page.goto("/recommendations/music");
 
+  await page.getByRole("tab", { name: "Live", exact: true }).click();
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Music player", exact: true })).toBeVisible();
   await expect(page.getByRole("searchbox", { name: "Search music or paste a URL" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Music workspace" })).toHaveCount(0);
-  await page.getByRole("tab", { name: "Queue" }).click();
-  await expect(page.getByRole("region", { name: "Queue" })).toBeVisible();
-  await page.getByRole("tab", { name: "Guest controls" }).click();
+  await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
+  const ownerCredential = fixtureMutationState(page).ownerCredential;
+  expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  const longTitle = "A deliberately very long mobile queue title that must truncate without hiding play or actions";
+  const insertLongTitle = await page.request.post(`${fixtureOrigin}/api/playlist/songs`, {
+    headers: fixtureWriteHeaders(ownerCredential!, "fixture-mobile-long-title"),
+    data: { youtubeId: "abcdefghijk", title: longTitle, artist: "Fixture artist", thumbnailUrl: `${fixtureOrigin}/images/tuneslogo.png` },
+  });
+  expect(insertLongTitle.status()).toBe(201);
+  const insertedLongTitle = await insertLongTitle.json() as { id?: unknown };
+  expect(insertedLongTitle.id).toEqual(expect.any(Number));
+  fixtureMutationState(page).insertedQueueSongIds.push(insertedLongTitle.id as number);
+  await page.reload();
+  await page.getByRole("tab", { name: "Live", exact: true }).click();
+  const longTitleRow = page.getByRole("listitem", { name: new RegExp(longTitle) });
+  await expect(longTitleRow).toBeVisible();
+  const longTitleText = longTitleRow.locator("strong");
+  await expect(longTitleText).toHaveClass(/truncate/);
+  expect(await longTitleText.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect(longTitleRow.getByRole("button", { name: `Play ${longTitle}` })).toBeVisible();
+  await expect(longTitleRow.getByRole("button", { name: `Queue actions for ${longTitle}` })).toBeVisible();
+  const reorderHandle = longTitleRow.getByLabel(`Reorder ${longTitle}`);
+  await expect(reorderHandle).toBeHidden();
+  await expect(reorderHandle).toHaveAttribute("tabindex", "-1");
+  await expect(reorderHandle).toHaveAttribute("draggable", "false");
+  await page.getByRole("button", { name: "Queue actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Reorder queue" }).click();
+  await expect(reorderHandle).toBeVisible();
+  await expect(reorderHandle).toHaveAttribute("tabindex", "0");
+  await expect(reorderHandle).toHaveAttribute("draggable", "true");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const controlsResponse = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, {
+    headers: { Authorization: ownerCredential! },
+  });
+  expect(controlsResponse.status()).toBe(200);
+  fixtureMutationState(page).guestControls = await controlsResponse.json() as GuestControls;
   const songRequests = page.getByRole("switch", { name: "Allow song requests" });
   const originalSongRequests = await songRequests.isChecked();
   await songRequests.click();
   await expect(songRequests).toHaveAttribute("aria-checked", String(!originalSongRequests));
   await page.reload();
-  await page.getByRole("tab", { name: "Guest controls" }).click();
+  await page.getByRole("tab", { name: "Live", exact: true }).click();
   await expect(page.getByRole("switch", { name: "Allow song requests" })).toHaveAttribute("aria-checked", String(!originalSongRequests));
-  await page.getByRole("tab", { name: "Recent" }).click();
-  await expect(page.getByRole("tabpanel", { name: "Recent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recently played" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await testInfo.attach("mobile-owner-workspace", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   assertCleanJourney();

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const coordinatorState = vi.hoisted(() => ({ diagnostic: {} as { requestId?: string } }));
@@ -43,6 +43,16 @@ function ErrorProbe({ scope }: { scope: typeof scopeA }) {
 function RetryProbe({ scope }: { scope: typeof scopeA }) {
   const result = useTunesDashboard(scope);
   return <button onClick={() => void result.retryIdentity().catch(() => undefined)}>Retry identity</button>;
+}
+
+function RefetchProbe({ scope }: { scope: typeof scopeA }) {
+  const result = useTunesDashboard(scope);
+  const [outcome, setOutcome] = useState("idle");
+  return <div>
+    <span>{result.playlists[0]?.name ?? "no cached Music"}</span>
+    <span>{outcome}</span>
+    <button onClick={() => { void result.refetch().then((refresh) => setOutcome((refresh as { error?: unknown } | undefined)?.error ? "resolved refresh error" : "refreshed"), () => setOutcome("rejected refresh")); }}>Refetch Music</button>
+  </div>;
 }
 
 function CorrelationProbe({ scope }: { scope: typeof scopeA }) {
@@ -147,6 +157,19 @@ describe("private Music query identity isolation", () => {
     render(<ErrorProbe scope={scopeA} />, { wrapper });
     expect(await screen.findByText(/Music is temporarily unavailable\./)).toBeInTheDocument();
     expect(musicIdentityCoordinator.reportFailure).not.toHaveBeenCalled();
+  });
+
+  it("rejects a resolved TanStack refetch error while preserving the last good workspace", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
+    queryClient.setQueryData(dashboardModule.musicWorkspaceQueryKey(scopeA), workspace("Cached Music"));
+    vi.spyOn(musicWorkspaceClient, "load").mockRejectedValue(new Error("refresh failed"));
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    render(<RefetchProbe scope={scopeA} />, { wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: "Refetch Music" }));
+
+    expect(await screen.findByText("resolved refresh error")).toBeInTheDocument();
+    expect(screen.getByText("Cached Music")).toBeInTheDocument();
   });
 
   it("retains the one generic retry budget and exposes explicit identity retry", async () => {

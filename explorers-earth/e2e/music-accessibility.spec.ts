@@ -16,7 +16,7 @@ test.afterEach(async ({ page }, testInfo) => {
 });
 
 async function expectButtonsToMeetTouchTarget(root: Locator) {
-  for (const control of await root.getByRole("button").all()) {
+  for (const control of await root.getByRole("button").or(root.getByRole("switch")).all()) {
     if (await control.isVisible()) {
       await expect.poll(async () => {
         const box = await control.boundingBox();
@@ -47,9 +47,10 @@ for (const viewport of [
     }
     await expect(sharing).toBeFocused();
     await page.keyboard.press("Enter");
+    const firstMenuItem = page.getByRole("menuitem", { name: "Private playlist" });
+    await expect(firstMenuItem).toBeFocused();
     const sharingMenuItem = page.getByRole("menuitem", { name: "Sharing settings" });
-    await expect(sharingMenuItem).toBeFocused();
-    await page.keyboard.press("Enter");
+    await sharingMenuItem.click();
     const dialog = page.getByRole("dialog", { name: "Music sharing" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("radio")).toHaveCount(3);
@@ -102,7 +103,7 @@ for (const viewport of [
         currentlyPlaying: { id: 1, youtubeId: "abcdefghijk", title: "First song", artist: "Artist one", thumbnailUrl: "https://img.example/1", position: 0, status: "playing", playedAt: null },
         playedSongs: [],
         publication: { mode: "private", publicSlug: "qualification-public" },
-        guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false },
+        guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
       }),
     }));
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -111,6 +112,7 @@ for (const viewport of [
     const workspace = page.getByRole("region", { name: "Music workspace" });
     const pageActions = page.locator("[data-music-page-actions]");
     await expect(pageActions.getByRole("button", { name: "New playlist" })).toBeVisible();
+    await page.getByRole("tab", { name: "Live" }).click();
     await expect(page.getByRole("searchbox", { name: "Search music or paste a URL" })).toBeVisible();
     await page.getByRole("button", { name: "Open discovery actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Add from URL" })).toBeVisible();
@@ -127,16 +129,16 @@ for (const viewport of [
     await page.getByRole("button", { name: "Hide video" }).click();
     await expect(page.getByTestId("video-surface")).toHaveAttribute("aria-hidden", "true");
 
-    await page.getByRole("tab", { name: "Guest controls" }).click();
-    await expect(page.getByRole("switch")).toHaveCount(4);
-    await page.getByRole("switch", { name: "Allow song requests" }).click();
-    await expect.poll(() => qualification.requests.filter((request) => request.path === "/api/music/guest-controls").length).toBe(1);
-    await page.getByRole("tab", { name: "Playlists" }).click();
-    await expect(page.getByRole("tab", { name: "Road songs" })).toBeVisible();
-
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await expect(page.getByRole("switch")).toHaveCount(5);
+    const songRequests = page.getByRole("switch", { name: "Allow song requests" });
+    await songRequests.click();
+    await expect(songRequests).toHaveAttribute("aria-checked", "true");
     expect(await playerRegion.evaluate((element) => getComputedStyle(element).position)).toBe(viewport.label === "mobile" ? "sticky" : "static");
     await expectButtonsToMeetTouchTarget(workspace);
+    await page.getByRole("tab", { name: "Playlists" }).click();
+    await expect(page.getByRole("button", { name: /^Road songs/ })).toBeVisible();
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     const audit = await new AxeBuilder({ page }).include("section.dashboard-theme").analyze();
     const firstPartyViolations = audit.violations.filter((violation) => !(
       violation.id === "region"

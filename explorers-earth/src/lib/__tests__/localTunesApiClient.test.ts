@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { clearMusicCredential, getMusicCredential, setMusicCredential } from "../musicCredentialStore";
@@ -79,11 +79,49 @@ function deferred<T>() {
 }
 
 beforeEach(() => clearMusicCredential());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("local Tunes API client", () => {
   it("has no caller-flippable fixture HTTP capability in the production client source", () => {
     const source = readFileSync(resolve(import.meta.dirname, "../localTunesApiClient.ts"), "utf8");
-    expect(source).not.toMatch(/fixtureMode|fixtureHttpAllowed|http:\/\/127\.0\.0\.1|http:\/\/localhost/);
+    expect(source).not.toMatch(/fixtureMode|fixtureHttpAllowed|http:\/\/127\.0\.0\.1|import\.meta\.env/);
+    expect(source).not.toContain("http://localhost:55173");
+  });
+
+  it("allows the exact same-origin localhost Music fixture for authenticated browser UAT", async () => {
+    vi.stubGlobal("location", new URL("http://localhost:55173/"));
+    const fetchImpl = vi.fn(async () => ensureResponse());
+    const client = createLocalTunesApiClient({
+      baseUrl: "http://localhost:55173",
+      fetchImpl,
+      getStrapiBearer: async () => "fixture-proof-123456",
+      now: () => NOW,
+    });
+
+    await client.ensureIdentity();
+
+    expect(fetchImpl).toHaveBeenCalledWith("http://localhost:55173/api/music/identity/ensure", expect.objectContaining({
+      method: "POST",
+      headers: { Authorization: "Bearer fixture-proof-123456" },
+    }));
+  });
+
+  it.each([
+    ["browser location is unavailable", undefined],
+    ["browser is not on the fixture origin", new URL("https://explorers.earth/music")],
+  ])("rejects the localhost fixture URL when %s", (_scenario, location) => {
+    vi.stubGlobal("location", location);
+    const fetchImpl = vi.fn();
+
+    expect(() => createLocalTunesApiClient({
+      baseUrl: "http://localhost:55173",
+      fetchImpl,
+      getStrapiBearer: async () => "unused-proof",
+    })).toThrow(expect.objectContaining({ code: "REQUEST_INVALID" }));
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -107,7 +145,7 @@ describe("local Tunes API client", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it.each(["http://127.0.0.1:55000", "http://localhost:55000"])(
+  it.each(["http://127.0.0.1:55173", "http://127.0.0.1:55000", "http://localhost:55000"])(
     "rejects loopback cleartext even when a caller tries the former fixture switch at %s",
     (baseUrl) => {
       setMusicCredential(freshCredential);

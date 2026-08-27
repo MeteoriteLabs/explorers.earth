@@ -3,19 +3,44 @@ import { ChevronDown } from "lucide-react";
 import type { YouTubeSearchResponse, YouTubeVideo } from "../musicSearchClient";
 import type { MusicSongInput } from "../musicQueueClient";
 import type { MusicSong } from "../musicWorkspaceClient";
+import type { MusicPlaybackCommand } from "./musicPlaybackCommand";
 
 type SearchClient = { searchYouTube(query: string, pageToken?: string): Promise<YouTubeSearchResponse>; videoFromUrl(url: string): Promise<YouTubeVideo> };
 type QueueClient = { addSong(song: MusicSongInput, idempotencyKey: string): Promise<MusicSong>; setPlaying(songId: number | null, idempotencyKey: string): Promise<void | MusicSong> };
 type PlaylistTarget = { id: number; name: string };
 type PlaylistClient = { addPlaylistSong(playlistId: number, song: MusicSongInput, idempotencyKey: string): Promise<unknown> };
-export interface MusicSearchProps { searchClient: SearchClient; queueClient: QueueClient; onChanged: () => void | Promise<void>; playlists?: PlaylistTarget[]; playlistClient?: PlaylistClient }
-type DiscoveryError = "search" | "lookup" | null;
+export interface MusicSearchProps { searchClient: SearchClient; queueClient: QueueClient; onChanged: () => void | Promise<void>; beginPlaybackRequest?: () => number; onPlaybackRequested?: MusicPlaybackCommand; playlists?: PlaylistTarget[]; playlistClient?: PlaylistClient }
+type DiscoveryError = "search" | "lookup" | "playlist" | null;
 type MutationError = "queue" | "refresh" | null;
 type PendingPlay = { songId: number; youtubeId: string; title: string; phase: "play" | "refresh" };
+type PendingPlaylistAdd = { playlistId: number; song: MusicSongInput; idempotencyKey: string };
+type DiscoveryInput = { kind: "search"; query: string } | { kind: "video"; url: string } | { kind: "playlist" };
 const key = (operation: string) => `music-${operation}-${crypto.randomUUID()}`;
 const songInput = (video: YouTubeVideo): MusicSongInput => ({ youtubeId: video.id.videoId, title: video.snippet.title, artist: video.snippet.channelTitle, thumbnailUrl: video.snippet.thumbnails.default.url });
+const youtubeVideoId = /^[A-Za-z0-9_-]{11}$/;
 
-export function MusicSearch({ searchClient, queueClient, onChanged, playlists = [], playlistClient }: MusicSearchProps) {
+function classifyDiscoveryInput(value: string): DiscoveryInput {
+  const query = value.trim();
+  let url: URL;
+  try { url = new URL(query); }
+  catch { return { kind: "search", query }; }
+
+  if (!/^https?:$/.test(url.protocol) || url.username || url.password || url.port) return { kind: "search", query };
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  const youtubeHost = host === "youtu.be" || ["youtube.com", "m.youtube.com", "music.youtube.com"].includes(host);
+  if (!youtubeHost) return { kind: "search", query };
+  if (url.searchParams.getAll("list").some((list) => list.trim())) return { kind: "playlist" };
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  const videoId = host === "youtu.be"
+    ? segments.length === 1 ? segments[0] : null
+    : url.pathname === "/watch" ? url.searchParams.get("v")
+      : segments[0] === "shorts" && segments.length === 2 ? segments[1] : null;
+  if (!videoId || !youtubeVideoId.test(videoId)) return { kind: "search", query };
+  return { kind: "video", url: `https://www.youtube.com/watch?v=${videoId}` };
+}
+
+export function MusicSearch({ searchClient, queueClient, onChanged, beginPlaybackRequest, onPlaybackRequested, playlists = [], playlistClient }: MusicSearchProps) {
   const [query, setQuery] = useState("");
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [target, setTarget] = useState("queue");
@@ -26,9 +51,12 @@ export function MusicSearch({ searchClient, queueClient, onChanged, playlists = 
   const [mutationBusy, setMutationBusy] = useState(false);
   const [discoveryError, setDiscoveryError] = useState<DiscoveryError>(null);
   const [mutationError, setMutationError] = useState<MutationError>(null);
+  const [mutationTarget, setMutationTarget] = useState<"queue" | "playlist">("queue");
+  const [refreshErrorText, setRefreshErrorText] = useState("");
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null);
   const generation = useRef(0);
   const requestLock = useRef<number | null>(null);
+  const pendingPlaylistAdds = useRef(new Map<string, PendingPlaylistAdd>());
 
   const invalidateDiscovery = () => { generation.current += 1; requestLock.current = null; setSearchBusy(false); setResults(null); setNextPageToken(null); setSelected(new Set()); setDiscoveryError(null); };
 
@@ -43,8 +71,8 @@ export function MusicSearch({ searchClient, queueClient, onChanged, playlists = 
     } catch { if (generation.current === requestGeneration) setDiscoveryError("search"); }
     finally { if (requestLock.current === requestGeneration) requestLock.current = null; if (generation.current === requestGeneration) setSearchBusy(false); }
   }
-  async function lookupUrl() {
-    const snapshot = { url: query.trim() };
+  async function lookupUrl(url = query.trim()) {
+    const snapshot = { url };
     if (!snapshot.url || requestLock.current !== null) return;
     const requestGeneration = ++generation.current; requestLock.current = requestGeneration; setSearchBusy(true); setDiscoveryError(null);
     try {
@@ -60,26 +88,36 @@ export function MusicSearch({ searchClient, queueClient, onChanged, playlists = 
   async function refreshCommitted(play: PendingPlay) {
     const refreshing = { ...play, phase: "refresh" as const };
     setPendingPlay(refreshing);
-    try { await onChanged(); setPendingPlay(null); setMutationError(null); }
-    catch { setPendingPlay(refreshing); setMutationError("refresh"); }
+    try { await onChanged(); setPendingPlay(null); setMutationError(null); setRefreshErrorText(""); }
+    catch { setPendingPlay(refreshing); setRefreshErrorText("The song was queued and played, but the latest queue could not be loaded."); setMutationError("refresh"); }
   }
   async function retryRefresh() {
     if (mutationBusy) return;
     setMutationBusy(true);
-    try { await onChanged(); setPendingPlay(null); setMutationError(null); }
+    try { await onChanged(); setPendingPlay(null); setMutationError(null); setRefreshErrorText(""); }
     catch { setMutationError("refresh"); }
     finally { setMutationBusy(false); }
   }
   async function retryPlaying(play: PendingPlay) {
     if (mutationBusy) return;
-    setMutationBusy(true); setMutationError(null);
-    try { await queueClient.setPlaying(play.songId, key("play")); await refreshCommitted(play); }
+    const requestId = beginPlaybackRequest?.() ?? 0;
+    setMutationTarget("queue");
+    setMutationBusy(true); setMutationError(null); setRefreshErrorText("");
+    try {
+      const outcome = onPlaybackRequested
+        ? await onPlaybackRequested(play.songId, requestId, "search-retry")
+        : (await queueClient.setPlaying(play.songId, key("play")), "acknowledged");
+      if (outcome === "superseded") { setPendingPlay(null); return; }
+      await refreshCommitted(play);
+    }
     catch { setMutationError("queue"); await reconcile(); }
     finally { setMutationBusy(false); }
   }
   async function add(videos: YouTubeVideo[], playNow = false) {
     if (mutationBusy || videos.length === 0) return;
-    setMutationBusy(true); setMutationError(null);
+    const requestId = playNow ? (beginPlaybackRequest?.() ?? 0) : 0;
+    setMutationTarget("queue");
+    setMutationBusy(true); setMutationError(null); setRefreshErrorText("");
     try {
       for (const video of videos) {
         const added = await queueClient.addSong(songInput(video), key("add"));
@@ -87,50 +125,87 @@ export function MusicSearch({ searchClient, queueClient, onChanged, playlists = 
         if (playNow) {
           const play: PendingPlay = { songId: added.id, youtubeId: video.id.videoId, title: video.snippet.title, phase: "play" };
           setPendingPlay(play);
-          try { await queueClient.setPlaying(added.id, key("play")); await refreshCommitted(play); }
+          try {
+            const outcome = onPlaybackRequested
+              ? await onPlaybackRequested(added.id, requestId, "search")
+              : (await queueClient.setPlaying(added.id, key("play")), "acknowledged");
+            if (outcome === "superseded") { setPendingPlay(null); await reconcile(); return; }
+            await refreshCommitted(play);
+          }
           catch { setMutationError("queue"); await reconcile(); return; }
           return;
         }
       }
-      await onChanged();
+      try { await onChanged(); }
+      catch {
+        setRefreshErrorText(videos.length === 1 ? "Song was added, but the latest queue could not be loaded." : "Songs were added, but the latest queue could not be loaded.");
+        setMutationError("refresh");
+      }
     } catch { setMutationError("queue"); await reconcile(); }
     finally { setMutationBusy(false); }
+  }
+  async function submitDiscovery() {
+    const input = classifyDiscoveryInput(query);
+    if (input.kind === "playlist") {
+      setDiscoveryError("playlist");
+      return;
+    }
+    if (input.kind === "video") {
+      await lookupUrl(input.url);
+      return;
+    }
+    await runSearch();
   }
 
   async function addToPlaylist(videos: YouTubeVideo[], playlistId: number) {
     if (mutationBusy || !playlistClient || videos.length === 0) return;
-    setMutationBusy(true); setMutationError(null);
+    setMutationTarget("playlist");
+    setMutationBusy(true); setMutationError(null); setRefreshErrorText("");
     try {
       for (const video of videos) {
-        await playlistClient.addPlaylistSong(playlistId, songInput(video), key("playlist-add"));
+        const operationId = `${playlistId}:${video.id.videoId}`;
+        const operation = pendingPlaylistAdds.current.get(operationId) ?? {
+          playlistId, song: songInput(video), idempotencyKey: key("playlist-add"),
+        };
+        pendingPlaylistAdds.current.set(operationId, operation);
+        await playlistClient.addPlaylistSong(operation.playlistId, operation.song, operation.idempotencyKey);
+        pendingPlaylistAdds.current.delete(operationId);
         markCommitted(video.id.videoId);
       }
-      await onChanged();
+      try { await onChanged(); }
+      catch {
+        const playlistName = playlists.find((playlist) => playlist.id === playlistId)?.name ?? "the playlist";
+        setRefreshErrorText(videos.length === 1 ? `Song was added to ${playlistName}, but the latest playlists could not be loaded.` : `Songs were added to ${playlistName}, but the latest playlists could not be loaded.`);
+        setMutationError("refresh");
+      }
     } catch { setMutationError("queue"); await reconcile(); }
     finally { setMutationBusy(false); }
   }
 
   const selectedVideos = (results ?? []).filter((video) => selected.has(video.id.videoId));
   const discoveryErrorText = discoveryError === "search" ? "Music search is temporarily unavailable. Try again." : discoveryError === "lookup" ? "Music lookup is temporarily unavailable. Try again." : null;
-  const mutationErrorText = mutationError === "queue" ? "Queue update failed. The current queue was reloaded." : mutationError === "refresh" ? "The song was queued and played, but the latest queue could not be loaded." : null;
+  const mutationErrorText = mutationError === "queue"
+    ? mutationTarget === "playlist" ? "Playlist update failed. Refresh to verify the latest playlist." : "Queue update failed. Refresh to verify the latest queue."
+    : mutationError === "refresh" ? refreshErrorText : null;
   return <section aria-labelledby="music-search-heading" className="space-y-4">
     <h2 id="music-search-heading" className="text-xl font-semibold">Find music</h2>
-    <form onSubmit={(event) => { event.preventDefault(); void runSearch(); }} className="flex flex-col gap-2 sm:flex-row">
+    <form onSubmit={(event) => { event.preventDefault(); void submitDiscovery(); }} className="flex flex-col gap-2 sm:flex-row">
       <label className="min-w-0 flex-1"><span className="sr-only">Search music or paste a URL</span><input type="search" aria-label="Search music or paste a URL" placeholder="Search songs or paste a YouTube URL" value={query} onChange={(event) => { setQuery(event.target.value); invalidateDiscovery(); }} className="min-h-11 w-full rounded-xl border border-dashboard bg-dashboard-bg px-3" /></label>
       <div className="relative inline-flex">
         <button type="submit" disabled={searchBusy || !query.trim()} className="min-h-11 flex-1 rounded-l-xl bg-dashboard-accent px-4 font-semibold text-[var(--dash-accent-text)] sm:flex-none">Search</button>
         <button type="button" aria-label="Open discovery actions" aria-expanded={actionMenuOpen} onClick={() => setActionMenuOpen((open) => !open)} className="min-h-11 min-w-11 rounded-r-xl border-l border-black/20 bg-dashboard-accent px-3 text-[var(--dash-accent-text)]"><ChevronDown className="h-4 w-4" /></button>
         {actionMenuOpen && <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-64 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
-          <button role="menuitem" type="button" disabled={!query.trim() || searchBusy} onClick={() => { setActionMenuOpen(false); void lookupUrl(); }} className="min-h-11 w-full rounded-lg px-3 text-left">Add from URL</button>
+          <button role="menuitem" type="button" disabled={!query.trim() || searchBusy} onClick={() => { setActionMenuOpen(false); void submitDiscovery(); }} className="min-h-11 w-full rounded-lg px-3 text-left">Add from URL</button>
           <button role="menuitem" type="button" disabled aria-describedby="music-import-unavailable" className="min-h-11 w-full rounded-lg px-3 text-left opacity-50">Import playlist unavailable</button>
           <p id="music-import-unavailable" className="px-3 py-2 text-xs text-dashboard-muted">Playlist import is not currently supported. You can add songs from a playlist individually.</p>
         </div>}
       </div>
     </form>
+    {discoveryError === "playlist" && <div role="status" aria-live="polite" aria-label="Playlist import unavailable"><p>Playlist import is not currently supported. You can add songs from a playlist individually.</p></div>}
     {discoveryErrorText && <div role="alert" aria-label="Music discovery error" className="space-y-2"><p>{discoveryErrorText}</p>{discoveryError === "search" && <button type="button" onClick={() => void runSearch()} className="min-h-11 px-4">Try search again</button>}</div>}
-    {mutationErrorText && <div role="alert" aria-label="Queue update error" className="space-y-2"><p>{mutationErrorText}</p>{mutationError === "refresh" && <button type="button" disabled={mutationBusy} onClick={() => void retryRefresh()} className="min-h-11 px-4">Retry refreshing queue</button>}</div>}
+    {mutationErrorText && <div role="alert" aria-label={mutationTarget === "playlist" ? "Playlist update error" : "Queue update error"} className="space-y-2"><p>{mutationErrorText}</p>{mutationError === "refresh" && <button type="button" disabled={mutationBusy} onClick={() => void retryRefresh()} className="min-h-11 px-4">Retry refreshing {mutationTarget === "playlist" ? "playlists" : "queue"}</button>}</div>}
     <div role="status" aria-live="polite" aria-label="Music discovery status" className="sr-only">{searchBusy ? "Searching" : ""}</div>
-    <div role="status" aria-live="polite" aria-label="Queue update status" className="sr-only">{mutationBusy ? "Updating queue" : ""}</div>
+    <div role="status" aria-live="polite" aria-label={mutationTarget === "playlist" ? "Playlist update status" : "Queue update status"} className="sr-only">{mutationBusy ? `Updating ${mutationTarget}` : ""}</div>
     {results?.length === 0 && <p>No music found.</p>}
     {results && results.length > 0 && <>
       <ul className="space-y-2">{results.map((video) => { const pending = pendingPlay?.youtubeId === video.id.videoId ? pendingPlay : null; return <li key={video.id.videoId} className="flex items-center gap-3">

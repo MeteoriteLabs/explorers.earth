@@ -153,10 +153,22 @@ describe("canonical Music workspace client", () => {
   });
 
   it("updates the complete canonical guest-control state", async () => {
-    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
+    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false };
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(controls), { status: 200 }));
     await expect(createMusicWorkspaceClient(request).updateGuestControls(controls, "guest-controls-1")).resolves.toEqual(controls);
     expect(request).toHaveBeenCalledWith({ method: "PATCH", path: "/api/music/guest-controls", body: controls, idempotencyKey: "guest-controls-1" });
+  });
+
+  it("rejects malformed successful saved-playlist and guest-control DTOs", async () => {
+    const request = vi.fn(async (input: { path: string }) => input.path === "/api/playlists/11/songs"
+      ? new Response(JSON.stringify({ id: 9, playlistId: 11, youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z", status: "queued" }), { status: 201 })
+      : new Response(JSON.stringify({ allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false, extra: true }), { status: 200 }));
+    const client = createMusicWorkspaceClient(request);
+
+    await expect(client.addPlaylistSong(11, { youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img" }, "playlist-add-malformed"))
+      .rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
+    await expect(client.updateGuestControls({ allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false }, "guest-controls-malformed"))
+      .rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
   });
 
   it("contains unsuccessful JSON and empty responses", async () => {

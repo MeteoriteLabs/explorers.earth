@@ -533,7 +533,12 @@ describe("portable Music qualification lanes", () => {
     const productionCompose = readFileSync(resolve(root, "docker-compose.yml"), "utf8");
     const compose = readFileSync(resolve(root, "docker-compose.music-test.yml"), "utf8");
     const dockerfile = readFileSync(resolve(root, "explorers-earth/Dockerfile.music-fixture"), "utf8");
-    expect(compose).toContain("VITE_LOCAL_TUNES_API_URL: https://music-fixture.invalid");
+    const fixtureNginx = readFileSync(resolve(root, "explorers-earth/nginx.music-fixture.conf"), "utf8");
+    expect(compose).toContain("VITE_LOCAL_TUNES_API_URL: http://localhost:55173");
+    expect(compose).not.toContain("music-fixture.invalid");
+    expect(fixtureNginx).toContain("location ~ ^/(api/music(?:/|$)|api/playlists(?:/|$)|api/playlist(?:/|$)|api/youtube(?:/|$))");
+    expect(fixtureNginx).toContain("proxy_pass http://tunes:5000;");
+    expect(fixtureNginx).toContain("proxy_set_header Origin $scheme://$http_host;");
     expect(compose).toContain('MUSIC_WORKSPACE_KILL_SWITCH: "false"');
     expect(compose).toContain('MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace');
     expect(compose).toContain('MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"');
@@ -548,10 +553,19 @@ describe("portable Music qualification lanes", () => {
     expect(dockerfile).not.toContain("MUSIC_FIXTURE_BUILD");
     expect(dockerfile).not.toContain("VITE_LOCAL_TUNES_URL");
     const browserFixture = readFileSync(resolve(root, "explorers-earth/e2e/music-fixture-fullstack.spec.ts"), "utf8");
-    expect(browserFixture).toContain('context.route("https://music-fixture.invalid/**"');
-    expect(browserFixture).toContain('route.fetch({ url: `http://127.0.0.1:55000${upstream.pathname}${upstream.search}` })');
+    expect(browserFixture).toContain('const fixtureOrigin = "http://localhost:55173"');
+    expect(browserFixture).toContain('url.pathname === "/api/playlist/songs" && response.request().method() === "POST"');
+    expect(browserFixture).not.toContain('context.route("https://music-fixture.invalid/**"');
     expect(browserFixture).toContain('/google-auth/callback?access_token=fixture-read-only-token');
     expect(browserFixture).not.toContain("setupMockAuthentication");
+    // Login and authoritative account reads must traverse the fixture proxy,
+    // not be fulfilled by Playwright; mutation cleanup makes repeat runs
+    // independent of an unavailable database reset.
+    expect(browserFixture).not.toContain('context.route("**/api/users/me"');
+    expect(browserFixture).not.toContain('context.route("**/graphql"');
+    expect(browserFixture).toContain("insertedQueueSongIds");
+    expect(browserFixture).toContain("fixture-cleanup-song-");
+    expect(browserFixture).toContain("fixture-cleanup-guest-controls");
   });
 
   it("runs the complete Explorer unit suite in PR while fast remains affected-only", () => {

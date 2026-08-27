@@ -28,6 +28,11 @@ const schemaCandidate: ImageCandidate = {
 const currentAdditiveCandidate: ImageCandidate = {
   digest: `sha256:${"5".repeat(64)}`,
   commit: "5555555555555555555555555555555555555555",
+  migrationMarker: "0019_queue_visibility_control",
+};
+const priorAdditiveCandidate: ImageCandidate = {
+  digest: `sha256:${"7".repeat(64)}`,
+  commit: "7777777777777777777777777777777777777777",
   migrationMarker: "0018_transactional_queue_replacement",
 };
 
@@ -153,24 +158,24 @@ describe("immutable Music deployment rehearsal", () => {
     await expect(controller.rollback(prior.digest)).rejects.toThrow(/schema compatibility floor/i);
   });
 
-  it("does not advance the 0017 rollback floor when additive 0018 candidate readiness fails", async () => {
-    // Break caught: additive 0018 is treated as a new schema epoch and strands the healthy 0017 image.
-    const prior17 = { ...schemaCandidate, digest: `sha256:${"6".repeat(64)}`, commit: "6666666666666666666666666666666666666666" };
+  it("does not advance the 0018 rollback floor when additive 0019 candidate readiness fails", async () => {
+    // Break caught: additive queue visibility is treated as a new incompatible schema epoch and strands the healthy 0018 image.
+    const prior18 = { ...priorAdditiveCandidate, digest: `sha256:${"6".repeat(64)}`, commit: "6666666666666666666666666666666666666666" };
     const state = initialState();
-    state.active = prior17;
-    state.secureHistory = [prior17];
-    state.rollbackFloorDigest = prior17.digest;
-    state.migrationCompatibilityFloorDigest = prior17.digest;
+    state.active = prior18;
+    state.secureHistory = [prior18];
+    state.rollbackFloorDigest = prior18.digest;
+    state.migrationCompatibilityFloorDigest = prior18.digest;
     const fake = runtime("readiness");
     fake.implementation.runContainmentGate = async (image) => createGateAttestation(image, "test-attestation-key-that-is-long-enough", "a".repeat(64));
     const controller = new DeploymentController(state, fake.implementation, "test-attestation-key-that-is-long-enough");
 
     await expect(controller.deploy(currentAdditiveCandidate)).rejects.toThrow("candidate readiness failed");
-    expect(controller.snapshot().migrationCompatibilityFloorDigest).toBe(prior17.digest);
+    expect(controller.snapshot().migrationCompatibilityFloorDigest).toBe(prior18.digest);
     const rollbackRuntime = runtime();
     rollbackRuntime.implementation.runContainmentGate = async (image) => createGateAttestation(image, "test-attestation-key-that-is-long-enough", "b".repeat(64));
     const rollbackController = new DeploymentController(controller.snapshot(), rollbackRuntime.implementation, "test-attestation-key-that-is-long-enough");
-    await expect(rollbackController.rollback(prior17.digest)).resolves.toMatchObject({ active: prior17 });
+    await expect(rollbackController.rollback(prior18.digest)).resolves.toMatchObject({ active: prior18 });
   });
 });
 
