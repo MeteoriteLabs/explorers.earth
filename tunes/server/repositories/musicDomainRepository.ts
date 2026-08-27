@@ -4,6 +4,15 @@ import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSur
 import { MusicPublicationOperationRepository } from "./musicPublicationOperationRepository";
 import type { MusicPublicationMode } from "../services/musicPublicationResponseCrypto";
 
+// playback_states predates the concurrency token and may contain arbitrary
+// legacy JSON. Only cast a canonical, in-range unsigned bigint representation.
+const SAFE_PLAYBACK_REVISION_SQL = `CASE
+  WHEN value ~ '^[0-9]{1,18}$'
+    OR (value ~ '^[0-9]{19}$' AND value <= '9223372036854775807')
+  THEN value::bigint
+  ELSE 0
+END`;
+
 type QueryPool = Pick<Pool, "query" | "connect">;
 
 const QUEUE_MUTATION_LOCK = 0x4d51;
@@ -523,7 +532,8 @@ export class MusicDomainRepository {
       const publication = (await client.query(
         `SELECT guest_url,
                 music_queue_revision,
-                COALESCE((SELECT (state->>'revision')::bigint FROM playback_states WHERE user_id=$1),0) AS music_playback_revision,
+                COALESCE((SELECT ${SAFE_PLAYBACK_REVISION_SQL}
+                            FROM (SELECT state->>'revision' AS value FROM playback_states WHERE user_id=$1) playback_revision),0) AS music_playback_revision,
                 guest_discoverable,
                 allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility,
                 (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
@@ -616,7 +626,8 @@ export class MusicDomainRepository {
       if (expectedRevision !== undefined) {
         const owner = (await client.query(
           `SELECT music_queue_revision,
-                  COALESCE((SELECT (state->>'revision')::bigint FROM playback_states WHERE user_id=$1),0) AS music_playback_revision
+                  COALESCE((SELECT ${SAFE_PLAYBACK_REVISION_SQL}
+                              FROM (SELECT state->>'revision' AS value FROM playback_states WHERE user_id=$1) playback_revision),0) AS music_playback_revision
              FROM users WHERE id=$1 FOR UPDATE`,
           [musicUserId],
         )).rows[0];
