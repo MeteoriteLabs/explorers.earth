@@ -793,9 +793,14 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/components/MusicGuestControls.tsx
 !explorers-earth/src/features/music/components/MusicHistory.tsx
 !explorers-earth/src/features/music/components/MusicPlayer.tsx
+!explorers-earth/src/features/music/components/MusicPlaylistCollection.tsx
 !explorers-earth/src/features/music/components/MusicQueue.tsx
 !explorers-earth/src/features/music/components/MusicSearch.tsx
+!explorers-earth/src/features/music/components/MusicSectionTabs.css
+!explorers-earth/src/features/music/components/MusicSectionTabs.tsx
 !explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx
+!explorers-earth/src/features/music/components/musicPlaybackCommand.ts
+!explorers-earth/src/features/music/fixtureConsoleDiagnostics.ts
 !explorers-earth/src/features/music/musicApi.ts
 !explorers-earth/src/features/music/musicDevelopmentTransport.ts
 !explorers-earth/src/features/music/musicEntitlementContract.ts

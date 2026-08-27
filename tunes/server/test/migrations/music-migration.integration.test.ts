@@ -565,7 +565,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
   });
 
   it("rejects an appended production chain before any fresh or migrated database write", async () => {
-    const appended = createMigrationDefinition("0019_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
+    const appended = createMigrationDefinition("0020_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
     const chain = [...loadMusicMigrations(), appended];
     const fresh = await freshDatabase("appended_fresh");
     await expect(migrateMusicDatabase(fresh, { migrations: chain })).rejects.toThrow(/exact production migration chain/i);
