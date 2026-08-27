@@ -701,6 +701,13 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       });
     }
     await ageOperations(operationIds, 2);
+    // This file intentionally shares one database across sequential cases. Keep
+    // earlier cases' unfinished operations out of this worker's bounded scan so
+    // the first claimed identity always belongs to the ten rows under test.
+    await pool.query(
+      "UPDATE music_identity_lifecycle_operations SET updated_at=clock_timestamp()+interval '5 minutes' WHERE NOT (operation_id=ANY($1::text[]))",
+      [operationIds],
+    );
     await expect(firstReplica.claimDueDeletions({ batchSize: 10, maxAttempts: 5 }))
       .rejects.toMatchObject({ code: "REQUEST_INVALID" });
 
