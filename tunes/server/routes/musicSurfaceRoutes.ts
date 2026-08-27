@@ -30,6 +30,8 @@ interface CanonicalMusicRepository {
     | { status: "not_found" }
   >;
   ownerDashboard(ownerId: number): Promise<unknown>;
+  getGuestControls(ownerId: number): Promise<GuestControls | undefined>;
+  updateGuestControls(ownerId: number, controls: GuestControls): Promise<GuestControls | undefined>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
   setPlaying(ownerId: number, songId: number | null): Promise<unknown | null | undefined>;
   updateSongPosition(ownerId: number, songId: number, position: number): Promise<unknown | undefined>;
@@ -216,6 +218,22 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.get("/api/music/dashboard", ...owner(async (req, res, next) => {
     try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId), true)); } catch (error) { next(error); }
+  }));
+
+  app.patch("/api/music/guest-controls", ...mutation(async (req, res, next) => {
+    try {
+      const controls = guestControlsInput(req.body);
+      const updated = await dependencies.repository.updateGuestControls(req.musicPrincipal!.musicUserId, controls);
+      if (!updated) throw notFound();
+      res.status(200).json(guestControlsDto(updated));
+    } catch (error) { next(error); }
+  }));
+  app.get("/api/music/guest-controls", ...owner(async (req, res, next) => {
+    try {
+      const controls = await dependencies.repository.getGuestControls(req.musicPrincipal!.musicUserId);
+      if (!controls) throw notFound();
+      res.status(200).json(guestControlsDto(controls));
+    } catch (error) { next(error); }
   }));
 
   app.post("/api/playlist/songs", ...mutation(async (req, res, next) => {
@@ -538,6 +556,35 @@ function dashboardDto(value: unknown, includeQueueRevision = false) {
       mode: property(publication, "mode"),
       publicSlug: property(publication, "publicSlug", "public_slug"),
     } } : {}),
+    ...(property(source, "guestControls", "guest_controls") ? { guestControls: guestControlsDto(property(source, "guestControls", "guest_controls")) } : {}),
+  };
+}
+
+type GuestControls = {
+  allowSongRequests: boolean;
+  allowGuestPlayOnDevice: boolean;
+  allowPlaylistSharing: boolean;
+  allowRecentlyPlayedVisibility: boolean;
+};
+
+const GUEST_CONTROL_KEYS = ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility"] as const;
+
+function guestControlsInput(value: unknown): GuestControls {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
+  const source = value as Record<string, unknown>;
+  if (Object.keys(source).length !== GUEST_CONTROL_KEYS.length
+      || Object.keys(source).some((key) => !GUEST_CONTROL_KEYS.includes(key as typeof GUEST_CONTROL_KEYS[number]))
+      || GUEST_CONTROL_KEYS.some((key) => typeof source[key] !== "boolean")) throw invalidQueue();
+  return Object.fromEntries(GUEST_CONTROL_KEYS.map((key) => [key, source[key]])) as unknown as GuestControls;
+}
+
+function guestControlsDto(value: unknown): GuestControls {
+  const source = record(value);
+  return {
+    allowSongRequests: property(source, "allowSongRequests", "allow_song_requests") === true,
+    allowGuestPlayOnDevice: property(source, "allowGuestPlayOnDevice", "allow_guest_play_on_device") === true,
+    allowPlaylistSharing: property(source, "allowPlaylistSharing", "allow_playlist_sharing") === true,
+    allowRecentlyPlayedVisibility: property(source, "allowRecentlyPlayedVisibility", "allow_recently_played_visibility") === true,
   };
 }
 

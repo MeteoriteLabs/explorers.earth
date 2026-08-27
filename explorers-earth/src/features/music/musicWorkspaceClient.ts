@@ -49,6 +49,13 @@ export interface MusicDashboardResponse {
   currentlyPlaying: MusicSong | null;
   playedSongs: MusicSong[];
   publication: { mode: MusicPublicationMode; publicSlug: string };
+  guestControls?: MusicGuestControls;
+}
+export interface MusicGuestControls {
+  allowSongRequests: boolean;
+  allowGuestPlayOnDevice: boolean;
+  allowPlaylistSharing: boolean;
+  allowRecentlyPlayedVisibility: boolean;
 }
 
 export type MusicRequest = (input: LocalMusicRequest) => Promise<Response>;
@@ -130,10 +137,11 @@ const playlistSchema = z.object({
   description: z.string().max(2_000).nullable(), isVisibleToGuests: z.boolean(),
   createdAt: dateTime.optional(), updatedAt: dateTime.optional(), songs: z.array(playlistSongSchema).max(500),
 }).strict();
+const guestControlsSchema = z.object({ allowSongRequests: z.boolean(), allowGuestPlayOnDevice: z.boolean(), allowPlaylistSharing: z.boolean(), allowRecentlyPlayedVisibility: z.boolean() }).strict();
 const dashboardSchema = z.object({
   queueRevision: z.number().int().nonnegative(), songs: z.array(songSchema).max(500),
   currentlyPlaying: songSchema.nullable(), playedSongs: z.array(songSchema).max(500),
-  publication: z.object({ mode: z.enum(["private", "unlisted", "public"]), publicSlug: boundedText(128) }).strict(),
+  publication: z.object({ mode: z.enum(["private", "unlisted", "public"]), publicSlug: boundedText(128) }).strict(), guestControls: guestControlsSchema.optional(),
 }).strict();
 
 export function parseMusicSong(value: unknown): MusicSong {
@@ -177,7 +185,7 @@ export function createMusicWorkspaceClient(request: MusicRequest) {
         requestMusicJson<MusicDashboardResponse>(request, { method: "GET", path: "/api/music/dashboard" }, parseMusicDashboard),
         requestMusicJson<unknown>(request, { method: "GET", path: "/api/music/entitlement" }).then(parseMusicEntitlementResponse),
       ]);
-      return { playlists, dashboard, entitlement };
+      return { playlists, dashboard, entitlement, guestControls: dashboard.guestControls ?? { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false } };
     },
     createPlaylist(name: string, description: string | null, idempotencyKey: string) {
       return requestMusicJson<MusicPlaylist>(request, { method: "POST", path: "/api/playlists", body: { name, description }, idempotencyKey }, parseMusicPlaylist);
@@ -196,6 +204,11 @@ export function createMusicWorkspaceClient(request: MusicRequest) {
         const result = playlistSongSchema.safeParse(value);
         if (!result.success) throw invalidSuccessfulResponse();
         return result.data;
+      });
+    },
+    updateGuestControls(controls: MusicGuestControls, idempotencyKey: string) {
+      return requestMusicJson<MusicGuestControls>(request, { method: "PATCH", path: "/api/music/guest-controls", body: controls, idempotencyKey }, (value) => {
+        const result = guestControlsSchema.safeParse(value); if (!result.success) throw invalidSuccessfulResponse(); return result.data;
       });
     },
     setPlaylistVisibility(playlistId: number, isVisibleToGuests: boolean, idempotencyKey: string) {

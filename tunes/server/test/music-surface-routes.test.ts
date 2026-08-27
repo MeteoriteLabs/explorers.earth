@@ -30,6 +30,8 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
       ] } };
     }),
     ownerDashboard: vi.fn(async (owner: number) => { calls.push(["dashboard", owner]); return { queueRevision: 4, songs: [], playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } }; }),
+    updateGuestControls: vi.fn(async (owner: number, controls: unknown) => { calls.push(["guest-controls", owner, controls]); return controls; }),
+    getGuestControls: vi.fn(async (owner: number) => { calls.push(["get-guest-controls", owner]); return { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false }; }),
     addSong: vi.fn(async (owner: number, input: unknown) => { calls.push(["add-song", owner, input]); return { id: 1 }; }),
     setPlaying: vi.fn(async (owner: number, id: number | null) => { calls.push(["playing", owner, id]); return id === null ? null : { id }; }),
     updateSongPosition: vi.fn(async (owner: number, id: number, position: number) => { calls.push(["position", owner, id, position]); return { id, position }; }),
@@ -82,6 +84,19 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
 }
 
 describe("canonical Music REST surfaces", () => {
+  it("updates only the authenticated owner's four canonical guest controls", async () => {
+    const { app, calls } = appFor();
+    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
+    const response = await request(app).patch("/api/music/guest-controls")
+      .set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example").send(controls);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(controls);
+    expect(calls).toContainEqual(["guest-controls", 11, controls]);
+    const invalid = await request(app).patch("/api/music/guest-controls")
+      .set("Authorization", "Bearer aaa.bbb.ccc").set("Origin", "https://explorers.example").send({ ...controls, ownerId: 99 });
+    expect(invalid.status).toBe(400);
+    expect(calls).not.toContainEqual(["guest-controls", 99, expect.anything()]);
+  });
   it("reads the private owner dashboard only through the C5 principal", async () => {
     const { app, calls } = appFor();
     expect((await request(app).get("/api/music/dashboard")).status).toBe(401);

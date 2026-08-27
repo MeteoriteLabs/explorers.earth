@@ -6,12 +6,14 @@ import {
   type MusicDashboardResponse,
   type MusicEntitlementResponse,
   type MusicPlaylist,
+  type MusicGuestControls,
 } from "../features/music/musicWorkspaceClient";
 
 export interface TunesDashboardData {
   playlists: MusicPlaylist[];
   dashboard: MusicDashboardResponse | null;
   entitlement: MusicEntitlementResponse | null;
+  guestControls?: MusicGuestControls | null;
   playlist: MusicDashboardResponse | null;
   guestUrl: string | null;
   localUser: null;
@@ -100,6 +102,7 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     playlists: visibleData?.playlists ?? [],
     dashboard,
     entitlement: visibleData?.entitlement ?? null,
+    guestControls: visibleData?.guestControls ?? null,
     playlist: dashboard,
     guestUrl: dashboard?.publication.publicSlug ?? null,
     localUser: null,

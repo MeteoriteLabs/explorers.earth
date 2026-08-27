@@ -152,6 +152,13 @@ describe("canonical Music workspace client", () => {
     expect(request).toHaveBeenCalledWith({ method: "POST", path: "/api/playlists/11/songs", body: { youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img" }, idempotencyKey: "playlist-add-1" });
   });
 
+  it("updates the complete canonical guest-control state", async () => {
+    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(controls), { status: 200 }));
+    await expect(createMusicWorkspaceClient(request).updateGuestControls(controls, "guest-controls-1")).resolves.toEqual(controls);
+    expect(request).toHaveBeenCalledWith({ method: "PATCH", path: "/api/music/guest-controls", body: controls, idempotencyKey: "guest-controls-1" });
+  });
+
   it("contains unsuccessful JSON and empty responses", async () => {
     const failed = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
     const client = createMusicWorkspaceClient(failed);

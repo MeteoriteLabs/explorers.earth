@@ -18,6 +18,7 @@ import { MusicSearch } from "../features/music/components/MusicSearch";
 import { MusicQueue } from "../features/music/components/MusicQueue";
 import { MusicPlayer } from "../features/music/components/MusicPlayer";
 import { MusicHistory } from "../features/music/components/MusicHistory";
+import { MusicGuestControls } from "../features/music/components/MusicGuestControls";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
@@ -29,12 +30,15 @@ interface MusicDashboardProps {
 const completeQueueClient = createMusicQueueClient((input) => musicApi.request(input));
 const completeSearchClient = createMusicSearchClient((input) => musicApi.request(input));
 
-function CompleteMusicDashboard({ data, readOnly }: Pick<MusicDashboardProps, "data" | "readOnly">) {
+function CompleteMusicDashboard({ data, readOnly, playlists }: Pick<MusicDashboardProps, "data" | "readOnly"> & { playlists: React.ReactNode }) {
   const dashboard = data.dashboard ?? { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private" as const, publicSlug: "" } };
   const refresh = async () => { await data.refetch(); };
   const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={data.playlists.map(({ id, name }) => ({ id, name }))} playlistClient={musicWorkspaceClient} onChanged={refresh} />;
   const queue = <MusicQueue songs={dashboard.songs} client={completeQueueClient} onChanged={refresh} />;
   const history = <MusicHistory songs={dashboard.playedSongs} loading={data.isLoading} queueClient={completeQueueClient} onChanged={refresh} />;
+  const guestControls = data.guestControls
+    ? <MusicGuestControls value={data.guestControls} readOnly={readOnly} onSave={async (controls) => { await musicWorkspaceClient.updateGuestControls(controls, operationKey("guest-controls")); await refresh(); }} />
+    : <p className="text-sm text-dashboard-muted">Guest controls are temporarily unavailable.</p>;
   return <MusicWorkspaceShell
     loading={data.isLoading}
     stale={readOnly}
@@ -43,8 +47,8 @@ function CompleteMusicDashboard({ data, readOnly }: Pick<MusicDashboardProps, "d
     search={readOnly ? <fieldset disabled aria-label="Music search unavailable">{discovery}</fieldset> : discovery}
     queue={readOnly ? <fieldset disabled aria-label="Queue changes unavailable">{queue}</fieldset> : queue}
     history={readOnly ? <fieldset disabled aria-label="History changes unavailable">{history}</fieldset> : history}
-    guestControls={<p className="text-sm text-dashboard-muted">Choose what guests can see and do on your public Music page.</p>}
-    playlists={<p className="text-sm text-dashboard-muted">Your saved playlists are managed below.</p>}
+    guestControls={guestControls}
+    playlists={playlists}
   />;
 }
 
@@ -437,9 +441,24 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
     document.getElementById(`music-playlist-tab-${data.playlists[next].id}`)?.focus();
   };
 
+  const playlistWorkspace = data.playlists.length === 0 ? (
+    <section className="px-1 py-8 text-center sm:px-4">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-muted text-dashboard-accent"><ListMusic className="h-6 w-6" /></div>
+      <h2 className="mt-4 text-xl font-semibold text-dashboard">Create your first playlist</h2>
+      <p className="mx-auto mt-2 max-w-md text-base text-dashboard-muted">Build a playlist to collect and share the music you love.</p>
+      <button ref={emptyCreateOpener} type="button" onClick={() => { setCreateDialogOpener(emptyCreateOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} mt-6 w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}>Create playlist</button>
+    </section>
+  ) : <>
+    <div role="tablist" aria-label="Music playlists" className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
+      {data.playlists.map((playlist, index) => (
+        <button id={`music-playlist-tab-${playlist.id}`} key={playlist.id} role="tab" aria-selected={playlist.id === active?.id} tabIndex={playlist.id === active?.id ? 0 : -1} onClick={() => setActiveId(playlist.id)} onKeyDown={(event) => tabKey(event, index)} className={`${buttonClass} shrink-0 ${playlist.id === active?.id ? "bg-dashboard-accent text-[var(--dash-accent-text)]" : "bg-dashboard-muted text-dashboard"}`}>{playlist.name}</button>
+      ))}
+    </div>
+    {active && <PlaylistPanel playlist={active} queueRevision={data.dashboard?.queueRevision ?? 0} readOnly={readOnly} onChanged={data.refetch} announce={setAnnouncement} />}
+  </>;
+
   return (
     <div className="space-y-5">
-      {complete && <CompleteMusicDashboard data={data} readOnly={readOnly} />}
       <div className="flex justify-end">
         <div data-music-page-actions className="relative inline-flex w-full sm:w-auto">
           <button ref={createOpener} type="button" onClick={() => { setCreateDialogOpener(createOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} flex-1 rounded-r-none bg-dashboard-accent text-[var(--dash-accent-text)] sm:flex-none`}><Plus className="mr-2 inline h-4 w-4" />New playlist</button>
@@ -450,24 +469,7 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
           </div>}
         </div>
       </div>
-
-      {data.playlists.length === 0 ? (
-        <section className="rounded-2xl border border-dashboard bg-dashboard-sidebar px-5 py-12 text-center sm:px-8">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-muted text-dashboard-accent"><ListMusic className="h-6 w-6" /></div>
-          <h2 className="mt-4 text-xl font-semibold text-dashboard">Create your first playlist</h2>
-          <p className="mx-auto mt-2 max-w-md text-base text-dashboard-muted">Build a playlist to collect and share the music you love.</p>
-          <button ref={emptyCreateOpener} type="button" onClick={() => { setCreateDialogOpener(emptyCreateOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} mt-6 w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}>Create playlist</button>
-        </section>
-      ) : (
-        <>
-          <div role="tablist" aria-label="Music playlists" className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
-            {data.playlists.map((playlist, index) => (
-              <button id={`music-playlist-tab-${playlist.id}`} key={playlist.id} role="tab" aria-selected={playlist.id === active?.id} tabIndex={playlist.id === active?.id ? 0 : -1} onClick={() => setActiveId(playlist.id)} onKeyDown={(event) => tabKey(event, index)} className={`${buttonClass} shrink-0 ${playlist.id === active?.id ? "bg-dashboard-accent text-[var(--dash-accent-text)]" : "bg-dashboard-muted text-dashboard"}`}>{playlist.name}</button>
-            ))}
-          </div>
-          {active && <PlaylistPanel playlist={active} queueRevision={data.dashboard?.queueRevision ?? 0} readOnly={readOnly} onChanged={data.refetch} announce={setAnnouncement} />}
-        </>
-      )}
+      {complete ? <CompleteMusicDashboard data={data} readOnly={readOnly} playlists={playlistWorkspace} /> : playlistWorkspace}
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       {createOpen && <CreatePlaylistDialog onClose={() => setCreateOpen(false)} opener={createDialogOpener} onCreated={data.refetch} />}

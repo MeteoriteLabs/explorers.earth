@@ -41,6 +41,7 @@ describe("Music workspace UI", () => {
     expect(screen.getByRole("tab", { name: "Recent" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Playlists" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add your first song" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Playlists" }));
     expect(screen.getByRole("tab", { name: "Saved mix" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New playlist" })).toBeInTheDocument();
     const menu = screen.getByRole("button", { name: "Open playlist and sharing menu" });
@@ -49,6 +50,25 @@ describe("Music workspace UI", () => {
     await userEvent.click(menu);
     expect(screen.getByRole("menuitem", { name: "Sharing settings" })).toBeInTheDocument();
     expect(screen.getByText("Public visibility")).toBeInTheDocument();
+  });
+
+  it("loads and persists the four owner guest controls from the workspace", async () => {
+    const guestControls = {
+      allowSongRequests: true,
+      allowGuestPlayOnDevice: false,
+      allowPlaylistSharing: true,
+      allowRecentlyPlayedVisibility: false,
+    };
+    const update = vi.spyOn(musicWorkspaceClient, "updateGuestControls").mockResolvedValue(guestControls);
+    const refetch = vi.fn(async () => undefined);
+    render(<MusicDashboard data={{ ...base, guestControls, refetch }} scope={scope} complete />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Guest controls" }));
+    expect(screen.getAllByRole("switch")).toHaveLength(4);
+    await userEvent.click(screen.getByRole("switch", { name: "Allow song requests" }));
+
+    expect(update).toHaveBeenCalledWith({ ...guestControls, allowSongRequests: false }, expect.stringMatching(/^guest-controls-/));
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
   });
 
   it("exposes saved-playlist recovery and atomic queue replacement actions", async () => {
@@ -64,6 +84,7 @@ describe("Music workspace UI", () => {
     const data = { ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) };
     render(<MusicDashboard data={data} scope={scope} complete />);
 
+    await userEvent.click(screen.getByRole("tab", { name: "Playlists" }));
     await userEvent.click(screen.getByRole("button", { name: "Replace queue with Saved mix" }));
     expect(screen.getByRole("dialog", { name: "Replace active queue" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
@@ -92,6 +113,7 @@ describe("Music workspace UI", () => {
     const refetch = vi.fn(async () => undefined);
     render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
 
+    await userEvent.click(screen.getByRole("tab", { name: "Playlists" }));
     await userEvent.click(screen.getByRole("button", { name: "Replace queue with Saved mix" }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
     await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
@@ -115,6 +137,7 @@ describe("Music workspace UI", () => {
     const refetch = vi.fn(async () => undefined);
     render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
 
+    await userEvent.click(screen.getByRole("tab", { name: "Playlists" }));
     await userEvent.click(screen.getByRole("button", { name: "Replace queue with First mix" }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
     await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));

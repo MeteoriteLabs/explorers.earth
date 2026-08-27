@@ -364,6 +364,7 @@ export class MusicDomainRepository {
         `SELECT guest_url,
                 music_queue_revision,
                 guest_discoverable,
+                allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,
                 (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
            FROM users WHERE id=$1`,
         [musicUserId],
@@ -378,8 +379,44 @@ export class MusicDomainRepository {
             : publication?.has_guest_capability === true ? "unlisted" : "private",
           publicSlug: String(publication?.guest_url ?? ""),
         },
+        guestControls: {
+          allowSongRequests: publication?.allow_song_requests === true,
+          allowGuestPlayOnDevice: publication?.allow_guest_play_on_device === true,
+          allowPlaylistSharing: publication?.allow_playlist_sharing === true,
+          allowRecentlyPlayedVisibility: publication?.allow_recently_played_visibility === true,
+        },
       };
     });
+  }
+
+  async updateGuestControls(musicUserId: number, controls: { allowSongRequests: boolean; allowGuestPlayOnDevice: boolean; allowPlaylistSharing: boolean; allowRecentlyPlayedVisibility: boolean }) {
+    const row = (await this.pool.query(
+      `UPDATE users SET allow_song_requests=$2,allow_guest_play_on_device=$3,
+         allow_playlist_sharing=$4,allow_recently_played_visibility=$5,updated_at=now()
+       WHERE id=$1 AND identity_status='active'
+       RETURNING allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility`,
+      [musicUserId, controls.allowSongRequests, controls.allowGuestPlayOnDevice, controls.allowPlaylistSharing, controls.allowRecentlyPlayedVisibility],
+    )).rows[0];
+    return row ? {
+      allowSongRequests: row.allow_song_requests === true,
+      allowGuestPlayOnDevice: row.allow_guest_play_on_device === true,
+      allowPlaylistSharing: row.allow_playlist_sharing === true,
+      allowRecentlyPlayedVisibility: row.allow_recently_played_visibility === true,
+    } : undefined;
+  }
+
+  async getGuestControls(musicUserId: number) {
+    const row = (await this.pool.query(
+      `SELECT allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility
+       FROM users WHERE id=$1 AND identity_status='active'`,
+      [musicUserId],
+    )).rows[0];
+    return row ? {
+      allowSongRequests: row.allow_song_requests === true,
+      allowGuestPlayOnDevice: row.allow_guest_play_on_device === true,
+      allowPlaylistSharing: row.allow_playlist_sharing === true,
+      allowRecentlyPlayedVisibility: row.allow_recently_played_visibility === true,
+    } : undefined;
   }
 
   async addSong(musicUserId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {

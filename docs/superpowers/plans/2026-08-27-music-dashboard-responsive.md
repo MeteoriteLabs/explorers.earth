@@ -91,12 +91,12 @@
 - Produces: persisted controls for the four existing server fields (`allowSongRequests`, `allowGuestPlayOnDevice`, `allowPlaylistSharing`, `allowRecentlyPlayedVisibility`) and truthful read-only explanations for any proposed visibility control without a secured mutation contract.
 - Consumes: playlist CRUD/reorder/queue replacement operations and Task 2 unified discovery component.
 
-- [ ] First add a secured owner settings read/mutation contract in Tunes for the four existing persisted fields, including repository, route, OpenAPI, gateway-client, idempotency, and authorization tests. Do not add new public-page fields in this branch because another agent owns that surface.
-- [ ] Write failing UI tests for the four persisted guest settings, explanatory copy, read-only handling, playlist action retention, and unified discovery inside the active playlist.
-- [ ] Confirm red failures are missing guest controls and playlist discovery integration.
-- [ ] Implement the guest-control panel and reuse the unified discovery component for playlist targeting without duplicating request logic.
-- [ ] Preserve confirmations for destructive playlist operations and visible mutation errors.
-- [ ] Run focused tests and the full Music component suite.
+- [x] First add a secured owner settings read/mutation contract in Tunes for the four existing persisted fields, including repository, route, OpenAPI, gateway-client, idempotency, and authorization tests. Do not add new public-page fields in this branch because another agent owns that surface.
+- [x] Write failing UI tests for the four persisted guest settings, explanatory copy, read-only handling, playlist action retention, and unified discovery inside the active playlist.
+- [x] Confirm red failures are missing guest controls and playlist discovery integration.
+- [x] Implement the guest-control panel and reuse the unified discovery component for playlist targeting without duplicating request logic.
+- [x] Preserve confirmations for destructive playlist operations and visible mutation errors.
+- [x] Run focused tests and the full Music component suite.
 - [ ] Commit Task 4 with `feat(music): complete guest and playlist workflows`.
 
 ### Task 5: Responsive qualification and local UAT

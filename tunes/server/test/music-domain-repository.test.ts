@@ -221,7 +221,17 @@ describe("MusicDomainRepository owner predicates", () => {
       playedSongs: [expect.objectContaining({ id: 3 })],
       queueRevision: 0,
       publication: { mode: "private", publicSlug: "" },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false },
     });
+  });
+
+  it("updates guest controls with one active-owner predicate", async () => {
+    const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
+    const harness = recordingPool([{ allow_song_requests: true, allow_guest_play_on_device: false, allow_playlist_sharing: true, allow_recently_played_visibility: false }]);
+    await expect(new MusicDomainRepository(harness.pool).updateGuestControls(23, controls)).resolves.toEqual(controls);
+    expect(harness.calls[0].text).toMatch(/UPDATE users SET allow_song_requests=\$2/);
+    expect(harness.calls[0].text).toMatch(/WHERE id=\$1 AND identity_status='active'/);
+    expect(harness.calls[0].values).toEqual([23, true, false, true, false]);
   });
 
   it("orders owner played history by most recent play time", async () => {
