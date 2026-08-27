@@ -290,7 +290,13 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const queued = await domain.addSong(b.id, { youtubeId: "queuepublic", title: "Queued public", artist: "B", thumbnailUrl: "https://img/queued-public" }) as { id: number };
     await domain.setPlaying(b.id, queued.id);
     await pool.query("UPDATE playlists SET is_visible_to_guests=true WHERE id=$1", [bPlaylist.id]);
-    await pool.query("UPDATE users SET allow_playlist_sharing=true WHERE id=$1", [b.id]);
+    await domain.updateGuestControls(b.id, {
+      allowSongRequests: false,
+      allowGuestPlayOnDevice: false,
+      allowPlaylistSharing: true,
+      allowRecentlyPlayedVisibility: false,
+      allowQueueVisibility: true,
+    });
     expect(await domain.resolveGuestResource("c6-public-cap-b", bCapability)).toMatchObject({ state: "unlisted", noindex: true });
     await domain.setDiscoverable(b.id, true);
     expect(await domain.resolveGuestResource("c6-public-cap-b")).toMatchObject({
@@ -306,6 +312,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.revokeGuestCapability(b.id);
     expect(await domain.resolveGuestResource("c6-public-cap-b", bCapability)).toMatchObject({ state: "revoked" });
     expect(await domain.resolveGuestResource("c6-public-cap-b")).toBeUndefined();
+    await domain.setDiscoverable(b.id, false);
   });
 
   it("binds guest request capability and public slug in one owner-predicated query", async () => {
@@ -530,7 +537,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(replay).toEqual({ ...first, replayed: true });
     expect((await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 AND status IN ('queued','playing') ORDER BY position", [owner.id])).rows)
       .toEqual([{ youtube_id: "existing000", position: 0, status: "queued" }, { youtube_id: "append00001", position: 1, status: "queued" }]);
-    await expect(domain.appendQueue(owner.id, "append-replay-key", 1, [])).resolves.toEqual({ status: "conflict" });
+    await expect(domain.appendQueue(owner.id, "append-replay-key", 1, [])).resolves.toEqual({ status: "empty" });
     await expect(domain.appendQueue(owner.id, "append-stale-key", 1, source)).resolves.toEqual({ status: "stale", revision: 2 });
 
     const foreign = await identities.ensureIdentity(identityInput("queue-append-foreign"));
