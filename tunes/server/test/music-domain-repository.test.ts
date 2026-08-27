@@ -779,7 +779,9 @@ describe("MusicDomainRepository owner predicates", () => {
     const harness = recordingPool([{ music_queue_revision: 4 }, { id: 8 }, { music_queue_revision: 5 }, { id: 8 }]);
     await new MusicDomainRepository(harness.pool).setPlaying(31, 8);
     const tokenWrite = harness.calls.find((call) => /INSERT INTO playback_states/.test(call.text));
-    expect(tokenWrite?.text).toContain("COALESCE(playback_states.state,'{}'::jsonb) || EXCLUDED.state");
+    expect(tokenWrite?.text).toContain("WHEN jsonb_typeof(playback_states.state)='object' THEN playback_states.state");
+    expect(tokenWrite?.text).toContain("ELSE jsonb_build_object('legacyState',playback_states.state)");
+    expect(tokenWrite?.text).toContain("END) || EXCLUDED.state");
   });
 
   it("serves an empty unlisted publication to its valid capability", async () => {

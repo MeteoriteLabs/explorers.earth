@@ -676,6 +676,23 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     });
   });
 
+  it.each([
+    ["array", [42, "legacy"]],
+    ["scalar", "legacy-state"],
+  ])("normalizes and preserves legacy %s playback state while recording a readable token", async (suffix, legacyState) => {
+    const owner = await identities.ensureIdentity(identityInput(`legacy-playback-${suffix}`));
+    const song = await domain.addSong(owner.id, {
+      youtubeId: `legacy-${suffix}`.padEnd(11, "0").slice(0, 11), title: `Legacy ${suffix}`, artist: "A", thumbnailUrl: "https://img/legacy",
+    }) as { id: number };
+    await pool.query("INSERT INTO playback_states(user_id,state) VALUES ($1,$2::jsonb)", [owner.id, JSON.stringify(legacyState)]);
+
+    await expect(domain.setPlaying(owner.id, song.id)).resolves.toMatchObject({ id: song.id, status: "playing" });
+
+    expect((await pool.query("SELECT state FROM playback_states WHERE user_id=$1", [owner.id])).rows[0].state)
+      .toEqual({ legacyState, revision: 2 });
+    await expect(domain.ownerDashboard(owner.id)).resolves.toMatchObject({ playbackRevision: 2, currentlyPlaying: { id: song.id } });
+  });
+
   it("rejects a forged maximum expected revision without poisoning owner recovery", async () => {
     const owner = await identities.ensureIdentity(identityInput("playback-max-recovery"));
     const song = await domain.addSong(owner.id, {

@@ -702,7 +702,11 @@ export class MusicDomainRepository {
       `INSERT INTO playback_states(user_id,state,updated_at)
        VALUES ($1,jsonb_build_object('revision',$2::bigint),now())
        ON CONFLICT (user_id) DO UPDATE
-       SET state=COALESCE(playback_states.state,'{}'::jsonb) || EXCLUDED.state,updated_at=EXCLUDED.updated_at`,
+       SET state=(CASE
+                    WHEN jsonb_typeof(playback_states.state)='object' THEN playback_states.state
+                    ELSE jsonb_build_object('legacyState',playback_states.state)
+                  END) || EXCLUDED.state,
+           updated_at=EXCLUDED.updated_at`,
       [musicUserId, revision],
     );
   }
