@@ -46,7 +46,6 @@ describePg("C4 atomic Music identity projection on PostgreSQL 15", () => {
 
   afterAll(async () => {
     await pool?.end();
-    await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await admin?.end();
   });
