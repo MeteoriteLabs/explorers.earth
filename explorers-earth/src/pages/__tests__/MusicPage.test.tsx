@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createMusicWorkspaceClient } from "../../features/music/musicWorkspaceClient";
-import { MusicPageContent } from "../Music";
+import { MusicPageContent, resolveOwnerWorkspaceExposure } from "../Music";
 import * as MusicPageModule from "../Music";
 
 vi.mock("../../components/SEO", () => ({ default: () => null }));
@@ -13,6 +13,11 @@ const data: any = {
 };
 
 describe("Music page state hierarchy", () => {
+  it("uses a local preview without changing the server-governed production decision", () => {
+    expect(resolveOwnerWorkspaceExposure(false, true)).toBe(true);
+    expect(resolveOwnerWorkspaceExposure(true, false)).toBe(true);
+    expect(resolveOwnerWorkspaceExposure(false, false)).toBe(false);
+  });
   it("keeps the existing minimal workspace unless the runtime owner decision is true", () => {
     const ready = { ...data, identityStatus: "ready", isLoading: false, dashboard: { songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "slug" } }, entitlement: { state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 } };
     const first = render(<MusicPageContent authenticated onboarding="complete" data={ready} ownerWorkspace={false} onAction={vi.fn()} />);

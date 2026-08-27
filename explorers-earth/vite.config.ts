@@ -8,6 +8,12 @@ export default defineConfig({
   ],
    server: {
      proxy: {
+       '/__localtunes': {
+         target: 'https://localtunes.earth',
+         changeOrigin: true,
+         rewrite: (path) => path.replace(/^\/__localtunes/, ''),
+         secure: true,
+       },
        '/twitch-api': {
          target: 'https://id.twitch.tv',
          changeOrigin: true,

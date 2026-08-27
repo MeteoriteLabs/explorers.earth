@@ -19,6 +19,11 @@ import { createMusicRolloutClient, subscribeMusicRollout, type MusicRolloutScope
 import { musicApi } from "../features/music/musicApi";
 
 const musicRollout = createMusicRolloutClient((input) => musicApi.request(input));
+const localOwnerWorkspacePreview = import.meta.env.DEV;
+
+export function resolveOwnerWorkspaceExposure(exposed: boolean, localPreview: boolean): boolean {
+  return localPreview || exposed;
+}
 
 const musicPageEligibilityQuery = gql`
   query MusicPageEligibility($documentId: ID!) {
@@ -195,7 +200,9 @@ const MusicPage = () => {
     previousScope.current = scope;
     setOwnerWorkspace(false);
     if (!scope || data.identityStatus !== "ready") return;
-    return subscribeMusicRollout(musicRollout, scope, (exposure) => setOwnerWorkspace(exposure.ownerWorkspace));
+    return subscribeMusicRollout(musicRollout, scope, (exposure) => {
+      setOwnerWorkspace(resolveOwnerWorkspaceExposure(exposure.ownerWorkspace, localOwnerWorkspacePreview));
+    });
   }, [scope?.userDocumentId, scope?.accountDocumentId, data.identityStatus]);
   const onboarding = onboardingFromEligibility(eligibility);
 

@@ -1,9 +1,13 @@
 import { createLocalTunesApiClient } from "../../lib/localTunesApiClient";
 import useAuthStore from "../../store/store";
 import { createMusicIdentityCoordinator } from "./musicIdentityCoordinator";
+import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
+
+const musicOrigin = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
 
 export const musicApi = createLocalTunesApiClient({
-  baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
+  baseUrl: musicOrigin,
+  fetchImpl: createMusicDevelopmentFetch(fetch, import.meta.env.DEV, musicOrigin),
   getStrapiBearer: async () => useAuthStore.getState().token ?? undefined,
 });
 
