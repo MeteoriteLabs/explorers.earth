@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 
 const fixtureOrigin = "http://localhost:55173";
+test.skip(process.env.PLAYWRIGHT_EXTERNAL_BASE_URL !== fixtureOrigin, "requires the integrated Music fixture");
 
 type GuestControls = {
   allowSongRequests: boolean;

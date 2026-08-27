@@ -119,6 +119,18 @@ describe("MusicHistory", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "More actions for Next history song" })).toHaveFocus());
   });
 
+  it("reuses a history removal key when the response outcome is uncertain", async () => {
+    const user = userEvent.setup();
+    const removeHistorySong = vi.fn().mockRejectedValueOnce(new TypeError("response lost")).mockResolvedValueOnce(undefined);
+    render(<MusicHistory songs={[song]} queueClient={{ clearHistory: vi.fn(), removeHistorySong }} onChanged={vi.fn().mockResolvedValue(undefined)} />);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await user.click(screen.getByRole("button", { name: "More actions for Previous song" }));
+      await user.click(screen.getByRole("menuitem", { name: "Remove from history" }));
+      await waitFor(() => expect(removeHistorySong).toHaveBeenCalledTimes(attempt + 1));
+    }
+    expect(removeHistorySong.mock.calls[1][1]).toBe(removeHistorySong.mock.calls[0][1]);
+  });
+
   it("focuses the stable empty history state when removing the last row rerenders the parent empty", async () => {
     // Break caught: a last-row removal restores a trigger that no longer exists after the parent refreshes, leaving focus on body.
     const user = userEvent.setup();

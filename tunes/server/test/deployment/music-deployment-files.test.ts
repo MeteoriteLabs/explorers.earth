@@ -426,7 +426,7 @@ describe("Music deployment authority files", () => {
     expect(fixture).toContain(
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
-    expect(fixture).toContain("ALLOWED_ORIGINS: http://127.0.0.1:55173");
+    expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

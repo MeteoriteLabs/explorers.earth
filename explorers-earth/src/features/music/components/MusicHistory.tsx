@@ -2,6 +2,7 @@ import { EllipsisVertical } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { MusicSong } from "../musicWorkspaceClient";
 import type { MusicPlaybackCommand } from "./musicPlaybackCommand";
+import { MusicClientError } from "../../../lib/localTunesApiClient";
 
 interface HistoryQueueClient {
   clearHistory(idempotencyKey: string): Promise<void>;
@@ -37,6 +38,7 @@ export function MusicHistory({ songs, loading = false, queueClient, onChanged, b
   const headerTrigger = useRef<HTMLButtonElement>(null);
   const emptyState = useRef<HTMLParagraphElement>(null);
   const lock = useRef(false);
+  const pendingRemovalKeys = useRef(new Map<number, string>());
   const restoreAfterClear = useRef(false);
   const actionLocked = clearing || removingId !== null || playingId !== null;
 
@@ -153,13 +155,17 @@ export function MusicHistory({ songs, loading = false, queueClient, onChanged, b
     setOpenMenu(null);
     setRemovingId(song.id);
     setError("");
+    const idempotencyKey = pendingRemovalKeys.current.get(song.id) ?? `music-history-remove-${crypto.randomUUID()}`;
+    pendingRemovalKeys.current.set(song.id, idempotencyKey);
     try {
-      try { await queueClient.removeHistorySong(song.id, `music-history-remove-${crypto.randomUUID()}`); }
-      catch {
+      try { await queueClient.removeHistorySong(song.id, idempotencyKey); }
+      catch (cause) {
+        if (cause instanceof MusicClientError && !cause.retryable && cause.status < 500) pendingRemovalKeys.current.delete(song.id);
         setError(`Could not remove ${song.title} from history. Try again.`);
         setFocusAfterAction({ kind: "row", id: song.id });
         return;
       }
+      pendingRemovalKeys.current.delete(song.id);
       try { await onChanged(); }
       catch {
         setError(`${song.title} was removed from history, but the latest history could not be loaded.`);

@@ -41,10 +41,16 @@ export function createMusicPlaybackArbiter({
       active.add(controller);
       const timeout = globalThis.setTimeout(() => controller.abort(PLAYBACK_TIMEOUT_REASON), timeoutMs);
       try {
-        const expectedRevision = Math.max(knownRevision, currentRevision());
-        const result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal), controller.signal);
+        let expectedRevision = Math.max(knownRevision, currentRevision());
+        let result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal), controller.signal);
         knownRevision = Math.max(knownRevision, result.revision);
-        if (result.acknowledged === false) return "superseded";
+        if (result.acknowledged === false) {
+          if (cancelled || requestId !== sequence || !isAuthorityCurrent()) return "superseded";
+          expectedRevision = Math.max(knownRevision, currentRevision());
+          result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal), controller.signal);
+          knownRevision = Math.max(knownRevision, result.revision);
+          if (result.acknowledged === false) throw new Error("Music playback changed again. Try once more.");
+        }
       } catch (cause) {
         if (cancelled || requestId !== sequence || !isAuthorityCurrent() || controller.signal.reason === PLAYBACK_CANCEL_REASON) return "superseded";
         if (controller.signal.reason === PLAYBACK_TIMEOUT_REASON) throw new Error("Music playback update timed out.");

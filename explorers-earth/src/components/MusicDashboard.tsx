@@ -402,7 +402,11 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, onCommitt
     const operation = pendingQueueAppend.current ?? { key: operationKey("queue-append"), expectedRevision: queueRevision, songs: orderedSongs.map((song) => ({ playlistId: playlist.id, songId: song.id })) };
     pendingQueueAppend.current = operation;
     try { const result = await completeQueueClient.appendQueue(operation.expectedRevision, operation.songs, operation.key); onQueueRevisionAcknowledged(result.revision); pendingQueueAppend.current = undefined; }
-    catch { try { await onChanged(); } catch { /* reconciliation is best effort */ } toast.error("Music is temporarily unavailable."); setSaving(false); return; }
+    catch (cause) {
+      if (cause instanceof MusicClientError && cause.status === 409 && cause.upstreamCode === "QUEUE_REVISION_CONFLICT") pendingQueueAppend.current = undefined;
+      try { await onChanged(); } catch { /* reconciliation is best effort */ }
+      toast.error("Music is temporarily unavailable."); setSaving(false); return;
+    }
     await onCommitted("Queue was updated, but the latest Music workspace could not be loaded.");
     toast.success(`Added ${playlist.name} to the queue.`); setSaving(false);
   };
@@ -427,7 +431,8 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, onCommitt
       const first = result.songs[0];
       if (first) try { await onPlaybackRequested(first.id, beginPlaybackRequest(), shuffle ? "playlist-shuffle" : "playlist-replace"); }
       catch { setPlaybackRetry(first.id); }
-    } catch {
+    } catch (cause) {
+      if (cause instanceof MusicClientError && cause.status === 409 && cause.upstreamCode === "QUEUE_REVISION_CONFLICT") pendingQueueReplacement.current = undefined;
       try { await onChanged(); } catch { /* Keep the original operation available for an explicit retry. */ }
       toast.error("Music is temporarily unavailable.");
       setSaving(false);

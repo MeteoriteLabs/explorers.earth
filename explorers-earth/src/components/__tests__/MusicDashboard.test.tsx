@@ -304,7 +304,7 @@ describe("Music workspace UI", () => {
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
   });
 
-  it("treats a stale playback intent as superseded after a server-owned revision conflict", async () => {
+  it("retries the latest playback intent against the canonical revision after an unrelated queue change", async () => {
     const queued = { id: 7, youtubeId: "abcdefghijk", title: "Recover song", artist: "Artist", thumbnailUrl: "https://img/7", position: 0, status: "queued" as const, playedAt: null };
     const expectedRevisions: number[] = [];
     let writes = 0;
@@ -325,8 +325,8 @@ describe("Music workspace UI", () => {
     await openLive();
 
     await userEvent.click(screen.getByRole("button", { name: "Play Recover song" }));
-    await waitFor(() => expect(expectedRevisions).toEqual([1]));
-    expect(data.refetch).not.toHaveBeenCalled();
+    await waitFor(() => expect(expectedRevisions).toEqual([1, 2]));
+    await waitFor(() => expect(data.refetch).toHaveBeenCalledOnce());
   });
 
   it("does not let a delayed Queue Play supersede a newer Search Play", async () => {
@@ -557,6 +557,24 @@ describe("Music workspace UI", () => {
     expect(request.mock.calls[0][0]).toMatchObject({ path: "/api/music/queue/append", body: { expectedRevision: 7, songs: [{ playlistId: 1, songId: 11 }] } });
     expect(request.mock.calls[1][0]).toMatchObject({ path: "/api/music/queue/append", body: { expectedRevision: 7, songs: [{ playlistId: 1, songId: 11 }] } });
     expect(request.mock.calls[1][0].idempotencyKey).toBe(request.mock.calls[0][0].idempotencyKey);
+  });
+
+  it("starts a fresh append after a definite queue revision conflict", async () => {
+    const playlist = { id: 1, name: "Saved mix", description: null, isVisibleToGuests: false, songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }] };
+    const request = vi.spyOn(musicApi, "request")
+      .mockRejectedValueOnce(new MusicClientError("REQUEST_INVALID", 409, "stale", undefined, "QUEUE_REVISION_CONFLICT"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ version: "music-queue/v1", revision: 10, songs: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    const view = render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    await openPlaylist("Saved mix");
+    await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add to queue" }));
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    view.rerender(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 9 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add to queue" }));
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+    expect(request.mock.calls[1][0].body).toMatchObject({ expectedRevision: 9 });
+    expect(request.mock.calls[1][0].idempotencyKey).not.toBe(request.mock.calls[0][0].idempotencyKey);
   });
 
   it("retries the exact persisted shuffle order and uses a distinct operation key from replace", async () => {
