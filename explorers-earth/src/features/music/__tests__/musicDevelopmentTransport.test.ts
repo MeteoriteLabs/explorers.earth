@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMusicDevelopmentFetch } from "../musicDevelopmentTransport";
+import { createMusicDevelopmentFetch, resolveMusicDevelopmentProxyTarget } from "../musicDevelopmentTransport";
 
 describe("Music development transport", () => {
+  it("derives the proxy target from the configured Music origin", () => {
+    expect(resolveMusicDevelopmentProxyTarget("https://staging-tunes.example.test/api")).toBe("https://staging-tunes.example.test");
+    expect(resolveMusicDevelopmentProxyTarget(undefined)).toBe("https://localtunes.earth");
+    expect(() => resolveMusicDevelopmentProxyTarget("https://token@staging-tunes.example.test"))
+      .toThrow("without embedded credentials");
+  });
+
   it("rewrites only the configured HTTPS Music origin through the same-origin Vite proxy", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const transport = createMusicDevelopmentFetch(fetchImpl, true, "https://localtunes.earth");

@@ -1,5 +1,13 @@
 export const MUSIC_DEVELOPMENT_PROXY_PREFIX = "/__localtunes";
 
+export function resolveMusicDevelopmentProxyTarget(configuredOrigin?: string): string {
+  const target = new URL(configuredOrigin || "https://localtunes.earth");
+  if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) {
+    throw new Error("Music development proxy requires an HTTP(S) origin without embedded credentials.");
+  }
+  return target.origin;
+}
+
 export function createMusicDevelopmentFetch(
   fetchImpl: typeof fetch,
   enabled: boolean,

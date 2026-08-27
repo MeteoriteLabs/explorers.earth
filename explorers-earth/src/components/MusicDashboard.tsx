@@ -542,8 +542,10 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
   currentAuthorityGeneration.current = authorityGeneration;
   const queueRevision = useRef(data.dashboard?.queueRevision ?? 0);
   queueRevision.current = data.dashboard?.queueRevision ?? 0;
+  const currentPlayingSongId = useRef(data.dashboard?.currentlyPlaying?.id ?? null);
+  currentPlayingSongId.current = data.dashboard?.currentlyPlaying?.id ?? null;
   const playbackArbiter = useMemo(() => createMusicPlaybackArbiter({
-    write: async (songId, expectedRevision, operation, signal) => {
+    write: async (songId, expectedRevision, operation, signal, expectedPlayingSongId) => {
       const authorityIsCurrent = () => currentAuthorityGeneration.current === authorityGeneration;
       if (!scope.userDocumentId || !scope.accountDocumentId || !authorityIsCurrent()) throw new Error("Music playback authority is unavailable.");
       try {
@@ -553,10 +555,15 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
         if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
         const canonical = await completeQueueClient.loadDashboard();
         if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
-        return { revision: canonical.queueRevision, acknowledged: false };
+        return {
+          revision: canonical.queueRevision,
+          acknowledged: false,
+          retryable: (canonical.currentlyPlaying?.id ?? null) === expectedPlayingSongId,
+        };
       }
     },
     currentRevision: () => queueRevision.current,
+    currentPlayingSongId: () => currentPlayingSongId.current,
     isAuthorityCurrent: () => currentAuthorityGeneration.current === authorityGeneration,
     onAcknowledged: (songId, requestId) => setPlaybackRequest(songId === null ? null : { songId, requestId, authorityGeneration }),
   }), [authorityGeneration, scope.accountDocumentId, scope.userDocumentId]);
