@@ -30,6 +30,7 @@ type MockOptions = {
   ensureFailures?: number;
   ensureDelayMs?: number;
   ensureGate?: { call: number; wait: Promise<void> };
+  ownerWorkspace?: boolean;
 };
 
 async function installMusicMocks(page: Page, options: MockOptions = {}) {
@@ -126,6 +127,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
       currentlyPlaying: null,
       playedSongs: [],
       publication: { mode: "private", publicSlug: "public-slug-123" },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
     }),
   }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({
@@ -148,6 +150,22 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
   });
   await page.route("**/api/playlists/*/visibility", (route) => route.fulfill({ status: 204 }));
   await page.route("**/api/playlists/*/reorder", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/music/guest-controls", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: route.request().postData() ?? "{}",
+  }));
+  await page.route("**/api/music/features", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      ownerWorkspace: options.ownerWorkspace ?? false,
+      guestWorkspace: false,
+      playlistImports: false,
+      exposureId: "music-e2e-exposure",
+      expiresAt: new Date(Date.now() + 600_000).toISOString(),
+    }),
+  }));
 
   return {
     ensureCalls: () => ensureCalls,
@@ -155,6 +173,13 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
     warnings,
     pageErrors,
   };
+}
+
+async function openSharingSettings(page: Page) {
+  const opener = page.getByRole("button", { name: "Open playlist and sharing menu" });
+  await opener.click();
+  await page.getByRole("menuitem", { name: "Sharing settings" }).click();
+  return opener;
 }
 
 test.beforeEach(async ({ context }) => {
@@ -169,11 +194,11 @@ for (const width of [320, 375, 640, 768, 1024]) {
     await page.goto("/recommendations/music");
 
     const title = page.getByRole("heading", { name: "Music", level: 1 });
-    await expect(title).toBeVisible();
+    await expect(title).toHaveClass("sr-only");
     await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
     await expect(page.getByText("Build a playlist to collect and share the music you love.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create playlist" })).toBeVisible();
-    await expect(page.locator("[role='status'], [role='alert']")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "New playlist" })).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     const musicMain = page.locator("section.dashboard-theme");
     const contrastRatios = await musicMain.evaluate((main) => {
@@ -206,9 +231,8 @@ for (const width of [320, 375, 640, 768, 1024]) {
         return (bright + 0.05) / (dark + 0.05);
       };
       return [
-        ratio(main.querySelector("h1")!),
         ratio(Array.from(main.querySelectorAll("p")).find((node) => node.textContent?.startsWith("Build a playlist"))!),
-        ratio(Array.from(main.querySelectorAll("button")).find((node) => node.textContent?.trim() === "Create playlist")!),
+        ratio(Array.from(main.querySelectorAll("button")).find((node) => node.textContent?.trim() === "New playlist")!),
       ];
     });
     for (const ratio of contrastRatios) expect(ratio).toBeGreaterThanOrEqual(4.5);
@@ -234,8 +258,7 @@ test("sharing dialog traps focus, closes with Escape, and exposes only approved 
   await installMusicMocks(page);
   await page.setViewportSize({ width: 375, height: 820 });
   await page.goto("/recommendations/music");
-  const opener = page.getByRole("button", { name: "Sharing settings" });
-  await opener.click();
+  const opener = await openSharingSettings(page);
   const dialog = page.getByRole("dialog", { name: "Music sharing" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("radio")).toHaveCount(3);
@@ -263,8 +286,7 @@ test("sharing dialog traps focus, closes with Escape, and exposes only approved 
 test("sharing save uses one canonical publication command and restores focus", async ({ page }) => {
   const audit = await installMusicMocks(page);
   await page.goto("/recommendations/music");
-  const opener = page.getByRole("button", { name: "Sharing settings" });
-  await opener.click();
+  const opener = await openSharingSettings(page);
   const dialog = page.getByRole("dialog", { name: "Music sharing" });
   await dialog.getByRole("radio", { name: "Public" }).check();
   await dialog.getByRole("button", { name: "Save sharing" }).click();
@@ -288,7 +310,7 @@ test("account-generation resets Music authority across tabs without logging Expl
   });
   await page.goto("/recommendations/music");
   await second.goto("/recommendations/music");
-  await expect(second.getByRole("tab", { name: "Old account playlist" })).toBeVisible();
+  await expect(second.getByRole("button", { name: /^Old account playlist/ })).toBeVisible();
 
   await page.evaluate(() => {
     const event = { version: "music-session/v1", kind: "account-generation", eventId: crypto.randomUUID() };
@@ -297,12 +319,11 @@ test("account-generation resets Music authority across tabs without logging Expl
   });
 
   await expect(second).toHaveURL(/\/recommendations\/music$/);
-  await expect(second.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
   await expect.poll(secondAudit.ensureCalls).toBeGreaterThanOrEqual(2);
-  await expect(second.getByRole("tab", { name: "Old account playlist" })).toHaveCount(0);
+  await expect(second.getByRole("button", { name: /^Old account playlist/ })).toHaveCount(0);
   expect(await second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(true);
   releaseSecondEnsure();
-  await expect(second.getByRole("tab", { name: "Old account playlist" })).toBeVisible();
+  await expect(second.getByRole("button", { name: /^Old account playlist/ })).toBeVisible();
   expect(secondAudit.ensureCalls()).toBeGreaterThanOrEqual(2);
   await second.close();
 });
@@ -342,13 +363,9 @@ test("playlist tabs, keyboard reorder, and polite announcement work without muta
     },
     { id: 11, name: "Quiet", description: null, isVisibleToGuests: true, songs: [] },
   ];
-  await installMusicMocks(page, { playlists });
+  await installMusicMocks(page, { playlists, ownerWorkspace: true });
   await page.goto("/recommendations/music");
-  const firstTab = page.getByRole("tab", { name: "Road songs" });
-  await firstTab.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Quiet" })).toBeFocused();
-  await page.getByRole("tab", { name: "Road songs" }).click();
+  await page.getByRole("button", { name: /^Road songs/ }).click();
   await page.getByRole("button", { name: "Move North down" }).click();
   await expect(page.getByText("North moved to position 2.")).toHaveCount(1);
 });

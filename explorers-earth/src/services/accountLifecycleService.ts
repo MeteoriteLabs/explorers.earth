@@ -236,8 +236,20 @@ function normalizeOrigin(raw: string): string {
   let parsed: URL;
   try { parsed = new URL(raw); }
   catch { throw new AccountLifecycleError("REQUEST_INVALID", 400, "The Music service origin is invalid.", false); }
-  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) {
+  if ((parsed.protocol !== "https:" && !isSameOriginLocalFixture(parsed))
+      || parsed.username || parsed.password || parsed.search || parsed.hash) {
     throw new AccountLifecycleError("REQUEST_INVALID", 400, "The Music service origin is invalid.", false);
   }
   return parsed.origin;
+}
+
+function isSameOriginLocalFixture(parsed: URL): boolean {
+  const browserLocation = typeof globalThis.location === "undefined" ? undefined : globalThis.location;
+  return parsed.protocol === "http:"
+    && parsed.hostname === "localhost"
+    && parsed.port === "55173"
+    && browserLocation?.protocol === "http:"
+    && browserLocation.hostname === "localhost"
+    && browserLocation.port === "55173"
+    && parsed.origin === browserLocation.origin;
 }

@@ -30,6 +30,7 @@ export interface MusicQualificationMockOptions {
   playlists?: Array<Record<string, unknown>>;
   ownerExpiredFailures?: number;
   holdEnsure?: boolean;
+  ownerWorkspace?: boolean;
 }
 
 export async function installMusicQualificationMocks(page: Page, options: MusicQualificationMockOptions = {}) {
@@ -153,12 +154,30 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   await page.route("**/api/music/dashboard", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: publicationMode, publicSlug: "qualification-public" } }),
+    body: JSON.stringify({
+      queueRevision: 0,
+      songs: [],
+      currentlyPlaying: null,
+      playedSongs: [],
+      publication: { mode: publicationMode, publicSlug: "qualification-public" },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
+    }),
   }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }),
+  }));
+  await page.route("**/api/music/features", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      ownerWorkspace: options.ownerWorkspace ?? false,
+      guestWorkspace: false,
+      playlistImports: false,
+      exposureId: "qualification-exposure",
+      expiresAt: new Date(Date.now() + 600_000).toISOString(),
+    }),
   }));
   await page.route("**/api/music/publication", async (route) => {
     const body = route.request().postDataJSON() as { mode: string };
@@ -178,6 +197,18 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
         ...(body.mode === "unlisted" ? { capability: "A".repeat(43) } : {}),
       }),
     });
+  });
+  await page.route("**/api/music/guest-controls", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push({
+      method: route.request().method(),
+      path: new URL(route.request().url()).pathname,
+      authorization: route.request().headers().authorization,
+      xUsername: route.request().headers()["x-username"],
+      body,
+      idempotencyKey: route.request().headers()["idempotency-key"],
+    });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   await page.route("**/api/playlists/*", async (route) => {
     const path = new URL(route.request().url()).pathname;

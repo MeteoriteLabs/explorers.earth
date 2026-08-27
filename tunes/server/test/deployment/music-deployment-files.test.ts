@@ -142,8 +142,11 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain(
       "/app/migrations/0018_transactional_queue_replacement.sql",
     );
+    expect(ci).toContain(
+      "/app/migrations/0019_queue_visibility_control.sql",
+    );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0018_transactional_queue_replacement"',
+      'production_current_marker="0019_queue_visibility_control"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -423,7 +426,7 @@ describe("Music deployment authority files", () => {
     expect(fixture).toContain(
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
-    expect(fixture).toContain("ALLOWED_ORIGINS: http://127.0.0.1:55173");
+    expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

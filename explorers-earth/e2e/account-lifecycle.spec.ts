@@ -233,7 +233,8 @@ test("an unconfirmed Strapi block compensates Music without reporting success", 
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
   await expect.poll(() => events.filter((event) => event === "strapi-block").length).toBe(1);
   await expect(page).toHaveURL(/\/settings$/);
-  expect(events.filter((event) => ["suspend", "strapi-block", "resume"].includes(event))).toEqual(["suspend", "strapi-block", "resume"]);
+  await expect.poll(() => events.filter((event) => ["suspend", "strapi-block", "resume"].includes(event)))
+    .toEqual(["suspend", "strapi-block", "resume"]);
   expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("mock-jwt-token-xyz");
 });
 

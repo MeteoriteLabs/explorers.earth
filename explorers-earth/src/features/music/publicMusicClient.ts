@@ -2,6 +2,8 @@ import type { MusicPlaylist, MusicSong } from "./musicWorkspaceClient";
 
 export interface PublicMusicResource {
   songs: MusicSong[];
+  currentlyPlaying?: MusicSong | null;
+  allowQueueVisibility?: boolean;
   playlists: MusicPlaylist[];
 }
 

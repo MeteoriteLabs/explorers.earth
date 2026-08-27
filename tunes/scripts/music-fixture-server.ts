@@ -40,6 +40,32 @@ const lifecycleAbsenceQuery = `query MusicIdentityAbsence($userDocumentId: ID!, 
   usersPermissionsUser(documentId: $userDocumentId) { documentId }
   account(documentId: $accountDocumentId) { documentId }
 }`;
+const browserIdentityOperations = new Set([
+  "MusicIdentityEligibility",
+  "MusicPageEligibility",
+  "CheckOnboardingStatus",
+  "SidebarAccount",
+  "user",
+]);
+const browserIdentity = {
+  ...user,
+  id: user.documentId,
+  accounts: user.accounts.map((account) => ({
+    ...account,
+    profile_picture: null,
+    public_recommendations: "No",
+    public_music: "No",
+    public_guides: "No",
+    public_movie: "No",
+    public_books: "No",
+    public_games: "No",
+    public_apps: "No",
+    public_products: "No",
+    public_people: "No",
+    pinned_nav_tabs: [],
+    auto_pinning: true,
+  })),
+};
 
 function normalizeGraphql(source: string): string {
   return source.replace(/\s+/g, " ").trim();
@@ -55,7 +81,7 @@ export function fixtureResponse(input: {
     if (input.authorization !== "Bearer fixture-read-only-token") return { status: 403, body: { error: "fixture identity authority denied" } };
     if (input.method !== "GET") return { status: 405, body: { error: "fixture identity operation denied" } };
   }
-  if (input.path === "/api/users/me") return { status: 200, body: user };
+  if (input.path === "/api/users/me") return { status: 200, body: browserIdentity };
   if (input.path === "/api/accounts") return { status: 200, body: { data: user.accounts, meta: { pagination: { page: 1, pageCount: 1, pageSize: 50, total: 1 } } } };
   return { status: 404, body: { error: "fixture route not found" } };
 }
@@ -108,6 +134,13 @@ export function fixtureGraphqlResponse(input: {
     return { status: 403, body: { error: "fixture lifecycle proof authority denied" } };
   }
   if (input.method !== "POST") return { status: 405, body: { error: "fixture lifecycle proof operation denied" } };
+  const browserOperation = /^query\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/.exec(normalizeGraphql(input.query))?.[1];
+  if (browserOperation && browserIdentityOperations.has(browserOperation)) {
+    if (input.variables.documentId !== user.documentId) {
+      return { status: 403, body: { error: "fixture browser identity subject denied" } };
+    }
+    return { status: 200, body: { data: { usersPermissionsUser: browserIdentity } } };
+  }
   const exactRead = normalizeGraphql(input.query) === normalizeGraphql(lifecycleAbsenceQuery);
   if (!exactRead) return { status: 403, body: { error: "fixture lifecycle proof operation denied" } };
   const requestedUser = input.variables.userDocumentId;

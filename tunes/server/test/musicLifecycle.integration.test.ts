@@ -53,6 +53,25 @@ async function ageOperations(operationIds: string[], seconds: number): Promise<v
   }
 }
 
+async function deferOtherOperations(operationIds: string[]): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("ALTER TABLE music_identity_lifecycle_operations DISABLE TRIGGER music_lifecycle_operation_state");
+    await client.query(
+      "UPDATE music_identity_lifecycle_operations SET updated_at=clock_timestamp()+interval '5 minutes' WHERE NOT (operation_id=ANY($1::text[]))",
+      [operationIds],
+    );
+    await client.query("ALTER TABLE music_identity_lifecycle_operations ENABLE TRIGGER music_lifecycle_operation_state");
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
   beforeAll(async () => {
     admin = new pg.Pool({ connectionString: exactTarget });
@@ -701,6 +720,10 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
       });
     }
     await ageOperations(operationIds, 2);
+    // This file intentionally shares one database across sequential cases. Keep
+    // earlier cases' unfinished operations out of this worker's bounded scan so
+    // the first claimed identity always belongs to the ten rows under test.
+    await deferOtherOperations(operationIds);
     await expect(firstReplica.claimDueDeletions({ batchSize: 10, maxAttempts: 5 }))
       .rejects.toMatchObject({ code: "REQUEST_INVALID" });
 

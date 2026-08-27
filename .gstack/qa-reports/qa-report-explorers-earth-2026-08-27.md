@@ -68,3 +68,28 @@ The Tunes backend already exposes `POST /api/playlists/:playlistId/songs`, but `
 
 - The production UAT playlist is deliberately retained until the remaining playlist lifecycle tests are complete.
 - This report is incremental. Final production verdict requires every pending row to pass on the exact deployed repair commit.
+
+## Isolated fixture re-verification — 2026-08-27
+
+**Target:** `http://localhost:55173` (branch-local Explorers + Tunes + Strapi + disposable PostgreSQL fixture)
+
+### Defect found and repaired
+
+Adding a song to an owner playlist produced a successful `GET /api/playlists` response whose nested `addedAt` value had no UTC offset, for example `2026-08-27T14:43:19.866509`. Explorer intentionally rejects that malformed DTO, which made the owner dashboard render an empty playlist collection after a reload. The same unsafe timestamp representation existed in the public resource payload.
+
+The repository now serializes both owner and public playlist-song timestamps as RFC3339 UTC strings. The fix was made test-first:
+
+- Red: the real PostgreSQL repository regression asserted an offset-bearing `addedAt` and failed on the previous value.
+- Green: `tunes/server/test/music-domain-repository.integration.test.ts` passed **15/15** after the serialization correction.
+- Browser: the rebuilt fixture passed **3/3** real Playwright journeys:
+  - owner search and add-to-queue mutation through the browser UI;
+  - mobile workspace and persisted guest-control switch;
+  - public/private/unlisted access plus playlist visibility and sharing-gate matrix.
+
+### Visible UI check
+
+Desktop and 390px mobile UI were opened against the rebuilt fixture. The live workspace displayed the search bar, media-player controls, queue rows, guest-control switches, and recently-played cards. The mobile page had no horizontal overflow.
+
+### Remaining observation
+
+The fully usable fixture workspace still displays `Checking what’s included…` above the tabs because fixture entitlement is intentionally unresolved while the local owner-workspace preview is enabled. It does not block functionality, but it is misleading copy and should be resolved before treating the visual state as finished.

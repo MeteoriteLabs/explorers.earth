@@ -1,13 +1,24 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { loadEnv } from 'vite'
+import { resolveMusicDevelopmentProxyTarget } from './src/features/music/musicDevelopmentTransport'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const musicProxyTarget = resolveMusicDevelopmentProxyTarget(env.VITE_LOCAL_TUNES_API_URL)
+  return ({
   plugins: [
     react(),
   ],
    server: {
      proxy: {
+       '/__localtunes': {
+         target: musicProxyTarget,
+         changeOrigin: true,
+         rewrite: (path) => path.replace(/^\/__localtunes/, ''),
+         secure: true,
+       },
        '/twitch-api': {
          target: 'https://id.twitch.tv',
          changeOrigin: true,
@@ -84,5 +95,6 @@ export default defineConfig({
       },
     },
   },
-});
+  });
+})
 

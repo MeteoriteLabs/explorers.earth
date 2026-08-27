@@ -16,9 +16,19 @@ interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
   getPlaylist(ownerId: number, playlistId: number): Promise<unknown | undefined>;
   createPlaylist(ownerId: number, input: { name: string; description: string | null }): Promise<unknown | undefined>;
+  createPlaylistIdempotent(ownerId: number, idempotencyKey: string, input: { name: string; description: string | null }): Promise<
+    | { status: "completed"; replayed: boolean; response: unknown }
+    | { status: "conflict" }
+    | { status: "limit" }
+  >;
   updatePlaylist(ownerId: number, playlistId: number, input: { name: string; description: string | null }): Promise<unknown | undefined>;
   deletePlaylist(ownerId: number, playlistId: number): Promise<boolean>;
-  addPlaylistSong(ownerId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown | null | undefined>;
+  addPlaylistSongIdempotent(ownerId: number, idempotencyKey: string, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<
+    | { status: "completed"; replayed: boolean; response: unknown }
+    | { status: "conflict" }
+    | { status: "limit" }
+    | { status: "not_found" }
+  >;
   removePlaylistSong(ownerId: number, playlistId: number, songId: number): Promise<boolean>;
   reorderPlaylistSong(ownerId: number, playlistId: number, songId: number, position: number): Promise<boolean>;
   setPlaylistVisibility(ownerId: number, playlistId: number, visible: boolean): Promise<boolean>;
@@ -30,11 +40,26 @@ interface CanonicalMusicRepository {
     | { status: "not_found" }
   >;
   ownerDashboard(ownerId: number): Promise<unknown>;
+  getGuestControls(ownerId: number): Promise<GuestControls | undefined>;
+  updateGuestControls(ownerId: number, controls: GuestControlsUpdate): Promise<GuestControls | undefined>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
-  setPlaying(ownerId: number, songId: number | null): Promise<unknown | null | undefined>;
+  setPlaying(ownerId: number, songId: number | null, expectedRevision?: number, expectedPlaybackRevision?: number): Promise<unknown | null | undefined>;
   updateSongPosition(ownerId: number, songId: number, position: number): Promise<unknown | undefined>;
   removeSong(ownerId: number, songId: number): Promise<boolean>;
   removeSongs(ownerId: number, songIds: number[]): Promise<number>;
+  removeHistorySong?(ownerId: number, idempotencyKey: string, songId: number): Promise<
+    | { status: "completed"; replayed: boolean }
+    | { status: "conflict" }
+    | { status: "not_found" }
+  >;
+  appendQueue(ownerId: number, idempotencyKey: string, expectedRevision: number, songs: Array<{ playlistId: number; songId: number }>): Promise<
+    | { status: "completed"; replayed: boolean; response: { version: "music-queue/v1"; revision: number; songs: unknown[] } }
+    | { status: "stale"; revision: number }
+    | { status: "conflict" }
+    | { status: "not_found" }
+    | { status: "limit" }
+    | { status: "empty" }
+  >;
   clearHistory(ownerId: number): Promise<number>;
   setPublicationMode(ownerId: number, mode: "private" | "unlisted" | "public", capabilityHash?: string): Promise<{ mode: "private" | "unlisted" | "public"; publicSlug: string } | undefined>;
   executePublicationCommand(ownerId: number, idempotencyKey: string, mode: "private" | "unlisted" | "public"): Promise<
@@ -112,9 +137,16 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   app.post("/api/playlists", ...mutation(async (req, res, next) => {
     try {
       const input = playlistInput(req.body);
-      const playlist = await dependencies.repository.createPlaylist(req.musicPrincipal!.musicUserId, input);
-      if (!playlist) throw playlistLimitReached();
-      res.status(201).json(playlistDto(playlist));
+      const idempotencyKey = req.get("idempotency-key");
+      if (!idempotencyKey || idempotencyKey.length > 128) throw invalidQueue();
+      const result = await dependencies.repository.createPlaylistIdempotent(
+        req.musicPrincipal!.musicUserId, idempotencyKey, input,
+      );
+      if (result.status === "conflict") throw new MusicIdentityError(
+        "IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false,
+      );
+      if (result.status === "limit") throw playlistLimitReached();
+      res.status(201).json(playlistDto(result.response));
     } catch (error) { next(error); }
   }));
 
@@ -147,12 +179,17 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.post("/api/playlists/:playlistId/songs", ...mutation(async (req, res, next) => {
     try {
-      const song = await dependencies.repository.addPlaylistSong(
-        req.musicPrincipal!.musicUserId, positiveId(req.params.playlistId), songInput(req.body),
+      const idempotencyKey = req.get("idempotency-key");
+      if (!idempotencyKey || idempotencyKey.length > 128) throw invalidQueue();
+      const result = await dependencies.repository.addPlaylistSongIdempotent(
+        req.musicPrincipal!.musicUserId, idempotencyKey, positiveId(req.params.playlistId), songInput(req.body),
       );
-      if (song === null) throw savedPlaylistLimitReached();
-      if (!song) throw notFound();
-      res.status(201).json(playlistSongDto(song));
+      if (result.status === "conflict") throw new MusicIdentityError(
+        "IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false,
+      );
+      if (result.status === "limit") throw savedPlaylistLimitReached();
+      if (result.status === "not_found") throw notFound();
+      res.status(201).json(playlistSongDto(result.response));
     } catch (error) { next(error); }
   }));
 
@@ -218,6 +255,47 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId), true)); } catch (error) { next(error); }
   }));
 
+  app.post("/api/music/queue/append", ...mutation(async (req, res, next) => {
+    try {
+      const idempotencyKey = req.get("idempotency-key");
+      const input = queueReplaceInput(req.body);
+      if (!idempotencyKey || idempotencyKey.length > 128 || input.songs.length === 0) throw invalidQueue();
+      const result = await dependencies.repository.appendQueue(
+        req.musicPrincipal!.musicUserId, idempotencyKey, input.expectedRevision, input.songs,
+      );
+      if (result.status === "stale") throw new MusicIdentityError(
+        "QUEUE_REVISION_CONFLICT", 409, "The queue changed before append.", "retry", false,
+      );
+      if (result.status === "conflict") throw new MusicIdentityError(
+        "IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false,
+      );
+      if (result.status === "empty") throw invalidQueue();
+      if (result.status === "limit") throw queueLimitReached();
+      if (result.status === "not_found") throw notFound();
+      res.status(200).json({
+        version: "music-queue/v1",
+        revision: result.response.revision,
+        songs: result.response.songs.map(songDto),
+      });
+    } catch (error) { next(error); }
+  }));
+
+  app.patch("/api/music/guest-controls", ...mutation(async (req, res, next) => {
+    try {
+      const controls = guestControlsInput(req.body);
+      const updated = await dependencies.repository.updateGuestControls(req.musicPrincipal!.musicUserId, controls);
+      if (!updated) throw notFound();
+      res.status(200).json(guestControlsDto(updated));
+    } catch (error) { next(error); }
+  }));
+  app.get("/api/music/guest-controls", ...owner(async (req, res, next) => {
+    try {
+      const controls = await dependencies.repository.getGuestControls(req.musicPrincipal!.musicUserId);
+      if (!controls) throw notFound();
+      res.status(200).json(guestControlsDto(controls));
+    } catch (error) { next(error); }
+  }));
+
   app.post("/api/playlist/songs", ...mutation(async (req, res, next) => {
     try {
       const song = await dependencies.repository.addSong(req.musicPrincipal!.musicUserId, songInput(req.body));
@@ -228,9 +306,33 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.post("/api/playlist/currently-playing", ...mutation(async (req, res, next) => {
     try {
-      if (!req.body || Object.keys(req.body).some((key) => key !== "songId")) throw invalidQueue();
+      if (!req.body || Object.keys(req.body).some((key) => !["songId", "expectedRevision", "expectedPlaybackRevision"].includes(key))) throw invalidQueue();
       const songId = req.body.songId === null ? null : positiveId(String(req.body.songId));
-      const song = await dependencies.repository.setPlaying(req.musicPrincipal!.musicUserId, songId);
+      const expectedRevision = req.body.expectedRevision === undefined
+        ? undefined
+        : nonNegativeSafeInteger(req.body.expectedRevision);
+      const expectedPlaybackRevision = req.body.expectedPlaybackRevision === undefined
+        ? undefined
+        : nonNegativeSafeInteger(req.body.expectedPlaybackRevision);
+      const song = await dependencies.repository.setPlaying(req.musicPrincipal!.musicUserId, songId, expectedRevision, expectedPlaybackRevision);
+      if (expectedRevision !== undefined) {
+        const result = record(song);
+        if (property(result, "status") === "stale") throw new MusicIdentityError(
+          property(result, "queueOnly") === true ? "PLAYBACK_QUEUE_REVISION_CONFLICT" : "PLAYBACK_REVISION_CONFLICT",
+          409,
+          property(result, "queueOnly") === true ? "The queue changed without a newer playback command." : "A newer playback command is already canonical.",
+          "none", false,
+        );
+        if (property(result, "status") === "not_found") throw notFound();
+        if (property(result, "status") !== "completed") throw notFound();
+        const canonicalSong = property(result, "song");
+        return res.status(200).json({
+          version: "music-playback/v1",
+          revision: Number(property(result, "revision")),
+          playbackRevision: Number(property(result, "playbackRevision")),
+          song: canonicalSong ? songDto(canonicalSong) : null,
+        });
+      }
       if (songId === null) return res.status(204).end();
       if (!song) throw notFound();
       res.status(200).json(songDto(song));
@@ -269,6 +371,22 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.delete("/api/playlist/history", ...mutation(async (req, res, next) => {
     try { await dependencies.repository.clearHistory(req.musicPrincipal!.musicUserId); res.status(204).end(); } catch (error) { next(error); }
+  }));
+
+  app.delete("/api/playlist/history/:songId", ...mutation(async (req, res, next) => {
+    try {
+      const idempotencyKey = req.get("idempotency-key");
+      if (!idempotencyKey || idempotencyKey.length > 128) throw invalidQueue();
+      if (!dependencies.repository.removeHistorySong) throw notFound();
+      const result = await dependencies.repository.removeHistorySong(
+        req.musicPrincipal!.musicUserId, idempotencyKey, positiveId(req.params.songId),
+      );
+      if (result.status === "conflict") throw new MusicIdentityError(
+        "IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false,
+      );
+      if (result.status === "not_found") throw notFound();
+      res.status(204).end();
+    } catch (error) { next(error); }
   }));
 
   app.post("/api/youtube/search", ...mutation(async (req, res, next) => {
@@ -530,7 +648,10 @@ function dashboardDto(value: unknown, includeQueueRevision = false) {
   const currentlyPlaying = property(source, "currentlyPlaying", "currently_playing");
   const publication = record(property(source, "publication"));
   return {
-    ...(includeQueueRevision ? { queueRevision: Number(property(source, "queueRevision", "queue_revision") ?? 0) } : {}),
+    ...(includeQueueRevision ? {
+      queueRevision: Number(property(source, "queueRevision", "queue_revision") ?? 0),
+      playbackRevision: Number(property(source, "playbackRevision", "playback_revision") ?? 0),
+    } : {}),
     songs: Array.isArray(songs) ? songs.map(songDto) : [],
     currentlyPlaying: currentlyPlaying ? songDto(currentlyPlaying) : null,
     playedSongs: Array.isArray(playedSongs) ? playedSongs.map(songDto) : [],
@@ -538,6 +659,41 @@ function dashboardDto(value: unknown, includeQueueRevision = false) {
       mode: property(publication, "mode"),
       publicSlug: property(publication, "publicSlug", "public_slug"),
     } } : {}),
+    ...(property(source, "guestControls", "guest_controls") ? { guestControls: guestControlsDto(property(source, "guestControls", "guest_controls")) } : {}),
+  };
+}
+
+type GuestControls = {
+  allowSongRequests: boolean;
+  allowGuestPlayOnDevice: boolean;
+  allowPlaylistSharing: boolean;
+  allowRecentlyPlayedVisibility: boolean;
+  allowQueueVisibility: boolean;
+};
+
+type GuestControlsUpdate = Omit<GuestControls, "allowQueueVisibility"> & { allowQueueVisibility?: boolean };
+
+const LEGACY_GUEST_CONTROL_KEYS = ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility"] as const;
+const GUEST_CONTROL_KEYS = [...LEGACY_GUEST_CONTROL_KEYS, "allowQueueVisibility"] as const;
+
+function guestControlsInput(value: unknown): GuestControlsUpdate {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw invalidQueue();
+  const source = value as Record<string, unknown>;
+  if ((Object.keys(source).length !== LEGACY_GUEST_CONTROL_KEYS.length && Object.keys(source).length !== GUEST_CONTROL_KEYS.length)
+      || Object.keys(source).some((key) => !GUEST_CONTROL_KEYS.includes(key as typeof GUEST_CONTROL_KEYS[number]))
+      || LEGACY_GUEST_CONTROL_KEYS.some((key) => typeof source[key] !== "boolean")
+      || ("allowQueueVisibility" in source && typeof source.allowQueueVisibility !== "boolean")) throw invalidQueue();
+  return Object.fromEntries(GUEST_CONTROL_KEYS.filter((key) => key in source).map((key) => [key, source[key]])) as GuestControlsUpdate;
+}
+
+function guestControlsDto(value: unknown): GuestControls {
+  const source = record(value);
+  return {
+    allowSongRequests: property(source, "allowSongRequests", "allow_song_requests") === true,
+    allowGuestPlayOnDevice: property(source, "allowGuestPlayOnDevice", "allow_guest_play_on_device") === true,
+    allowPlaylistSharing: property(source, "allowPlaylistSharing", "allow_playlist_sharing") === true,
+    allowRecentlyPlayedVisibility: property(source, "allowRecentlyPlayedVisibility", "allow_recently_played_visibility") === true,
+    allowQueueVisibility: property(source, "allowQueueVisibility", "allow_queue_visibility") === true,
   };
 }
 
@@ -557,9 +713,11 @@ function publicPlaylistDto(value: unknown) {
       allowGuestPlayOnDevice: property(user, "allowGuestPlayOnDevice", "allow_guest_play_on_device") === true,
       allowPlaylistSharing: property(user, "allowPlaylistSharing", "allow_playlist_sharing") === true,
       allowRecentlyPlayedVisibility: property(user, "allowRecentlyPlayedVisibility", "allow_recently_played_visibility") === true,
+      allowQueueVisibility: property(user, "allowQueueVisibility", "allow_queue_visibility") === true,
     },
     allowGuestPlayOnDevice: property(source, "allowGuestPlayOnDevice", "allow_guest_play_on_device") === true,
     allowRecentlyPlayedVisibility: property(source, "allowRecentlyPlayedVisibility", "allow_recently_played_visibility") === true,
+    allowQueueVisibility: property(source, "allowQueueVisibility", "allow_queue_visibility") === true,
     playlists: Array.isArray(playlists) ? playlists.map(playlistDto) : [],
   };
 }
@@ -568,6 +726,11 @@ function positiveId(value: string): number {
   const id = Number(value);
   if (!Number.isSafeInteger(id) || id < 1) throw new MusicIdentityError("REQUEST_INVALID", 400, "The resource identifier is invalid.", "none", false);
   return id;
+}
+
+function nonNegativeSafeInteger(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) throw invalidQueue();
+  return Number(value);
 }
 
 function playlistInput(value: unknown): { name: string; description: string | null } {

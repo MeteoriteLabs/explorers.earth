@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   allowGuestPlayOnDevice: boolean("allow_guest_play_on_device").default(true).notNull(),
   allowPlaylistSharing: boolean("allow_playlist_sharing").default(false).notNull(),
   allowRecentlyPlayedVisibility: boolean("allow_recently_played_visibility").default(true).notNull(),
+  allowQueueVisibility: boolean("allow_queue_visibility").default(false).notNull(),
   accountManagerId: integer("account_manager_id").references(() => teamMembers.id),
   isAdmin: boolean("is_admin").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

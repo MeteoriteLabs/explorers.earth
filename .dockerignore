@@ -254,6 +254,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/Dockerfile.music-fixture
 !explorers-earth/index.html
 !explorers-earth/nginx.conf
+!explorers-earth/nginx.music-fixture.conf
 !explorers-earth/package-lock.json
 !explorers-earth/package.json
 !explorers-earth/postcss.config.js
@@ -789,12 +790,19 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Settings/components/AccountDeletionLifecyclePanel.tsx
 !explorers-earth/src/features/Settings/components/BillingTab.tsx
 !explorers-earth/src/features/Settings/components/LanguageSelector.tsx
+!explorers-earth/src/features/music/components/MusicGuestControls.tsx
 !explorers-earth/src/features/music/components/MusicHistory.tsx
 !explorers-earth/src/features/music/components/MusicPlayer.tsx
+!explorers-earth/src/features/music/components/MusicPlaylistCollection.tsx
 !explorers-earth/src/features/music/components/MusicQueue.tsx
 !explorers-earth/src/features/music/components/MusicSearch.tsx
+!explorers-earth/src/features/music/components/MusicSectionTabs.css
+!explorers-earth/src/features/music/components/MusicSectionTabs.tsx
 !explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx
+!explorers-earth/src/features/music/components/musicPlaybackCommand.ts
+!explorers-earth/src/features/music/fixtureConsoleDiagnostics.ts
 !explorers-earth/src/features/music/musicApi.ts
+!explorers-earth/src/features/music/musicDevelopmentTransport.ts
 !explorers-earth/src/features/music/musicEntitlementContract.ts
 !explorers-earth/src/features/music/musicIdentityCoordinator.ts
 !explorers-earth/src/features/music/musicPublicationCommandRegistry.ts

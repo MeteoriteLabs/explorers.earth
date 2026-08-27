@@ -66,6 +66,53 @@ describe("Music Compose ownership safety", () => {
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
   });
 
+  it("uses a fixture-Dockerfile-only allowlist for the explicit untracked dashboard UAT sources", () => {
+    const result = spawnSync(process.execPath, [
+      resolve(repositoryRoot, "scripts/generate-music-fixture-dockerignore.mjs"),
+      "--fixture-manifest",
+    ], { cwd: repositoryRoot, encoding: "utf8" });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    const manifest = result.stdout.trim().split(/\r?\n/);
+    expect(manifest).toEqual(expect.arrayContaining([
+      "explorers-earth/src/features/music/musicDevelopmentTransport.ts",
+      "explorers-earth/src/features/music/components/MusicPlaylistCollection.tsx",
+      "explorers-earth/src/features/music/components/MusicSectionTabs.tsx",
+      "explorers-earth/src/features/music/components/MusicSectionTabs.css",
+      "explorers-earth/src/features/music/components/musicPlaybackCommand.ts",
+    ]));
+    expect(manifest).not.toEqual(expect.arrayContaining([
+      "explorers-earth/src/features/music/components/__tests__/MusicSectionTabs.test.tsx",
+      "explorers-earth/src/features/music/components/__tests__/MusicPlaylistCollection.test.tsx",
+    ]));
+  });
+
+  it("rejects a cleartext Music fixture origin from a production bundle", () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "music-production-bundle-"));
+    try {
+      for (const directory of ["src", "public", "dist"]) mkdirSync(join(sandbox, directory), { recursive: true });
+      writeFileSync(join(sandbox, "src", "music.ts"), "export const musicOrigin = 'https://localtunes.earth';\n");
+      writeFileSync(join(sandbox, "public", "robots.txt"), "User-agent: *\n");
+      writeFileSync(join(sandbox, "dist", "music.js"), 'const origin = "http://localhost:55173";\n');
+      const checker = resolve(repositoryRoot, "explorers-earth/scripts/check-music-production-bundle.mjs");
+      const rejected = spawnSync(process.execPath, [checker], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        env: { ...process.env, MUSIC_BUNDLE_CHECK_ROOT: sandbox },
+      });
+      expect(rejected.status).not.toBe(0);
+
+      writeFileSync(join(sandbox, "dist", "music.js"), 'const origin = "https://localtunes.earth";\n');
+      const accepted = spawnSync(process.execPath, [checker], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        env: { ...process.env, MUSIC_BUNDLE_CHECK_ROOT: sandbox },
+      });
+      expect(accepted.status, `${accepted.stdout}\n${accepted.stderr}`).toBe(0);
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+
   it("passes only the exact source manifest through Docker ignore semantics", () => {
     const sandbox = mkdtempSync(join(tmpdir(), "music-fixture-context-"));
     const context = join(sandbox, "context");

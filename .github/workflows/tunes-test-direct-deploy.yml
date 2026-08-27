@@ -171,7 +171,7 @@ jobs:
                 process.stdout.write(value.migrationMarker);
               ')"
             case "$CURRENT_MIGRATION_MARKER" in
-              0017_publication_idempotency_key_retirement|0018_transactional_queue_replacement) ;;
+              0017_publication_idempotency_key_retirement|0018_transactional_queue_replacement|0019_queue_visibility_control) ;;
               *) echo 'rollback refused: current app is older than schema compatibility floor' >&2; exit 1 ;;
             esac
             candidate_digest="${CANDIDATE_IMAGE##*@}"
@@ -190,7 +190,7 @@ jobs:
               -e MUSIC_RUNTIME_DATABASE_USER=music_runtime_login \
               -e MUSIC_RUNTIME_DATABASE_PASSWORD_FILE=/run/secrets/db-runtime \
               -e MUSIC_IMAGE_DIGEST="$candidate_digest" -e MUSIC_IMAGE_COMMIT="$CANDIDATE_COMMIT" \
-              -e MUSIC_MIGRATION_MARKER=0018_transactional_queue_replacement \
+              -e MUSIC_MIGRATION_MARKER=0019_queue_visibility_control \
               -e MUSIC_GATE_ATTESTATION_KEY="$(cat "$authority_dir/gate-key")" \
               -e MUSIC_GATE_ATTESTATION_PATH="/deployment-gates/$candidate_digest.json" \
               -v "$authority_dir/db-migrator:/run/secrets/db-migrator:ro" \
@@ -281,12 +281,12 @@ jobs:
               -e "s#^([[:space:]]*image:).*#\\1 $CANDIDATE_IMAGE#" \
               -e "s#^([[:space:]]*MUSIC_IMAGE_DIGEST:).*#\\1 $candidate_digest#" \
               -e "s#^([[:space:]]*MUSIC_IMAGE_COMMIT:).*#\\1 $CANDIDATE_COMMIT#" \
-              -e "s#^([[:space:]]*MUSIC_MIGRATION_MARKER:).*#\\1 0018_transactional_queue_replacement#" \
+              -e "s#^([[:space:]]*MUSIC_MIGRATION_MARKER:).*#\\1 0019_queue_visibility_control#" \
               -e "s#^([[:space:]]*MUSIC_GATE_ATTESTATION_PATH:).*#\\1 /deployment-gates/$candidate_digest.json#" \
               "$override_backup" > "$override_file"
             chmod 600 "$override_file"
             grep -Fq "image: $CANDIDATE_IMAGE" "$override_file"
-            grep -Fq "MUSIC_MIGRATION_MARKER: 0018_transactional_queue_replacement" "$override_file"
+            grep -Fq "MUSIC_MIGRATION_MARKER: 0019_queue_visibility_control" "$override_file"
             docker compose -p tunes -f "$compose_file" -f "$override_file" -f "$rollout_override_file" up -d --no-deps --force-recreate app
             readiness="$backup_dir/readiness-$stamp.json"
             for attempt in $(seq 1 60); do
@@ -311,7 +311,7 @@ jobs:
               "$CANDIDATE_IMAGE" -e '
                 const fs=require("node:fs");
                 const value=JSON.parse(fs.readFileSync("/readiness.json","utf8"));
-                if(value.ready!==true||value.commit!==process.env.EXPECTED_COMMIT||value.digest!==process.env.EXPECTED_DIGEST||value.migrationMarker!=="0018_transactional_queue_replacement")process.exit(1);
+                if(value.ready!==true||value.commit!==process.env.EXPECTED_COMMIT||value.digest!==process.env.EXPECTED_DIGEST||value.migrationMarker!=="0019_queue_visibility_control")process.exit(1);
               '
             touch "$success_flag"
             trap - ERR

@@ -41,7 +41,7 @@ process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD = '3';
 process.env.MUSIC_RATE_LIMIT_PER_MINUTE = '60';
 process.env.MUSIC_PROVISIONING_KILL_SWITCH = 'true';
 process.env.MUSIC_PROVISIONING_COHORT = 'disabled';
-process.env.MUSIC_EXPECTED_MIGRATION_ID = '0018_transactional_queue_replacement';
+process.env.MUSIC_EXPECTED_MIGRATION_ID = '0019_queue_visibility_control';
 process.env.MUSIC_RECONCILIATION_ENABLED = 'false';
 process.env.MUSIC_RECONCILIATION_MAX_ROWS = '0';
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient

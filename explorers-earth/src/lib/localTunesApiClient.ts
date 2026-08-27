@@ -344,9 +344,20 @@ function normalizedBaseUrl(raw: string): string {
   } catch {
     throw new MusicClientError("REQUEST_INVALID", 400, "The Music service origin is invalid.");
   }
-  if (parsed.protocol !== "https:" || parsed.username || parsed.password
+  if ((parsed.protocol !== "https:" && !isSameOriginLocalFixture(parsed)) || parsed.username || parsed.password
       || parsed.search || parsed.hash || parsed.pathname !== "/") {
     throw new MusicClientError("REQUEST_INVALID", 400, "The Music service origin is invalid.");
   }
   return parsed.origin;
+}
+
+function isSameOriginLocalFixture(parsed: URL): boolean {
+  const browserLocation = typeof globalThis.location === "undefined" ? undefined : globalThis.location;
+  return parsed.protocol === "http:"
+    && parsed.hostname === "localhost"
+    && parsed.port === "55173"
+    && browserLocation?.protocol === "http:"
+    && browserLocation.hostname === "localhost"
+    && browserLocation.port === "55173"
+    && parsed.origin === browserLocation.origin;
 }

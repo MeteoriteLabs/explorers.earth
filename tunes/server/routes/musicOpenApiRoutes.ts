@@ -110,6 +110,21 @@ const queueIdempotencyKeyParameter = {
   description: "Opaque owner-scoped replay key for one atomic queue replacement. Exact same-key replay returns the stored response; different input conflicts.",
   schema: { type: "string", minLength: 1, maxLength: 128 },
 };
+const playlistCreateIdempotencyKeyParameter = {
+  name: "Idempotency-Key", in: "header" as const, required: true,
+  description: "Opaque owner-scoped replay key for one saved-playlist create. Exact same-key replay returns the stored playlist; different input conflicts.",
+  schema: { type: "string", minLength: 1, maxLength: 128 },
+};
+const playlistSongIdempotencyKeyParameter = {
+  name: "Idempotency-Key", in: "header" as const, required: true,
+  description: "Opaque owner-scoped replay key for one saved-playlist song insertion. Exact same-key replay returns the stored song; different playlist or song input conflicts.",
+  schema: { type: "string", minLength: 1, maxLength: 128 },
+};
+const historyRemoveIdempotencyKeyParameter = {
+  name: "Idempotency-Key", in: "header" as const, required: true,
+  description: "Opaque owner-scoped replay key for one history-row removal. Exact same-key and target replay succeeds; a different target conflicts.",
+  schema: { type: "string", minLength: 1, maxLength: 128 },
+};
 
 const lifecycleOperation = (summary: string, responseSchema = "MusicLifecycleResponse", includesIneligibleProof = false) => ({
   summary,
@@ -187,7 +202,7 @@ const paths = {
   },
   "/api/playlists": {
     get: ownerOperation({ summary: "List owner saved playlists", status: "200", response: { type: "array", items: ref("Playlist") } }),
-    post: ownerOperation({ summary: "Create an owner saved playlist", status: "201", response: ref("Playlist"), request: body(ref("PlaylistInput"), "Saved playlist input") }),
+    post: ownerOperation({ summary: "Create an owner saved playlist", status: "201", response: ref("Playlist"), request: body(ref("PlaylistInput"), "Saved playlist input"), parameters: [playlistCreateIdempotencyKeyParameter], errors: { "409": failure("The replay key was reused with different playlist input.", ["IDEMPOTENCY_CONFLICT"]) } }),
   },
   "/api/playlists/{playlistId}": {
     get: ownerOperation({ summary: "Read one owner saved playlist", status: "200", response: ref("Playlist"), parameters: [playlistId], errors: { "404": failure("The owner-predicated playlist was not found.", ["PUBLIC_NOT_FOUND"]) } }),
@@ -195,7 +210,7 @@ const paths = {
     delete: ownerOperation({ summary: "Delete one owner saved playlist", status: "204", parameters: [playlistId], errors: { "404": failure("The owner-predicated playlist was not found.", ["PUBLIC_NOT_FOUND"]) } }),
   },
   "/api/playlists/{playlistId}/songs": {
-    post: ownerOperation({ summary: "Add a saved-playlist song", status: "201", response: ref("PlaylistSong"), request: body(ref("SongInput"), "Saved song input"), parameters: [playlistId], errors: { "404": failure("The owner-predicated playlist was not found.", ["PUBLIC_NOT_FOUND"]) } }),
+    post: ownerOperation({ summary: "Add a saved-playlist song", status: "201", response: ref("PlaylistSong"), request: body(ref("SongInput"), "Saved song input"), parameters: [playlistId, playlistSongIdempotencyKeyParameter], errors: { "404": failure("The owner-predicated playlist was not found.", ["PUBLIC_NOT_FOUND"]), "409": failure("The replay key was reused with different saved-song input.", ["IDEMPOTENCY_CONFLICT"]) } }),
   },
   "/api/playlists/{playlistId}/songs/{songId}": {
     delete: ownerOperation({ summary: "Remove a saved-playlist song", status: "204", parameters: [playlistId, songId], errors: { "404": failure("The owner-predicated song was not found.", ["PUBLIC_NOT_FOUND"]) } }),
@@ -246,10 +261,31 @@ const paths = {
   "/api/music/dashboard": {
     get: ownerOperation({ summary: "Read private owner playback state", status: "200", response: ref("Dashboard") }),
   },
+  "/api/music/queue/append": {
+    post: ownerOperation({
+      summary: "Atomically append owner saved-playlist songs to the active queue",
+      status: "200",
+      response: ref("QueueReplaceResponse"),
+      request: body(ref("QueueAppendInput"), "Expected revision and non-empty ordered owner-predicated saved-song sources"),
+      parameters: [queueIdempotencyKeyParameter],
+      errors: {
+        "400": failure("The resulting queue exceeds its maximum size.", ["REQUEST_INVALID"]),
+        "404": failure("An owner-predicated playlist or song was not found.", ["PUBLIC_NOT_FOUND"]),
+        "409": failure("The queue revision is stale or the replay key conflicts.", ["QUEUE_REVISION_CONFLICT", "IDEMPOTENCY_CONFLICT"]),
+        "503": failure("The queue append is temporarily unavailable.", ["DATABASE_UNAVAILABLE"], true),
+      },
+      description: "The server validates every source against the verified principal, preserves the active queue, appends the ordered saved songs in one transaction, increments the queue revision, and durably stores the exact result for same-key replay for 24 hours.",
+    }),
+  },
+  "/api/music/guest-controls": {
+    get: ownerOperation({ summary: "Read owner guest controls", status: "200", response: ref("GuestControls") }),
+    patch: ownerOperation({ summary: "Update owner guest controls", status: "200", response: ref("GuestControls"), request: body(ref("GuestControlsUpdate"), "Complete guest control state; legacy four-field updates preserve queue visibility") }),
+  },
   "/api/playlist/currently-playing": {
-    post: ownerOperation({ summary: "Set or complete the owner playing song", status: "200", response: ref("Song"), request: body(ref("PlayingInput"), "Song identifier or null to complete playback"), errors: {
+    post: ownerOperation({ summary: "Set or complete the owner playing song", status: "200", response: { oneOf: [ref("Song"), ref("PlaybackCommandResponse")] }, request: body(ref("PlayingInput"), "Song identifier or null to complete playback; new clients include the expected owner queue revision and the server advances it on success"), errors: {
       "204": success("Current playback completed with no response body."),
       "404": failure("The owner-predicated song was not found.", ["PUBLIC_NOT_FOUND"]),
+      "409": failure("The queue or owner playback intent changed.", ["PLAYBACK_REVISION_CONFLICT", "PLAYBACK_QUEUE_REVISION_CONFLICT"]),
     } }),
   },
   "/api/playlist/songs/bulk": {
@@ -263,6 +299,18 @@ const paths = {
   },
   "/api/playlist/history": {
     delete: ownerOperation({ summary: "Clear owner playback history", status: "204" }),
+  },
+  "/api/playlist/history/{songId}": {
+    delete: ownerOperation({
+      summary: "Durably remove one owner history row",
+      status: "204",
+      parameters: [songId, historyRemoveIdempotencyKeyParameter],
+      errors: {
+        "404": failure("The owner-predicated played song was not found.", ["PUBLIC_NOT_FOUND"]),
+        "409": failure("The replay key was reused with a different history target.", ["IDEMPOTENCY_CONFLICT"]),
+      },
+      description: "Only played rows belonging to the verified owner can be removed. The same key and target replay as 204 for 24 hours.",
+    }),
   },
   "/api/youtube/search": {
     post: ownerOperation({ summary: "Run bounded server-only YouTube search", status: "200", response: ref("YouTubeSearchResponse"), request: body(ref("YouTubeSearchInput"), "Search query and optional page token") }),
@@ -448,16 +496,20 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       Song: { type: "object", additionalProperties: false, required: ["id", "userId", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt"], properties: { id: { type: "integer", minimum: 1 }, userId: { type: "integer", minimum: 1 }, youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" }, title: { type: "string" }, artist: { type: "string" }, thumbnailUrl: { type: "string" }, position: { type: "integer", minimum: 0 }, status: { type: "string", enum: ["queued", "playing", "played"] }, playedAt: { type: ["string", "null"], format: "date-time" } } },
       QueueReplaceSource: { type: "object", additionalProperties: false, required: ["playlistId", "songId"], properties: { playlistId: { type: "integer", minimum: 1 }, songId: { type: "integer", minimum: 1 } } },
       QueueReplaceInput: { type: "object", additionalProperties: false, required: ["expectedRevision", "songs"], properties: { expectedRevision: { type: "integer", minimum: 0 }, songs: { type: "array", maxItems: 500, items: ref("QueueReplaceSource") } } },
+      QueueAppendInput: { type: "object", additionalProperties: false, required: ["expectedRevision", "songs"], properties: { expectedRevision: { type: "integer", minimum: 0 }, songs: { type: "array", minItems: 1, maxItems: 500, items: ref("QueueReplaceSource") } } },
       QueueReplaceResponse: { type: "object", additionalProperties: false, required: ["version", "revision", "songs"], properties: { version: { type: "string", const: "music-queue/v1" }, revision: { type: "integer", minimum: 1 }, songs: { type: "array", items: ref("Song") } } },
       PlaylistSong: { type: "object", additionalProperties: false, required: ["id", "playlistId", "youtubeId", "title", "artist", "thumbnailUrl", "position", "addedAt"], properties: { id: { type: "integer", minimum: 1 }, playlistId: { type: "integer", minimum: 1 }, youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" }, title: { type: "string" }, artist: { type: "string" }, thumbnailUrl: { type: "string" }, position: { type: "integer", minimum: 0 }, addedAt: { type: "string", format: "date-time" } } },
       Playlist: { type: "object", additionalProperties: false, required: ["id", "userId", "name", "description", "isVisibleToGuests", "createdAt", "updatedAt", "songs"], properties: { id: { type: "integer", minimum: 1 }, userId: { type: "integer", minimum: 1 }, name: { type: "string" }, description: { type: ["string", "null"] }, isVisibleToGuests: { type: "boolean" }, createdAt: { type: "string", format: "date-time" }, updatedAt: { type: "string", format: "date-time" }, songs: { type: "array", items: ref("PlaylistSong") } } },
-      Dashboard: { type: "object", additionalProperties: false, required: ["queueRevision", "songs", "currentlyPlaying", "playedSongs", "publication"], properties: { queueRevision: { type: "integer", minimum: 0 }, songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } } } },
+      Dashboard: { type: "object", additionalProperties: false, required: ["queueRevision", "playbackRevision", "songs", "currentlyPlaying", "playedSongs", "publication", "guestControls"], properties: { queueRevision: { type: "integer", minimum: 0 }, playbackRevision: { type: "integer", minimum: 0 }, songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } }, guestControls: ref("GuestControls") } },
+      GuestControls: { type: "object", additionalProperties: false, required: ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"], properties: { allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
+      GuestControlsUpdate: { type: "object", additionalProperties: false, required: ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility"], properties: { allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
       PublicTheme: { type: "object", additionalProperties: false, required: ["primary"], properties: { primary: { type: "string" } } },
-      PublicUser: { type: "object", additionalProperties: false, required: ["id", "username", "guestUrl", "venueName", "theme", "allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility"], properties: { id: { type: "integer", minimum: 1 }, username: { type: "string" }, guestUrl: { type: "string" }, venueName: { type: ["string", "null"] }, theme: { oneOf: [ref("PublicTheme"), { type: "null" }] }, allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" } } },
-      PublicPlaylist: { type: "object", additionalProperties: false, required: ["songs", "currentlyPlaying", "playedSongs", "user", "allowGuestPlayOnDevice", "allowRecentlyPlayedVisibility", "playlists"], properties: { songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, user: ref("PublicUser"), allowGuestPlayOnDevice: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, playlists: { type: "array", items: ref("Playlist") } } },
+      PublicUser: { type: "object", additionalProperties: false, required: ["id", "username", "guestUrl", "venueName", "theme", "allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"], properties: { id: { type: "integer", minimum: 1 }, username: { type: "string" }, guestUrl: { type: "string" }, venueName: { type: ["string", "null"] }, theme: { oneOf: [ref("PublicTheme"), { type: "null" }] }, allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
+      PublicPlaylist: { type: "object", additionalProperties: false, required: ["songs", "currentlyPlaying", "playedSongs", "user", "allowGuestPlayOnDevice", "allowRecentlyPlayedVisibility", "allowQueueVisibility", "playlists"], properties: { songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, user: ref("PublicUser"), allowGuestPlayOnDevice: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" }, playlists: { type: "array", items: ref("Playlist") } } },
       SavedReorderInput: { type: "object", additionalProperties: false, required: ["songId", "position"], properties: { songId: { type: "integer", minimum: 1 }, position: { type: "integer", minimum: 0 } } },
       VisibilityInput: { type: "object", additionalProperties: false, required: ["isVisibleToGuests"], properties: { isVisibleToGuests: { type: "boolean" } } },
-      PlayingInput: { type: "object", additionalProperties: false, required: ["songId"], properties: { songId: { type: ["integer", "null"], minimum: 1 } } },
+      PlayingInput: { type: "object", additionalProperties: false, required: ["songId"], properties: { songId: { type: ["integer", "null"], minimum: 1 }, expectedRevision: { type: "integer", minimum: 0 }, expectedPlaybackRevision: { type: "integer", minimum: 0 } } },
+      PlaybackCommandResponse: { type: "object", additionalProperties: false, required: ["version", "revision", "playbackRevision", "song"], properties: { version: { type: "string", const: "music-playback/v1" }, revision: { type: "integer", minimum: 1 }, playbackRevision: { type: "integer", minimum: 0 }, song: { oneOf: [ref("Song"), { type: "null" }] } } },
       BulkSongInput: { type: "object", additionalProperties: false, required: ["songIds"], properties: { songIds: { type: "array", minItems: 1, maxItems: 500, uniqueItems: true, items: { type: "integer", minimum: 1 } } } },
       PositionInput: { type: "object", additionalProperties: false, required: ["position"], properties: { position: { type: "integer", minimum: 0 } } },
       PublicationCommandInput: { type: "object", additionalProperties: false, required: ["mode"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] } } },

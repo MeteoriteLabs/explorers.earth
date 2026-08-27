@@ -24,7 +24,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     });
     expect(source).toContain("github.ref == 'refs/heads/main'");
     expect(source).toContain("platforms: linux/arm64");
-    expect(source).toContain("0018_transactional_queue_replacement");
+    expect(source).toContain("0019_queue_visibility_control");
     expect(source).toContain("pg_dumpall");
     expect(source).toContain("rollback_image");
     expect(source).toContain("trap rollback ERR");

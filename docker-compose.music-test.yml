@@ -55,7 +55,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0018_transactional_queue_replacement
+      MUSIC_MIGRATION_MARKER: 0019_queue_visibility_control
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -91,7 +91,7 @@ services:
       STRAPI_ACCESS_TOKEN: fixture-read-only-token
       STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters
       STRAPI_FIXTURE_URL: http://127.0.0.1:51337
-      ALLOWED_ORIGINS: http://127.0.0.1:55173
+      ALLOWED_ORIGINS: http://localhost:55173
       MUSIC_MODE: fixture
       MUSIC_FIXTURE_VERSION: "1"
       SESSION_SECRET: fixture-session-secret-at-least-32-characters
@@ -130,7 +130,7 @@ services:
       MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
       MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
       MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
-      MUSIC_EXPECTED_MIGRATION_ID: 0018_transactional_queue_replacement
+      MUSIC_EXPECTED_MIGRATION_ID: 0019_queue_visibility_control
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]
@@ -154,10 +154,13 @@ services:
       context: .
       dockerfile: explorers-earth/Dockerfile.music-fixture
       args:
-        VITE_API_URL: http://127.0.0.1:55173/graphql
-        VITE_REST_API_URL: http://127.0.0.1:55173
+        VITE_API_URL: http://localhost:55173/graphql
+        VITE_REST_API_URL: http://localhost:55173
         VITE_PUBLIC_ACCESS_TOKEN: fixture-public-token
-        VITE_LOCAL_TUNES_API_URL: https://music-fixture.invalid
+        # The fixture browser calls this same-origin Nginx route. Nginx then
+        # reaches only the branch-local Tunes service on the fixture network.
+        VITE_LOCAL_TUNES_API_URL: http://localhost:55173
+        MUSIC_FIXTURE_BUNDLE_CHECK: "1"
     ports: ["127.0.0.1:55173:80"]
     depends_on:
       tunes: { condition: service_healthy }

@@ -44,7 +44,7 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
       const commonTableExpressions = new Set(
         [...statement.matchAll(/(?:\bWITH|,)\s*([a-z_][a-z0-9_]*)\s+AS\s*\(/gi)].map((match) => match[1].toLowerCase()),
       );
-      for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+(?:OF|SKIP)\b)|INTO)\s+["']?([a-z_][a-z0-9_]*)["']?/gi)) {
+      for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+(?:OF|SKIP|SET)\b)|INTO)\s+["']?([a-z_][a-z0-9_]*)["']?/gi)) {
         const table = match[1].toLowerCase();
         const statementOffset = statement.lastIndexOf(";", match.index ?? 0) + 1;
         const statementPrefix = statement.slice(statementOffset, match.index);
