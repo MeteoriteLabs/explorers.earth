@@ -425,12 +425,17 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
   const emptyCreateOpener = useRef<HTMLButtonElement>(null);
   const [createDialogOpener, setCreateDialogOpener] = useState<RefObject<HTMLButtonElement>>(createOpener);
   const sharingOpener = useRef<HTMLButtonElement>(null);
+  const sharingMenuItem = useRef<HTMLButtonElement>(null);
   const activeIndex = Math.max(0, data.playlists.findIndex((playlist) => playlist.id === activeId));
   const active = data.playlists[activeIndex];
 
   useEffect(() => {
     if (!data.playlists.some((playlist) => playlist.id === activeId)) setActiveId(data.playlists[0]?.id);
   }, [activeId, data.playlists]);
+
+  useEffect(() => {
+    if (actionMenuOpen) sharingMenuItem.current?.focus();
+  }, [actionMenuOpen]);
 
   const tabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (!data.playlists.length || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -463,9 +468,9 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
         <div data-music-page-actions className="relative inline-flex w-full sm:w-auto">
           <button ref={createOpener} type="button" onClick={() => { setCreateDialogOpener(createOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} flex-1 rounded-r-none bg-dashboard-accent text-[var(--dash-accent-text)] sm:flex-none`}><Plus className="mr-2 inline h-4 w-4" />New playlist</button>
           <button ref={sharingOpener} type="button" aria-label="Open playlist and sharing menu" aria-expanded={actionMenuOpen} onClick={() => setActionMenuOpen((open) => !open)} disabled={readOnly} className={`${buttonClass} rounded-l-none border-l border-black/20 bg-dashboard-accent px-3 text-[var(--dash-accent-text)]`}><ChevronDown className="h-4 w-4" /></button>
-          {actionMenuOpen && <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-56 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
+          {actionMenuOpen && <div role="menu" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setActionMenuOpen(false); sharingOpener.current?.focus(); } }} className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-56 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
             <div className="px-3 py-2 text-sm text-dashboard-muted"><span className="block font-medium text-dashboard">Public visibility</span>{data.dashboard?.publication.mode === "public" ? "On" : "Off"}</div>
-            <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setSharingOpen(true); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
+            <button ref={sharingMenuItem} role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setSharingOpen(true); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
           </div>}
         </div>
       </div>

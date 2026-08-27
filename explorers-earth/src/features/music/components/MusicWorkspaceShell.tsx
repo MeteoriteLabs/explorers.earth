@@ -24,7 +24,7 @@ export function MusicWorkspaceShell({ player, search, queue, history, guestContr
     {loading && <p role="status" aria-live="polite" className="mb-3 text-sm text-dashboard-light">Refreshing Music…</p>}
     {stale && <p role="status" className="mb-3 rounded-xl border border-dashboard p-3 text-sm text-dashboard-light">Showing saved Music. Changes are unavailable until the connection returns.</p>}
     <section ref={searchRegion} id="music-search-region" aria-label="Music search region" className="rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 md:p-5">{search}</section>
-    <section id="music-player-region" aria-label="Music player region" className="sticky top-0 z-20 mt-5 rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 shadow-lg md:static md:p-5">{player}</section>
+    <section id="music-player-region" aria-label="Music player region" className="sticky top-16 z-20 mt-5 rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 shadow-lg md:static md:p-5">{player}</section>
     {empty && <section className="mt-5 rounded-2xl border border-dashboard bg-dashboard-sidebar p-6 text-center"><h2 className="text-xl font-semibold">Your queue is ready</h2><p className="mt-2 text-dashboard-light">Find something you love and start listening.</p><button type="button" onClick={() => searchRegion.current?.querySelector<HTMLElement>('input[type="search"], input, button, [tabindex]:not([tabindex="-1"])')?.focus()} className="mt-4 min-h-11 min-w-11 rounded-xl bg-dashboard-accent px-4 font-semibold text-[var(--dash-accent-text)]">Add your first song</button></section>}
     <section className="mt-5">
       <div role="tablist" aria-label="Music content" className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">

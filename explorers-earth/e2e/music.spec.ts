@@ -30,6 +30,7 @@ type MockOptions = {
   ensureFailures?: number;
   ensureDelayMs?: number;
   ensureGate?: { call: number; wait: Promise<void> };
+  ownerWorkspace?: boolean;
 };
 
 async function installMusicMocks(page: Page, options: MockOptions = {}) {
@@ -126,6 +127,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
       currentlyPlaying: null,
       playedSongs: [],
       publication: { mode: "private", publicSlug: "public-slug-123" },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false },
     }),
   }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({
@@ -148,6 +150,22 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
   });
   await page.route("**/api/playlists/*/visibility", (route) => route.fulfill({ status: 204 }));
   await page.route("**/api/playlists/*/reorder", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/music/guest-controls", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: route.request().postData() ?? "{}",
+  }));
+  await page.route("**/api/music/features", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      ownerWorkspace: options.ownerWorkspace ?? false,
+      guestWorkspace: false,
+      playlistImports: false,
+      exposureId: "music-e2e-exposure",
+      expiresAt: new Date(Date.now() + 600_000).toISOString(),
+    }),
+  }));
 
   return {
     ensureCalls: () => ensureCalls,
@@ -155,6 +173,13 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
     warnings,
     pageErrors,
   };
+}
+
+async function openSharingSettings(page: Page) {
+  const opener = page.getByRole("button", { name: "Open playlist and sharing menu" });
+  await opener.click();
+  await page.getByRole("menuitem", { name: "Sharing settings" }).click();
+  return opener;
 }
 
 test.beforeEach(async ({ context }) => {
@@ -234,8 +259,7 @@ test("sharing dialog traps focus, closes with Escape, and exposes only approved 
   await installMusicMocks(page);
   await page.setViewportSize({ width: 375, height: 820 });
   await page.goto("/recommendations/music");
-  const opener = page.getByRole("button", { name: "Sharing settings" });
-  await opener.click();
+  const opener = await openSharingSettings(page);
   const dialog = page.getByRole("dialog", { name: "Music sharing" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("radio")).toHaveCount(3);
@@ -263,8 +287,7 @@ test("sharing dialog traps focus, closes with Escape, and exposes only approved 
 test("sharing save uses one canonical publication command and restores focus", async ({ page }) => {
   const audit = await installMusicMocks(page);
   await page.goto("/recommendations/music");
-  const opener = page.getByRole("button", { name: "Sharing settings" });
-  await opener.click();
+  const opener = await openSharingSettings(page);
   const dialog = page.getByRole("dialog", { name: "Music sharing" });
   await dialog.getByRole("radio", { name: "Public" }).check();
   await dialog.getByRole("button", { name: "Save sharing" }).click();
@@ -342,8 +365,9 @@ test("playlist tabs, keyboard reorder, and polite announcement work without muta
     },
     { id: 11, name: "Quiet", description: null, isVisibleToGuests: true, songs: [] },
   ];
-  await installMusicMocks(page, { playlists });
+  await installMusicMocks(page, { playlists, ownerWorkspace: true });
   await page.goto("/recommendations/music");
+  await page.getByRole("tab", { name: "Playlists" }).click();
   const firstTab = page.getByRole("tab", { name: "Road songs" });
   await firstTab.focus();
   await page.keyboard.press("ArrowRight");

@@ -143,8 +143,8 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   if (!currentSong) return <section aria-label="Music player"><p role="status">Choose a song to start listening.</p></section>;
 
   return (
-    <section aria-label="Music player" className="motion-reduce:transition-none">
-      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate">{currentSong.title}</h2><p className="truncate">{currentSong.artist}</p></div><button type="button" style={controlSize} aria-label={showVideo ? "Hide video" : "Show video"} aria-pressed={showVideo} onClick={() => setShowVideo((visible) => !visible)} className="shrink-0 rounded-xl border border-dashboard px-3">{showVideo ? "Hide video" : "Show video"}</button></div>
+    <section aria-label="Music player" className="space-y-4 motion-reduce:transition-none">
+      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-lg font-semibold text-dashboard">{currentSong.title}</h2><p className="truncate text-sm text-dashboard-muted">{currentSong.artist}</p></div><button type="button" style={controlSize} aria-label={showVideo ? "Hide video" : "Show video"} aria-pressed={showVideo} onClick={() => setShowVideo((visible) => !visible)} className="shrink-0 rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold text-dashboard">{showVideo ? "Hide video" : "Show video"}</button></div>
       <div data-testid="video-surface" aria-hidden={!showVideo} className={showVideo ? "mt-4 aspect-video overflow-hidden rounded-xl" : "h-0 overflow-hidden opacity-0 pointer-events-none"}>
       <ReactPlayer
         ref={mediaRef}
@@ -162,21 +162,23 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
       />
       </div>
-      <div>
-        <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !previousSong || transitionPending} onClick={() => { void transition(previousSong, "previous"); }}>Previous</button>
-        <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }}>{playing ? "Pause" : "Play"}</button>
-        <button type="button" style={controlSize} aria-label="Next song" disabled={readOnly || !queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }}>Next</button>
+      <div className="grid grid-cols-3 gap-2">
+        <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !previousSong || transitionPending} onClick={() => { void transition(previousSong, "previous"); }} className="rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold disabled:opacity-45">Previous</button>
+        <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }} className="rounded-xl bg-dashboard-accent px-3 text-sm font-semibold text-[var(--dash-accent-text)]">{playing ? "Pause" : "Play"}</button>
+        <button type="button" style={controlSize} aria-label="Next song" disabled={readOnly || !queuedSongs[0] || transitionPending} onClick={() => { void transition(queuedSongs[0], "next"); }} className="rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold disabled:opacity-45">Next</button>
       </div>
-      <label>Playback position
-        <input style={{ minHeight: "44px" }} aria-label="Playback position" type="range" min="0" max={duration || 0} value={progress} aria-valuetext={`${clock(progress)} of ${clock(duration)}`} onChange={(event) => {
+      <label className="grid gap-1 text-sm font-medium text-dashboard"><span className="flex justify-between"><span>Playback position</span><span className="text-dashboard-muted">{clock(progress)} / {clock(duration)}</span></span>
+        <input className="w-full accent-dashboard-accent" style={{ minHeight: "44px" }} aria-label="Playback position" type="range" min="0" max={duration || 0} value={progress} aria-valuetext={`${clock(progress)} of ${clock(duration)}`} onChange={(event) => {
           const nextTime = Number(event.target.value); setProgress(nextTime);
           if (mediaRef.current) mediaRef.current.currentTime = nextTime;
         }} />
       </label>
-      <label>Volume
-        <input style={{ minHeight: "44px" }} aria-label="Volume" type="range" min="0" max="100" value={Math.round(volume * 100)} aria-valuetext={`${Math.round(volume * 100)} percent`} onChange={(event) => setVolume(Number(event.target.value) / 100)} />
-      </label>
-      <button type="button" style={controlSize} aria-label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((value) => !value)}>{muted ? "Unmute" : "Mute"}</button>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+        <label className="grid gap-1 text-sm font-medium text-dashboard"><span>Volume</span>
+          <input className="w-full accent-dashboard-accent" style={{ minHeight: "44px" }} aria-label="Volume" type="range" min="0" max="100" value={Math.round(volume * 100)} aria-valuetext={`${Math.round(volume * 100)} percent`} onChange={(event) => setVolume(Number(event.target.value) / 100)} />
+        </label>
+        <button type="button" style={controlSize} aria-label={muted ? "Unmute" : "Mute"} onClick={() => setMuted((value) => !value)} className="rounded-xl border border-dashboard bg-dashboard-muted px-3 text-sm font-semibold">{muted ? "Unmute" : "Mute"}</button>
+      </div>
       {message && <p role="status" aria-live="polite">{message}</p>}
       {error && <p role="alert">{error}</p>}
     </section>

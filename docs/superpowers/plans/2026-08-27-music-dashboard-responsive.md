@@ -111,12 +111,12 @@
 - Produces: repeatable desktop/mobile qualification for the accepted dashboard.
 - Consumes: local Music fixture services and existing authenticated test harness.
 
-- [ ] Write failing browser assertions for in-page action placement, unified discovery, audio/video modes, tab reachability, mobile touch layout, sticky player, and no horizontal overflow.
-- [ ] Run those Playwright cases and confirm they fail against the pre-change UI for the expected reasons.
-- [ ] Make only presentation/accessibility corrections needed for the browser contract.
-- [ ] Run focused Vitest, the complete Music component suite, production build, and targeted Playwright suites.
-- [ ] Start the local authenticated stack and perform UI UAT for search, URL, player, queue, history, playlists, sharing, guest controls, responsive layouts, console, and network failures.
-- [ ] Commit Task 5 with `test(music): qualify responsive dashboard workflows`.
+- [x] Write failing browser assertions for in-page action placement, unified discovery, audio/video modes, tab reachability, mobile touch layout, sticky player, and no horizontal overflow.
+- [x] Run those Playwright cases and confirm they fail against the pre-change UI for the expected reasons.
+- [x] Make only presentation/accessibility corrections needed for the browser contract.
+- [x] Run focused Vitest, the complete Music component suite, production build, and targeted Playwright suites.
+- [x] Start the local authenticated stack and perform UI UAT for search, URL, player, queue, history, playlists, sharing, guest controls, responsive layouts, console, and network failures.
+- [x] Commit Task 5 with `test(music): qualify responsive dashboard workflows`.
 
 ## Self-review
 

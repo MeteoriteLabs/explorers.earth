@@ -132,7 +132,7 @@ test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL 
     await expect(queueRegion.getByRole("checkbox", { name: /^Select / })).toHaveCount(0);
   }
 
-  await page.getByRole("searchbox", { name: "Search music" }).fill("fixture journey");
+  await page.getByRole("searchbox", { name: "Search music or paste a URL" }).fill("fixture journey");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("checkbox", { name: "Select UAT First song" }).check();
   await page.getByRole("checkbox", { name: "Select UAT Second song" }).check();
@@ -145,8 +145,8 @@ test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL 
   const transitionResponse = await transitionResponsePromise;
   expect(await transitionResponse.json()).toMatchObject({ title: "UAT Second song", status: "playing" });
   await expect(page.getByRole("region", { name: "Music player", exact: true })).toContainText("UAT Second song");
-  await page.getByRole("tab", { name: "Recently played" }).click();
-  await expect(page.getByRole("tabpanel", { name: "Recently played" })).toContainText("UAT First song");
+  await page.getByRole("tab", { name: "Recent" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Recent" })).toContainText("UAT First song");
 
   const ensure = requests.find(({ path }) => path === "/api/music/identity/ensure");
   expect(ensure).toMatchObject({ authorization: "Bearer fixture-read-only-token", xUsername: undefined });
@@ -158,8 +158,8 @@ test("actual Google callback reaches real Tunes, fixture Strapi, and PostgreSQL 
   await page.reload();
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Music player", exact: true })).toContainText("UAT Second song");
-  await page.getByRole("tab", { name: "Recently played" }).click();
-  await expect(page.getByRole("tabpanel", { name: "Recently played" })).toContainText("UAT First song");
+  await page.getByRole("tab", { name: "Recent" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Recent" })).toContainText("UAT First song");
   expect(requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBeGreaterThanOrEqual(2);
   const browserStorage = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(browserStorage).not.toMatch(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
@@ -174,15 +174,22 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await page.goto("/recommendations/music");
 
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
-  const mobileNavigation = page.getByRole("navigation", { name: "Music workspace" });
-  await mobileNavigation.getByRole("button", { name: "Player" }).click();
   await expect(page.getByRole("region", { name: "Music player", exact: true })).toBeVisible();
-  await mobileNavigation.getByRole("button", { name: "Search" }).click();
-  await expect(page.getByRole("searchbox", { name: "Search music" })).toBeVisible();
-  await mobileNavigation.getByRole("button", { name: "Queue" }).click();
+  await expect(page.getByRole("searchbox", { name: "Search music or paste a URL" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Music workspace" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Queue" }).click();
   await expect(page.getByRole("region", { name: "Queue" })).toBeVisible();
-  await mobileNavigation.getByRole("button", { name: "More" }).click();
-  await expect(page.getByRole("tabpanel", { name: "Recently played" })).toBeVisible();
+  await page.getByRole("tab", { name: "Guest controls" }).click();
+  const songRequests = page.getByRole("switch", { name: "Allow song requests" });
+  const originalSongRequests = await songRequests.isChecked();
+  await songRequests.click();
+  await expect(songRequests).toHaveAttribute("aria-checked", String(!originalSongRequests));
+  await page.reload();
+  await page.getByRole("tab", { name: "Guest controls" }).click();
+  await expect(page.getByRole("switch", { name: "Allow song requests" })).toHaveAttribute("aria-checked", String(!originalSongRequests));
+  await page.getByRole("tab", { name: "Recent" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Recent" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await testInfo.attach("mobile-owner-workspace", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   assertCleanJourney();
 });

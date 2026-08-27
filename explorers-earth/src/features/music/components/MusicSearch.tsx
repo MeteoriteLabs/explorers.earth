@@ -129,8 +129,8 @@ export function MusicSearch({ searchClient, queueClient, onChanged, playlists = 
     </form>
     {discoveryErrorText && <div role="alert" aria-label="Music discovery error" className="space-y-2"><p>{discoveryErrorText}</p>{discoveryError === "search" && <button type="button" onClick={() => void runSearch()} className="min-h-11 px-4">Try search again</button>}</div>}
     {mutationErrorText && <div role="alert" aria-label="Queue update error" className="space-y-2"><p>{mutationErrorText}</p>{mutationError === "refresh" && <button type="button" disabled={mutationBusy} onClick={() => void retryRefresh()} className="min-h-11 px-4">Retry refreshing queue</button>}</div>}
-    <div aria-live="polite" aria-label="Music discovery status" className="sr-only">{searchBusy ? "Searching" : ""}</div>
-    <div aria-live="polite" aria-label="Queue update status" className="sr-only">{mutationBusy ? "Updating queue" : ""}</div>
+    <div role="status" aria-live="polite" aria-label="Music discovery status" className="sr-only">{searchBusy ? "Searching" : ""}</div>
+    <div role="status" aria-live="polite" aria-label="Queue update status" className="sr-only">{mutationBusy ? "Updating queue" : ""}</div>
     {results?.length === 0 && <p>No music found.</p>}
     {results && results.length > 0 && <>
       <ul className="space-y-2">{results.map((video) => { const pending = pendingPlay?.youtubeId === video.id.videoId ? pendingPlay : null; return <li key={video.id.videoId} className="flex items-center gap-3">

@@ -28,7 +28,9 @@ describe("Music workspace UI", () => {
   async function openSharingSettings() {
     const opener = screen.getByRole("button", { name: "Open playlist and sharing menu" });
     await userEvent.click(opener);
-    await userEvent.click(screen.getByRole("menuitem", { name: "Sharing settings" }));
+    const item = screen.getByRole("menuitem", { name: "Sharing settings" });
+    expect(item).toHaveFocus();
+    await userEvent.click(item);
     return opener;
   }
   it("composes the approved owner player, search, queue, and history surface", async () => {
