@@ -338,7 +338,7 @@
       "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 391
+      "line": 392
     },
     {
       "method": "POST",
@@ -348,7 +348,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 482
+      "line": 483
     },
     {
       "method": "POST",
@@ -358,7 +358,7 @@
       "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 657
+      "line": 658
     },
     {
       "method": "GET",
@@ -368,7 +368,7 @@
       "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 723
+      "line": 724
     },
     {
       "method": "GET",
@@ -378,7 +378,7 @@
       "policy": "standalone-native-only",
       "lifecycle": "request",
       "source": "tunes/server/auth.ts",
-      "line": 732
+      "line": 733
     },
     {
       "method": "GET",
