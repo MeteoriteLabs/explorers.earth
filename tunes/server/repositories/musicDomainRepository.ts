@@ -799,7 +799,10 @@ export class MusicDomainRepository {
       );
       if ((removed.rowCount ?? 0) > 0 && removed.rows.some(({ status }) => status === "queued" || status === "playing")) {
         await this.normalizeActiveQueue(client, musicUserId);
-        await this.advanceQueueRevision(client, musicUserId);
+        const nextRevision = await this.advanceQueueRevision(client, musicUserId);
+        if (removed.rows.some(({ status }) => status === "playing")) {
+          await this.recordPlaybackRevision(client, musicUserId, nextRevision);
+        }
       }
       return removed.rowCount === 1;
     });
@@ -813,7 +816,10 @@ export class MusicDomainRepository {
       );
       if (removed.rows.some(({ status }) => status === "queued" || status === "playing")) {
         await this.normalizeActiveQueue(client, musicUserId);
-        await this.advanceQueueRevision(client, musicUserId);
+        const nextRevision = await this.advanceQueueRevision(client, musicUserId);
+        if (removed.rows.some(({ status }) => status === "playing")) {
+          await this.recordPlaybackRevision(client, musicUserId, nextRevision);
+        }
       }
       return removed.rowCount ?? 0;
     });
