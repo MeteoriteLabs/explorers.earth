@@ -7,26 +7,39 @@ const panels = {
   search: <section aria-label="search-content"><label>Scoped search<input type="search" /></label></section>,
   queue: <section aria-label="queue-content">Queue content</section>,
   history: <section aria-label="history-content">History content</section>,
+  guestControls: <section aria-label="guest-controls-content">Guest controls content</section>,
+  playlists: <section aria-label="playlists-content">Playlists content</section>,
 };
 
 describe("MusicWorkspaceShell", () => {
-  it("anchors the player and exposes keyboard-navigable Queue and Recently played tabs", () => {
+  it("places search before the player and exposes four keyboard-navigable workspace tabs", () => {
     render(<MusicWorkspaceShell {...panels} />);
     expect(screen.getByLabelText("Music player region")).toContainElement(screen.getByLabelText("player-content"));
+    const workspace = screen.getByRole("region", { name: "Music workspace" });
+    const searchRegion = screen.getByLabelText("Music search region");
+    const playerRegion = screen.getByLabelText("Music player region");
+    expect(workspace.compareDocumentPosition(searchRegion) & Node.DOCUMENT_POSITION_CONTAINED_BY).toBeTruthy();
+    expect(searchRegion.compareDocumentPosition(playerRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const queue = screen.getByRole("tab", { name: "Queue" });
     expect(queue).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(queue, { key: "ArrowRight" });
-    const history = screen.getByRole("tab", { name: "Recently played" });
+    const guestControls = screen.getByRole("tab", { name: "Guest controls" });
+    expect(guestControls).toHaveFocus();
+    expect(screen.getByRole("tabpanel")).toContainElement(screen.getByLabelText("guest-controls-content"));
+    fireEvent.keyDown(guestControls, { key: "ArrowRight" });
+    const history = screen.getByRole("tab", { name: "Recent" });
     expect(history).toHaveFocus();
-    expect(screen.getByRole("tabpanel")).toContainElement(screen.getByLabelText("history-content"));
     fireEvent.keyDown(history, { key: "ArrowRight" });
+    const playlists = screen.getByRole("tab", { name: "Playlists" });
+    expect(playlists).toHaveFocus();
+    fireEvent.keyDown(playlists, { key: "ArrowRight" });
     expect(queue).toHaveFocus();
     fireEvent.keyDown(queue, { key: "ArrowLeft" });
-    expect(history).toHaveFocus();
-    fireEvent.keyDown(history, { key: "Home" });
+    expect(playlists).toHaveFocus();
+    fireEvent.keyDown(playlists, { key: "Home" });
     expect(queue).toHaveFocus();
     fireEvent.keyDown(queue, { key: "End" });
-    expect(history).toHaveFocus();
+    expect(playlists).toHaveFocus();
   });
 
   it("keeps the shell during loading, marks stale content read-only, and offers an empty queue CTA", () => {
@@ -38,24 +51,21 @@ describe("MusicWorkspaceShell", () => {
     expect(screen.getByRole("button", { name: "Add your first song" })).toHaveClass("min-h-11", "min-w-11");
   });
 
-  it("provides mobile Player, Queue, Search, and More navigation without horizontal page overflow", () => {
+  it("uses a horizontally scrollable touch-safe tab row without a second fixed mobile navigation", () => {
     render(<MusicWorkspaceShell {...panels} />);
-    const nav = screen.getByRole("navigation", { name: "Music workspace" });
-    expect(nav).toHaveClass("bottom-[calc(4rem+env(safe-area-inset-bottom))]");
-    expect(nav).toHaveTextContent("Player"); expect(nav).toHaveTextContent("Queue"); expect(nav).toHaveTextContent("Search"); expect(nav).toHaveTextContent("More");
-    const more = screen.getByRole("button", { name: "More" });
-    expect(more).toHaveAttribute("aria-controls", "music-history-panel");
-    fireEvent.click(more);
-    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "music-history-tab");
-    expect(screen.getByRole("tabpanel")).toContainElement(screen.getByLabelText("history-content"));
+    const tabs = screen.getByRole("tablist", { name: "Music content" });
+    expect(tabs).toHaveClass("overflow-x-auto");
+    for (const name of ["Queue", "Guest controls", "Recent", "Playlists"]) {
+      expect(screen.getByRole("tab", { name })).toHaveClass("min-h-11", "min-w-11");
+    }
+    expect(screen.queryByRole("navigation", { name: "Music workspace" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Music workspace" }).className).toContain("overflow-x-hidden");
   });
 
-  it("opens the scoped mobile Search panel and focuses its visible input from the empty CTA", () => {
+  it("focuses the always-visible unified search input from the empty CTA", () => {
     render(<MusicWorkspaceShell {...panels} empty />);
     fireEvent.click(screen.getByRole("button", { name: "Add your first song" }));
-    expect(screen.getByRole("button", { name: "Search" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByLabelText("Scoped search")).toHaveFocus();
-    expect(screen.getByLabelText("search-content").parentElement).toHaveClass("block");
+    expect(screen.getByLabelText("search-content").parentElement).not.toHaveClass("hidden");
   });
 });

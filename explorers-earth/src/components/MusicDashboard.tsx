@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
-import { Copy, ListMusic, Plus, Settings2 } from "lucide-react";
+import { ChevronDown, Copy, ListMusic, Plus, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import type { TunesDashboardData } from "../hooks/useTunesDashboard";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
@@ -43,6 +43,8 @@ function CompleteMusicDashboard({ data, readOnly }: Pick<MusicDashboardProps, "d
     search={readOnly ? <fieldset disabled aria-label="Music search unavailable">{discovery}</fieldset> : discovery}
     queue={readOnly ? <fieldset disabled aria-label="Queue changes unavailable">{queue}</fieldset> : queue}
     history={readOnly ? <fieldset disabled aria-label="History changes unavailable">{history}</fieldset> : history}
+    guestControls={<p className="text-sm text-dashboard-muted">Choose what guests can see and do on your public Music page.</p>}
+    playlists={<p className="text-sm text-dashboard-muted">Your saved playlists are managed below.</p>}
   />;
 }
 
@@ -412,9 +414,12 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, announce 
 export default function MusicDashboard({ data, scope, readOnly = false, complete = false }: MusicDashboardProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [sharingOpen, setSharingOpen] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | undefined>(data.playlists[0]?.id);
   const [announcement, setAnnouncement] = useState("");
   const createOpener = useRef<HTMLButtonElement>(null);
+  const emptyCreateOpener = useRef<HTMLButtonElement>(null);
+  const [createDialogOpener, setCreateDialogOpener] = useState<RefObject<HTMLButtonElement>>(createOpener);
   const sharingOpener = useRef<HTMLButtonElement>(null);
   const activeIndex = Math.max(0, data.playlists.findIndex((playlist) => playlist.id === activeId));
   const active = data.playlists[activeIndex];
@@ -435,9 +440,15 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
   return (
     <div className="space-y-5">
       {complete && <CompleteMusicDashboard data={data} readOnly={readOnly} />}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <button ref={sharingOpener} type="button" disabled={readOnly} onClick={() => setSharingOpen(true)} className={`${buttonClass} w-full bg-dashboard-muted text-dashboard sm:w-auto`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
-        {data.playlists.length > 0 && <button ref={createOpener} type="button" onClick={() => setCreateOpen(true)} disabled={readOnly} className={`${buttonClass} w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}><Plus className="mr-2 inline h-4 w-4" />Create playlist</button>}
+      <div className="flex justify-end">
+        <div data-music-page-actions className="relative inline-flex w-full sm:w-auto">
+          <button ref={createOpener} type="button" onClick={() => { setCreateDialogOpener(createOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} flex-1 rounded-r-none bg-dashboard-accent text-[var(--dash-accent-text)] sm:flex-none`}><Plus className="mr-2 inline h-4 w-4" />New playlist</button>
+          <button ref={sharingOpener} type="button" aria-label="Open playlist and sharing menu" aria-expanded={actionMenuOpen} onClick={() => setActionMenuOpen((open) => !open)} disabled={readOnly} className={`${buttonClass} rounded-l-none border-l border-black/20 bg-dashboard-accent px-3 text-[var(--dash-accent-text)]`}><ChevronDown className="h-4 w-4" /></button>
+          {actionMenuOpen && <div role="menu" className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-56 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
+            <div className="px-3 py-2 text-sm text-dashboard-muted"><span className="block font-medium text-dashboard">Public visibility</span>{data.dashboard?.publication.mode === "public" ? "On" : "Off"}</div>
+            <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setSharingOpen(true); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
+          </div>}
+        </div>
       </div>
 
       {data.playlists.length === 0 ? (
@@ -445,7 +456,7 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-muted text-dashboard-accent"><ListMusic className="h-6 w-6" /></div>
           <h2 className="mt-4 text-xl font-semibold text-dashboard">Create your first playlist</h2>
           <p className="mx-auto mt-2 max-w-md text-base text-dashboard-muted">Build a playlist to collect and share the music you love.</p>
-          <button ref={createOpener} type="button" onClick={() => setCreateOpen(true)} disabled={readOnly} className={`${buttonClass} mt-6 w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}>Create playlist</button>
+          <button ref={emptyCreateOpener} type="button" onClick={() => { setCreateDialogOpener(emptyCreateOpener); setCreateOpen(true); }} disabled={readOnly} className={`${buttonClass} mt-6 w-full bg-dashboard-accent text-[var(--dash-accent-text)] sm:w-auto`}>Create playlist</button>
         </section>
       ) : (
         <>
@@ -459,7 +470,7 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
       )}
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
-      {createOpen && <CreatePlaylistDialog onClose={() => setCreateOpen(false)} opener={createOpener} onCreated={data.refetch} />}
+      {createOpen && <CreatePlaylistDialog onClose={() => setCreateOpen(false)} opener={createDialogOpener} onCreated={data.refetch} />}
       {sharingOpen && <SharingDialog data={data} scope={scope} onClose={() => setSharingOpen(false)} opener={sharingOpener} />}
     </div>
   );

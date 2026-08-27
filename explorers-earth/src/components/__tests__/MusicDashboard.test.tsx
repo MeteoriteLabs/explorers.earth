@@ -25,17 +25,30 @@ function deferred<T>() {
 
 describe("Music workspace UI", () => {
   afterEach(() => vi.restoreAllMocks());
-  it("composes the approved owner player, search, queue, and history surface", () => {
+  async function openSharingSettings() {
+    const opener = screen.getByRole("button", { name: "Open playlist and sharing menu" });
+    await userEvent.click(opener);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sharing settings" }));
+    return opener;
+  }
+  it("composes the approved owner player, search, queue, and history surface", async () => {
     const playlists = [{ id: 1, name: "Saved mix", description: null, isVisibleToGuests: false, songs: [] }];
     render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
     expect(screen.getByLabelText("Music player region")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Find music" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Queue" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Recently played" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Guest controls" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Recent" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Playlists" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add your first song" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Saved mix" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create playlist" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sharing settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New playlist" })).toBeInTheDocument();
+    const menu = screen.getByRole("button", { name: "Open playlist and sharing menu" });
+    expect(menu.closest("[data-music-page-actions]" )).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sharing settings" })).not.toBeInTheDocument();
+    await userEvent.click(menu);
+    expect(screen.getByRole("menuitem", { name: "Sharing settings" })).toBeInTheDocument();
+    expect(screen.getByText("Public visibility")).toBeInTheDocument();
   });
 
   it("exposes saved-playlist recovery and atomic queue replacement actions", async () => {
@@ -142,7 +155,7 @@ describe("Music workspace UI", () => {
 
   it("offers only Private, Unlisted, and Public with mode-specific copy under Music", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     expect(screen.getByRole("dialog", { name: "Music sharing" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["private", "unlisted", "public"]);
     expect(screen.getByText("Only you can open this Music workspace.")).toBeInTheDocument();
@@ -153,8 +166,7 @@ describe("Music workspace UI", () => {
 
   it("closes dialogs with Escape and returns focus to the opener", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
-    const opener = screen.getByRole("button", { name: "Sharing settings" });
-    await userEvent.click(opener);
+    const opener = await openSharingSettings();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
@@ -189,12 +201,11 @@ describe("Music workspace UI", () => {
       .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
     const data = { ...base, refetch: vi.fn(async () => undefined) };
     render(<MusicDashboard data={data} scope={scope} />);
-    const opener = screen.getByRole("button", { name: "Sharing settings" });
-    await userEvent.click(opener);
+    const opener = await openSharingSettings();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(opener).toHaveFocus();
 
-    await userEvent.click(opener);
+    await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     const save = screen.getByRole("button", { name: "Save sharing" });
     await userEvent.click(save);
@@ -213,7 +224,7 @@ describe("Music workspace UI", () => {
     const pending = deferred<{ version: "music-publication/v1"; publication: { mode: "public"; publicSlug: string } }>();
     vi.spyOn(musicWorkspaceClient, "setPublication").mockReturnValue(pending.promise);
     render(<MusicDashboard data={base} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
     const dialog = screen.getByRole("dialog", { name: "Music sharing" });
@@ -237,7 +248,7 @@ describe("Music workspace UI", () => {
       .mockRejectedValueOnce(new Error("malformed successful response"))
       .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
     const first = render(<MusicDashboard data={base} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
@@ -247,7 +258,7 @@ describe("Music workspace UI", () => {
     first.unmount();
 
     render(<MusicDashboard data={base} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
@@ -272,7 +283,7 @@ describe("Music workspace UI", () => {
       .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
 
     render(<MusicDashboard data={base} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
@@ -284,14 +295,14 @@ describe("Music workspace UI", () => {
 
   it("keeps recovery and sharing guidance at the approved body-size token", async () => {
     render(<MusicDashboard data={base} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Unlisted" }));
     expect(screen.getByText("Save to create a new private link. Creating another link replaces the previous one.")).toHaveClass("text-base");
   });
 
   it("shows the canonical link and preview affordance for a public workspace", async () => {
     render(<MusicDashboard data={{ ...base, dashboard: { ...base.dashboard, publication: { mode: "public", publicSlug: "public-slug-123" } } }} scope={scope} />);
-    await userEvent.click(screen.getByRole("button", { name: "Sharing settings" }));
+    await openSharingSettings();
     expect(screen.getByLabelText("Music share link")).toHaveValue(`${window.location.origin}/music/share/public-slug-123`);
     expect(screen.getByRole("link", { name: "Preview public Music page" })).toHaveAttribute("target", "_blank");
   });
