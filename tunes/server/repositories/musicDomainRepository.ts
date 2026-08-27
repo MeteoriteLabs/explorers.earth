@@ -217,11 +217,12 @@ export class MusicDomainRepository {
     )).rows;
   }
 
-  private async advanceQueueRevision(client: PoolClient, musicUserId: number): Promise<void> {
-    await client.query(
-      "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1",
+  private async advanceQueueRevision(client: PoolClient, musicUserId: number): Promise<number> {
+    const row = (await client.query(
+      "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 RETURNING music_queue_revision",
       [musicUserId],
-    );
+    )).rows[0];
+    return Number(row.music_queue_revision);
   }
 
   async replaceQueue(
@@ -522,6 +523,7 @@ export class MusicDomainRepository {
       const publication = (await client.query(
         `SELECT guest_url,
                 music_queue_revision,
+                COALESCE((SELECT (state->>'revision')::bigint FROM playback_states WHERE user_id=$1),0) AS music_playback_revision,
                 guest_discoverable,
                 allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility,
                 (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL) AS has_guest_capability
@@ -530,6 +532,7 @@ export class MusicDomainRepository {
       )).rows[0];
       return {
         queueRevision: Number(publication?.music_queue_revision ?? 0),
+        playbackRevision: Number(publication?.music_playback_revision ?? 0),
         songs: activeRows,
         currentlyPlaying: activeRows.find((row) => row.status === "playing"),
         playedSongs: playedRows,
@@ -607,17 +610,25 @@ export class MusicDomainRepository {
     });
   }
 
-  async setPlaying(musicUserId: number, songId: number | null, expectedRevision?: number) {
+  async setPlaying(musicUserId: number, songId: number | null, expectedRevision?: number, expectedPlaybackRevision?: number) {
     return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
       let nextRevision: number | undefined;
       if (expectedRevision !== undefined) {
         const owner = (await client.query(
-          "SELECT music_queue_revision FROM users WHERE id=$1 FOR UPDATE",
+          `SELECT music_queue_revision,
+                  COALESCE((SELECT (state->>'revision')::bigint FROM playback_states WHERE user_id=$1),0) AS music_playback_revision
+             FROM users WHERE id=$1 FOR UPDATE`,
           [musicUserId],
         )).rows[0];
         if (!owner) return { status: "not_found" as const };
         const currentRevision = Number(owner.music_queue_revision);
-        if (expectedRevision !== currentRevision) return { status: "stale" as const, revision: currentRevision };
+        const playbackRevision = Number(owner.music_playback_revision);
+        if (expectedRevision !== currentRevision) return {
+          status: "stale" as const,
+          revision: currentRevision,
+          playbackRevision,
+          queueOnly: expectedPlaybackRevision !== undefined && expectedPlaybackRevision === playbackRevision,
+        };
         nextRevision = currentRevision + 1;
       }
       if (songId === null) {
@@ -631,7 +642,9 @@ export class MusicDomainRepository {
             "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 AND music_queue_revision=$2 RETURNING music_queue_revision",
             [musicUserId, expectedRevision],
           )).rows[0];
-          return { status: "completed" as const, revision: Number(advanced.music_queue_revision), song: null };
+          const revision = Number(advanced.music_queue_revision);
+          await this.recordPlaybackRevision(client, musicUserId, revision);
+          return { status: "completed" as const, revision, playbackRevision: revision, song: null };
         }
         if ((completed.rowCount ?? 0) > 0) await this.advanceQueueRevision(client, musicUserId);
         return null;
@@ -652,19 +665,30 @@ export class MusicDomainRepository {
       if (!activated) return expectedRevision === undefined ? undefined : { status: "not_found" as const };
       await this.normalizeActiveQueue(client, musicUserId);
       let canonicalRevision = nextRevision;
-      if (expectedRevision === undefined) await this.advanceQueueRevision(client, musicUserId);
+      if (expectedRevision === undefined) canonicalRevision = await this.advanceQueueRevision(client, musicUserId);
       else canonicalRevision = Number((await client.query(
         "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 AND music_queue_revision=$2 RETURNING music_queue_revision",
         [musicUserId, expectedRevision],
       )).rows[0].music_queue_revision);
+      await this.recordPlaybackRevision(client, musicUserId, canonicalRevision!);
       const song = (await client.query(
         "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='playing'",
         [musicUserId, songId],
       )).rows[0];
       return expectedRevision === undefined
         ? song
-        : { status: "completed" as const, revision: canonicalRevision!, song };
+        : { status: "completed" as const, revision: canonicalRevision!, playbackRevision: canonicalRevision!, song };
     });
+  }
+
+  private async recordPlaybackRevision(client: PoolClient, musicUserId: number, revision: number): Promise<void> {
+    await client.query(
+      `INSERT INTO playback_states(user_id,state,updated_at)
+       VALUES ($1,jsonb_build_object('revision',$2::bigint),now())
+       ON CONFLICT (user_id) DO UPDATE
+       SET state=EXCLUDED.state,updated_at=EXCLUDED.updated_at`,
+      [musicUserId, revision],
+    );
   }
 
   async createPlaylistIdempotent(

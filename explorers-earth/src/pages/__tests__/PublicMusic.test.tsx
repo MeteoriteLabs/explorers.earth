@@ -41,6 +41,18 @@ describe("public Music page", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
+  it("renders the current song and queue only when public queue visibility is enabled", () => {
+    const playing = { id: 9, youtubeId: "abcdefghijk", title: "Now", artist: "Artist", thumbnailUrl: "https://images.example/now.jpg", position: 0, status: "playing" as const, playedAt: null };
+    const queued = { ...playing, id: 10, title: "Next", status: "queued" as const, position: 1 };
+    const view = render(<MemoryRouter><PublicMusicContent state="ready" resource={{ songs: [queued], currentlyPlaying: playing, allowQueueVisibility: true, playlists: [] }} /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "Playing now & up next" })).toBeInTheDocument();
+    expect(screen.getByText("Now")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Up next" })).toHaveTextContent("Next");
+
+    view.rerender(<MemoryRouter><PublicMusicContent state="ready" resource={{ songs: [], allowQueueVisibility: false, playlists: [] }} /></MemoryRouter>);
+    expect(screen.queryByRole("heading", { name: "Playing now & up next" })).not.toBeInTheDocument();
+  });
+
   it("enables Retry only after the server delay and runs the supplied recovery", () => {
     vi.useFakeTimers();
     const onRetry = vi.fn();

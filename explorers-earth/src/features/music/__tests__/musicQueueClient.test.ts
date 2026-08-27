@@ -47,14 +47,14 @@ describe("credential-aware Music queue client", () => {
   it("sends and validates the revisioned playback contract without changing the legacy method", async () => {
     // Break caught: the client timeout arbiter has no owner-scoped revision the server can verify.
     const request = vi.fn(async () => new Response(JSON.stringify({
-      version: "music-playback/v1", revision: 8, song: { ...song, status: "playing" },
+      version: "music-playback/v1", revision: 8, playbackRevision: 8, song: { ...song, status: "playing" },
     }), { headers: { "content-type": "application/json" } }));
 
-    await expect(createMusicQueueClient(request).setPlayingRevision(3, 7, "playback-8"))
-      .resolves.toEqual({ version: "music-playback/v1", revision: 8, song: { ...song, status: "playing" } });
+    await expect(createMusicQueueClient(request).setPlayingRevision(3, 7, 4, "playback-8"))
+      .resolves.toEqual({ version: "music-playback/v1", revision: 8, playbackRevision: 8, song: { ...song, status: "playing" } });
     expect(request).toHaveBeenCalledWith({
       method: "POST", path: "/api/playlist/currently-playing",
-      body: { songId: 3, expectedRevision: 7 }, idempotencyKey: "playback-8",
+      body: { songId: 3, expectedRevision: 7, expectedPlaybackRevision: 4 }, idempotencyKey: "playback-8",
     });
   });
 
@@ -62,17 +62,17 @@ describe("credential-aware Music queue client", () => {
     const controller = new AbortController();
     const request = vi.fn(async (input: { body?: { expectedRevision?: number } }) => input.body?.expectedRevision === undefined
       ? new Response(JSON.stringify(song), { headers: { "content-type": "application/json" } })
-      : new Response(JSON.stringify({ version: "music-playback/v1", revision: 8, song: null }), { headers: { "content-type": "application/json" } }));
+      : new Response(JSON.stringify({ version: "music-playback/v1", revision: 8, playbackRevision: 8, song: null }), { headers: { "content-type": "application/json" } }));
     const client = createMusicQueueClient(request);
 
     await expect(client.setPlaying(3, "legacy-cancel", controller.signal)).resolves.toEqual(song);
     await expect(client.setPlaying(null, "legacy-stop-cancel", controller.signal)).resolves.toBeUndefined();
-    await expect(client.setPlayingRevision(null, 0, "revision-cancel", controller.signal))
-      .resolves.toEqual({ version: "music-playback/v1", revision: 8, song: null });
+    await expect(client.setPlayingRevision(null, 0, 0, "revision-cancel", controller.signal))
+      .resolves.toEqual({ version: "music-playback/v1", revision: 8, playbackRevision: 8, song: null });
     expect(request.mock.calls.map(([input]) => input)).toEqual([
       { method: "POST", path: "/api/playlist/currently-playing", body: { songId: 3 }, idempotencyKey: "legacy-cancel", signal: controller.signal },
       { method: "POST", path: "/api/playlist/currently-playing", body: { songId: null }, idempotencyKey: "legacy-stop-cancel", signal: controller.signal },
-      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: null, expectedRevision: 0 }, idempotencyKey: "revision-cancel", signal: controller.signal },
+      { method: "POST", path: "/api/playlist/currently-playing", body: { songId: null, expectedRevision: 0, expectedPlaybackRevision: 0 }, idempotencyKey: "revision-cancel", signal: controller.signal },
     ]);
   });
 
@@ -81,7 +81,7 @@ describe("credential-aware Music queue client", () => {
       version: "music-playback/v2", revision: 8, song: null,
     }), { headers: { "content-type": "application/json" } }));
 
-    await expect(createMusicQueueClient(request).setPlayingRevision(null, 0, "revision-malformed"))
+    await expect(createMusicQueueClient(request).setPlayingRevision(null, 0, 0, "revision-malformed"))
       .rejects.toMatchObject({ status: 502, code: "SERVICE_UNAVAILABLE" });
   });
 

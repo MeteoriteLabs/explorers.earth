@@ -6,6 +6,7 @@ function recordingPool(rows: unknown[] = []) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
   const query = async (text: string, values: unknown[] = []) => {
     calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
+    if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
     return { rows, rowCount: rows.length };
   };
   return {
@@ -246,6 +247,7 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(songReads.every((call) => /user_id\s*=\s*\$1/i.test(call.text))).toBe(true);
     expect(songReads.every((call) => call.values[0] === 23)).toBe(true);
     expect(result).toEqual({
+      playbackRevision: 0,
       songs: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
       currentlyPlaying: expect.objectContaining({ id: 2 }),
       playedSongs: [expect.objectContaining({ id: 3 })],
@@ -436,6 +438,7 @@ describe("MusicDomainRepository owner predicates", () => {
         if (/SELECT id,status FROM songs/.test(text)) return { rows: [{ id: 1, status: "queued" }], rowCount: 1 };
         if (/DELETE FROM songs/.test(text)) return { rows: [{ status: "queued" }], rowCount: 1 };
         if (/RETURNING id,user_id/.test(text)) return { rows: [{ id: 1, user_id: 7, position: 0, status: "queued" }], rowCount: 1 };
+        if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
         return { rows: [], rowCount: 1 };
       }, release() {} };
       await execute(new MusicDomainRepository({ query: async () => { throw new Error("outside transaction"); }, connect: async () => client } as never));
@@ -675,13 +678,13 @@ describe("MusicDomainRepository owner predicates", () => {
       const normalized = text.replace(/\s+/g, " ").trim();
       statements.push(normalized);
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
-      if (/music_queue_revision/.test(normalized)) return { rows: [{ music_queue_revision: 2 }], rowCount: 1 };
+      if (/music_queue_revision/.test(normalized)) return { rows: [{ music_queue_revision: 2, music_playback_revision: 0 }], rowCount: 1 };
       if (/UPDATE songs SET status='playing'/.test(normalized)) return { rows: [{ id: 71 }], rowCount: 1 };
       return { rows: [], rowCount: 0 };
     }, release() {} };
     const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
 
-    await expect(repository.setPlaying(23, 71, 1)).resolves.toEqual({ status: "stale", revision: 2 });
+    await expect(repository.setPlaying(23, 71, 1, 0)).resolves.toEqual({ status: "stale", revision: 2, playbackRevision: 0, queueOnly: true });
     expect(statements.some((text) => /UPDATE songs SET status='playing'/.test(text))).toBe(false);
   });
 
@@ -691,7 +694,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const client = { async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim();
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
-      if (/^SELECT music_queue_revision/.test(normalized)) return { rows: [{ music_queue_revision: revision }], rowCount: 1 };
+      if (/^SELECT music_queue_revision/.test(normalized)) return { rows: [{ music_queue_revision: revision, music_playback_revision: 0 }], rowCount: 1 };
       if (/WITH target AS/.test(normalized)) return { rows: [{ id: 71, user_id: 23, youtube_id: "abcdefghijk", title: "Safe", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "playing", played_at: null }], rowCount: 1 };
       if (/UPDATE users SET music_queue_revision/.test(normalized)) {
         revision += 1;
@@ -703,7 +706,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
 
     await expect(repository.setPlaying(23, 71, Number.MAX_SAFE_INTEGER))
-      .resolves.toEqual({ status: "stale", revision: 7 });
+      .resolves.toEqual({ status: "stale", revision: 7, playbackRevision: 0, queueOnly: false });
     await expect(repository.setPlaying(23, 71, 7)).resolves.toMatchObject({
       status: "completed", revision: 8, song: { id: 71 },
     });

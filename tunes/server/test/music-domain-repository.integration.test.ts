@@ -605,7 +605,13 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await expect(domain.setPlaying(owner.id, newer.id, expectedRevision)).resolves.toMatchObject({
       status: "completed", revision: newerRevision, song: { id: newer.id },
     });
-    await expect(domain.setPlaying(owner.id, older.id, expectedRevision)).resolves.toEqual({ status: "stale", revision: newerRevision });
+    const repeatedRevision = newerRevision + 1;
+    await expect(domain.setPlaying(owner.id, newer.id, newerRevision, newerRevision)).resolves.toMatchObject({
+      status: "completed", revision: repeatedRevision, playbackRevision: repeatedRevision, song: { id: newer.id },
+    });
+    await expect(domain.setPlaying(owner.id, older.id, expectedRevision, 0)).resolves.toMatchObject({
+      status: "stale", revision: repeatedRevision, playbackRevision: repeatedRevision, queueOnly: false,
+    });
 
     expect((await pool.query(
       "SELECT id FROM songs WHERE user_id=$1 AND status='playing'",
@@ -614,7 +620,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(Number((await pool.query(
       "SELECT music_queue_revision FROM users WHERE id=$1",
       [owner.id],
-    )).rows[0].music_queue_revision)).toBe(newerRevision);
+    )).rows[0].music_queue_revision)).toBe(repeatedRevision);
   });
 
   it("rejects a forged maximum expected revision without poisoning owner recovery", async () => {
@@ -628,7 +634,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     )).rows[0].music_queue_revision);
 
     await expect(domain.setPlaying(owner.id, song.id, Number.MAX_SAFE_INTEGER))
-      .resolves.toEqual({ status: "stale", revision: currentRevision });
+      .resolves.toMatchObject({ status: "stale", revision: currentRevision, playbackRevision: 0, queueOnly: false });
     expect(Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision))
       .toBe(currentRevision);
     await expect(domain.setPlaying(owner.id, song.id, currentRevision)).resolves.toMatchObject({

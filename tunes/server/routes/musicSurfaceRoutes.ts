@@ -43,7 +43,7 @@ interface CanonicalMusicRepository {
   getGuestControls(ownerId: number): Promise<GuestControls | undefined>;
   updateGuestControls(ownerId: number, controls: GuestControlsUpdate): Promise<GuestControls | undefined>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
-  setPlaying(ownerId: number, songId: number | null, expectedRevision?: number): Promise<unknown | null | undefined>;
+  setPlaying(ownerId: number, songId: number | null, expectedRevision?: number, expectedPlaybackRevision?: number): Promise<unknown | null | undefined>;
   updateSongPosition(ownerId: number, songId: number, position: number): Promise<unknown | undefined>;
   removeSong(ownerId: number, songId: number): Promise<boolean>;
   removeSongs(ownerId: number, songIds: number[]): Promise<number>;
@@ -306,16 +306,22 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.post("/api/playlist/currently-playing", ...mutation(async (req, res, next) => {
     try {
-      if (!req.body || Object.keys(req.body).some((key) => !["songId", "expectedRevision"].includes(key))) throw invalidQueue();
+      if (!req.body || Object.keys(req.body).some((key) => !["songId", "expectedRevision", "expectedPlaybackRevision"].includes(key))) throw invalidQueue();
       const songId = req.body.songId === null ? null : positiveId(String(req.body.songId));
       const expectedRevision = req.body.expectedRevision === undefined
         ? undefined
         : nonNegativeSafeInteger(req.body.expectedRevision);
-      const song = await dependencies.repository.setPlaying(req.musicPrincipal!.musicUserId, songId, expectedRevision);
+      const expectedPlaybackRevision = req.body.expectedPlaybackRevision === undefined
+        ? undefined
+        : nonNegativeSafeInteger(req.body.expectedPlaybackRevision);
+      const song = await dependencies.repository.setPlaying(req.musicPrincipal!.musicUserId, songId, expectedRevision, expectedPlaybackRevision);
       if (expectedRevision !== undefined) {
         const result = record(song);
         if (property(result, "status") === "stale") throw new MusicIdentityError(
-          "PLAYBACK_REVISION_CONFLICT", 409, "A newer playback command is already canonical.", "none", false,
+          property(result, "queueOnly") === true ? "PLAYBACK_QUEUE_REVISION_CONFLICT" : "PLAYBACK_REVISION_CONFLICT",
+          409,
+          property(result, "queueOnly") === true ? "The queue changed without a newer playback command." : "A newer playback command is already canonical.",
+          "none", false,
         );
         if (property(result, "status") === "not_found") throw notFound();
         if (property(result, "status") !== "completed") throw notFound();
@@ -323,6 +329,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         return res.status(200).json({
           version: "music-playback/v1",
           revision: Number(property(result, "revision")),
+          playbackRevision: Number(property(result, "playbackRevision")),
           song: canonicalSong ? songDto(canonicalSong) : null,
         });
       }
@@ -641,7 +648,10 @@ function dashboardDto(value: unknown, includeQueueRevision = false) {
   const currentlyPlaying = property(source, "currentlyPlaying", "currently_playing");
   const publication = record(property(source, "publication"));
   return {
-    ...(includeQueueRevision ? { queueRevision: Number(property(source, "queueRevision", "queue_revision") ?? 0) } : {}),
+    ...(includeQueueRevision ? {
+      queueRevision: Number(property(source, "queueRevision", "queue_revision") ?? 0),
+      playbackRevision: Number(property(source, "playbackRevision", "playback_revision") ?? 0),
+    } : {}),
     songs: Array.isArray(songs) ? songs.map(songDto) : [],
     currentlyPlaying: currentlyPlaying ? songDto(currentlyPlaying) : null,
     playedSongs: Array.isArray(playedSongs) ? playedSongs.map(songDto) : [],

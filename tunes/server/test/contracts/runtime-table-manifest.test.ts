@@ -20,6 +20,7 @@ describe("runtime table manifest", () => {
       "playback_states",
     ]));
     expect(inventory.rawSqlTables).not.toContain("skip");
+    expect(inventory.rawSqlTables).not.toContain("set");
   });
 
   it("validates the committed manifest against generated repository references", () => {

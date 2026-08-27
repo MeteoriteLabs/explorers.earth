@@ -149,7 +149,7 @@ describe("canonical Music REST surfaces", () => {
     expect((await request(app).get("/api/music/dashboard")).status).toBe(401);
     const response = await request(app).get("/api/music/dashboard").set("Authorization", "Bearer aaa.bbb.ccc");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ queueRevision: 4, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
+    expect(response.body).toEqual({ queueRevision: 4, playbackRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private", publicSlug: "private-slug" } });
     expect(calls).toContainEqual(["dashboard", 11]);
   });
 
@@ -363,10 +363,12 @@ describe("canonical Music REST surfaces", () => {
   it("uses the opt-in playback revision contract and contains a stale command", async () => {
     // Break caught: delayed browser commands have no server-verifiable ordering and can overwrite newer owner intent.
     let canonicalRevision = 2;
-    const setPlaying = vi.fn(async (owner: number, id: number | null, expectedRevision?: number) => {
-      if (expectedRevision !== canonicalRevision) return { status: "stale" as const, revision: canonicalRevision };
+    let playbackRevision = 0;
+    const setPlaying = vi.fn(async (owner: number, id: number | null, expectedRevision?: number, expectedPlaybackRevision?: number) => {
+      if (expectedRevision !== canonicalRevision) return { status: "stale" as const, revision: canonicalRevision, playbackRevision, queueOnly: expectedPlaybackRevision === playbackRevision };
       canonicalRevision += 1;
-      return { status: "completed" as const, revision: canonicalRevision, song: id === null ? null : {
+      playbackRevision = canonicalRevision;
+      return { status: "completed" as const, revision: canonicalRevision, playbackRevision, song: id === null ? null : {
         id, user_id: owner, youtube_id: "abcdefghijk", title: "Song", artist: "Artist",
         thumbnail_url: "https://img", position: 0, status: "playing", played_at: null,
       } };
@@ -375,18 +377,22 @@ describe("canonical Music REST surfaces", () => {
     const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
 
     const accepted = await request(app).post("/api/playlist/currently-playing").set(headers)
-      .send({ songId: 21, expectedRevision: 2 });
+      .send({ songId: 21, expectedRevision: 2, expectedPlaybackRevision: 0 });
     expect(accepted.status).toBe(200);
     expect(accepted.body).toEqual({
-      version: "music-playback/v1", revision: 3,
+      version: "music-playback/v1", revision: 3, playbackRevision: 3,
       song: { id: 21, userId: 11, youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img", position: 0, status: "playing", playedAt: null },
     });
-    expect(setPlaying).toHaveBeenCalledWith(11, 21, 2);
+    expect(setPlaying).toHaveBeenCalledWith(11, 21, 2, 0);
 
     const stale = await request(app).post("/api/playlist/currently-playing").set(headers)
-      .send({ songId: 20, expectedRevision: 2 });
+      .send({ songId: 20, expectedRevision: 2, expectedPlaybackRevision: 0 });
     expect(stale.status).toBe(409);
     expect(stale.body.error).toMatchObject({ code: "PLAYBACK_REVISION_CONFLICT", retryable: false });
+
+    const queueOnly = await request(app).post("/api/playlist/currently-playing").set(headers)
+      .send({ songId: 20, expectedRevision: 2, expectedPlaybackRevision: 3 });
+    expect(queueOnly.body.error).toMatchObject({ code: "PLAYBACK_QUEUE_REVISION_CONFLICT", retryable: false });
   });
 
   it("keeps only the typed read-only YouTube product operations behind C5", async () => {

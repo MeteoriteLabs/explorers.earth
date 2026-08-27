@@ -80,10 +80,32 @@ export function PublicMusicContent({
   }
 
   const publicPlaylists = resource.playlists.filter((playlist) => playlist.isVisibleToGuests);
+  const showQueue = resource.allowQueueVisibility === true;
   return (
     <main className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-3xl font-semibold">Music</h1>
+        {showQueue && (resource.currentlyPlaying || resource.songs.length > 0) ? (
+          <section className="mt-8 rounded-xl border border-dashboard-border bg-dashboard-card p-5" aria-labelledby="public-music-queue">
+            <h2 id="public-music-queue" className="text-xl font-semibold">Playing now &amp; up next</h2>
+            {resource.currentlyPlaying ? (
+              <div className="mt-4 flex min-h-14 items-center gap-3 rounded-lg bg-dashboard-bg p-3">
+                <img className="h-12 w-12 rounded object-cover" src={resource.currentlyPlaying.thumbnailUrl} alt="" />
+                <span><span className="block text-xs font-semibold uppercase tracking-wide text-dashboard-accent">Playing now</span><span className="block font-medium">{resource.currentlyPlaying.title}</span><span className="block text-sm text-dashboard-text-muted">{resource.currentlyPlaying.artist}</span></span>
+              </div>
+            ) : null}
+            {resource.songs.length > 0 ? (
+              <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
+                {resource.songs.map((song) => (
+                  <li key={song.id} className="flex min-h-11 items-center gap-3 py-3">
+                    <img className="h-11 w-11 rounded object-cover" src={song.thumbnailUrl} alt="" />
+                    <span><span className="block font-medium">{song.title}</span><span className="block text-sm text-dashboard-text-muted">{song.artist}</span></span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </section>
+        ) : null}
         {publicPlaylists.length === 0 ? (
           <div className="mt-8">
             <p className="text-base text-dashboard-text-muted">No public playlists yet.</p>

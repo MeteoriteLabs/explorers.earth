@@ -542,28 +542,29 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
   currentAuthorityGeneration.current = authorityGeneration;
   const queueRevision = useRef(data.dashboard?.queueRevision ?? 0);
   queueRevision.current = data.dashboard?.queueRevision ?? 0;
-  const currentPlayingSongId = useRef(data.dashboard?.currentlyPlaying?.id ?? null);
-  currentPlayingSongId.current = data.dashboard?.currentlyPlaying?.id ?? null;
+  const playbackRevision = useRef(data.dashboard?.playbackRevision ?? 0);
+  playbackRevision.current = data.dashboard?.playbackRevision ?? 0;
   const playbackArbiter = useMemo(() => createMusicPlaybackArbiter({
-    write: async (songId, expectedRevision, operation, signal, expectedPlayingSongId) => {
+    write: async (songId, expectedRevision, operation, signal, expectedPlaybackRevision) => {
       const authorityIsCurrent = () => currentAuthorityGeneration.current === authorityGeneration;
       if (!scope.userDocumentId || !scope.accountDocumentId || !authorityIsCurrent()) throw new Error("Music playback authority is unavailable.");
       try {
-        return await completeQueueClient.setPlayingRevision(songId, expectedRevision, operationKey(`playback-${operation}`), signal);
+        return await completeQueueClient.setPlayingRevision(songId, expectedRevision, expectedPlaybackRevision, operationKey(`playback-${operation}`), signal);
       } catch (cause) {
-        if (!(cause instanceof MusicClientError) || cause.status !== 409 || cause.upstreamCode !== "PLAYBACK_REVISION_CONFLICT") throw cause;
+        if (!(cause instanceof MusicClientError) || cause.status !== 409 || !["PLAYBACK_REVISION_CONFLICT", "PLAYBACK_QUEUE_REVISION_CONFLICT"].includes(cause.upstreamCode ?? "")) throw cause;
         if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
         const canonical = await completeQueueClient.loadDashboard();
         if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
         return {
           revision: canonical.queueRevision,
+          playbackRevision: canonical.playbackRevision ?? 0,
           acknowledged: false,
-          retryable: (canonical.currentlyPlaying?.id ?? null) === expectedPlayingSongId,
+          retryable: cause.upstreamCode === "PLAYBACK_QUEUE_REVISION_CONFLICT",
         };
       }
     },
     currentRevision: () => queueRevision.current,
-    currentPlayingSongId: () => currentPlayingSongId.current,
+    currentPlaybackRevision: () => playbackRevision.current,
     isAuthorityCurrent: () => currentAuthorityGeneration.current === authorityGeneration,
     onAcknowledged: (songId, requestId) => setPlaybackRequest(songId === null ? null : { songId, requestId, authorityGeneration }),
   }), [authorityGeneration, scope.accountDocumentId, scope.userDocumentId]);

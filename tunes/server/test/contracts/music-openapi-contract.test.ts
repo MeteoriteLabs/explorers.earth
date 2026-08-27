@@ -90,9 +90,11 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("queueRevision");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PlayingInput.required).toEqual(["songId"]);
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PlayingInput.properties.expectedRevision).toMatchObject({ type: "integer", minimum: 0 });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PlayingInput.properties.expectedPlaybackRevision).toMatchObject({ type: "integer", minimum: 0 });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas).toHaveProperty("PlaybackCommandResponse");
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/currently-playing"].post.responses)).toContain("music-playback/v1");
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/currently-playing"].post.responses["409"])).toContain("PLAYBACK_REVISION_CONFLICT");
+    expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/currently-playing"].post.responses["409"])).toContain("PLAYBACK_QUEUE_REVISION_CONFLICT");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.youtubeId).toMatchObject({ minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.SongInput.properties.thumbnailUrl).toMatchObject({ minLength: 1, maxLength: 2_048 });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.BulkSongInput.properties.songIds).toMatchObject({ minItems: 1, maxItems: 500, uniqueItems: true });
@@ -182,7 +184,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       createPlaylistIdempotent: async () => ({ status: "completed" as const, replayed: false, response: playlistRow }),
       updatePlaylist: async () => playlistRow, deletePlaylist: async () => true,
       addPlaylistSongIdempotent: async () => ({ status: "completed" as const, replayed: false, response: savedRow }), removePlaylistSong: async () => true, reorderPlaylistSong: async () => true,
-      setPlaylistVisibility: async () => true, listQueue: async () => [queueRow], ownerDashboard: async () => ({ queueRevision: 0, songs: [queueRow], currentlyPlaying: queueRow, playedSongs: [], publication: { mode: "public", publicSlug: "public-owner" }, guestControls: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: true, allowQueueVisibility: true } }),
+      setPlaylistVisibility: async () => true, listQueue: async () => [queueRow], ownerDashboard: async () => ({ queueRevision: 0, playbackRevision: 0, songs: [queueRow], currentlyPlaying: queueRow, playedSongs: [], publication: { mode: "public", publicSlug: "public-owner" }, guestControls: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: true, allowQueueVisibility: true } }),
       getGuestControls: async () => ({ allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: true, allowQueueVisibility: true }),
       updateGuestControls: async (_owner: number, controls: { allowSongRequests: boolean; allowGuestPlayOnDevice: boolean; allowPlaylistSharing: boolean; allowRecentlyPlayedVisibility: boolean; allowQueueVisibility?: boolean }) => ({ ...controls, allowQueueVisibility: controls.allowQueueVisibility ?? true }),
       replaceQueue: async () => ({ status: "completed" as const, replayed: false, response: { version: "music-queue/v1" as const, revision: 1, songs: [queueRow] } }),

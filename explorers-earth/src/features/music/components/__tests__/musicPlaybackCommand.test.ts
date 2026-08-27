@@ -8,7 +8,7 @@ describe("createMusicPlaybackArbiter authority boundary", () => {
       write,
       onAcknowledged: vi.fn(),
       currentRevision: () => 2,
-      currentPlayingSongId: () => 11,
+      currentPlaybackRevision: () => 11,
     });
 
     await expect(arbiter.requestPlayback(12, arbiter.beginPlaybackRequest(), "queue-play"))

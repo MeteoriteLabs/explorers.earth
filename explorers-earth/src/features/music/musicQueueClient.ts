@@ -20,6 +20,7 @@ export interface MusicQueueResponse {
 export interface MusicPlaybackResponse {
   version: "music-playback/v1";
   revision: number;
+  playbackRevision: number;
   song: MusicSong | null;
 }
 
@@ -41,7 +42,7 @@ function parseQueueResponse(value: unknown): MusicQueueResponse {
 
 function parsePlaybackResponse(value: unknown): MusicPlaybackResponse {
   const result = z.object({
-    version: z.literal("music-playback/v1"), revision: z.number().int().positive(), song: z.unknown().nullable(),
+    version: z.literal("music-playback/v1"), revision: z.number().int().positive(), playbackRevision: z.number().int().nonnegative(), song: z.unknown().nullable(),
   }).strict().safeParse(value);
   if (!result.success) throw new MusicClientError("SERVICE_UNAVAILABLE", 502, "Music returned an invalid response.");
   return { ...result.data, song: result.data.song === null ? null : parseMusicSong(result.data.song) };
@@ -59,9 +60,9 @@ export function createMusicQueueClient(request: MusicRequest) {
     setPlaying: (songId: number | null, idempotencyKey: string, signal?: AbortSignal) => (songId === null ? null : input(positiveId, songId)) === null
       ? requestMusicEmpty(request, { method: "POST", path: "/api/playlist/currently-playing", body: { songId }, idempotencyKey, ...(signal ? { signal } : {}) })
       : requestMusicJson<MusicSong>(request, { method: "POST", path: "/api/playlist/currently-playing", body: { songId }, idempotencyKey, ...(signal ? { signal } : {}) }, parseMusicSong),
-    setPlayingRevision: (songId: number | null, expectedRevision: number, idempotencyKey: string, signal?: AbortSignal) => requestMusicJson<MusicPlaybackResponse>(request, {
+    setPlayingRevision: (songId: number | null, expectedRevision: number, expectedPlaybackRevision: number, idempotencyKey: string, signal?: AbortSignal) => requestMusicJson<MusicPlaybackResponse>(request, {
       method: "POST", path: "/api/playlist/currently-playing",
-      body: { songId: songId === null ? null : input(positiveId, songId), expectedRevision: input(z.number().int().nonnegative(), expectedRevision) },
+      body: { songId: songId === null ? null : input(positiveId, songId), expectedRevision: input(z.number().int().nonnegative(), expectedRevision), expectedPlaybackRevision: input(z.number().int().nonnegative(), expectedPlaybackRevision) },
       idempotencyKey, ...(signal ? { signal } : {}),
     }, parsePlaybackResponse),
     removeSong: (songId: number, idempotencyKey: string) => requestMusicEmpty(request, {

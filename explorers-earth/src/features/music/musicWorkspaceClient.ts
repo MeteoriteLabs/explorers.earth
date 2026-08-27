@@ -45,6 +45,7 @@ export type { MusicPublicationMode } from "../../../../tunes/shared/musicPublica
 
 export interface MusicDashboardResponse {
   queueRevision: number;
+  playbackRevision?: number;
   songs: MusicSong[];
   currentlyPlaying: MusicSong | null;
   playedSongs: MusicSong[];
@@ -140,7 +141,7 @@ const playlistSchema = z.object({
 }).strict();
 const guestControlsSchema = z.object({ allowSongRequests: z.boolean(), allowGuestPlayOnDevice: z.boolean(), allowPlaylistSharing: z.boolean(), allowRecentlyPlayedVisibility: z.boolean(), allowQueueVisibility: z.boolean() }).strict();
 const dashboardSchema = z.object({
-  queueRevision: z.number().int().nonnegative(), songs: z.array(songSchema).max(500),
+  queueRevision: z.number().int().nonnegative(), playbackRevision: z.number().int().nonnegative().optional(), songs: z.array(songSchema).max(500),
   currentlyPlaying: songSchema.nullable(), playedSongs: z.array(songSchema).max(500),
   publication: z.object({ mode: z.enum(["private", "unlisted", "public"]), publicSlug: boundedText(128) }).strict(), guestControls: guestControlsSchema.optional(),
 }).strict();

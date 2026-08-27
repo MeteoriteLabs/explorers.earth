@@ -19,19 +19,20 @@ export function createMusicPlaybackArbiter({
   write,
   onAcknowledged,
   currentRevision = () => 0,
-  currentPlayingSongId = () => null,
+  currentPlaybackRevision = () => 0,
   isAuthorityCurrent = () => true,
   timeoutMs = 10_000,
 }: {
-  write: (songId: number | null, expectedRevision: number, operation: string, signal: AbortSignal, expectedPlayingSongId: number | null) => Promise<{ revision: number; acknowledged?: boolean; retryable?: boolean }>;
+  write: (songId: number | null, expectedRevision: number, operation: string, signal: AbortSignal, expectedPlaybackRevision: number) => Promise<{ revision: number; playbackRevision?: number; acknowledged?: boolean; retryable?: boolean }>;
   onAcknowledged: (songId: number | null, requestId: number) => void;
   currentRevision?: () => number;
-  currentPlayingSongId?: () => number | null;
+  currentPlaybackRevision?: () => number;
   isAuthorityCurrent?: () => boolean;
   timeoutMs?: number;
 }): MusicPlaybackArbiter {
   let sequence = 0;
   let knownRevision = 0;
+  let knownPlaybackRevision = 0;
   let tail = Promise.resolve();
   let cancelled = false;
   const active = new Set<AbortController>();
@@ -43,16 +44,18 @@ export function createMusicPlaybackArbiter({
       active.add(controller);
       const timeout = globalThis.setTimeout(() => controller.abort(PLAYBACK_TIMEOUT_REASON), timeoutMs);
       try {
-        const expectedPlayingSongId = currentPlayingSongId();
+        const expectedPlaybackRevision = Math.max(knownPlaybackRevision, currentPlaybackRevision());
         let expectedRevision = Math.max(knownRevision, currentRevision());
-        let result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal, expectedPlayingSongId), controller.signal);
+        let result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal, expectedPlaybackRevision), controller.signal);
         knownRevision = Math.max(knownRevision, result.revision);
+        knownPlaybackRevision = Math.max(knownPlaybackRevision, result.playbackRevision ?? expectedPlaybackRevision);
         if (result.acknowledged === false) {
           if (cancelled || requestId !== sequence || !isAuthorityCurrent()) return "superseded";
           if (result.retryable !== true) throw new Error("Music playback changed in another session. Try once more.");
           expectedRevision = Math.max(knownRevision, currentRevision());
-          result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal, expectedPlayingSongId), controller.signal);
+          result = await abortablePlayback(write(songId, expectedRevision, operation, controller.signal, expectedPlaybackRevision), controller.signal);
           knownRevision = Math.max(knownRevision, result.revision);
+          knownPlaybackRevision = Math.max(knownPlaybackRevision, result.playbackRevision ?? expectedPlaybackRevision);
           if (result.acknowledged === false) throw new Error("Music playback changed again. Try once more.");
         }
       } catch (cause) {

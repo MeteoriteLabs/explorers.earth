@@ -32,7 +32,7 @@ function deferred<T>() {
 }
 
 function playbackResponse(revision: number, song: unknown) {
-  return new Response(JSON.stringify({ version: "music-playback/v1", revision, song }), {
+  return new Response(JSON.stringify({ version: "music-playback/v1", revision, playbackRevision: revision, song }), {
     status: 200,
     headers: { "content-type": "application/json" },
   });
@@ -316,7 +316,7 @@ describe("Music workspace UI", () => {
       expectedRevisions.push((request.body as { expectedRevision: number }).expectedRevision);
       writes += 1;
       if (writes === 1) return Promise.resolve(new Response(JSON.stringify({
-        version: "music-error/v1", error: { code: "PLAYBACK_REVISION_CONFLICT", message: "stale", action: "none", retryable: false, requestId: "revision-conflict" },
+        version: "music-error/v1", error: { code: "PLAYBACK_QUEUE_REVISION_CONFLICT", message: "stale", action: "none", retryable: false, requestId: "revision-conflict" },
       }), { status: 409, headers: { "content-type": "application/json", "x-request-id": "revision-conflict" } }));
       return Promise.resolve(playbackResponse(3, { ...queued, status: "playing" }));
     });
