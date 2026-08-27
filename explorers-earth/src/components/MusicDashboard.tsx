@@ -32,7 +32,7 @@ const completeSearchClient = createMusicSearchClient((input) => musicApi.request
 function CompleteMusicDashboard({ data, readOnly }: Pick<MusicDashboardProps, "data" | "readOnly">) {
   const dashboard = data.dashboard ?? { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private" as const, publicSlug: "" } };
   const refresh = async () => { await data.refetch(); };
-  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} onChanged={refresh} />;
+  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={data.playlists.map(({ id, name }) => ({ id, name }))} playlistClient={musicWorkspaceClient} onChanged={refresh} />;
   const queue = <MusicQueue songs={dashboard.songs} client={completeQueueClient} onChanged={refresh} />;
   const history = <MusicHistory songs={dashboard.playedSongs} loading={data.isLoading} queueClient={completeQueueClient} onChanged={refresh} />;
   return <MusicWorkspaceShell

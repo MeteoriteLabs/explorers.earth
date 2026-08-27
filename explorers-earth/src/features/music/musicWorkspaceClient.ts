@@ -191,6 +191,13 @@ export function createMusicWorkspaceClient(request: MusicRequest) {
     removePlaylistSong(playlistId: number, songId: number, idempotencyKey: string) {
       return requestMusicEmpty(request, { method: "DELETE", path: `/api/playlists/${playlistId}/songs/${songId}`, idempotencyKey });
     },
+    addPlaylistSong(playlistId: number, song: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }, idempotencyKey: string) {
+      return requestMusicJson<MusicPlaylistSong>(request, { method: "POST", path: `/api/playlists/${playlistId}/songs`, body: song, idempotencyKey }, (value) => {
+        const result = playlistSongSchema.safeParse(value);
+        if (!result.success) throw invalidSuccessfulResponse();
+        return result.data;
+      });
+    },
     setPlaylistVisibility(playlistId: number, isVisibleToGuests: boolean, idempotencyKey: string) {
       return requestMusicEmpty(request, { method: "PATCH", path: `/api/playlists/${playlistId}/visibility`, body: { isVisibleToGuests }, idempotencyKey });
     },

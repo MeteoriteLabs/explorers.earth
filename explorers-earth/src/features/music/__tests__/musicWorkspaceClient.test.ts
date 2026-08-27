@@ -145,6 +145,13 @@ describe("canonical Music workspace client", () => {
     expect(request).toHaveBeenCalledWith({ method: "DELETE", path: "/api/playlists/11/songs/12", idempotencyKey: "remove-playlist-song-1" });
   });
 
+  it("adds a validated song to an owner saved playlist through the canonical route", async () => {
+    const saved = { id: 9, playlistId: 11, youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" };
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify(saved), { status: 201 }));
+    await expect(createMusicWorkspaceClient(request).addPlaylistSong(11, { youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img" }, "playlist-add-1")).resolves.toEqual(saved);
+    expect(request).toHaveBeenCalledWith({ method: "POST", path: "/api/playlists/11/songs", body: { youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img" }, idempotencyKey: "playlist-add-1" });
+  });
+
   it("contains unsuccessful JSON and empty responses", async () => {
     const failed = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
     const client = createMusicWorkspaceClient(failed);
