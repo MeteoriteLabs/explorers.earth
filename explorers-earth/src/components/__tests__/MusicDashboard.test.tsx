@@ -329,6 +329,30 @@ describe("Music workspace UI", () => {
     await waitFor(() => expect(data.refetch).toHaveBeenCalledOnce());
   });
 
+  it("acknowledges a playback write whose response was lost when reconciliation already shows the requested state", async () => {
+    const queued = { id: 7, youtubeId: "abcdefghijk", title: "Committed song", artist: "Artist", thumbnailUrl: "https://img/7", position: 0, status: "queued" as const, playedAt: null };
+    const playing = { ...queued, status: "playing" as const };
+    const requests: string[] = [];
+    vi.spyOn(musicApi, "request").mockImplementation((request) => {
+      requests.push(request.path);
+      if (request.path === "/api/playlist/currently-playing") return Promise.resolve(new Response(JSON.stringify({
+        version: "music-error/v1", error: { code: "PLAYBACK_REVISION_CONFLICT", message: "stale", action: "none", retryable: false, requestId: "lost-response" },
+      }), { status: 409, headers: { "content-type": "application/json", "x-request-id": "lost-response" } }));
+      if (request.path === "/api/music/dashboard") return Promise.resolve(new Response(JSON.stringify({
+        queueRevision: 2, playbackRevision: 2, songs: [], currentlyPlaying: playing, playedSongs: [], publication: { mode: "private", publicSlug: "public-slug-123" },
+      }), { status: 200, headers: { "content-type": "application/json" } }));
+      throw new Error(`Unexpected request ${request.path}`);
+    });
+    const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, playbackRevision: 1, songs: [queued], currentlyPlaying: null } };
+    render(<MusicDashboard data={data} scope={scope} complete />);
+    await openLive();
+
+    await userEvent.click(screen.getByRole("button", { name: "Play Committed song" }));
+
+    await waitFor(() => expect(data.refetch).toHaveBeenCalledOnce());
+    expect(requests).toEqual(["/api/playlist/currently-playing", "/api/music/dashboard"]);
+  });
+
   it("does not let a delayed Queue Play supersede a newer Search Play", async () => {
     const queueSong = { id: 7, youtubeId: "abcdefghijk", title: "Queue song", artist: "Queue artist", thumbnailUrl: "https://img/7", position: 0, status: "queued" as const, playedAt: null };
     const searchSong = { id: 8, youtubeId: "lmnopqrstuv", title: "Search song", artist: "Search artist", thumbnailUrl: "https://img/8", position: 1, status: "queued" as const, playedAt: null };
@@ -505,6 +529,7 @@ describe("Music workspace UI", () => {
       method: "POST", path: "/api/music/queue/replace",
       body: { expectedRevision: 7, songs: [{ playlistId: 1, songId: 11 }] },
     }));
+    expect(request.mock.calls.some(([call]) => call.path === "/api/playlist/currently-playing")).toBe(false);
     await userEvent.click(screen.getByRole("button", { name: "Remove A from Saved mix" }));
     expect(remove).toHaveBeenCalledWith(1, 11, expect.stringMatching(/^playlist-song-remove-/));
     await userEvent.click(screen.getByRole("button", { name: "Delete playlist Saved mix" }));
@@ -607,8 +632,8 @@ describe("Music workspace UI", () => {
     expect(request.mock.calls[2][0].body).toEqual(request.mock.calls[1][0].body);
   });
 
-  it("seeds playback with the acknowledged replacement revision and retries playback without replacing again", async () => {
-    // Break caught: normal replace spent a stale-conflict retry, or retry playback replaced the queue twice.
+  it("seeds shuffle playback with the acknowledged replacement revision and retries playback without replacing again", async () => {
+    // Break caught: shuffle playback spent a stale-conflict retry, or retry playback replaced the queue twice.
     const playlist = { id: 1, name: "Saved mix", description: null, isVisibleToGuests: false, songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }] };
     const queuedSong = { id: 101, youtubeId: "abcdefghijk", title: "A", artist: "B", thumbnailUrl: "https://img", position: 0, status: "queued", playedAt: null };
     const playingSong = { ...queuedSong, status: "playing" };
@@ -624,8 +649,8 @@ describe("Music workspace UI", () => {
     render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Replace queue" }));
-    await userEvent.click(screen.getByRole("button", { name: "Confirm queue replacement" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Shuffle and play" }));
+    await userEvent.click(screen.getByRole("button", { name: "Shuffle and play" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Retry playback" })).toBeInTheDocument());
     const firstPlayback = request.mock.calls.find(([call]) => call.path === "/api/playlist/currently-playing")![0];
     expect((firstPlayback.body as { expectedRevision: number }).expectedRevision).toBe(23);

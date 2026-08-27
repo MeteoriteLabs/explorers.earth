@@ -429,7 +429,7 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, onCommitt
       pendingQueueReplacement.current = undefined;
       onQueueRevisionAcknowledged(result.revision);
       const first = result.songs[0];
-      if (first) try { await onPlaybackRequested(first.id, beginPlaybackRequest(), shuffle ? "playlist-shuffle" : "playlist-replace"); }
+      if (shuffle && first) try { await onPlaybackRequested(first.id, beginPlaybackRequest(), "playlist-shuffle"); }
       catch { setPlaybackRetry(first.id); }
     } catch (cause) {
       if (cause instanceof MusicClientError && cause.status === 409 && cause.upstreamCode === "QUEUE_REVISION_CONFLICT") pendingQueueReplacement.current = undefined;
@@ -555,11 +555,13 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
         if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
         const canonical = await completeQueueClient.loadDashboard();
         if (!authorityIsCurrent()) throw new Error("Music playback authority changed.");
+        const canonicalSongId = canonical.currentlyPlaying?.id ?? null;
+        const acknowledged = canonicalSongId === songId;
         return {
           revision: canonical.queueRevision,
           playbackRevision: canonical.playbackRevision ?? 0,
-          acknowledged: false,
-          retryable: cause.upstreamCode === "PLAYBACK_QUEUE_REVISION_CONFLICT",
+          acknowledged,
+          retryable: !acknowledged && cause.upstreamCode === "PLAYBACK_QUEUE_REVISION_CONFLICT",
         };
       }
     },
