@@ -628,6 +628,29 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     )).rows[0].music_queue_revision)).toBe(repeatedRevision);
   });
 
+  it("rejects delayed playback after queue replacement stops the canonical song", async () => {
+    const owner = await identities.ensureIdentity(identityInput("replace-stops-playback"));
+    const delayed = await domain.addSong(owner.id, {
+      youtubeId: "delayed-old", title: "Delayed old play", artist: "A", thumbnailUrl: "https://img/delayed",
+    }) as { id: number };
+    await expect(domain.setPlaying(owner.id, delayed.id, 1, 0)).resolves.toMatchObject({
+      status: "completed", revision: 2, playbackRevision: 2, song: { id: delayed.id },
+    });
+    const playlist = await domain.createPlaylist(owner.id, { name: "New queue", description: null }) as { id: number };
+    const replacement = await domain.addPlaylistSong(owner.id, playlist.id, {
+      youtubeId: "replacement", title: "Replacement", artist: "B", thumbnailUrl: "https://img/replacement",
+    }) as { id: number };
+
+    await expect(domain.replaceQueue(owner.id, "replace-stops-playback-key", 2, [{ playlistId: playlist.id, songId: replacement.id }]))
+      .resolves.toMatchObject({ status: "completed", response: { revision: 3, songs: [expect.objectContaining({ status: "queued" })] } });
+    await expect(domain.setPlaying(owner.id, delayed.id, 2, 2)).resolves.toMatchObject({
+      status: "stale", revision: 3, playbackRevision: 3, queueOnly: false,
+    });
+    await expect(domain.ownerDashboard(owner.id)).resolves.toMatchObject({
+      queueRevision: 3, playbackRevision: 3, currentlyPlaying: undefined,
+    });
+  });
+
   it("rejects a forged maximum expected revision without poisoning owner recovery", async () => {
     const owner = await identities.ensureIdentity(identityInput("playback-max-recovery"));
     const song = await domain.addSong(owner.id, {

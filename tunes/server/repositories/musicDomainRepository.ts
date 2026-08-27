@@ -299,10 +299,11 @@ export class MusicDomainRepository {
       )).rows;
       if (sources.length !== songs.length) return { status: "not_found" as const };
 
-      await client.query(
-        "DELETE FROM songs WHERE user_id=$1 AND status IN ('queued','playing')",
+      const removedActiveRows = (await client.query(
+        "DELETE FROM songs WHERE user_id=$1 AND status IN ('queued','playing') RETURNING status",
         [musicUserId],
-      );
+      )).rows;
+      const stoppedPlayback = removedActiveRows.some(({ status }) => status === "playing");
       const inserted = sources.length === 0 ? [] : (await client.query(
         `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
          SELECT $1,source.youtube_id,source.title,source.artist,source.thumbnail_url,(source.ordinality-1)::integer,'queued'
@@ -322,6 +323,7 @@ export class MusicDomainRepository {
         "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 RETURNING music_queue_revision",
         [musicUserId],
       )).rows[0].music_queue_revision);
+      if (stoppedPlayback) await this.recordPlaybackRevision(client, musicUserId, nextRevision);
       const response = {
         version: "music-queue/v1" as const,
         revision: nextRevision,
