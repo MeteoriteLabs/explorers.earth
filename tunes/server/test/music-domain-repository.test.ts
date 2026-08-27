@@ -775,6 +775,13 @@ describe("MusicDomainRepository owner predicates", () => {
     });
   });
 
+  it("preserves existing playback state fields when recording the concurrency token", async () => {
+    const harness = recordingPool([{ music_queue_revision: 4 }, { id: 8 }, { music_queue_revision: 5 }, { id: 8 }]);
+    await new MusicDomainRepository(harness.pool).setPlaying(31, 8);
+    const tokenWrite = harness.calls.find((call) => /INSERT INTO playback_states/.test(call.text));
+    expect(tokenWrite?.text).toContain("COALESCE(playback_states.state,'{}'::jsonb) || EXCLUDED.state");
+  });
+
   it("serves an empty unlisted publication to its valid capability", async () => {
     const capability = "C".repeat(43);
     const harness = recordingPool([{

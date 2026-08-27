@@ -261,11 +261,13 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, user_id: b.id, status: "played" })]);
 
     const aSong = await domain.addSong(a.id, { youtubeId: "a-yt0000000", title: "A song", artist: "A", thumbnailUrl: "https://img/a" }) as { id: number };
+    await pool.query("INSERT INTO playback_states(user_id,state) VALUES ($1,$2::jsonb)", [a.id, JSON.stringify({ positionSeconds: 42 })]);
     await domain.setPlaying(a.id, aSong.id);
     await domain.setPlaying(a.id, null);
     expect(await domain.listQueue(a.id)).toEqual([expect.objectContaining({ id: aSong.id, status: "played" })]);
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, status: "played" })]);
     expect(await domain.ownerDashboard(a.id)).toMatchObject({ queueRevision: 3, songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: aSong.id, userId: a.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-a" }) });
+    expect((await pool.query("SELECT state FROM playback_states WHERE user_id=$1", [a.id])).rows[0].state).toEqual({ positionSeconds: 42, revision: 3 });
     expect(await domain.ownerDashboard(b.id)).toMatchObject({ queueRevision: 1, songs: [], currentlyPlaying: undefined, playedSongs: [expect.objectContaining({ id: bSong.id, userId: b.id })], publication: expect.objectContaining({ mode: "unlisted", publicSlug: "c6-public-b" }) });
   });
 

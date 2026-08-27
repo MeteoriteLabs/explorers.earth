@@ -81,6 +81,7 @@ export function PublicMusicContent({
 
   const publicPlaylists = resource.playlists.filter((playlist) => playlist.isVisibleToGuests);
   const showQueue = resource.allowQueueVisibility === true;
+  const upNextSongs = resource.songs.filter((song) => song.id !== resource.currentlyPlaying?.id);
   return (
     <main className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-4xl">
@@ -94,9 +95,9 @@ export function PublicMusicContent({
                 <span><span className="block text-xs font-semibold uppercase tracking-wide text-dashboard-accent">Playing now</span><span className="block font-medium">{resource.currentlyPlaying.title}</span><span className="block text-sm text-dashboard-text-muted">{resource.currentlyPlaying.artist}</span></span>
               </div>
             ) : null}
-            {resource.songs.length > 0 ? (
+            {upNextSongs.length > 0 ? (
               <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
-                {resource.songs.map((song) => (
+                {upNextSongs.map((song) => (
                   <li key={song.id} className="flex min-h-11 items-center gap-3 py-3">
                     <img className="h-11 w-11 rounded object-cover" src={song.thumbnailUrl} alt="" />
                     <span><span className="block font-medium">{song.title}</span><span className="block text-sm text-dashboard-text-muted">{song.artist}</span></span>

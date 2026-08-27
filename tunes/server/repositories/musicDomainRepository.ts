@@ -646,7 +646,10 @@ export class MusicDomainRepository {
           await this.recordPlaybackRevision(client, musicUserId, revision);
           return { status: "completed" as const, revision, playbackRevision: revision, song: null };
         }
-        if ((completed.rowCount ?? 0) > 0) await this.advanceQueueRevision(client, musicUserId);
+        if ((completed.rowCount ?? 0) > 0) {
+          const revision = await this.advanceQueueRevision(client, musicUserId);
+          await this.recordPlaybackRevision(client, musicUserId, revision);
+        }
         return null;
       }
       const activated = (await client.query(
@@ -686,7 +689,7 @@ export class MusicDomainRepository {
       `INSERT INTO playback_states(user_id,state,updated_at)
        VALUES ($1,jsonb_build_object('revision',$2::bigint),now())
        ON CONFLICT (user_id) DO UPDATE
-       SET state=EXCLUDED.state,updated_at=EXCLUDED.updated_at`,
+       SET state=COALESCE(playback_states.state,'{}'::jsonb) || EXCLUDED.state,updated_at=EXCLUDED.updated_at`,
       [musicUserId, revision],
     );
   }
