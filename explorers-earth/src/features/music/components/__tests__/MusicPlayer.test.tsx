@@ -38,6 +38,16 @@ describe("MusicPlayer", () => {
   beforeEach(() => { playerProps = {}; seekTo.mockReset(); });
   afterEach(() => vi.useRealTimers());
 
+  it("starts audio-first and reveals video only on request", async () => {
+    setup();
+    expect(screen.getByTestId("video-surface")).toHaveAttribute("aria-hidden", "true");
+    const toggle = screen.getByRole("button", { name: "Show video" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(toggle);
+    expect(screen.getByTestId("video-surface")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("button", { name: "Hide video" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("plays, pauses, changes volume, mutes, and exposes accessible values", async () => {
     const user = userEvent.setup(); setup();
     const toggle = screen.getByRole("button", { name: "Play" });

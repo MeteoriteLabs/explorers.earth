@@ -24,6 +24,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [message, setMessage] = useState("");
@@ -143,7 +144,8 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
 
   return (
     <section aria-label="Music player" className="motion-reduce:transition-none">
-      <h2>{currentSong.title}</h2><p>{currentSong.artist}</p>
+      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate">{currentSong.title}</h2><p className="truncate">{currentSong.artist}</p></div><button type="button" style={controlSize} aria-label={showVideo ? "Hide video" : "Show video"} aria-pressed={showVideo} onClick={() => setShowVideo((visible) => !visible)} className="shrink-0 rounded-xl border border-dashboard px-3">{showVideo ? "Hide video" : "Show video"}</button></div>
+      <div data-testid="video-surface" aria-hidden={!showVideo} className={showVideo ? "mt-4 aspect-video overflow-hidden rounded-xl" : "h-0 overflow-hidden opacity-0 pointer-events-none"}>
       <ReactPlayer
         ref={mediaRef}
         src={`https://www.youtube.com/watch?v=${currentSong.youtubeId}`}
@@ -159,6 +161,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
         onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
       />
+      </div>
       <div>
         <button type="button" style={controlSize} aria-label="Previous song" disabled={readOnly || !previousSong || transitionPending} onClick={() => { void transition(previousSong, "previous"); }}>Previous</button>
         <button type="button" style={controlSize} aria-label={playing ? "Pause" : "Play"} onClick={() => { setMessage(""); setPlaying((value) => !value); }}>{playing ? "Pause" : "Play"}</button>
