@@ -203,6 +203,7 @@ function checkSSOCookie(req: Request, res: Response, next: NextFunction) {
       allowGuestPlayOnDevice: userData.allowGuestPlayOnDevice !== undefined ? userData.allowGuestPlayOnDevice : true,
       allowPlaylistSharing: userData.allowPlaylistSharing !== undefined ? userData.allowPlaylistSharing : false,
       allowRecentlyPlayedVisibility: userData.allowRecentlyPlayedVisibility !== undefined ? userData.allowRecentlyPlayedVisibility : true,
+      allowQueueVisibility: userData.allowQueueVisibility !== undefined ? userData.allowQueueVisibility : false,
       accountManagerId: userData.accountManagerId || null,
       musicQueueRevision: Number(userData.musicQueueRevision ?? 0),
     };
