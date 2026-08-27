@@ -261,7 +261,9 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await domain.listQueue(b.id)).toEqual([expect.objectContaining({ id: bSong.id, user_id: b.id, status: "played" })]);
 
     const aSong = await domain.addSong(a.id, { youtubeId: "a-yt0000000", title: "A song", artist: "A", thumbnailUrl: "https://img/a" }) as { id: number };
-    await pool.query("INSERT INTO playback_states(user_id,state) VALUES ($1,$2::jsonb)", [a.id, JSON.stringify({ positionSeconds: 42, revision: "legacy-not-a-number" })]);
+    await pool.query("INSERT INTO playback_states(user_id,state) VALUES ($1,$2::jsonb)", [a.id, JSON.stringify({ positionSeconds: 42, revision: "999999999999999999" })]);
+    expect(await domain.ownerDashboard(a.id)).toMatchObject({ playbackRevision: 0 });
+    await pool.query("UPDATE playback_states SET state=state || $2::jsonb WHERE user_id=$1", [a.id, JSON.stringify({ revision: "legacy-not-a-number" })]);
     expect(await domain.ownerDashboard(a.id)).toMatchObject({ playbackRevision: 0 });
     await domain.setPlaying(a.id, aSong.id);
     await domain.setPlaying(a.id, null);

@@ -7,8 +7,8 @@ import type { MusicPublicationMode } from "../services/musicPublicationResponseC
 // playback_states predates the concurrency token and may contain arbitrary
 // legacy JSON. Only cast a canonical, in-range unsigned bigint representation.
 const SAFE_PLAYBACK_REVISION_SQL = `CASE
-  WHEN value ~ '^[0-9]{1,18}$'
-    OR (value ~ '^[0-9]{19}$' AND value <= '9223372036854775807')
+  WHEN value ~ '^[0-9]{1,15}$'
+    OR (value ~ '^[0-9]{16}$' AND value <= '9007199254740991')
   THEN value::bigint
   ELSE 0
 END`;
