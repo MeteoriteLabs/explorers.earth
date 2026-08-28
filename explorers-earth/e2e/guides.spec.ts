@@ -178,8 +178,13 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({
           data: {
             usersPermissionsUser: {
+              id: 'fixture-user',
+              documentId: 'fixture-user',
               email: 'test@explorers.earth',
               username: 'testuser',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',
               accounts: [
@@ -197,6 +202,9 @@ test.beforeEach(async ({ context, page }) => {
                   public_people: 'No',
                   public_guides: 'No',
                   public_recommendations: 'Yes',
+                  public_profile: 'Yes',
+                  pinned_nav_tabs: [],
+                  auto_pinning: false,
                   profile_picture: null,
                   localtunes_integrated: false
                 }

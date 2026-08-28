@@ -1523,10 +1523,10 @@ test.describe("public recommendation presentation visual matrix", () => {
         .locator(":scope > [data-category-id]");
       const first = await categories.nth(0).boundingBox();
       const second = await categories.nth(1).boundingBox();
-      const usesTwoColumnBreakpoint = await page.evaluate(
-        () => window.matchMedia("(min-width: 640px)").matches,
-      );
-      if (!usesTwoColumnBreakpoint) {
+      const renderedColumnCount = await page
+        .getByTestId("recommendations-grid")
+        .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+      if (renderedColumnCount === 1) {
         expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeGreaterThan(10);
       } else {
         expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeLessThan(2);

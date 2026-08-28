@@ -20,6 +20,10 @@ test.beforeEach(async ({ context, page }) => {
     public_people: 'No',
     public_guides: 'No',
     public_recommendations: 'No',
+    public_profile: 'Yes',
+    pinned_nav_tabs: [],
+    auto_pinning: false,
+    localtunes_integrated: false,
   };
   const appList = (withRecommendations: boolean) => ({
     documentId: 'app-list-123',
@@ -68,6 +72,9 @@ test.beforeEach(async ({ context, page }) => {
               documentId: 'fixture-user',
               username: 'testuser',
               email: 'test@example.test',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',
               accounts: [account],
