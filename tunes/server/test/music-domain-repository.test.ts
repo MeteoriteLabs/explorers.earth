@@ -832,6 +832,9 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text).toMatch(/guest_url IS NOT NULL/);
     expect(harness.calls[0].text).toMatch(/guest_url ~ '\^\[A-Za-z0-9_-/);
     expect(harness.calls[0].text).toMatch(/public_snapshot_revision/);
+    const normalizedSql = harness.calls[0].text.replace(/\s+/g, " ");
+    expect(normalizedSql).toContain("AND NOT EXISTS ( SELECT 1 FROM users collision WHERE collision.strapi_user_document_id=$1 )");
+    expect(normalizedSql).toContain("AND NOT EXISTS ( SELECT 1 FROM music_identity_tombstones tombstone WHERE tombstone.strapi_user_document_id=$1 OR tombstone.strapi_account_document_id=$1 )");
     expect(harness.calls[0].text).not.toMatch(/SELECT\s+u\.id\b/i);
   });
 

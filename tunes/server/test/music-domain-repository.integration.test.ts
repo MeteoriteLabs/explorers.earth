@@ -34,6 +34,22 @@ function identityInput(suffix: string): EnsureMusicIdentityInput {
   };
 }
 
+async function withReplicationTriggersDisabled(operation: (client: pg.PoolClient) => Promise<void>): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("SET session_replication_role=replica");
+    await operation(client);
+  } finally {
+    try {
+      await client.query("SET session_replication_role=origin");
+      client.release();
+    } catch (error) {
+      client.release(error as Error);
+      throw error;
+    }
+  }
+}
+
 describePg("C6 owner predicates on real PostgreSQL 15", () => {
   it("durably replays one saved-playlist song and rejects a changed replay", async () => {
     const owner = await identities.ensureIdentity(identityInput("playlist-song-replay"));
@@ -780,5 +796,60 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       "c6-account-descriptor-unknown",
       "c6-user-descriptor-public",
     ]) await expect(domain.resolvePublicDescriptor(accountDocumentId)).resolves.toBeUndefined();
+  });
+
+  it("fails closed only while another User document ID collides with a live public Account document ID", async () => {
+    // Break caught: cross-column namespace corruption turns stable Account discovery into ambiguous authority.
+    const target = await identities.ensureIdentity(identityInput("descriptor-cross-column-target"));
+    const collision = await identities.ensureIdentity(identityInput("descriptor-cross-column-holder"));
+    await pool.query("UPDATE users SET guest_discoverable=true,public_snapshot_revision=11 WHERE id=$1", [target.id]);
+    const expected = { mode: "public", publicSlug: "c6-public-descriptor-cross-column-target", revision: 11 };
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
+
+    await withReplicationTriggersDisabled(async (client) => {
+      await client.query("UPDATE users SET strapi_user_document_id=$1 WHERE id=$2", [target.strapiAccountDocumentId, collision.id]);
+    });
+    try {
+      await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toBeUndefined();
+    } finally {
+      await withReplicationTriggersDisabled(async (client) => {
+        await client.query("UPDATE users SET strapi_user_document_id=$1 WHERE id=$2", [collision.strapiUserDocumentId, collision.id]);
+      });
+    }
+
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
+  });
+
+  it("fails closed only while a tombstone collides with a live public Account document ID", async () => {
+    // Break caught: removing the tombstone anti-join would publish an otherwise valid but retired authority tuple.
+    const target = await identities.ensureIdentity(identityInput("descriptor-live-tombstone"));
+    await pool.query("UPDATE users SET guest_discoverable=true,public_snapshot_revision=13 WHERE id=$1", [target.id]);
+    const expected = { mode: "public", publicSlug: "c6-public-descriptor-live-tombstone", revision: 13 };
+    const operationId = "c6-descriptor-live-tombstone-fixture";
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
+
+    await withReplicationTriggersDisabled(async (client) => {
+      await client.query(`INSERT INTO music_identity_lifecycle_operations(
+        operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,
+        operation_kind,requested_identity_status,operation_state,operation_phase,result_session_version
+      ) VALUES ($1,$2,$3,$4,'delete','pending_deletion','completed','finalized',$5)`, [
+        operationId, target.strapiUserDocumentId, target.strapiAccountDocumentId, target.id, target.sessionVersion,
+      ]);
+      await client.query(`INSERT INTO music_identity_tombstones(
+        strapi_user_document_id,strapi_account_document_id,music_user_id,reason,lifecycle_operation_id
+      ) VALUES ($1,$2,$3,'descriptor defensive fixture',$4)`, [
+        target.strapiUserDocumentId, target.strapiAccountDocumentId, target.id, operationId,
+      ]);
+    });
+    try {
+      await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toBeUndefined();
+    } finally {
+      await withReplicationTriggersDisabled(async (client) => {
+        await client.query("DELETE FROM music_identity_tombstones WHERE lifecycle_operation_id=$1", [operationId]);
+        await client.query("DELETE FROM music_identity_lifecycle_operations WHERE operation_id=$1", [operationId]);
+      });
+    }
+
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
   });
 });

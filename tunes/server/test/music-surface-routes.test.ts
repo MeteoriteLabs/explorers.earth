@@ -179,6 +179,62 @@ describe("canonical Music REST surfaces", () => {
     expect(lookup).toHaveBeenCalledWith(injection);
   });
 
+  it("maps an Express path-decode failure on descriptor discovery to the same contained 404", async () => {
+    // Break caught: Express decodes path parameters before identify, exposing malformed UTF-8 as a distinct 400/500 oracle.
+    const lookup = vi.fn(async () => undefined);
+    const publicRateLimited = vi.fn(() => false);
+    const { app } = appFor({ resolvePublicDescriptor: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-profile/%E0%A4%A")
+      .set("X-Request-Id", "descriptor-decode-request");
+
+    expect(response.status).toBe(404);
+    expect(response.headers["x-request-id"]).toBe("descriptor-decode-request");
+    expect(response.body).toEqual({
+      version: "music-error/v1",
+      error: {
+        code: "PUBLIC_NOT_FOUND",
+        message: "The Music resource was not found.",
+        action: "none",
+        retryable: false,
+        requestId: "descriptor-decode-request",
+      },
+    });
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "malformed-account-document-id",
+    });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("rate limits malformed descriptor paths before returning their generic discovery error", async () => {
+    // Break caught: invalid percent encodings bypass the normal per-source/public-surface containment boundary.
+    const lookup = vi.fn(async () => undefined);
+    const publicRateLimited = vi.fn(() => true);
+    const { app } = appFor({ resolvePublicDescriptor: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-profile/%E0%A4%A")
+      .set("X-Request-Id", "unsafe request id");
+
+    expect(response.status).toBe(429);
+    expect(response.headers["retry-after"]).toBe("60");
+    expect(response.headers["x-request-id"]).toBe("route-request-id");
+    expect(response.body.error).toMatchObject({ code: "RATE_LIMITED", retryable: true, requestId: "route-request-id" });
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "malformed-account-document-id",
+    });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("does not reclassify path-decode failures on unrelated routes as public descriptor misses", async () => {
+    // Break caught: a broad URIError catch hides malformed paths outside the one public discovery endpoint.
+    const { app } = appFor();
+    const response = await request(app).get("/api/playlists/%E0%A4%A");
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toMatchObject({ code: "INTERNAL_ERROR" });
+    expect(response.body.error.code).not.toBe("PUBLIC_NOT_FOUND");
+  });
+
   it("rejects every query, body, and identity-header authority channel before descriptor lookup", async () => {
     // Break caught: callers substitute username/email/user/owner selectors for the stable Account path identity.
     const lookup = vi.fn(async () => ({ mode: "public" as const, publicSlug: "stable-public-slug", revision: 1 }));

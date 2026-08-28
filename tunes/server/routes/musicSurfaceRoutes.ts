@@ -100,6 +100,9 @@ const OWNER_KEYS = new Set([
   "username", "email", "userId", "musicUserId", "ownerId", "accountId", "documentId",
   "strapiUser", "strapiUserDocumentId", "strapiAccountDocumentId",
 ]);
+const SAFE_REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const PUBLIC_DESCRIPTOR_PATH_PREFIX = "/api/music/public-profile/";
+const MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE = "malformed-account-document-id";
 
 export function isExactMusicOriginAllowed(req: Pick<Request, "get">, allowedOrigins: readonly string[]): boolean {
   const origin = req.get("origin");
@@ -111,7 +114,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   const principal = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);
   const identify: RequestHandler = (req, res, next) => {
     const supplied = req.get("x-request-id");
-    const requestId = supplied && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(supplied) ? supplied : requestIdFactory();
+    const requestId = supplied && SAFE_REQUEST_ID.test(supplied) ? supplied : requestIdFactory();
     res.locals.musicRequestId = requestId;
     res.setHeader("X-Request-Id", requestId);
     next();
@@ -142,10 +145,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       );
       const accountDocumentId = boundedIdentityDocumentId(req.params.accountDocumentId);
       if (!accountDocumentId) throw notFound();
-      const peerAddress = req.socket.remoteAddress;
-      const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
-        ? (req.ip ?? peerAddress ?? "unknown")
-        : (peerAddress ?? "unknown");
+      const source = publicRequestSource(req, dependencies);
       const limited = dependencies.publicRateLimited?.({ source, resource: accountDocumentId })
         ?? consumePublicSurfaceLimit({ source, resource: accountDocumentId });
       if (limited) throw new MusicIdentityError(
@@ -571,17 +571,46 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     } catch (error) { next(error); }
   });
 
-  app.use((cause: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((cause: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (res.headersSent) return;
-    const error = safeRouteError(cause);
+    const descriptorDecodeFailure = isPublicDescriptorDecodeFailure(cause, req);
+    const limited = descriptorDecodeFailure && (dependencies.publicRateLimited?.({
+      source: publicRequestSource(req, dependencies),
+      // A constant dimension prevents malformed encodings from manufacturing unbounded resource buckets.
+      resource: MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE,
+    }) ?? consumePublicSurfaceLimit({
+      source: publicRequestSource(req, dependencies),
+      resource: MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE,
+    }));
+    const error = limited
+      ? new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60)
+      : descriptorDecodeFailure ? notFound() : safeRouteError(cause);
     if (error.status === 429 || error.status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
     const currentHeader = res.getHeader("X-Request-Id");
+    const supplied = descriptorDecodeFailure ? req.get("x-request-id") : undefined;
     const requestId = res.locals.musicRequestId
       ?? (typeof currentHeader === "string" ? currentHeader : undefined)
+      ?? (supplied && SAFE_REQUEST_ID.test(supplied) ? supplied : undefined)
       ?? requestIdFactory();
     res.setHeader("X-Request-Id", requestId);
     res.status(error.status).json(musicErrorEnvelope(error, requestId));
   });
+}
+
+function publicRequestSource(req: Request, dependencies: CanonicalMusicRouteDependencies): string {
+  const peerAddress = req.socket.remoteAddress;
+  return dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+    ? (req.ip ?? peerAddress ?? "unknown")
+    : (peerAddress ?? "unknown");
+}
+
+function isPublicDescriptorDecodeFailure(cause: unknown, req: Request): boolean {
+  if (!(cause instanceof URIError) || req.method !== "GET") return false;
+  const queryOffset = req.originalUrl.indexOf("?");
+  const path = queryOffset === -1 ? req.originalUrl : req.originalUrl.slice(0, queryOffset);
+  if (!path.startsWith(PUBLIC_DESCRIPTOR_PATH_PREFIX)) return false;
+  const encodedAccountDocumentId = path.slice(PUBLIC_DESCRIPTOR_PATH_PREFIX.length);
+  return encodedAccountDocumentId.length > 0 && !encodedAccountDocumentId.includes("/");
 }
 
 /**
