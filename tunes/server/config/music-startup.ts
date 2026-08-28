@@ -22,6 +22,7 @@ export interface MusicServerRuntime {
 
 export interface MusicStartupDependencies extends MusicIdentityConfigDependencies {
   loadRuntime?: () => Promise<MusicServerRuntime>;
+  ensureAnalyticsSchema?: () => Promise<void>;
   resolveDatabaseConnection?: typeof resolveMusicDatabaseConnection;
   verifyDatabaseConnection?: (connection: MusicDatabaseConnection) => Promise<void>;
   host?: string;
@@ -73,11 +74,14 @@ export async function startMusicServer(
   dependencies: MusicStartupDependencies = {},
 ): Promise<{ app: Express; server: Server; config: MusicIdentityRuntimeConfig }> {
   const config = await validateMusicStartupEnvironment(environment, dependencies);
-  const [{ pool }, { ensureExplorersAnalyticsSchema }] = await Promise.all([
-    import("../db"),
-    import("../startup/explorers-analytics-migration"),
-  ]);
-  await ensureExplorersAnalyticsSchema(pool);
+  if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
+  else {
+    const [{ pool }, { ensureExplorersAnalyticsSchema }] = await Promise.all([
+      import("../db"),
+      import("../startup/explorers-analytics-migration"),
+    ]);
+    await ensureExplorersAnalyticsSchema(pool);
+  }
   const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
   const { app, server } = await runtime.createApp(config);
   if (app.get("env") === "development") await runtime.setupVite(app, server);

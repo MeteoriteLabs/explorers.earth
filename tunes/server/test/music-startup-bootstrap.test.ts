@@ -150,6 +150,7 @@ describe("discriminated Music startup bootstrap", () => {
     await startMusicServer(environment, {
       resolveDatabaseConnection,
       verifyDatabaseConnection: async () => undefined,
+      ensureAnalyticsSchema: async () => undefined,
       loadRuntime: async () => controlledRuntime([]),
     });
 
@@ -180,11 +181,12 @@ describe("discriminated Music startup bootstrap", () => {
     await startMusicServer(environment, {
       resolveAddresses: resolver,
       verifyDatabaseConnection: async () => { events.push("verify-runtime-db"); },
+      ensureAnalyticsSchema: async () => { events.push("ensure-analytics-schema"); },
       loadRuntime,
     });
     expect(resolver).toHaveBeenCalledTimes(1);
     expect(loadRuntime).toHaveBeenCalledTimes(1);
-    expect(events).toEqual(["resolve-dns", "verify-runtime-db", "load-routes", "create-app", "static", "listen"]);
+    expect(events).toEqual(["resolve-dns", "verify-runtime-db", "ensure-analytics-schema", "load-routes", "create-app", "static", "listen"]);
   });
 
   it("rejects a wrong runtime database credential before importing routes or binding", async () => {
@@ -232,6 +234,7 @@ describe("discriminated Music startup bootstrap", () => {
     await startMusicServer(fixture, {
       resolveAddresses: async () => { throw new Error("fixture startup must not resolve DNS"); },
       verifyDatabaseConnection: async () => undefined,
+      ensureAnalyticsSchema: async () => undefined,
       loadRuntime: async () => {
         events.push("load-routes");
         return controlledRuntime(events);
