@@ -47,7 +47,7 @@ describe("retired browser Music authority boundary", () => {
     const publicRoutes = readFileSync(resolve(process.cwd(), "src/routes/PublicRoutes.tsx"), "utf8");
     const profileMusic = readFileSync(resolve(process.cwd(), "src/pages/public/ProfileMusic.tsx"), "utf8");
 
-    expect(publicNav).toContain("path: `/${username}/music`");
+    expect(publicNav).toContain("appendAttributionParamsToPath(`/${username}/music`, location.search)");
     expect(publicRoutes).toContain("PublicMusicVisibilityBoundary");
     expect(publicRoutes).toContain('<Route path="music"');
     expect(profileMusic).toContain("descriptorSlug");

@@ -10,6 +10,7 @@ import { InMemoryAnalyticsRateLimiter } from "./explorers-analytics-rate-limit";
 import { PostgresAnalyticsReceiptRepository } from "./explorers-analytics-receipts";
 import { ExplorersAnalyticsService } from "./explorers-analytics-service";
 import type { ExplorersAnalyticsRouteDependencies } from "../routes/explorersAnalyticsRoutes";
+import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSurfacePolicy";
 
 type AnalyticsStrapiEnvironment = Partial<
   Record<
@@ -26,6 +27,31 @@ export function resolveAnalyticsStrapiAccessToken(
     throw new Error("STRAPI_ANALYTICS_ACCESS_TOKEN is not configured");
   }
   return accessToken;
+}
+
+export async function resolvePublicMusicAnalyticsTarget(
+  database: Pick<typeof pool, "query">,
+  publicSlug: string,
+  capability?: string,
+): Promise<{ accountId: string; mode: "public" | "unlisted" } | undefined> {
+  const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+  const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
+  const rows = (await database.query(
+    `SELECT strapi_account_document_id,guest_discoverable,guest_capability_hash,guest_capability_revoked_at
+       FROM users
+      WHERE guest_url=$2 AND identity_status='active'
+        AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$1 AND guest_capability_revoked_at IS NULL))
+      LIMIT 2`,
+    [capabilityHash, publicSlug, capabilityValid],
+  )).rows;
+  if (rows.length !== 1) return undefined;
+  const row = rows[0];
+  const accountId = row.strapi_account_document_id;
+  if (typeof accountId !== "string" || accountId.length < 1 || accountId.length > 128) return undefined;
+  if (row.guest_discoverable === true) return { accountId, mode: "public" };
+  return capabilityValid && verifyGuestCapability(capability, row.guest_capability_hash)
+    ? { accountId, mode: "unlisted" }
+    : undefined;
 }
 
 export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteDependencies {
@@ -52,5 +78,7 @@ export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteD
       }),
     validatePublicTarget: (input) => targetValidator.validate(input),
     allowWrite: (request, accountId) => writeLimiter.allow(request, accountId),
+    resolvePublicMusicAnalyticsTarget: (publicSlug, capability) =>
+      resolvePublicMusicAnalyticsTarget(pool, publicSlug, capability),
   };
 }

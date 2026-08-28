@@ -76,6 +76,17 @@ describe("public Music page", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
+  it("tracks ready navigation and unavailable acknowledgement once per visible transition", async () => {
+    const onAnalytics = vi.fn();
+    const view = render(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} onAnalytics={onAnalytics} /></MemoryRouter>);
+    await waitFor(() => expect(onAnalytics).toHaveBeenCalledWith({ name: "navigation_opened", route: "direct" }));
+    view.rerender(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} onAnalytics={onAnalytics} /></MemoryRouter>);
+    expect(onAnalytics).toHaveBeenCalledTimes(1);
+    view.rerender(<MemoryRouter><PublicMusicContent state="unavailable" onAnalytics={onAnalytics} /></MemoryRouter>);
+    await waitFor(() => expect(onAnalytics).toHaveBeenCalledWith({ name: "unavailable", reason: "service_unavailable" }));
+    expect(onAnalytics).toHaveBeenCalledTimes(2);
+  });
+
   it("applies the permission policy even if protected collection data is supplied", () => {
     render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
       currentlyPlaying: playing,

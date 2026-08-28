@@ -32,6 +32,7 @@ function liveCanonicalOperations(): string[] {
     ].includes(route.classification) || route.path === "/api-docs"
       || route.path === "/api/music/public-profile/:accountDocumentId"
       || route.path === "/api/music/public-resource/v1/:publicSlug"
+      || route.path === "/api/explorers/analytics/music/:publicSlug/events"
       || route.path === "/api/playlist/:guestUrl/youtube/search"
       || route.path === "/api/playlist/:guestUrl/youtube/video-from-url")
     .map((route) => `${route.method.toLowerCase()} ${openApiPath(route.path)}`)
@@ -76,7 +77,8 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     for (const { method, path, operation } of operations()) {
       const isIdentityBoundary = path.includes("/identity/ensure") || path.includes("/identity/lifecycle/");
       const isPublic = path === "/api/music/public-profile/{accountDocumentId}"
-        || path === "/api/music/public-resource/v1/{publicSlug}";
+        || path === "/api/music/public-resource/v1/{publicSlug}"
+        || path === "/api/explorers/analytics/music/{publicSlug}/events";
       const isOwner = !isIdentityBoundary && !isPublic && !path.includes("{guestUrl}") && path !== "/api-docs";
       if (isIdentityBoundary) expect(operation.security, `${method} ${path}`).toContainEqual({ explorerProof: [] });
       if (isOwner) expect(operation.security, `${method} ${path}`).toContainEqual({ musicCredential: [] });
@@ -121,6 +123,10 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     ]));
     expect(Object.keys(publicResource?.responses ?? {}).sort()).toEqual(["200", "404", "413", "429", "500"]);
     expect(JSON.stringify(publicResource?.responses["200"])).toContain("music-public-resource/v1");
+    const productAnalytics = MUSIC_OPENAPI_DOCUMENT.paths["/api/explorers/analytics/music/{publicSlug}/events"]?.post;
+    expect(productAnalytics?.security).toEqual([{}, { guestCapability: [] }]);
+    expect(productAnalytics?.requestBody).toBeDefined();
+    expect(JSON.stringify(productAnalytics?.requestBody)).not.toMatch(/accountId|publicSlug|capability|query|mediaUrl|credential/i);
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicResource).toMatchObject({
       type: "object", additionalProperties: false,
       required: ["version", "revision", "user", "permissions", "currentlyPlaying", "queue", "recentlyPlayed", "playlists"],

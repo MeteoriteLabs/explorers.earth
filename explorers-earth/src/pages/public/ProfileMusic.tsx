@@ -4,6 +4,7 @@ import SEO from "../../components/SEO";
 import { usePublicMusicAvailability } from "../../features/music/PublicMusicAvailabilityProvider";
 import { usePublicMusicResource } from "../../features/music/usePublicMusicResource";
 import { PublicMusicContent } from "./PublicMusic";
+import { usePublicMusicProductAnalytics } from "../../features/music/publicMusicAnalytics";
 
 export default function ProfileMusic() {
   const { username } = useParams();
@@ -20,6 +21,7 @@ export default function ProfileMusic() {
     onRevoked: availability.retry,
     onSettled: settle,
   });
+  const trackMusic = usePublicMusicProductAnalytics({ publicSlug: descriptorSlug, route: "friendly" });
 
   const canonical = descriptorSlug ? `${window.location.origin}/music/share/${encodeURIComponent(descriptorSlug)}` : undefined;
   return <>
@@ -32,6 +34,8 @@ export default function ProfileMusic() {
       returnTo={`/${username ?? ""}`}
       retryAfterSeconds={music.retryAfterSeconds}
       onRetry={() => { availability.retry(); music.retry(); }}
+      analyticsRoute="friendly"
+      onAnalytics={trackMusic}
     />
   </>;
 }

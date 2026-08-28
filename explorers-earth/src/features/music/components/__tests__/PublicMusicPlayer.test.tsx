@@ -47,6 +47,17 @@ describe("PublicMusicPlayer", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
+  it("acknowledges playback analytics only after media playback starts", async () => {
+    const onPlaybackStart = vi.fn();
+    render(<PublicMusicPlayer song={song} onPlaybackStart={onPlaybackStart} />);
+    await userEvent.click(screen.getByRole("button", { name: /Play Public signal/ }));
+    expect(onPlaybackStart).not.toHaveBeenCalled();
+    act(() => (mediaProps.onPlay as () => void)());
+    expect(onPlaybackStart).toHaveBeenCalledTimes(1);
+    act(() => (mediaProps.onPlay as () => void)());
+    expect(onPlaybackStart).toHaveBeenCalledTimes(1);
+  });
+
   it("requires an explicit guest gesture and exposes keyboard-labelled play and pause controls", async () => {
     const user = userEvent.setup();
     render(<PublicMusicPlayer song={song} />);

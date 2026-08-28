@@ -168,6 +168,8 @@ export const explorersAnalyticsInputSchema = z.object({
   const pathMatchesPage =
     input.event.page === "public-profile"
       ? segments.length === 1
+      : input.event.page === "public-music" && segments[0] === "music" && segments[1] === "share"
+        ? segments.length === 2
       : segments.length >= 2 && segments[1] === expectedCategory;
   if (!pathMatchesPage) {
     context.addIssue({

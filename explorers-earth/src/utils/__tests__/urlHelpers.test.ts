@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
+  appendAttributionParamsToPath,
   appendUtmParams,
   extractUtmParams,
   extractUtmParamsFromCurrentUrl,
@@ -10,6 +11,12 @@ import {
   sanitizeUtmParams,
   UTMParameters
 } from '../urlHelpers';
+
+describe('appendAttributionParamsToPath', () => {
+  it('preserves only bounded UTM attribution through friendly Music navigation', () => {
+    expect(appendAttributionParamsToPath('/alice/music', '?utm_source=newsletter&utm_medium=email&access=secret&query=raw')).toBe('/alice/music?utm_source=newsletter&utm_medium=email');
+  });
+});
 
 describe('urlHelpers', () => {
   afterEach(() => {

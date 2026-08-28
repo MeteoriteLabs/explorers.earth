@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { Music2 } from "lucide-react";
 import SEO from "../../components/SEO";
 import { type PublicMusicResource } from "../../features/music/publicMusicClient";
 import { PublicMusicSections } from "../../features/music/components/PublicMusicSections";
 import { usePublicMusicResource } from "../../features/music/usePublicMusicResource";
+import { usePublicMusicProductAnalytics, type PublicMusicProductEvent } from "../../features/music/publicMusicAnalytics";
 
 type PublicMusicViewState = "loading" | "ready" | "not-found" | "rate-limited" | "unavailable";
 
@@ -43,6 +44,8 @@ export function PublicMusicContent({
   returnTo = "/",
   publicSlug,
   capability,
+  analyticsRoute = "direct",
+  onAnalytics,
 }: {
   state: PublicMusicViewState;
   resource?: PublicMusicResource;
@@ -52,8 +55,24 @@ export function PublicMusicContent({
   returnTo?: string;
   publicSlug?: string;
   capability?: string;
+  analyticsRoute?: "friendly" | "direct";
+  onAnalytics?: (event: PublicMusicProductEvent) => void | Promise<void>;
 }) {
   const Frame = standalone ? "main" : "div";
+  const acknowledgedState = useRef<PublicMusicViewState>();
+  useEffect(() => {
+    if (acknowledgedState.current === state) return;
+    if (state === "ready") {
+      acknowledgedState.current = state;
+      void onAnalytics?.({ name: "navigation_opened", route: analyticsRoute });
+    } else if (state === "not-found" || state === "rate-limited" || state === "unavailable") {
+      acknowledgedState.current = state;
+      void onAnalytics?.({
+        name: "unavailable",
+        reason: state === "not-found" ? "not_public" : state === "rate-limited" ? "rate_limited" : "service_unavailable",
+      });
+    }
+  }, [analyticsRoute, onAnalytics, state]);
   if (state === "loading") {
     return (
       <Frame className="min-h-screen bg-dashboard-bg px-4 py-20 text-dashboard-text">
@@ -92,7 +111,7 @@ export function PublicMusicContent({
     <Frame className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-6xl">
         <h1 id="public-music-heading" tabIndex={-1} className="text-3xl font-semibold">Music</h1>
-        <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} onReconcile={onRetry} />
+        <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} onReconcile={onRetry} onAnalytics={onAnalytics} />
       </div>
     </Frame>
   );
@@ -135,6 +154,7 @@ export default function PublicMusic() {
   const music = usePublicMusicResource({
     publicSlug, capability, enabled: Boolean(publicSlug), disabledState: "not-found", onRevoked: revoke,
   });
+  const trackMusic = usePublicMusicProductAnalytics({ publicSlug, capability, route: "direct" });
 
   return (
     <>
@@ -145,7 +165,7 @@ export default function PublicMusic() {
         noIndex={Boolean(capability)}
         noFollow={Boolean(capability)}
       />
-      <PublicMusicContent state={music.state} resource={music.resource} publicSlug={publicSlug} capability={capability} retryAfterSeconds={music.retryAfterSeconds} onRetry={music.retry} />
+      <PublicMusicContent state={music.state} resource={music.resource} publicSlug={publicSlug} capability={capability} retryAfterSeconds={music.retryAfterSeconds} onRetry={music.retry} analyticsRoute="direct" onAnalytics={trackMusic} />
     </>
   );
 }

@@ -3,6 +3,7 @@ import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient"
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
 import { PublicMusicPlayer } from "./PublicMusicPlayer";
 import { PublicMusicRequest } from "./PublicMusicRequest";
+import type { PublicMusicProductEvent } from "../publicMusicAnalytics";
 
 function CollectionSummary({ shown, total, noun }: { shown: number; total: number; noun?: string }) {
   if (total <= shown) return null;
@@ -58,7 +59,15 @@ function SongRow({ song, playable = false, selected = false, onSelect }: {
   );
 }
 
-export function PublicMusicSections({ resource, publicSlug, capability, headingId = "public-music-heading", onReconcile, requestClient }: { resource: PublicMusicResource; publicSlug?: string; capability?: string; headingId?: string; onReconcile?: () => void; requestClient?: ComponentProps<typeof PublicMusicRequest>["client"] }) {
+export function PublicMusicSections({ resource, publicSlug, capability, headingId = "public-music-heading", onReconcile, requestClient, onAnalytics }: {
+  resource: PublicMusicResource;
+  publicSlug?: string;
+  capability?: string;
+  headingId?: string;
+  onReconcile?: () => void;
+  requestClient?: ComponentProps<typeof PublicMusicRequest>["client"];
+  onAnalytics?: (event: PublicMusicProductEvent) => void;
+}) {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [revocationAnnouncement, setRevocationAnnouncement] = useState("");
   const playerHasFocus = useRef(false);
@@ -82,6 +91,9 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
     ]
     : [];
   const selectedSong = selectableSongs.find(({ id }) => id === selectedSongId) ?? playableSong;
+  const selectedSource: "current" | "queue" | "playlist" = selectedSongId
+    ? resource.queue.items.some(({ id }) => id === selectedSongId) ? "queue" : "playlist"
+    : "current";
   const requestEligible = policy.requestEligible && Boolean(publicSlug) && !requestRevoked;
   const hasVisibleContent = requestEligible
     || policy.currentVisible
@@ -128,26 +140,27 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
 
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
-      {requestEligible && publicSlug ? <div onFocusCapture={() => { requestHasFocus.current = true; }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; }}><PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed client={requestClient} onCanonicalRevoked={revokeRequest} /></div> : null}
+      {requestEligible && publicSlug ? <div onFocusCapture={() => { requestHasFocus.current = true; onAnalytics?.({ name: "section_opened", section: "request" }); }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; }}><PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed client={requestClient} onCanonicalRevoked={revokeRequest} onRequestOutcome={(outcome) => onAnalytics?.({ name: "request_submitted", outcome })} /></div> : null}
       {playableSong ? (
         <section
           className="min-w-0"
           data-testid="public-music-player"
           aria-labelledby="public-music-player-heading"
           onFocusCapture={() => { playerHasFocus.current = true; }}
+          onPointerDown={() => onAnalytics?.({ name: "section_opened", section: "player" })}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playerHasFocus.current = false;
           }}
         >
           <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
-          {selectedSong ? <PublicMusicPlayer key={selectedSong.id} song={selectedSong} allowed={policy.playerEligible} /> : null}
+          {selectedSong ? <PublicMusicPlayer key={selectedSong.id} song={selectedSong} allowed={policy.playerEligible} onPlaybackStart={() => onAnalytics?.({ name: "playback_started", source: selectedSource })} /> : null}
         </section>
       ) : null}
 
       {revocationStatus}
 
       {policy.queueVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-queue-heading">
+        <section className="min-w-0" aria-labelledby="public-music-queue-heading" onFocusCapture={() => onAnalytics?.({ name: "section_opened", section: "queue" })}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-queue-heading" className="text-xl font-semibold">Up next</h2>
             <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
@@ -169,7 +182,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
                   song={song}
                   playable={policy.playerEligible}
                   selected={selectedSong?.id === song.id}
-                  onSelect={(selection) => setSelectedSongId(selection.id)}
+                  onSelect={(selection) => { setSelectedSongId(selection.id); onAnalytics?.({ name: "song_selected", source: "queue" }); }}
                 />
               ))}
             </ol>
@@ -178,7 +191,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
       ) : null}
 
       {policy.playlistsVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-playlists-heading">
+        <section className="min-w-0" aria-labelledby="public-music-playlists-heading" onFocusCapture={() => onAnalytics?.({ name: "section_opened", section: "playlists" })}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-playlists-heading" className="text-xl font-semibold">Shared playlists</h2>
             <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
@@ -200,7 +213,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
                           song={song}
                           playable={policy.playerEligible}
                           selected={selectedSong?.id === song.id}
-                          onSelect={(selection) => setSelectedSongId(selection.id)}
+                          onSelect={(selection) => { setSelectedSongId(selection.id); onAnalytics?.({ name: "playlist_opened" }); onAnalytics?.({ name: "song_selected", source: "playlist" }); }}
                         />
                       ))}
                     </ol>
@@ -213,7 +226,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
       ) : null}
 
       {policy.historyVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-history-heading">
+        <section className="min-w-0" aria-labelledby="public-music-history-heading" onFocusCapture={() => onAnalytics?.({ name: "section_opened", section: "history" })}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-history-heading" className="text-xl font-semibold">Recently played</h2>
             <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />

@@ -15,6 +15,16 @@ const input = {
   },
 };
 
+const musicInput = {
+  consent: true,
+  eventId: "evt-20260829-music-1",
+  event: {
+    name: "request_submitted",
+    outcome: "rate_limited",
+  },
+  utmParams: { utm_source: "newsletter", utm_medium: "email" },
+};
+
 const buildApp = ({ authorized = true } = {}) => {
   const service = {
     ingest: vi.fn().mockResolvedValue({
@@ -27,6 +37,10 @@ const buildApp = ({ authorized = true } = {}) => {
   const authorizeOwner = vi.fn().mockResolvedValue(authorized);
   const validatePublicTarget = vi.fn().mockResolvedValue(true);
   const allowWrite = vi.fn().mockReturnValue(true);
+  const resolvePublicMusicAnalyticsTarget = vi.fn().mockResolvedValue({
+    accountId: "account-1",
+    mode: "public",
+  });
   const app = express();
   app.set("trust proxy", true);
   app.use(express.json());
@@ -35,6 +49,7 @@ const buildApp = ({ authorized = true } = {}) => {
     authorizeOwner,
     validatePublicTarget,
     allowWrite,
+    resolvePublicMusicAnalyticsTarget,
   });
   return {
     app,
@@ -42,11 +57,95 @@ const buildApp = ({ authorized = true } = {}) => {
     authorizeOwner,
     validatePublicTarget,
     allowWrite,
+    resolvePublicMusicAnalyticsTarget,
   };
 };
 
 describe("explorers analytics routes", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("resolves a public Music owner server-side and never returns or forwards route authority", async () => {
+    const { app, service, resolvePublicMusicAnalyticsTarget } = buildApp();
+    const response = await request(app)
+      .post("/api/explorers/analytics/music/public-owner/events")
+      .send(musicInput);
+
+    expect(response.status).toBe(201);
+    expect(resolvePublicMusicAnalyticsTarget).toHaveBeenCalledWith("public-owner", undefined);
+    expect(service.ingest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "account-1",
+        event: expect.objectContaining({
+          page: "public-music",
+          canonicalPath: "/music/share",
+          element: "request-submitted",
+          metadata: { action: "request_submitted", context: "rate_limited" },
+        }),
+      }),
+      expect.objectContaining({ getIp: expect.any(Function) }),
+    );
+    const forwarded = JSON.stringify(service.ingest.mock.calls[0][0].event);
+    expect(forwarded).not.toContain("public-owner");
+    expect(JSON.stringify(response.body)).not.toContain("account-1");
+    expect(JSON.stringify(response.body)).not.toContain("public-owner");
+  });
+
+  it("revalidates unlisted capability authority from the header and fails closed generically", async () => {
+    const capability = "C".repeat(43);
+    const accepted = buildApp();
+    accepted.resolvePublicMusicAnalyticsTarget.mockResolvedValue({ accountId: "account-1", mode: "unlisted" });
+    expect((await request(accepted.app)
+      .post("/api/explorers/analytics/music/unlisted-owner/events")
+      .set("X-Music-Guest-Capability", capability)
+      .send(musicInput)).status).toBe(201);
+    expect(accepted.resolvePublicMusicAnalyticsTarget).toHaveBeenCalledWith("unlisted-owner", capability);
+
+    for (const supplied of [undefined, "not-a-capability", "D".repeat(43)]) {
+      const denied = buildApp();
+      denied.resolvePublicMusicAnalyticsTarget.mockResolvedValue(undefined);
+      let operation = request(denied.app).post("/api/explorers/analytics/music/unlisted-owner/events");
+      if (supplied) operation = operation.set("X-Music-Guest-Capability", supplied);
+      const response = await operation.send(musicInput);
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ message: "Music page unavailable" });
+      expect(denied.service.ingest).not.toHaveBeenCalled();
+    }
+  });
+
+  it("rejects identity, capability, URL, raw-query, and unknown fields in the Music event body", async () => {
+    const { app, service, resolvePublicMusicAnalyticsTarget } = buildApp();
+    for (const forbidden of [
+      { accountId: "account-1" },
+      { publicSlug: "public-owner" },
+      { capability: "C".repeat(43) },
+      { query: "raw search" },
+      { mediaUrl: "https://youtube.com/watch?v=abcdefghijk" },
+      { credential: "secret" },
+    ]) {
+      const response = await request(app)
+        .post("/api/explorers/analytics/music/public-owner/events")
+        .send({ ...musicInput, event: { ...musicInput.event, ...forbidden } });
+      expect(response.status).toBe(400);
+    }
+    expect(resolvePublicMusicAnalyticsTarget).not.toHaveBeenCalled();
+    expect(service.ingest).not.toHaveBeenCalled();
+  });
+
+  it("preserves analytics receipt replay semantics and rate limits before authority lookup", async () => {
+    const replay = buildApp();
+    replay.service.ingest.mockResolvedValue({ status: "committed", documentId: "event-document", duplicate: true });
+    expect((await request(replay.app).post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(200);
+
+    const pending = buildApp();
+    pending.service.ingest.mockResolvedValue({ status: "pending", duplicate: true });
+    expect((await request(pending.app).post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(202);
+
+    const limited = buildApp();
+    limited.allowWrite.mockReturnValue(false);
+    expect((await request(limited.app).post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(429);
+    expect(limited.resolvePublicMusicAnalyticsTarget).not.toHaveBeenCalled();
+    expect(limited.service.ingest).not.toHaveBeenCalled();
+  });
 
   it("accepts a canonical public event without returning or storing an IP", async () => {
     const { app, service } = buildApp();

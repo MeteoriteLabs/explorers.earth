@@ -19,5 +19,6 @@ export function resolveTrustProxySetting(value: string | undefined): string[] {
 }
 
 export function shouldLogRequestBody(path: string): boolean {
-  return path !== "/api/explorers/analytics/events";
+  return path !== "/api/explorers/analytics/events"
+    && !/^\/api\/explorers\/analytics\/music\/[A-Za-z0-9_-]{8,128}\/events$/.test(path);
 }

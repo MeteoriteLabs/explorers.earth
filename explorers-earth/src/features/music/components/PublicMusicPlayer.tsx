@@ -6,6 +6,7 @@ import type { PublicMusicSong } from "../publicMusicClient";
 export interface PublicMusicPlayerProps {
   song: PublicMusicSong;
   allowed?: boolean;
+  onPlaybackStart?: () => void;
 }
 
 function mediaErrorMessage(cause: unknown): string | null {
@@ -27,18 +28,20 @@ function mediaErrorMessage(cause: unknown): string | null {
   return "Playback is unavailable right now. Choose another track or try again.";
 }
 
-export function PublicMusicPlayer({ song, allowed = true }: PublicMusicPlayerProps) {
+export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: PublicMusicPlayerProps) {
   const [playing, setPlaying] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const mediaRef = useRef<HTMLVideoElement | null>(null);
   const generation = useRef(0);
+  const playbackAcknowledged = useRef(false);
 
   useEffect(() => {
     generation.current += 1;
     setPlaying(false);
     setMessage("");
     setError("");
+    playbackAcknowledged.current = false;
     return () => { generation.current += 1; };
   }, [allowed, song.id]);
 
@@ -101,7 +104,13 @@ export function PublicMusicPlayer({ song, allowed = true }: PublicMusicPlayerPro
           playing={playing}
           width="100%"
           height="100%"
-          onPlay={() => setPlaying(true)}
+          onPlay={() => {
+            setPlaying(true);
+            if (!playbackAcknowledged.current) {
+              playbackAcknowledged.current = true;
+              onPlaybackStart?.();
+            }
+          }}
           onPause={() => setPlaying(false)}
           onEnded={() => {
             setPlaying(false);

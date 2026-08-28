@@ -74,6 +74,7 @@ describe("Music surface authorization policy", () => {
     ["/api/music/identity/current", "private", "owner"],
     ["/api/playlist/:guestUrl", "private", "guest"],
     ["/api/playlist/:guestUrl/requests", "private", "guest"],
+    ["/api/explorers/analytics/music/:publicSlug/events", "private", "guest"],
     ["/api/music/guest/request", "tombstone", "tombstone"],
     ["/health/live", "private", "public"],
     ["/new-public", "public", "public"],

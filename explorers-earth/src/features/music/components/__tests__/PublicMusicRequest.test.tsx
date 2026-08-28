@@ -8,6 +8,23 @@ import { PublicMusicError } from "../../publicMusicClient";
 const video = { id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } };
 
 describe("PublicMusicRequest", () => {
+  it.each([
+    [new PublicMusicError("REQUEST_INVALID"), "invalid"],
+    [new PublicMusicError("RATE_LIMITED", 2), "rate_limited"],
+    [new PublicMusicError("QUEUE_FULL"), "queue_full"],
+    [new PublicMusicError("REQUEST_FORBIDDEN"), "forbidden"],
+    [new PublicMusicError("PUBLIC_UNAVAILABLE"), "unavailable"],
+  ] as const)("acknowledges a failed submission with only normalized reason %s", async (failure, expected) => {
+    const onRequestOutcome = vi.fn();
+    const client = { search: vi.fn().mockResolvedValue({ items: [video], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn().mockRejectedValue(failure) };
+    render(<PublicMusicRequest publicSlug="secret-public-slug" capability={"C".repeat(43)} allowed client={client as never} onRequestOutcome={onRequestOutcome} />);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "raw query");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    await waitFor(() => expect(onRequestOutcome).toHaveBeenCalledWith(expected));
+    expect(onRequestOutcome).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(onRequestOutcome.mock.calls)).not.toMatch(/secret-public-slug|CCCCCCCC|raw query|youtube|http/i);
+  });
   it("searches, presents an accessible result, and suppresses duplicate submissions", async () => {
     let resolve!: () => void;
     const requestSong = vi.fn(() => new Promise<void>((done) => { resolve = done; }));

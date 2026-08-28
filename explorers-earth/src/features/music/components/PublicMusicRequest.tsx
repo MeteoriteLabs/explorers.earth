@@ -3,9 +3,10 @@ import { PublicMusicError, publicMusicClient, type PublicMusicRequestVideo } fro
 
 type RequestClient = Pick<typeof publicMusicClient, "search" | "videoFromUrl" | "requestSong">;
 
-export function PublicMusicRequest({ publicSlug, capability, allowed, client = publicMusicClient, onOutcome, onCanonicalRevoked }: {
+export function PublicMusicRequest({ publicSlug, capability, allowed, client = publicMusicClient, onOutcome, onRequestOutcome, onCanonicalRevoked }: {
   publicSlug: string; capability?: string; allowed: boolean; client?: RequestClient;
   onOutcome?: (event: { action: "search" | "request"; outcome: "success" | "empty" | "invalid" | "rate_limited" | "queue_full" | "forbidden" | "unavailable" }) => void;
+  onRequestOutcome?: (outcome: "accepted" | "invalid" | "rate_limited" | "queue_full" | "forbidden" | "unavailable") => void;
   onCanonicalRevoked?: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -75,13 +76,15 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
     try {
       await client.requestSong(publicSlug, { youtubeId: video.id.videoId, title: video.snippet.title, artist: video.snippet.channelTitle, thumbnailUrl: video.snippet.thumbnails.default.url }, capability, `tunes-share-v1-${Date.now()}-${crypto.randomUUID()}`);
       if (!mounted.current || generation !== scope.current.generation || scope.current.revoked) return;
-      setResults([]); setMessage("Song requested."); onOutcome?.({ action: "request", outcome: "success" });
+      setResults([]); setMessage("Song requested."); onOutcome?.({ action: "request", outcome: "success" }); onRequestOutcome?.("accepted");
       window.setTimeout(() => statusRef.current?.focus(), 0);
     } catch (error) {
+      if (isCanonicalRevocation(error)) onRequestOutcome?.("forbidden");
       if (handleCanonicalRevocation(error, generation)) return;
       setMessage(errorCopy(error));
       if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60);
       onOutcome?.({ action: "request", outcome: normalizedOutcome(error) });
+      onRequestOutcome?.(normalizedOutcome(error));
     }
     finally { if (mounted.current && generation === scope.current.generation && !scope.current.revoked) setSubmitting(undefined); }
   };

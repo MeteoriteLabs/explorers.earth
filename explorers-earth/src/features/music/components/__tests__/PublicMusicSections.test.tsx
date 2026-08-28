@@ -70,6 +70,33 @@ function populatedResource(mask: number): PublicMusicResource {
 }
 
 describe("PublicMusicSections permission oracle", () => {
+  it("emits only normalized product events at acknowledged interaction boundaries", async () => {
+    const onAnalytics = vi.fn();
+    const requestClient = {
+      search: vi.fn().mockResolvedValue({ items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } }], nextPageToken: null }),
+      videoFromUrl: vi.fn(),
+      requestSong: vi.fn().mockResolvedValue(undefined),
+    };
+    render(<PublicMusicSections resource={populatedResource(1 | 2 | 4 | 16)} publicSlug="secret-public-slug" capability={"C".repeat(43)} requestClient={requestClient as never} onAnalytics={onAnalytics} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Choose Queue signal to play on this device" }));
+    await userEvent.click(screen.getByRole("button", { name: "Choose Playlist signal to play on this device" }));
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "raw private query");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    await screen.findByText("Song requested.");
+
+    expect(onAnalytics.mock.calls.map(([event]) => event)).toEqual(expect.arrayContaining([
+      { name: "section_opened", section: "queue" },
+      { name: "song_selected", source: "queue" },
+      { name: "section_opened", section: "playlists" },
+      { name: "playlist_opened" },
+      { name: "song_selected", source: "playlist" },
+      { name: "section_opened", section: "request" },
+      { name: "request_submitted", outcome: "accepted" },
+    ]));
+    expect(JSON.stringify(onAnalytics.mock.calls)).not.toMatch(/secret-public-slug|CCCCCCCC|raw private query|youtube|https?:/i);
+  });
   it("reconciles request revocation, unmounts stale controls, and restores contained focus", async () => {
     const onReconcile = vi.fn();
     const requestClient = { search: vi.fn().mockResolvedValue({ items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } }], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn().mockRejectedValue(new PublicMusicError("PUBLIC_NOT_FOUND")) };

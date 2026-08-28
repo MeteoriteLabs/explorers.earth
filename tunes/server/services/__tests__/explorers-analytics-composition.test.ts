@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { resolveAnalyticsStrapiAccessToken } from "../explorers-analytics-composition";
+import { describe, expect, it, vi } from "vitest";
+import { hashGuestCapability } from "../../policies/musicSurfacePolicy";
+import { resolveAnalyticsStrapiAccessToken, resolvePublicMusicAnalyticsTarget } from "../explorers-analytics-composition";
 
 describe("resolveAnalyticsStrapiAccessToken", () => {
   it("uses the dedicated analytics token instead of the shared Strapi token", () => {
@@ -25,5 +26,33 @@ describe("resolveAnalyticsStrapiAccessToken", () => {
         STRAPI_ANALYTICS_ACCESS_TOKEN: "   ",
       }),
     ).toThrow("STRAPI_ANALYTICS_ACCESS_TOKEN is not configured");
+  });
+});
+
+describe("resolvePublicMusicAnalyticsTarget", () => {
+  it("resolves one active public owner without returning route authority", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ strapi_account_document_id: "account-1", guest_discoverable: true }] });
+    await expect(resolvePublicMusicAnalyticsTarget({ query } as never, "public-owner")).resolves.toEqual({ accountId: "account-1", mode: "public" });
+    expect(query.mock.calls[0][1]).toEqual(["0".repeat(64), "public-owner", false]);
+  });
+
+  it("accepts only a slug-bound current unlisted capability and never sends the raw capability to SQL", async () => {
+    const capability = "C".repeat(43);
+    const query = vi.fn().mockResolvedValue({ rows: [{
+      strapi_account_document_id: "account-1",
+      guest_discoverable: false,
+      guest_capability_hash: hashGuestCapability(capability),
+      guest_capability_revoked_at: null,
+    }] });
+    await expect(resolvePublicMusicAnalyticsTarget({ query } as never, "unlisted-owner", capability)).resolves.toEqual({ accountId: "account-1", mode: "unlisted" });
+    expect(JSON.stringify(query.mock.calls)).not.toContain(capability);
+  });
+
+  it.each([
+    [[]],
+    [[{ strapi_account_document_id: "account-1", guest_discoverable: true }, { strapi_account_document_id: "account-2", guest_discoverable: true }]],
+    [[{ strapi_account_document_id: "", guest_discoverable: true }]],
+  ])("fails closed for missing, colliding, or malformed ownership", async (rows) => {
+    await expect(resolvePublicMusicAnalyticsTarget({ query: vi.fn().mockResolvedValue({ rows }) } as never, "public-owner")).resolves.toBeUndefined();
   });
 });

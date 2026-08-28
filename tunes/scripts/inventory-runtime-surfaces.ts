@@ -79,6 +79,7 @@ function ownerFor(path: string, classification: string): string {
   if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";
   if (classification === "guest-capability") return path === "/api/playlist/:guestUrl"
       || path === "/api/playlist/:guestUrl/requests"
+      || path === "/api/explorers/analytics/music/:publicSlug/events"
     ? "hashed-guest-capability-or-explicit-publication"
     : "hashed-guest-capability";
   if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";

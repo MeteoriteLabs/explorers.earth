@@ -22,6 +22,17 @@ const FIRST_TOUCH_UTM_STORAGE_KEY = 'explorers-first-touch-utm';
 const FIRST_TOUCH_REFERRER_STORAGE_KEY = 'explorers-first-touch-referrer';
 const FIRST_TOUCH_UTM_TTL_MS = 30 * 60 * 1000;
 
+export const appendAttributionParamsToPath = (path: string, search: string): string => {
+  const source = new URLSearchParams(search);
+  const target = new URLSearchParams();
+  for (const key of UTM_KEYS) {
+    const value = source.get(key)?.trim().slice(0, 100);
+    if (value) target.set(key, value.replace(/[<>"']/g, ''));
+  }
+  const query = target.toString();
+  return query ? `${path}?${query}` : path;
+};
+
 interface SessionAttributionOptions {
   url?: string;
   storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

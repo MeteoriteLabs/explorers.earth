@@ -117,6 +117,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.path === "/api/music/publication" || route.path === "/api/music/queue/replace" || route.path === "/api/music/queue/append") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
   if (route.path === "/api/playlist/:guestUrl/requests") return "guest";
+  if (route.path === "/api/explorers/analytics/music/:publicSlug/events") return "guest";
   if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "public";
   if (PUBLIC_PATHS.has(route.path) || route.classification === "public") return "public";
   if (route.path.startsWith("/api/admin/")) return "admin-tombstone";
@@ -163,7 +164,9 @@ export function authorizationMatrixFromInventory(inventory: {
     routes: inventory.routes.map((route) => {
       const decision = decisionForRoute(route);
       const allowed = allowedFor(decision);
-      if (decision === "guest" && route.method !== "GET" && route.path !== "/api/playlist/:guestUrl/requests") allowed.unauthenticated = false;
+      if (decision === "guest" && route.method !== "GET"
+          && route.path !== "/api/playlist/:guestUrl/requests"
+          && route.path !== "/api/explorers/analytics/music/:publicSlug/events") allowed.unauthenticated = false;
       return { method: route.method, path: route.path, source: route.source, decision, allowed };
     }),
     events: inventory.events.map((event) => {

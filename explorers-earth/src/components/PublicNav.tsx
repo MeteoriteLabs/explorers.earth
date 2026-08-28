@@ -11,6 +11,7 @@ import {
 } from "../features/PublicHome/api/query";
 import { computePinnedNavTabIds } from "../utils/navPinning";
 import { usePublicMusicAvailability } from "../features/music/PublicMusicAvailabilityProvider";
+import { appendAttributionParamsToPath } from "../utils/urlHelpers";
 
 const PublicNav = memo(() => {
   const navigate = useNavigate();
@@ -154,7 +155,7 @@ const PublicNav = memo(() => {
       id: "public_music",
       icon: <Music2 size={18} color={location.pathname.endsWith("/music") ? "white" : "rgba(255,255,255,0.5)"} />,
       text: "Music",
-      path: `/${username}/music`,
+      path: appendAttributionParamsToPath(`/${username}/music`, location.search),
     }] : []),
     // Only add profile tab if visibility is enabled
     ...(showProfileTab ? [{
@@ -236,7 +237,8 @@ const PublicNav = memo(() => {
       <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">
         {finalNavItems.map((item, index) => {
           // Check if current path matches the nav item path
-          const isActive = isPathMatch(location.pathname, item.path) ||
+          const itemPathname = item.path.split("?")[0];
+          const isActive = isPathMatch(location.pathname, itemPathname) ||
             (item.path.includes('/places') && isPlacesPath(location.pathname)) ||
             (item.path.includes('/movies') && isMoviesPath(location.pathname)) ||
             (item.path.includes('/books') && isBooksPath(location.pathname)) ||
