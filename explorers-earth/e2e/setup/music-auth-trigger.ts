@@ -158,12 +158,24 @@ export async function installMusicAuthTriggerHarness(page: Page, options: MusicA
   await page.route("**/api/music/dashboard", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private" } }),
+    body: JSON.stringify({
+      queueRevision: 0,
+      songs: [],
+      currentlyPlaying: null,
+      playedSongs: [],
+      publication: { mode: "private", publicSlug: "auth-trigger-public" },
+      guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
+    }),
   }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ state: "included", coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }),
+  }));
+  await page.route("**/api/music/features", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ownerWorkspace: false, guestWorkspace: false, playlistImports: false, exposureId: "auth-trigger", expiresAt: new Date(Date.now() + 600_000).toISOString() }),
   }));
 
   return {

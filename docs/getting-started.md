@@ -44,6 +44,19 @@ The smoke command verifies readiness across Explorer, Tunes, PostgreSQL, and the
 fixture identity boundary. For deeper lanes, follow the
 [Music identity testing guide](testing/music-identity-testing.md).
 
+For the public Music browser surface, run these from the repository root:
+
+```text
+npm run music:test:public-fast
+npm run music:test:public-pr
+npm run music:test:public-e2e
+npm run music:fixture:public:verify
+```
+
+The first two use read-only or route-mocked coverage. The E2E command accepts
+only the disposable loopback fixture. Each run records a sanitized manifest
+below `.artifacts/music-public/<runId>/`.
+
 When finished, stop the same isolated fixture lifecycle:
 
 ```text

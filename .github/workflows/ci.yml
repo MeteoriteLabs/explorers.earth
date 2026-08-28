@@ -172,10 +172,10 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run Playwright E2E tests
-        run: npx playwright test --project=chromium
+        run: npx playwright test --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual
         env:
           CI: true
           # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);

@@ -214,6 +214,14 @@ Browser collectors also emit identifier-free active-session lifecycle counters;
 numerator, so repeated retries cannot inflate the rate. Listener reconnect records
 carry bounded `disconnectMs`, so no instance or connection label is required.
 
+Public admission uses either the public slug or the unlisted capability for the
+same slug and rechecks current publication/lifecycle authority. After reconnect,
+the browser rejoins, refetches canonical HTTP state, ignores stale revisions,
+and coalesces bursts. When transport remains unavailable, foreground polling
+backs off through 30/60/120/240/300 seconds and stops while hidden, offline, or
+unmounted. Revocation removes cached unlisted content. Capabilities never appear
+in events, URLs, logs, trace attachments, or analytics payloads.
+
 ## Key Files
 
 | File | Purpose |

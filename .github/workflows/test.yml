@@ -165,7 +165,7 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci --prefix explorers-earth
-      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium firefox webkit
       - name: Run Music E2E and accessibility contracts
         env:
           VITE_API_URL: http://localhost:5173/graphql
@@ -173,7 +173,7 @@ jobs:
           VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
           VITE_LOCAL_TUNES_ENABLED: "true"
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
-        run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium --retries=0
+        run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
 
   load-chaos:
     needs: browser

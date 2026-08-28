@@ -1,4 +1,161 @@
 import type { Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+
+export const MUSIC_PUBLIC_FIXTURE_VERSION = "music-public-e2e-fixture/v1" as const;
+
+export const MUSIC_PUBLIC_STATES = [
+  "public",
+  "unlisted",
+  "private",
+  "suspended",
+  "tombstoned",
+  "all-content",
+  "empty",
+  "queue-only",
+  "playlists-only",
+  "history-only",
+  "request-allowed",
+  "request-rate-limited",
+] as const;
+
+export type MusicTestLane = "pr-safe" | "fixture" | "live" | "visual";
+
+export interface MusicPermissionRow {
+  key: string;
+  allowSongRequests: boolean;
+  allowGuestPlayOnDevice: boolean;
+  allowPlaylistSharing: boolean;
+  allowRecentlyPlayedVisibility: boolean;
+  allowQueueVisibility: boolean;
+}
+
+export function resolveMusicTestLane(environment: Record<string, string | undefined>): MusicTestLane {
+  if (environment.PLAYWRIGHT_PR_SAFE === "true") return "pr-safe";
+  if (environment.MUSIC_E2E_LIVE_WRITE === "true") return "live";
+  if (environment.MUSIC_E2E_VISUAL === "true") return "visual";
+  return "fixture";
+}
+
+export function fixtureNamespace(runId: string): string {
+  const safeRunId = runId.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  if (!safeRunId) throw new Error("Fixture run ID must contain an ASCII letter or digit");
+  return `e2e-public-music-${safeRunId}`;
+}
+
+export function assertLiveWriteAuthority(input: {
+  lane: MusicTestLane;
+  baseUrl: string;
+  accountUsername: string;
+  confirmation: string | undefined;
+}): { authorized: true; namespace: string } {
+  if (input.lane === "pr-safe") throw new Error("PR-safe lane cannot acquire live-write authority");
+  if (input.lane !== "live") throw new Error("Live writes require the live lane");
+  if (input.confirmation !== "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE") {
+    throw new Error("Live writes require the exact disposable-fixture confirmation");
+  }
+  const url = new URL(input.baseUrl);
+  if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
+    throw new Error("Live writes require a disposable loopback target");
+  }
+  const match = input.accountUsername.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/);
+  if (!match) throw new Error("Live writes require a namespaced disposable account");
+  return { authorized: true, namespace: match[1] };
+}
+
+export function buildPermissionMatrix(): MusicPermissionRow[] {
+  return Array.from({ length: 32 }, (_, mask) => {
+    const bits = mask.toString(2).padStart(5, "0");
+    return {
+      key: bits,
+      allowSongRequests: bits[0] === "1",
+      allowGuestPlayOnDevice: bits[1] === "1",
+      allowPlaylistSharing: bits[2] === "1",
+      allowRecentlyPlayedVisibility: bits[3] === "1",
+      allowQueueVisibility: bits[4] === "1",
+    };
+  });
+}
+
+const VOLATILE_SNAPSHOT_KEYS = new Set(["capturedAt", "requestId", "updatedAt", "createdAt"]);
+
+function canonicalSnapshotValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalSnapshotValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !VOLATILE_SNAPSHOT_KEYS.has(key))
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, canonicalSnapshotValue(nested)]),
+  );
+}
+
+export function normalizedSnapshotHash(snapshot: unknown): string {
+  return createHash("sha256").update(JSON.stringify(canonicalSnapshotValue(snapshot))).digest("hex");
+}
+
+function sanitizedUrl(raw: string): string {
+  const url = new URL(raw);
+  url.hash = "";
+  for (const key of [...url.searchParams.keys()]) {
+    if (/capability|token|credential|authorization/i.test(key)) url.searchParams.delete(key);
+  }
+  return url.toString().replace(/\/$/, "");
+}
+
+export function buildSanitizedFixtureEvidence(input: {
+  runId: string;
+  lane: MusicTestLane;
+  accountDocumentId: string;
+  username: string;
+  explorerUrl: string;
+  shareUrl: string;
+  result: "passed" | "failed" | "skipped";
+  cleanup: "restored" | "failed" | "not-required";
+  evidencePath: string;
+}) {
+  return {
+    version: MUSIC_PUBLIC_FIXTURE_VERSION,
+    runId: input.runId.replace(/[^a-zA-Z0-9_-]/g, "-"),
+    lane: input.lane,
+    accountDocumentId: input.accountDocumentId,
+    username: input.username,
+    explorerUrl: sanitizedUrl(input.explorerUrl),
+    shareUrl: sanitizedUrl(input.shareUrl),
+    result: input.result,
+    cleanup: input.cleanup,
+    evidencePath: input.evidencePath.replace(/\\/g, "/"),
+  } as const;
+}
+
+export async function withRestoredMusicFixture<T>(adapters: {
+  snapshot: () => Promise<unknown>;
+  cleanupNamespace: () => Promise<void>;
+  restore: (snapshot: unknown) => Promise<void>;
+}, journey: () => Promise<T>): Promise<{
+  value: T;
+  cleanup: "restored";
+  beforeHash: string;
+  afterHash: string;
+}> {
+  const before = await adapters.snapshot();
+  const beforeHash = normalizedSnapshotHash(before);
+  let value!: T;
+  let journeyFailure: unknown;
+  try {
+    value = await journey();
+  } catch (error) {
+    journeyFailure = error;
+  } finally {
+    await adapters.cleanupNamespace();
+    await adapters.restore(before);
+  }
+  const afterHash = normalizedSnapshotHash(await adapters.snapshot());
+  if (afterHash !== beforeHash) {
+    throw new Error(`Public Music fixture restoration mismatch: before=${beforeHash} after=${afterHash}`);
+  }
+  if (journeyFailure) throw journeyFailure;
+  return { value, cleanup: "restored", beforeHash, afterHash };
+}
 
 export const completeMusicAccount = {
   __typename: "Account",
@@ -34,6 +191,7 @@ export interface MusicQualificationMockOptions {
 }
 
 export async function installMusicQualificationMocks(page: Page, options: MusicQualificationMockOptions = {}) {
+  const canonicalMusicPath = (rawUrl: string) => new URL(rawUrl).pathname.replace(/^\/__localtunes(?=\/api\/)/, "");
   let ensureCalls = 0;
   let strapiCalls = 0;
   let playlists = (options.playlists ?? []).map((playlist) => ({ ...playlist }));
@@ -84,7 +242,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     markEnsureStarted();
     requests.push({
       method: route.request().method(),
-      path: new URL(route.request().url()).pathname,
+      path: canonicalMusicPath(route.request().url()),
       authorization: route.request().headers().authorization,
       xUsername: route.request().headers()["x-username"],
     });
@@ -128,7 +286,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   await page.route("**/api/playlists", async (route) => {
     requests.push({
       method: route.request().method(),
-      path: new URL(route.request().url()).pathname,
+      path: canonicalMusicPath(route.request().url()),
       authorization: route.request().headers().authorization,
       xUsername: route.request().headers()["x-username"],
     });
@@ -202,7 +360,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     const body = route.request().postDataJSON();
     requests.push({
       method: route.request().method(),
-      path: new URL(route.request().url()).pathname,
+      path: canonicalMusicPath(route.request().url()),
       authorization: route.request().headers().authorization,
       xUsername: route.request().headers()["x-username"],
       body,
@@ -211,7 +369,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   await page.route("**/api/playlists/*", async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    const path = canonicalMusicPath(route.request().url());
     const body = route.request().postDataJSON();
     requests.push({
       method: route.request().method(),

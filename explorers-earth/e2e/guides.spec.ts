@@ -299,7 +299,9 @@ test.beforeEach(async ({ context, page }) => {
   });
 });
 
-test('Flow 9: Guides List and Timeline Section E2E', async ({ page }) => {
+test('Flow 9: Guides List and Timeline Section E2E', async ({ context, page }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 12.9716, longitude: 77.5946 });
   const consoleIssues: string[] = [];
   const failedResponses: string[] = [];
   page.on('console', message => {

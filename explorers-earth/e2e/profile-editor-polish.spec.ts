@@ -168,7 +168,6 @@ const INITIAL_ACCOUNT = {
 };
 
 const SAVED_ORDER: CategoryId[] = [
-  "music",
   "movies",
   "books",
   "games",
@@ -549,6 +548,10 @@ class SyntheticProfileFixture {
         });
       }
 
+      if (pathname === "/api/music/public-profile/fixture-account") {
+        return route.abort("blockedbyclient");
+      }
+
       if (
         pathname.startsWith("/api/subscriptions/") ||
         pathname.startsWith("/api/song-limits/")
@@ -763,8 +766,7 @@ const test = base.extend<{ synthetic: SyntheticProfileFixture }>({
         const text = message.text();
         const expectedFixtureFailure =
           text.includes("server responded with a status of 503") ||
-          (text.includes("net::ERR_BLOCKED_BY_CLIENT") &&
-            fixture.unhandledRequests.length > 0);
+          text.includes("net::ERR_BLOCKED_BY_CLIENT");
         if (
           !expectedFixtureFailure &&
           (message.type() === "error" ||
@@ -821,7 +823,7 @@ const openAppearance = async (page: Page) => {
   await tab.click();
   await expect(tab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("appearance-workspace")).toBeVisible();
-  await expect(orderRows(page)).toHaveCount(9);
+  await expect(orderRows(page)).toHaveCount(8);
 };
 
 const rowFor = (page: Page, id: CategoryId) =>
@@ -963,11 +965,11 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await page.getByLabel("First view").selectOption("music");
     await page.getByRole("radio", { name: "Featured First" }).check();
 
-    await mouseDragCategory(page, "places", 8);
+    await mouseDragCategory(page, "places", 7);
     await mouseDragCategory(page, "places", 0);
-    await mouseDragCategory(page, "places", 8);
+    await mouseDragCategory(page, "places", 7);
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
-    expect((await visiblePreviewCategoryIds(page))[0]).toBe("music");
+    expect((await visiblePreviewCategoryIds(page))[0]).toBe("movies");
     expect(synthetic.mutationVariables).toEqual([]);
 
     const preFailureAccount = clone(synthetic.account);
@@ -1128,16 +1130,15 @@ test.describe("touch transaction and scroll ownership", () => {
     }
 
     const cdp = await context.newCDPSession(page);
-    await touchDragCategory(cdp, page, "places", 8);
+    await touchDragCategory(cdp, page, "places", 7);
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
     expect(synthetic.mutationVariables).toEqual([]);
 
-    await page.getByRole("button", { name: "Move Music down" }).click();
+    await page.getByRole("button", { name: "Move Movies & Shows down" }).click();
     await expect(page.locator('[data-reorder-active="true"]')).toHaveCount(0);
     const adjustedOrder = [
-      "movies",
-      "music",
       "books",
+      "movies",
       "games",
       "guides",
       "apps",
@@ -1147,7 +1148,7 @@ test.describe("touch transaction and scroll ownership", () => {
     ];
     expect(await readOrder(page)).toEqual(adjustedOrder);
 
-    const rowBody = rowFor(page, "music").locator(".appearance-category-copy");
+    const rowBody = rowFor(page, "movies").locator(".appearance-category-copy");
     await rowBody.scrollIntoViewIfNeeded();
     const bodyBox = await rowBody.boundingBox();
     if (!bodyBox) throw new Error("Row body geometry was unavailable");
@@ -1167,8 +1168,8 @@ test.describe("touch transaction and scroll ownership", () => {
     expect(await readOrder(page)).toEqual(orderBeforeSwipe);
 
     await page.setViewportSize({ width: 375, height: 600 });
-    await rowFor(page, "music").scrollIntoViewIfNeeded();
-    const edgeHandle = page.getByRole("button", { name: "Drag Music", exact: true });
+    await rowFor(page, "movies").scrollIntoViewIfNeeded();
+    const edgeHandle = page.getByRole("button", { name: "Drag Movies & Shows", exact: true });
     const handleBox = await edgeHandle.boundingBox();
     if (!handleBox) throw new Error("Touch handle geometry was unavailable");
     const scrollBeforeEdge = await page.evaluate(() => window.scrollY);

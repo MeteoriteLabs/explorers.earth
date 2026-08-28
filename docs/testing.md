@@ -87,6 +87,30 @@ npm run music:test:pr -- --mode fixture
 npm run music:test:nightly -- --mode fixture
 ```
 
+### Public Music browser lanes
+
+The public browser harness is intentionally split by authority. These commands are run from the repository root:
+
+```bash
+npm run music:test:public-fast       # deterministic mocked Chromium feedback
+npm run music:test:public-pr         # PR-safe read-only analytics/Music coverage
+npm run music:test:public-e2e        # disposable five-service fixture coverage
+npm run music:fixture:public:verify  # fixture/harness contract verification
+```
+
+Every command prints `music-public-e2e-fixture/v1`, service URLs, lane, result,
+cleanup result, and a sanitized evidence path. PR-safe tests cannot acquire
+write authority. Live-write tests require a loopback fixture, a namespaced
+`e2e-public-music-<run>-owner` account, and the exact runtime confirmation;
+they snapshot first and restore in `finally`. Capabilities and credentials are
+never written to evidence. A restoration mismatch is a failed lane and blocks
+subsequent live tests.
+
+CI installs the browsers named by the configuration and runs
+`chromium-pr-safe` plus the selected Firefox/WebKit visual projects. The
+`chromium-music-fixture` and `chromium-music-live` projects are opt-in lanes;
+tests report explicit runtime skip reasons when their authority is absent.
+
 The [Music identity testing guide](testing/music-identity-testing.md) is the canonical clean-checkout, lane, release-evidence, and recovery contract. `music:test:all` is the complete Tunes Vitest suite only; it does not replace the Explorer, real PostgreSQL, browser, load/chaos, or release lanes.
 
 ---

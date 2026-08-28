@@ -6,6 +6,7 @@ import {
   type Response,
   type Route,
 } from '@playwright/test';
+import { setupMockAuthentication } from './setup/auth';
 
 const FACTORS = {
   preset: [
@@ -929,7 +930,7 @@ test.describe('approved live profile writes', () => {
 });
 
 test.describe('Public Profile Theme & Customization E2E', () => {
-  test('renders homepage, navigation, and theme system elements', async ({ page }) => {
+  test('renders homepage, navigation, and theme system elements', async ({ context, page }) => {
     // 1. Visit homepage
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
@@ -938,7 +939,8 @@ test.describe('Public Profile Theme & Customization E2E', () => {
     const logo = page.locator('text=explorers.earth');
     await expect(logo.first()).toBeVisible();
 
-    // 3. Visit profile route and verify branding or page container
+    // 3. Authenticate before visiting the protected profile route.
+    await setupMockAuthentication(context);
     await page.goto('/profile');
     await page.waitForLoadState('domcontentloaded');
 

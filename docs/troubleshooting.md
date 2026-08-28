@@ -137,6 +137,14 @@ socket admission/disconnect churn, notification fanout lag, then fallback poll
 activation. Revocation enforcement is expected after a permission/publication
 change; missing enforcement or cross-owner delivery requires containment.
 
+### Public Music fixture cleanup failed
+
+Do not rerun an authorized live-write lane after a restoration mismatch. Keep
+the sanitized recovery artifact, compare its normalized `beforeHash` and
+`afterHash`, and inspect only namespaced `e2e-public-music-<run>` records. Never
+delete an unnamespaced playlist/account to force the comparison green. PR-safe
+and mocked lanes remain usable because they cannot acquire write authority.
+
 ## Getting Help
 
 If your issue isn't listed here:

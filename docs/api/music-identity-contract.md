@@ -60,3 +60,25 @@ An unlisted guest capability is 43-character base64url authority for one public 
 ## Socket.IO
 
 Owners connect with the Music credential; guests connect with the per-slug capability. Origin must exactly match the allowlist. The receive allowlist contains owner `player_state` and guest `guest_request` only with schema, size, rate, room, lifecycle, and event-time authority checks. Emitted `player_state` and `guest_request` are rechecked for each recipient before delivery. Authentication errors use the same stable error-code vocabulary and correlation ID; credentials, room authority, and capabilities never appear in payload diagnostics.
+
+## Public Music examples
+
+Discover by stable Account document ID, then read by opaque public slug:
+
+```bash
+curl --fail-with-body http://127.0.0.1:55000/api/music/public-profile/account-document-id
+curl --fail-with-body http://127.0.0.1:55000/api/music/public-resource/v1/public_slug-123
+curl --fail-with-body -X POST -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: 2b2f5617-3d84-4fd1-9243-d102cf34dd27' \
+  --data '{"query":"supported public song"}' \
+  http://127.0.0.1:55000/api/music/public-resource/v1/public_slug-123/requests
+```
+
+Success bodies use `music-public-descriptor/v1`, `music-public-resource/v1`,
+and `music-public-request/v1`. Non-public lifecycle states share
+`PUBLIC_NOT_FOUND`; malformed input uses `REQUEST_INVALID`; throttling uses
+`RATE_LIMITED` plus `Retry-After`; dependency failure uses
+`SERVICE_UNAVAILABLE`. Same-key/same-body submission replays the original
+response, while same-key/different-body returns `IDEMPOTENCY_CONFLICT`.
+Unlisted capability authority is header-only and intentionally omitted from
+these public copy-paste examples.

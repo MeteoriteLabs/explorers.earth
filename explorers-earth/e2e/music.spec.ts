@@ -398,31 +398,31 @@ test("Music loading animation respects reduced-motion preference", async ({ page
 });
 
 test("public private, missing, and invalid links converge on the exact 404", async ({ page }) => {
-  await page.route("**/api/playlist/**", (route) => route.fulfill({ status: 403, contentType: "application/json", body: "{}" }));
+  await page.route("**/api/music/public-resource/v1/**", (route) => route.fulfill({ status: 403, contentType: "application/json", body: "{}" }));
   await page.goto("/music/share/public-slug-123");
   await expect(page.getByRole("heading", { name: "Music page unavailable" })).toBeVisible();
   await expect(page.getByText("No public playlists yet.")).toHaveCount(0);
 });
 
 test("a valid public owner with no visible playlists has the exact reachable empty state", async ({ page }) => {
-  await page.route("**/api/playlist/**", (route) => route.fulfill({
+  await page.route("**/api/music/public-resource/v1/**", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ songs: [], playlists: [] }),
+    body: JSON.stringify({ version: "music-public-resource/v1", revision: 1, user: { username: "fixture", venueName: "Fixture" }, permissions: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false }, currentlyPlaying: null, queue: { items: [], total: 0, truncated: false }, recentlyPlayed: { items: [], total: 0, truncated: false }, playlists: { items: [], total: 0, truncated: false } }),
   }));
   await page.goto("/music/share/public-slug-123");
   await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
-  await expect(page.getByText("No public playlists yet.")).toBeVisible();
+  await expect(page.getByText("Nothing has been shared here yet")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Music page unavailable" })).toHaveCount(0);
 });
 
 test("public rate-limit retry waits for Retry-After and then reaches the empty state", async ({ page }) => {
   let requests = 0;
   let rateLimited = true;
-  await page.route("**/api/playlist/**", (route) => {
+  await page.route("**/api/music/public-resource/v1/**", (route) => {
     requests += 1;
     if (rateLimited) return route.fulfill({ status: 429, headers: { "retry-after": "3", "access-control-expose-headers": "Retry-After" }, body: "{}" });
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ songs: [], playlists: [] }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ version: "music-public-resource/v1", revision: 1, user: { username: "fixture", venueName: "Fixture" }, permissions: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false }, currentlyPlaying: null, queue: { items: [], total: 0, truncated: false }, recentlyPlayed: { items: [], total: 0, truncated: false }, playlists: { items: [], total: 0, truncated: false } }) });
   });
   await page.goto("/music/share/public-slug-123");
   await expect(page.getByRole("heading", { name: "Too many requests. Try again in 3 seconds." })).toBeVisible();
@@ -431,6 +431,6 @@ test("public rate-limit retry waits for Retry-After and then reaches the empty s
   await expect(retry).toBeEnabled({ timeout: 4_000 });
   rateLimited = false;
   await retry.click();
-  await expect(page.getByText("No public playlists yet.")).toBeVisible();
+  await expect(page.getByText("Nothing has been shared here yet")).toBeVisible();
   expect(requests).toBeGreaterThanOrEqual(2);
 });

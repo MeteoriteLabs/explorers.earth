@@ -2,6 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
 
 const fixtureOrigin = "http://localhost:55173";
+test.skip(
+  process.env.PLAYWRIGHT_EXTERNAL_BASE_URL !== fixtureOrigin,
+  "requires the disposable integrated Music fixture; PR-safe execution has no live-write authority",
+);
 
 const fixtureVideos = [
   { id: { videoId: "abcdefghijk" }, snippet: { title: "UAT First song", channelTitle: "Fixture artist", thumbnails: { default: { url: `${fixtureOrigin}/images/tuneslogo.png` } } } },

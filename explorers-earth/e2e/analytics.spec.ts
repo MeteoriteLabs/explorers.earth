@@ -19,12 +19,19 @@ const operationName = (route: Route) => {
 };
 
 const account = {
-  __typename: 'Account',
   documentId: 'acc-123',
   Account_Name: 'Analytics Fixture',
   Account_Type: 'personal',
   mobile_number: '+10000000000',
-  profile_picture: null,
+  profile_picture: { url: '/images/Profile.jpg', alternativeText: 'Analytics fixture' },
+  bg_picture: { url: '/images/bg-image.jpg', alternativeText: 'Analytics background' },
+  Bio: 'Complete analytics fixture profile.',
+  Primary_Address: { address: 'Fixture City' },
+  social_media: {},
+  users_permissions_users: [],
+  Feed_Data: [],
+  mobile_number_visibility: false,
+  recommendation_lists: [],
   localtunes_integrated: false,
   public_profile: 'Yes',
   public_recommendations: 'Yes',
@@ -84,8 +91,7 @@ async function installAuthenticatedDashboardFixture(
       operation === 'UsersPermissionsUser' ||
       operation === 'SidebarAccount' ||
       operation === 'MusicIdentityEligibility' ||
-      operation === 'SettingsAccount' ||
-      operation === 'user'
+      operation === 'SettingsAccount'
     ) {
       return route.fulfill({
         status: 200,
@@ -102,6 +108,57 @@ async function installAuthenticatedDashboardFixture(
               username: 'testuser',
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',
+              accounts: [account],
+            },
+          },
+        }),
+      });
+    }
+
+    if (operation === 'user') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            accounts: [account],
+            usersPermissionsUser: {
+              id: 'mock-user-123',
+              documentId: 'mock-user-123',
+              username: 'testuser',
+              email: 'test@explorers.earth',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
+              accounts: [account],
+            },
+          },
+        }),
+      });
+    }
+
+    if (operation === 'GetDashboardStatus') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            usersPermissionsUser: {
+              documentId: 'mock-user-123',
+              accounts: [account],
+            },
+          },
+        }),
+      });
+    }
+
+    if (operation === 'GetUserAccount') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            usersPermissionsUser: {
               accounts: [account],
             },
           },
@@ -142,7 +199,16 @@ async function installAuthenticatedDashboardFixture(
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: {} }),
+      body: JSON.stringify({
+        data: {
+          accounts: [account],
+          usersPermissionsUser: {
+            documentId: 'mock-user-123', username: 'testuser', email: 'test@explorers.earth',
+            provider: 'local', confirmed: true, blocked: false, accounts: [account],
+          },
+          me: { accounts: [account] },
+        },
+      }),
     });
   });
 
@@ -191,6 +257,32 @@ const analyticsRecords = (from: string, to: string) => {
 };
 
 test.describe('Analytics dashboard E2E', () => {
+  test.use({ timezoneId: 'Asia/Kolkata' });
+
+  test('Home shows a truthful 90-calendar-day value and failure never masquerades as zero', async ({ context, page }) => {
+    const operations = await installAuthenticatedDashboardFixture(context, page);
+    const reads: URL[] = [];
+    let failure = false;
+    await page.route('**/api/explorers/analytics/events*', async (route) => {
+      reads.push(new URL(route.request().url()));
+      if (failure) return route.fulfill({ status: 503, body: 'fixture unavailable' });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ events: [] }) });
+    });
+    await page.goto('/home');
+    await expect.poll(() => reads.length, { message: `analytics read after GraphQL operations: ${operations.join(',')}` }).toBeGreaterThan(0);
+    await expect(page.getByText('Views · last 90 days')).toBeVisible();
+    const scope = reads.at(-1)!;
+    const fromDate = scope.searchParams.get('fromDate')!;
+    const toDate = scope.searchParams.get('toDate')!;
+    const inclusiveDays = Math.round((Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86_400_000) + 1;
+    expect(inclusiveDays).toBe(90);
+    expect(scope.searchParams.get('timeZone')).toBe('Asia/Calcutta');
+    await expect(page.getByText('Views · last 90 days').locator('..')).toContainText('0');
+
+    failure = true;
+    await page.reload();
+    await expect(page.getByText('Views · last 90 days').locator('..')).toContainText('Unavailable');
+  });
   test('reads only the authenticated account and refreshes server date scopes', async ({
     context,
     page,
@@ -226,8 +318,8 @@ test.describe('Analytics dashboard E2E', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           events: analyticsRecords(
-            url.searchParams.get('from')!,
-            url.searchParams.get('to')!,
+            `${url.searchParams.get('fromDate')}T00:00:00.000Z`,
+            `${url.searchParams.get('toDate')}T23:59:59.999Z`,
           ),
         }),
       });
@@ -239,11 +331,9 @@ test.describe('Analytics dashboard E2E', () => {
 
     expect(reads[0].url.searchParams.get('accountId')).toBe(account.documentId);
     expect(reads[0].authorization).toBe('Bearer mock-jwt-token-xyz');
-    const firstDuration =
-      new Date(reads[0].url.searchParams.get('to')!).getTime() -
-      new Date(reads[0].url.searchParams.get('from')!).getTime();
-    expect(firstDuration).toBeGreaterThanOrEqual(29 * 24 * 60 * 60 * 1000);
-    expect(firstDuration).toBeLessThan(30 * 24 * 60 * 60 * 1000);
+    expect(reads[0].url.searchParams.get('fromDate')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(reads[0].url.searchParams.get('toDate')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(reads[0].url.searchParams.get('timeZone')).toBe('Asia/Calcutta');
 
     await expect(
       page.getByRole('heading', { name: 'Total Views' }).locator('..').locator('p.text-2xl'),
@@ -264,10 +354,7 @@ test.describe('Analytics dashboard E2E', () => {
     await page.getByRole('button', { name: 'Last 30 Days' }).click();
     await page.getByRole('button', { name: 'Today', exact: true }).click();
     await expect.poll(() => reads.length).toBe(2);
-    const todayFrom = new Date(reads[1].url.searchParams.get('from')!);
-    const todayTo = new Date(reads[1].url.searchParams.get('to')!);
-    expect(todayFrom.getHours()).toBe(0);
-    expect(todayTo.getHours()).toBe(23);
+    expect(reads[1].url.searchParams.get('fromDate')).toBe(reads[1].url.searchParams.get('toDate'));
 
     await page.getByRole('button', { name: 'Today', exact: true }).click();
     await page.getByRole('button', { name: 'Custom Range', exact: true }).click();
@@ -276,20 +363,18 @@ test.describe('Analytics dashboard E2E', () => {
     await dateInputs.nth(1).fill('2026-08-15');
     await expect.poll(() => reads.length).toBeGreaterThanOrEqual(3);
     const custom = reads.at(-1)!;
-    const customFrom = new Date(custom.url.searchParams.get('from')!);
-    const customTo = new Date(custom.url.searchParams.get('to')!);
-    expect([
-      customFrom.getFullYear(),
-      customFrom.getMonth(),
-      customFrom.getDate(),
-      customFrom.getHours(),
-    ]).toEqual([2026, 7, 1, 0]);
-    expect([
-      customTo.getFullYear(),
-      customTo.getMonth(),
-      customTo.getDate(),
-      customTo.getHours(),
-    ]).toEqual([2026, 7, 15, 23]);
+    expect(custom.url.searchParams.get('fromDate')).toBe('2026-08-01');
+    expect(custom.url.searchParams.get('toDate')).toBe('2026-08-15');
+    expect(custom.url.searchParams.get('timeZone')).toBe('Asia/Calcutta');
+
+    await dateInputs.nth(0).fill('2026-01-01');
+    await dateInputs.nth(1).fill('2026-04-03');
+    await expect.poll(() => reads.at(-1)?.url.searchParams.get('toDate')).toBe('2026-04-03');
+    const acceptedReads = reads.length;
+    await dateInputs.nth(1).fill('2026-04-04');
+    await expect(page.getByRole('alert')).toHaveText('Choose a date range of 93 days or less.');
+    await page.waitForTimeout(150);
+    expect(reads).toHaveLength(acceptedReads);
     expect(failedResponses).toEqual([]);
     expect(consoleIssues).toEqual([]);
   });
