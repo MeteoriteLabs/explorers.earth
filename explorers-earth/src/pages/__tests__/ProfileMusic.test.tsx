@@ -61,4 +61,18 @@ describe("ProfileMusic", () => {
     subscribe.mock.calls[0][0].onError(new (await import("../../features/music/publicMusicClient")).PublicMusicError("PUBLIC_NOT_FOUND"));
     await screen.findByRole("heading", { name: "Music page unavailable" });
   });
+
+  it("retains the ready friendly resource through transient and rate-limited live failures", async () => {
+    load.mockResolvedValue(emptyResource);
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes>
+      <Route path=":username" element={<Outlet />}><Route path="music" element={<ProfileMusic />} /></Route>
+    </Routes></MemoryRouter>);
+    await screen.findByRole("heading", { name: "Music" });
+    const options = subscribe.mock.calls[0][0];
+    options.onError(new (await import("../../features/music/publicMusicClient")).PublicMusicError("PUBLIC_UNAVAILABLE"));
+    expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
+    options.onError(new (await import("../../features/music/publicMusicClient")).PublicMusicError("RATE_LIMITED", 90));
+    expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
+    expect(subscribe).toHaveBeenCalledTimes(1);
+  });
 });

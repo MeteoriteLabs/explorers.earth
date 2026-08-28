@@ -128,4 +128,25 @@ describe("public Music live client", () => {
     expect(visibleApply).toHaveBeenCalledOnce();
     subscription.unsubscribe();
   });
+
+  it("retries an active-socket transient failure with bounded backoff and Retry-After", async () => {
+    // Break caught: a failed socket-triggered refresh never retries because fallback polling is disabled while connected.
+    vi.useFakeTimers();
+    const socket = new FakeSocket();
+    const rateLimit = Object.assign(new Error("rate limited"), { retryAfterSeconds: 90 });
+    const apply = vi.fn();
+    const onInvalidate = vi.fn()
+      .mockRejectedValueOnce(new Error("down"))
+      .mockRejectedValueOnce(rateLimit)
+      .mockResolvedValueOnce({ revision: 3, apply });
+    const subscription = subscribeToPublicMusic({ publicSlug: "public-one", initialRevision: 1, onInvalidate }, { socketFactory: () => socket as never, random: () => 0.5 });
+    socket.emit("connect"); await vi.advanceTimersByTimeAsync(0);
+    expect(onInvalidate).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(29_999); expect(onInvalidate).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1); expect(onInvalidate).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(89_999); expect(onInvalidate).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1); expect(onInvalidate).toHaveBeenCalledTimes(3);
+    expect(apply).toHaveBeenCalledOnce();
+    subscription.unsubscribe();
+  });
 });

@@ -20,12 +20,20 @@ export function usePublicMusicResource(options: {
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   const fail = useCallback((error: unknown) => {
-    if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") {
+    if (error instanceof PublicMusicError && (error.code === "PUBLIC_NOT_FOUND" || error.code === "REQUEST_FORBIDDEN")) {
       options.onRevoked?.(); setResource(undefined); setState("not-found");
     } else if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") {
       setRetryAfterSeconds(error.retryAfterSeconds ?? 60); setState("rate-limited");
     } else setState("unavailable");
     options.onSettled?.();
+  }, [options.onRevoked, options.onSettled]);
+
+  const failLive = useCallback((error: unknown) => {
+    if (error instanceof PublicMusicError && (error.code === "PUBLIC_NOT_FOUND" || error.code === "REQUEST_FORBIDDEN")) {
+      options.onRevoked?.(); setResource(undefined); setState("not-found"); options.onSettled?.();
+    } else if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") {
+      setRetryAfterSeconds(error.retryAfterSeconds ?? 60);
+    }
   }, [options.onRevoked, options.onSettled]);
 
   useEffect(() => {
@@ -54,10 +62,10 @@ export function usePublicMusicResource(options: {
         const value = await publicMusicClient.load(options.publicSlug!, options.capability, signal);
         return { revision: value.revision, apply: () => { renderedRevision.current = value.revision; setResource(value); setState("ready"); } };
       },
-      onError: fail,
+      onError: failLive,
     });
     return () => { controller.abort(); subscription.unsubscribe(); };
-  }, [fail, options.capability, options.enabled, options.publicSlug, state]);
+  }, [failLive, options.capability, options.enabled, options.publicSlug, state]);
 
   return { state, resource, retryAfterSeconds, retry };
 }

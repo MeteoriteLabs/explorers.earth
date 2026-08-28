@@ -64,6 +64,15 @@ export function subscribeToPublicMusic(
     catchUpIndex = Math.min(catchUpIndex + 1, CATCH_UP_BACKOFF_MS.length);
     timer = setTimeout(() => { timer = undefined; void refresh("event"); }, delay);
   };
+  const scheduleFailureRetry = (error: unknown) => {
+    clearTimer();
+    if (!active()) return;
+    const baseDelay = FAILURE_BACKOFF_MS[Math.min(failureIndex, FAILURE_BACKOFF_MS.length - 1)];
+    const retryAfterSeconds = typeof error === "object" && error !== null && "retryAfterSeconds" in error
+      && Number.isFinite(Number(error.retryAfterSeconds)) ? Math.max(0, Math.min(300, Number(error.retryAfterSeconds))) : 0;
+    failureIndex = Math.min(failureIndex + 1, FAILURE_BACKOFF_MS.length - 1);
+    timer = setTimeout(() => { timer = undefined; void refresh("poll"); }, Math.max(jitter(baseDelay), retryAfterSeconds * 1_000));
+  };
   const refresh = (reason: "event" | "reconnect" | "resume" | "poll"): Promise<void> => {
     if (!active()) return Promise.resolve();
     if (inFlight) return inFlight;
@@ -88,11 +97,7 @@ export function subscribeToPublicMusic(
       if (active() && generation === requestGeneration && !controller.signal.aborted) {
         options.onError?.(error);
       }
-      if (active() && generation === requestGeneration && !controller.signal.aborted && !socketAvailable) {
-        const delay = FAILURE_BACKOFF_MS[Math.min(failureIndex, FAILURE_BACKOFF_MS.length - 1)];
-        failureIndex = Math.min(failureIndex + 1, FAILURE_BACKOFF_MS.length - 1);
-        schedulePoll(delay);
-      }
+      if (active() && generation === requestGeneration && !controller.signal.aborted) scheduleFailureRetry(error);
     }).finally(() => {
       if (generation !== requestGeneration) return;
       inFlight = undefined;

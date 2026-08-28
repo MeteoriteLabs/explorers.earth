@@ -193,4 +193,15 @@ describe("public Music page", () => {
     update.apply();
     expect(loadPublicMusic).toHaveBeenCalledTimes(2);
   });
+
+  it("retains the standalone resource and subscription after a transient live failure", async () => {
+    loadPublicMusic.mockResolvedValue(resource());
+    render(<MemoryRouter initialEntries={["/music/share/public_slug-123"]}><Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes></MemoryRouter>);
+    await screen.findByRole("heading", { name: "Music" });
+    const options = subscribeToPublicMusic.mock.calls[0][0];
+    const { PublicMusicError } = await import("../../features/music/publicMusicClient");
+    options.onError(new PublicMusicError("PUBLIC_UNAVAILABLE"));
+    expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
+    expect(subscribeToPublicMusic).toHaveBeenCalledTimes(1);
+  });
 });
