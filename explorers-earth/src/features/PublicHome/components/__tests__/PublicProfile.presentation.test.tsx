@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { state, recommendationProps, seoProps, openViewer, mediaViewerProps } = vi.hoisted(() => ({
+const { state, recommendationProps, seoProps, openViewer, mediaViewerProps, trackClick } = vi.hoisted(() => ({
   state: {
     account: null as Record<string, any> | null,
   },
@@ -10,6 +10,7 @@ const { state, recommendationProps, seoProps, openViewer, mediaViewerProps } = v
   seoProps: [] as Array<Record<string, any>>,
   openViewer: vi.fn(),
   mediaViewerProps: [] as Array<Record<string, any>>,
+  trackClick: vi.fn(),
 }));
 
 vi.mock("@apollo/client", async (importOriginal) => {
@@ -35,7 +36,7 @@ vi.mock("@apollo/client", async (importOriginal) => {
 
 vi.mock("../../../../services/analyticsService", () => ({
   createAnalyticsOptions: { profile: vi.fn(() => ({})) },
-  useTrackAnalytics: () => ({ trackClick: vi.fn() }),
+  useTrackAnalytics: () => ({ trackClick }),
 }));
 
 vi.mock("../../../../hooks/useQRActions", () => ({
@@ -145,7 +146,15 @@ describe("PublicProfile recommendation presentation", () => {
     recommendationProps.length = 0;
     seoProps.length = 0;
     state.account = makeAccount();
+    trackClick.mockReset();
     (window as any).__publicProfileLoaded = false;
+  });
+
+  it("preserves fixed-header share tracking on the profile root", async () => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn().mockResolvedValue(undefined) });
+    renderProfile();
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(trackClick).toHaveBeenCalledWith("share-button", { context: "profile-header" }));
   });
 
   it("sanitizes API rich text at the public render boundary and rejects an unsafe business website", () => {

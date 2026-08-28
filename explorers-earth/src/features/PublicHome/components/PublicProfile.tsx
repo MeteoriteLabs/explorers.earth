@@ -8,7 +8,7 @@ import {
 } from "../../Profile/constants/recommendationsPresentation";
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
-import { PublicProfileFixedHeader, PublicProfileIdentity } from "./PublicProfileChromePrimitives";
+import { PublicProfileFixedHeader, PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
 import { useQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
@@ -644,57 +644,15 @@ const PublicProfile = memo(() => {
           color: "var(--text-primary)",
         }}
       >
-        <PublicProfileFixedHeader shareUrl={getCleanShareUrl()} />
+        <PublicProfileFixedHeader shareUrl={getCleanShareUrl()} profileName={accountData?.Account_Name || username || "Explorer"} onTrackClick={analytics.trackClick} />
 
         {/* Profile Content */}
 
-        {/* Full-Screen Wallpaper Background Mode */}
-        {themeSettings?.wallpaperMode === 'full-wallpaper-image' && (
-          <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-            <img
-              src={accountData?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
-              alt="Full Wallpaper"
-              className="w-full h-full object-cover opacity-25 blur-[3px] scale-105"
-            />
-            <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
-          </div>
-        )}
-
-        {/* Ambient Gradient Background Mode */}
-        {themeSettings?.wallpaperMode === 'ambient-gradient' && (
-          <div
-            className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-15 transition-all duration-500"
-            style={{
-              background: `radial-gradient(circle at 50% 20%, var(--accent-color) 0%, transparent 60%), radial-gradient(circle at 80% 80%, var(--accent-color) 0%, transparent 50%)`
-            }}
-          />
-        )}
+        <PublicProfileWallpaper account={accountData} theme={themeSettings} />
 
         {/* Profile Header Section */}
         <div className="relative overflow-hidden pb-0">
-          {/* Cover Photo Banner (Shown in Classic Banner Mode) */}
-          {themeSettings?.wallpaperMode === 'banner-top' && (
-            <div className="absolute inset-x-0 top-0 h-[380px] md:h-[420px] overflow-hidden z-0 rounded-b-[2rem] md:rounded-none">
-              <img
-                src={
-                  accountData?.bg_picture?.url ||
-                  IMAGE_CONFIG.defaultImages.background
-                }
-                alt="Cover"
-                className="w-full h-full object-cover object-[center_32%] scale-105"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/90 z-0" />
-              <div
-                className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0"
-                style={{
-                  WebkitMaskImage: 'linear-gradient(to top, black 30%, transparent 100%)',
-                  maskImage: 'linear-gradient(to top, black 30%, transparent 100%)'
-                }}
-              />
-              <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/40 to-transparent z-0" />
-            </div>
-          )}
+          <PublicProfileHeroBackdrop account={accountData} theme={themeSettings} />
 
           {/* Profile Header Content (Profile Pic, Name, Social Icons) */}
           <div className="relative z-10 pt-16 md:pt-32 pb-0 md:pb-4 text-center px-4">
