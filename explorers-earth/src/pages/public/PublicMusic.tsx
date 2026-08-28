@@ -90,7 +90,7 @@ export function PublicMusicContent({
   return (
     <Frame className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-6xl">
-        <h1 className="text-3xl font-semibold">Music</h1>
+        <h1 id="public-music-heading" tabIndex={-1} className="text-3xl font-semibold">Music</h1>
         <PublicMusicSections resource={resource} />
       </div>
     </Frame>

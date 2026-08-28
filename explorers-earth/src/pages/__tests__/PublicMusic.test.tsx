@@ -108,6 +108,7 @@ describe("public Music page", () => {
       currentlyPlaying: playing,
     })} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Play on this device" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Music" })).toHaveAttribute("tabindex", "-1");
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Up next" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play Now on this device" })).toBeInTheDocument();

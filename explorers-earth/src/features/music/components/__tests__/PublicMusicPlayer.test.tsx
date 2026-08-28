@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,14 +10,18 @@ import { PublicMusicPlayer } from "../PublicMusicPlayer";
 type PlayerProps = Record<string, unknown>;
 let mediaProps: PlayerProps = {};
 const mediaCleanup = vi.fn();
+const mediaPlay = vi.fn<() => Promise<void>>();
+const mediaPause = vi.fn();
 
 vi.mock("react-player", async () => {
   const React = await import("react");
-  function MockPlayer(props: PlayerProps) {
+  const MockPlayer = React.forwardRef((_props: PlayerProps, ref) => {
+    const props = _props;
     mediaProps = props;
+    React.useImperativeHandle(ref, () => ({ play: mediaPlay, pause: mediaPause }));
     React.useEffect(() => mediaCleanup, []);
     return <div data-testid="guest-media" data-playing={String(props.playing)} data-src={String(props.src)} />;
-  }
+  });
   return {
     default: MockPlayer,
   };
@@ -35,7 +39,12 @@ const song: PublicMusicSong = {
 };
 
 describe("PublicMusicPlayer", () => {
-  beforeEach(() => { mediaProps = {}; mediaCleanup.mockReset(); });
+  beforeEach(() => {
+    mediaProps = {};
+    mediaCleanup.mockReset();
+    mediaPlay.mockReset().mockResolvedValue(undefined);
+    mediaPause.mockReset();
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it("requires an explicit guest gesture and exposes keyboard-labelled play and pause controls", async () => {
@@ -46,6 +55,7 @@ describe("PublicMusicPlayer", () => {
     const play = screen.getByRole("button", { name: "Play Public signal on this device" });
     play.focus();
     await user.keyboard("{Enter}");
+    expect(mediaPlay).toHaveBeenCalledOnce();
     expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "true");
     expect(screen.getByRole("button", { name: "Pause Public signal" })).toHaveAttribute("aria-pressed", "true");
 
@@ -66,12 +76,12 @@ describe("PublicMusicPlayer", () => {
     expect(screen.getByRole("button", { name: "Play Selected song on this device" })).toBeInTheDocument();
   });
 
-  it("recovers from autoplay denial without hiding the explicit play control", async () => {
+  it("contains a real play promise NotAllowedError without hiding the explicit play control", async () => {
     const user = userEvent.setup();
+    mediaPlay.mockRejectedValueOnce(new DOMException("blocked", "NotAllowedError"));
     render(<PublicMusicPlayer song={song} />);
     await user.click(screen.getByRole("button", { name: /Play Public signal/ }));
-    act(() => (mediaProps.onError as (cause: unknown) => void)(new DOMException("blocked", "NotAllowedError")));
-    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
+    await waitFor(() => expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false"));
     expect(screen.getByRole("status")).toHaveTextContent("Press play to start this song on your device.");
     expect(screen.getByRole("button", { name: /Play Public signal/ })).toBeInTheDocument();
   });
@@ -79,15 +89,24 @@ describe("PublicMusicPlayer", () => {
   it.each([
     [100, "This video is no longer available. Choose another track."],
     [101, "This video cannot be played here. Choose another track."],
-    [new TypeError("network failed"), "Playback could not connect. Check your connection and try again."],
-    [new Error("embed failed"), "Playback is unavailable right now. Choose another track or try again."],
-  ])("stops playback and announces a contained media failure for %s", async (cause, message) => {
+    [150, "This video cannot be played here. Choose another track."],
+    [2, "Playback could not connect. Check your connection and try again."],
+    [4, "Playback is unavailable right now. Choose another track or try again."],
+  ])("normalizes runtime media error code %s from currentTarget.error", async (code, message) => {
     const user = userEvent.setup();
     render(<PublicMusicPlayer song={song} />);
     await user.click(screen.getByRole("button", { name: /Play Public signal/ }));
-    act(() => (mediaProps.onError as (cause: unknown) => void)(cause));
+    act(() => (mediaProps.onError as (event: unknown) => void)({ currentTarget: { error: { code } } }));
     expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
     expect(screen.getByRole("alert")).toHaveTextContent(message);
+  });
+
+  it("contains a non-policy play rejection as a retryable network failure", async () => {
+    mediaPlay.mockRejectedValueOnce(new TypeError("network failed"));
+    render(<PublicMusicPlayer song={song} />);
+    await userEvent.click(screen.getByRole("button", { name: /Play Public signal/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Playback could not connect. Check your connection and try again.");
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
   });
 
   it("stops and destroys local media when playback permission is revoked", async () => {

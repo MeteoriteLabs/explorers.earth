@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient";
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
 import { PublicMusicPlayer } from "./PublicMusicPlayer";
@@ -57,8 +57,11 @@ function SongRow({ song, playable = false, selected = false, onSelect }: {
   );
 }
 
-export function PublicMusicSections({ resource }: { resource: PublicMusicResource }) {
+export function PublicMusicSections({ resource, headingId = "public-music-heading" }: { resource: PublicMusicResource; headingId?: string }) {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
+  const [revocationAnnouncement, setRevocationAnnouncement] = useState("");
+  const playerHasFocus = useRef(false);
+  const previousPlayerEligible = useRef(false);
   const policy = derivePublicMusicViewPolicy(resource);
   const playableSong = policy.playerEligible
     ? resource.currentlyPlaying
@@ -80,22 +83,48 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
     || (policy.historyVisible && resource.recentlyPlayed.items.length > 0)
     || (policy.playlistsVisible && resource.playlists.items.length > 0);
 
+  useLayoutEffect(() => {
+    const revoked = previousPlayerEligible.current && !policy.playerEligible;
+    previousPlayerEligible.current = policy.playerEligible;
+    if (policy.playerEligible) setRevocationAnnouncement("");
+    if (!revoked || !playerHasFocus.current) return;
+    playerHasFocus.current = false;
+    setRevocationAnnouncement("Playback on this device is no longer available.");
+    document.getElementById(headingId)?.focus();
+  }, [headingId, policy.playerEligible]);
+  const revocationStatus = revocationAnnouncement
+    ? <p role="status" aria-live="polite" className="sr-only">{revocationAnnouncement}</p>
+    : null;
+
   if (!hasVisibleContent) {
     return (
-      <div className="mt-8 rounded-xl bg-dashboard-card/60 px-5 py-10 text-center">
-        <p className="text-base text-dashboard-text-muted">Nothing has been shared here yet</p>
-      </div>
+      <>
+        <div className="mt-8 rounded-xl bg-dashboard-card/60 px-5 py-10 text-center">
+          <p className="text-base text-dashboard-text-muted">Nothing has been shared here yet</p>
+        </div>
+        {revocationStatus}
+      </>
     );
   }
 
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
       {playableSong ? (
-        <section className="min-w-0" data-testid="public-music-player" aria-labelledby="public-music-player-heading">
+        <section
+          className="min-w-0"
+          data-testid="public-music-player"
+          aria-labelledby="public-music-player-heading"
+          onFocusCapture={() => { playerHasFocus.current = true; }}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playerHasFocus.current = false;
+          }}
+        >
           <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
-          {selectedSong ? <PublicMusicPlayer song={selectedSong} allowed={policy.playerEligible} /> : null}
+          {selectedSong ? <PublicMusicPlayer key={selectedSong.id} song={selectedSong} allowed={policy.playerEligible} /> : null}
         </section>
       ) : null}
+
+      {revocationStatus}
 
       {policy.queueVisible ? (
         <section className="min-w-0" aria-labelledby="public-music-queue-heading">

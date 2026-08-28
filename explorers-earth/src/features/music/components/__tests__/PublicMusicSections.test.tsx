@@ -5,11 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { PublicMusicResource, PublicMusicSong } from "../../publicMusicClient";
 import { PublicMusicSections } from "../PublicMusicSections";
 
-vi.mock("react-player", () => ({
-  default: (props: Record<string, unknown>) => (
-    <div data-testid="guest-media" data-playing={String(props.playing)} data-src={String(props.src)} />
-  ),
-}));
+const mediaRenders = vi.hoisted(() => [] as Array<{ src: string; playing: boolean }>);
+
+vi.mock("react-player", async () => {
+  const React = await import("react");
+  return {
+    default: React.forwardRef((props: Record<string, unknown>, ref) => {
+      mediaRenders.push({ src: String(props.src), playing: Boolean(props.playing) });
+      React.useImperativeHandle(ref, () => ({ play: async () => undefined, pause: () => undefined }));
+      return <div data-testid="guest-media" data-playing={String(props.playing)} data-src={String(props.src)} />;
+    }),
+  };
+});
 
 const song = (
   id: string,
@@ -28,7 +35,7 @@ const song = (
 });
 
 const current = song("C", "Current signal", "playing", 0);
-const queued = song("Q", "Queue signal", "queued", 1);
+const queued = { ...song("Q", "Queue signal", "queued", 1), youtubeId: "lmnopqrstuv" };
 const recent = song("H", "History signal", "played", 0);
 const saved = song("S", "Playlist signal", "saved", 0);
 
@@ -118,6 +125,23 @@ describe("PublicMusicSections permission oracle", () => {
     expect(screen.getByRole("button", { name: "Choose Playlist signal to play on this device" })).toHaveAttribute("aria-current", "true");
   });
 
+  it("remounts a newly selected source paused before ReactPlayer can observe its src", async () => {
+    const user = userEvent.setup();
+    mediaRenders.length = 0;
+    render(<PublicMusicSections resource={populatedResource(2 | 4 | 16)} />);
+    await user.click(screen.getByRole("button", { name: "Play Current signal on this device" }));
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "true");
+
+    await user.click(screen.getByRole("button", { name: "Choose Queue signal to play on this device" }));
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-src", "https://www.youtube.com/watch?v=lmnopqrstuv");
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
+    expect(screen.getByRole("button", { name: "Play Queue signal on this device" })).toBeInTheDocument();
+    expect(mediaRenders.filter(({ src }) => src.endsWith("lmnopqrstuv"))[0]).toEqual({
+      src: "https://www.youtube.com/watch?v=lmnopqrstuv",
+      playing: false,
+    });
+  });
+
   it("removes playback controls and the media surface on canonical permission revocation", async () => {
     const user = userEvent.setup();
     const initial = populatedResource(2 | 4);
@@ -131,6 +155,38 @@ describe("PublicMusicSections permission oracle", () => {
     }} />);
     expect(screen.queryByTestId("public-music-player")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /on this device/ })).not.toBeInTheDocument();
+  });
+
+  it("announces focused playback revocation and moves focus to the Music heading", async () => {
+    const initial = populatedResource(2);
+    const { rerender } = render(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><PublicMusicSections resource={initial} /></>);
+    screen.getByRole("button", { name: /Play Current signal/ }).focus();
+
+    rerender(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><PublicMusicSections resource={{
+      ...initial,
+      revision: 8,
+      currentlyPlaying: null,
+      permissions: { ...initial.permissions, allowGuestPlayOnDevice: false },
+    }} /></>);
+
+    expect(screen.getByRole("heading", { name: "Music" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Playback on this device is no longer available.");
+    expect(screen.queryByTestId("guest-media")).not.toBeInTheDocument();
+  });
+
+  it("does not steal focus when playback is revoked while focus is elsewhere", () => {
+    const initial = populatedResource(2 | 4);
+    const { rerender } = render(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><button type="button">Outside</button><PublicMusicSections resource={initial} /></>);
+    screen.getByRole("button", { name: "Outside" }).focus();
+
+    rerender(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><button type="button">Outside</button><PublicMusicSections resource={{
+      ...initial,
+      revision: 8,
+      permissions: { ...initial.permissions, allowGuestPlayOnDevice: false },
+    }} /></>);
+
+    expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
+    expect(screen.queryByText("Playback on this device is no longer available.")).not.toBeInTheDocument();
   });
 
   it("uses one page-level empty state instead of stacking enabled-empty messages", () => {
