@@ -104,7 +104,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       schema: expect.objectContaining({ type: "string", minLength: 1, maxLength: 512 }),
     }));
     expect(descriptor).not.toHaveProperty("requestBody");
-    expect(Object.keys(descriptor.responses)).toEqual(["200", "400", "404", "413", "429", "500"]);
+    expect(Object.keys(descriptor.responses)).toEqual(["200", "400", "404", "413", "429", "500", "503"]);
     expect(JSON.stringify(descriptor.responses["404"])).toContain("PUBLIC_NOT_FOUND");
     expect(descriptor.responses["429"]).toHaveProperty("headers.Retry-After");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicDescriptor).toMatchObject({
@@ -123,8 +123,18 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       expect.objectContaining({ name: "publicSlug", in: "path", required: true }),
       expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: false }),
     ]));
-    expect(Object.keys(publicResource?.responses ?? {}).sort()).toEqual(["200", "404", "413", "429", "500"]);
+    expect(Object.keys(publicResource?.responses ?? {}).sort()).toEqual(["200", "400", "404", "413", "429", "500", "503"]);
     expect(JSON.stringify(publicResource?.responses["200"])).toContain("music-public-resource/v1");
+    const guestRequest = MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}/requests"].post;
+    expect(Object.keys(guestRequest.responses)).toContain("503");
+    for (const operation of [descriptor, publicResource, guestRequest]) {
+      expect(JSON.stringify(operation.responses)).toContain("SERVICE_UNAVAILABLE");
+      expect(JSON.stringify(operation.responses)).toContain("REQUEST_INVALID");
+      expect(JSON.stringify(operation.responses)).toContain("RATE_LIMITED");
+    }
+    expect(descriptor.responses["200"]).toHaveProperty("content.application/json.examples.success.value.version", "music-public-descriptor/v1");
+    expect(publicResource?.responses["200"]).toHaveProperty("content.application/json.examples.success.value.version", "music-public-resource/v1");
+    expect(guestRequest.responses["201"]).toHaveProperty("content.application/json.examples.success.value.accepted", true);
     const productAnalytics = MUSIC_OPENAPI_DOCUMENT.paths["/api/explorers/analytics/music/{publicSlug}/events"]?.post;
     expect(productAnalytics?.security).toEqual([{}, { guestCapability: [] }]);
     expect(productAnalytics?.requestBody).toBeDefined();

@@ -225,6 +225,17 @@ test.beforeEach(async ({ context, page }) => {
       ])
     });
   });
+
+  // Keep the recommendation card deterministic and offline. The fixture below
+  // deliberately returns an IGDB cover URL, so allowing the browser to fetch it
+  // can exhaust sockets during the full cross-suite run.
+  await page.route('http://images.igdb.com/**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="264" height="352"><rect width="100%" height="100%" fill="#172033"/></svg>',
+    });
+  });
 });
 
 test('Flow 3: Games List and Recommendation creation E2E', async ({ page }) => {

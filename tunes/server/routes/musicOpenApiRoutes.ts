@@ -37,10 +37,10 @@ const responseHeaders = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const success = (description: string, schema?: Schema, extraHeaders: Record<string, unknown> = {}) => ({
+const success = (description: string, schema?: Schema, extraHeaders: Record<string, unknown> = {}, example?: unknown) => ({
   description,
   headers: responseHeaders(extraHeaders),
-  ...(schema ? { content: { "application/json": { schema } } } : {}),
+  ...(schema ? { content: { "application/json": { schema, ...(example === undefined ? {} : { examples: { success: { value: example } } }) } } } : {}),
 });
 
 const failure = (description: string, codes: string[], retryAfter = false) => ({
@@ -368,12 +368,13 @@ const paths = {
       security: [],
       parameters: [requestIdParameter, accountDocumentId],
       responses: {
-        "200": success("Active discoverable public Music descriptor.", ref("PublicMusicDescriptor")),
+        "200": success("Active discoverable public Music descriptor.", ref("PublicMusicDescriptor"), {}, { version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 7 } }),
         "400": failure("The descriptor request contains an unexpected authority input.", ["REQUEST_INVALID"]),
         "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
         "413": failure("The request exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
         "429": failure("The public descriptor rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
       },
       "x-authority-policy": "stable-account-document-id-discovery-only",
     },
@@ -385,11 +386,13 @@ const paths = {
       security: [{}, ...guestSecurity],
       parameters: [requestIdParameter, publicSlug, guestCapabilityOptional],
       responses: {
-        "200": success("Strict music-public-resource/v1 snapshot. X-Robots-Tag is present only for unlisted capability access.", ref("PublicMusicResource"), { "X-Robots-Tag": { $ref: "#/components/headers/RobotsTag" } }),
+        "200": success("Strict music-public-resource/v1 snapshot. X-Robots-Tag is present only for unlisted capability access.", ref("PublicMusicResource"), { "X-Robots-Tag": { $ref: "#/components/headers/RobotsTag" } }, { version: "music-public-resource/v1", revision: 7, user: { username: "fixture-owner", venueName: "Fixture Venue" }, permissions: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false }, currentlyPlaying: null, queue: { items: [], total: 0, truncated: false }, recentlyPlayed: { items: [], total: 0, truncated: false }, playlists: { items: [], total: 0, truncated: false } }),
+        "400": failure("The public resource request is invalid.", ["REQUEST_INVALID"]),
         "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
         "413": failure("The public resource exceeds its 512 KiB encoded contract.", ["PAYLOAD_TOO_LARGE"]),
         "429": failure("The public read rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
       },
       "x-publication-modes": ["public/discoverable", "unlisted capability; noindex/no-sitemap"],
       "x-max-encoded-bytes": 524288,
@@ -481,6 +484,7 @@ const paths = {
         "413": failure("The request exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
         "429": failure("The public read rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
       },
       "x-publication-modes": ["public/discoverable", "unlisted capability; noindex/no-sitemap"],
     },
@@ -493,13 +497,14 @@ const paths = {
       parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional, guestRequestIdempotencyKeyParameter],
       requestBody: body(ref("SongInput"), "Allowlisted guest song request"),
       responses: {
-        "201": success("The request was accepted once; exact replays return the same safe acknowledgement.", { type: "object", additionalProperties: false, required: ["accepted"], properties: { accepted: { type: "boolean", enum: [true] } } }),
+        "201": success("The request was accepted once; exact replays return the same safe acknowledgement.", { type: "object", additionalProperties: false, required: ["accepted"], properties: { accepted: { type: "boolean", enum: [true] } } }, {}, { accepted: true }),
         "409": failure("The idempotency key was reused with different canonical song input.", ["IDEMPOTENCY_CONFLICT"]),
         "400": failure("The request body is invalid.", ["REQUEST_INVALID"]),
         "403": failure("The capability, slug binding, lifecycle, permission, or origin is invalid.", ["GUEST_CAPABILITY_INVALID", "ORIGIN_FORBIDDEN"]),
         "413": failure("The request body exceeds 64 KiB or the bounded Music queue is full.", ["PAYLOAD_TOO_LARGE", "REQUEST_INVALID"]),
         "429": failure("The guest request rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
       },
       "x-origin-policy": "required-exact-allowlist-match",
     },

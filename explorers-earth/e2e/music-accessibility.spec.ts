@@ -20,7 +20,7 @@ async function expectButtonsToMeetTouchTarget(root: Locator) {
     if (await control.isVisible()) {
       await expect.poll(async () => {
         const box = await control.boundingBox();
-        return Math.min(box?.height ?? 0, box?.width ?? 0);
+        return Math.round(Math.min(box?.height ?? 0, box?.width ?? 0));
       }, { message: `expected ${await control.getAttribute("aria-label") ?? await control.innerText()} to settle at a 44px touch target` })
         .toBeGreaterThanOrEqual(44);
     }

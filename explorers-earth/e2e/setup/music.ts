@@ -1,7 +1,26 @@
 import type { Page } from "@playwright/test";
 import { createHash } from "node:crypto";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 export const MUSIC_PUBLIC_FIXTURE_VERSION = "music-public-e2e-fixture/v1" as const;
+export const MUSIC_LIVE_WRITE_CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE" as const;
+export const MUSIC_MUTATION_CALLSITES = [
+  "owner-publication",
+  "playlist-create",
+  "playlist-delete",
+  "playlist-song-add",
+  "playlist-song-delete",
+  "playlist-visibility",
+  "queue-replace",
+  "guest-controls",
+  "song-request",
+  "request-accept",
+  "request-revoke",
+  "guest-playback",
+  "player-update",
+] as const;
+export type MusicMutationCallsite = typeof MUSIC_MUTATION_CALLSITES[number];
 
 export const MUSIC_PUBLIC_STATES = [
   "public",
@@ -44,22 +63,83 @@ export function fixtureNamespace(runId: string): string {
 
 export function assertLiveWriteAuthority(input: {
   lane: MusicTestLane;
+  liveWriteEnabled: boolean;
   baseUrl: string;
+  serviceOrigins: string[];
+  accountDocumentId: string;
   accountUsername: string;
+  fixtureVersion: string;
   confirmation: string | undefined;
-}): { authorized: true; namespace: string } {
+}): { authorized: true; namespace: string; callsites: readonly MusicMutationCallsite[] } {
   if (input.lane === "pr-safe") throw new Error("PR-safe lane cannot acquire live-write authority");
   if (input.lane !== "live") throw new Error("Live writes require the live lane");
-  if (input.confirmation !== "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE") {
+  if (!input.liveWriteEnabled) throw new Error("Live writes require MUSIC_E2E_LIVE_WRITE=true");
+  if (input.confirmation !== MUSIC_LIVE_WRITE_CONFIRMATION) {
     throw new Error("Live writes require the exact disposable-fixture confirmation");
   }
-  const url = new URL(input.baseUrl);
-  if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
-    throw new Error("Live writes require a disposable loopback target");
+  if (input.fixtureVersion !== MUSIC_PUBLIC_FIXTURE_VERSION) {
+    throw new Error(`Live writes require fixture version ${MUSIC_PUBLIC_FIXTURE_VERSION}`);
+  }
+  const allOrigins = [input.baseUrl, ...input.serviceOrigins];
+  for (const rawOrigin of allOrigins) {
+    const url = new URL(rawOrigin);
+    if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
+      throw new Error(`Live writes require every service origin to be disposable loopback: ${url.origin}`);
+    }
   }
   const match = input.accountUsername.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/);
   if (!match) throw new Error("Live writes require a namespaced disposable account");
-  return { authorized: true, namespace: match[1] };
+  if (input.accountDocumentId !== `${match[1]}-account`) {
+    throw new Error("Live writes require a namespaced disposable account document ID");
+  }
+  return { authorized: true, namespace: match[1], callsites: MUSIC_MUTATION_CALLSITES };
+}
+
+let liveMutationBlockedReason: string | null = null;
+
+export function resetMusicRestoreBlockForContractTest(): void {
+  liveMutationBlockedReason = null;
+}
+
+export async function runAuthorizedMusicMutation<T>(
+  authorityInput: Parameters<typeof assertLiveWriteAuthority>[0],
+  callsite: MusicMutationCallsite,
+  mutation: () => Promise<T>,
+): Promise<T> {
+  if (liveMutationBlockedReason) {
+    throw new Error(`Live Music mutations are blocked after a restoration failure: ${liveMutationBlockedReason}`);
+  }
+  const authority = assertLiveWriteAuthority(authorityInput);
+  if (!authority.callsites.includes(callsite)) throw new Error(`Unknown Music mutation callsite: ${callsite}`);
+  return mutation();
+}
+
+export function musicLiveAuthorityFromEnvironment(
+  environment: Record<string, string | undefined> = process.env,
+): Parameters<typeof assertLiveWriteAuthority>[0] {
+  const serviceOrigins = (environment.MUSIC_E2E_SERVICE_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return {
+    lane: resolveMusicTestLane(environment),
+    liveWriteEnabled: environment.MUSIC_E2E_LIVE_WRITE === "true",
+    baseUrl: environment.PLAYWRIGHT_EXTERNAL_BASE_URL ?? "",
+    serviceOrigins,
+    accountDocumentId: environment.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? "",
+    accountUsername: environment.MUSIC_E2E_ACCOUNT_USERNAME ?? "",
+    fixtureVersion: environment.MUSIC_E2E_FIXTURE_VERSION ?? "",
+    confirmation: environment.MUSIC_E2E_LIVE_WRITE_CONFIRMATION,
+  };
+}
+
+export function musicLiveWriteSkipReason(environment: Record<string, string | undefined> = process.env): string | null {
+  try {
+    assertLiveWriteAuthority(musicLiveAuthorityFromEnvironment(environment));
+    return null;
+  } catch (error) {
+    return `live mutation skipped: ${error instanceof Error ? error.message : "authority unavailable"}`;
+  }
 }
 
 export function buildPermissionMatrix(): MusicPermissionRow[] {
@@ -76,7 +156,29 @@ export function buildPermissionMatrix(): MusicPermissionRow[] {
   });
 }
 
-const VOLATILE_SNAPSHOT_KEYS = new Set(["capturedAt", "requestId", "updatedAt", "createdAt"]);
+export function buildPairwisePermissionMatrix(): MusicPermissionRow[] {
+  const keys = ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"] as const;
+  const uncovered = new Set<string>();
+  for (let left = 0; left < keys.length; left += 1) for (let right = left + 1; right < keys.length; right += 1) {
+    for (const a of [false, true]) for (const b of [false, true]) uncovered.add(`${left}:${a}-${right}:${b}`);
+  }
+  const selected: MusicPermissionRow[] = [];
+  for (const row of buildPermissionMatrix()) {
+    const covers: string[] = [];
+    for (let left = 0; left < keys.length; left += 1) for (let right = left + 1; right < keys.length; right += 1) {
+      covers.push(`${left}:${row[keys[left]!]}-${right}:${row[keys[right]!]}`);
+    }
+    if (covers.some((pair) => uncovered.has(pair))) {
+      selected.push(row);
+      covers.forEach((pair) => uncovered.delete(pair));
+    }
+    if (uncovered.size === 0) break;
+  }
+  if (uncovered.size > 0) throw new Error(`Pairwise Music permission matrix is incomplete: ${[...uncovered].join(",")}`);
+  return selected;
+}
+
+const VOLATILE_SNAPSHOT_KEYS = new Set(["capturedAt", "requestId", "updatedAt", "createdAt", "revision", "queueRevision", "playbackRevision"]);
 
 function canonicalSnapshotValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalSnapshotValue);
@@ -131,6 +233,7 @@ export async function withRestoredMusicFixture<T>(adapters: {
   snapshot: () => Promise<unknown>;
   cleanupNamespace: () => Promise<void>;
   restore: (snapshot: unknown) => Promise<void>;
+  writeRecoveryArtifact?: (artifact: { reason: string; beforeHash: string; afterHash?: string }) => Promise<void>;
 }, journey: () => Promise<T>): Promise<{
   value: T;
   cleanup: "restored";
@@ -139,21 +242,56 @@ export async function withRestoredMusicFixture<T>(adapters: {
 }> {
   const before = await adapters.snapshot();
   const beforeHash = normalizedSnapshotHash(before);
+  const writeRecoveryArtifact = async (artifact: { reason: string; beforeHash: string; afterHash?: string }) => {
+    if (adapters.writeRecoveryArtifact) return adapters.writeRecoveryArtifact(artifact);
+    const recoveryPath = process.env.MUSIC_E2E_RECOVERY_ARTIFACT_PATH
+      ?? `.artifacts/music-public/recovery-${process.pid}.json`;
+    mkdirSync(dirname(recoveryPath), { recursive: true });
+    writeFileSync(recoveryPath, `${JSON.stringify({ version: MUSIC_PUBLIC_FIXTURE_VERSION, ...artifact }, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+  };
   let value!: T;
   let journeyFailure: unknown;
+  let restorationFailure: unknown;
   try {
     value = await journey();
   } catch (error) {
     journeyFailure = error;
   } finally {
-    await adapters.cleanupNamespace();
-    await adapters.restore(before);
+    let cleanupFailure: unknown;
+    try {
+      await adapters.cleanupNamespace();
+    } catch (error) {
+      cleanupFailure = error;
+    }
+    try {
+      await adapters.restore(before);
+    } catch (restoreError) {
+      liveMutationBlockedReason = restoreError instanceof Error ? restoreError.message : "restore failed";
+      await writeRecoveryArtifact({ reason: "restore-failed", beforeHash });
+      restorationFailure = restoreError;
+    }
+    if (!restorationFailure && cleanupFailure) {
+      liveMutationBlockedReason = cleanupFailure instanceof Error ? cleanupFailure.message : "namespace cleanup failed";
+      await writeRecoveryArtifact({ reason: "cleanup-failed", beforeHash });
+      restorationFailure = cleanupFailure;
+    }
   }
+  if (restorationFailure) throw restorationFailure;
   const afterHash = normalizedSnapshotHash(await adapters.snapshot());
   if (afterHash !== beforeHash) {
+    liveMutationBlockedReason = `before=${beforeHash} after=${afterHash}`;
+    await writeRecoveryArtifact({ reason: "restore-mismatch", beforeHash, afterHash });
     throw new Error(`Public Music fixture restoration mismatch: before=${beforeHash} after=${afterHash}`);
   }
   if (journeyFailure) throw journeyFailure;
+  const restoreEvidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
+  if (restoreEvidencePath) {
+    mkdirSync(dirname(restoreEvidencePath), { recursive: true });
+    appendFileSync(restoreEvidencePath, `${JSON.stringify({ version: MUSIC_PUBLIC_FIXTURE_VERSION, cleanup: "restored", beforeHash, afterHash })}\n`, { encoding: "utf8", mode: 0o600 });
+  }
   return { value, cleanup: "restored", beforeHash, afterHash };
 }
 

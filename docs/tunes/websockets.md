@@ -222,6 +222,25 @@ backs off through 30/60/120/240/300 seconds and stops while hidden, offline, or
 unmounted. Revocation removes cached unlisted content. Capabilities never appear
 in events, URLs, logs, trace attachments, or analytics payloads.
 
+Public socket admission is a handshake field, never a URL query string:
+
+```json
+{"auth":{"role":"guest","publicSlug":"public_slug-123","capability":"header-equivalent-secret"}}
+```
+
+Successful invalidation contains no identity or secret:
+
+```json
+{"version":"music-public-change/v1","kind":"queue","revision":8}
+```
+
+On `connect_error`, `disconnect`, a revision gap, or a newer revision, the
+client announces reconnecting, rejoins the authorized slug, and performs a
+canonical HTTP refetch before rendering. A revision less than or equal to the
+rendered revision is ignored. Private publication or capability revocation
+clears rendered and cached content and returns the same `PUBLIC_NOT_FOUND`
+recovery surface; it never retries with stale content.
+
 ## Key Files
 
 | File | Purpose |

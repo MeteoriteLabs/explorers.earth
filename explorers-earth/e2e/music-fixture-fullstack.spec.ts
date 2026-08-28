@@ -1,11 +1,48 @@
 import { expect, test, type Page } from "@playwright/test";
 import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
+import {
+  musicLiveAuthorityFromEnvironment,
+  musicLiveWriteSkipReason,
+  runAuthorizedMusicMutation,
+  withRestoredMusicFixture,
+  type MusicMutationCallsite,
+} from "./setup/music";
 
 const fixtureOrigin = "http://localhost:55173";
-test.skip(
-  process.env.PLAYWRIGHT_EXTERNAL_BASE_URL !== fixtureOrigin,
-  "requires the disposable integrated Music fixture; PR-safe execution has no live-write authority",
-);
+const liveSkipReason = musicLiveWriteSkipReason();
+test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized live fixture");
+
+function guardedMutation<T>(callsite: MusicMutationCallsite, mutation: () => Promise<T>): Promise<T> {
+  return runAuthorizedMusicMutation(musicLiveAuthorityFromEnvironment(), callsite, mutation);
+}
+
+async function withFixtureRestore<T>(page: Page, journey: () => Promise<T>): Promise<T> {
+  const state = fixtureMutationState(page);
+  const credential = state.ownerCredential!;
+  const restored = await withRestoredMusicFixture({
+    snapshot: async () => {
+      const [dashboard, controls] = await Promise.all([
+        page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } }),
+        page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } }),
+      ]);
+      const body = await dashboard.json() as Record<string, unknown>;
+      return { publication: body.publication, permissions: await controls.json(), queue: body.songs, playlists: [], requests: [], profilePreference: "unchanged" };
+    },
+    cleanupNamespace: async () => {
+      for (const songId of state.insertedQueueSongIds.splice(0)) {
+        const response = await guardedMutation("playlist-song-delete", () => page.request.delete(`${fixtureOrigin}/api/playlist/songs/${songId}`, { headers: fixtureWriteHeaders(credential, `fixture-cleanup-song-${songId}`) }));
+        expect(response.status()).toBe(204);
+      }
+    },
+    restore: async (snapshot) => {
+      const controls = (snapshot as { permissions: GuestControls }).permissions;
+      const response = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, { headers: fixtureWriteHeaders(credential, "fixture-restore-guest-controls"), data: controls }));
+      expect(response.status()).toBe(200);
+      state.guestControls = undefined;
+    },
+  }, journey);
+  return restored.value;
+}
 
 const fixtureVideos = [
   { id: { videoId: "abcdefghijk" }, snippet: { title: "UAT First song", channelTitle: "Fixture artist", thumbnails: { default: { url: `${fixtureOrigin}/images/tuneslogo.png` } } } },
@@ -84,16 +121,16 @@ test.afterEach(async ({ page }, testInfo) => {
   try {
     if (state?.ownerCredential) {
       for (const songId of state.insertedQueueSongIds) {
-        const response = await page.request.delete(`${fixtureOrigin}/api/playlist/songs/${songId}`, {
+        const response = await guardedMutation("playlist-song-delete", () => page.request.delete(`${fixtureOrigin}/api/playlist/songs/${songId}`, {
           headers: fixtureWriteHeaders(state.ownerCredential, `fixture-cleanup-song-${songId}`),
-        });
+        }));
         expect(response.status(), `fixture queue cleanup for song ${songId}`).toBe(204);
       }
       if (state.guestControls) {
-        const response = await page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
+        const response = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
           headers: fixtureWriteHeaders(state.ownerCredential, "fixture-cleanup-guest-controls"),
           data: state.guestControls,
-        });
+        }));
         expect(response.status(), "fixture guest-controls cleanup").toBe(200);
       }
     }
@@ -134,6 +171,8 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   const ownerCredential = fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 
+  await withFixtureRestore(page, async () => {
+
   await page.getByRole("searchbox", { name: "Search music or paste a URL" }).fill("fixture journey");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("checkbox", { name: "Select UAT First song" }).check();
@@ -141,6 +180,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
     const url = new URL(response.url());
     return url.origin === fixtureOrigin && url.pathname === "/api/playlist/songs" && response.request().method() === "POST";
   });
+  await runAuthorizedMusicMutation(musicLiveAuthorityFromEnvironment(), "playlist-song-add", async () => undefined);
   await page.getByRole("button", { name: "Add 1 selected to queue" }).click();
   const queueResponse = await queueMutation;
   expect(queueResponse.status()).toBe(201);
@@ -148,6 +188,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   expect(inserted.id).toEqual(expect.any(Number));
   fixtureMutationState(page).insertedQueueSongIds.push(inserted.id as number);
   await expect(page.getByRole("region", { name: "Music workspace" })).toContainText("UAT First song");
+  });
 
   const ensure = requests.find(({ path }) => path === "/api/music/identity/ensure");
   expect(ensure).toMatchObject({ authorization: "Bearer fixture-read-only-token", xUsername: undefined });
@@ -175,11 +216,12 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
   const ownerCredential = fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  await withFixtureRestore(page, async () => {
   const longTitle = "A deliberately very long mobile queue title that must truncate without hiding play or actions";
-  const insertLongTitle = await page.request.post(`${fixtureOrigin}/api/playlist/songs`, {
+  const insertLongTitle = await guardedMutation("playlist-song-add", () => page.request.post(`${fixtureOrigin}/api/playlist/songs`, {
     headers: fixtureWriteHeaders(ownerCredential!, "fixture-mobile-long-title"),
     data: { youtubeId: "abcdefghijk", title: longTitle, artist: "Fixture artist", thumbnailUrl: `${fixtureOrigin}/images/tuneslogo.png` },
-  });
+  }));
   expect(insertLongTitle.status()).toBe(201);
   const insertedLongTitle = await insertLongTitle.json() as { id?: unknown };
   expect(insertedLongTitle.id).toEqual(expect.any(Number));
@@ -210,6 +252,7 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   fixtureMutationState(page).guestControls = await controlsResponse.json() as GuestControls;
   const songRequests = page.getByRole("switch", { name: "Allow song requests" });
   const originalSongRequests = await songRequests.isChecked();
+  await runAuthorizedMusicMutation(musicLiveAuthorityFromEnvironment(), "guest-controls", async () => undefined);
   await songRequests.click();
   await expect(songRequests).toHaveAttribute("aria-checked", String(!originalSongRequests));
   await page.reload();
@@ -218,5 +261,6 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await expect(page.getByRole("heading", { name: "Recently played" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await testInfo.attach("mobile-owner-workspace", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+  });
   assertCleanJourney();
 });

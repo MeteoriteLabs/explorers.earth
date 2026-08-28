@@ -70,8 +70,8 @@ curl --fail-with-body http://127.0.0.1:55000/api/music/public-profile/account-do
 curl --fail-with-body http://127.0.0.1:55000/api/music/public-resource/v1/public_slug-123
 curl --fail-with-body -X POST -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 2b2f5617-3d84-4fd1-9243-d102cf34dd27' \
-  --data '{"query":"supported public song"}' \
-  http://127.0.0.1:55000/api/music/public-resource/v1/public_slug-123/requests
+  --data '{"youtubeId":"abcdefghijk","title":"Fixture song","artist":"Fixture artist","thumbnailUrl":"https://example.invalid/fixture.png"}' \
+  http://127.0.0.1:55000/api/playlist/public_slug-123/requests
 ```
 
 Success bodies use `music-public-descriptor/v1`, `music-public-resource/v1`,
@@ -82,3 +82,26 @@ and `music-public-request/v1`. Non-public lifecycle states share
 response, while same-key/different-body returns `IDEMPOTENCY_CONFLICT`.
 Unlisted capability authority is header-only and intentionally omitted from
 these public copy-paste examples.
+
+Exact success examples:
+
+```json
+{"version":"music-public-descriptor/v1","publication":{"mode":"public","publicSlug":"public_slug-123","revision":7}}
+{"version":"music-public-resource/v1","revision":7,"user":{"username":"fixture-owner","venueName":"Fixture Venue"},"permissions":{"allowSongRequests":true,"allowGuestPlayOnDevice":false,"allowPlaylistSharing":false,"allowRecentlyPlayedVisibility":false,"allowQueueVisibility":false},"currentlyPlaying":null,"queue":{"items":[],"total":0,"truncated":false},"recentlyPlayed":{"items":[],"total":0,"truncated":false},"playlists":{"items":[],"total":0,"truncated":false}}
+{"accepted":true}
+```
+
+Every failure is the same bounded envelope; substitute the listed code and use
+the shown status: `PUBLIC_NOT_FOUND` (404), `REQUEST_INVALID` (400),
+`RATE_LIMITED` (429 plus `Retry-After`), or `SERVICE_UNAVAILABLE` (503).
+
+```json
+{"version":"music-error/v1","error":{"code":"PUBLIC_NOT_FOUND","message":"The Music resource was not found.","action":"none","retryable":false,"requestId":"request-123"}}
+```
+
+An exact idempotency-key replay returns the original 201 acknowledgement.
+Reusing the key with different canonical song input returns 409:
+
+```json
+{"version":"music-error/v1","error":{"code":"IDEMPOTENCY_CONFLICT","message":"The idempotency key conflicts with another request.","action":"none","retryable":false,"requestId":"request-123"}}
+```

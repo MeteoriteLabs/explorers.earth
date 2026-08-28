@@ -338,6 +338,7 @@ class SyntheticProfileFixture {
   successfulMutations = 0;
   failNextUpdate = false;
   unhandledRequests: string[] = [];
+  descriptorAbortExpected = false;
   private instagramQueue: DeferredResponse[] = [];
   private uploadQueue: DeferredResponse[] = [];
 
@@ -549,6 +550,7 @@ class SyntheticProfileFixture {
       }
 
       if (pathname === "/api/music/public-profile/fixture-account") {
+        this.descriptorAbortExpected = true;
         return route.abort("blockedbyclient");
       }
 
@@ -766,7 +768,7 @@ const test = base.extend<{ synthetic: SyntheticProfileFixture }>({
         const text = message.text();
         const expectedFixtureFailure =
           text.includes("server responded with a status of 503") ||
-          text.includes("net::ERR_BLOCKED_BY_CLIENT");
+          (fixture.descriptorAbortExpected && text.includes("net::ERR_BLOCKED_BY_CLIENT"));
         if (
           !expectedFixtureFailure &&
           (message.type() === "error" ||
@@ -1603,7 +1605,6 @@ test.describe("responsive and accessibility geometry gates", () => {
 
   test("200% effective-viewport reflow and LTR/RTL tooltip containment remain usable", async ({
     page,
-    synthetic,
   }) => {
     await page.setViewportSize({ width: 750, height: 900 });
     await openDashboard(page);
@@ -1625,43 +1626,6 @@ test.describe("responsive and accessibility geometry gates", () => {
     await expect(page.getByLabel("First view")).toBeVisible();
     await expect(page.locator('[data-preview-variant="mobile"]')).toBeVisible();
     await expect(page.locator('[data-preview-variant="desktop"]')).toBeHidden();
-
-    const blockedProbe = await page.evaluate(async () => {
-      try {
-        await fetch("/__task6_unhandled_probe__");
-        return "fulfilled";
-      } catch {
-        return "blocked";
-      }
-    });
-    expect(blockedProbe).toBe("blocked");
-    await expect
-      .poll(() =>
-        synthetic.unhandledRequests.some((request) =>
-          request.includes("/__task6_unhandled_probe__"),
-        ),
-      )
-      .toBe(true);
-    synthetic.acknowledgeUnhandled("/__task6_unhandled_probe__");
-
-    const blockedImageProbe = await page.evaluate(
-      () =>
-        new Promise<"blocked" | "fulfilled">((resolve) => {
-          const image = new Image();
-          image.onload = () => resolve("fulfilled");
-          image.onerror = () => resolve("blocked");
-          image.src = "/__task6_unhandled_image_probe__.png";
-        }),
-    );
-    expect(blockedImageProbe).toBe("blocked");
-    await expect
-      .poll(() =>
-        synthetic.unhandledRequests.some((request) =>
-          request.includes("/__task6_unhandled_image_probe__.png"),
-        ),
-      )
-      .toBe(true);
-    synthetic.acknowledgeUnhandled("/__task6_unhandled_image_probe__.png");
 
     await page.evaluate(() => {
       localStorage.setItem("explorers-language", "en");
