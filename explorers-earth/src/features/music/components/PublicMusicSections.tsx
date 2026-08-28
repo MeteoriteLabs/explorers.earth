@@ -1,9 +1,45 @@
-import { useLayoutEffect, useRef, useState, type ComponentProps } from "react";
+import { useLayoutEffect, useRef, useState, type ComponentProps, type FocusEvent, type PointerEvent } from "react";
 import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient";
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
 import { PublicMusicPlayer } from "./PublicMusicPlayer";
 import { PublicMusicRequest } from "./PublicMusicRequest";
 import type { PublicMusicProductEvent } from "../publicMusicAnalytics";
+
+function useSectionEngagement(section: "player" | "request" | "queue" | "playlists" | "history", enabled: boolean, onAnalytics?: (event: PublicMusicProductEvent) => void) {
+  const engaged = useRef(false);
+  const pointerInside = useRef(false);
+  const focusInside = useRef(false);
+  useLayoutEffect(() => {
+    if (enabled) return;
+    engaged.current = false;
+    pointerInside.current = false;
+    focusInside.current = false;
+  }, [enabled]);
+  const enter = () => {
+    if (engaged.current) return;
+    engaged.current = true;
+    onAnalytics?.({ name: "section_opened", section });
+  };
+  return {
+    onPointerEnter: (_event: PointerEvent<HTMLElement>) => { pointerInside.current = true; enter(); },
+    onPointerLeave: (_event: PointerEvent<HTMLElement>) => {
+      pointerInside.current = false;
+      if (!focusInside.current) engaged.current = false;
+    },
+    onFocusCapture: (event: FocusEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        focusInside.current = true;
+        enter();
+      }
+    },
+    onBlurCapture: (event: FocusEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        focusInside.current = false;
+        if (!pointerInside.current) engaged.current = false;
+      }
+    },
+  };
+}
 
 function CollectionSummary({ shown, total, noun }: { shown: number; total: number; noun?: string }) {
   if (total <= shown) return null;
@@ -100,6 +136,11 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
     || (policy.queueVisible && resource.queue.items.length > 0)
     || (policy.historyVisible && resource.recentlyPlayed.items.length > 0)
     || (policy.playlistsVisible && resource.playlists.items.length > 0);
+  const requestEngagement = useSectionEngagement("request", requestEligible, onAnalytics);
+  const playerEngagement = useSectionEngagement("player", Boolean(playableSong), onAnalytics);
+  const queueEngagement = useSectionEngagement("queue", hasVisibleContent && policy.queueVisible, onAnalytics);
+  const playlistsEngagement = useSectionEngagement("playlists", hasVisibleContent && policy.playlistsVisible, onAnalytics);
+  const historyEngagement = useSectionEngagement("history", hasVisibleContent && policy.historyVisible, onAnalytics);
 
   useLayoutEffect(() => {
     const revoked = previousPlayerEligible.current && !policy.playerEligible;
@@ -140,16 +181,17 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
 
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
-      {requestEligible && publicSlug ? <div onFocusCapture={() => { requestHasFocus.current = true; onAnalytics?.({ name: "section_opened", section: "request" }); }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; }}><PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed client={requestClient} onCanonicalRevoked={revokeRequest} onRequestOutcome={(outcome) => onAnalytics?.({ name: "request_submitted", outcome })} /></div> : null}
+      {requestEligible && publicSlug ? <div {...requestEngagement} onFocusCapture={(event) => { requestHasFocus.current = true; requestEngagement.onFocusCapture(event); }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; requestEngagement.onBlurCapture(event); }}><PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed client={requestClient} onCanonicalRevoked={revokeRequest} onRequestOutcome={(outcome) => onAnalytics?.({ name: "request_submitted", outcome })} /></div> : null}
       {playableSong ? (
         <section
           className="min-w-0"
           data-testid="public-music-player"
           aria-labelledby="public-music-player-heading"
-          onFocusCapture={() => { playerHasFocus.current = true; }}
-          onPointerDown={() => onAnalytics?.({ name: "section_opened", section: "player" })}
+          {...playerEngagement}
+          onFocusCapture={(event) => { playerHasFocus.current = true; playerEngagement.onFocusCapture(event); }}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playerHasFocus.current = false;
+            playerEngagement.onBlurCapture(event);
           }}
         >
           <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
@@ -160,7 +202,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
       {revocationStatus}
 
       {policy.queueVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-queue-heading" onFocusCapture={() => onAnalytics?.({ name: "section_opened", section: "queue" })}>
+        <section className="min-w-0" aria-labelledby="public-music-queue-heading" {...queueEngagement}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-queue-heading" className="text-xl font-semibold">Up next</h2>
             <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
@@ -191,7 +233,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
       ) : null}
 
       {policy.playlistsVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-playlists-heading" onFocusCapture={() => onAnalytics?.({ name: "section_opened", section: "playlists" })}>
+        <section className="min-w-0" aria-labelledby="public-music-playlists-heading" {...playlistsEngagement}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-playlists-heading" className="text-xl font-semibold">Shared playlists</h2>
             <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
@@ -226,7 +268,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
       ) : null}
 
       {policy.historyVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-history-heading" onFocusCapture={() => onAnalytics?.({ name: "section_opened", section: "history" })}>
+        <section className="min-w-0" aria-labelledby="public-music-history-heading" {...historyEngagement}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-history-heading" className="text-xl font-semibold">Recently played</h2>
             <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />

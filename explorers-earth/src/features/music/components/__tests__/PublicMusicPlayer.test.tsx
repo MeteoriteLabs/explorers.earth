@@ -58,6 +58,20 @@ describe("PublicMusicPlayer", () => {
     expect(onPlaybackStart).toHaveBeenCalledTimes(1);
   });
 
+  it("acknowledges each paused-to-playing transition and collapses duplicate callbacks", () => {
+    const onPlaybackStart = vi.fn();
+    render(<PublicMusicPlayer song={song} onPlaybackStart={onPlaybackStart} />);
+    act(() => (mediaProps.onPlay as () => void)());
+    act(() => (mediaProps.onPlay as () => void)());
+    expect(onPlaybackStart).toHaveBeenCalledTimes(1);
+    act(() => (mediaProps.onPause as () => void)());
+    act(() => (mediaProps.onPlay as () => void)());
+    expect(onPlaybackStart).toHaveBeenCalledTimes(2);
+    act(() => (mediaProps.onError as (cause: unknown) => void)(new TypeError("offline")));
+    act(() => (mediaProps.onPlay as () => void)());
+    expect(onPlaybackStart).toHaveBeenCalledTimes(3);
+  });
+
   it("requires an explicit guest gesture and exposes keyboard-labelled play and pause controls", async () => {
     const user = userEvent.setup();
     render(<PublicMusicPlayer song={song} />);

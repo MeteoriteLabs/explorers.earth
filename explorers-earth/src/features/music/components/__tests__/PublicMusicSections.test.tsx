@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
@@ -70,6 +70,35 @@ function populatedResource(mask: number): PublicMusicResource {
 }
 
 describe("PublicMusicSections permission oracle", () => {
+  it("tracks one outside-to-inside section engagement across nested focus and pointer modalities", () => {
+    const onAnalytics = vi.fn();
+    render(<><button type="button">Outside</button><PublicMusicSections resource={populatedResource(31)} publicSlug="public-owner" onAnalytics={onAnalytics} /></>);
+    const requestInput = screen.getByLabelText("Search for a song or paste a YouTube URL");
+    const requestButton = screen.getByRole("button", { name: "Search" });
+    fireEvent.focus(requestInput, { relatedTarget: screen.getByRole("button", { name: "Outside" }) });
+    fireEvent.focus(requestButton, { relatedTarget: requestInput });
+    expect(onAnalytics.mock.calls.filter(([event]) => event.section === "request")).toHaveLength(1);
+    fireEvent.blur(requestButton, { relatedTarget: document.body });
+    const requestSection = requestInput.closest("div")?.parentElement as HTMLElement;
+    fireEvent.pointerEnter(requestSection, { pointerType: "touch" });
+    expect(onAnalytics.mock.calls.filter(([event]) => event.section === "request")).toHaveLength(2);
+
+    const sections = [
+      [screen.getByTestId("public-music-player"), "player"],
+      [screen.getByRole("region", { name: "Up next" }), "queue"],
+      [screen.getByRole("region", { name: "Shared playlists" }), "playlists"],
+      [screen.getByRole("region", { name: "Recently played" }), "history"],
+    ] as const;
+    for (const [section, name] of sections) {
+      fireEvent.pointerEnter(section);
+      fireEvent.focus(section.querySelector("button") ?? section, { relatedTarget: document.body });
+      expect(onAnalytics.mock.calls.filter(([event]) => event.section === name)).toHaveLength(1);
+      fireEvent.pointerLeave(section);
+      fireEvent.blur(section.querySelector("button") ?? section, { relatedTarget: document.body });
+      fireEvent.pointerEnter(section);
+      expect(onAnalytics.mock.calls.filter(([event]) => event.section === name)).toHaveLength(2);
+    }
+  });
   it("emits only normalized product events at acknowledged interaction boundaries", async () => {
     const onAnalytics = vi.fn();
     const requestClient = {

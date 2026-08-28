@@ -109,11 +109,21 @@ const MAX_OCCURRENCE_RECEIPTS = 256;
 const DEFAULT_LOCAL_TUNES_URL = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
 const defaultClient = createPublicMusicAnalyticsClient(DEFAULT_LOCAL_TUNES_URL);
 
-function writeDelivery(key: string, record: DeliveryRecord): void {
+function reserveDeliverySlot(key: string): boolean {
   if (!memoryDeliveries.has(key) && memoryDeliveries.size >= MAX_OCCURRENCE_RECEIPTS) {
-    memoryDeliveries.delete(memoryDeliveries.keys().next().value as string);
+    const terminal = [...memoryDeliveries].find(([, receipt]) => receipt.state === "committed")?.[0];
+    if (!terminal) return false;
+    memoryDeliveries.delete(terminal);
   }
+  return true;
+}
+
+function writeDelivery(key: string, record: DeliveryRecord): void {
   memoryDeliveries.set(key, record);
+}
+
+export function clearPublicMusicAnalyticsReceiptsForTests(): void {
+  memoryDeliveries.clear();
 }
 
 export function createPublicMusicAnalyticsOccurrence(): string {
@@ -144,6 +154,7 @@ export function usePublicMusicProductAnalytics({
     const key = occurrenceId;
     const existing = memoryDeliveries.get(key);
     if (existing?.state === "pending" || existing?.state === "committed") return;
+    if (!reserveDeliverySlot(key)) return;
     const eventId = existing?.eventId ?? createAnalyticsEventId();
     writeDelivery(key, { eventId, state: "pending" });
     try {

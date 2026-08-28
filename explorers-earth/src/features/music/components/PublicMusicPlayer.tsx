@@ -52,6 +52,7 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
     if (playing) {
       mediaRef.current?.pause();
       setPlaying(false);
+      playbackAcknowledged.current = false;
       setMessage(`${song.title} is paused`);
       return;
     }
@@ -69,6 +70,7 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
 
   const handleError = (cause: unknown) => {
     setPlaying(false);
+    playbackAcknowledged.current = false;
     const normalized = mediaErrorMessage(cause);
     if (normalized === null) {
       setError("");
@@ -111,9 +113,10 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
               onPlaybackStart?.();
             }
           }}
-          onPause={() => setPlaying(false)}
+          onPause={() => { setPlaying(false); playbackAcknowledged.current = false; }}
           onEnded={() => {
             setPlaying(false);
+            playbackAcknowledged.current = false;
             setMessage(`${song.title} has finished.`);
           }}
           onError={handleError}

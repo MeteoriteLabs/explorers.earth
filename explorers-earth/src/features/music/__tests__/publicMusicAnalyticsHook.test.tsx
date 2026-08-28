@@ -1,13 +1,14 @@
 import { StrictMode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { usePublicMusicProductAnalytics } from "../publicMusicAnalytics";
+import { clearPublicMusicAnalyticsReceiptsForTests, usePublicMusicProductAnalytics } from "../publicMusicAnalytics";
 
 describe("usePublicMusicProductAnalytics", () => {
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.setItem("explorers-cookie-consent", JSON.stringify({ necessary: true, analytics: true }));
     window.history.replaceState({}, "", "/alice/music?utm_source=newsletter&utm_medium=email");
+    clearPublicMusicAnalyticsReceiptsForTests();
   });
 
   it("deduplicates one opaque occurrence but records a later identical action", async () => {
@@ -62,5 +63,32 @@ describe("usePublicMusicProductAnalytics", () => {
     }));
     await act(async () => { await result.current({ name: "navigation_opened", route: "direct" }); });
     expect(track).not.toHaveBeenCalled();
+  });
+
+  it("never evicts 256 active receipts and drops the 257th occurrence", async () => {
+    const track = vi.fn(() => new Promise<void>(() => undefined));
+    const { result } = renderHook(() => usePublicMusicProductAnalytics({ publicSlug: "public-owner", route: "direct", client: { track } }));
+    for (let index = 0; index < 256; index += 1) void result.current({ name: "playlist_opened" }, `active-occurrence-${String(index).padStart(4, "0")}`);
+    expect(track).toHaveBeenCalledTimes(256);
+    void result.current({ name: "playlist_opened" }, "active-occurrence-0256");
+    expect(track).toHaveBeenCalledTimes(256);
+    void result.current({ name: "playlist_opened" }, "active-occurrence-0000");
+    expect(track).toHaveBeenCalledTimes(256);
+  });
+
+  it("evicts only a committed terminal receipt and retains retry event identity", async () => {
+    const never = () => new Promise<void>(() => undefined);
+    const track = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("ambiguous"));
+    const { result } = renderHook(() => usePublicMusicProductAnalytics({ publicSlug: "public-owner", route: "direct", client: { track } }));
+    await act(async () => { await result.current({ name: "playlist_opened" }, "terminal-occurrence-0000"); });
+    await act(async () => { await result.current({ name: "playlist_opened" }, "retry-occurrence-000000"); });
+    const retryEventId = track.mock.calls[1][0].eventId;
+    track.mockImplementation(never);
+    for (let index = 0; index < 254; index += 1) void result.current({ name: "playlist_opened" }, `pressure-occurrence-${String(index).padStart(4, "0")}`);
+    void result.current({ name: "playlist_opened" }, "replacement-occurrence-0001");
+    expect(track).toHaveBeenCalledTimes(257);
+    track.mockResolvedValueOnce(undefined);
+    await act(async () => { await result.current({ name: "playlist_opened" }, "retry-occurrence-000000"); });
+    expect(track.mock.calls.at(-1)?.[0].eventId).toBe(retryEventId);
   });
 });
