@@ -12,6 +12,7 @@ import {
 } from "../policies/musicSurfacePolicy";
 import { matchRetiredMusicSurface } from "../policies/musicRetirementPolicy";
 import type { PublicMusicResource } from "../repositories/musicDomainRepository";
+import type { MusicPublicObservability } from "../observability/musicPublicObservability";
 
 interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
@@ -104,6 +105,7 @@ export interface CanonicalMusicRouteDependencies {
     search(input: { query: string; pageToken?: string }): Promise<unknown>;
     videoFromUrl(url: string): Promise<unknown | undefined>;
   };
+  observability?: MusicPublicObservability;
 }
 
 const OWNER_KEYS = new Set([
@@ -150,7 +152,12 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   };
   const owner = (...handlers: RequestHandler[]) => [identify, principal, ownerInputGuard, ...handlers];
   const mutation = (...handlers: RequestHandler[]) => owner(originGuard, ...handlers);
-  app.get("/api/music/public-profile/:accountDocumentId", identify, async (req, res, next) => {
+  const observePublic = (operation: "descriptor" | "resource" | "request"): RequestHandler => (req, res, next) => {
+    const finish = dependencies.observability?.startHttp(operation, res.locals.musicRequestId);
+    res.once("finish", () => finish?.(httpOutcome(res.statusCode), res.statusCode));
+    next();
+  };
+  app.get("/api/music/public-profile/:accountDocumentId", identify, observePublic("descriptor"), async (req, res, next) => {
     try {
       if (hasUnexpectedPublicDescriptorAuthority(req)) throw new MusicIdentityError(
         "REQUEST_INVALID", 400, "The public Music descriptor request is invalid.", "none", false,
@@ -175,7 +182,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       });
     } catch (error) { next(error); }
   });
-  app.get("/api/music/public-resource/v1/:publicSlug", identify, async (req, res, next) => {
+  app.get("/api/music/public-resource/v1/:publicSlug", identify, observePublic("resource"), async (req, res, next) => {
     try {
       if (hasUnexpectedPublicResourceAuthority(req) || !/^[A-Za-z0-9_-]{8,128}$/.test(req.params.publicSlug)) throw notFound();
       const suppliedCapability = req.get("x-music-guest-capability");
@@ -590,7 +597,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     } catch (error) { next(error); }
   });
 
-  app.post("/api/playlist/:guestUrl/requests", identify, originGuard, async (req, res, next) => {
+  app.post("/api/playlist/:guestUrl/requests", identify, observePublic("request"), originGuard, async (req, res, next) => {
     try {
       const capability = req.get("x-music-guest-capability") ?? "";
       const capabilityValid = /^[A-Za-z0-9_-]{43}$/.test(capability);
@@ -633,6 +640,17 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     res.setHeader("X-Request-Id", requestId);
     res.status(error.status).json(musicErrorEnvelope(error, requestId));
   });
+}
+
+function httpOutcome(status: number): "success" | "invalid" | "not_found" | "forbidden" | "rate_limited" | "conflict" | "too_large" | "unavailable" {
+  if (status < 400) return "success";
+  if (status === 404) return "not_found";
+  if (status === 401 || status === 403) return "forbidden";
+  if (status === 409) return "conflict";
+  if (status === 413) return "too_large";
+  if (status === 429) return "rate_limited";
+  if (status >= 500) return "unavailable";
+  return "invalid";
 }
 
 function publicRequestSource(req: Request, dependencies: CanonicalMusicRouteDependencies): string {

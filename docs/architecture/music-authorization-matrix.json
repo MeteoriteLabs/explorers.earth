@@ -1257,6 +1257,25 @@
       }
     },
     {
+      "direction": "receive",
+      "event": "disconnect",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "direction": "emit",
       "event": "music_error",
       "source": "tunes/server/socket/musicSocketServer.ts",

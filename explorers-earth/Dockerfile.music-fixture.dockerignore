@@ -849,6 +849,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/musicWorkspaceClient.ts
 !explorers-earth/src/features/music/publicMusicClient.ts
 !explorers-earth/src/features/music/publicMusicLiveClient.ts
+!explorers-earth/src/features/music/publicMusicObservability.ts
 !explorers-earth/src/features/music/publicMusicViewPolicy.ts
 !explorers-earth/src/features/music/usePublicMusicResource.ts
 !explorers-earth/src/hooks/useAIGuideQuota.ts

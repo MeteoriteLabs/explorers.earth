@@ -28,6 +28,7 @@ import { setupMusicOpenApiRoutes } from "./musicOpenApiRoutes";
 import { MusicLifecycleService } from "../services/musicLifecycleService";
 import { MusicOwnerSocketRegistry, MusicPublicSocketRegistry } from "../socket/musicSocketServer";
 import { startMusicPublicChangeListener } from "../services/musicPublicChangeListener";
+import { createMusicPublicObservability } from "../observability/musicPublicObservability";
 import {
   runMusicLifecycleWorkerOnce,
   startMusicLifecycleWorker,
@@ -87,6 +88,7 @@ export async function registerRoutes(
   const musicPrincipals = new MusicPrincipalService(musicTokens, identityRepository);
   const ownerSocketRegistry = new MusicOwnerSocketRegistry();
   const publicSocketRegistry = new MusicPublicSocketRegistry();
+  const publicMusicObservability = createMusicPublicObservability();
   const lifecycle = new MusicLifecycleService(identityGateway, identityRepository, {
     disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
   });
@@ -124,6 +126,7 @@ export async function registerRoutes(
     trustedProxyHops: musicConfig.trustedProxyHops,
     isTrustedProxy: musicConfig.isTrustedProxy,
     youtube: createYouTubeReadService(process.env.YOUTUBE_API_KEY),
+    observability: publicMusicObservability,
   };
   const featureFlags: MusicFeatureFlag[] = ["ownerWorkspace", "guestWorkspace", "playlistImports"];
   const featureEnvironment: Record<MusicFeatureFlag, string> = { ownerWorkspace: "OWNER_WORKSPACE", guestWorkspace: "GUEST_WORKSPACE", playlistImports: "PLAYLIST_IMPORTS" };
@@ -154,10 +157,12 @@ export async function registerRoutes(
     resolvePublicMusicAuthority: (publicSlug, capability) => musicDomain.resolvePublicMusicSocketAuthority(publicSlug, capability),
     ownerRegistry: ownerSocketRegistry,
     publicRegistry: publicSocketRegistry,
+    observability: publicMusicObservability,
   });
   const publicChangeListener = await startMusicPublicChangeListener({
     pool,
     fanout: (change) => publicSocketRegistry.publish(change),
+    observability: publicMusicObservability,
     onFatal: () => {
       console.error("music_public_change_listener_failed");
       if (server.listening) server.close();

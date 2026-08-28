@@ -195,6 +195,21 @@ Socket.IO handles reconnection automatically with exponential backoff. The clien
 - Re-joining the user's room after reconnection
 - Re-fetching playlist state on reconnect to ensure consistency
 
+### Public Music operational events
+
+Public Music live synchronization emits a separate operational stream; it is
+never sent to product analytics. Backend records use `music-public-ops/v1` and
+browser records use `music-public-browser-ops/v1`. Allowed dimensions are fixed
+enums: lifecycle outcome, HTTP operation/status, socket role/reason,
+invalidation kind, parser class, and bounded duration. Slugs, Account/User
+identity, capabilities, queries, media URLs, credentials, and socket room names
+are forbidden.
+
+The socket is only an invalidation signal. `music_public_change` contains
+`version`, `kind`, and `revision`; accepted events refetch canonical HTTP state.
+Operational events cover admission/rejection/disconnect, reconnect,
+invalidation acceptance/staleness, fallback polling, and revocation enforcement.
+
 ## Key Files
 
 | File | Purpose |

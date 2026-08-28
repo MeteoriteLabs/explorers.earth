@@ -5,6 +5,7 @@ import { Server as SocketIOServer, type Socket } from "socket.io";
 import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError";
 import { MusicPrincipalError, type MusicPrincipal, type MusicSocketCredentialContext } from "../middleware/musicPrincipal";
 import type { PublicMusicInvalidationKind } from "../repositories/publicMusicRevision";
+import type { MusicPublicObservability } from "../observability/musicPublicObservability";
 
 interface OwnerCredentialVerifier {
   handshake(input: { token: string }): Promise<MusicSocketCredentialContext>;
@@ -89,6 +90,7 @@ export interface MusicSocketDependencies {
   eventRateMaxEntries?: number;
   ownerRegistry?: MusicOwnerSocketRegistry;
   publicRegistry?: MusicPublicSocketRegistry;
+  observability?: MusicPublicObservability;
 }
 
 type SocketAuthority =
@@ -170,7 +172,11 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       if (authority?.role !== "public") return;
       const current = await dependencies.resolvePublicMusicAuthority?.(authority.publicSlug, authority.capability).catch(() => undefined);
       recipient.emit("music_public_change", { version: "music-public-change/v1", kind, revision });
-      if (!current?.active || current.musicUserId !== musicUserId) recipient.disconnect(true);
+      dependencies.observability?.socket("invalidation_sent", { role: "public", kind });
+      if (!current?.active || current.musicUserId !== musicUserId) {
+        dependencies.observability?.socket("revocation_enforced", { role: "public", reason: "revoked" });
+        recipient.disconnect(true);
+      }
     }));
   });
   const eventLimit = dependencies.eventLimit ?? 10;
@@ -262,11 +268,13 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       if (admissionEpoch !== undefined && !dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch)) throw admissionUnavailable();
       socket.data.musicAuthority = authority;
       socket.data.musicAdmissionEpoch = admissionEpoch;
+      dependencies.observability?.socket("admitted", { role: authority.role });
       next();
     } catch (cause) {
       const error = safeSocketError(cause);
       const failure = new Error(error.message) as Error & { data?: unknown };
       failure.data = musicErrorEnvelope(error, randomUUID());
+      dependencies.observability?.socket("rejected", { reason: error.code === "ORIGIN_FORBIDDEN" ? "origin" : "invalid" });
       next(failure);
     }
   });
@@ -300,6 +308,7 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       return;
     }
     socket.emit("connection_status", { status: "connected", role: authority.role, requestId: randomUUID() });
+    socket.on("disconnect", () => dependencies.observability?.socket("disconnected", { role: authority.role, reason: "transport" }));
 
     const fail = (cause: unknown) => {
       const error = safeSocketError(cause);

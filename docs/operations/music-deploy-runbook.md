@@ -735,3 +735,32 @@ WHERE youtube_id !~ '^[A-Za-z0-9_-]{11}$';
 ```
 
 Both counts must be zero. Any nonzero result keeps `ownerWorkspace` disabled and requires a separately reviewed, backed-up remediation plan; this rollout does not rewrite or delete historic rows. Clients intentionally fail closed on a dashboard or playlist containing a noncanonical legacy ID, and no mutation is attempted.
+
+## Public Music canary and rollback gates
+
+Use only the structured `music-public-ops/v1` and
+`music-public-browser-ops/v1` streams. Group by the documented enum fields;
+never add a slug, Account/User identifier, capability, query, media URL,
+credential, IP address, user agent, or socket room as a label. Correlate one
+HTTP failure only with a validated `requestId`; it is a log field, never a
+metric label.
+
+Evaluate a minimum five-minute server window and ten-minute active-session
+polling window with `evaluateMusicPublicCanary`:
+
+- descriptor and resource p95 must each be below 500 ms;
+- public Music 5xx rate must remain below 2%;
+- listener disconnect must remain below 30 seconds;
+- notification-to-local-fanout p95 must remain below 2 seconds;
+- fallback polling must remain below 10% of active sessions.
+
+Any authorization leak, cross-owner event, or capability exposure is an
+immediate containment and rollback trigger. A performance threshold breach
+holds promotion and starts containment. Record the sanitized gate input,
+evaluator result, image digest, commit SHA, workflow URL, and operator approval.
+
+Operator query shape: filter exactly on `version`, then aggregate `event`,
+`operation`, `outcome`, `status`, `kind`, `role`, `reason`, `latencyMs`, `lagMs`,
+`retryDelayMs`, and `delayMs`. Reject a query definition that extracts another
+field. Alert separately on 5xx, parser rejection, reconnect/disconnect churn,
+listener fatal/reconnect, revocation enforcement, and fallback polling.

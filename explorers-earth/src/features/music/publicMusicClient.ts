@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
 
 export const PUBLIC_MUSIC_RESOURCE_MAX_BYTES = 512 * 1_024;
 
@@ -122,6 +123,7 @@ export class PublicMusicError extends Error {
   constructor(
     public readonly code: "PUBLIC_NOT_FOUND" | "RATE_LIMITED" | "PUBLIC_UNAVAILABLE" | "REQUEST_INVALID" | "QUEUE_FULL" | "REQUEST_FORBIDDEN",
     public readonly retryAfterSeconds?: number,
+    public readonly requestId?: string,
   ) {
     super(code);
     this.name = "PublicMusicError";
@@ -147,17 +149,24 @@ export type PublicMusicRequestVideo = z.infer<typeof publicRequestVideoSchema>;
 export type PublicMusicRequestSong = z.infer<typeof canonicalRequestSongSchema>;
 
 async function publicRequestJson(response: Response): Promise<unknown> {
-  if (response.status === 403 || response.status === 404) throw new PublicMusicError("REQUEST_FORBIDDEN");
-  if (response.status === 409) throw new PublicMusicError("REQUEST_INVALID");
-  if (response.status === 413) throw new PublicMusicError("QUEUE_FULL");
+  const requestId = safeResponseRequestId(response);
+  if (response.status === 403 || response.status === 404) throw new PublicMusicError("REQUEST_FORBIDDEN", undefined, requestId);
+  if (response.status === 409) throw new PublicMusicError("REQUEST_INVALID", undefined, requestId);
+  if (response.status === 413) throw new PublicMusicError("QUEUE_FULL", undefined, requestId);
   if (response.status === 429) {
     const retryAfter = Number(response.headers.get("retry-after"));
-    throw new PublicMusicError("RATE_LIMITED", Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : 60);
+    throw new PublicMusicError("RATE_LIMITED", boundedRetryAfter(retryAfter), requestId);
   }
-  if (response.status === 400) throw new PublicMusicError("REQUEST_INVALID");
-  if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+  if (response.status === 400) throw new PublicMusicError("REQUEST_INVALID", undefined, requestId);
+  if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
   try { return await response.json(); } catch { throw new PublicMusicError("PUBLIC_UNAVAILABLE"); }
 }
+
+const safeResponseRequestId = (response: Response): string | undefined => {
+  const value = response.headers.get("x-request-id");
+  return value && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(value) ? value : undefined;
+};
+const boundedRetryAfter = (value: number): number => Number.isFinite(value) && value >= 0 ? Math.min(300, value) : 60;
 
 function normalizedBaseUrl(value: string): string {
   const url = new URL(value);
@@ -201,7 +210,7 @@ async function readBoundedPublicMusicBody(response: Response): Promise<string> {
   }
 }
 
-export function createPublicMusicClient(baseUrl: string) {
+export function createPublicMusicClient(baseUrl: string, observability: PublicMusicObservability = publicMusicObservability) {
   const base = normalizedBaseUrl(baseUrl);
   const requestHeaders = (capability?: string, idempotencyKey?: string) => ({
     Accept: "application/json", "Content-Type": "application/json",
@@ -215,13 +224,18 @@ export function createPublicMusicClient(baseUrl: string) {
         headers: { Accept: "application/json" },
         ...(signal ? { signal } : {}),
       });
-      if (response.status === 403 || response.status === 404) throw new PublicMusicError("PUBLIC_NOT_FOUND");
-      if (response.status === 429) throw new PublicMusicError("RATE_LIMITED", 60);
-      if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      const requestId = safeResponseRequestId(response);
+      if (response.status === 403 || response.status === 404) throw new PublicMusicError("PUBLIC_NOT_FOUND", undefined, requestId);
+      if (response.status === 429) throw new PublicMusicError("RATE_LIMITED", boundedRetryAfter(Number(response.headers.get("retry-after"))), requestId);
+      if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
       try {
-        return parsePublicMusicDescriptor(await response.json());
+        let value: unknown;
+        try { value = await response.json(); } catch { observability.record("parser_rejected", { parser: "descriptor", reason: "json" }); throw new Error("json"); }
+        const parsed = publicMusicDescriptorSchema.safeParse(value);
+        if (!parsed.success) { observability.record("parser_rejected", { parser: "descriptor", reason: "schema" }); throw new Error("schema"); }
+        return parsed.data;
       } catch {
-        throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+        throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
       }
     },
     async load(publicSlug: string, capability?: string, signal?: AbortSignal): Promise<PublicMusicResource> {
@@ -232,18 +246,25 @@ export function createPublicMusicClient(baseUrl: string) {
         headers,
         ...(signal ? { signal } : {}),
       });
-      if (response.status === 403 || response.status === 404) throw new PublicMusicError("PUBLIC_NOT_FOUND");
+      const requestId = safeResponseRequestId(response);
+      if (response.status === 403 || response.status === 404) throw new PublicMusicError("PUBLIC_NOT_FOUND", undefined, requestId);
       if (response.status === 429) {
         const retryAfterHeader = response.headers.get("retry-after");
         const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
-        throw new PublicMusicError("RATE_LIMITED", Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : 60);
+        throw new PublicMusicError("RATE_LIMITED", boundedRetryAfter(retryAfter), requestId);
       }
-      if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
       try {
         const body = await readBoundedPublicMusicBody(response);
-        return parsePublicMusicResource(JSON.parse(body));
-      } catch {
-        throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+        let value: unknown;
+        try { value = JSON.parse(body); } catch { observability.record("parser_rejected", { parser: "resource", reason: "json" }); throw new Error("json"); }
+        const parsed = publicMusicResourceSchema.safeParse(value);
+        if (!parsed.success) { observability.record("parser_rejected", { parser: "resource", reason: "schema" }); throw new Error("schema"); }
+        return parsed.data;
+      } catch (error) {
+        if (error instanceof Error && error.message === "oversized response") observability.record("parser_rejected", { parser: "resource", reason: "size" });
+        else if (error instanceof TypeError) observability.record("parser_rejected", { parser: "resource", reason: "encoding" });
+        throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
       }
     },
     async search(publicSlug: string, query: string, capability?: string, signal?: AbortSignal) {

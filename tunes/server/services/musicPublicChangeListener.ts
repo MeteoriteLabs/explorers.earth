@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { PublicMusicInvalidationKind } from "../repositories/publicMusicRevision";
+import type { MusicPublicObservability } from "../observability/musicPublicObservability";
 
 const CHANNEL = "music_public_change";
 const KINDS = new Set<PublicMusicInvalidationKind>([
@@ -32,6 +33,8 @@ export async function startMusicPublicChangeListener(options: {
   fanout(change: PublicMusicInternalChange): Promise<void>;
   reconnectDelaysMs?: readonly number[];
   onFatal?(error: unknown): void;
+  observability?: MusicPublicObservability;
+  now?: () => number;
 }): Promise<MusicPublicChangeListener> {
   const delays = options.reconnectDelaysMs ?? [1_000, 2_000, 4_000, 8_000, 16_000, 30_000];
   if (delays.length < 1 || delays.some((delay) => !Number.isSafeInteger(delay) || delay < 0 || delay > 30_000)) {
@@ -42,6 +45,7 @@ export async function startMusicPublicChangeListener(options: {
   let retryIndex = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   let connecting: Promise<void> | undefined;
+  const now = options.now ?? Date.now;
 
   const detach = (target: ListenClient): void => {
     target.removeAllListeners("notification");
@@ -56,9 +60,11 @@ export async function startMusicPublicChangeListener(options: {
     if (stopped || reconnectTimer) return;
     const delay = delays[retryIndex++];
     if (delay === undefined) {
+      options.observability?.listener("fatal");
       options.onFatal?.(cause);
       return;
     }
+    options.observability?.listener("reconnect_scheduled", { retryDelayMs: delay });
     reconnectTimer = setTimeout(() => {
       reconnectTimer = undefined;
       void connect().catch(scheduleReconnect);
@@ -73,7 +79,11 @@ export async function startMusicPublicChangeListener(options: {
       const onNotification = (notification: { channel?: string; payload?: string }): void => {
         if (notification.channel !== CHANNEL || stopped) return;
         const change = parseChange(notification.payload);
-        if (change) void options.fanout(change).catch(() => undefined);
+        if (!change) { options.observability?.listener("malformed_notification"); return; }
+        const startedAt = now();
+        void options.fanout(change).then(() => options.observability?.listener("notification_fanout", {
+          kind: change.kind, lagMs: now() - startedAt,
+        })).catch(() => options.observability?.listener("fanout_failed", { kind: change.kind }));
       };
       const onError = (error: unknown): void => {
         release(next);
@@ -84,6 +94,7 @@ export async function startMusicPublicChangeListener(options: {
       try {
         await next.query(`LISTEN ${CHANNEL}`);
         client = next;
+        options.observability?.listener("connected");
       } catch (error) {
         release(next);
         throw error;

@@ -126,6 +126,19 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
 }
 
 describe("canonical Music REST surfaces", () => {
+  it("records a safe descriptor outcome without authority dimensions", async () => {
+    const finish = vi.fn();
+    const observability = { startHttp: vi.fn(() => finish) };
+    const { app } = appFor({}, { observability });
+    const response = await request(app).get("/api/music/public-profile/account-public")
+      .set("X-Request-Id", "descriptor-support-1");
+
+    expect(response.status).toBe(200);
+    expect(observability.startHttp).toHaveBeenCalledWith("descriptor", "descriptor-support-1");
+    expect(finish).toHaveBeenCalledWith("success", 200);
+    expect(JSON.stringify(observability.startHttp.mock.calls)).not.toMatch(/account-public|stable-public-slug/);
+  });
+
   it("returns one strict public descriptor from stable Account identity without owner authentication", async () => {
     // Break caught: friendly profile discovery needs owner credentials or leaks an internal identity field.
     const { app, repository } = appFor();

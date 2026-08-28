@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
 
 const EVENT_KINDS = new Set([
   "publication_changed", "guest_controls_changed", "playback_changed", "queue_changed", "playlists_changed",
@@ -26,9 +27,11 @@ export function subscribeToPublicMusic(
   dependencies: {
     socketFactory?: (auth: Record<string, string>) => SocketLike;
     random?: () => number;
+    observability?: PublicMusicObservability;
   } = {},
 ): PublicMusicSubscription {
   const random = dependencies.random ?? Math.random;
+  const observability = dependencies.observability ?? publicMusicObservability;
   const socketFactory = dependencies.socketFactory ?? ((auth) => io(
     import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
     {
@@ -55,6 +58,7 @@ export function subscribeToPublicMusic(
   const schedulePoll = (baseMs: number) => {
     clearTimer();
     if (!active() || socketAvailable) return;
+    observability.record("fallback_poll", { outcome: "activated", delayMs: baseMs });
     timer = setTimeout(() => { timer = undefined; void refresh("poll"); }, jitter(baseMs));
   };
   const scheduleCatchUp = () => {
@@ -85,6 +89,7 @@ export function subscribeToPublicMusic(
       const revision = result?.revision;
       const requiredRevision = Math.max(lastAppliedRevision, requestedRevision);
       if (!Number.isSafeInteger(revision) || Number(revision) < requiredRevision) {
+        observability.record("invalidation", { outcome: "stale" });
         scheduleCatchUp();
         return;
       }
@@ -93,11 +98,13 @@ export function subscribeToPublicMusic(
       failureIndex = 0;
       catchUpIndex = 0;
       if (!socketAvailable) schedulePoll(30_000);
+      if (reason === "poll") observability.record("fallback_poll", { outcome: "success" });
     }).catch((error) => {
       if (active() && generation === requestGeneration && !controller.signal.aborted) {
         options.onError?.(error);
       }
       if (active() && generation === requestGeneration && !controller.signal.aborted) scheduleFailureRetry(error);
+      if (reason === "poll") observability.record("fallback_poll", { outcome: "failure" });
     }).finally(() => {
       if (generation !== requestGeneration) return;
       inFlight = undefined;
@@ -111,16 +118,18 @@ export function subscribeToPublicMusic(
     return inFlight;
   };
   const onChange = (value: unknown) => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    if (!value || typeof value !== "object" || Array.isArray(value)) { observability.record("invalidation", { outcome: "malformed" }); return; }
     const event = value as Record<string, unknown>;
     if (Object.keys(event).sort().join(",") !== "kind,revision,version"
         || event.version !== "music-public-change/v1" || typeof event.kind !== "string" || !EVENT_KINDS.has(event.kind)
-        || !Number.isSafeInteger(event.revision) || Number(event.revision) <= lastAppliedRevision) return;
+        || !Number.isSafeInteger(event.revision)) { observability.record("invalidation", { outcome: "malformed" }); return; }
+    if (Number(event.revision) <= lastAppliedRevision) { observability.record("invalidation", { outcome: "stale" }); return; }
+    observability.record("invalidation", { outcome: "accepted" });
     pendingRevision = Math.max(pendingRevision, Number(event.revision));
     if (!inFlight && !timer && active()) timer = setTimeout(() => { timer = undefined; void refresh("event"); }, 0);
   };
-  const onConnect = () => { socketAvailable = true; clearTimer(); void refresh("reconnect"); };
-  const onDisconnect = () => { socketAvailable = false; schedulePoll(30_000); };
+  const onConnect = () => { socketAvailable = true; observability.record("socket_reconnect", { outcome: "connected" }); clearTimer(); void refresh("reconnect"); };
+  const onDisconnect = () => { socketAvailable = false; observability.record("socket_reconnect", { outcome: "disconnected" }); schedulePoll(30_000); };
   const onVisibility = () => {
     clearTimer();
     if (document.visibilityState === "hidden") {
