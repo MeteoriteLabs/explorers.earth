@@ -95,6 +95,13 @@ const ownerOperation = (options: {
 const playlistId = pathParameter("playlistId", "Owner-predicated saved playlist identifier");
 const songId = pathParameter("songId", "Owner-predicated song identifier");
 const guestUrl = pathParameter("guestUrl", "Public playlist slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
+const accountDocumentId = {
+  name: "accountDocumentId",
+  in: "path" as const,
+  required: true,
+  description: "Stable Account document ID used only to discover an active public Music publication.",
+  schema: { type: "string", minLength: 1, maxLength: 512 },
+};
 const idempotencyKeyParameter = {
   name: "Idempotency-Key", in: "header" as const, required: true,
   description: "Owner-scoped, issuance-timestamped UUIDv4 replay key for one atomic publication command. Keys older than 30 days are permanently retired.",
@@ -348,6 +355,23 @@ const paths = {
   "/api/music/entitlement": {
     get: ownerOperation({ summary: "Read server-derived entitlement freshness", status: "200", response: ref("EntitlementResponse"), description: "Core personal Music remains readable and mutable for every retained state. Local reads never refresh sourceUpdatedAt; paidMutation is true only for a fresh entitled state within the 600-second maximum freshness window. Eligible is not upgrade authority, and revoked is not lifecycle suspension or core read-only state." }),
   },
+  "/api/music/public-profile/{accountDocumentId}": {
+    get: {
+      summary: "Discover one active public Music publication by stable Account identity",
+      description: "The path value is the only accepted discovery input. Username, email, User ID, owner headers, query parameters, request bodies, private/unlisted publication, lifecycle state, tombstones, unknown identity, and collisions never establish authority and never disclose account state.",
+      security: [],
+      parameters: [requestIdParameter, accountDocumentId],
+      responses: {
+        "200": success("Active discoverable public Music descriptor.", ref("PublicMusicDescriptor")),
+        "400": failure("The descriptor request contains an unexpected authority input.", ["REQUEST_INVALID"]),
+        "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
+        "413": failure("The request exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
+        "429": failure("The public descriptor rate limit was exceeded.", ["RATE_LIMITED"], true),
+        "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+      },
+      "x-authority-policy": "stable-account-document-id-discovery-only",
+    },
+  },
   "/api/playlist/{guestUrl}": {
     get: {
       summary: "Read an explicit public or unlisted capability playlist",
@@ -450,6 +474,24 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       MusicError: musicErrorOpenApiSchema,
       MusicIdentityEnsureResponse: musicEnsureResponseOpenApiSchema,
       MusicPrincipalResponse: musicPrincipalResponseOpenApiSchema,
+      PublicMusicDescriptor: {
+        type: "object",
+        additionalProperties: false,
+        required: ["version", "publication"],
+        properties: {
+          version: { type: "string", const: "music-public-descriptor/v1" },
+          publication: {
+            type: "object",
+            additionalProperties: false,
+            required: ["mode", "publicSlug", "revision"],
+            properties: {
+              mode: { type: "string", const: "public" },
+              publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" },
+              revision: { type: "integer", minimum: 0 },
+            },
+          },
+        },
+      },
       MusicLifecycleResponse: {
         type: "object", additionalProperties: false, required: ["version", "operation"], properties: {
           version: { type: "string", const: "music-lifecycle/v1" },

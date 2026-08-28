@@ -90,6 +90,9 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
       return { status: "completed" as const, replayed: false, response };
     }),
     resolveEntitlement: vi.fn(async () => ({ state: "entitled", sourceUpdatedAt: new Date("2026-08-14T09:55:00.000Z") })),
+    resolvePublicDescriptor: vi.fn(async (accountDocumentId: string) => accountDocumentId === "account-public"
+      ? { mode: "public" as const, publicSlug: "stable-public-slug", revision: 7 }
+      : undefined),
     resolveGuestResource: vi.fn(async () => undefined),
     resolveGuestSocketAuthority: vi.fn(async (capability: string) => capability === "G".repeat(43)
       ? { musicUserId: 77, active: true, allowSongRequests: true } : undefined),
@@ -118,6 +121,135 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
 }
 
 describe("canonical Music REST surfaces", () => {
+  it("returns one strict public descriptor from stable Account identity without owner authentication", async () => {
+    // Break caught: friendly profile discovery needs owner credentials or leaks an internal identity field.
+    const { app, repository } = appFor();
+    const response = await request(app).get("/api/music/public-profile/account-public")
+      .set("X-Request-Id", "descriptor-request");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBe("descriptor-request");
+    expect(response.body).toEqual({
+      version: "music-public-descriptor/v1",
+      publication: { mode: "public", publicSlug: "stable-public-slug", revision: 7 },
+    });
+    expect(repository.resolvePublicDescriptor).toHaveBeenCalledWith("account-public");
+    expect(JSON.stringify(response.body)).not.toMatch(/userId|ownerId|accountDocumentId/i);
+  });
+
+  it.each([
+    ["private", "account-private"],
+    ["unlisted", "account-unlisted"],
+    ["suspended", "account-suspended"],
+    ["pending deletion", "account-pending"],
+    ["tombstoned", "account-tombstoned"],
+    ["unknown", "account-unknown"],
+    ["collision", "account-collision"],
+  ])("returns the same public-safe 404 for %s descriptor state", async (_state, accountDocumentId) => {
+    // Break caught: status or body differences turn the descriptor into an account-state oracle.
+    const { app } = appFor();
+    const response = await request(app).get(`/api/music/public-profile/${accountDocumentId}`);
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({
+      version: "music-error/v1",
+      error: {
+        code: "PUBLIC_NOT_FOUND",
+        message: "The Music resource was not found.",
+        action: "none",
+        retryable: false,
+        requestId: "route-request-id",
+      },
+    });
+  });
+
+  it("returns the same 404 for malformed IDs and safely parameterizes an injection-shaped ID", async () => {
+    // Break caught: malformed and SQL-shaped discovery values escape validation or become an enumeration signal.
+    const lookup = vi.fn(async () => undefined);
+    const { app } = appFor({ resolvePublicDescriptor: lookup });
+    const malformed = await request(app).get(`/api/music/public-profile/${encodeURIComponent("   ")}`);
+    const oversized = await request(app).get(`/api/music/public-profile/${"a".repeat(513)}`);
+    const injection = "account' OR '1'='1";
+    const shaped = await request(app).get(`/api/music/public-profile/${encodeURIComponent(injection)}`);
+
+    for (const response of [malformed, oversized, shaped]) {
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("PUBLIC_NOT_FOUND");
+    }
+    expect(lookup).toHaveBeenCalledTimes(1);
+    expect(lookup).toHaveBeenCalledWith(injection);
+  });
+
+  it("rejects every query, body, and identity-header authority channel before descriptor lookup", async () => {
+    // Break caught: callers substitute username/email/user/owner selectors for the stable Account path identity.
+    const lookup = vi.fn(async () => ({ mode: "public" as const, publicSlug: "stable-public-slug", revision: 1 }));
+    const { app } = appFor({ resolvePublicDescriptor: lookup });
+    const attempts = [
+      request(app).get("/api/music/public-profile/account-public?username=forged"),
+      request(app).get("/api/music/public-profile/account-public?email=forged@example.invalid"),
+      request(app).get("/api/music/public-profile/account-public?userId=44"),
+      request(app).get("/api/music/public-profile/account-public?ownerId=44"),
+      request(app).get("/api/music/public-profile/account-public?accountId=44"),
+      request(app).get("/api/music/public-profile/account-public?mode=public"),
+      request(app).get("/api/music/public-profile/account-public").set("X-Username", "forged"),
+      request(app).get("/api/music/public-profile/account-public").set("X-Email", "forged@example.invalid"),
+      request(app).get("/api/music/public-profile/account-public").set("X-User-Id", "44"),
+      request(app).get("/api/music/public-profile/account-public").set("X-Owner-Id", "44"),
+      request(app).get("/api/music/public-profile/account-public").set("X-Account-Id", "44"),
+      request(app).get("/api/music/public-profile/account-public").set("X-Strapi-Account-Document-Id", "forged"),
+      request(app).get("/api/music/public-profile/account-public").set("X-Music-Guest-Capability", "G".repeat(43)),
+      request(app).get("/api/music/public-profile/account-public").set("Authorization", "Bearer aaa.bbb.ccc"),
+      request(app).get("/api/music/public-profile/account-public").send({ ownerId: 44 }),
+      request(app).get("/api/music/public-profile/account-public").send({ mode: "public" }),
+      request(app).get("/api/music/public-profile/account-public").type("text").send("ownerId=44"),
+    ];
+
+    const responses = await Promise.all(attempts);
+    expect(responses.map(({ status }) => status)).toEqual(Array(attempts.length).fill(400));
+    expect(responses.every(({ body }) => body.error.code === "REQUEST_INVALID")).toBe(true);
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("rate limits descriptor discovery before lookup and replaces unsafe request IDs", async () => {
+    // Break caught: descriptor enumeration bypasses local public limits or reflects unsafe correlation input.
+    const lookup = vi.fn(async () => ({ mode: "public" as const, publicSlug: "stable-public-slug", revision: 1 }));
+    const publicRateLimited = vi.fn(() => true);
+    const { app } = appFor({ resolvePublicDescriptor: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-profile/account-public")
+      .set("X-Request-Id", "unsafe request id");
+
+    expect(response.status).toBe(429);
+    expect(response.headers["retry-after"]).toBe("60");
+    expect(response.headers["x-request-id"]).toBe("route-request-id");
+    expect(response.body.error).toMatchObject({ code: "RATE_LIMITED", retryable: true, requestId: "route-request-id" });
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "account-public",
+    });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("returns one generic request-bound error when descriptor storage fails", async () => {
+    // Break caught: database details escape or a storage failure is misclassified as public identity state.
+    const sentinel = "descriptor-postgres-secret-must-not-leak";
+    const { app } = appFor({ resolvePublicDescriptor: vi.fn(async () => { throw new Error(sentinel); }) });
+    const response = await request(app).get("/api/music/public-profile/account-public")
+      .set("X-Request-Id", "descriptor-error-request");
+
+    expect(response.status).toBe(500);
+    expect(response.headers["x-request-id"]).toBe("descriptor-error-request");
+    expect(response.body).toEqual({
+      version: "music-error/v1",
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Music is temporarily unavailable.",
+        action: "retry",
+        retryable: true,
+        requestId: "descriptor-error-request",
+      },
+    });
+    expect(JSON.stringify(response.body)).not.toContain(sentinel);
+  });
+
   it("accepts an explicit queue visibility control for the authenticated owner", async () => {
     const { app, calls } = appFor();
     const controls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: true };

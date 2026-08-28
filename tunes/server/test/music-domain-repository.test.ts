@@ -814,6 +814,44 @@ describe("MusicDomainRepository owner predicates", () => {
     });
   });
 
+  it("resolves one active discoverable public descriptor by stable Account document ID without projecting internal identity", async () => {
+    // Break caught: username, User document ID, or an internal numeric ID becomes descriptor discovery authority.
+    const harness = recordingPool([{
+      publicSlug: "stable-public-slug",
+      revision: "7",
+    }]);
+
+    await expect(new MusicDomainRepository(harness.pool).resolvePublicDescriptor("account-document-stable"))
+      .resolves.toEqual({ mode: "public", publicSlug: "stable-public-slug", revision: 7 });
+
+    expect(harness.calls).toHaveLength(1);
+    expect(harness.calls[0].values).toEqual(["account-document-stable"]);
+    expect(harness.calls[0].text).toMatch(/strapi_account_document_id=\$1/);
+    expect(harness.calls[0].text).toMatch(/identity_status='active'/);
+    expect(harness.calls[0].text).toMatch(/guest_discoverable=true/);
+    expect(harness.calls[0].text).toMatch(/guest_url IS NOT NULL/);
+    expect(harness.calls[0].text).toMatch(/guest_url ~ '\^\[A-Za-z0-9_-/);
+    expect(harness.calls[0].text).toMatch(/public_snapshot_revision/);
+    expect(harness.calls[0].text).not.toMatch(/SELECT\s+u\.id\b/i);
+  });
+
+  it("fails closed when stable Account descriptor lookup is absent, colliding, or malformed", async () => {
+    // Break caught: a corrupt or ambiguous repository result publishes one arbitrary account.
+    const absent = recordingPool();
+    const collision = recordingPool([
+      { publicSlug: "collision-one", revision: "1" },
+      { publicSlug: "collision-two", revision: "2" },
+    ]);
+    const malformed = recordingPool([{ publicSlug: "not canonical!", revision: "3" }]);
+
+    await expect(new MusicDomainRepository(absent.pool).resolvePublicDescriptor("missing-account"))
+      .resolves.toBeUndefined();
+    await expect(new MusicDomainRepository(collision.pool).resolvePublicDescriptor("colliding-account"))
+      .resolves.toBeUndefined();
+    await expect(new MusicDomainRepository(malformed.pool).resolvePublicDescriptor("malformed-account"))
+      .resolves.toBeUndefined();
+  });
+
   it("lists discoverable public playlists independently of revoked guest capabilities", async () => {
     // Break caught: publishing publicly revokes an unlisted capability, but that must not remove the public URL from discovery.
     const harness = recordingPool([{

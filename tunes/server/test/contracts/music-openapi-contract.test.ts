@@ -29,7 +29,8 @@ function liveCanonicalOperations(): string[] {
   return inventory.routes
     .filter((route) => [
       "strapi-identity-boundary", "local-music-owner", "paid-local-music-owner", "guest-capability",
-    ].includes(route.classification) || route.path === "/api-docs")
+    ].includes(route.classification) || route.path === "/api-docs"
+      || route.path === "/api/music/public-profile/:accountDocumentId")
     .map((route) => `${route.method.toLowerCase()} ${openApiPath(route.path)}`)
     .sort();
 }
@@ -71,7 +72,8 @@ describe("Music OpenAPI 3.1 executable contract", () => {
   it("documents C5, origin, guest header, publication, and entitlement semantics", () => {
     for (const { method, path, operation } of operations()) {
       const isIdentityBoundary = path.includes("/identity/ensure") || path.includes("/identity/lifecycle/");
-      const isOwner = !isIdentityBoundary && !path.includes("{guestUrl}") && path !== "/api-docs";
+      const isPublic = path === "/api/music/public-profile/{accountDocumentId}";
+      const isOwner = !isIdentityBoundary && !isPublic && !path.includes("{guestUrl}") && path !== "/api-docs";
       if (isIdentityBoundary) expect(operation.security, `${method} ${path}`).toContainEqual({ explorerProof: [] });
       if (isOwner) expect(operation.security, `${method} ${path}`).toContainEqual({ musicCredential: [] });
       if (isOwner && method !== "get" || path.endsWith("/{guestUrl}/requests")) {
@@ -85,6 +87,19 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}/requests"].post.parameters)
       .toContainEqual(expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: true }));
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get)).toMatch(/unlisted.*noindex/i);
+    const descriptor = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/public-profile/{accountDocumentId}"].get;
+    expect(descriptor.security).toEqual([]);
+    expect(descriptor.parameters).toContainEqual(expect.objectContaining({
+      name: "accountDocumentId", in: "path", required: true,
+      schema: expect.objectContaining({ type: "string", minLength: 1, maxLength: 512 }),
+    }));
+    expect(descriptor).not.toHaveProperty("requestBody");
+    expect(Object.keys(descriptor.responses)).toEqual(["200", "400", "404", "413", "429", "500"]);
+    expect(JSON.stringify(descriptor.responses["404"])).toContain("PUBLIC_NOT_FOUND");
+    expect(descriptor.responses["429"]).toHaveProperty("headers.Retry-After");
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicDescriptor).toMatchObject({
+      type: "object", additionalProperties: false, required: ["version", "publication"],
+    });
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/paid/import"].post.responses)).toContain("ENTITLEMENT_REQUIRED");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("publication");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.Dashboard.required).toContain("queueRevision");
@@ -201,6 +216,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
         response: { version: "music-publication/v1" as const, publication: { mode, publicSlug: "public-owner" }, ...(mode === "unlisted" ? { capability: "C".repeat(43) } : {}) },
       }),
       resolveEntitlement: async () => ({ state: "included" as const, sourceUpdatedAt: addedAt }),
+      resolvePublicDescriptor: async () => ({ mode: "public" as const, publicSlug: "public-owner", revision: 7 }),
       resolveGuestResource: async () => ({ state: "public", noindex: false, playlist: publicPlaylist }),
       resolveGuestSocketAuthority: async () => ({ musicUserId: 11, active: true as const, allowSongRequests: true }),
       resolveGuestRequestAuthority: async () => ({ musicUserId: 11, active: true as const, allowSongRequests: true }),
@@ -224,6 +240,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
     const songInput = { youtubeId: "abcdefghijk", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
     const cases = [
+      ["get", "/api/music/public-profile/{accountDocumentId}", "/api/music/public-profile/account-public", 200, undefined, {}],
       ["get", "/api/playlists", "/api/playlists", 200, undefined, ownerRead],
       ["post", "/api/playlists", "/api/playlists", 201, { name: "Saved list", description: null }, { ...ownerWrite, "Idempotency-Key": "openapi-playlist-create" }],
       ["get", "/api/playlists/{playlistId}", "/api/playlists/7", 200, undefined, ownerRead],

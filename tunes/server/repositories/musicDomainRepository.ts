@@ -933,6 +933,40 @@ export class MusicDomainRepository {
     return row ? { state: row.entitlement_state, sourceUpdatedAt: row.entitlement_source_updated_at } : undefined;
   }
 
+  async resolvePublicDescriptor(accountDocumentId: string): Promise<{
+    mode: "public";
+    publicSlug: string;
+    revision: number;
+  } | undefined> {
+    const rows = (await this.pool.query(
+      `SELECT u.guest_url AS "publicSlug",u.public_snapshot_revision AS revision
+         FROM users u
+        WHERE u.strapi_account_document_id=$1
+          AND u.identity_status='active'
+          AND u.guest_discoverable=true
+          AND u.guest_url IS NOT NULL
+          AND length(u.guest_url) BETWEEN 8 AND 128
+          AND u.guest_url ~ '^[A-Za-z0-9_-]+$'
+          AND NOT EXISTS (
+            SELECT 1 FROM users collision
+             WHERE collision.strapi_user_document_id=$1
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM music_identity_tombstones tombstone
+             WHERE tombstone.strapi_user_document_id=$1
+                OR tombstone.strapi_account_document_id=$1
+          )
+        LIMIT 2`,
+      [accountDocumentId],
+    )).rows;
+    if (rows.length !== 1) return undefined;
+    const publicSlug = rows[0]?.publicSlug;
+    const revision = Number(rows[0]?.revision);
+    if (typeof publicSlug !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug)
+        || !Number.isSafeInteger(revision) || revision < 0) return undefined;
+    return { mode: "public", publicSlug, revision };
+  }
+
   async resolveGuestResource(publicSlug: string, capability?: string) {
     const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
     const capabilityHash = capabilityValid

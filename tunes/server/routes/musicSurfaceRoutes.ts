@@ -71,6 +71,11 @@ interface CanonicalMusicRepository {
   revokeGuestCapability(ownerId: number): Promise<void>;
   setDiscoverable?(ownerId: number, discoverable: boolean): Promise<void>;
   resolveEntitlement(ownerId: number): Promise<{ state: MusicEntitlementState; sourceUpdatedAt?: Date } | undefined>;
+  resolvePublicDescriptor(accountDocumentId: string): Promise<{
+    mode: "public";
+    publicSlug: string;
+    revision: number;
+  } | undefined>;
   resolveGuestResource(publicSlug: string, capability?: string): Promise<{ state: string; noindex?: boolean; playlist?: unknown } | undefined>;
   resolveGuestSocketAuthority(capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
   resolveGuestRequestAuthority(publicSlug: string, capability?: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
@@ -130,6 +135,34 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   };
   const owner = (...handlers: RequestHandler[]) => [identify, principal, ownerInputGuard, ...handlers];
   const mutation = (...handlers: RequestHandler[]) => owner(originGuard, ...handlers);
+  app.get("/api/music/public-profile/:accountDocumentId", identify, async (req, res, next) => {
+    try {
+      if (hasUnexpectedPublicDescriptorAuthority(req)) throw new MusicIdentityError(
+        "REQUEST_INVALID", 400, "The public Music descriptor request is invalid.", "none", false,
+      );
+      const accountDocumentId = boundedIdentityDocumentId(req.params.accountDocumentId);
+      if (!accountDocumentId) throw notFound();
+      const peerAddress = req.socket.remoteAddress;
+      const source = dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+        ? (req.ip ?? peerAddress ?? "unknown")
+        : (peerAddress ?? "unknown");
+      const limited = dependencies.publicRateLimited?.({ source, resource: accountDocumentId })
+        ?? consumePublicSurfaceLimit({ source, resource: accountDocumentId });
+      if (limited) throw new MusicIdentityError(
+        "RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60,
+      );
+      const descriptor = await dependencies.repository.resolvePublicDescriptor(accountDocumentId);
+      if (!descriptor) throw notFound();
+      res.status(200).json({
+        version: "music-public-descriptor/v1",
+        publication: {
+          mode: "public",
+          publicSlug: descriptor.publicSlug,
+          revision: descriptor.revision,
+        },
+      });
+    } catch (error) { next(error); }
+  });
   app.get("/api/playlists", ...owner(async (req, res, next) => {
     try { res.status(200).json((await dependencies.repository.listPlaylists(req.musicPrincipal!.musicUserId)).map(playlistDto)); } catch (error) { next(error); }
   }));
@@ -579,6 +612,25 @@ function hasForbiddenOwnerInput(req: Request): boolean {
   return ["x-username", "x-user-id", "x-owner-id", "x-account-id", "x-email"].some((header) => req.get(header) !== undefined)
     || Object.keys(req.query).some((key) => OWNER_KEYS.has(key))
     || !!req.body && typeof req.body === "object" && !Array.isArray(req.body) && Object.keys(req.body).some((key) => OWNER_KEYS.has(key));
+}
+
+const PUBLIC_DESCRIPTOR_AUTHORITY_HEADERS = [
+  "authorization", "x-username", "x-email", "x-user-id", "x-music-user-id", "x-owner-id", "x-account-id",
+  "x-document-id", "x-strapi-user-document-id", "x-strapi-account-document-id", "x-music-guest-capability",
+] as const;
+
+function hasUnexpectedPublicDescriptorAuthority(req: Request): boolean {
+  const contentLength = req.get("content-length");
+  return PUBLIC_DESCRIPTOR_AUTHORITY_HEADERS.some((header) => req.get(header) !== undefined)
+    || Object.keys(req.query).length > 0
+    || req.body !== undefined
+    || contentLength !== undefined && contentLength !== "0"
+    || req.get("transfer-encoding") !== undefined;
+}
+
+function boundedIdentityDocumentId(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized.length >= 1 && normalized.length <= 512 ? normalized : undefined;
 }
 
 type DtoRecord = Record<string, unknown>;

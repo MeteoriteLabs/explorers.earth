@@ -743,4 +743,42 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       expect.objectContaining({ guestUrl: "c6-public-sitemap-revoked", updatedAt: expect.any(Date) }),
     ]);
   });
+
+  it("resolves only one active discoverable public descriptor by stable Account document ID", async () => {
+    // Break caught: lifecycle, publication mode, tombstone, username, or User document ID can discover a public slug.
+    const suffixes = ["descriptor-public", "descriptor-private", "descriptor-unlisted", "descriptor-suspended", "descriptor-pending", "descriptor-tombstoned"];
+    const rows = new Map<string, Awaited<ReturnType<MusicIdentityRepository["ensureIdentity"]>>>();
+    for (const suffix of suffixes) rows.set(suffix, await identities.ensureIdentity(identityInput(suffix)));
+    await pool.query(
+      "UPDATE users SET guest_discoverable=true,public_snapshot_revision=7 WHERE id=ANY($1::integer[])",
+      [["descriptor-public", "descriptor-suspended", "descriptor-pending", "descriptor-tombstoned"].map((suffix) => rows.get(suffix)!.id)],
+    );
+    await domain.setPublicationMode(rows.get("descriptor-unlisted")!.id, "unlisted", hashGuestCapability("U".repeat(43)));
+    await identities.transitionIdentity({
+      strapiUserDocumentId: "c6-user-descriptor-suspended", operationId: "c6-descriptor-suspend",
+      kind: "suspend", targetStatus: "suspended",
+    });
+    await identities.transitionIdentity({
+      strapiUserDocumentId: "c6-user-descriptor-pending", operationId: "c6-descriptor-pending",
+      kind: "request_deletion", targetStatus: "pending_deletion",
+    });
+    await identities.tombstoneIdentity({
+      strapiUserDocumentId: "c6-user-descriptor-tombstoned",
+      strapiAccountDocumentId: "c6-account-descriptor-tombstoned",
+      reason: "descriptor qualification",
+      operationId: "c6-descriptor-tombstone",
+    });
+
+    await expect(domain.resolvePublicDescriptor("c6-account-descriptor-public"))
+      .resolves.toEqual({ mode: "public", publicSlug: "c6-public-descriptor-public", revision: 7 });
+    for (const accountDocumentId of [
+      "c6-account-descriptor-private",
+      "c6-account-descriptor-unlisted",
+      "c6-account-descriptor-suspended",
+      "c6-account-descriptor-pending",
+      "c6-account-descriptor-tombstoned",
+      "c6-account-descriptor-unknown",
+      "c6-user-descriptor-public",
+    ]) await expect(domain.resolvePublicDescriptor(accountDocumentId)).resolves.toBeUndefined();
+  });
 });
