@@ -284,6 +284,36 @@ describe("canonical Music REST surfaces", () => {
     expect(lookup).not.toHaveBeenCalled();
   });
 
+  it("keeps a downstream URIError on a valid descriptor path internal and charges only the normal limiter", async () => {
+    // Break caught: error type alone mistakes a repository URIError for Express path decoding and charges fallback containment twice.
+    const sentinel = "valid-descriptor-downstream-uri-secret";
+    const lookup = vi.fn(async () => { throw new URIError(sentinel); });
+    const publicRateLimited = vi.fn(() => false);
+    const { app } = appFor({ resolvePublicDescriptor: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-profile/account-valid")
+      .set("X-Request-Id", "descriptor-uri-error-request");
+
+    expect(response.status).toBe(500);
+    expect(response.headers["x-request-id"]).toBe("descriptor-uri-error-request");
+    expect(response.body).toEqual({
+      version: "music-error/v1",
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Music is temporarily unavailable.",
+        action: "retry",
+        retryable: true,
+        requestId: "descriptor-uri-error-request",
+      },
+    });
+    expect(JSON.stringify(response.body)).not.toContain(sentinel);
+    expect(publicRateLimited).toHaveBeenCalledTimes(1);
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "account-valid",
+    });
+    expect(lookup).toHaveBeenCalledWith("account-valid");
+  });
+
   it("returns one generic request-bound error when descriptor storage fails", async () => {
     // Break caught: database details escape or a storage failure is misclassified as public identity state.
     const sentinel = "descriptor-postgres-secret-must-not-leak";

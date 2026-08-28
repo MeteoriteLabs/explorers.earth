@@ -610,7 +610,13 @@ function isPublicDescriptorDecodeFailure(cause: unknown, req: Request): boolean 
   const path = queryOffset === -1 ? req.originalUrl : req.originalUrl.slice(0, queryOffset);
   if (!path.startsWith(PUBLIC_DESCRIPTOR_PATH_PREFIX)) return false;
   const encodedAccountDocumentId = path.slice(PUBLIC_DESCRIPTOR_PATH_PREFIX.length);
-  return encodedAccountDocumentId.length > 0 && !encodedAccountDocumentId.includes("/");
+  if (encodedAccountDocumentId.length === 0 || encodedAccountDocumentId.includes("/")) return false;
+  try {
+    decodeURIComponent(encodedAccountDocumentId);
+    return false;
+  } catch (error) {
+    return error instanceof URIError;
+  }
 }
 
 /**
