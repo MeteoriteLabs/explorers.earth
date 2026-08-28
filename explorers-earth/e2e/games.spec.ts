@@ -3,23 +3,35 @@ import { setupMockAuthentication } from './setup/auth';
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
 
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
 
-    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.includes('UsersPermissionsUser')) {
+    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
             usersPermissionsUser: {
+              id: 'fixture-user',
+              documentId: 'fixture-user',
+              username: 'testuser',
+              email: 'test@example.test',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
               accounts: [
                 {
                   documentId: 'acc-123',
+                  username: 'testuser',
                   Account_Name: 'Test Account',
                   Account_Type: 'business',
                   mobile_number: '1234567890',
+                  profile_picture: null,
                   public_movie: 'No',
                   public_books: 'No',
                   public_games: 'No',
@@ -28,7 +40,11 @@ test.beforeEach(async ({ context, page }) => {
                   public_products: 'No',
                   public_people: 'No',
                   public_guides: 'No',
-                  public_recommendations: 'No'
+                  public_recommendations: 'No',
+                  public_profile: 'Yes',
+                  pinned_nav_tabs: [],
+                  auto_pinning: false,
+                  localtunes_integrated: false
                 }
               ]
             }
@@ -44,14 +60,21 @@ test.beforeEach(async ({ context, page }) => {
             createGameList: {
               documentId: 'game-list-123',
               List_Name: 'My Favorite Games',
+              list_description: null,
               slug: 'my-favorite-games',
+              Visibility: false,
               visibility: false,
+              cover_image: null,
+              top_games_heading: null,
+              top_picks_heading: null,
               display_order: 0,
+              account: { documentId: 'acc-123', username: 'testuser' },
             }
           }
         })
       });
     } else if (payload?.query?.includes('createRecommendedGame')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -59,7 +82,11 @@ test.beforeEach(async ({ context, page }) => {
           data: {
             createRecommendedGame: {
               documentId: 'game-rec-456',
+              igdb_id: 125,
               title: 'Portal 2',
+              display_order: 0,
+              is_pinned: false,
+              pin_order: null,
             }
           }
         })
@@ -74,9 +101,15 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'game-list-123',
                 List_Name: 'My Favorite Games',
+                list_description: null,
                 slug: 'my-favorite-games',
+                Visibility: false,
                 visibility: false,
+                cover_image: null,
+                top_games_heading: null,
+                top_picks_heading: null,
                 display_order: 0,
+                account: { documentId: 'acc-123', username: 'testuser' },
                 recommended_games: []
               }
             ]
@@ -93,10 +126,16 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'game-list-123',
                 List_Name: 'My Favorite Games',
+                list_description: null,
                 slug: 'my-favorite-games',
                 Visibility: false,
+                visibility: false,
+                cover_image: null,
+                top_games_heading: null,
+                top_picks_heading: null,
                 display_order: 0,
-                recommended_games: [
+                account: { documentId: 'acc-123', username: 'testuser' },
+                recommended_games: recommendationCreated ? [
                   {
                     documentId: 'game-rec-456',
                     igdb_id: 125,
@@ -126,11 +165,17 @@ test.beforeEach(async ({ context, page }) => {
                     game_categories: [],
                     Media: []
                   }
-                ]
+                ] : []
               }
             ]
           }
         })
+      });
+    } else if (payload?.query?.includes('gameCategories')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { gameCategories: [] } }),
       });
     } else {
       await route.fulfill({
@@ -139,6 +184,14 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({ data: {} })
       });
     }
+  });
+
+  await page.route('**/upload', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ url: '/uploads/fixture-game-cover.jpg' }]),
+    });
   });
 
   // Mock Twitch / IGDB Proxy token endpoint
@@ -175,6 +228,10 @@ test.beforeEach(async ({ context, page }) => {
 });
 
 test('Flow 3: Games List and Recommendation creation E2E', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
   await page.goto('/recommendations/games');
 
   const addListBtn = page.locator('button:has-text("New List")').first();
@@ -210,5 +267,9 @@ test('Flow 3: Games List and Recommendation creation E2E', async ({ page }) => {
   await saveBtn.click();
 
   await expect(page).toHaveURL(/\/recommendations\/games\/game-list-123/);
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep Draft' }).click();
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
   await expect(page.locator('text=Portal 2')).toBeVisible();
+  expect(consoleErrors).toEqual([]);
 });

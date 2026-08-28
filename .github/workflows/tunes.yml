@@ -71,6 +71,7 @@ jobs:
           MUSIC_C3_POSTGRES_TEST: "1"
           MUSIC_C8_POSTGRES_TEST: "1"
           MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1"
+          STRAPI_ANALYTICS_ACCESS_TOKEN: fixture-analytics-token
           DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture
         run: |
           npm ci --legacy-peer-deps

@@ -411,6 +411,26 @@
       "line": 70
     },
     {
+      "method": "POST",
+      "path": "/api/explorers/analytics/events",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 45
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/events",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 85
+    },
+    {
       "method": "GET",
       "path": "/itunes-api/search",
       "classification": "public",
@@ -418,7 +438,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 206
+      "line": 209
     },
     {
       "method": "GET",
@@ -1030,7 +1050,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
-      "line": 189
+      "line": 192
     },
     {
       "kind": "setTimeout",

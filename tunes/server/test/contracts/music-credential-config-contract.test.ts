@@ -28,6 +28,7 @@ function productionModel(): { services: Record<string, ComposeService> } {
       SESSION_SECRET: "session-secret-at-least-32-characters", COOKIE_SECRET: "cookie-secret-at-least-32-characters",
       STRAPI_URL: "https://cms.example.com", MUSIC_STRAPI_ALLOWED_ORIGINS: "https://cms.example.com",
       STRAPI_ACCESS_TOKEN: "read-token", STRAPI_JWT_SECRET: "jwt-secret-at-least-32-characters",
+      STRAPI_ANALYTICS_ACCESS_TOKEN: "analytics-publisher-token",
       MUSIC_GATE_ATTESTATION_KEY: "gate-secret-at-least-32-characters",
       MUSIC_TOKEN_CURRENT_KID: "production-current-2026-08",
       MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "/opt/explorers/music-token-secrets",
