@@ -16,11 +16,15 @@ import MediaItemsInListChart from './charts/MediaItemsInListChart';
 import GuidesChart from './charts/GuidesChart';
 import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyticsClient';
 import { selectCompletedAccount } from '../../music/musicIdentityCoordinator';
-import { getAnalyticsDateRange } from '../utils/analyticsDateRange';
+import {
+  getAnalyticsDateRange,
+  MAX_ANALYTICS_WINDOW_MS,
+} from '../utils/analyticsDateRange';
 
 // Time filter types
 type TimeFilter = 'today' | 'last7days' | 'last30days' | 'custom';
-const MAX_CUSTOM_RANGE_MS = 93 * 24 * 60 * 60 * 1000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_CUSTOM_INPUT_SPAN_MS = MAX_ANALYTICS_WINDOW_MS - ONE_DAY_MS;
 const inputDate = (date?: Date) => date?.toISOString().split('T')[0];
 const shiftDate = (date: Date | undefined, deltaMs: number) =>
   date ? inputDate(new Date(date.getTime() + deltaMs)) : undefined;
@@ -108,9 +112,8 @@ const AnalyticsDashboard: React.FC = () => {
   const isCustomRangeValid = useMemo(() => {
     if (timeFilter.type !== 'custom') return true;
     if (!timeFilter.startDate || !timeFilter.endDate) return false;
-    const duration = timeFilter.endDate.getTime() - timeFilter.startDate.getTime();
-    return duration >= 0 && duration <= MAX_CUSTOM_RANGE_MS;
-  }, [timeFilter]);
+    return getDateRange !== null;
+  }, [getDateRange, timeFilter]);
   const isCustomRangeComplete =
     timeFilter.type !== 'custom' ||
     Boolean(timeFilter.startDate && timeFilter.endDate && isCustomRangeValid);
@@ -448,7 +451,7 @@ const AnalyticsDashboard: React.FC = () => {
                   </label>
                   <input
                     type="date"
-                    min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_RANGE_MS)}
+                    min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_INPUT_SPAN_MS)}
                     max={inputDate(timeFilter.endDate)}
                     value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
                     onChange={(e) => {
@@ -468,7 +471,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <input
                     type="date"
                     min={inputDate(timeFilter.startDate)}
-                    max={shiftDate(timeFilter.startDate, MAX_CUSTOM_RANGE_MS)}
+                    max={shiftDate(timeFilter.startDate, MAX_CUSTOM_INPUT_SPAN_MS)}
                     value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
                     onChange={(e) => {
                       const date = e.target.value ? new Date(e.target.value) : undefined;
@@ -592,7 +595,7 @@ const AnalyticsDashboard: React.FC = () => {
                 <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.from')}</label>
                 <input
                   type="date"
-                  min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_RANGE_MS)}
+                  min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_INPUT_SPAN_MS)}
                   max={inputDate(timeFilter.endDate)}
                   value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
                   onChange={(e) => {
@@ -607,7 +610,7 @@ const AnalyticsDashboard: React.FC = () => {
                 <input
                   type="date"
                   min={inputDate(timeFilter.startDate)}
-                  max={shiftDate(timeFilter.startDate, MAX_CUSTOM_RANGE_MS)}
+                  max={shiftDate(timeFilter.startDate, MAX_CUSTOM_INPUT_SPAN_MS)}
                   value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
                   onChange={(e) => {
                     const date = e.target.value ? new Date(e.target.value) : undefined;

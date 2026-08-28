@@ -156,12 +156,24 @@ export const useTrackAnalytics = (
   );
 
   const isEventTrackedInSession = useCallback(
-    (eventType: string) => Boolean(sessionStorage.getItem(getSessionKey(eventType))),
+    (eventType: string) => {
+      try {
+        return Boolean(sessionStorage.getItem(getSessionKey(eventType)));
+      } catch {
+        return false;
+      }
+    },
     [getSessionKey],
   );
 
   const markEventAsTracked = useCallback(
-    (eventType: string) => sessionStorage.setItem(getSessionKey(eventType), 'true'),
+    (eventType: string) => {
+      try {
+        sessionStorage.setItem(getSessionKey(eventType), 'true');
+      } catch {
+        // Analytics delivery succeeds even when browser deduplication storage is unavailable.
+      }
+    },
     [getSessionKey],
   );
 
@@ -194,28 +206,28 @@ export const useTrackAnalytics = (
       setLoading(true);
       setError(null);
 
-      const utmParams = getSessionAttributionUtmParams();
-      const referrerOrigin = getSessionAttributionReferrerOrigin();
-      const metadata = privacySafeMetadata(event.metadata) as
-        | Record<string, unknown>
-        | undefined;
-      const canUseCanonicalTargets = pagesWithCanonicalContentTargets.has(pageName);
-      const dynamicLocationId = canUseCanonicalTargets
-        ? (metadata?.listId as string | undefined) ||
-          (metadata?.cityId as string | undefined) ||
-          locationId
-        : null;
-      const dynamicRecommendationId = canUseCanonicalTargets
-        ? (metadata?.recommendationId as string | undefined) ||
-          (metadata?.placeId as string | undefined) ||
-          (metadata?.id as string | undefined) ||
-          recommendationId
-        : null;
-      const eventId =
-        retryEventIds.current.get(eventKey) || createAnalyticsEventId();
-      retryEventIds.current.set(eventKey, eventId);
-
       try {
+        const utmParams = getSessionAttributionUtmParams();
+        const referrerOrigin = getSessionAttributionReferrerOrigin();
+        const metadata = privacySafeMetadata(event.metadata) as
+          | Record<string, unknown>
+          | undefined;
+        const canUseCanonicalTargets = pagesWithCanonicalContentTargets.has(pageName);
+        const dynamicLocationId = canUseCanonicalTargets
+          ? (metadata?.listId as string | undefined) ||
+            (metadata?.cityId as string | undefined) ||
+            locationId
+          : null;
+        const dynamicRecommendationId = canUseCanonicalTargets
+          ? (metadata?.recommendationId as string | undefined) ||
+            (metadata?.placeId as string | undefined) ||
+            (metadata?.id as string | undefined) ||
+            recommendationId
+          : null;
+        const eventId =
+          retryEventIds.current.get(eventKey) || createAnalyticsEventId();
+        retryEventIds.current.set(eventKey, eventId);
+
         await postExplorersAnalyticsEvent({
           consent: true,
           eventId,

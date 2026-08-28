@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuery } from '@apollo/client';
 import useAuthStore from '../../../store/store';
@@ -171,5 +171,28 @@ describe('AnalyticsDashboard data boundary', () => {
     render(<AnalyticsDashboard />);
     await Promise.resolve();
     expect(readEvents).not.toHaveBeenCalled();
+  });
+
+  it('limits custom inputs to 93 inclusive calendar days', async () => {
+    const { container } = render(<AnalyticsDashboard />);
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'analytics.dashboard.timeFilter.last30days',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'analytics.dashboard.timeFilter.custom',
+      }),
+    );
+
+    const [from, to] = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="date"]'),
+    );
+    fireEvent.change(from, { target: { value: '2026-01-01' } });
+
+    expect(to.max).toBe('2026-04-03');
   });
 });

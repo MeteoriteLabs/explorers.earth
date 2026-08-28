@@ -6,6 +6,8 @@ export interface AnalyticsTimeFilterState {
   endDate?: Date;
 }
 
+export const MAX_ANALYTICS_WINDOW_MS = 93 * 24 * 60 * 60 * 1000;
+
 const startOfDay = (value: Date) => {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
@@ -28,7 +30,10 @@ export function getAnalyticsDateRange(
     if (!filter.startDate || !filter.endDate) return null;
     const startDate = startOfDay(filter.startDate);
     const endDate = endOfDay(filter.endDate);
-    return startDate <= endDate ? { startDate, endDate } : null;
+    const duration = endDate.getTime() - startDate.getTime();
+    return duration >= 0 && duration <= MAX_ANALYTICS_WINDOW_MS
+      ? { startDate, endDate }
+      : null;
   }
 
   const daysBack = filter.type === 'last7days' ? 6 : filter.type === 'last30days' ? 29 : 0;

@@ -33,6 +33,38 @@ describe('getAnalyticsDateRange', () => {
     });
   });
 
+  it('accepts exactly 93 inclusive calendar days within the server window', () => {
+    const range = getAnalyticsDateRange(
+      {
+        type: 'custom',
+        startDate: local(2026, 0, 1),
+        endDate: local(2026, 3, 3),
+      },
+      now,
+    );
+
+    expect(range).toEqual({
+      startDate: local(2026, 0, 1),
+      endDate: local(2026, 3, 3, true),
+    });
+    expect(range!.endDate.getTime() - range!.startDate.getTime()).toBeLessThan(
+      93 * 24 * 60 * 60 * 1000,
+    );
+  });
+
+  it('rejects a 94th inclusive calendar day that exceeds the server window', () => {
+    expect(
+      getAnalyticsDateRange(
+        {
+          type: 'custom',
+          startDate: local(2026, 0, 1),
+          endDate: local(2026, 3, 4),
+        },
+        now,
+      ),
+    ).toBeNull();
+  });
+
   it('returns null for incomplete or reversed custom ranges', () => {
     expect(
       getAnalyticsDateRange(

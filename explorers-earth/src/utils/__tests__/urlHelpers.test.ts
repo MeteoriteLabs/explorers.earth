@@ -203,6 +203,30 @@ describe('urlHelpers', () => {
         }),
       ).toEqual({});
     });
+
+    it.each(['getItem', 'removeItem', 'setItem'] as const)(
+      'keeps current attribution when session storage %s throws',
+      (operation) => {
+        const storage = makeStorage();
+        if (operation === 'removeItem') {
+          storage.setItem('explorers-first-touch-utm', '{bad json');
+        }
+        storage[operation] = () => {
+          throw new DOMException('Storage unavailable', 'SecurityError');
+        };
+
+        expect(
+          getSessionAttributionUtmParams({
+            url: 'https://explorers.earth/tk2727?utm_source=privacy-test&utm_medium=social',
+            storage,
+            now: () => 20_000,
+          }),
+        ).toEqual({
+          utm_source: 'privacy-test',
+          utm_medium: 'social',
+        });
+      },
+    );
   });
 
   describe('getSessionAttributionReferrerOrigin', () => {

@@ -132,6 +132,38 @@ describe('analyticsService', () => {
       expect(result.current.loading).toBe(false);
     });
 
+    it.each(['getItem', 'setItem'] as const)(
+      'delivers and releases request state when session storage %s throws',
+      async (operation) => {
+        const storageSpy = vi
+          .spyOn(window.sessionStorage, operation)
+          .mockImplementation(() => {
+            throw new DOMException('Storage unavailable', 'SecurityError');
+          });
+        const { result } = renderHook(() =>
+          useTrackAnalytics({
+            accountId: 'acc1',
+            pageName: 'public-profile',
+            autoTrackView: false,
+          }),
+        );
+
+        let committed = false;
+        try {
+          await act(async () => {
+            committed = await result.current.trackEvent({ type: 'view' });
+          });
+        } finally {
+          storageSpy.mockRestore();
+        }
+
+        expect(committed).toBe(true);
+        expect(postEvent).toHaveBeenCalledTimes(1);
+        expect(result.current.loading).toBe(false);
+        expect(result.current.error).toBeNull();
+      },
+    );
+
     it('auto-tracks exactly once when a direct visitor grants analytics consent', async () => {
       hasConsent.mockReturnValue(false);
 

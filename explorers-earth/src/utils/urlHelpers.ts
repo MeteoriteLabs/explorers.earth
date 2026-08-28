@@ -224,15 +224,23 @@ export const getSessionAttributionUtmParams = ({
       storage.removeItem(FIRST_TOUCH_UTM_STORAGE_KEY);
     }
   } catch {
-    storage.removeItem(FIRST_TOUCH_UTM_STORAGE_KEY);
+    try {
+      storage.removeItem(FIRST_TOUCH_UTM_STORAGE_KEY);
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
   }
 
   if (Object.keys(current).length === 0) return {};
 
-  storage.setItem(
-    FIRST_TOUCH_UTM_STORAGE_KEY,
-    JSON.stringify({ params: current, capturedAt }),
-  );
+  try {
+    storage.setItem(
+      FIRST_TOUCH_UTM_STORAGE_KEY,
+      JSON.stringify({ params: current, capturedAt }),
+    );
+  } catch {
+    // Attribution still applies to this event when persistence is unavailable.
+  }
   return current;
 };
 
