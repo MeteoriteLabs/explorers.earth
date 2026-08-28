@@ -6,6 +6,10 @@ export type AnalyticsTimeFilter =
   | { type: 'custom'; startDate: string; endDate: string };
 
 export interface AnalyticsTimeFilterState {
+  /**
+   * @deprecated Temporary Date-based compatibility for AnalyticsDashboard.
+   * Remove in Task 2 when its controls store canonical date-only strings.
+   */
   type: AnalyticsTimeFilter['type'];
   startDate?: Date;
   endDate?: Date;
@@ -18,7 +22,6 @@ export interface AnalyticsDateRange {
   toDate: string;
 }
 
-export const MAX_ANALYTICS_WINDOW_MS = 93 * 24 * 60 * 60 * 1000;
 const MAX_ANALYTICS_CALENDAR_DAYS = 93;
 
 const startOfDay = (value: Date) => {

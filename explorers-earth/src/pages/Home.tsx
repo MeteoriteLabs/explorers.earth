@@ -43,6 +43,7 @@ import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
 import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import type { PublicPageAnalyticsData } from "../features/Analytics/api/queries";
+import { getAnalyticsDateRange } from "../features/Analytics/utils/analyticsDateRange";
 import { readExplorersAnalyticsEvents } from "../services/explorersAnalyticsClient";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -66,6 +67,32 @@ import { CategoryEmptyState } from "../components/CategoryEmptyState";
 // Mutations & queries
 import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
+
+type HomeAnalyticsState = "loading" | "ready" | "unavailable";
+
+export function getHomeRecentAnalyticsScope(
+  now = new Date(),
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+) {
+  const range = getAnalyticsDateRange({ type: "last90days" }, now);
+  if (!range) throw new Error("Recent analytics range is unavailable");
+  return { fromDate: range.fromDate, toDate: range.toDate, timeZone };
+}
+
+export function getHomeAnalyticsCard(
+  state: HomeAnalyticsState,
+  analyticsData: PublicPageAnalyticsData[],
+) {
+  const label = "Views · last 90 days";
+  if (state !== "ready") return { label, value: "—" };
+  const totalViews = analyticsData
+    .flatMap((item) => item.Stats || [])
+    .filter((event) => event.type === "view").length;
+  return {
+    label,
+    value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}k` : totalViews.toString(),
+  };
+}
 
 // S3 upload helpers
 import {
@@ -170,6 +197,7 @@ const Home = memo(() => {
   const [showGuideShareModals, setShowGuideShareModals] = useState<{ [key: string]: boolean }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [analyticsData, setAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
+  const [analyticsState, setAnalyticsState] = useState<HomeAnalyticsState>("loading");
   const [activeTab, setActiveTab] = useState<
     "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
   >("places");
@@ -359,28 +387,35 @@ const Home = memo(() => {
     skip: !accountDocumentId || !user?.username,
   });
 
-  // Read the signed-in account's all-time view count through the authenticated
+  // Read only the bounded recent local-calendar range through the authenticated
   // backend boundary. Never download another account's analytics to the browser.
   useEffect(() => {
     let active = true;
     if (!accountDocumentId || !token) {
       setAnalyticsData([]);
+      setAnalyticsState("unavailable");
       return () => {
         active = false;
       };
     }
 
+    setAnalyticsState("loading");
     void readExplorersAnalyticsEvents({
       accountId: accountDocumentId,
-      from: new Date(0).toISOString(),
-      to: new Date().toISOString(),
+      ...getHomeRecentAnalyticsScope(),
       token,
     })
       .then((records) => {
-        if (active) setAnalyticsData(records as PublicPageAnalyticsData[]);
+        if (active) {
+          setAnalyticsData(records as PublicPageAnalyticsData[]);
+          setAnalyticsState("ready");
+        }
       })
       .catch(() => {
-        if (active) setAnalyticsData([]);
+        if (active) {
+          setAnalyticsData([]);
+          setAnalyticsState("unavailable");
+        }
       });
 
     return () => {
@@ -524,16 +559,10 @@ const Home = memo(() => {
     return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs + appsRecs + productsRecs + peopleRecs;
   }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
-  const totalViewsCount = useMemo(() => {
-    if (!analyticsData.length) return "0";
-    const allEvents = analyticsData.flatMap((item) => item.Stats || []);
-    const totalViews = allEvents.filter(event => event.type === 'view').length;
-
-    if (totalViews >= 1000) {
-      return (totalViews / 1000).toFixed(1) + "k";
-    }
-    return totalViews.toString();
-  }, [analyticsData]);
+  const recentViewsCard = useMemo(
+    () => getHomeAnalyticsCard(analyticsState, analyticsData),
+    [analyticsState, analyticsData],
+  );
 
   // Update setup store when status changes
   useEffect(() => {
@@ -1036,10 +1065,10 @@ const Home = memo(() => {
                     <div className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl px-2 sm:px-3 py-2 border border-dashboard flex-1 min-w-0">
                       <div className="text-center">
                         <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
-                          {totalViewsCount}
+                          {recentViewsCard.value}
                         </p>
                         <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
-                          Views
+                          {recentViewsCard.label}
                         </p>
                       </div>
                     </div>

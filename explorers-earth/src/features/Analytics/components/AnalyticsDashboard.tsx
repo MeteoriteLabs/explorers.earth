@@ -18,13 +18,12 @@ import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyti
 import { selectCompletedAccount } from '../../music/musicIdentityCoordinator';
 import {
   getAnalyticsDateRange,
-  MAX_ANALYTICS_WINDOW_MS,
 } from '../utils/analyticsDateRange';
 
 // Time filter types
 type TimeFilter = 'today' | 'last7days' | 'last30days' | 'custom';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_CUSTOM_INPUT_SPAN_MS = MAX_ANALYTICS_WINDOW_MS - ONE_DAY_MS;
+const MAX_CUSTOM_INPUT_SPAN_MS = 92 * ONE_DAY_MS;
 const inputDate = (date?: Date) => date?.toISOString().split('T')[0];
 const shiftDate = (date: Date | undefined, deltaMs: number) =>
   date ? inputDate(new Date(date.getTime() + deltaMs)) : undefined;

@@ -53,6 +53,12 @@ const localDateTimeToInstant = (value: string, timeZone: string, endOfDay: boole
   return new Date(utcGuess - (observedAsUtc - utcGuess));
 };
 
+const matchesZonedCalendarDate = (date: Date, value: string, timeZone: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  const parts = datePartsInZone(date, timeZone);
+  return parts.year === year && parts.month === month && parts.day === day;
+};
+
 const calendarDayIndex = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   return Date.UTC(year, month - 1, day);
@@ -84,10 +90,31 @@ const readScopeSchema = z.object({
     });
     return z.NEVER;
   }
+  const from = localDateTimeToInstant(scope.fromDate, scope.timeZone, false);
+  const to = localDateTimeToInstant(scope.toDate, scope.timeZone, true);
+  if (
+    !matchesZonedCalendarDate(from, scope.fromDate, scope.timeZone) ||
+    !matchesZonedCalendarDate(to, scope.toDate, scope.timeZone)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["fromDate"],
+      message: "analytics range contains a calendar date that does not exist in the selected timezone",
+    });
+    return z.NEVER;
+  }
+  if (from > to) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["fromDate"],
+      message: "derived analytics range must not be inverted",
+    });
+    return z.NEVER;
+  }
   return {
     accountId: scope.accountId,
-    from: localDateTimeToInstant(scope.fromDate, scope.timeZone, false).toISOString(),
-    to: localDateTimeToInstant(scope.toDate, scope.timeZone, true).toISOString(),
+    from: from.toISOString(),
+    to: to.toISOString(),
   };
 });
 

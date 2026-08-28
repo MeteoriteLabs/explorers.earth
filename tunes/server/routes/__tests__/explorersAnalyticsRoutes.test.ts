@@ -248,6 +248,40 @@ describe("explorers analytics routes", () => {
     expect(service.readAccountEvents).not.toHaveBeenCalled();
   });
 
+  it("rejects a civil date skipped by the accepted IANA timezone", async () => {
+    const { app, service, authorizeOwner } = buildApp();
+    const response = await request(app)
+      .get("/api/explorers/analytics/events")
+      .query({
+        accountId: "account-1",
+        fromDate: "2011-12-30",
+        toDate: "2011-12-30",
+        timeZone: "Pacific/Apia",
+      });
+
+    expect(response.status).toBe(400);
+    expect(authorizeOwner).not.toHaveBeenCalled();
+    expect(service.readAccountEvents).not.toHaveBeenCalled();
+  });
+
+  it.each(["2011-12-29", "2011-12-31"])(
+    "accepts a valid calendar date adjacent to Pacific/Apia's skipped day: %s",
+    async (date) => {
+      const { app, service } = buildApp();
+      const response = await request(app)
+        .get("/api/explorers/analytics/events")
+        .query({
+          accountId: "account-1",
+          fromDate: date,
+          toDate: date,
+          timeZone: "Pacific/Apia",
+        });
+
+      expect(response.status).toBe(200);
+      expect(service.readAccountEvents).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("rejects a timezone alias that is not an IANA timezone", async () => {
     const { app, service, authorizeOwner } = buildApp();
     const response = await request(app)
