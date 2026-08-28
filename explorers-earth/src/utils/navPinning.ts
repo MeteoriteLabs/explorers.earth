@@ -93,3 +93,15 @@ export function computePinnedNavTabIds(
     .filter((id) => visible.has(id))
     .slice(0, MAX_NAV_SLOTS);
 }
+
+export function getNavSlotExclusion(
+  account: AccountLike | null | undefined,
+  tabId: string,
+  options: { musicAvailable?: boolean } = {},
+): { reason: "slot-limit"; maxSlots: number } | null {
+  const eligible = getVisibleNavTabIds(account);
+  if (account?.public_music === "Yes" && options.musicAvailable) eligible.add("public_music");
+  if (!eligible.has(tabId)) return null;
+  const selected = computePinnedNavTabIds(account, {}, options);
+  return selected.includes(tabId) ? null : { reason: "slot-limit", maxSlots: MAX_NAV_SLOTS };
+}

@@ -945,4 +945,28 @@ describe("Music workspace UI", () => {
     expect(screen.getByLabelText("Music share link")).toHaveValue(`${window.location.origin}/music/share/public-slug-123`);
     expect(screen.getByRole("link", { name: "Preview public Music page" })).toHaveAttribute("target", "_blank");
   });
+
+  it.each([
+    ["No", "private", "Hidden from profile", "Enable profile Music"],
+    ["Yes", "private", "Profile enabled, Music not public", "Make Music public"],
+    ["No", "public", "Public link active, profile tab hidden", "Show on profile"],
+    ["Yes", "public", "Live on profile", "View as guest"],
+  ] as const)("renders owner readiness for %s/%s", (profilePreference, mode, label, action) => {
+    render(<MusicDashboard
+      data={{ ...base, dashboard: { ...base.dashboard, publication: { mode, publicSlug: mode === "public" ? "public-slug-123" : "" } } }}
+      scope={scope}
+      profileMusicPreference={profilePreference}
+    />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: action })).toBeInTheDocument();
+  });
+
+  it("never claims Live when publication status is unavailable and offers refresh", async () => {
+    const refresh = vi.fn(async () => undefined);
+    render(<MusicDashboard data={{ ...base, refetch: refresh, dashboard: { ...base.dashboard, publication: { mode: "public", publicSlug: "public-slug-123" } } }} scope={scope} profileMusicPreference="Yes" publicationStatusAvailable={false} />);
+    expect(screen.getByText("Status unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Live on profile")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry status" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
 });

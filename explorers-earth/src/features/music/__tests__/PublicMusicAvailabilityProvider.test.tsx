@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublicMusicAvailabilityProvider, usePublicMusicAvailability } from "../PublicMusicAvailabilityProvider";
 
 const discover = vi.hoisted(() => vi.fn());
@@ -31,6 +31,7 @@ describe("PublicMusicAvailabilityProvider", () => {
     discover.mockReset();
     useQuery.mockReset();
   });
+  afterEach(() => vi.useRealTimers());
 
   it("shares one Account-document descriptor request across all consumers", async () => {
     useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false });
@@ -48,5 +49,17 @@ describe("PublicMusicAvailabilityProvider", () => {
     renderProvider();
     expect(screen.getByText("nav:not-public:none")).toBeInTheDocument();
     expect(discover).not.toHaveBeenCalled();
+  });
+
+  it("expires availability, refetches canonically, and removes revoked eligibility", async () => {
+    vi.useFakeTimers();
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false });
+    discover.mockResolvedValueOnce({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 1 } })
+      .mockRejectedValueOnce(Object.assign(new Error("PUBLIC_NOT_FOUND"), { code: "PUBLIC_NOT_FOUND" }));
+    renderProvider();
+    await vi.waitFor(() => expect(screen.getByText("nav:available:public_slug-123")).toBeInTheDocument());
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    await vi.waitFor(() => expect(screen.getByText("nav:not-public:none")).toBeInTheDocument());
+    expect(discover).toHaveBeenCalledTimes(2);
   });
 });

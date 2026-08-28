@@ -36,6 +36,7 @@ const musicPageEligibilityQuery = gql`
         Account_Name
         Account_Type
         mobile_number
+        public_music
       }
     }
   }
@@ -98,6 +99,7 @@ export function MusicPageContent({
   onAction,
   statusRef,
   ownerWorkspace = false,
+  profileMusicPreference,
 }: {
   authenticated: boolean;
   onboarding: MusicOnboarding;
@@ -106,6 +108,7 @@ export function MusicPageContent({
   onAction: (action: keyof typeof actionLabels) => void;
   statusRef?: RefObject<HTMLDivElement>;
   ownerWorkspace?: boolean;
+  profileMusicPreference?: "Yes" | "No" | null;
 }) {
   const state = selectMusicSurfaceState({
     lifecycle: lifecycleFrom(data),
@@ -168,7 +171,7 @@ export function MusicPageContent({
                 {actionLabels[state.secondaryAction]}
               </button>
             )}
-            <MusicDashboard data={data} scope={scope!} readOnly={state.kind === "content_stale"} complete={ownerWorkspace} />
+            <MusicDashboard data={data} scope={scope!} readOnly={state.kind === "content_stale"} complete={ownerWorkspace} profileMusicPreference={profileMusicPreference} publicationStatusAvailable={!data.error} />
           </div>
         )}
       </div>
@@ -193,6 +196,11 @@ const MusicPage = () => {
     userDocumentId: user.documentId,
     accountDocumentId: selection.account.documentId,
   } : undefined;
+  const selectedAccount = selection.kind === "selected"
+    ? eligibility.data?.usersPermissionsUser?.accounts?.find((candidate: ExplorerAccountCandidate) => candidate.documentId === selection.account.documentId)
+    : undefined;
+  const rawProfileMusicPreference = (selectedAccount as (typeof selectedAccount & { public_music?: unknown }))?.public_music;
+  const profileMusicPreference = rawProfileMusicPreference === "Yes" ? "Yes" : rawProfileMusicPreference === "No" ? "No" : null;
   const data = useTunesDashboard(scope);
   const [ownerWorkspace, setOwnerWorkspace] = useState(false);
   const previousScope = useRef<MusicRolloutScope>();
@@ -229,7 +237,7 @@ const MusicPage = () => {
         noIndex
         siteName="explorers"
       />
-      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} scope={scope} onAction={action} statusRef={statusRef} ownerWorkspace={ownerWorkspace} />
+      <MusicPageContent authenticated={isAuthenticated} onboarding={onboarding} data={data} scope={scope} onAction={action} statusRef={statusRef} ownerWorkspace={ownerWorkspace} profileMusicPreference={profileMusicPreference} />
     </>
   );
 };

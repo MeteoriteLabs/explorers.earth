@@ -23,12 +23,15 @@ import { MusicSectionTabs, type MusicSection } from "../features/music/component
 import { MusicPlaylistCollection } from "../features/music/components/MusicPlaylistCollection";
 import { createMusicPlaybackArbiter, type MusicPlaybackCommand } from "../features/music/components/musicPlaybackCommand";
 import Switch from "./ui/Switch";
+import { getMusicPublicationReadiness } from "../features/music/musicPublicationReadiness";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
   scope: MusicPublicationOwnerScope;
   readOnly?: boolean;
   complete?: boolean;
+  profileMusicPreference?: "Yes" | "No" | null;
+  publicationStatusAvailable?: boolean;
 }
 
 const completeQueueClient = createMusicQueueClient((input) => musicApi.request(input));
@@ -527,7 +530,7 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, onCommitt
   );
 }
 
-export default function MusicDashboard({ data, scope, readOnly = false, complete = false }: MusicDashboardProps) {
+export default function MusicDashboard({ data, scope, readOnly = false, complete = false, profileMusicPreference, publicationStatusAvailable = true }: MusicDashboardProps) {
   const [section, setSection] = useState<MusicSection>("playlists");
   const [createOpen, setCreateOpen] = useState(false);
   const [createPublic, setCreatePublic] = useState(false);
@@ -628,8 +631,27 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
     emptyAction={createAction}
   />;
 
+  const readiness = profileMusicPreference === undefined ? undefined : getMusicPublicationReadiness({
+    profilePreference: profileMusicPreference,
+    publicationMode: data.dashboard?.publication.mode ?? "private",
+    statusAvailable: publicationStatusAvailable,
+  });
+  const publicSlug = data.dashboard?.publication.publicSlug;
+  const primaryHref = readiness?.state === "live" && publicSlug
+    ? `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}`
+    : readiness?.state === "setup-required" ? "#music-sharing" : "/settings#public-navigation";
+
   return (
     <div className="space-y-5">
+      {readiness && <section aria-label="Public Music readiness" className="rounded-xl border border-dashboard bg-dashboard-sidebar p-4">
+        <p className="font-semibold text-dashboard">{readiness.label}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {readiness.state === "unavailable"
+            ? <button type="button" onClick={() => void refresh().catch(() => undefined)} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{readiness.primaryAction}</button>
+            : <a href={primaryHref} onClick={readiness.state === "setup-required" ? (event) => { event.preventDefault(); setSharingOpen(true); } : undefined} className={`${buttonClass} inline-flex items-center bg-dashboard-accent text-[var(--dash-accent-text)]`}>{readiness.primaryAction}</a>}
+          <a href={readiness.state === "live" && publicSlug ? `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}` : "/music"} className={`${buttonClass} inline-flex items-center bg-dashboard-muted text-dashboard`}>{readiness.secondaryAction}</a>
+        </div>
+      </section>}
       {playlistReconciliation && <div role="alert" aria-label="Playlist reconciliation needed" className="rounded-xl border border-dashboard bg-dashboard-sidebar p-4 text-sm text-dashboard-light">
         <p>{playlistReconciliation}</p>
         <button type="button" onClick={() => void refresh().catch(() => undefined)} className={`${buttonClass} mt-3 bg-dashboard-muted text-dashboard`}>Retry loading playlists</button>

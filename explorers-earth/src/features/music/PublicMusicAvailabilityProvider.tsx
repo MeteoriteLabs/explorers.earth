@@ -8,6 +8,7 @@ type AvailabilityState = "loading" | "available" | "not-public" | "unavailable";
 type Availability = { state: AvailabilityState; account?: Record<string, any>; descriptor?: PublicMusicDescriptor; retry: () => void };
 const AvailabilityContext = createContext<Availability | null>(null);
 const unavailableOutsideProfileShell: Availability = { state: "unavailable", retry: () => undefined };
+export const PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS = 30_000;
 
 export function PublicMusicAvailabilityProvider({ children }: { children: ReactNode }) {
   const { username } = useParams();
@@ -29,10 +30,17 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
     publicMusicClient.discover(account.documentId, controller.signal).then((value) => {
       if (!controller.signal.aborted) { setDescriptor(value); setDescriptorState("available"); }
     }).catch((reason: unknown) => {
-      if (!controller.signal.aborted) setDescriptorState(reason instanceof PublicMusicError && reason.code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable");
+      const code = reason instanceof PublicMusicError ? reason.code : (reason as { code?: unknown } | null)?.code;
+      if (!controller.signal.aborted) setDescriptorState(code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable");
     });
     return () => controller.abort();
   }, [account?.documentId, account?.public_music, attempt, error, loading]);
+
+  useEffect(() => {
+    if (descriptorState !== "available") return;
+    const timer = window.setTimeout(() => setAttempt((value) => value + 1), PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS);
+    return () => window.clearTimeout(timer);
+  }, [descriptorState, descriptor?.publication.revision]);
 
   useEffect(() => {
     const invalidate = () => setAttempt((value) => value + 1);

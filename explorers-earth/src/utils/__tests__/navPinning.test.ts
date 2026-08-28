@@ -5,6 +5,7 @@ import {
   resolveAutoPinning,
   normalizePinnedTabs,
   computePinnedNavTabIds,
+  getNavSlotExclusion,
 } from "../navPinning";
 
 const ZERO_COUNTS: Record<string, number> = {};
@@ -118,6 +119,14 @@ describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
 });
 
 describe("computePinnedNavTabIds — manual mode", () => {
+  it("explains when enabled Music is excluded by the five-slot manual selection", () => {
+    const account = {
+      auto_pinning: false,
+      public_music: "Yes",
+      pinned_nav_tabs: ["public_profile", "public_recommendations", "public_guides", "public_movie", "public_books"],
+    };
+    expect(getNavSlotExclusion(account, "public_music", { musicAvailable: true })).toEqual({ reason: "slot-limit", maxSlots: 5 });
+  });
   it("retains a stored Music position while unavailable and restores it without blanks or duplicates", () => {
     const account = {
       auto_pinning: false,

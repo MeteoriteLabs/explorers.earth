@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { updateAccountMutation } from "../features/Settings/api/mutation";
 import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
 import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
-import { computePinnedNavTabIds, getVisibleNavTabIds, resolveAutoPinning } from "../utils/navPinning";
+import { computePinnedNavTabIds, getNavSlotExclusion, getVisibleNavTabIds, resolveAutoPinning } from "../utils/navPinning";
+import MusicNavLimitNotice from "../components/MusicNavLimitNotice";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -959,8 +960,10 @@ const RecommendationsHub = () => {
 
   // Effective public-nav state, derived exactly like PublicNav (the live nav).
   const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);
-  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap), [account, countMap]);
+  const musicAvailable = account?.public_music === "Yes";
+  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap, { musicAvailable }), [account, countMap, musicAvailable]);
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
+  const musicSlotExclusion = getNavSlotExclusion(account, "public_music", { musicAvailable });
 
   // A category can be made public once it has publishable content.
   const hasPublishedContent = (cat: CategoryConfig): boolean => {
@@ -1155,6 +1158,8 @@ const RecommendationsHub = () => {
           Curate, organize, and share your favorite places, movies, books, games, tools, and guides across the world.
         </p>
       </div>
+
+      {musicSlotExclusion && <MusicNavLimitNotice maxSlots={musicSlotExclusion.maxSlots} />}
 
       {/* Main 3x3 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
