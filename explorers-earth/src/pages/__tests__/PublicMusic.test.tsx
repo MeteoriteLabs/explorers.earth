@@ -14,6 +14,9 @@ vi.mock("../../features/music/publicMusicClient", () => ({
 }));
 
 vi.mock("../../components/SEO", () => ({ default: () => null }));
+vi.mock("react-player", () => ({
+  default: (props: Record<string, unknown>) => <div data-testid="guest-media" data-playing={String(props.playing)} />,
+}));
 
 const playing = { id: "P".repeat(43), youtubeId: "abcdefghijk", title: "Now", artist: "Artist", thumbnailUrl: "https://images.example/now.jpg", position: 0, status: "playing" as const, playedAt: null };
 const queued = { ...playing, id: "Q".repeat(43), title: "Next", status: "queued" as const, position: 1 };
@@ -99,7 +102,7 @@ describe("public Music page", () => {
     expect(screen.queryByRole("heading", { name: "Playing now & up next" })).not.toBeInTheDocument();
   });
 
-  it("renders a playback-eligible source without prematurely shipping player controls", () => {
+  it("renders local playback controls only for a playback-eligible source", () => {
     render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
       permissions: { ...resource().permissions, allowGuestPlayOnDevice: true },
       currentlyPlaying: playing,
@@ -107,7 +110,7 @@ describe("public Music page", () => {
     expect(screen.getByRole("heading", { name: "Play on this device" })).toBeInTheDocument();
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Up next" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Play Now on this device" })).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 

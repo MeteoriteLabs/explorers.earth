@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient";
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
+import { PublicMusicPlayer } from "./PublicMusicPlayer";
 
 function CollectionSummary({ shown, total, noun }: { shown: number; total: number; noun?: string }) {
   if (total <= shown) return null;
@@ -25,16 +27,38 @@ function SongDetails({ song }: { song: PublicMusicSong }) {
   );
 }
 
-function SongRow({ song }: { song: PublicMusicSong }) {
+function SongRow({ song, playable = false, selected = false, onSelect }: {
+  song: PublicMusicSong;
+  playable?: boolean;
+  selected?: boolean;
+  onSelect?: (song: PublicMusicSong) => void;
+}) {
   return (
     <li className="flex min-h-11 min-w-0 items-center gap-3 py-3">
-      <SongArtwork song={song} />
-      <SongDetails song={song} />
+      {playable ? (
+        <button
+          type="button"
+          aria-label={`Choose ${song.title} to play on this device`}
+          aria-current={selected ? "true" : undefined}
+          onClick={() => onSelect?.(song)}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dashboard-accent"
+        >
+          <SongArtwork song={song} />
+          <SongDetails song={song} />
+          {selected ? <span className="ml-auto shrink-0 text-xs font-semibold">Selected</span> : null}
+        </button>
+      ) : (
+        <>
+          <SongArtwork song={song} />
+          <SongDetails song={song} />
+        </>
+      )}
     </li>
   );
 }
 
 export function PublicMusicSections({ resource }: { resource: PublicMusicResource }) {
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const policy = derivePublicMusicViewPolicy(resource);
   const playableSong = policy.playerEligible
     ? resource.currentlyPlaying
@@ -43,6 +67,14 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
         ? resource.playlists.items.find((playlist) => playlist.songs.items.length > 0)?.songs.items[0]
         : undefined)
     : undefined;
+  const selectableSongs = policy.playerEligible
+    ? [
+      ...(policy.currentVisible && resource.currentlyPlaying ? [resource.currentlyPlaying] : []),
+      ...(policy.queueVisible ? resource.queue.items : []),
+      ...(policy.playlistsVisible ? resource.playlists.items.flatMap((playlist) => playlist.songs.items) : []),
+    ]
+    : [];
+  const selectedSong = selectableSongs.find(({ id }) => id === selectedSongId) ?? playableSong;
   const hasVisibleContent = policy.currentVisible
     || (policy.queueVisible && resource.queue.items.length > 0)
     || (policy.historyVisible && resource.recentlyPlayed.items.length > 0)
@@ -61,10 +93,7 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
       {playableSong ? (
         <section className="min-w-0" data-testid="public-music-player" aria-labelledby="public-music-player-heading">
           <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
-          <div className="mt-3 flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-dashboard-card p-4">
-            <SongArtwork song={playableSong} />
-            <SongDetails song={playableSong} />
-          </div>
+          {selectedSong ? <PublicMusicPlayer song={selectedSong} allowed={policy.playerEligible} /> : null}
         </section>
       ) : null}
 
@@ -85,7 +114,15 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
           ) : null}
           {resource.queue.items.length > 0 ? (
             <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
-              {resource.queue.items.map((song) => <SongRow key={song.id} song={song} />)}
+              {resource.queue.items.map((song) => (
+                <SongRow
+                  key={song.id}
+                  song={song}
+                  playable={policy.playerEligible}
+                  selected={selectedSong?.id === song.id}
+                  onSelect={(selection) => setSelectedSongId(selection.id)}
+                />
+              ))}
             </ol>
           ) : <p className="mt-3 text-dashboard-text-muted">Nothing queued yet</p>}
         </section>
@@ -108,7 +145,15 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
                   <CollectionSummary shown={playlist.songs.items.length} total={playlist.songs.total} noun="songs" />
                   {playlist.songs.items.length > 0 ? (
                     <ol className="mt-3 divide-y divide-dashboard-border" aria-label={`${playlist.name} songs`}>
-                      {playlist.songs.items.map((song) => <SongRow key={song.id} song={song} />)}
+                      {playlist.songs.items.map((song) => (
+                        <SongRow
+                          key={song.id}
+                          song={song}
+                          playable={policy.playerEligible}
+                          selected={selectedSong?.id === song.id}
+                          onSelect={(selection) => setSelectedSongId(selection.id)}
+                        />
+                      ))}
                     </ol>
                   ) : <p className="mt-3 text-sm text-dashboard-text-muted">No songs in this playlist yet</p>}
                 </article>

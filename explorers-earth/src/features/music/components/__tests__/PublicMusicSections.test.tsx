@@ -1,8 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PublicMusicResource, PublicMusicSong } from "../../publicMusicClient";
 import { PublicMusicSections } from "../PublicMusicSections";
+
+vi.mock("react-player", () => ({
+  default: (props: Record<string, unknown>) => (
+    <div data-testid="guest-media" data-playing={String(props.playing)} data-src={String(props.src)} />
+  ),
+}));
 
 const song = (
   id: string,
@@ -85,9 +92,9 @@ describe("PublicMusicSections permission oracle", () => {
       ];
       expect(screen.queryAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(expectedReadingOrder);
 
-      // Task 8 exposes sources but does not ship Task 9 playback controls or
-      // Task 10 request controls early.
-      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Play .* on this device$/ })).toBe(playback
+        ? screen.getByRole("button", { name: /^Play .* on this device$/ })
+        : null);
       expect(screen.queryByRole("link")).not.toBeInTheDocument();
       expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     },
@@ -101,6 +108,29 @@ describe("PublicMusicSections permission oracle", () => {
     render(<PublicMusicSections resource={resource} />);
     expect(screen.queryByTestId("public-music-player")).not.toBeInTheDocument();
     expect(screen.getByText("Nothing has been shared here yet")).toBeInTheDocument();
+  });
+
+  it("selects an exposed playlist song for local playback without autoplaying it", async () => {
+    const user = userEvent.setup();
+    render(<PublicMusicSections resource={populatedResource(2 | 4)} />);
+    await user.click(screen.getByRole("button", { name: "Choose Playlist signal to play on this device" }));
+    expect(screen.getByRole("button", { name: "Play Playlist signal on this device" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose Playlist signal to play on this device" })).toHaveAttribute("aria-current", "true");
+  });
+
+  it("removes playback controls and the media surface on canonical permission revocation", async () => {
+    const user = userEvent.setup();
+    const initial = populatedResource(2 | 4);
+    const { rerender } = render(<PublicMusicSections resource={initial} />);
+    await user.click(screen.getByRole("button", { name: /Play Current signal/ }));
+
+    rerender(<PublicMusicSections resource={{
+      ...initial,
+      revision: 8,
+      permissions: { ...initial.permissions, allowGuestPlayOnDevice: false },
+    }} />);
+    expect(screen.queryByTestId("public-music-player")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /on this device/ })).not.toBeInTheDocument();
   });
 
   it("uses one page-level empty state instead of stacking enabled-empty messages", () => {
