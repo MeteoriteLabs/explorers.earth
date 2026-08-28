@@ -31,14 +31,17 @@ const signingPath = resolve(signingRoot, "current");
 const runtimeDatabasePasswordPath = resolve(signingRoot, "database-runtime");
 const lifecycleProofPath = resolve(signingRoot, "lifecycle-proof");
 const publicationResponsePath = resolve(signingRoot, "publication-response");
+const publicIdHmacPath = resolve(signingRoot, "public-id-hmac");
 writeFileSync(signingPath, Buffer.alloc(32, 0x61).toString("base64url"), { mode: 0o600 });
 writeFileSync(runtimeDatabasePasswordPath, Buffer.alloc(32, 0x62).toString("base64url"), { mode: 0o600 });
 writeFileSync(lifecycleProofPath, "dedicated-read-only-lifecycle-proof-token", { mode: 0o600 });
 writeFileSync(publicationResponsePath, Buffer.alloc(32, 0x63).toString("base64url"), { mode: 0o600 });
+writeFileSync(publicIdHmacPath, Buffer.alloc(32, 0x64).toString("base64url"), { mode: 0o600 });
 chmodSync(signingPath, 0o600);
 chmodSync(runtimeDatabasePasswordPath, 0o600);
 chmodSync(lifecycleProofPath, 0o600);
 chmodSync(publicationResponsePath, 0o600);
+chmodSync(publicIdHmacPath, 0o600);
 afterAll(() => rmSync(signingRoot, { recursive: true, force: true }));
 
 function withSigningFile(environment: Record<string, string>): Record<string, string> {
@@ -60,6 +63,8 @@ function withSigningFile(environment: Record<string, string>): Record<string, st
       ? "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI"
       : "",
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: fixture ? "" : publicationResponsePath,
+    MUSIC_PUBLIC_ID_HMAC_KEY: fixture ? "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ" : "",
+    MUSIC_PUBLIC_ID_HMAC_KEY_FILE: fixture ? "" : publicIdHmacPath,
   };
 }
 
@@ -250,6 +255,18 @@ describe("discriminated Music startup bootstrap", () => {
       loadRuntime: loadInvalid,
     })).rejects.toThrow(/MUSIC_FIXTURE_VERSION/);
     expect(loadInvalid).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing public-ID HMAC authority before route import or listener bind", async () => {
+    const loadRuntime = vi.fn(async () => controlledRuntime([]));
+    await expect(startMusicServer({
+      ...withSigningFile(renderedProductionEnvironment()),
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: "",
+    }, {
+      resolveAddresses: async () => ["8.8.8.8"],
+      loadRuntime,
+    })).rejects.toThrow(/public.?id|HMAC|secure file|required/i);
+    expect(loadRuntime).not.toHaveBeenCalled();
   });
 
   it("rejects an insecure live key file before route import or listener bind", async () => {

@@ -26,6 +26,7 @@ const validEnvironment = {
   MUSIC_SIGNING_KEY_PREVIOUS_SECRET: "fixture-previous-secret-at-least-32-chars",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+  MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
   MUSIC_CONNECT_TIMEOUT_MS: "5000",
   MUSIC_READ_TIMEOUT_MS: "10000",
   MUSIC_CIRCUIT_FAILURE_THRESHOLD: "3",
@@ -45,6 +46,7 @@ describe("server-side Music environment contract", () => {
       expect(example).toContain("MUSIC_EXPECTED_MIGRATION_ID=0020_public_snapshot_revision");
       expect(example).toContain("MUSIC_COHORT_ENABLED=false");
       expect(example).toContain("MUSIC_COHORT_USER_DOCUMENT_IDS=");
+      expect(example).toContain("MUSIC_PUBLIC_ID_HMAC_KEY=VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ");
     }
   });
 

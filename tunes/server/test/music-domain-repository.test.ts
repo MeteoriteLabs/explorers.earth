@@ -893,47 +893,61 @@ describe("MusicDomainRepository owner predicates", () => {
     "allowRecentlyPlayedVisibility",
     "allowQueueVisibility",
   ] as const;
+  const publicIdKey = Buffer.alloc(32, 0x54);
+  const alternatePublicIdKey = Buffer.alloc(32, 0x55);
 
   function publicResourceHarness(mask: number, options: {
     oversized?: boolean;
-    internalIdOffset?: number;
     playlistDescription?: string | null;
     thumbnailUrl?: string;
     duplicateQueue?: boolean;
+    queueIds?: number[];
+    currentId?: number;
+    metadataSuffix?: string;
+    positionOffset?: number;
+    playlistNameSuffix?: string;
+    playlistSongBaseId?: number;
   } = {}) {
     const {
       oversized = false,
-      internalIdOffset = 0,
       playlistDescription = null,
       thumbnailUrl,
       duplicateQueue = false,
+      queueIds,
+      currentId = 9,
+      metadataSuffix = "",
+      positionOffset = 0,
+      playlistNameSuffix = "",
+      playlistSongBaseId = 1_000,
     } = options;
     const permissions = Object.fromEntries(permissionKeys.map((key, index) => [key, (mask & (1 << index)) !== 0])) as Record<typeof permissionKeys[number], boolean>;
     const song = (contentId: number, status: "queued" | "playing" | "played" | "saved", position = 0) => ({
-      id: contentId + internalIdOffset,
+      id: contentId,
       youtube_id: `song${contentId}`.padEnd(11, "0").slice(0, 11),
-      title: oversized ? "T".repeat(1_024) : `${status} ${contentId}`,
-      artist: oversized ? "A".repeat(1_024) : "Artist",
+      title: oversized ? "T".repeat(1_024) : `${status} ${contentId}${metadataSuffix}`,
+      artist: oversized ? "A".repeat(1_024) : `Artist${metadataSuffix}`,
       thumbnail_url: thumbnailUrl ?? (oversized ? `https://img.example/${"x".repeat(1_900)}${contentId}` : `https://img.example/${contentId}`),
-      position,
+      position: position + positionOffset,
       status,
       played_at: status === "played" ? new Date("2026-08-28T12:00:00.000Z") : null,
     });
-    const queue = duplicateQueue
-      ? [song(10, "queued", 0), { ...song(10, "queued", 0), id: 11 + internalIdOffset }]
+    const queue = queueIds
+      ? queueIds.map((id, index) => song(id, "queued", index))
+      : duplicateQueue
+      ? [song(10, "queued", 0), { ...song(10, "queued", 0), id: 11 }]
       : Array.from({ length: oversized ? 101 : 1 }, (_, index) => song(index + 10, "queued", index));
     const history = Array.from({ length: oversized ? 51 : 1 }, (_, index) => song(index + 200, "played", index));
     const playlists = Array.from({ length: oversized ? 21 : 2 }, (_, playlistIndex) => {
       const privatePlaylist = !oversized && playlistIndex === 1;
       const songCount = oversized ? 51 : 1;
       return Array.from({ length: songCount }, (_, songIndex) => ({
-        playlist_internal_id: playlistIndex + 500 + internalIdOffset,
-        playlist_name: privatePlaylist ? "Private playlist" : `Public playlist ${playlistIndex}`,
+        playlist_internal_id: playlistIndex + 500,
+        playlist_name: privatePlaylist ? "Private playlist" : `Public playlist ${playlistIndex}${playlistNameSuffix}`,
         playlist_description: playlistDescription,
         playlist_visible: !privatePlaylist,
         playlist_total: oversized ? 21 : 1,
         playlist_song_total: songCount,
-        ...song(playlistIndex * 100 + songIndex + 1_000, "saved", songIndex),
+        ...song(playlistIndex * 100 + songIndex + playlistSongBaseId, "saved", songIndex),
       }));
     }).flat();
     const calls: string[] = [];
@@ -959,7 +973,7 @@ describe("MusicDomainRepository owner predicates", () => {
         history_total: history.length,
         playlist_total: oversized ? 21 : 1,
       }], rowCount: 1 };
-      if (/status='playing'/.test(normalized)) return { rows: [song(9, "playing")], rowCount: 1 };
+      if (/status='playing'/.test(normalized)) return { rows: [song(currentId, "playing")], rowCount: 1 };
       if (/status='queued'/.test(normalized)) return { rows: queue, rowCount: queue.length };
       if (/status='played'/.test(normalized)) return { rows: history, rowCount: history.length };
       if (/bounded_playlists/.test(normalized)) return { rows: playlists, rowCount: playlists.length };
@@ -968,12 +982,19 @@ describe("MusicDomainRepository owner predicates", () => {
     return { calls, permissions, pool: { query, connect: async () => ({ query, release() {} }) } };
   }
 
+  function publicResourceRepository(
+    harness: ReturnType<typeof publicResourceHarness>,
+    key: Buffer = publicIdKey,
+  ): MusicDomainRepository {
+    return new MusicDomainRepository(harness.pool as never, undefined, key);
+  }
+
   it.each(Array.from({ length: 32 }, (_, mask) => mask))(
     "enforces public resource field exposure and interactivity for permission mask %i",
     async (mask) => {
       // Break caught: any permission combination leaks a protected collection or upgrades queue visibility into playback authority.
       const harness = publicResourceHarness(mask);
-      const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
+      const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
       const resource = result?.resource;
       expect(result?.state).toBe("public");
       expect(resource?.version).toBe("music-public-resource/v1");
@@ -998,7 +1019,7 @@ describe("MusicDomainRepository owner predicates", () => {
   it("bounds every public collection before aggregation, hides nested authority, and caps encoded JSON", async () => {
     // Break caught: legacy oversized rows or an internal nested identifier can create an unbounded/authority-bearing public response.
     const harness = publicResourceHarness(31, { oversized: true });
-    const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
     const resource = result.resource;
     expect(resource.queue).toMatchObject({ total: 101, truncated: true });
     expect(resource.queue.items.length).toBeLessThanOrEqual(100);
@@ -1028,7 +1049,7 @@ describe("MusicDomainRepository owner predicates", () => {
   it("preserves empty descriptions and normalizes legacy non-URL thumbnails to null", async () => {
     // Break caught: valid empty owner text or legacy thumbnail values turn a public resource into a 500/parser mismatch.
     const harness = publicResourceHarness(31, { playlistDescription: "", thumbnailUrl: "legacy-thumbnail" });
-    const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
 
     expect(result.resource.playlists.items[0].description).toBe("");
     expect(result.resource.currentlyPlaying.thumbnailUrl).toBeNull();
@@ -1037,28 +1058,67 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(result.resource.playlists.items[0].songs.items[0].thumbnailUrl).toBeNull();
 
     const canonicalHarness = publicResourceHarness(31, { thumbnailUrl: "HTTP://IMG.EXAMPLE/legacy cover" });
-    const canonical = await (new MusicDomainRepository(canonicalHarness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    const canonical = await (publicResourceRepository(canonicalHarness) as any).resolvePublicMusicResource("public-slug");
     expect(canonical.resource.currentlyPlaying.thumbnailUrl).toBe("http://img.example/legacy%20cover");
 
     const credentialHarness = publicResourceHarness(31, { thumbnailUrl: "https://user:secret@img.example/cover" });
-    const credentialSafe = await (new MusicDomainRepository(credentialHarness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    const credentialSafe = await (publicResourceRepository(credentialHarness) as any).resolvePublicMusicResource("public-slug");
     expect(credentialSafe.resource.currentlyPlaying.thumbnailUrl).toBeNull();
   });
 
-  it("derives unique public content keys without numeric internal IDs", async () => {
-    // Break caught: low-entropy serial database IDs remain an oracle in otherwise opaque public keys.
-    const first = publicResourceHarness(31, { duplicateQueue: true });
-    const shifted = publicResourceHarness(31, { duplicateQueue: true, internalIdOffset: 10_000 });
-    const firstResource = (await (new MusicDomainRepository(first.pool as never) as any).resolvePublicMusicResource("public-slug")).resource;
-    const shiftedResource = (await (new MusicDomainRepository(shifted.pool as never) as any).resolvePublicMusicResource("public-slug")).resource;
-    const publicIds = (resource: any) => ({
-      current: resource.currentlyPlaying.id,
-      queue: resource.queue.items.map((song: any) => song.id),
-      history: resource.recentlyPlayed.items.map((song: any) => song.id),
-      playlists: resource.playlists.items.map((playlist: any) => ({ id: playlist.id, songs: playlist.songs.items.map((song: any) => song.id) })),
+  it("keeps entity public IDs stable across metadata, position, status, and ordering changes", async () => {
+    // Break caught: public React keys rotate when owner metadata or ordering changes.
+    const firstHarness = publicResourceHarness(31, { currentId: 9, queueIds: [10, 11] });
+    const changedHarness = publicResourceHarness(31, {
+      currentId: 20,
+      queueIds: [11, 9, 10],
+      metadataSuffix: " edited",
+      positionOffset: 37,
+      playlistNameSuffix: " renamed",
     });
+    const first = (await (publicResourceRepository(firstHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+    const changed = (await (publicResourceRepository(changedHarness) as any).resolvePublicMusicResource("public-slug")).resource;
 
-    expect(publicIds(firstResource)).toEqual(publicIds(shiftedResource));
-    expect(new Set(firstResource.queue.items.map((song: any) => song.id)).size).toBe(2);
+    expect(changed.queue.items[1].id).toBe(first.currentlyPlaying.id);
+    expect(changed.queue.items[2].id).toBe(first.queue.items[0].id);
+    expect(changed.queue.items[0].id).toBe(first.queue.items[1].id);
+    expect(changed.playlists.items[0].id).toBe(first.playlists.items[0].id);
+  });
+
+  it("uses opaque keyed identities that distinguish duplicates and never transfer on delete/insert", async () => {
+    // Break caught: ordinal identities let a replacement row inherit a deleted row's public key.
+    const beforeHarness = publicResourceHarness(31, { duplicateQueue: true });
+    const afterHarness = publicResourceHarness(31, { queueIds: [11, 12] });
+    const before = (await (publicResourceRepository(beforeHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+    const after = (await (publicResourceRepository(afterHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+
+    expect(new Set(before.queue.items.map((song: any) => song.id)).size).toBe(2);
+    expect(after.queue.items[0].id).toBe(before.queue.items[1].id);
+    expect(after.queue.items[1].id).not.toBe(before.queue.items[0].id);
+    for (const publicId of [...before.queue.items, ...after.queue.items].map((song: any) => song.id)) {
+      expect(publicId).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(publicId).not.toContain("10");
+      expect(publicId).not.toContain("11");
+      expect(publicId).not.toContain("12");
+    }
+  });
+
+  it("is deterministic only within the same public-ID key and separates entity types", async () => {
+    const harnessA = publicResourceHarness(31, { currentId: 1_001, queueIds: [1_001], playlistSongBaseId: 1_001 });
+    const harnessB = publicResourceHarness(31, { currentId: 1_001, queueIds: [1_001], playlistSongBaseId: 1_001 });
+    const sameKeyA = (await (publicResourceRepository(harnessA) as any).resolvePublicMusicResource("public-slug")).resource;
+    const sameKeyB = (await (publicResourceRepository(harnessB) as any).resolvePublicMusicResource("public-slug")).resource;
+    const differentKey = (await (publicResourceRepository(publicResourceHarness(31, { currentId: 1_001, queueIds: [1_001], playlistSongBaseId: 1_001 }), alternatePublicIdKey) as any)
+      .resolvePublicMusicResource("public-slug")).resource;
+
+    expect(sameKeyA.currentlyPlaying.id).toBe(sameKeyA.queue.items[0].id);
+    expect(sameKeyB.currentlyPlaying.id).toBe(sameKeyA.currentlyPlaying.id);
+    expect(differentKey.currentlyPlaying.id).not.toBe(sameKeyA.currentlyPlaying.id);
+    expect(sameKeyA.currentlyPlaying.id).not.toBe(sameKeyA.playlists.items[0].songs.items[0].id);
+    for (const publicId of [
+      sameKeyA.currentlyPlaying.id,
+      sameKeyA.queue.items[0].id,
+      sameKeyA.playlists.items[0].songs.items[0].id,
+    ]) expect(publicId).not.toContain("1001");
   });
 });

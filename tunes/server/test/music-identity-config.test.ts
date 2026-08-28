@@ -30,14 +30,17 @@ const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));
 const validCurrentPath = join(secretRoot, "current");
 const validProofPath = join(secretRoot, "lifecycle-proof");
 const validPublicationPath = join(secretRoot, "publication-current");
+const validPublicIdPath = join(secretRoot, "public-id-hmac");
 const validDatabasePath = join(secretRoot, "database-runtime");
 writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
 writeFileSync(validProofPath, "dedicated-read-only-proof-token", { mode: 0o600 });
 writeFileSync(validPublicationPath, Buffer.alloc(32, 0x52).toString("base64url"), { mode: 0o600 });
+writeFileSync(validPublicIdPath, Buffer.alloc(32, 0x54).toString("base64url"), { mode: 0o600 });
 writeFileSync(validDatabasePath, "dedicated-runtime-database-password", { mode: 0o600 });
 chmodSync(validCurrentPath, 0o600);
 chmodSync(validProofPath, 0o600);
 chmodSync(validPublicationPath, 0o600);
+chmodSync(validPublicIdPath, 0o600);
 chmodSync(validDatabasePath, 0o600);
 
 afterAll(() => {
@@ -71,6 +74,7 @@ const liveBase = {
   MUSIC_TOKEN_CURRENT_SECRET_FILE: validCurrentPath,
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "publication-current-2026-08",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: validPublicationPath,
+  MUSIC_PUBLIC_ID_HMAC_KEY_FILE: validPublicIdPath,
   MUSIC_DATABASE_PASSWORD_FILE: validDatabasePath,
   SESSION_SECRET: "dedicated-session-secret-at-least-thirty-two-bytes",
   COOKIE_SECRET: "dedicated-cookie-secret-at-least-thirty-two-bytes",
@@ -89,6 +93,32 @@ describe("central Music identity startup configuration", () => {
       current: { kid: "publication-current-2026-08", key: Buffer.alloc(32, 0x52) },
       retentionSeconds: 86_400,
     });
+  });
+
+  it("loads a dedicated stable 256-bit public-ID HMAC key without exposing encoded material", async () => {
+    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
+    expect(resolved.publicIdHmacKey).toEqual(Buffer.alloc(32, 0x54));
+    expect(JSON.stringify(resolved)).not.toContain(Buffer.alloc(32, 0x54).toString("base64url"));
+  });
+
+  it.each([
+    ["missing live key file", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined }],
+    ["inline live key", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined, MUSIC_PUBLIC_ID_HMAC_KEY: Buffer.alloc(32, 0x54).toString("base64url") }],
+    ["publication path alias", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: validPublicationPath }],
+    ["token path alias", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: validCurrentPath }],
+  ])("rejects an unsafe %s for public IDs before route registration", async (_label, overrides) => {
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+      .rejects.toThrow(/public.?id|HMAC|dedicated|distinct|alias|secure file/i);
+  });
+
+  it("rejects public-ID HMAC material shared with another protected authority", async () => {
+    const duplicatePath = join(secretRoot, "public-id-duplicate-content");
+    writeFileSync(duplicatePath, Buffer.alloc(32, 0x52).toString("base64url"), { mode: 0o600 });
+    chmodSync(duplicatePath, 0o600);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: duplicatePath,
+    }, { resolveAddresses: publicResolver })).rejects.toThrow(/public.?id|HMAC|dedicated|distinct|authority/i);
   });
 
   it("allows an all-or-none previous publication key only through its bounded UTC replay deadline", async () => {
@@ -160,6 +190,8 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined,
+      MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
     };
     await expect(resolveMusicIdentityRuntimeConfig(fixtureBase)).resolves.toMatchObject({
       publicationResponse: { current: { kid: "fixture-publication-v1" }, retentionSeconds: 86_400 },
@@ -172,6 +204,14 @@ describe("central Music identity startup configuration", () => {
       ...fixtureBase,
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY: Buffer.alloc(32, 0x72).toString("base64url"),
     })).rejects.toThrow(/fixture publication|deterministic|key/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...fixtureBase,
+      MUSIC_PUBLIC_ID_HMAC_KEY: Buffer.alloc(32, 0x71).toString("base64url"),
+    })).rejects.toThrow(/fixture public.?id|deterministic|HMAC|key/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...fixtureBase,
+      MUSIC_PUBLIC_ID_HMAC_KEY: undefined,
+    })).rejects.toThrow(/fixture public.?id|deterministic|HMAC|key/i);
   });
 
   it("requires a dedicated file-backed live lifecycle proof credential and rejects generic authority aliasing", async () => {
@@ -279,6 +319,8 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined,
+      MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
     }, { resolveAddresses: vi.fn(async () => { throw new Error("fixture DNS must not run"); }) });
     expect(fixture.strapiOrigin).toBe("http://strapi:1337");
     expect(fixture.lifecycleProofToken).toBe("fixture-read-only-token");
@@ -296,6 +338,8 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined,
+      MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
     })).rejects.toThrow(/fixture origin/i);
   });
 

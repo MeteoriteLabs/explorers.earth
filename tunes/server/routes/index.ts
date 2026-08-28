@@ -114,7 +114,7 @@ export async function registerRoutes(
     new MusicPublicationResponseCipher(musicConfig.publicationResponse),
   );
   await publicationOperations.verifyReplayReadiness();
-  const musicDomain = new MusicDomainRepository(pool, publicationOperations);
+  const musicDomain = new MusicDomainRepository(pool, publicationOperations, musicConfig.publicIdHmacKey);
   const canonicalDependencies = {
     repository: musicDomain,
     resolvePrincipal: (token: string) => musicPrincipals.resolve(token),

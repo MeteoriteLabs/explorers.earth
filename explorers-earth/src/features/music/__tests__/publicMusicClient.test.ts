@@ -5,6 +5,7 @@ import {
   parsePublicMusicDescriptor,
   parsePublicMusicResource,
   PUBLIC_MUSIC_RESOURCE_MAX_BYTES,
+  type PublicMusicResource,
 } from "../publicMusicClient";
 
 const publicSong = {
@@ -136,13 +137,80 @@ describe("public Music client", () => {
     });
   });
 
-  it("requires exposed current-song data before current visibility or playback interactivity", () => {
-    // Break caught: playback permission alone renders a player without an exposed playable song.
+  it.each([
+    ["current-only", {
+      currentlyPlaying: publicResource.currentlyPlaying,
+      queue: { items: [], total: 0, truncated: false },
+      playlists: { items: [], total: 0, truncated: false },
+    }],
+    ["queue-only", {
+      currentlyPlaying: null,
+      queue: publicResource.queue,
+      playlists: { items: [], total: 0, truncated: false },
+    }],
+    ["playlist-only", {
+      currentlyPlaying: null,
+      queue: { items: [], total: 0, truncated: false },
+      playlists: publicResource.playlists,
+    }],
+  ] as const)("enables the player for an exposed %s playable source", (_label, content) => {
+    expect(derivePublicMusicViewPolicy({
+      ...publicResource,
+      ...content,
+      permissions: {
+        ...publicResource.permissions,
+        allowGuestPlayOnDevice: true,
+        allowQueueVisibility: true,
+        allowPlaylistSharing: true,
+      },
+    })).toMatchObject({ playerEligible: true });
+  });
+
+  it("requires at least one exposed playable source before enabling the player", () => {
+    // Break caught: playback permission alone renders a player without exposed playable data.
     expect(derivePublicMusicViewPolicy({
       ...publicResource,
       currentlyPlaying: null,
+      queue: { items: [], total: 0, truncated: false },
+      playlists: { items: [], total: 0, truncated: false },
       permissions: { ...publicResource.permissions, allowGuestPlayOnDevice: true, allowQueueVisibility: true },
     })).toMatchObject({ requestEligible: true, playerEligible: false, currentVisible: false, queueVisible: true });
+  });
+
+  it("does not let protected malicious data contribute to visibility or player eligibility", () => {
+    // Break caught: denied queue/playlist payloads manufacture playback eligibility downstream.
+    expect(derivePublicMusicViewPolicy({
+      ...publicResource,
+      currentlyPlaying: null,
+      permissions: {
+        ...publicResource.permissions,
+        allowGuestPlayOnDevice: true,
+        allowQueueVisibility: false,
+        allowPlaylistSharing: false,
+        allowRecentlyPlayedVisibility: false,
+      },
+    } as PublicMusicResource)).toEqual({
+      requestEligible: true,
+      playerEligible: false,
+      currentVisible: false,
+      queueVisible: false,
+      historyVisible: false,
+      playlistsVisible: false,
+    });
+    expect(derivePublicMusicViewPolicy({
+      ...publicResource,
+      permissions: {
+        ...publicResource.permissions,
+        allowGuestPlayOnDevice: false,
+        allowQueueVisibility: false,
+        allowPlaylistSharing: false,
+      },
+    } as PublicMusicResource)).toMatchObject({
+      playerEligible: false,
+      currentVisible: false,
+      queueVisible: false,
+      playlistsVisible: false,
+    });
   });
 
   it("reads the additive versioned resource without owner authority or browser persistence", async () => {

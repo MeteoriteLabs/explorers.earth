@@ -57,6 +57,7 @@ describe("C5 credential configuration contracts", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-2026-08",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: "/run/secrets/music-publication-response/current",
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: "",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: "/run/secrets/music-publication-response/public-id",
     });
     expect(runtime.volumes).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: "/opt/explorers/music-token-secrets", target: "/run/secrets/music-token", read_only: true }),
@@ -66,6 +67,7 @@ describe("C5 credential configuration contracts", () => {
     expect(rendered).not.toContain(fixtureSecret);
     expect(runtime.environment).not.toHaveProperty("MUSIC_TOKEN_CURRENT_SECRET");
     expect(runtime.environment).not.toHaveProperty("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY");
+    expect(runtime.environment).not.toHaveProperty("MUSIC_PUBLIC_ID_HMAC_KEY");
   }, 15_000);
 
   it("renders separate file-backed migrator/runtime authority without any password value", () => {

@@ -21,6 +21,7 @@ function ensureSupportedCliFixtureAuthority(): void {
     const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
     if (values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID !== "fixture-publication-v1"
         || values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY !== "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI"
+        || values.MUSIC_PUBLIC_ID_HMAC_KEY !== "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ"
         || values.MUSIC_EXPECTED_MIGRATION_ID !== "0020_public_snapshot_revision") {
       throw new Error("fixture environment authority is from an older schema epoch");
     }
@@ -120,12 +121,14 @@ describe("music CLI output contract", () => {
   it("rotates fixture authority without erasing the prior bundle before pointer commit", () => {
     const source = readFileSync(join(tunesRoot, "scripts", "music-cli.ts"), "utf8");
     const start = source.indexOf("function createTestEnv");
+    const publicIdAuthority = source.slice(source.indexOf("function withFixturePublicIdAuthority"), start);
     const end = source.indexOf("async function fixtureMigratorUrl", start);
     const rotation = source.slice(start, end);
     expect(rotation).not.toContain("cleanupAllFixtureMusicTokenSecrets(root)");
     expect(rotation).toContain("rotateFixtureMusicAuthority");
     expect(rotation).toContain("MUSIC_PUBLICATION_RESPONSE_CURRENT_KID=fixture-publication-v1");
     expect(rotation).toContain("MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI");
+    expect(publicIdAuthority).toContain("MUSIC_PUBLIC_ID_HMAC_KEY=VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ");
     expect(rotation).not.toContain("cleanupUnsupportedFixtureEnvironmentForRebootstrap");
     expect(rotation).not.toContain("confirmedProject");
     expect(rotation).not.toContain("legacyUpgrade");

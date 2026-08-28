@@ -10,14 +10,18 @@ export interface PublicMusicViewPolicy {
 }
 
 export function derivePublicMusicViewPolicy(
-  resource: Pick<PublicMusicResource, "permissions" | "currentlyPlaying">,
+  resource: PublicMusicResource,
 ): PublicMusicViewPolicy {
   const currentVisible = resource.currentlyPlaying !== null
     && (resource.permissions.allowGuestPlayOnDevice || resource.permissions.allowQueueVisibility);
+  const exposedPlayableSource = currentVisible
+    || (resource.permissions.allowQueueVisibility && resource.queue.items.length > 0)
+    || (resource.permissions.allowPlaylistSharing
+      && resource.playlists.items.some((playlist) => playlist.songs.items.length > 0));
 
   return {
     requestEligible: resource.permissions.allowSongRequests,
-    playerEligible: resource.currentlyPlaying !== null && resource.permissions.allowGuestPlayOnDevice,
+    playerEligible: resource.permissions.allowGuestPlayOnDevice && exposedPlayableSource,
     currentVisible,
     queueVisible: resource.permissions.allowQueueVisibility,
     historyVisible: resource.permissions.allowRecentlyPlayedVisibility,

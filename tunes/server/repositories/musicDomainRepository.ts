@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSurfacePolicy";
 import { MusicPublicationOperationRepository } from "./musicPublicationOperationRepository";
@@ -59,10 +59,18 @@ export interface PublicMusicResource {
 }
 
 export class MusicDomainRepository {
+  private readonly publicIdHmacKey?: Buffer;
+
   constructor(
     private readonly pool: QueryPool,
     private readonly publicationOperations?: MusicPublicationOperationRepository,
-  ) {}
+    publicIdHmacKey?: Uint8Array,
+  ) {
+    if (publicIdHmacKey !== undefined && publicIdHmacKey.byteLength !== 32) {
+      throw new Error("Music public ID authority must be exactly 256 bits.");
+    }
+    this.publicIdHmacKey = publicIdHmacKey === undefined ? undefined : Buffer.from(publicIdHmacKey);
+  }
 
   async executePublicationCommand(musicUserId: number, idempotencyKey: string, mode: MusicPublicationMode) {
     if (!this.publicationOperations) throw new Error("Music publication response authority is unavailable.");
@@ -1116,6 +1124,8 @@ export class MusicDomainRepository {
     publicSlug: string,
     capability?: string,
   ): Promise<{ state: string; noindex?: boolean; resource?: PublicMusicResource } | undefined> {
+    if (!this.publicIdHmacKey) throw new Error("Music public ID authority is unavailable.");
+    const publicIdHmacKey = this.publicIdHmacKey;
     const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
     const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
     return this.withReadSnapshot(async (client) => {
@@ -1164,7 +1174,7 @@ export class MusicDomainRepository {
             ORDER BY position,id LIMIT 1`,
           [owner.id],
         )).rows[0];
-        currentlyPlaying = row ? publicSongFromRow(publicSlug, "current", 0, row, "playing") : null;
+        currentlyPlaying = row ? publicSongFromRow(publicIdHmacKey, "song", row, "playing") : null;
       }
 
       let queueRows: any[] = [];
@@ -1184,7 +1194,7 @@ export class MusicDomainRepository {
         queueTotal = publicQueryTotal(queueRows, owner.queue_total);
       }
       const queueItems = queueRows.filter((row) => row.id !== null && row.id !== undefined).slice(0, 100)
-        .map((row, ordinal) => publicSongFromRow(publicSlug, "queue", ordinal, row, "queued"));
+        .map((row) => publicSongFromRow(publicIdHmacKey, "song", row, "queued"));
 
       let historyRows: any[] = [];
       let historyTotal = 0;
@@ -1204,7 +1214,7 @@ export class MusicDomainRepository {
         historyTotal = publicQueryTotal(historyRows, owner.history_total);
       }
       const historyItems = historyRows.filter((row) => row.id !== null && row.id !== undefined).slice(0, 50)
-        .map((row, ordinal) => publicSongFromRow(publicSlug, "history", ordinal, row, "played"));
+        .map((row) => publicSongFromRow(publicIdHmacKey, "song", row, "played"));
 
       let playlistRows: any[] = [];
       let playlistTotal = 0;
@@ -1241,7 +1251,7 @@ export class MusicDomainRepository {
         )).rows;
         playlistTotal = publicQueryTotal(playlistRows, owner.playlist_total);
       }
-      const playlists = publicPlaylistsFromRows(publicSlug, playlistRows).slice(0, 20);
+      const playlists = publicPlaylistsFromRows(publicIdHmacKey, playlistRows).slice(0, 20);
       const resource: PublicMusicResource = {
         version: "music-public-resource/v1",
         revision,
@@ -1394,14 +1404,24 @@ function publicQueryTotal(rows: any[], fallback: unknown): number {
 }
 
 function publicContentId(
-  publicSlug: string,
-  scope: string,
-  ordinal: number,
-  publicIdentity: readonly (string | number | null)[],
+  key: Buffer,
+  entityType: "song" | "playlist" | "playlist-song",
+  internalIdentity: unknown,
 ): string {
-  return createHash("sha256")
-    .update(JSON.stringify([publicSlug, scope, ordinal, ...publicIdentity]), "utf8")
+  const identity = canonicalInternalPublicIdentity(internalIdentity);
+  return createHmac("sha256", key)
+    .update("music-public-id/v1\0", "utf8")
+    .update(entityType, "utf8")
+    .update("\0", "utf8")
+    .update(identity, "utf8")
     .digest("base64url");
+}
+
+function canonicalInternalPublicIdentity(value: unknown): string {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
+  if (typeof value === "bigint" && /^[1-9][0-9]*$/.test(value.toString())) return value.toString();
+  if (typeof value === "string" && /^[1-9][0-9]{0,18}$/.test(value)) return value;
+  throw new Error("The public Music entity identity is invalid.");
 }
 
 function publicThumbnailUrl(value: unknown): string | null {
@@ -1419,9 +1439,8 @@ function publicThumbnailUrl(value: unknown): string | null {
 }
 
 function publicSongFromRow(
-  publicSlug: string,
-  scope: string,
-  ordinal: number,
+  publicIdHmacKey: Buffer,
+  entityType: "song" | "playlist-song",
   row: any,
   status: PublicMusicSongStatus,
 ): PublicMusicSong {
@@ -1439,7 +1458,7 @@ function publicSongFromRow(
     : null;
   if (status === "played" && !playedAt) throw new Error("The public Music history projection is invalid.");
   return {
-    id: publicContentId(publicSlug, scope, ordinal, [youtubeId, title, artist, thumbnailUrl, position, status, playedAt ?? null]),
+    id: publicContentId(publicIdHmacKey, entityType, row.id),
     youtubeId,
     title,
     artist,
@@ -1450,8 +1469,8 @@ function publicSongFromRow(
   };
 }
 
-function publicPlaylistsFromRows(publicSlug: string, rows: any[]): PublicMusicPlaylist[] {
-  const grouped = new Map<unknown, { playlist: PublicMusicPlaylist; total: number; ordinal: number }>();
+function publicPlaylistsFromRows(publicIdHmacKey: Buffer, rows: any[]): PublicMusicPlaylist[] {
+  const grouped = new Map<unknown, { playlist: PublicMusicPlaylist; total: number }>();
   for (const row of rows) {
     const internalId = row.playlist_internal_id;
     if (internalId === null || internalId === undefined || row.playlist_visible !== true) continue;
@@ -1466,12 +1485,10 @@ function publicPlaylistsFromRows(publicSlug: string, rows: any[]): PublicMusicPl
       }
       if (!name) throw new Error("The public Music playlist projection is invalid.");
       const total = boundedPublicTotal(row.playlist_song_total) ?? 0;
-      const ordinal = grouped.size;
       entry = {
         total,
-        ordinal,
         playlist: {
-          id: publicContentId(publicSlug, "playlist", ordinal, [name, description]),
+          id: publicContentId(publicIdHmacKey, "playlist", internalId),
           name,
           description,
           songs: { items: [], total, truncated: total > 0 },
@@ -1482,9 +1499,8 @@ function publicPlaylistsFromRows(publicSlug: string, rows: any[]): PublicMusicPl
     const current = entry!;
     if (row.id !== null && row.id !== undefined && current.playlist.songs.items.length < 50) {
       current.playlist.songs.items.push(publicSongFromRow(
-        publicSlug,
-        `playlist:${current.ordinal}`,
-        current.playlist.songs.items.length,
+        publicIdHmacKey,
+        "playlist-song",
         row,
         "saved",
       ));

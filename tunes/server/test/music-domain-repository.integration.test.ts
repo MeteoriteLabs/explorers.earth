@@ -118,7 +118,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     target.pathname = `/${databaseName}`;
     pool = new pg.Pool({ connectionString: target.toString(), max: 8 });
     await migrateMusicDatabase(pool);
-    domain = new MusicDomainRepository(pool);
+    domain = new MusicDomainRepository(pool, undefined, Buffer.alloc(32, 0x54));
     identities = new MusicIdentityRepository(pool);
   });
 

@@ -105,6 +105,7 @@ describe("checked-in production Music deploy executable", () => {
     writeFileSync(join(root, "docker-compose.yml"), "services: {}\n");
     const authorityFiles = {
       publication: join(root, "publication-authority/current"),
+      publicId: join(root, "publication-authority/public-id"),
       token: join(root, "token-authority/current"),
       runtimeDatabase: join(root, "database-runtime"),
       migratorDatabase: join(root, "database-migrator"),
@@ -113,6 +114,7 @@ describe("checked-in production Music deploy executable", () => {
     };
     for (const [path, value] of [
       [authorityFiles.publication, publicationAuthority],
+      [authorityFiles.publicId, Buffer.alloc(32, 0x72).toString("base64url")],
       [authorityFiles.token, Buffer.alloc(32, 0x71).toString("base64url")],
       [authorityFiles.runtimeDatabase, "dedicated-runtime-password"],
       [authorityFiles.migratorDatabase, "dedicated-migrator-password"],

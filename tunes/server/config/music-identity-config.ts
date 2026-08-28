@@ -53,6 +53,7 @@ export interface MusicIdentityRuntimeConfig {
   musicToken: MusicTokenConfiguration;
   lifecycleProofToken: string;
   publicationResponse: MusicPublicationResponseKeyring;
+  publicIdHmacKey: Buffer;
 }
 
 export interface MusicIdentityTransportConfig {
@@ -115,6 +116,9 @@ export async function resolveMusicIdentityRuntimeConfig(
   const publicationResponse = await resolvePublicationResponseConfiguration(
     environment, mode, dependencies, musicToken, lifecycleProofToken,
   );
+  const publicIdHmacKey = await resolvePublicIdHmacKey(
+    environment, mode, dependencies, musicToken, lifecycleProofToken, publicationResponse,
+  );
 
   const transport = await resolveTransport(
     environment,
@@ -146,11 +150,90 @@ export async function resolveMusicIdentityRuntimeConfig(
     musicToken,
     lifecycleProofToken,
     publicationResponse,
+    publicIdHmacKey,
   };
 }
 
 const FIXTURE_PUBLICATION_RESPONSE_KID = "fixture-publication-v1";
 const FIXTURE_PUBLICATION_RESPONSE_KEY = "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI";
+const FIXTURE_PUBLIC_ID_HMAC_KEY = "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ";
+
+async function resolvePublicIdHmacKey(
+  environment: Environment,
+  mode: "live" | "fixture",
+  dependencies: MusicIdentityConfigDependencies,
+  musicToken: MusicTokenConfiguration,
+  lifecycleProofToken: string,
+  publicationResponse: MusicPublicationResponseKeyring,
+): Promise<Buffer> {
+  if (mode === "fixture") {
+    if (environment.MUSIC_PUBLIC_ID_HMAC_KEY !== FIXTURE_PUBLIC_ID_HMAC_KEY
+        || environment.MUSIC_PUBLIC_ID_HMAC_KEY_FILE) {
+      throw new Error("Fixture public ID HMAC key must use the exact deterministic fixture authority.");
+    }
+    const key = decodePublicIdHmacKey(FIXTURE_PUBLIC_ID_HMAC_KEY);
+    assertPublicIdKeyMaterialDistinct(key, [
+      ...authorityValues(environment, musicToken, lifecycleProofToken),
+      publicationResponse.current.key,
+      publicationResponse.previous?.key,
+    ]);
+    return key;
+  }
+
+  if (environment.MUSIC_PUBLIC_ID_HMAC_KEY || !environment.MUSIC_PUBLIC_ID_HMAC_KEY_FILE) {
+    throw new Error("MUSIC_PUBLIC_ID_HMAC_KEY_FILE is required and inline live public ID keys are forbidden.");
+  }
+  const authorityPaths = [
+    environment.MUSIC_TOKEN_CURRENT_SECRET_FILE,
+    environment.MUSIC_TOKEN_PREVIOUS_SECRET_FILE,
+    environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,
+    environment.STRAPI_ACCESS_TOKEN_FILE,
+    environment.STRAPI_RECONCILIATION_TOKEN_FILE,
+    environment.MUSIC_DATABASE_PASSWORD_FILE,
+    environment.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE,
+    environment.MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE,
+  ].filter((value): value is string => present(value));
+  let encoded: string;
+  try {
+    encoded = await readSecureMusicSecretFileWithDistinctAuthorities(
+      environment.MUSIC_PUBLIC_ID_HMAC_KEY_FILE,
+      authorityPaths,
+      {
+        mode,
+        fileSystem: dependencies.secretFileSystem,
+        platform: dependencies.platform,
+        effectiveUserId: dependencies.effectiveUserId,
+        requireDistinctValues: true,
+      },
+    );
+  } catch {
+    throw new Error("Music public ID HMAC authority is insecure, invalid, or aliases another protected authority.");
+  }
+  const key = decodePublicIdHmacKey(encoded);
+  assertPublicIdKeyMaterialDistinct(key, [
+    ...authorityValues(environment, musicToken, lifecycleProofToken),
+    publicationResponse.current.key,
+    publicationResponse.previous?.key,
+  ]);
+  return key;
+}
+
+function decodePublicIdHmacKey(value: string): Buffer {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(value)) throw new Error("Music public ID HMAC key must be exactly 256 bits.");
+  const key = Buffer.from(value, "base64url");
+  if (key.length !== 32 || key.toString("base64url") !== value) {
+    throw new Error("Music public ID HMAC key must be canonical base64url-encoded 256-bit material.");
+  }
+  return key;
+}
+
+function assertPublicIdKeyMaterialDistinct(key: Buffer, authorities: readonly (string | Buffer | undefined)[]): void {
+  if (authorities.some((value) => typeof value === "string"
+    ? key.equals(Buffer.from(value, "base64url")) || key.equals(Buffer.from(value, "utf8"))
+    : value !== undefined && key.equals(value))) {
+    throw new Error("Music public ID HMAC key material must be dedicated and distinct from every other authority.");
+  }
+}
 
 async function resolvePublicationResponseConfiguration(
   environment: Environment,

@@ -531,9 +531,19 @@ directory read-only and exposes the current file as
 `/run/secrets/music-publication-response/current`; inline live key values are
 forbidden.
 
+The same protected host directory must also contain a distinct mode-0600
+`public-id` file holding a separate canonical base64url-encoded 32-byte HMAC key.
+Compose exposes it only as `/run/secrets/music-publication-response/public-id`.
+This key is a projection dependency, not a capability or authorization secret:
+keep it stable for the lifetime of the public Music identity namespace. Rotating
+it changes every opaque public song and playlist ID, so rotation requires an
+explicit public-ID compatibility event rather than routine token or response-key
+rotation.
+
 Before candidate Docker activity, the privileged deployment verifier reads the
-host-only publication current/optional previous files and compares their identity
-and content against the runtime and migrator database passwords, deployment HMAC,
+host-only publication current/optional previous and public-ID files and compares
+their identity and content against the runtime and migrator database passwords,
+deployment HMAC,
 current/optional previous Music token, lifecycle proof, reconciliation, session,
 cookie, Strapi access/JWT, and gate authorities. Production configuration must
 provide `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST` and

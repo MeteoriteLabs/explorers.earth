@@ -101,6 +101,7 @@ export async function verifyPublicationAuthority(environmentFile, deploymentHmac
         || publicationCurrentKid === tokenCurrentKid || publicationCurrentKid === tokenPreviousKid) fail();
     const publicationDirectory = hostPath(environmentPath, required(environment, "MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST"));
     const publications = [publicationMaterial(await authorityFile(join(publicationDirectory, "current")))];
+    const publicIdAuthority = publicationMaterial(await authorityFile(join(publicationDirectory, "public-id")));
     const previousPublicationFields = [
       environment.get("MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID"),
       environment.get("MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE"),
@@ -151,14 +152,15 @@ export async function verifyPublicationAuthority(environmentFile, deploymentHmac
       if (value) inlineAuthorities.push(Buffer.from(value, "utf8"));
     }
 
-    for (let index = 0; index < publications.length; index += 1) {
-      const publication = publications[index];
-      for (let other = 0; other < publications.length; other += 1) {
-        if (other !== index && aliases(publication, publications[other])) fail();
+    const applicationKeyAuthorities = [...publications, publicIdAuthority];
+    for (let index = 0; index < applicationKeyAuthorities.length; index += 1) {
+      const authority = applicationKeyAuthorities[index];
+      for (let other = 0; other < applicationKeyAuthorities.length; other += 1) {
+        if (other !== index && aliases(authority, applicationKeyAuthorities[other])) fail();
       }
-      for (const authority of fileAuthorities) if (aliases(publication, authority)) fail();
+      for (const candidate of fileAuthorities) if (aliases(authority, candidate)) fail();
       for (const value of inlineAuthorities) {
-        if (publication.value.equals(value) || publication.decoded.equals(value)) fail();
+        if (authority.value.equals(value) || authority.decoded.equals(value)) fail();
       }
     }
   } catch {

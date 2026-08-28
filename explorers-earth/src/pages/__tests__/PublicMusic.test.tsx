@@ -72,10 +72,13 @@ describe("public Music page", () => {
 
   it("applies the permission policy even if protected collection data is supplied", () => {
     render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
+      currentlyPlaying: playing,
       recentlyPlayed: { items: [played], total: 1, truncated: false },
       playlists: { items: [{ id: "L".repeat(43), name: "Protected", description: null, songs: { items: [saved], total: 1, truncated: false } }], total: 1, truncated: false },
     }) as PublicMusicResource} /></MemoryRouter>);
 
+    expect(screen.queryByText("Now")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Play Now" })).not.toBeInTheDocument();
     expect(screen.queryByText("Past")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Protected" })).not.toBeInTheDocument();
   });
