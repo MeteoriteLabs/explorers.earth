@@ -111,7 +111,7 @@ describe("PublicMusicRequest", () => {
     await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "song");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
     await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
-    await screen.findByText("Song requests are no longer available.");
+    await waitFor(() => expect(onCanonicalRevoked).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument();
     expect(onCanonicalRevoked).toHaveBeenCalledTimes(1);
   });
@@ -144,5 +144,33 @@ describe("PublicMusicRequest", () => {
     resolveOld({ items: [video], nextPageToken: null });
     await waitFor(() => expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument());
     expect(onCanonicalRevoked).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["search-first", "submit-first"] as const)("signals one canonical revocation for concurrent search and submit rejection (%s)", async (order) => {
+    let rejectSearch!: (error: unknown) => void;
+    let rejectSubmit!: (error: unknown) => void;
+    const onCanonicalRevoked = vi.fn();
+    const onOutcome = vi.fn();
+    const search = vi.fn()
+      .mockResolvedValueOnce({ items: [video], nextPageToken: null })
+      .mockImplementationOnce(() => new Promise((_, reject) => { rejectSearch = reject; }));
+    const client = { search, videoFromUrl: vi.fn(), requestSong: vi.fn(() => new Promise((_, reject) => { rejectSubmit = reject; })) };
+    render(<PublicMusicRequest publicSlug="public_slug-123" allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} onOutcome={onOutcome} />);
+    const input = screen.getByLabelText("Search for a song or paste a YouTube URL");
+    await userEvent.type(input, "first");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    await userEvent.clear(input);
+    await userEvent.type(input, "second");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    const first = order === "search-first" ? rejectSearch : rejectSubmit;
+    const second = order === "search-first" ? rejectSubmit : rejectSearch;
+    first(new PublicMusicError("REQUEST_FORBIDDEN"));
+    await waitFor(() => expect(onCanonicalRevoked).toHaveBeenCalledTimes(1));
+    second(new PublicMusicError("PUBLIC_NOT_FOUND"));
+    await act(async () => { await Promise.resolve(); });
+    expect(onCanonicalRevoked).toHaveBeenCalledTimes(1);
+    expect(onOutcome.mock.calls.filter(([event]) => event?.outcome === "forbidden")).toHaveLength(0);
+    expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument();
   });
 });

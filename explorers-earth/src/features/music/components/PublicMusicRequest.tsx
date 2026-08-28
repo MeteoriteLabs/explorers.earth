@@ -15,8 +15,10 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
   const [message, setMessage] = useState("");
   const [retrySeconds, setRetrySeconds] = useState(0);
   const active = useRef<AbortController>();
+  const canonicalRevoked = useRef(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => () => active.current?.abort(), []);
+  useEffect(() => { canonicalRevoked.current = false; }, [publicSlug, capability]);
   useEffect(() => {
     if (retrySeconds <= 0) return;
     const timer = window.setTimeout(() => setRetrySeconds((value) => Math.max(0, value - 1)), 1_000);
@@ -33,6 +35,8 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
     : "Music is temporarily unavailable.";
   const handleCanonicalRevocation = (error: unknown): boolean => {
     if (!isCanonicalRevocation(error)) return false;
+    if (canonicalRevoked.current) return true;
+    canonicalRevoked.current = true;
     active.current?.abort();
     active.current = undefined;
     setBusy(false);
@@ -49,23 +53,24 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
         ? { items: [await client.videoFromUrl(publicSlug, query.trim(), capability, controller.signal)] }
         : await client.search(publicSlug, query, capability, controller.signal);
       if (!controller.signal.aborted) { setRetrySeconds(0); setResults(value.items); onOutcome?.({ action: "search", outcome: value.items.length ? "success" : "empty" }); if (value.items.length === 0) setMessage("No songs found."); }
-    } catch (error) { if (!controller.signal.aborted) { setMessage(errorCopy(error)); if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60); handleCanonicalRevocation(error); onOutcome?.({ action: "search", outcome: normalizedOutcome(error) }); } }
-    finally { if (!controller.signal.aborted) setBusy(false); }
+    } catch (error) { if (!controller.signal.aborted) { if (handleCanonicalRevocation(error)) return; setMessage(errorCopy(error)); if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60); onOutcome?.({ action: "search", outcome: normalizedOutcome(error) }); } }
+    finally { if (!controller.signal.aborted && !canonicalRevoked.current) setBusy(false); }
   };
   const submit = async (video: PublicMusicRequestVideo) => {
     if (submitting) return;
     setSubmitting(video.id.videoId); setMessage("");
     try {
       await client.requestSong(publicSlug, { youtubeId: video.id.videoId, title: video.snippet.title, artist: video.snippet.channelTitle, thumbnailUrl: video.snippet.thumbnails.default.url }, capability, `tunes-share-v1-${Date.now()}-${crypto.randomUUID()}`);
+      if (canonicalRevoked.current) return;
       setResults([]); setMessage("Song requested."); onOutcome?.({ action: "request", outcome: "success" });
       window.setTimeout(() => statusRef.current?.focus(), 0);
     } catch (error) {
+      if (handleCanonicalRevocation(error)) return;
       setMessage(errorCopy(error));
       if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60);
-      handleCanonicalRevocation(error);
       onOutcome?.({ action: "request", outcome: normalizedOutcome(error) });
     }
-    finally { setSubmitting(undefined); }
+    finally { if (!canonicalRevoked.current) setSubmitting(undefined); }
   };
   return <section aria-labelledby="public-music-request-heading" className="min-w-0">
     <h2 id="public-music-request-heading" className="text-xl font-semibold">Request a song</h2>
