@@ -70,6 +70,18 @@ import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 
 type HomeAnalyticsState = "loading" | "ready" | "unavailable";
 
+interface HomeAnalyticsLabels {
+  label: string;
+  loading: string;
+  unavailable: string;
+}
+
+const defaultHomeAnalyticsLabels: HomeAnalyticsLabels = {
+  label: "Views · last 90 days",
+  loading: "Loading",
+  unavailable: "Unavailable",
+};
+
 export function getHomeRecentAnalyticsScope(
   now = new Date(),
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -82,14 +94,15 @@ export function getHomeRecentAnalyticsScope(
 export function getHomeAnalyticsCard(
   state: HomeAnalyticsState,
   analyticsData: PublicPageAnalyticsData[],
+  labels: HomeAnalyticsLabels = defaultHomeAnalyticsLabels,
 ) {
-  const label = "Views · last 90 days";
-  if (state !== "ready") return { label, value: "—" };
+  if (state === "loading") return { label: labels.label, value: labels.loading };
+  if (state === "unavailable") return { label: labels.label, value: labels.unavailable };
   const totalViews = analyticsData
     .flatMap((item) => item.Stats || [])
     .filter((event) => event.type === "view").length;
   return {
-    label,
+    label: labels.label,
     value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}k` : totalViews.toString(),
   };
 }
@@ -560,8 +573,12 @@ const Home = memo(() => {
   }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
   const recentViewsCard = useMemo(
-    () => getHomeAnalyticsCard(analyticsState, analyticsData),
-    [analyticsState, analyticsData],
+    () => getHomeAnalyticsCard(analyticsState, analyticsData, {
+      label: t("dashboard.home.analytics.viewsLast90Days"),
+      loading: t("dashboard.home.analytics.loading"),
+      unavailable: t("dashboard.home.analytics.unavailable"),
+    }),
+    [analyticsState, analyticsData, t],
   );
 
   // Update setup store when status changes
@@ -1064,7 +1081,11 @@ const Home = memo(() => {
                     </div>
                     <div className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl px-2 sm:px-3 py-2 border border-dashboard flex-1 min-w-0">
                       <div className="text-center">
-                        <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
+                        <p
+                          role="status"
+                          aria-label={t("dashboard.home.analytics.ariaLabel", recentViewsCard)}
+                          className="text-base sm:text-lg md:text-xl font-bold text-dashboard"
+                        >
                           {recentViewsCard.value}
                         </p>
                         <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">

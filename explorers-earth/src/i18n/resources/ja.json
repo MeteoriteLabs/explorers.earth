@@ -1,6 +1,10 @@
 {
   "about": {
     "closing": "あなたが好奇心旺盛なら。\nあなたが思慮深いなら。\nあなたが遅くなり、より近くを見ることを望むなら —\nあなたはすでにここに属しています。",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "探検は意識から始まります。",
       "line2": "他の人が見逃していることに気づくことから。",
@@ -49,19 +53,15 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us",
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
+      "title": "Explorers of Earth | About Us"
     },
     "subtitle": {
       "line1": "人々、文化、そして私たちが共有する惑星のために、注意深く探検する人々のグローバルコミュニティ。",
       "line2": "探検は、私たちにとって、どれだけ遠くに行くかではありません。",
       "line3": "どれだけ深くつながるかです。"
     },
-    "title": "地球の探検者",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe"
+    "title": "地球の探検者"
   },
   "analytics": {
     "dashboard": {
@@ -780,6 +780,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "おすすめを追加",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "下書き",
       "error": {
         "message": "An error occurred while loading your data",
@@ -888,6 +894,38 @@
         "visible": "表示",
         "whatsappNumber": "WhatsApp番号"
       },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "{{category}}の移動をキャンセルしました。順序を元に戻しました。",
+          "drop": "{{category}}を{{total}}件中{{position}}番目に配置しました。",
+          "handle": "{{category}}をドラッグ",
+          "instructions": "SpaceまたはEnterキーを押して持ち上げます。矢印キー、Homeキー、Endキーで移動します。SpaceまたはEnterキーで配置し、Escapeキーでキャンセルします。",
+          "lift": "{{category}}を持ち上げました。{{total}}件中{{position}}番目です。",
+          "move": "{{category}}を{{total}}件中{{position}}番目に移動しました。"
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
       "publicProfile": {
         "accountTypes": {
           "business": "ビジネス",
@@ -942,38 +980,6 @@
       "tabs": {
         "account": "アカウント",
         "publicProfile": "公開プロフィール"
-      },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "{{category}}の移動をキャンセルしました。順序を元に戻しました。",
-          "drop": "{{category}}を{{total}}件中{{position}}番目に配置しました。",
-          "handle": "{{category}}をドラッグ",
-          "instructions": "SpaceまたはEnterキーを押して持ち上げます。矢印キー、Homeキー、Endキーで移動します。SpaceまたはEnterキーで配置し、Escapeキーでキャンセルします。",
-          "lift": "{{category}}を持ち上げました。{{total}}件中{{position}}番目です。",
-          "move": "{{category}}を{{total}}件中{{position}}番目に移動しました。"
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1205,14 +1211,14 @@
         "linkCopied": "リンクがクリップボードにコピーされました!",
         "linkCopyError": "リンクのコピーに失敗しました。もう一度お試しください。",
         "listCreated": "おすすめリストが正常に作成されました!!!",
+        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "おすすめリストが正常に公開されました!",
         "listPublishError": "公開するにはリストに少なくとも1つのおすすめの場所が必要です",
         "listUnpublished": "おすすめリストが正常に非公開になりました!",
         "listVisibilityError": "おすすめリストの表示設定の更新に失敗しました。",
         "qrDownloadError": "QRコードのダウンロードに失敗しました。もう一度お試しください。",
         "qrDownloadSuccess": "QRコードが正常にダウンロードされました!",
-        "qrNotReady": "QRコードがダウンロードの準備ができていません",
-        "listCreateFailed": "Failed to create recommendation list. Please try again."
+        "qrNotReady": "QRコードがダウンロードの準備ができていません"
       },
       "travelLikeLocal": "地元の人のように旅行する",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1243,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "tagline": "あなたのおすすめを世界中に広めましょう。",
+    "copyright": "© 2025 探検家。無断転載を禁じます。",
     "email": "hello@explorers.earth",
-    "sections": {
-      "product": "製品",
-      "contact": "お問い合わせ",
-      "legal": "法律上の",
-      "company": "会社"
-    },
+    "freeForever": "永久無料。",
     "links": {
-      "howItWorks": "仕組み",
-      "faq": "よくある質問",
-      "contact": "接触",
       "about": "について",
-      "terms": "利用規約",
-      "privacy": "プライバシーポリシー",
+      "contact": "接触",
       "cookies": "クッキーポリシー",
+      "faq": "よくある質問",
+      "howItWorks": "仕組み",
+      "privacy": "プライバシーポリシー",
       "product": "製品",
       "shareAnywhere": "どこでも共有",
+      "terms": "利用規約",
       "useCases": "Use Cases"
     },
-    "copyright": "© 2025 探検家。無断転載を禁じます。",
     "madeWithLove": "地球上で愛を込めて作られました",
-    "freeForever": "永久無料。"
+    "sections": {
+      "company": "会社",
+      "contact": "お問い合わせ",
+      "legal": "法律上の",
+      "product": "製品"
+    },
+    "tagline": "あなたのおすすめを世界中に広めましょう。"
   },
   "header": {
+    "auth": {
+      "claimFree": "クレームフリー",
+      "claimFreePage": "無料ページを請求する",
+      "login": "ログイン",
+      "signUp": "サインアップ"
+    },
     "nav": {
-      "howItWorks": "仕組み",
-      "whoIsFor": "対象者",
-      "faq": "よくある質問",
       "about": "について",
+      "closeMenu": "ナビゲーションメニューを閉じる",
       "contact": "お問い合わせ",
+      "faq": "よくある質問",
+      "howItWorks": "仕組み",
+      "openMenu": "ナビゲーションメニューを開く",
       "product": "製品",
       "share": "共有",
-      "openMenu": "ナビゲーションメニューを開く",
-      "closeMenu": "ナビゲーションメニューを閉じる",
-      "useCases": "Use Cases"
-    },
-    "auth": {
-      "login": "ログイン",
-      "signUp": "サインアップ",
-      "claimFreePage": "無料ページを請求する",
-      "claimFree": "クレームフリー"
+      "useCases": "Use Cases",
+      "whoIsFor": "対象者"
     }
   },
   "hero": {
+    "badge": "永久無料",
+    "countries": {
+      "ae": "アラブ首長国連邦",
+      "au": "オーストラリア",
+      "br": "ブラジル",
+      "de": "ドイツ",
+      "fr": "フランス",
+      "gb": "イギリス",
+      "in": "インド",
+      "jp": "日本",
+      "sg": "シンガポール",
+      "us": "米国"
+    },
+    "ctaButton": "Explorer ページを請求してください",
+    "globalStrip": "Explorer は世界中で推奨事項を共有します",
     "headline": "すべての推奨事項 - 1 つのリンク、1 つの QR",
-    "subtext": "場所、人、商品、本、映画、番組、音楽、ゲーム、アプリなど、おすすめのものすべてをまとめた共有可能なページを 1 つ作成します。",
+    "headlinePrefix": "あなたのすべて",
+    "headlineSuffix": "1 つのリンクと QR にあります。",
     "inputLabel": "エクスプローラーの URL を要求します。",
     "inputPlaceholder": "あなたの名前",
-    "ctaButton": "Explorer ページを請求してください",
-    "signupPrompt": "サインアップして今すぐ入手しましょう",
-    "headlinePrefix": "あなたのすべて",
+    "preview": {
+      "items": {
+        "book": "本",
+        "game": "ゲーム",
+        "music": "音楽",
+        "place": "場所"
+      },
+      "onePageText": "リンク、QR、メッセージ、またはガイドとして共有してください。",
+      "onePageTitle": "優れた推奨事項ごとに 1 ページ。",
+      "screenAlt": "Explorerページのおすすめ画面",
+      "todayList": "今日のリスト"
+    },
     "rotatingWords": [
       "推奨事項",
       "キュレーション",
       "コレクション",
       "お気に入り"
     ],
-    "headlineSuffix": "1 つのリンクと QR にあります。",
-    "badge": "永久無料",
-    "globalStrip": "Explorer は世界中で推奨事項を共有します",
-    "preview": {
-      "todayList": "今日のリスト",
-      "onePageTitle": "優れた推奨事項ごとに 1 ページ。",
-      "onePageText": "リンク、QR、メッセージ、またはガイドとして共有してください。",
-      "items": {
-        "place": "場所",
-        "book": "本",
-        "music": "音楽",
-        "game": "ゲーム"
-      },
-      "screenAlt": "Explorerページのおすすめ画面"
-    },
-    "countries": {
-      "in": "インド",
-      "us": "米国",
-      "gb": "イギリス",
-      "jp": "日本",
-      "fr": "フランス",
-      "au": "オーストラリア",
-      "br": "ブラジル",
-      "ae": "アラブ首長国連邦",
-      "sg": "シンガポール",
-      "de": "ドイツ"
-    }
+    "signupPrompt": "サインアップして今すぐ入手しましょう",
+    "subtext": "場所、人、商品、本、映画、番組、音楽、ゲーム、アプリなど、おすすめのものすべてをまとめた共有可能なページを 1 つ作成します。"
   },
   "languageModal": {
     "close": "近い",
-    "searchPlaceholder": "言語を検索...",
-    "title": "言語の選択",
-    "subtitle": "エクスプローラー間で使用する言語を選択します。",
-    "noLanguagesFound": "言語が見つかりません",
-    "tryDifferentSearch": "別の検索語を試してください。",
+    "escToClose": "Escを押して閉じます",
     "languagesAvailable": "{{count}} 言語が利用可能",
-    "escToClose": "Escを押して閉じます"
+    "noLanguagesFound": "言語が見つかりません",
+    "searchPlaceholder": "言語を検索...",
+    "subtitle": "エクスプローラー間で使用する言語を選択します。",
+    "title": "言語の選択",
+    "tryDifferentSearch": "別の検索語を試してください。"
   },
   "legal": {
     "cookies": {
@@ -1379,6 +1385,38 @@
       "warning": "古いユーザー名のQRコードやリンクは機能しなくなります — 更新して再共有する必要があります。"
     }
   },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1396,30 +1434,45 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
+    "analytics": {
+      "dashboardTitle": "分析ダッシュボード",
+      "engagement": "婚約",
+      "headline": "人々が何に関わっているかを見てみましょう。",
+      "last30Days": "過去 30 日間",
+      "livePreview": "ライブプレビュー",
+      "referrals": "紹介",
+      "scanningDesc": "ユーザーがリンク、QR コード、共有タッチポイントからどのようにページにアクセスするかを確認します。",
+      "scanningTitle": "スキャンとクリックについて理解する",
+      "spotsDesc": "どの場所、製品、リスト、ガイドが最も愛されているかを学びましょう。",
+      "spotsTitle": "上位の推奨事項を見つける",
+      "subtext": "リンクや QR コード全体で、ユーザーがどの推奨事項を開いたり、保存したり、再訪問したりするかを理解します。",
+      "totalScans": "合計スキャン数",
+      "workingDesc": "ユーザーがどの推奨事項を開いて保存し、再訪問したかを追跡します。",
+      "workingTitle": "何が機能しているのかを見る"
+    },
     "createCustomize": {
-      "headline": "Explorer ページを数分で作成します",
-      "subtext": "おすすめのものを集めて、自分の方法で整理し、1 つのリンクまたは QR でどこにでも共有できます。",
       "bulletPoints": {
         "addSpots": {
-          "title": "場所、体験、ルート、サウンド、メモを追加する",
-          "description": ""
-        },
-        "organize": {
-          "title": "場所や興味ごとに整理する",
-          "description": ""
+          "description": "",
+          "title": "場所、体験、ルート、サウンド、メモを追加する"
         },
         "generate": {
-          "title": "いつでも編集可能 - リンクは常に同じままです",
-          "description": ""
+          "description": "",
+          "title": "いつでも編集可能 - リンクは常に同じままです"
+        },
+        "organize": {
+          "description": "",
+          "title": "場所や興味ごとに整理する"
         },
         "share": {
-          "title": "デジタルまたは現実世界の QR を通じて共有",
-          "description": ""
+          "description": "",
+          "title": "デジタルまたは現実世界の QR を通じて共有"
         }
       },
+      "headline": "Explorer ページを数分で作成します",
       "mockup": {
-        "title": "私のおすすめ",
-        "addPlace": "場所を追加"
+        "addPlace": "場所を追加",
+        "title": "私のおすすめ"
       },
       "steps": [
         {
@@ -1434,232 +1487,10 @@
           "body": "同じリンクと QR がどこでも機能し続けている間、ページはいつでも更新されます。",
           "title": "1 つのリンクまたは QR を共有します"
         }
-      ]
-    },
-    "shareAnywhere": {
-      "headline": "リンクは 1 つです。たくさんの旅。",
-      "subtext": "Explorer リンクは生きたガイドとなり、人々が自分のペースで保存、再訪問、探索できるものになります。\n\nプロフィール、メッセージ、テーブル、壁、またはカードで共有します。\nどこに行っても、あなたの視点がそれに伴います。",
-      "scanText": "ローカルの推奨事項をスキャンする",
-      "storefrontText": "店頭ディスプレイに最適",
-      "instagramTitle": "Instagram/Tiktok プロフィールに追加",
-      "instagramDesc": "フォロワーとすぐに共有",
-      "menuTitle": "店頭用に印刷してください",
-      "menuDesc": "物理的なタッチポイントが簡単に",
-      "welcomeTitle": "ウェルカムブックに含める",
-      "welcomeDesc": "ホストやガイドに最適",
-      "cafeMenu": "カフェメニュー",
-      "tokyoFoodGuide": "私の東京グルメガイド explorers.earth/jane",
-      "cards": [
-        {
-          "eyebrow": "プロファイル対応",
-          "title": "プロフィール内のリンク"
-        },
-        {
-          "eyebrow": "オフライン対応",
-          "title": "QRコード"
-        },
-        {
-          "eyebrow": "チャット対応",
-          "title": "メッセージ"
-        },
-        {
-          "eyebrow": "ゲスト対応",
-          "title": "ウェルカムガイド"
-        }
       ],
-      "visual": {
-        "scanForPicks": "スキャンしてピックを探す",
-        "messageBubble": "これが私の京都リストです",
-        "welcomeGuide": "ウェルカムガイド",
-        "guideItems": [
-          "近くで朝食を食べる",
-          "美術館ルート",
-          "夕方の散歩"
-        ],
-        "savedRecommendation": "保存された推奨事項"
-      },
-      "profileCarouselCaption": "Instagram および TikTok プロファイル",
-      "qrEverywhereTitle": "QR リンクをあらゆる場所に追加します",
-      "qrEverywhereDesc": "あらゆる会場に最適"
-    },
-    "analytics": {
-      "headline": "人々が何に関わっているかを見てみましょう。",
-      "subtext": "リンクや QR コード全体で、ユーザーがどの推奨事項を開いたり、保存したり、再訪問したりするかを理解します。",
-      "workingTitle": "何が機能しているのかを見る",
-      "workingDesc": "ユーザーがどの推奨事項を開いて保存し、再訪問したかを追跡します。",
-      "scanningTitle": "スキャンとクリックについて理解する",
-      "scanningDesc": "ユーザーがリンク、QR コード、共有タッチポイントからどのようにページにアクセスするかを確認します。",
-      "spotsTitle": "上位の推奨事項を見つける",
-      "spotsDesc": "どの場所、製品、リスト、ガイドが最も愛されているかを学びましょう。",
-      "dashboardTitle": "分析ダッシュボード",
-      "last30Days": "過去 30 日間",
-      "totalScans": "合計スキャン数",
-      "engagement": "婚約",
-      "referrals": "紹介",
-      "livePreview": "ライブプレビュー"
-    },
-    "referEarn": {
-      "headline": "共有、紹介、収益化",
-      "subtext": "推奨事項をパッシブな報酬に変換 — 他の人があなたのQRを使用するときにクレジットを獲得。",
-      "comingSoon": "紹介報酬プログラム（近日公開）",
-      "rewardsTitle": "報酬を獲得",
-      "rewardsDesc": "人々があなたの推奨事項を使用するときに報酬を受け取る",
-      "earnedThisMonth": "今月の収益",
-      "passiveTitle": "推奨事項をパッシブな報酬に変換",
-      "networkTitle": "ネットワークを構築し、自動的に収益化"
-    },
-    "whoIsFor": {
-      "headline": "センスが他の人を助ける人々のために作られました。",
-      "subtext": "都市、商品棚、製品リスト、プレイリスト、ゲスト ガイドなどを共有している場合でも、エクスプローラーはあなたのおすすめを家にします。",
-      "cards": [
-        "パーソナルエクスプローラー",
-        "クリエイターとキュレーター",
-        "ホストと企業",
-        "ブランドと組織"
-      ],
-      "useCases": {
-        "travelers": "旅行者",
-        "travelersDesc": "発見した宝石を他の探検家と共有する",
-        "influencers": "インフルエンサー",
-        "influencersDesc": "地元の知識を収益化し、コミュニティを構築する",
-        "airbnbHosts": "Airbnb ホスト",
-        "airbnbHostsDesc": "地元の情報を活用してゲストエクスペリエンスを向上",
-        "hotels": "ホテル",
-        "hotelsDesc": "厳選された地元のおすすめ情報を提供する",
-        "restaurants": "レストラン",
-        "restaurantsDesc": "他の地元企業との相互プロモーション",
-        "cafes": "カフェ",
-        "cafesDesc": "近所のお気に入りを顧客と共有する",
-        "localGuides": "ローカルガイド",
-        "localGuidesDesc": "個々のツアーを超えて専門知識を拡大",
-        "creators": "クリエイター",
-        "creatorsDesc": "実用的なヒントでコンテンツを超えた価値を追加",
-        "tourOperators": "ツアーオペレーター",
-        "tourOperatorsDesc": "予定されたツアーを超えて体験を拡張",
-        "anyBusiness": "あらゆるビジネス",
-        "anyBusinessDesc": "コミュニティと顧客ロイヤルティを構築する"
-      },
-      "explorerLabel": "Explorer",
-      "visual": {
-        "personal": [
-          "カフェ",
-          "本",
-          "トレイル",
-          "アルバム",
-          "膜",
-          "ゲーム"
-        ],
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR"
-      },
-      "chips": [
-        "旅行者",
-        "地元の人",
-        "家族",
-        "学生",
-        "遊牧民",
-        "クリエイター",
-        "インフルエンサー",
-        "ブロガー",
-        "査読者",
-        "写真家",
-        "教育者",
-        "コミュニティのリーダー",
-        "ホテル",
-        "Airbnbs",
-        "ホステル",
-        "カフェ",
-        "レストラン",
-        "小売店",
-        "ジム",
-        "サロン",
-        "クリニック",
-        "ブティック",
-        "ブランド",
-        "スタートアップ",
-        "代理店",
-        "大学",
-        "法人",
-        "空港",
-        "NGO",
-        "政府チーム"
-      ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      }
-    },
-    "testimonials": {
-      "headline": "旅行者、クリエイター、ホストに愛される",
-      "subtext": "世界中の人々がどのようにエクスプローラーを使用して最も重要なことを共有しているかをご覧ください。",
-      "scrollLeft": "お客様の声を左にスクロール",
-      "scrollRight": "お客様の声を右にスクロール",
-      "items": [
-        {
-          "id": "1",
-          "location": "ムンバイ、インド",
-          "name": "プリヤ・シャルマ",
-          "quote": "探検家たちは、私の旅行に関する知識の共有方法を変えました。私のフォロワーは、私の厳選したおすすめ情報にすぐにアクセスできるのが大好きです。",
-          "role": "トラベルブロガー"
-        },
-        {
-          "id": "2",
-          "location": "デリー、インド",
-          "name": "ラージ・パテル",
-          "quote": "私のゲストは、ウェルカム キットのパーソナライズされた QR コードをとても気に入っています。それは私のシグネチャータッチになりました！",
-          "role": "Airbnb ホスト"
-        },
-        {
-          "id": "3",
-          "location": "東京、日本",
-          "name": "田中佑紀",
-          "quote": "私たちは探検家をお客様と共有し、他の地元のスポットをお勧めします。素晴らしいコミュニティのつながりが生まれました。",
-          "role": "レストランオーナー"
-        },
-        {
-          "id": "4",
-          "location": "サンパウロ、ブラジル",
-          "name": "マリア・シルバ",
-          "quote": "探検家は、ツアー時間以外にも専門知識を広げるのに役立ちます。クライアントはいつでも私の推奨事項にアクセスできます。",
-          "role": "ツアーガイド"
-        },
-        {
-          "id": "5",
-          "location": "シドニー、オーストラリア",
-          "name": "ジェームズ・ウィルソン",
-          "quote": "旅行インフルエンサーとして、Explorers を使用すると、お気に入りのスポットを視聴者と簡単に共有できます。 QR コード機能は素晴らしいです。",
-          "role": "トラベルインフルエンサー"
-        },
-        {
-          "id": "6",
-          "location": "パリ、フランス",
-          "name": "ソフィー・マーティン",
-          "quote": "私はエクスプローラーを使用して、クライアント向けのウォーキング ツアーを作成しています。 QR をスキャンして、自分のペースで探索できます。",
-          "role": "ローカルガイド"
-        }
-      ]
+      "subtext": "おすすめのものを集めて、自分の方法で整理し、1 つのリンクまたは QR でどこにでも共有できます。"
     },
     "faq": {
-      "headline": "質問がありますか？",
-      "subtext": "人々が始める前に最もよく尋ねることをお答えしました。",
-      "loading": "FAQを読み込み中...",
       "error": "FAQの読み込み中にエラーが発生しました。後でもう一度お試しください。",
       "fallbackItems": [
         {
@@ -1682,13 +1513,14 @@
           "Question": "エクスプローラーは永久に無料ですか?",
           "Sequence": 4
         }
-      ]
+      ],
+      "headline": "質問がありますか？",
+      "loading": "FAQを読み込み中...",
+      "subtext": "人々が始める前に最もよく尋ねることをお答えしました。"
     },
     "features": {
-      "title": "邪魔にならないように設計",
-      "subtitle": "シンプルで思慮深い機能により、あなたの推奨事項が輝きます。",
-      "simpleLinks": {
-        "title": "シンプルなリンクとQR共有"
+      "communityDriven": {
+        "title": "コミュニティ主導の発見"
       },
       "livingGuides": {
         "title": "ライブで編集可能なガイド"
@@ -1696,48 +1528,31 @@
       "locationAware": {
         "title": "位置情報を考慮した推奨事項"
       },
-      "soundPlaylists": {
-        "title": "オプションの音声とプレイリスト"
-      },
       "privacyFirst": {
         "title": "設計によりプライバシー第一"
       },
-      "communityDriven": {
-        "title": "コミュニティ主導の発見"
-      }
+      "simpleLinks": {
+        "title": "シンプルなリンクとQR共有"
+      },
+      "soundPlaylists": {
+        "title": "オプションの音声とプレイリスト"
+      },
+      "subtitle": "シンプルで思慮深い機能により、あなたの推奨事項が輝きます。",
+      "title": "邪魔にならないように設計"
     },
     "finalCTA": {
-      "headline": "今日からあなたの世界を共有し始めましょう",
-      "subtext": "無料のexplorersを予約し、ローカルインサイトを共有可能なガイドに変換しましょう。",
+      "creating": "あなたのexplorersを作成中...",
       "ctaButton": "explorersを予約 – 永久無料",
       "disclaimer": "クレジットカード不要 • 2分でセットアップ",
-      "creating": "あなたのexplorersを作成中..."
+      "headline": "今日からあなたの世界を共有し始めましょう",
+      "subtext": "無料のexplorersを予約し、ローカルインサイトを共有可能なガイドに変換しましょう。"
     },
     "productCategories": {
-      "headline": "場所以外にもお勧めします。",
-      "subtext": "場所、人、製品、本、映画、番組、音楽、ゲーム、アプリ、ツールをまとめた 1 ページを作成します。",
       "actions": [
         "保存",
         "整理する",
         "共有"
       ],
-      "overlayLabel": "Explorerページ",
-      "visualLabels": {
-        "products": "本当のお気に入り",
-        "apps": "便利なスタック"
-      },
-      "visualDetails": {
-        "products": [
-          "旅行用品",
-          "毎日の持ち運び",
-          "クリエーターキット"
-        ],
-        "apps": [
-          "計画ツール",
-          "便利なアプリ",
-          "リソースリンク"
-        ]
-      },
       "categories": [
         {
           "description": "人々が実際に訪れることができるレストラン、近所、美術館、ルート、隠れた名所。",
@@ -1787,15 +1602,244 @@
           "label": "アプリとツール",
           "title": "アプリ、ツール、便利なリンク"
         }
-      ]
+      ],
+      "headline": "場所以外にもお勧めします。",
+      "overlayLabel": "Explorerページ",
+      "subtext": "場所、人、製品、本、映画、番組、音楽、ゲーム、アプリ、ツールをまとめた 1 ページを作成します。",
+      "visualDetails": {
+        "apps": [
+          "計画ツール",
+          "便利なアプリ",
+          "リソースリンク"
+        ],
+        "products": [
+          "旅行用品",
+          "毎日の持ち運び",
+          "クリエーターキット"
+        ]
+      },
+      "visualLabels": {
+        "apps": "便利なスタック",
+        "products": "本当のお気に入り"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "紹介報酬プログラム（近日公開）",
+      "earnedThisMonth": "今月の収益",
+      "headline": "共有、紹介、収益化",
+      "networkTitle": "ネットワークを構築し、自動的に収益化",
+      "passiveTitle": "推奨事項をパッシブな報酬に変換",
+      "rewardsDesc": "人々があなたの推奨事項を使用するときに報酬を受け取る",
+      "rewardsTitle": "報酬を獲得",
+      "subtext": "推奨事項をパッシブな報酬に変換 — 他の人があなたのQRを使用するときにクレジットを獲得。"
+    },
+    "shareAnywhere": {
+      "cafeMenu": "カフェメニュー",
+      "cards": [
+        {
+          "eyebrow": "プロファイル対応",
+          "title": "プロフィール内のリンク"
+        },
+        {
+          "eyebrow": "オフライン対応",
+          "title": "QRコード"
+        },
+        {
+          "eyebrow": "チャット対応",
+          "title": "メッセージ"
+        },
+        {
+          "eyebrow": "ゲスト対応",
+          "title": "ウェルカムガイド"
+        }
+      ],
+      "headline": "リンクは 1 つです。たくさんの旅。",
+      "instagramDesc": "フォロワーとすぐに共有",
+      "instagramTitle": "Instagram/Tiktok プロフィールに追加",
+      "menuDesc": "物理的なタッチポイントが簡単に",
+      "menuTitle": "店頭用に印刷してください",
+      "profileCarouselCaption": "Instagram および TikTok プロファイル",
+      "qrEverywhereDesc": "あらゆる会場に最適",
+      "qrEverywhereTitle": "QR リンクをあらゆる場所に追加します",
+      "scanText": "ローカルの推奨事項をスキャンする",
+      "storefrontText": "店頭ディスプレイに最適",
+      "subtext": "Explorer リンクは生きたガイドとなり、人々が自分のペースで保存、再訪問、探索できるものになります。\n\nプロフィール、メッセージ、テーブル、壁、またはカードで共有します。\nどこに行っても、あなたの視点がそれに伴います。",
+      "tokyoFoodGuide": "私の東京グルメガイド explorers.earth/jane",
+      "visual": {
+        "guideItems": [
+          "近くで朝食を食べる",
+          "美術館ルート",
+          "夕方の散歩"
+        ],
+        "messageBubble": "これが私の京都リストです",
+        "savedRecommendation": "保存された推奨事項",
+        "scanForPicks": "スキャンしてピックを探す",
+        "welcomeGuide": "ウェルカムガイド"
+      },
+      "welcomeDesc": "ホストやガイドに最適",
+      "welcomeTitle": "ウェルカムブックに含める"
+    },
+    "testimonials": {
+      "headline": "旅行者、クリエイター、ホストに愛される",
+      "items": [
+        {
+          "id": "1",
+          "location": "ムンバイ、インド",
+          "name": "プリヤ・シャルマ",
+          "quote": "探検家たちは、私の旅行に関する知識の共有方法を変えました。私のフォロワーは、私の厳選したおすすめ情報にすぐにアクセスできるのが大好きです。",
+          "role": "トラベルブロガー"
+        },
+        {
+          "id": "2",
+          "location": "デリー、インド",
+          "name": "ラージ・パテル",
+          "quote": "私のゲストは、ウェルカム キットのパーソナライズされた QR コードをとても気に入っています。それは私のシグネチャータッチになりました！",
+          "role": "Airbnb ホスト"
+        },
+        {
+          "id": "3",
+          "location": "東京、日本",
+          "name": "田中佑紀",
+          "quote": "私たちは探検家をお客様と共有し、他の地元のスポットをお勧めします。素晴らしいコミュニティのつながりが生まれました。",
+          "role": "レストランオーナー"
+        },
+        {
+          "id": "4",
+          "location": "サンパウロ、ブラジル",
+          "name": "マリア・シルバ",
+          "quote": "探検家は、ツアー時間以外にも専門知識を広げるのに役立ちます。クライアントはいつでも私の推奨事項にアクセスできます。",
+          "role": "ツアーガイド"
+        },
+        {
+          "id": "5",
+          "location": "シドニー、オーストラリア",
+          "name": "ジェームズ・ウィルソン",
+          "quote": "旅行インフルエンサーとして、Explorers を使用すると、お気に入りのスポットを視聴者と簡単に共有できます。 QR コード機能は素晴らしいです。",
+          "role": "トラベルインフルエンサー"
+        },
+        {
+          "id": "6",
+          "location": "パリ、フランス",
+          "name": "ソフィー・マーティン",
+          "quote": "私はエクスプローラーを使用して、クライアント向けのウォーキング ツアーを作成しています。 QR をスキャンして、自分のペースで探索できます。",
+          "role": "ローカルガイド"
+        }
+      ],
+      "scrollLeft": "お客様の声を左にスクロール",
+      "scrollRight": "お客様の声を右にスクロール",
+      "subtext": "世界中の人々がどのようにエクスプローラーを使用して最も重要なことを共有しているかをご覧ください。"
+    },
+    "whoIsFor": {
+      "cards": [
+        "パーソナルエクスプローラー",
+        "クリエイターとキュレーター",
+        "ホストと企業",
+        "ブランドと組織"
+      ],
+      "chips": [
+        "旅行者",
+        "地元の人",
+        "家族",
+        "学生",
+        "遊牧民",
+        "クリエイター",
+        "インフルエンサー",
+        "ブロガー",
+        "査読者",
+        "写真家",
+        "教育者",
+        "コミュニティのリーダー",
+        "ホテル",
+        "Airbnbs",
+        "ホステル",
+        "カフェ",
+        "レストラン",
+        "小売店",
+        "ジム",
+        "サロン",
+        "クリニック",
+        "ブティック",
+        "ブランド",
+        "スタートアップ",
+        "代理店",
+        "大学",
+        "法人",
+        "空港",
+        "NGO",
+        "政府チーム"
+      ],
+      "explore": "See this perspective",
+      "explorerLabel": "Explorer",
+      "eyebrow": "Ways to use explorers",
+      "headline": "センスが他の人を助ける人々のために作られました。",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      },
+      "subtext": "都市、商品棚、製品リスト、プレイリスト、ゲスト ガイドなどを共有している場合でも、エクスプローラーはあなたのおすすめを家にします。",
+      "useCases": {
+        "airbnbHosts": "Airbnb ホスト",
+        "airbnbHostsDesc": "地元の情報を活用してゲストエクスペリエンスを向上",
+        "anyBusiness": "あらゆるビジネス",
+        "anyBusinessDesc": "コミュニティと顧客ロイヤルティを構築する",
+        "cafes": "カフェ",
+        "cafesDesc": "近所のお気に入りを顧客と共有する",
+        "creators": "クリエイター",
+        "creatorsDesc": "実用的なヒントでコンテンツを超えた価値を追加",
+        "hotels": "ホテル",
+        "hotelsDesc": "厳選された地元のおすすめ情報を提供する",
+        "influencers": "インフルエンサー",
+        "influencersDesc": "地元の知識を収益化し、コミュニティを構築する",
+        "localGuides": "ローカルガイド",
+        "localGuidesDesc": "個々のツアーを超えて専門知識を拡大",
+        "restaurants": "レストラン",
+        "restaurantsDesc": "他の地元企業との相互プロモーション",
+        "tourOperators": "ツアーオペレーター",
+        "tourOperatorsDesc": "予定されたツアーを超えて体験を拡張",
+        "travelers": "旅行者",
+        "travelersDesc": "発見した宝石を他の探検家と共有する"
+      },
+      "visual": {
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR",
+        "personal": [
+          "カフェ",
+          "本",
+          "トレイル",
+          "アルバム",
+          "膜",
+          "ゲーム"
+        ]
+      }
     }
   },
   "seo": {
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
-      "title": "エクスプローラー - パーソナライズされた地元のおすすめを発見して共有",
       "description": "地元のお気に入りのスポットを発見し、探検家と共有しましょう。パーソナライズされた都市ガイドを作成し、必見の場所を整理し、共有可能な QR コードで見つけられるようにします。インタラクティブなマップで隠れた宝石、厳選されたおすすめ情報、地元の旅行のヒントを探索します。",
+      "geoDescription": "パーソナライズされた QR コードと共有可能なリンクを使用して、お気に入りの地元スポットを見つけて共有します",
+      "geoFeatures": [
+        "パーソナライズされた QR コードの生成",
+        "ローカルのおすすめ情報の共有",
+        "分析と洞察",
+        "モバイルに最適化されたデザイン",
+        "コミュニティの発見"
+      ],
+      "geoIndustry": "テクノロジー",
       "keywords": [
         "近くの場所を見つける",
         "パーソナライズされた旅行ガイド",
@@ -1823,16 +1867,10 @@
         "旅行のヒント",
         "地元のスポット"
       ],
-      "geoDescription": "パーソナライズされた QR コードと共有可能なリンクを使用して、お気に入りの地元スポットを見つけて共有します",
-      "geoFeatures": [
-        "パーソナライズされた QR コードの生成",
-        "ローカルのおすすめ情報の共有",
-        "分析と洞察",
-        "モバイルに最適化されたデザイン",
-        "コミュニティの発見"
-      ],
-      "geoIndustry": "テクノロジー"
-    }
+      "title": "エクスプローラー - パーソナライズされた地元のおすすめを発見して共有"
+    },
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
   },
   "settings": {
     "account": {
@@ -2350,47 +2388,6 @@
       "validationPending": "検証が保留中です。お待ちください"
     }
   },
-  "usernameClaim": {
-    "validating": "検証中...",
-    "claimFree": "クレームフリー",
-    "trySuggestions": "試してください: {{suggestions}}",
-    "available": "ユーザー名は利用可能です。",
-    "unavailable": "ユーザー名は使用できません。",
-    "confirmOnSignup": "お申し込み時に空き状況を確認させていただきます。",
-    "checkingAvailability": "空き状況を確認中..."
-  },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2468,5 +2465,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "usernameClaim": {
+    "available": "ユーザー名は利用可能です。",
+    "checkingAvailability": "空き状況を確認中...",
+    "claimFree": "クレームフリー",
+    "confirmOnSignup": "お申し込み時に空き状況を確認させていただきます。",
+    "trySuggestions": "試してください: {{suggestions}}",
+    "unavailable": "ユーザー名は使用できません。",
+    "validating": "検証中..."
   }
 }
