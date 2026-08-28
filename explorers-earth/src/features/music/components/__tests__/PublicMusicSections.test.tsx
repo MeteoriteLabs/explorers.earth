@@ -144,4 +144,26 @@ describe("PublicMusicSections permission oracle", () => {
     });
     expect(result.violations.filter(({ impact }) => impact === "serious" || impact === "critical")).toEqual([]);
   });
+
+  it.each([
+    [20, ["Up next", "Shared playlists"]],
+    [21, ["Up next", "Shared playlists"]],
+    [28, ["Up next", "Shared playlists", "Recently played"]],
+    [14, ["Play on this device", "Shared playlists", "Recently played"]],
+    [26, ["Play on this device", "Up next", "Recently played"]],
+    [8, ["Recently played"]],
+    [31, ["Play on this device", "Up next", "Shared playlists", "Recently played"]],
+  ] as const)("keeps desktop visual traversal aligned with DOM order for mask %i", (mask, expected) => {
+    const { container } = render(<PublicMusicSections resource={populatedResource(mask)} />);
+    const grid = container.firstElementChild;
+    expect(grid).toHaveClass("xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]");
+
+    const sections = Array.from(grid?.children ?? []);
+    expect(sections.map((section) => section.querySelector("h2")?.textContent)).toEqual(expected);
+    for (const section of sections) {
+      expect(section.className).not.toMatch(/(?:^|:)col-start-/);
+      expect(section.className).not.toMatch(/(?:^|:)row-start-/);
+      expect(section.className).not.toMatch(/(?:^|:)order-/);
+    }
+  });
 });

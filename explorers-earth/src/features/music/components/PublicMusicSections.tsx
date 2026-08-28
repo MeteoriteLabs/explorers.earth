@@ -59,7 +59,7 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
       {playableSong ? (
-        <section className="min-w-0 xl:col-start-1" data-testid="public-music-player" aria-labelledby="public-music-player-heading">
+        <section className="min-w-0" data-testid="public-music-player" aria-labelledby="public-music-player-heading">
           <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
           <div className="mt-3 flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-dashboard-card p-4">
             <SongArtwork song={playableSong} />
@@ -69,7 +69,7 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
       ) : null}
 
       {policy.queueVisible ? (
-        <section className="min-w-0 xl:col-start-2 xl:row-start-1" aria-labelledby="public-music-queue-heading">
+        <section className="min-w-0" aria-labelledby="public-music-queue-heading">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-queue-heading" className="text-xl font-semibold">Up next</h2>
             <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
@@ -92,7 +92,7 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
       ) : null}
 
       {policy.playlistsVisible ? (
-        <section className="min-w-0 xl:col-start-1" aria-labelledby="public-music-playlists-heading">
+        <section className="min-w-0" aria-labelledby="public-music-playlists-heading">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-playlists-heading" className="text-xl font-semibold">Shared playlists</h2>
             <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
@@ -119,7 +119,7 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
       ) : null}
 
       {policy.historyVisible ? (
-        <section className="min-w-0 xl:col-start-2" aria-labelledby="public-music-history-heading">
+        <section className="min-w-0" aria-labelledby="public-music-history-heading">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="public-music-history-heading" className="text-xl font-semibold">Recently played</h2>
             <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />
