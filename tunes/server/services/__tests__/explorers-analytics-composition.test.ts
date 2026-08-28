@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { hashGuestCapability } from "../../policies/musicSurfacePolicy";
-import { resolveAnalyticsStrapiAccessToken, resolvePublicMusicAnalyticsTarget } from "../explorers-analytics-composition";
+import { resolveAnalyticsStrapiAccessToken, resolveFriendlyMusicAnalyticsTarget, resolvePublicMusicAnalyticsTarget } from "../explorers-analytics-composition";
 
 describe("resolveAnalyticsStrapiAccessToken", () => {
   it("uses the dedicated analytics token instead of the shared Strapi token", () => {
@@ -55,4 +55,19 @@ describe("resolvePublicMusicAnalyticsTarget", () => {
   ])("fails closed for missing, colliding, or malformed ownership", async (rows) => {
     await expect(resolvePublicMusicAnalyticsTarget({ query: vi.fn().mockResolvedValue({ rows }) } as never, "public-owner")).resolves.toBeUndefined();
   });
+});
+
+describe("resolveFriendlyMusicAnalyticsTarget", () => {
+  it("resolves exactly one active local binding by account descriptor", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ strapi_account_document_id: "account-1" }] });
+    await expect(resolveFriendlyMusicAnalyticsTarget({ query } as never, "account-1"))
+      .resolves.toEqual({ accountId: "account-1", mode: "friendly" });
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("identity_status='active'"), ["account-1"]);
+  });
+
+  it.each([[[]], [[{ strapi_account_document_id: "other" }]], [[{ strapi_account_document_id: "account-1" }, { strapi_account_document_id: "account-1" }]]])
+    ("fails closed for missing, mismatched, or colliding bindings", async (rows) => {
+      await expect(resolveFriendlyMusicAnalyticsTarget({ query: vi.fn().mockResolvedValue({ rows }) } as never, "account-1"))
+        .resolves.toBeUndefined();
+    });
 });

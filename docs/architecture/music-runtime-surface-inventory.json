@@ -412,13 +412,23 @@
     },
     {
       "method": "POST",
+      "path": "/api/explorers/analytics/music-account/:accountDocumentId/events",
+      "classification": "public",
+      "ownerSource": "active-local-binding-from-account-descriptor",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 181
+    },
+    {
+      "method": "POST",
       "path": "/api/explorers/analytics/music/:publicSlug/events",
       "classification": "guest-capability",
       "ownerSource": "hashed-guest-capability-or-explicit-publication",
       "policy": "hashed-capability+guest-allowlist",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 178
+      "line": 216
     },
     {
       "method": "POST",
@@ -428,7 +438,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 227
+      "line": 265
     },
     {
       "method": "GET",
@@ -438,7 +448,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 267
+      "line": 305
     },
     {
       "method": "GET",
@@ -558,7 +568,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicOpenApiRoutes.ts",
-      "line": 731
+      "line": 762
     },
     {
       "method": "GET",

@@ -12,6 +12,7 @@ export default function ProfileMusic() {
   const outlet = useOutletContext<{ setIsPageLoaded?: (loaded: boolean) => void } | null>();
   const settleReadiness = outlet?.setIsPageLoaded;
   const descriptorSlug = availability.descriptor?.publication.publicSlug;
+  const accountDocumentId = typeof availability.account?.documentId === "string" ? availability.account.documentId : undefined;
   const settle = useCallback(() => settleReadiness?.(true), [settleReadiness]);
   const enabled = availability.state === "available" && Boolean(descriptorSlug);
   const disabledState = availability.state === "loading" || availability.state === "revalidating"
@@ -21,7 +22,10 @@ export default function ProfileMusic() {
     onRevoked: availability.retry,
     onSettled: settle,
   });
-  const trackMusic = usePublicMusicProductAnalytics({ publicSlug: descriptorSlug, route: "friendly" });
+  const trackMusic = usePublicMusicProductAnalytics({
+    ...(descriptorSlug ? { publicSlug: descriptorSlug } : { accountDocumentId }),
+    route: "friendly",
+  });
 
   const canonical = descriptorSlug ? `${window.location.origin}/music/share/${encodeURIComponent(descriptorSlug)}` : undefined;
   return <>

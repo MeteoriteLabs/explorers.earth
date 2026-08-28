@@ -27,7 +27,8 @@ const publicSlugPattern = /^[A-Za-z0-9_-]{8,128}$/;
 const capabilityPattern = /^[A-Za-z0-9_-]{43}$/;
 
 export interface PublicMusicAnalyticsTrackInput {
-  publicSlug: string;
+  publicSlug?: string;
+  accountDocumentId?: string;
   capability?: string;
   eventId: string;
   event: PublicMusicProductEvent;
@@ -50,7 +51,9 @@ export function createPublicMusicAnalyticsClient(
     async track(input: PublicMusicAnalyticsTrackInput): Promise<void> {
       const parsed = eventSchema.safeParse(input.event);
       if (!parsed.success) throw new Error("Invalid public Music analytics event");
-      if (!publicSlugPattern.test(input.publicSlug) || !/^.{8,128}$/.test(input.eventId)) {
+      const hasSlug = typeof input.publicSlug === "string" && publicSlugPattern.test(input.publicSlug);
+      const hasAccount = typeof input.accountDocumentId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(input.accountDocumentId);
+      if (hasSlug === hasAccount || !/^.{8,128}$/.test(input.eventId)) {
         throw new Error("Invalid public Music analytics authority");
       }
       if (input.capability !== undefined && !capabilityPattern.test(input.capability)) {
@@ -58,7 +61,10 @@ export function createPublicMusicAnalyticsClient(
       }
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (input.capability) headers["X-Music-Guest-Capability"] = input.capability;
-      const url = `${normalizedBase}/api/explorers/analytics/music/${encodeURIComponent(input.publicSlug)}/events`;
+      const authorityPath = hasSlug
+        ? `music/${encodeURIComponent(input.publicSlug!)}`
+        : `music-account/${encodeURIComponent(input.accountDocumentId!)}`;
+      const url = `${normalizedBase}/api/explorers/analytics/${authorityPath}/events`;
       const body = JSON.stringify({
         consent: true,
         eventId: input.eventId,
@@ -99,48 +105,51 @@ export function createPublicMusicAnalyticsClient(
 type AnalyticsClient = ReturnType<typeof createPublicMusicAnalyticsClient>;
 type DeliveryRecord = { eventId: string; state: "pending" | "retry" | "committed" };
 const memoryDeliveries = new Map<string, DeliveryRecord>();
+const MAX_OCCURRENCE_RECEIPTS = 256;
 const DEFAULT_LOCAL_TUNES_URL = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
 const defaultClient = createPublicMusicAnalyticsClient(DEFAULT_LOCAL_TUNES_URL);
 
-function readDelivery(key: string): DeliveryRecord | undefined {
-  const memory = memoryDeliveries.get(key);
-  if (memory) return memory;
-  try {
-    const parsed = JSON.parse(sessionStorage.getItem(key) ?? "null") as DeliveryRecord | null;
-    if (parsed && typeof parsed.eventId === "string" && ["pending", "retry", "committed"].includes(parsed.state)) {
-      memoryDeliveries.set(key, parsed);
-      return parsed;
-    }
-  } catch { /* storage can be unavailable */ }
-  return undefined;
+function writeDelivery(key: string, record: DeliveryRecord): void {
+  if (!memoryDeliveries.has(key) && memoryDeliveries.size >= MAX_OCCURRENCE_RECEIPTS) {
+    memoryDeliveries.delete(memoryDeliveries.keys().next().value as string);
+  }
+  memoryDeliveries.set(key, record);
 }
 
-function writeDelivery(key: string, record: DeliveryRecord): void {
-  memoryDeliveries.set(key, record);
-  try { sessionStorage.setItem(key, JSON.stringify(record)); } catch { /* memory still deduplicates */ }
+export function createPublicMusicAnalyticsOccurrence(): string {
+  return createAnalyticsEventId();
 }
 
 export function usePublicMusicProductAnalytics({
   publicSlug,
+  accountDocumentId,
   capability,
   route,
   client = defaultClient,
 }: {
   publicSlug?: string;
+  accountDocumentId?: string;
   capability?: string;
   route: "friendly" | "direct";
   client?: Pick<AnalyticsClient, "track">;
 }) {
-  return useCallback(async (event: PublicMusicProductEvent): Promise<void> => {
-    if (!publicSlug || !hasAnalyticsConsent()) return;
-    const key = `explorers.music.analytics.v1:${publicSlug}:${JSON.stringify(event)}`;
-    const existing = readDelivery(key);
+  return useCallback(async (
+    event: PublicMusicProductEvent,
+    occurrenceId = createPublicMusicAnalyticsOccurrence(),
+  ): Promise<void> => {
+    const hasSlug = typeof publicSlug === "string" && publicSlugPattern.test(publicSlug);
+    const hasAccount = typeof accountDocumentId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(accountDocumentId);
+    if (hasSlug === hasAccount || !hasAnalyticsConsent()) return;
+    if (!/^.{8,128}$/.test(occurrenceId)) return;
+    const key = occurrenceId;
+    const existing = memoryDeliveries.get(key);
     if (existing?.state === "pending" || existing?.state === "committed") return;
     const eventId = existing?.eventId ?? createAnalyticsEventId();
     writeDelivery(key, { eventId, state: "pending" });
     try {
       await client.track({
         publicSlug,
+        accountDocumentId,
         capability,
         eventId,
         event,
@@ -150,5 +159,5 @@ export function usePublicMusicProductAnalytics({
     } catch {
       writeDelivery(key, { eventId, state: "retry" });
     }
-  }, [capability, client, publicSlug, route]);
+  }, [accountDocumentId, capability, client, publicSlug, route]);
 }

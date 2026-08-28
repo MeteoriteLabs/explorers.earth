@@ -54,6 +54,19 @@ export async function resolvePublicMusicAnalyticsTarget(
     : undefined;
 }
 
+export async function resolveFriendlyMusicAnalyticsTarget(
+  database: Pick<typeof pool, "query">,
+  accountDocumentId: string,
+): Promise<{ accountId: string; mode: "friendly" } | undefined> {
+  const rows = (await database.query(
+    `SELECT strapi_account_document_id FROM users
+      WHERE strapi_account_document_id=$1 AND identity_status='active' LIMIT 2`,
+    [accountDocumentId],
+  )).rows;
+  if (rows.length !== 1 || rows[0].strapi_account_document_id !== accountDocumentId) return undefined;
+  return { accountId: accountDocumentId, mode: "friendly" };
+}
+
 export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteDependencies {
   const strapiUrl = process.env.STRAPI_URL || "";
   const accessToken = resolveAnalyticsStrapiAccessToken();
@@ -80,5 +93,7 @@ export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteD
     allowWrite: (request, accountId) => writeLimiter.allow(request, accountId),
     resolvePublicMusicAnalyticsTarget: (publicSlug, capability) =>
       resolvePublicMusicAnalyticsTarget(pool, publicSlug, capability),
+    resolveFriendlyMusicAnalyticsTarget: (accountDocumentId) =>
+      resolveFriendlyMusicAnalyticsTarget(pool, accountDocumentId),
   };
 }

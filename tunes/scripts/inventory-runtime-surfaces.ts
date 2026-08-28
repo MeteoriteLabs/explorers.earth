@@ -74,6 +74,7 @@ function classificationFor(method: string, path: string, priorClassification: st
 }
 
 function ownerFor(path: string, classification: string): string {
+  if (path === "/api/explorers/analytics/music-account/:accountDocumentId/events") return "active-local-binding-from-account-descriptor";
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
   if (path.startsWith("/api/music/identity/lifecycle/")) return "authoritative-strapi-user+stored-account-binding";
   if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";

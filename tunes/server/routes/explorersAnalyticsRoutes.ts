@@ -169,12 +169,50 @@ export interface ExplorersAnalyticsRouteDependencies {
     publicSlug: string,
     capability?: string,
   ) => Promise<{ accountId: string; mode: "public" | "unlisted" } | undefined>;
+  resolveFriendlyMusicAnalyticsTarget: (
+    accountDocumentId: string,
+  ) => Promise<{ accountId: string; mode: "friendly" } | undefined>;
 }
 
 export function setupExplorersAnalyticsRoutes(
   app: Express,
   dependencies: ExplorersAnalyticsRouteDependencies,
 ): void {
+  app.post("/api/explorers/analytics/music-account/:accountDocumentId/events", async (req, res) => {
+    const accountDocumentId = req.params.accountDocumentId;
+    const parsed = musicAnalyticsInputSchema.safeParse(req.body);
+    if (!parsed.success || !/^[A-Za-z0-9_-]{1,128}$/.test(accountDocumentId)) {
+      return res.status(400).json({ message: "Invalid Music analytics event" });
+    }
+    if (!dependencies.allowWrite(req, accountDocumentId)) {
+      return res.status(429).json({ message: "Analytics rate limit exceeded" });
+    }
+    try {
+      const target = await dependencies.resolveFriendlyMusicAnalyticsTarget(accountDocumentId);
+      if (!target) return res.status(404).json({ message: "Music page unavailable" });
+      const analyticsInput = explorersAnalyticsInputSchema.parse({
+        consent: true,
+        eventId: parsed.data.eventId,
+        accountId: target.accountId,
+        event: {
+          ...normalizedMusicEvent(parsed.data.event),
+          ...(parsed.data.utmParams ? { utmParams: parsed.data.utmParams } : {}),
+        },
+      });
+      if (!(await dependencies.validatePublicTarget(analyticsInput))) {
+        return res.status(404).json({ message: "Music page unavailable" });
+      }
+      const result = await dependencies.service.ingest(analyticsInput, { getIp: () => req.ip || null });
+      if (result.status === "pending") return res.status(202).json({ status: "pending", duplicate: true });
+      if (result.status === "consent-denied") return res.status(204).send();
+      return res.status(result.duplicate ? 200 : 201).json({ status: "committed", duplicate: result.duplicate });
+    } catch (error) {
+      if (error instanceof IdempotencyConflictError) return res.status(409).json({ message: error.message });
+      console.error("Friendly Music analytics ingestion failed");
+      return res.status(502).json({ message: "Analytics ingestion failed" });
+    }
+  });
+
   app.post("/api/explorers/analytics/music/:publicSlug/events", async (req, res) => {
     const publicSlug = req.params.publicSlug;
     const suppliedCapability = req.get("x-music-guest-capability");

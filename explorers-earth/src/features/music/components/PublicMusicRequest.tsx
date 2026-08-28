@@ -79,6 +79,7 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
       setResults([]); setMessage("Song requested."); onOutcome?.({ action: "request", outcome: "success" }); onRequestOutcome?.("accepted");
       window.setTimeout(() => statusRef.current?.focus(), 0);
     } catch (error) {
+      if (!mounted.current || generation !== scope.current.generation || scope.current.revoked) return;
       if (isCanonicalRevocation(error)) onRequestOutcome?.("forbidden");
       if (handleCanonicalRevocation(error, generation)) return;
       setMessage(errorCopy(error));

@@ -79,12 +79,16 @@ describe("public Music page", () => {
   it("tracks ready navigation and unavailable acknowledgement once per visible transition", async () => {
     const onAnalytics = vi.fn();
     const view = render(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} onAnalytics={onAnalytics} /></MemoryRouter>);
-    await waitFor(() => expect(onAnalytics).toHaveBeenCalledWith({ name: "navigation_opened", route: "direct" }));
+    await waitFor(() => expect(onAnalytics).toHaveBeenCalledWith({ name: "navigation_opened", route: "direct" }, expect.any(String)));
     view.rerender(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} onAnalytics={onAnalytics} /></MemoryRouter>);
     expect(onAnalytics).toHaveBeenCalledTimes(1);
     view.rerender(<MemoryRouter><PublicMusicContent state="unavailable" onAnalytics={onAnalytics} /></MemoryRouter>);
-    await waitFor(() => expect(onAnalytics).toHaveBeenCalledWith({ name: "unavailable", reason: "service_unavailable" }));
+    await waitFor(() => expect(onAnalytics).toHaveBeenCalledWith({ name: "unavailable", reason: "service_unavailable" }, expect.any(String)));
     expect(onAnalytics).toHaveBeenCalledTimes(2);
+    view.rerender(<MemoryRouter><PublicMusicContent state="loading" onAnalytics={onAnalytics} /></MemoryRouter>);
+    view.rerender(<MemoryRouter><PublicMusicContent state="unavailable" onAnalytics={onAnalytics} /></MemoryRouter>);
+    await waitFor(() => expect(onAnalytics).toHaveBeenCalledTimes(3));
+    expect(onAnalytics.mock.calls[2][1]).not.toBe(onAnalytics.mock.calls[1][1]);
   });
 
   it("applies the permission policy even if protected collection data is supplied", () => {

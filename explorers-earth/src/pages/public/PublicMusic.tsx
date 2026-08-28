@@ -5,7 +5,7 @@ import SEO from "../../components/SEO";
 import { type PublicMusicResource } from "../../features/music/publicMusicClient";
 import { PublicMusicSections } from "../../features/music/components/PublicMusicSections";
 import { usePublicMusicResource } from "../../features/music/usePublicMusicResource";
-import { usePublicMusicProductAnalytics, type PublicMusicProductEvent } from "../../features/music/publicMusicAnalytics";
+import { createPublicMusicAnalyticsOccurrence, usePublicMusicProductAnalytics, type PublicMusicProductEvent } from "../../features/music/publicMusicAnalytics";
 
 type PublicMusicViewState = "loading" | "ready" | "not-found" | "rate-limited" | "unavailable";
 
@@ -56,21 +56,25 @@ export function PublicMusicContent({
   publicSlug?: string;
   capability?: string;
   analyticsRoute?: "friendly" | "direct";
-  onAnalytics?: (event: PublicMusicProductEvent) => void | Promise<void>;
+  onAnalytics?: (event: PublicMusicProductEvent, occurrenceId?: string) => void | Promise<void>;
 }) {
   const Frame = standalone ? "main" : "div";
   const acknowledgedState = useRef<PublicMusicViewState>();
+  const stateOccurrence = useRef<string>();
   useEffect(() => {
     if (acknowledgedState.current === state) return;
+    stateOccurrence.current = createPublicMusicAnalyticsOccurrence();
     if (state === "ready") {
       acknowledgedState.current = state;
-      void onAnalytics?.({ name: "navigation_opened", route: analyticsRoute });
+      void onAnalytics?.({ name: "navigation_opened", route: analyticsRoute }, stateOccurrence.current);
     } else if (state === "not-found" || state === "rate-limited" || state === "unavailable") {
       acknowledgedState.current = state;
       void onAnalytics?.({
         name: "unavailable",
         reason: state === "not-found" ? "not_public" : state === "rate-limited" ? "rate_limited" : "service_unavailable",
-      });
+      }, stateOccurrence.current);
+    } else {
+      acknowledgedState.current = state;
     }
   }, [analyticsRoute, onAnalytics, state]);
   if (state === "loading") {

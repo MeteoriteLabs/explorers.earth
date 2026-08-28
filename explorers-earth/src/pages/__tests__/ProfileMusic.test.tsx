@@ -6,16 +6,18 @@ import ProfileMusic from "../public/ProfileMusic";
 const load = vi.hoisted(() => vi.fn());
 const retry = vi.hoisted(() => vi.fn());
 const subscribe = vi.hoisted(() => vi.fn(() => ({ unsubscribe: vi.fn() })));
+const availability = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+const trackMusic = vi.hoisted(() => vi.fn());
 vi.mock("../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../features/music/publicMusicClient", async (importOriginal) => ({
   ...(await importOriginal<object>()), publicMusicClient: { load },
 }));
 vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({
-  usePublicMusicAvailability: () => ({
-    state: "available",
-    descriptor: { version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "stable-public-slug", revision: 3 } },
-    retry,
-  }),
+  usePublicMusicAvailability: () => availability.current,
+}));
+vi.mock("../../features/music/publicMusicAnalytics", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  usePublicMusicProductAnalytics: (input: unknown) => { trackMusic(input); return trackMusic; },
 }));
 vi.mock("../../features/music/publicMusicLiveClient", () => ({ subscribeToPublicMusic: subscribe }));
 
@@ -29,7 +31,23 @@ const emptyResource = {
 };
 
 describe("ProfileMusic", () => {
-  beforeEach(() => { load.mockReset(); retry.mockReset(); subscribe.mockClear(); });
+  beforeEach(() => {
+    load.mockReset(); retry.mockReset(); subscribe.mockClear(); trackMusic.mockClear();
+    availability.current = {
+      state: "available", account: { documentId: "account-friendly-1" },
+      descriptor: { version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "stable-public-slug", revision: 3 } }, retry,
+    };
+  });
+
+  it.each(["not-public", "unavailable"] as const)("attributes friendly %s acknowledgement through account authority", async (state) => {
+    availability.current = { state, account: { documentId: "account-friendly-1" }, retry };
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes>
+      <Route path=":username" element={<Outlet />}><Route path="music" element={<ProfileMusic />} /></Route>
+    </Routes></MemoryRouter>);
+    await screen.findByRole("heading", { name: state === "not-public" ? "Music page unavailable" : "Music is temporarily unavailable." });
+    expect(trackMusic).toHaveBeenCalledWith({ accountDocumentId: "account-friendly-1", route: "friendly" });
+    expect(trackMusic).toHaveBeenCalledWith({ name: "unavailable", reason: state === "not-public" ? "not_public" : "service_unavailable" }, expect.any(String));
+  });
 
   it("loads by descriptor slug and settles profile-shell readiness exactly once", async () => {
     load.mockResolvedValue(emptyResource);

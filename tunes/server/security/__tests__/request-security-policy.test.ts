@@ -26,6 +26,8 @@ describe("request security policy", () => {
   it("never logs consented analytics event bodies", () => {
     expect(shouldLogRequestBody("/api/explorers/analytics/events")).toBe(false);
     expect(shouldLogRequestBody("/api/explorers/analytics/music/public-owner/events")).toBe(false);
+    expect(shouldLogRequestBody("/api/explorers/analytics/music-account/account-1/events")).toBe(false);
+    expect(shouldLogRequestBody("/api/explorers/analytics/music-account/malformed!authority/events")).toBe(false);
     expect(shouldLogRequestBody("/api/playlist/test")).toBe(true);
   });
 });

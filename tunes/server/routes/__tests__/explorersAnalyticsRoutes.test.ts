@@ -41,6 +41,7 @@ const buildApp = ({ authorized = true } = {}) => {
     accountId: "account-1",
     mode: "public",
   });
+  const resolveFriendlyMusicAnalyticsTarget = vi.fn().mockResolvedValue({ accountId: "account-1", mode: "friendly" });
   const app = express();
   app.set("trust proxy", true);
   app.use(express.json());
@@ -50,6 +51,7 @@ const buildApp = ({ authorized = true } = {}) => {
     validatePublicTarget,
     allowWrite,
     resolvePublicMusicAnalyticsTarget,
+    resolveFriendlyMusicAnalyticsTarget,
   });
   return {
     app,
@@ -58,11 +60,24 @@ const buildApp = ({ authorized = true } = {}) => {
     validatePublicTarget,
     allowWrite,
     resolvePublicMusicAnalyticsTarget,
+    resolveFriendlyMusicAnalyticsTarget,
   };
 };
 
 describe("explorers analytics routes", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("attributes friendly unavailable events through account path authority only", async () => {
+    const { app, service, resolveFriendlyMusicAnalyticsTarget } = buildApp();
+    const response = await request(app)
+      .post("/api/explorers/analytics/music-account/account-1/events")
+      .send({ ...musicInput, event: { name: "unavailable", reason: "not_public" } });
+    expect(response.status).toBe(201);
+    expect(resolveFriendlyMusicAnalyticsTarget).toHaveBeenCalledWith("account-1");
+    const forwarded = JSON.stringify(service.ingest.mock.calls[0][0].event);
+    expect(forwarded).not.toContain("account-1");
+    expect(JSON.stringify(response.body)).not.toContain("account-1");
+  });
 
   it("resolves a public Music owner server-side and never returns or forwards route authority", async () => {
     const { app, service, resolvePublicMusicAnalyticsTarget } = buildApp();

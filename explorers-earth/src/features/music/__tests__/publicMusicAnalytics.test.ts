@@ -58,6 +58,14 @@ describe("public Music product analytics", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("uses friendly Account descriptor only as URL authority", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 201 }));
+    const client = createPublicMusicAnalyticsClient("https://localtunes.example", fetchImpl as typeof fetch);
+    await client.track({ accountDocumentId: "account-friendly-1", eventId: "event-friendly-1", event: { name: "unavailable", reason: "not_public" } });
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://localtunes.example/api/explorers/analytics/music-account/account-friendly-1/events");
+    expect(String(fetchImpl.mock.calls[0][1]?.body)).not.toContain("account-friendly-1");
+  });
+
   it("polls an in-flight receipt with the identical event body until it is committed", async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 202 }))

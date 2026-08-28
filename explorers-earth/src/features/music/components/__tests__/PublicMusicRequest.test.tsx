@@ -231,4 +231,20 @@ describe("PublicMusicRequest", () => {
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByRole("button", { name: "Request Song by Artist" })).toBeEnabled();
   });
+
+  it("emits no request analytics after unmount, including canonical revocation", async () => {
+    let rejectSubmit!: (error: unknown) => void;
+    const onRequestOutcome = vi.fn();
+    const onCanonicalRevoked = vi.fn();
+    const client = { search: vi.fn().mockResolvedValue({ items: [video], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn(() => new Promise((_, reject) => { rejectSubmit = reject; })) };
+    const view = render(<PublicMusicRequest publicSlug="public_slug-123" allowed client={client as never} onRequestOutcome={onRequestOutcome} onCanonicalRevoked={onCanonicalRevoked} />);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "song");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    view.unmount();
+    rejectSubmit(new PublicMusicError("REQUEST_FORBIDDEN"));
+    await act(async () => { await Promise.resolve(); });
+    expect(onRequestOutcome).not.toHaveBeenCalled();
+    expect(onCanonicalRevoked).not.toHaveBeenCalled();
+  });
 });
