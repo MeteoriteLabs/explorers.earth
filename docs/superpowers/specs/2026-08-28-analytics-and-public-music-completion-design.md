@@ -70,6 +70,8 @@ The analytics filter stores custom dates as validated `YYYY-MM-DD` strings. Shar
 
 Parsing splits year, month, and day and constructs `new Date(year, month - 1, day)`. It rejects impossible or non-canonical values. It never uses `new Date("YYYY-MM-DD")`.
 
+The analytics HTTP boundary sends `{ fromDate, toDate, timeZone }` with canonical date-only strings and a validated IANA timezone. Local Tunes validates no more than 93 inclusive calendar dates before deriving instants. It never treats `93 × 24 hours` as equivalent to 93 calendar dates across DST.
+
 The two existing analytics date-control render paths become one reusable control component so empty and populated dashboard states cannot diverge.
 
 ### 3. Public Music discovery
@@ -87,6 +89,20 @@ The endpoint:
 
 `PublicNav` displays Music only when both Strapi `public_music === "Yes"` and Local Tunes returns a public descriptor. A Local Tunes outage does not break the rest of the public profile; the Music item is temporarily omitted or shown as unavailable according to the resolved UI state.
 
+One account-keyed, single-flight availability resolver under `PublicLayout` supplies navigation, first-view resolution, and `ProfileMusic`. It owns cache lifetime, abort behavior, reconnect invalidation, and fail-closed state so those consumers cannot disagree or issue three descriptor requests.
+
+The owner UI treats Local Tunes publication as authority and `public_music` as the profile-navigation preference. It exposes these states without attempting a cross-service transaction:
+
+| Profile preference | Local Tunes publication | Owner state |
+|---|---|---|
+| hidden | private/unlisted | Hidden |
+| enabled | private/unlisted | Setup required |
+| hidden | public | Published but hidden |
+| enabled | public descriptor ready | Live |
+| either | descriptor unavailable | Status unavailable; never claim Live |
+
+Each non-live state gives a concrete corrective action and refresh affordance.
+
 ### 4. Friendly route and canonical share route
 
 `/{username}/music` is a nested public-profile route guarded by `public_music`. It resolves the stable Account document ID, obtains the public descriptor, and renders the same public Music content within `PublicLayout`.
@@ -99,6 +115,13 @@ The endpoint:
 - private or revoked resources produce the generic unavailable/not-found state.
 
 The content renderer is shared between both routes. Routing and discovery wrappers remain separate so the direct-share path never needs Strapi profile lookup.
+
+Entry behavior is explicit:
+
+- first-view resolution from `/{username}` falls back to the first available normal tab when Music is not ready;
+- an explicit `/{username}/music` URL remains in the profile shell and shows Retry plus Return to Profile rather than silently redirecting;
+- a Music tab that becomes unavailable shows that same in-shell state, then disappears after canonical refetch;
+- an unknown username preserves the existing profile-not-found behavior.
 
 ### 5. Appearance controls
 
@@ -123,6 +146,19 @@ Recommendation layout and category-order controls continue to cover Places, Movi
 | Show queue | Current item and bounded up-next queue | Playing now and Up next | Repository returns no queue/current item when disabled |
 
 All 32 boolean combinations must produce a coherent page. Controls that depend on unavailable data disappear rather than rendering disabled shells, except where an explanatory empty state helps the visitor.
+
+Field exposure and interactivity are separate rules:
+
+| Field or control | Rule |
+|---|---|
+| `currentlyPlaying` | Exposed when guest playback **or** queue visibility is enabled; playable only when guest playback is enabled |
+| `queue` | Exposed only when queue visibility is enabled |
+| playlist metadata and songs | Exposed only when playlist sharing is enabled |
+| `recentlyPlayed` | Exposed only when recent-history visibility is enabled |
+| player controls | Render only when guest playback is enabled and at least one exposed playable song exists |
+| request interface | Render only when requests are enabled |
+
+A song exposed through queue visibility never becomes playable unless guest playback is independently enabled. When playback is enabled but no playlist or queue is visible, `currentlyPlaying` is the only possible playable source.
 
 ### 7. Guest playback semantics
 
@@ -166,6 +202,8 @@ Server events identify only a revisioned resource change:
 - `playlists_changed`.
 
 On an accepted event, the public client coalesces bursts and refetches the canonical public Music resource. It ignores stale revisions and cancels obsolete requests on navigation.
+
+When the socket is unavailable, foreground polling runs every 30 seconds with ±20% jitter. Failures back off through 30, 60, 120, 240, and 300 seconds; a success resets the schedule. Hidden, offline, and unmounted pages stop immediately.
 
 Public discoverable pages receive read-only socket admission using the public slug. Unlisted pages use the retained capability. Socket admission rechecks publication and lifecycle state. Mutation routes independently recheck permissions, so a delayed socket cannot extend authority.
 
@@ -213,6 +251,7 @@ The browser validates the public resource with a strict schema before rendering.
 
 ```ts
 interface PublicMusicResource {
+  version: "music-public-resource/v1";
   revision: number;
   user: { username: string; venueName: string | null };
   permissions: {
@@ -223,13 +262,21 @@ interface PublicMusicResource {
     allowQueueVisibility: boolean;
   };
   currentlyPlaying: MusicSong | null;
-  queue: MusicSong[];
-  recentlyPlayed: MusicSong[];
-  playlists: MusicPlaylist[];
+  queue: { items: PublicMusicSong[]; total: number; truncated: boolean };
+  recentlyPlayed: { items: PublicMusicSong[]; total: number; truncated: boolean };
+  playlists: { items: PublicMusicPlaylist[]; total: number; truncated: boolean };
 }
 ```
 
-The server returns empty or null protected fields when the related permission is false. The client also derives visibility from permissions as defense in depth.
+`PublicMusicSong` and `PublicMusicPlaylist` are dedicated public types. They contain display metadata, non-authority public/media keys, and bounded nested song envelopes only. They never reuse owner types or expose numeric/internal `id`, `userId`, `playlistId`, Account/User document IDs, capability hashes, credentials, or unknown keys.
+
+The canonical resource endpoint is additive: `GET /api/music/public-resource/v1/:publicSlug`. Legacy `/api/playlist/:guestUrl` retains its current response shape through rollout so the old frontend and direct shares remain compatible. Collection truncation is visible to guests as `Showing N of M`; legacy removal is a later explicitly approved migration.
+
+The server returns empty or null protected fields according to the field-level truth table above. The client separately derives both data visibility and permitted interactivity from permissions as defense in depth.
+
+`revision` is one monotonically increasing public-snapshot revision, not a queue-only or playback-only counter. Every committed mutation that changes the public descriptor or resource advances it transactionally. Socket events carry this revision and never become the source of content.
+
+The stable public `/music/share/{publicSlug}` URL is the SEO canonical for both public entry paths. Friendly `/{username}/music` declares that stable share URL after descriptor resolution, so username renames cannot stale canonical metadata. Public direct share is self-canonical. Unlisted share is always `noindex, nofollow` and never exposes the capability.
 
 ## UI States
 
