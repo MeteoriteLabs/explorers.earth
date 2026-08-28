@@ -219,6 +219,21 @@ describe("PublicMusicSections permission oracle", () => {
     expect(screen.getByRole("heading", { name: "Music" })).toHaveFocus();
   });
 
+  it("reconciles a delayed lookup revocation without stealing focus that moved outside", async () => {
+    let rejectSearch!: (error: unknown) => void;
+    const onReconcile = vi.fn();
+    const requestClient = { search: vi.fn(() => new Promise((_, reject) => { rejectSearch = reject; })), videoFromUrl: vi.fn(), requestSong: vi.fn() };
+    render(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><button type="button">Outside</button><PublicMusicSections resource={populatedResource(1 | 4)} publicSlug="public-owner" onReconcile={onReconcile} requestClient={requestClient as never} /></>);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "song");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    screen.getByRole("button", { name: "Outside" }).focus();
+    rejectSearch(new PublicMusicError("REQUEST_FORBIDDEN"));
+    await waitFor(() => expect(onReconcile).toHaveBeenCalledTimes(1));
+    expect(screen.queryByLabelText("Search for a song or paste a YouTube URL")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Song requests are no longer available.");
+    expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
+  });
+
   it("uses one page-level empty state instead of stacking enabled-empty messages", () => {
     const resource = populatedResource(31);
     resource.currentlyPlaying = null;

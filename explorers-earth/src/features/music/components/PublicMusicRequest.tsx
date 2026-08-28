@@ -31,6 +31,16 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
           : error.code === "REQUEST_INVALID" ? "Enter a valid song search or YouTube URL."
             : "Music is temporarily unavailable."
     : "Music is temporarily unavailable.";
+  const handleCanonicalRevocation = (error: unknown): boolean => {
+    if (!isCanonicalRevocation(error)) return false;
+    active.current?.abort();
+    active.current = undefined;
+    setBusy(false);
+    setSubmitting(undefined);
+    setResults([]);
+    onCanonicalRevoked?.();
+    return true;
+  };
   const search = async () => {
     active.current?.abort();
     const controller = new AbortController(); active.current = controller; setBusy(true); setMessage(""); setResults([]);
@@ -39,7 +49,7 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
         ? { items: [await client.videoFromUrl(publicSlug, query.trim(), capability, controller.signal)] }
         : await client.search(publicSlug, query, capability, controller.signal);
       if (!controller.signal.aborted) { setRetrySeconds(0); setResults(value.items); onOutcome?.({ action: "search", outcome: value.items.length ? "success" : "empty" }); if (value.items.length === 0) setMessage("No songs found."); }
-    } catch (error) { if (!controller.signal.aborted) { setMessage(errorCopy(error)); if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60); onOutcome?.({ action: "search", outcome: normalizedOutcome(error) }); } }
+    } catch (error) { if (!controller.signal.aborted) { setMessage(errorCopy(error)); if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60); handleCanonicalRevocation(error); onOutcome?.({ action: "search", outcome: normalizedOutcome(error) }); } }
     finally { if (!controller.signal.aborted) setBusy(false); }
   };
   const submit = async (video: PublicMusicRequestVideo) => {
@@ -52,10 +62,7 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
     } catch (error) {
       setMessage(errorCopy(error));
       if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60);
-      if (error instanceof PublicMusicError && (error.code === "REQUEST_FORBIDDEN" || error.code === "PUBLIC_NOT_FOUND")) {
-        setResults([]);
-        onCanonicalRevoked?.();
-      }
+      handleCanonicalRevocation(error);
       onOutcome?.({ action: "request", outcome: normalizedOutcome(error) });
     }
     finally { setSubmitting(undefined); }
@@ -79,4 +86,8 @@ function normalizedOutcome(error: unknown): "invalid" | "rate_limited" | "queue_
   if (error.code === "QUEUE_FULL") return "queue_full";
   if (error.code === "REQUEST_FORBIDDEN" || error.code === "PUBLIC_NOT_FOUND") return "forbidden";
   return "unavailable";
+}
+
+function isCanonicalRevocation(error: unknown): boolean {
+  return error instanceof PublicMusicError && (error.code === "REQUEST_FORBIDDEN" || error.code === "PUBLIC_NOT_FOUND");
 }

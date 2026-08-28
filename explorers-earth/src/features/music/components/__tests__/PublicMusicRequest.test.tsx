@@ -115,4 +115,34 @@ describe("PublicMusicRequest", () => {
     expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument();
     expect(onCanonicalRevoked).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ["song query", "search"],
+    ["https://youtu.be/abcdefghijk", "videoFromUrl"],
+  ] as const)("signals canonical reconciliation when lookup is revoked for %s", async (query, method) => {
+    const onCanonicalRevoked = vi.fn();
+    const client = { search: vi.fn().mockRejectedValue(new PublicMusicError("REQUEST_FORBIDDEN")), videoFromUrl: vi.fn().mockRejectedValue(new PublicMusicError("PUBLIC_NOT_FOUND")), requestSong: vi.fn() };
+    render(<PublicMusicRequest publicSlug="public_slug-123" allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} />);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), query);
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(onCanonicalRevoked).toHaveBeenCalledTimes(1));
+    expect(client[method]).toHaveBeenCalledTimes(1);
+  });
+
+  it("suppresses an obsolete late completion after URL revocation and signals exactly once", async () => {
+    let resolveOld!: (value: { items: typeof video[]; nextPageToken: null }) => void;
+    const onCanonicalRevoked = vi.fn();
+    const client = { search: vi.fn(() => new Promise((resolve) => { resolveOld = resolve; })), videoFromUrl: vi.fn().mockRejectedValue(new PublicMusicError("PUBLIC_NOT_FOUND")), requestSong: vi.fn() };
+    render(<PublicMusicRequest publicSlug="public_slug-123" allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} />);
+    const input = screen.getByLabelText("Search for a song or paste a YouTube URL");
+    await userEvent.type(input, "old query");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.clear(input);
+    await userEvent.type(input, "https://youtu.be/abcdefghijk");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(onCanonicalRevoked).toHaveBeenCalledTimes(1));
+    resolveOld({ items: [video], nextPageToken: null });
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument());
+    expect(onCanonicalRevoked).toHaveBeenCalledTimes(1);
+  });
 });
