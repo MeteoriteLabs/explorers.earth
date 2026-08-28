@@ -42,28 +42,34 @@ export function PublicMusicContent({
   resource,
   retryAfterSeconds = 60,
   onRetry,
+  standalone = true,
+  returnTo = "/",
 }: {
   state: PublicMusicViewState;
   resource?: PublicMusicResource;
   retryAfterSeconds?: number;
   onRetry?: () => void;
+  standalone?: boolean;
+  returnTo?: string;
 }) {
+  const Frame = standalone ? "main" : "div";
   if (state === "loading") {
     return (
-      <main className="min-h-screen bg-dashboard-bg px-4 py-20 text-dashboard-text">
+      <Frame className="min-h-screen bg-dashboard-bg px-4 py-20 text-dashboard-text">
         <div className="mx-auto max-w-4xl" role="status" aria-live="polite">Loading Music…</div>
-      </main>
+      </Frame>
     );
   }
   if (state === "not-found") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
+      <Frame className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
         <section className="max-w-md text-center">
           <Music2 aria-hidden="true" className="mx-auto mb-4 h-10 w-10 text-dashboard-accent" />
           <h1 className="text-2xl font-semibold">Music page unavailable</h1>
-          <Link className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-dashboard-accent px-5 text-[var(--dash-accent-text)]" to="/">Return to Explorers</Link>
+          {onRetry ? <button className="mt-6 min-h-11 rounded-lg bg-dashboard-accent px-5" type="button" onClick={onRetry}>Retry</button> : null}
+          <Link className="mt-6 ml-3 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link>
         </section>
-      </main>
+      </Frame>
     );
   }
   if (state === "rate-limited") {
@@ -71,12 +77,13 @@ export function PublicMusicContent({
   }
   if (state === "unavailable" || !resource) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
+      <Frame className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
         <section className="max-w-md text-center" role="alert">
           <h1 className="text-2xl font-semibold">Music is temporarily unavailable.</h1>
-          <Link className="mt-6 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to="/">Return to Explorers</Link>
+          {onRetry ? <button className="mt-6 min-h-11 rounded-lg bg-dashboard-accent px-5" type="button" onClick={onRetry}>Retry</button> : null}
+          <Link className="mt-6 ml-3 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link>
         </section>
-      </main>
+      </Frame>
     );
   }
 
@@ -86,7 +93,7 @@ export function PublicMusicContent({
   const upNextSongs = resource.queue.items;
   const showCurrent = viewPolicy.currentVisible;
   return (
-    <main className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
+    <Frame className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-3xl font-semibold">Music</h1>
         {showCurrent || showQueue && resource.queue.items.length > 0 ? (
@@ -156,7 +163,7 @@ export function PublicMusicContent({
           </div>
         )}
       </div>
-    </main>
+    </Frame>
   );
 }
 
@@ -185,6 +192,7 @@ export default function PublicMusic() {
   const [resource, setResource] = useState<PublicMusicResource>();
   const [retryAfterSeconds, setRetryAfterSeconds] = useState(60);
   const [attempt, setAttempt] = useState(0);
+  const capability = publicSlug ? capabilityFromFragment(location.hash || window.location.hash) ?? retainedCapability(publicSlug) : undefined;
 
   useEffect(() => {
     if (!publicSlug) return;
@@ -218,7 +226,13 @@ export default function PublicMusic() {
 
   return (
     <>
-      <SEO title="Music | Explorers" description="Public Music playlists on Explorers." />
+      <SEO
+        title="Music | Explorers"
+        description="Public Music playlists on Explorers."
+        canonical={publicSlug ? `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}` : undefined}
+        noIndex={Boolean(capability)}
+        noFollow={Boolean(capability)}
+      />
       <PublicMusicContent state={state} resource={resource} retryAfterSeconds={retryAfterSeconds} onRetry={() => setAttempt((value) => value + 1)} />
     </>
   );

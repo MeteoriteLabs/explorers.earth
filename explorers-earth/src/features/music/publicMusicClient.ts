@@ -173,6 +173,21 @@ async function readBoundedPublicMusicBody(response: Response): Promise<string> {
 export function createPublicMusicClient(baseUrl: string) {
   const base = normalizedBaseUrl(baseUrl);
   return {
+    async discover(accountDocumentId: string, signal?: AbortSignal): Promise<PublicMusicDescriptor> {
+      if (!/^[A-Za-z0-9_-]{1,255}$/.test(accountDocumentId)) throw new PublicMusicError("PUBLIC_NOT_FOUND");
+      const response = await fetch(`${base}/api/music/public-profile/${encodeURIComponent(accountDocumentId)}`, {
+        headers: { Accept: "application/json" },
+        ...(signal ? { signal } : {}),
+      });
+      if (response.status === 403 || response.status === 404) throw new PublicMusicError("PUBLIC_NOT_FOUND");
+      if (response.status === 429) throw new PublicMusicError("RATE_LIMITED", 60);
+      if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      try {
+        return parsePublicMusicDescriptor(await response.json());
+      } catch {
+        throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      }
+    },
     async load(publicSlug: string, capability?: string, signal?: AbortSignal): Promise<PublicMusicResource> {
       if (!publicSlugSchema.safeParse(publicSlug).success) throw new PublicMusicError("PUBLIC_NOT_FOUND");
       const headers: Record<string, string> = { Accept: "application/json" };

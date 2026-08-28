@@ -68,6 +68,9 @@ export default defineConfig(({ mode }) => {
      },
    },
   test: {
+    // Unit imports must never inherit a developer's cleartext Local Tunes URL.
+    // Explicit integration fixtures construct their own same-origin client.
+    env: { VITE_LOCAL_TUNES_API_URL: 'https://localtunes.earth' },
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

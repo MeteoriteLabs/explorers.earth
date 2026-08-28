@@ -16,6 +16,8 @@ import { PublicGames, PublicGamesList, PublicGamesGenre } from "../features/Game
 import { PublicApps, PublicAppList } from "../features/AppsAndTools";
 import { PublicProducts, PublicProductList } from "../features/Products";
 import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/People";
+import ProfileMusic from "../pages/public/ProfileMusic";
+import PublicMusicVisibilityBoundary from "./validators/PublicMusicVisibilityBoundary";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -35,6 +37,11 @@ const PublicRoutes = [
       <TabVisibilityGuard tabField="public_profile" defaultVisible={true}>
         <PublicProfile />
       </TabVisibilityGuard>
+    } />
+    <Route path="music" element={
+      <PublicMusicVisibilityBoundary>
+        <ProfileMusic />
+      </PublicMusicVisibilityBoundary>
     } />
     <Route path="places">
       <Route index element={

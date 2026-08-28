@@ -42,14 +42,16 @@ describe("retired browser Music authority boundary", () => {
     }
   });
 
-  it("does not advertise or authorize Music through the retired mutable-username public route", () => {
+  it("allows the friendly presentation route without making username Music authority", () => {
     const publicNav = readFileSync(resolve(process.cwd(), "src/components/PublicNav.tsx"), "utf8");
     const publicRoutes = readFileSync(resolve(process.cwd(), "src/routes/PublicRoutes.tsx"), "utf8");
+    const profileMusic = readFileSync(resolve(process.cwd(), "src/pages/public/ProfileMusic.tsx"), "utf8");
 
-    expect(publicNav).not.toContain("path: `/${username}/music`");
-    expect(publicNav).not.toContain("showMusicTab");
-    expect(publicRoutes).not.toContain('tabField="public_music"');
-    expect(publicRoutes).not.toContain('<Route path="music"');
+    expect(publicNav).toContain("path: `/${username}/music`");
+    expect(publicRoutes).toContain("PublicMusicVisibilityBoundary");
+    expect(publicRoutes).toContain('<Route path="music"');
+    expect(profileMusic).toContain("descriptorSlug");
+    expect(profileMusic).not.toMatch(/publicMusicClient\.(?:load|discover)\(username/);
   });
 
   it("hands completed onboarding back to the sole eligibility observer without a second ensure trigger", () => {

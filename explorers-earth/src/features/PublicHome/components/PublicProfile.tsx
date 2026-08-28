@@ -9,7 +9,7 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { useQuery } from "@apollo/client";
-import { memo, useEffect, useState, useMemo, type KeyboardEvent } from "react";
+import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
 import { Link, useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
@@ -48,6 +48,7 @@ import {
   normalizePublicWebHref,
   sanitizePublicRichText,
 } from "../utils/publicProfileContent";
+import { usePublicMusicAvailability } from "../../music/PublicMusicAvailabilityProvider";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
@@ -106,6 +107,8 @@ const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const musicAvailability = usePublicMusicAvailability();
+  const musicLandingHandled = useRef<string>();
 
   // MediaViewer state
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
@@ -131,6 +134,13 @@ const PublicProfile = memo(() => {
     [accountData?.social_media?.theme_settings],
   );
   const themeStyles = getThemeTokenStyles(themeSettings);
+
+  useEffect(() => {
+    if (loading || themeSettings.landingTab !== "music" || musicAvailability.state === "loading") return;
+    if (musicLandingHandled.current === username) return;
+    musicLandingHandled.current = username;
+    if (musicAvailability.state === "available") navigate(`/${username}/music`, { replace: true });
+  }, [loading, musicAvailability.state, navigate, themeSettings.landingTab, username]);
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, useParams } from "react-router-dom";
 import PublicNav from "../components/PublicNav";
 import { EarthLoader } from "../components/EarthLoader";
+import { PublicMusicAvailabilityProvider } from "../features/music/PublicMusicAvailabilityProvider";
+import PublicProfileThemeProvider from "../features/PublicHome/components/PublicProfileThemeProvider";
 
 const PublicLayout = () => {
   const location = useLocation();
@@ -11,13 +13,14 @@ const PublicLayout = () => {
   // Check if current route is a map route
   const isMapRoute = location.pathname.includes('/map') || location.pathname.includes('/placesmap');
 
-  // Reset page loaded state when switching to a different user
+  // Readiness belongs to the route, so a prior child cannot reveal the next one.
   useEffect(() => {
     setIsPageLoaded(false);
-  }, [username]);
+  }, [username, location.pathname]);
 
   return (
-    <>
+    <PublicMusicAvailabilityProvider>
+      <PublicProfileThemeProvider>
       {isPageLoaded && !isMapRoute && <PublicNav />}
       <main>
         <Outlet context={{ isPageLoaded, setIsPageLoaded }} />
@@ -27,7 +30,8 @@ const PublicLayout = () => {
           <EarthLoader context="general" size="default" />
         </div>
       )}
-    </>
+      </PublicProfileThemeProvider>
+    </PublicMusicAvailabilityProvider>
   );
 };
 

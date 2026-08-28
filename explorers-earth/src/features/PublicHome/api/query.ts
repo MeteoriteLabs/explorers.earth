@@ -395,6 +395,7 @@ export const getPublicAccountBasicQuery = gql`
       profile_picture {
         url
       }
+      social_media
       public_profile
       public_recommendations
       public_music

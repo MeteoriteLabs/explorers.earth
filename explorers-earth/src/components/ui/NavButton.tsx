@@ -1,4 +1,5 @@
 import { FC, MouseEventHandler, ReactElement } from "react";
+import { Link } from "react-router-dom";
 
 interface NavButtonProps {
   icon: ReactElement;
@@ -6,6 +7,7 @@ interface NavButtonProps {
   onClickHandler: MouseEventHandler<HTMLButtonElement>;
   isActive: boolean;
   type?: "default" | "public";
+  href?: string;
 }
 
 const NavButton: FC<NavButtonProps> = ({
@@ -13,19 +15,16 @@ const NavButton: FC<NavButtonProps> = ({
   text,
   onClickHandler,
   isActive,
+  type = "default",
+  href,
 }) => {
-  return (
-    <button
-      onClick={onClickHandler}
-      className={`
+  const className = `
         relative flex-1 flex font-poppins flex-col items-center justify-center gap-0.5
         pt-1.5 pb-1 px-1 rounded-xl transition-all duration-300 ease-in-out
         hover:scale-105 active:scale-95
         ${isActive ? "" : "hover:bg-dashboard-muted/50"}
-      `}
-    >
-
-
+      `;
+  const content = <>
       <div className="transition-transform duration-300">
         {icon}
       </div>
@@ -39,8 +38,9 @@ const NavButton: FC<NavButtonProps> = ({
       >
         {text}
       </span>
-    </button>
-  );
+    </>;
+  if (type === "public" && href) return <Link to={href} aria-current={isActive ? "page" : undefined} className={className}>{content}</Link>;
+  return <button onClick={onClickHandler} className={className}>{content}</button>;
 };
 
 export default NavButton;

@@ -66,6 +66,17 @@ describe("normalizePinnedTabs", () => {
 });
 
 describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
+  it("gives available Music a deterministic rank independent of list counts", () => {
+    const account = { public_music: "Yes", public_recommendations: "Yes", public_movie: "Yes" };
+    expect(computePinnedNavTabIds(account, { public_recommendations: 999, public_movie: 1 }, { musicAvailable: true }))
+      .toEqual(["public_profile", "public_music", "public_recommendations", "public_movie"]);
+  });
+
+  it("fails closed for Music without disturbing other navigation items", () => {
+    const account = { public_music: "Yes", public_recommendations: "Yes", public_movie: "Yes" };
+    expect(computePinnedNavTabIds(account, ZERO_COUNTS, { musicAvailable: false }))
+      .toEqual(["public_profile", "public_recommendations", "public_movie"]);
+  });
   it("fresh (null) account shows only the profile — nothing is public yet", () => {
     const pinned = computePinnedNavTabIds(null, ZERO_COUNTS);
     expect(pinned).toEqual(["public_profile"]);
@@ -107,6 +118,17 @@ describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
 });
 
 describe("computePinnedNavTabIds — manual mode", () => {
+  it("retains a stored Music position while unavailable and restores it without blanks or duplicates", () => {
+    const account = {
+      auto_pinning: false,
+      pinned_nav_tabs: ["public_profile", "public_music", "public_movie", "public_music", ""],
+      public_music: "Yes",
+      public_movie: "Yes",
+    };
+    expect(normalizePinnedTabs(account)).toEqual(["public_profile", "public_music", "public_movie"]);
+    expect(computePinnedNavTabIds(account, ZERO_COUNTS, { musicAvailable: false })).toEqual(["public_profile", "public_movie"]);
+    expect(computePinnedNavTabIds(account, ZERO_COUNTS, { musicAvailable: true })).toEqual(["public_profile", "public_music", "public_movie"]);
+  });
   const manual = {
     auto_pinning: false,
     pinned_nav_tabs: ["public_profile", "public_movie", "public_books"],

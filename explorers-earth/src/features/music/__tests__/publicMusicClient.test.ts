@@ -228,6 +228,24 @@ describe("public Music client", () => {
     expect(sessionGet).not.toHaveBeenCalled();
   });
 
+  it("discovers a public descriptor with the Account document ID and no username authority", async () => {
+    const descriptor = {
+      version: "music-public-descriptor/v1" as const,
+      publication: { mode: "public" as const, publicSlug: "public_slug-123", revision: 7 },
+    };
+    const fetcher = vi.fn().mockResolvedValue(success(descriptor));
+    vi.stubGlobal("fetch", fetcher);
+    const controller = new AbortController();
+
+    await expect(createPublicMusicClient("https://music.example").discover("account-document-id", controller.signal))
+      .resolves.toEqual(descriptor);
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://music.example/api/music/public-profile/account-document-id",
+      { headers: { Accept: "application/json" }, signal: controller.signal },
+    );
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("username");
+  });
+
   it("keeps an unlisted capability out of the URL and sends no owner credential", async () => {
     const fetcher = vi.fn().mockResolvedValue(success(publicResource));
     vi.stubGlobal("fetch", fetcher);

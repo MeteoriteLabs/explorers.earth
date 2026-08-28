@@ -3,38 +3,23 @@ import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
-import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
+import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users, Music2 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import {
-  getPublicAccountBasicQuery,
   getPublicCategoryListCountsQuery,
 } from "../features/PublicHome/api/query";
 import { computePinnedNavTabIds } from "../utils/navPinning";
+import { usePublicMusicAvailability } from "../features/music/PublicMusicAvailabilityProvider";
 
 const PublicNav = memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const { username } = useParams();
 
-  // Query to get account data for tab visibility
-  const { data, loading } = useQuery(getPublicAccountBasicQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-    // Revalidate on mount so "View Public Page" reflects the owner's latest
-    // visibility/pin config. Account isn't normalized in apolloCache, so a hub
-    // edit to pinned_nav_tabs/visibility doesn't patch this separate cache-first
-    // query; without this it would show stale config until a hard reload.
-    fetchPolicy: "cache-and-network",
-  });
-
-  const accountData = data?.accounts[0];
+  const availability = usePublicMusicAvailability();
+  const accountData = availability.account;
+  const loading = availability.state === "loading" && !accountData;
 
   // Second query: fetch published list counts per category (for smart auto-fill ranking).
   // Only runs after the account document ID is available from the first query.
@@ -75,6 +60,7 @@ const PublicNav = memo(() => {
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
   const showPeopleTab = accountData?.public_people === "Yes";
+  const showMusicTab = accountData?.public_music === "Yes" && availability.state === "available";
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
@@ -164,6 +150,12 @@ const PublicNav = memo(() => {
       text: "Guides",
       path: `/${username}/guides`,
     }] : []),
+    ...(showMusicTab ? [{
+      id: "public_music",
+      icon: <Music2 size={18} color={location.pathname.endsWith("/music") ? "white" : "rgba(255,255,255,0.5)"} />,
+      text: "Music",
+      path: `/${username}/music`,
+    }] : []),
     // Only add profile tab if visibility is enabled
     ...(showProfileTab ? [{
       id: 'public_profile',
@@ -232,7 +224,7 @@ const PublicNav = memo(() => {
   // ─── Footer Nav Logic ──────────────────────────────────────────────────
   // Single source of truth for pinned/shown tabs (auto-rank vs manual, max 5).
   // See src/utils/navPinning.ts — shared with the Recommendations Hub.
-  const finalNavItems = computePinnedNavTabIds(accountData, categoryListCountMap)
+  const finalNavItems = computePinnedNavTabIds(accountData, categoryListCountMap, { musicAvailable: showMusicTab })
     .map(id => navItems.find(item => item.id === id))
     .filter(Boolean) as typeof navItems;
   // ───────────────────────────────────────────────────────────────────────
@@ -261,6 +253,7 @@ const PublicNav = memo(() => {
               icon={item.icon}
               text={item.text}
               isActive={isActive}
+              href={item.path}
               onClickHandler={() => navigate(item.path)}
             />
           );
