@@ -266,7 +266,6 @@ describe("Profile editor cross-tab save boundary", () => {
         .map((node) => node.getAttribute("data-category-id")),
     ).toEqual([
       "places",
-      "music",
       "movies",
       "books",
       "games",

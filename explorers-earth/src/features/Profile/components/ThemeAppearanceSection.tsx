@@ -32,7 +32,6 @@ interface AppearanceAreaHeadingProps {
 
 const CATEGORY_FALLBACKS = {
   places: "Places",
-  music: "Music",
   movies: "Movies & Shows",
   books: "Books",
   games: "Games",
@@ -297,6 +296,12 @@ export const ThemeAppearanceSection = memo(
               {t(
                 "dashboard.profile.themeAppearance.firstView.business",
                 "Business",
+              )}
+            </option>
+            <option value="music">
+              {t(
+                "dashboard.profile.themeAppearance.firstView.music",
+                "Music page",
               )}
             </option>
           </select>

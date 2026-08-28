@@ -97,7 +97,6 @@ const themeSettings = (overrides: Record<string, unknown> = {}) => ({
     layout: "shelves",
     categoryOrder: [
       "places",
-      "music",
       "movies",
       "books",
       "games",
@@ -337,7 +336,7 @@ describe("PublicProfile recommendation presentation", () => {
     }
   });
 
-  it("opens a saved recommendation category and passes normalized layout settings", () => {
+  it("treats a saved Music landing destination as unavailable to recommendation ordering", () => {
     state.account = makeAccount({
       public_music: "Yes",
       social_media: {
@@ -360,11 +359,10 @@ describe("PublicProfile recommendation presentation", () => {
     );
     expect(screen.getByTestId("recommendations-content")).toHaveAttribute(
       "data-preferred",
-      "music",
+      "",
     );
     expect(recommendationProps.at(-1)?.presentation.categoryOrder).toEqual([
       "books",
-      "music",
       "places",
       "movies",
       "games",
@@ -523,7 +521,6 @@ describe("PublicProfile recommendation presentation", () => {
     );
     expect(recommendationProps.at(-1)?.presentation.categoryOrder).toEqual([
       "places",
-      "music",
       "movies",
       "books",
       "games",

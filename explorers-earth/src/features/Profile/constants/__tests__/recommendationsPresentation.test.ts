@@ -22,7 +22,6 @@ describe("normalizeRecommendationsPresentation", () => {
       layout: "shelves",
       categoryOrder: [
         "places",
-        "music",
         "movies",
         "books",
         "games",
@@ -36,7 +35,6 @@ describe("normalizeRecommendationsPresentation", () => {
       layout: "shelves",
       categoryOrder: [
         "places",
-        "music",
         "movies",
         "books",
         "games",
@@ -57,7 +55,6 @@ describe("normalizeRecommendationsPresentation", () => {
     ).toEqual({
       layout: "grid",
       categoryOrder: [
-        "music",
         "books",
         "places",
         "movies",
@@ -99,7 +96,6 @@ describe("lossless theme settings merging", () => {
         recommendations: {
           layout: "featured",
           categoryOrder: [
-            "music",
             "places",
             "movies",
             "books",
@@ -124,7 +120,6 @@ describe("lossless theme settings merging", () => {
           layout: "featured",
           futureRecommendation: 7,
           categoryOrder: [
-            "music",
             "places",
             "movies",
             "books",
@@ -189,7 +184,6 @@ describe("normalizeThemeSettings", () => {
         categoryOrder: [
           "people",
           "places",
-          "music",
           "movies",
           "books",
           "games",
@@ -209,12 +203,75 @@ describe("normalizeThemeSettings", () => {
       }).accentColor,
     ).toBe("#38BDF8");
   });
+
+  it("preserves Music as a landing destination while removing it from stale category order", () => {
+    expect(
+      normalizeThemeSettings({
+        landingTab: "music",
+        recommendations: {
+          layout: "featured",
+          categoryOrder: ["books", "music", "places"],
+          futureRecommendation: { keep: true },
+        },
+        futureTheme: "keep",
+      }),
+    ).toMatchObject({
+      landingTab: "music",
+      recommendations: {
+        layout: "featured",
+        categoryOrder: [
+          "books",
+          "places",
+          "movies",
+          "games",
+          "guides",
+          "apps",
+          "products",
+          "people",
+        ],
+      },
+    });
+
+    expect(
+      mergeThemeSettingsWire(
+        {
+          landingTab: "music",
+          futureTheme: "keep",
+          recommendations: {
+            categoryOrder: ["music", "books"],
+            futureRecommendation: { keep: true },
+          },
+        },
+        {
+          recommendations: normalizeRecommendationsPresentation({
+            categoryOrder: ["music", "books"],
+          }),
+        },
+      ),
+    ).toEqual({
+      landingTab: "music",
+      futureTheme: "keep",
+      recommendations: {
+        categoryOrder: [
+          "books",
+          "places",
+          "movies",
+          "games",
+          "guides",
+          "apps",
+          "products",
+          "people",
+        ],
+        futureRecommendation: { keep: true },
+        layout: "shelves",
+      },
+    });
+  });
 });
 
 describe("recommendation category visibility", () => {
   const expectedFields: Record<RecommendationCategoryId, string> = {
     places: "public_recommendations",
-    music: "public_music",
     movies: "public_movie",
     books: "public_books",
     games: "public_games",
@@ -227,7 +284,6 @@ describe("recommendation category visibility", () => {
   it("uses one canonical metadata entry for every category", () => {
     expect(RECOMMENDATION_CATEGORY_METADATA.map(({ id }) => id)).toEqual([
       "places",
-      "music",
       "movies",
       "books",
       "games",
@@ -264,7 +320,7 @@ describe("landing behavior", () => {
   it.each([
     ["all-recommendations", "recommendations", undefined],
     ["places", "recommendations", "places"],
-    ["music", "recommendations", "music"],
+    ["music", "recommendations", undefined],
     ["guides", "recommendations", "guides"],
     ["movies", "recommendations", "movies"],
     ["books", "recommendations", "books"],
@@ -318,11 +374,11 @@ describe("orderEligibleRecommendationCategoryIds", () => {
   it("retains saved relative order and promotes an eligible preference", () => {
     expect(
       orderEligibleRecommendationCategoryIds({
-        savedOrder: ["places", "books", "music", "people"],
-        eligible: ["people", "music", "places"],
-        preferred: "music",
+        savedOrder: ["places", "books", "people"],
+        eligible: ["people", "books", "places"],
+        preferred: "books",
       }),
-    ).toEqual(["music", "places", "people"]);
+    ).toEqual(["books", "places", "people"]);
   });
 
   it("ignores an unavailable preferred category", () => {
@@ -330,15 +386,15 @@ describe("orderEligibleRecommendationCategoryIds", () => {
       orderEligibleRecommendationCategoryIds({
         savedOrder: ["books", "places", "people"],
         eligible: ["places", "people"],
-        preferred: "music",
+        preferred: "books",
       }),
     ).toEqual(["places", "people"]);
   });
 
-  it("preserves every one of the 9! valid saved orders", () => {
+  it("preserves every one of the 8! valid saved orders", () => {
     const values = [...RECOMMENDATION_CATEGORY_IDS];
     const eligible = new Set<RecommendationCategoryId>([
-      "music",
+      "places",
       "books",
       "people",
     ]);
@@ -357,7 +413,7 @@ describe("orderEligibleRecommendationCategoryIds", () => {
 
         const filtered = orderEligibleRecommendationCategoryIds({
           savedOrder,
-          eligible: ["people", "books", "music"],
+          eligible: ["people", "books", "places"],
         });
         if (
           filtered.length !== 3 ||
@@ -378,6 +434,6 @@ describe("orderEligibleRecommendationCategoryIds", () => {
     };
 
     visit(0);
-    expect(visited).toBe(362_880);
+    expect(visited).toBe(40_320);
   });
 });

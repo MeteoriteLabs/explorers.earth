@@ -1,4 +1,4 @@
-import { RECOMMENDATION_CATEGORY_IDS } from "../types/themeTypes";
+import { PUBLIC_LANDING_DESTINATION_IDS } from "../types/themeTypes";
 import type { LandingTabId, WallpaperMode } from "../types/themeTypes";
 
 export const THEME_ACCENT_OPTIONS = [
@@ -43,9 +43,5 @@ export const WALLPAPER_MODES = WALLPAPER_OPTIONS.map(
   (option) => option.id,
 ) as readonly WallpaperMode[];
 
-export const LANDING_TAB_IDS = [
-  "all-recommendations",
-  ...RECOMMENDATION_CATEGORY_IDS,
-  "gallery",
-  "business",
-] as const satisfies readonly LandingTabId[];
+export const LANDING_TAB_IDS =
+  PUBLIC_LANDING_DESTINATION_IDS satisfies readonly LandingTabId[];

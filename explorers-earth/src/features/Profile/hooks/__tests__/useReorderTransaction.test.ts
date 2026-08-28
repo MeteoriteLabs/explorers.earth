@@ -11,7 +11,6 @@ import type {
 
 const CANONICAL_ORDER: RecommendationCategoryId[] = [
   "places",
-  "music",
   "movies",
   "books",
   "games",
@@ -22,9 +21,8 @@ const CANONICAL_ORDER: RecommendationCategoryId[] = [
 ];
 
 const MOVED_ONCE: RecommendationCategoryId[] = [
-  "music",
-  "places",
   "movies",
+  "places",
   "books",
   "games",
   "guides",
@@ -65,10 +63,9 @@ describe("useReorderTransaction", () => {
     const { result, props } = renderTransaction();
     let sessionId!: ReorderSessionId;
     const finalFrame: RecommendationCategoryId[] = [
-      "music",
       "movies",
-      "places",
       "books",
+      "places",
       "games",
       "guides",
       "apps",
@@ -135,13 +132,12 @@ describe("useReorderTransaction", () => {
     });
     act(() => {
       result.current.cancel(sessionA);
-      sessionB = result.current.reservePointer("music")!.sessionId;
+      sessionB = result.current.reservePointer("movies")!.sessionId;
       result.current.beginPointer(sessionB);
       result.current.updatePointerDraft(sessionB, [
         "places",
-        "movies",
-        "music",
         "books",
+        "movies",
         "games",
         "guides",
         "apps",
@@ -152,7 +148,7 @@ describe("useReorderTransaction", () => {
     });
 
     expect(props.onCommit).not.toHaveBeenCalled();
-    expect(result.current.activeCategoryId).toBe("music");
+    expect(result.current.activeCategoryId).toBe("movies");
 
     act(() => {
       result.current.finishPointer(sessionB);
@@ -160,8 +156,8 @@ describe("useReorderTransaction", () => {
     expect(props.onCommit).toHaveBeenCalledTimes(1);
     expect(props.onCommit.mock.calls[0][0].categoryOrder.slice(0, 3)).toEqual([
       "places",
+      "books",
       "movies",
-      "music",
     ]);
   });
 
@@ -173,7 +169,7 @@ describe("useReorderTransaction", () => {
       sessionA = result.current.reservePointer("places")!.sessionId;
     });
     expect(result.current.phase).toBe("pointer-pending");
-    expect(result.current.reservePointer("music")).toBeUndefined();
+    expect(result.current.reservePointer("movies")).toBeUndefined();
 
     act(() => {
       result.current.releasePointer(sessionA);
@@ -182,7 +178,7 @@ describe("useReorderTransaction", () => {
 
     let sessionB: ReorderSessionId | undefined;
     act(() => {
-      sessionB = result.current.reservePointer("music")?.sessionId;
+      sessionB = result.current.reservePointer("movies")?.sessionId;
     });
     expect(sessionB).toBeTruthy();
     expect(sessionB).not.toBe(sessionA);
@@ -261,9 +257,9 @@ describe("useReorderTransaction", () => {
       result.current.moveKeyboard(sessionId, "up");
     });
     expect(result.current.display.categoryOrder.slice(0, 3)).toEqual([
-      "places",
       "movies",
-      "music",
+      "places",
+      "books",
     ]);
 
     act(() => {
@@ -289,7 +285,7 @@ describe("useReorderTransaction", () => {
     let sessionId!: ReorderSessionId;
 
     act(() => {
-      sessionId = result.current.liftKeyboard("music")!.sessionId;
+      sessionId = result.current.liftKeyboard("movies")!.sessionId;
       result.current.moveKeyboard(sessionId, "end");
       result.current.cancel(sessionId);
     });
@@ -341,9 +337,8 @@ describe("useReorderTransaction", () => {
     expect(props.cleanupSession).not.toHaveBeenCalled();
 
     const externallyRevised: RecommendationCategoryId[] = [
-      "music",
-      "places",
       "movies",
+      "places",
       "books",
       "games",
       "guides",
@@ -375,7 +370,6 @@ describe("useReorderTransaction", () => {
       "games",
       "books",
       "movies",
-      "music",
       "places",
     ];
 

@@ -50,7 +50,6 @@ interface RecommendationsPresentationControlsProps {
 
 const CATEGORY_FALLBACKS = {
   places: "Places",
-  music: "Music",
   movies: "Movies & Shows",
   books: "Books",
   games: "Games",

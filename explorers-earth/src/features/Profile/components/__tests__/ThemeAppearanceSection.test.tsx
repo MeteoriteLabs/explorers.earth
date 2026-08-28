@@ -21,7 +21,6 @@ const PRESETS = [
 const LANDING_VALUES = [
   "all-recommendations",
   "places",
-  "music",
   "movies",
   "books",
   "games",
@@ -31,6 +30,7 @@ const LANDING_VALUES = [
   "people",
   "gallery",
   "business",
+  "music",
 ] as const;
 
 describe("ThemeAppearanceSection", () => {
@@ -227,6 +227,12 @@ describe("ThemeAppearanceSection", () => {
 
     expect(values).toEqual(LANDING_VALUES);
     expect(new Set(values).size).toBe(12);
+    expect(within(firstView).getAllByRole("option", { name: "Music page" })).toHaveLength(1);
+    expect(
+      within(firstView).queryByRole("option", {
+        name: "Recommendations — Music first",
+      }),
+    ).not.toBeInTheDocument();
 
     for (const [index, landingTab] of LANDING_VALUES.entries()) {
       fireEvent.change(firstView, { target: { value: landingTab } });

@@ -17,7 +17,6 @@ const INDEX_CSS = readFileSync(
 
 const CANONICAL_ORDER: RecommendationCategoryId[] = [
   "places",
-  "music",
   "movies",
   "books",
   "games",
@@ -118,9 +117,8 @@ describe("RecommendationsPresentationControls", () => {
     expect(onChange).toHaveBeenLastCalledWith({
       layout: "shelves",
       categoryOrder: [
-        "music",
-        "places",
         "movies",
+        "places",
         "books",
         "games",
         "guides",
@@ -131,7 +129,7 @@ describe("RecommendationsPresentationControls", () => {
     });
     expect(moveDown).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Places moved to position 2 of 9",
+      "Places moved to position 2 of 8",
     );
   });
 
@@ -154,7 +152,6 @@ describe("RecommendationsPresentationControls", () => {
     const handles = CANONICAL_ORDER.map((id) => {
       const label = {
         places: "Places",
-        music: "Music",
         movies: "Movies & Shows",
         books: "Books",
         games: "Games",
@@ -167,7 +164,7 @@ describe("RecommendationsPresentationControls", () => {
     });
 
     expect(new Set(handles.map((handle) => handle.getAttribute("aria-label"))))
-      .toHaveLength(9);
+      .toHaveLength(8);
     for (const handle of handles) {
       expect(handle).toHaveAttribute("type", "button");
       expect(handle).toHaveStyle({ touchAction: "none" });
@@ -220,7 +217,7 @@ describe("RecommendationsPresentationControls", () => {
       pointerType: "mouse",
     });
     expect(start).toHaveBeenCalledTimes(1);
-    expect(container.querySelectorAll(".appearance-category-row")).toHaveLength(9);
+    expect(container.querySelectorAll(".appearance-category-row")).toHaveLength(8);
     expect(onChange).not.toHaveBeenCalled();
     start.mockRestore();
   });
@@ -240,7 +237,7 @@ describe("RecommendationsPresentationControls", () => {
       key: " ",
     });
     fireEvent.pointerDown(
-      screen.getByRole("button", { name: "Drag Music" }),
+      screen.getByRole("button", { name: "Drag Movies & Shows" }),
       { button: 0, isPrimary: true, pointerId: 2 },
     );
 
@@ -266,7 +263,7 @@ describe("RecommendationsPresentationControls", () => {
       });
       const controlsA = start.mock.contexts[0] as unknown as DragControls;
       const callbacksA = instrumentedCallbacksFor(controlsA, 101);
-      fireEvent.pointerDown(screen.getByRole("button", { name: "Drag Music" }), {
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Drag Movies & Shows" }), {
         button: 0,
         isPrimary: true,
         pointerId: 102,
@@ -280,7 +277,7 @@ describe("RecommendationsPresentationControls", () => {
       act(() => callbacksA.start());
       expect(screen.getByRole("button", { name: "Drag Places" }))
         .toHaveAttribute("aria-pressed", "false");
-      fireEvent.pointerDown(screen.getByRole("button", { name: "Drag Music" }), {
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Drag Movies & Shows" }), {
         button: 0,
         isPrimary: true,
         pointerId: 103,
@@ -290,11 +287,11 @@ describe("RecommendationsPresentationControls", () => {
       const controlsB = start.mock.contexts[1] as unknown as DragControls;
       const callbacksB = instrumentedCallbacksFor(controlsB, 103);
       fireEvent.pointerCancel(
-        screen.getByRole("button", { name: "Drag Music" }),
+        screen.getByRole("button", { name: "Drag Movies & Shows" }),
         { pointerId: 103 },
       );
       act(() => callbacksB.start());
-      expect(screen.getByRole("button", { name: "Drag Music" }))
+      expect(screen.getByRole("button", { name: "Drag Movies & Shows" }))
         .toHaveAttribute("aria-pressed", "false");
 
       fireEvent.pointerDown(screen.getByRole("button", { name: "Drag Places" }), {
@@ -330,8 +327,8 @@ describe("RecommendationsPresentationControls", () => {
       act(() => callbacksA.start());
 
       fireEvent.pointerCancel(places, { pointerId: 201 });
-      const music = screen.getByRole("button", { name: "Drag Music" });
-      fireEvent.pointerDown(music, {
+      const movies = screen.getByRole("button", { name: "Drag Movies & Shows" });
+      fireEvent.pointerDown(movies, {
         button: 0,
         isPrimary: true,
         pointerId: 202,
@@ -341,11 +338,11 @@ describe("RecommendationsPresentationControls", () => {
       act(() => callbacksB.start());
 
       act(() => callbacksA.end());
-      expect(music).toHaveAttribute("aria-pressed", "true");
+      expect(movies).toHaveAttribute("aria-pressed", "true");
       expect(onChange).not.toHaveBeenCalled();
 
       act(() => callbacksB.end());
-      expect(music).toHaveAttribute("aria-pressed", "false");
+      expect(movies).toHaveAttribute("aria-pressed", "false");
       expect(onChange).not.toHaveBeenCalled();
     } finally {
       unmount();
@@ -494,7 +491,7 @@ describe("RecommendationsPresentationControls", () => {
 
     fireEvent.keyDown(handle, { key: " " });
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Lifted Places. Position 1 of 9.",
+      "Lifted Places. Position 1 of 8.",
     );
     expect(handle).toHaveFocus();
     expect(handle).toHaveAttribute("aria-pressed", "true");
@@ -503,7 +500,7 @@ describe("RecommendationsPresentationControls", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(handle).toHaveFocus();
     await waitFor(() =>
-      expect(status).toHaveTextContent("Places moved to position 9 of 9."),
+      expect(status).toHaveTextContent("Places moved to position 8 of 8."),
     );
     const preview = screen
       .getByRole("region", { name: "Recommendations layout preview" })
@@ -513,7 +510,6 @@ describe("RecommendationsPresentationControls", () => {
         .getAllByTestId("recommendations-preview-category")
         .map((node) => node.getAttribute("data-category-id")),
     ).toEqual([
-      "music",
       "movies",
       "books",
       "games",
@@ -527,12 +523,12 @@ describe("RecommendationsPresentationControls", () => {
     fireEvent.keyDown(handle, { key: "Enter" });
     await waitFor(() =>
       expect(status).toHaveTextContent(
-        "Dropped Places at position 9 of 9.",
+        "Dropped Places at position 8 of 8.",
       ),
     );
     await waitFor(() =>
       expect(observedAnnouncements).toContain(
-        "Dropped Places at position 9 of 9.",
+        "Dropped Places at position 8 of 8.",
       ),
     );
     observer.disconnect();
@@ -540,7 +536,6 @@ describe("RecommendationsPresentationControls", () => {
     expect(onChange).toHaveBeenCalledWith({
       layout: "shelves",
       categoryOrder: [
-        "music",
         "movies",
         "books",
         "games",
@@ -552,10 +547,10 @@ describe("RecommendationsPresentationControls", () => {
       ],
     });
     expect(observedAnnouncements).toContain(
-      "Places moved to position 9 of 9.",
+      "Places moved to position 8 of 8.",
     );
     expect(observedAnnouncements).toContain(
-      "Dropped Places at position 9 of 9.",
+      "Dropped Places at position 8 of 8.",
     );
   });
 
@@ -575,7 +570,7 @@ describe("RecommendationsPresentationControls", () => {
     render(
       <RecommendationsPresentationControls value={undefined} onChange={onChange} />,
     );
-    const handle = screen.getByRole("button", { name: "Drag Music" });
+    const handle = screen.getByRole("button", { name: "Drag Movies & Shows" });
     handle.focus();
 
     fireEvent.keyDown(handle, { key: "Enter" });
@@ -585,7 +580,7 @@ describe("RecommendationsPresentationControls", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(handle).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Cancelled moving Music. Order restored.",
+      "Cancelled moving Movies & Shows. Order restored.",
     );
     expect(
       screen
@@ -641,7 +636,6 @@ describe("RecommendationsPresentationControls", () => {
         .getAllByTestId("recommendations-order-category")
         .map((node) => node.getAttribute("data-category-id")),
     ).toEqual([
-      "music",
       "places",
       "movies",
       "books",
@@ -651,7 +645,7 @@ describe("RecommendationsPresentationControls", () => {
       "products",
       "people",
     ]);
-    expect(screen.getAllByRole("button", { name: /^Drag / })).toHaveLength(9);
+    expect(screen.getAllByRole("button", { name: /^Drag / })).toHaveLength(8);
   });
 
   it("exposes reduced-motion state while retaining semantic reorder rows", () => {
@@ -663,13 +657,14 @@ describe("RecommendationsPresentationControls", () => {
 
     expect(container.querySelector(".appearance-category-list"))
       .toHaveAttribute("data-reduced-motion", "true");
-    expect(container.querySelectorAll(".appearance-category-row")).toHaveLength(9);
+    expect(container.querySelectorAll(".appearance-category-row")).toHaveLength(8);
+    expect(screen.queryByText("Music", { selector: ".appearance-category-label" })).not.toBeInTheDocument();
     expect(INDEX_CSS).toMatch(
       /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.appearance-category-row[\s\S]*?transition-duration:\s*0\.01ms\s*!important;/,
     );
   });
 
-  it("uses the First view promotion in the illustrative preview", () => {
+  it("does not promote the dedicated Music landing destination in the illustrative preview", () => {
     render(
       <RecommendationsPresentationControls
         value={{ layout: "featured", categoryOrder: CANONICAL_ORDER }}
@@ -682,9 +677,6 @@ describe("RecommendationsPresentationControls", () => {
       name: "Recommendations layout preview",
     });
     expect(preview).toHaveAttribute("data-layout", "featured");
-    expect(preview).toHaveTextContent(
-      "Category choices promote that category but keep all other public categories.",
-    );
     const desktopPreview = preview.querySelector(
       '[data-preview-variant="desktop"]',
     );
@@ -694,7 +686,6 @@ describe("RecommendationsPresentationControls", () => {
         .getAllByTestId("recommendations-preview-category")
         .map((node) => node.getAttribute("data-category-id")),
     ).toEqual([
-      "music",
       "places",
       "movies",
       "books",
@@ -705,10 +696,10 @@ describe("RecommendationsPresentationControls", () => {
       "people",
     ]);
     expect(
-      within(desktopPreview as HTMLElement).getByTestId(
+      within(desktopPreview as HTMLElement).queryByTestId(
         "recommendations-preview-category-promoted",
       ),
-    ).toHaveTextContent("Promoted");
+    ).not.toBeInTheDocument();
   });
 
   it("renders only the compact effective-order preview while mobile is collapsed", () => {
@@ -728,7 +719,7 @@ describe("RecommendationsPresentationControls", () => {
       within(mobilePreview as HTMLElement)
         .getAllByTestId("recommendations-preview-summary-category")
         .map((node) => node.getAttribute("data-category-id")),
-    ).toEqual(["music", "places", "movies"]);
+    ).toEqual(["places", "movies", "books"]);
 
     const toggle = within(mobilePreview as HTMLElement).getByRole("button", {
       name: "Show full preview",
@@ -786,7 +777,6 @@ describe("RecommendationsPresentationControls", () => {
         .getAllByTestId("recommendations-preview-category")
         .map((node) => node.getAttribute("data-category-id")),
     ).toEqual([
-      "music",
       "places",
       "movies",
       "books",
@@ -864,9 +854,8 @@ describe("RecommendationsPresentationControls", () => {
     expect(onChange).toHaveBeenLastCalledWith({
       layout: "shelves",
       categoryOrder: [
-        "places",
         "movies",
-        "music",
+        "places",
         "books",
         "games",
         "guides",

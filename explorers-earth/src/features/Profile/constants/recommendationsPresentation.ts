@@ -65,12 +65,6 @@ export const RECOMMENDATION_CATEGORY_METADATA: readonly RecommendationCategoryMe
     legacyEnabledWhenMissing: true,
   },
   {
-    id: 'music',
-    labelKey: 'dashboard.profile.themeAppearance.recommendations.categories.music',
-    visibilityField: 'public_music',
-    legacyEnabledWhenMissing: false,
-  },
-  {
     id: 'movies',
     labelKey: 'dashboard.profile.themeAppearance.recommendations.categories.movies',
     visibilityField: 'public_movie',

@@ -12,23 +12,8 @@ export type WallpaperMode =
   | 'ambient-gradient'
   | 'solid-color';
 
-export type LandingTabId =
-  | 'all-recommendations'
-  | 'places'
-  | 'music'
-  | 'guides'
-  | 'movies'
-  | 'books'
-  | 'games'
-  | 'apps'
-  | 'products'
-  | 'people'
-  | 'gallery'
-  | 'business';
-
 export const RECOMMENDATION_CATEGORY_IDS = [
   'places',
-  'music',
   'movies',
   'books',
   'games',
@@ -37,6 +22,16 @@ export const RECOMMENDATION_CATEGORY_IDS = [
   'products',
   'people',
 ] as const;
+
+export const PUBLIC_LANDING_DESTINATION_IDS = [
+  'all-recommendations',
+  ...RECOMMENDATION_CATEGORY_IDS,
+  'gallery',
+  'business',
+  'music',
+] as const;
+
+export type LandingTabId = (typeof PUBLIC_LANDING_DESTINATION_IDS)[number];
 
 export type RecommendationCategoryId =
   (typeof RECOMMENDATION_CATEGORY_IDS)[number];
@@ -48,7 +43,6 @@ export interface RecommendationCategoryMetadata {
   labelKey: string;
   visibilityField:
     | 'public_recommendations'
-    | 'public_music'
     | 'public_movie'
     | 'public_books'
     | 'public_games'
