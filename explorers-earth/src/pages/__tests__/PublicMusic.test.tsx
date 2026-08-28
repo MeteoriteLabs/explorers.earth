@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicMusic, { PublicMusicContent } from "../public/PublicMusic";
+import type { PublicMusicResource } from "../../features/music/publicMusicClient";
 
 const loadPublicMusic = vi.hoisted(() => vi.fn());
 
@@ -13,6 +14,30 @@ vi.mock("../../features/music/publicMusicClient", () => ({
 }));
 
 vi.mock("../../components/SEO", () => ({ default: () => null }));
+
+const playing = { id: "P".repeat(43), youtubeId: "abcdefghijk", title: "Now", artist: "Artist", thumbnailUrl: "https://images.example/now.jpg", position: 0, status: "playing" as const, playedAt: null };
+const queued = { ...playing, id: "Q".repeat(43), title: "Next", status: "queued" as const, position: 1 };
+const saved = { ...playing, id: "S".repeat(43), title: "North", artist: "Sky", status: "saved" as const };
+
+function resource(overrides: Partial<PublicMusicResource> = {}): PublicMusicResource {
+  return {
+    version: "music-public-resource/v1" as const,
+    revision: 1,
+    user: { username: "display", venueName: null },
+    permissions: {
+      allowSongRequests: false,
+      allowGuestPlayOnDevice: false,
+      allowPlaylistSharing: false,
+      allowRecentlyPlayedVisibility: false,
+      allowQueueVisibility: false,
+    },
+    currentlyPlaying: null,
+    queue: { items: [], total: 0, truncated: false },
+    recentlyPlayed: { items: [], total: 0, truncated: false },
+    playlists: { items: [], total: 0, truncated: false },
+    ...overrides,
+  };
+}
 
 describe("public Music page", () => {
   afterEach(() => {
@@ -29,29 +54,46 @@ describe("public Music page", () => {
   });
 
   it("uses the approved zero-public-playlist copy", () => {
-    render(<MemoryRouter><PublicMusicContent state="ready" resource={{ songs: [], playlists: [] }} /></MemoryRouter>);
+    render(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
     expect(screen.getByText("No public playlists yet.")).toBeInTheDocument();
   });
 
   it("renders public playlist content without edit controls", () => {
-    render(<MemoryRouter><PublicMusicContent state="ready" resource={{ songs: [], playlists: [{ id: 7, name: "Roads", description: null, isVisibleToGuests: true, songs: [{ id: 8, title: "North", artist: "Sky", thumbnailUrl: "https://images.example/north.jpg", position: 0 }] }] }} /></MemoryRouter>);
+    render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
+      permissions: { ...resource().permissions, allowPlaylistSharing: true },
+      playlists: { items: [{ id: "L".repeat(43), name: "Roads", description: null, songs: { items: [saved], total: 1, truncated: false } }], total: 1, truncated: false },
+    })} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Roads" })).toBeInTheDocument();
     expect(screen.getByText("North")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("renders the current song and queue only when public queue visibility is enabled", () => {
-    const playing = { id: 9, youtubeId: "abcdefghijk", title: "Now", artist: "Artist", thumbnailUrl: "https://images.example/now.jpg", position: 0, status: "playing" as const, playedAt: null };
-    const queued = { ...playing, id: 10, title: "Next", status: "queued" as const, position: 1 };
-    const view = render(<MemoryRouter><PublicMusicContent state="ready" resource={{ songs: [playing, queued], currentlyPlaying: playing, allowQueueVisibility: true, playlists: [] }} /></MemoryRouter>);
+  it("renders queue-visible current state without upgrading it to playback interactivity", () => {
+    const view = render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
+      permissions: { ...resource().permissions, allowQueueVisibility: true },
+      currentlyPlaying: playing,
+      queue: { items: [queued], total: 1, truncated: false },
+    })} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Playing now & up next" })).toBeInTheDocument();
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Up next" })).toHaveTextContent("Next");
     expect(screen.getByRole("list", { name: "Up next" })).not.toHaveTextContent("Now");
+    expect(screen.queryByRole("link", { name: "Play Now" })).not.toBeInTheDocument();
 
-    view.rerender(<MemoryRouter><PublicMusicContent state="ready" resource={{ songs: [], allowQueueVisibility: false, playlists: [] }} /></MemoryRouter>);
+    view.rerender(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} /></MemoryRouter>);
     expect(screen.queryByRole("heading", { name: "Playing now & up next" })).not.toBeInTheDocument();
+  });
+
+  it("renders playback-visible current state and player control without exposing the queue", () => {
+    render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
+      permissions: { ...resource().permissions, allowGuestPlayOnDevice: true },
+      currentlyPlaying: playing,
+    })} /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "Playing now" })).toBeInTheDocument();
+    expect(screen.getByText("Now")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Up next" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Play Now" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=abcdefghijk");
   });
 
   it("enables Retry only after the server delay and runs the supplied recovery", () => {
@@ -70,7 +112,7 @@ describe("public Music page", () => {
 
   it("reacquires the fragment for each slug, aborts the old read, and scrubs it on navigation", async () => {
     const first = new Promise(() => undefined);
-    loadPublicMusic.mockReturnValueOnce(first).mockResolvedValueOnce({ songs: [], playlists: [] });
+    loadPublicMusic.mockReturnValueOnce(first).mockResolvedValueOnce(resource());
     window.history.replaceState({}, "", `/music/share/public-slug-a#access=${"A".repeat(43)}`);
 
     function Switcher() {
@@ -98,7 +140,7 @@ describe("public Music page", () => {
   });
 
   it("retains a scrubbed unlisted capability for a same-tab remount", async () => {
-    loadPublicMusic.mockResolvedValue({ songs: [], playlists: [] });
+    loadPublicMusic.mockResolvedValue(resource());
     window.history.replaceState({}, "", `/music/share/public-slug#access=${"C".repeat(43)}`);
     const first = render(
       <MemoryRouter initialEntries={["/music/share/public-slug"]}>

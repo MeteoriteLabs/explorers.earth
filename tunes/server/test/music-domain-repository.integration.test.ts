@@ -71,10 +71,12 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const playlist = await domain.createPlaylist(owner.id, { name: "Append source", description: null }) as { id: number };
     const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "appendclean", title: "Append", artist: "A", thumbnailUrl: "https://img/append" }) as { id: number };
     const beforeRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const beforePublicRevision = Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision);
     const beforeOperations = Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count);
 
     await expect(domain.appendQueue(owner.id, "pg-empty-append", beforeRevision, [])).resolves.toEqual({ status: "empty" });
     expect(Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision)).toBe(beforeRevision);
+    expect(Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision)).toBe(beforePublicRevision);
     expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count)).toBe(beforeOperations);
 
     await pool.query(`INSERT INTO music_owner_operations
@@ -125,6 +127,70 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await admin?.end();
+  });
+
+  it("advances one public snapshot revision per committed visible mutation and never for no-op, replay, stale, conflict, or lifecycle replay", async () => {
+    // Break caught: descriptor/resource/event cursors can advance independently or spend revisions on rejected commands.
+    const owner = await identities.ensureIdentity(identityInput("public-revision-oracle"));
+    const revision = async () => Number((await pool.query(
+      "SELECT public_snapshot_revision FROM users WHERE id=$1",
+      [owner.id],
+    )).rows[0].public_snapshot_revision);
+    expect(await revision()).toBe(0);
+
+    const playlist = await domain.createPlaylist(owner.id, { name: "Revision", description: null }) as { id: number };
+    expect(await revision()).toBe(1);
+    await domain.updatePlaylist(owner.id, playlist.id, { name: "Revision", description: null });
+    await domain.setPlaylistVisibility(owner.id, playlist.id, false);
+    expect(await revision()).toBe(1);
+    await domain.setPlaylistVisibility(owner.id, playlist.id, true);
+    expect(await revision()).toBe(2);
+
+    const savedInput = { youtubeId: "revision001", title: "Saved", artist: "Artist", thumbnailUrl: "https://img/revision" };
+    const saved = await domain.addPlaylistSongIdempotent(owner.id, "revision-saved", playlist.id, savedInput);
+    expect(saved).toMatchObject({ status: "completed", replayed: false });
+    expect(await revision()).toBe(3);
+    await expect(domain.addPlaylistSongIdempotent(owner.id, "revision-saved", playlist.id, savedInput))
+      .resolves.toMatchObject({ status: "completed", replayed: true });
+    await expect(domain.addPlaylistSongIdempotent(owner.id, "revision-saved", playlist.id, { ...savedInput, title: "Conflict" }))
+      .resolves.toEqual({ status: "conflict" });
+    expect(await revision()).toBe(3);
+
+    const queueSong = await domain.addSong(owner.id, {
+      youtubeId: "revision002", title: "Queue", artist: "Artist", thumbnailUrl: "https://img/queue",
+    }) as { id: number };
+    expect(await revision()).toBe(4);
+    await domain.setPlaying(owner.id, queueSong.id);
+    expect(await revision()).toBe(5);
+    await domain.setPlaying(owner.id, queueSong.id);
+    expect(await revision()).toBe(5);
+    const queueRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    await expect(domain.replaceQueue(owner.id, "revision-stale", queueRevision - 1, []))
+      .resolves.toEqual({ status: "stale", revision: queueRevision });
+    expect(await revision()).toBe(5);
+
+    const originalCapabilityHash = identityInput("public-revision-oracle").guestCapabilityHash;
+    await domain.setPublicationMode(owner.id, "unlisted", originalCapabilityHash);
+    expect(await revision()).toBe(5);
+    await domain.setPublicationMode(owner.id, "public");
+    expect(await revision()).toBe(6);
+    await domain.setPublicationMode(owner.id, "public");
+    expect(await revision()).toBe(6);
+    await expect(domain.resolvePublicDescriptor(owner.strapiAccountDocumentId)).resolves.toMatchObject({ revision: 6 });
+    await expect(domain.resolvePublicMusicResource("c6-public-public-revision-oracle")).resolves.toMatchObject({
+      resource: { version: "music-public-resource/v1", revision: 6 },
+    });
+
+    const suspend = {
+      strapiUserDocumentId: owner.strapiUserDocumentId,
+      operationId: "c6-public-revision-suspend",
+      kind: "suspend" as const,
+      targetStatus: "suspended" as const,
+    };
+    await identities.transitionIdentity(suspend);
+    expect(await revision()).toBe(7);
+    await identities.transitionIdentity(suspend);
+    expect(await revision()).toBe(7);
   });
 
   it("serializes concurrent duplicate queue replacements and durably replays the exact result", async () => {
@@ -200,6 +266,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.addSong(owner.id, { youtubeId: "original001", title: "Original", artist: "O", thumbnailUrl: "https://img/original" });
     const beforeQueue = (await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows;
     const beforeRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const beforePublicRevision = Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision);
     const beforeOperations = Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count);
     await pool.query(`CREATE OR REPLACE FUNCTION fail_queue_replacement_insert() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN IF NEW.youtube_id='replace0001' THEN RAISE EXCEPTION 'injected queue replacement failure'; END IF; RETURN NEW; END $$`);
@@ -213,6 +280,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     }
     expect((await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows).toEqual(beforeQueue);
     expect(Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision)).toBe(beforeRevision);
+    expect(Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision)).toBe(beforePublicRevision);
     expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count)).toBe(beforeOperations);
   });
 

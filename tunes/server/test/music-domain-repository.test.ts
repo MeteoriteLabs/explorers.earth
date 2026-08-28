@@ -7,6 +7,7 @@ function recordingPool(rows: unknown[] = []) {
   const query = async (text: string, values: unknown[] = []) => {
     calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
     if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
+    if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [], rowCount: 1 };
     return { rows, rowCount: rows.length };
   };
   return {
@@ -61,12 +62,17 @@ describe("MusicDomainRepository owner predicates", () => {
     };
     let stored: { request_hash: string; status_code: number; response_body: unknown } | undefined;
     let inserts = 0;
+    let publicRevisionAdvances = 0;
     const client = { async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim();
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
       if (/SELECT request_hash,status_code,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
       if (/SELECT count\(\*\)::integer AS count FROM playlists/.test(normalized)) return { rows: [{ count: inserts }], rowCount: 1 };
       if (/INSERT INTO playlists/.test(normalized)) { inserts += 1; return { rows: [playlist], rowCount: 1 }; }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) {
+        publicRevisionAdvances += 1;
+        return { rows: [{ public_snapshot_revision: publicRevisionAdvances }], rowCount: 1 };
+      }
       if (/INSERT INTO music_owner_operations/.test(normalized)) {
         stored = { request_hash: String(values[3]), status_code: 201, response_body: JSON.parse(String(values[4])) };
         return { rows: [], rowCount: 1 };
@@ -81,6 +87,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(repository.createPlaylistIdempotent(7, "lost-response-key", input))
       .resolves.toEqual({ status: "completed", replayed: true, response: playlist });
     expect(inserts).toBe(1);
+    expect(publicRevisionAdvances).toBe(1);
   });
 
   it("replaces an owner queue in one locked transaction and returns canonical ordered state", async () => {
@@ -121,6 +128,7 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(calls.find(({ text }) => /SELECT request_hash,status_code,response_body/.test(text))?.text).not.toMatch(/FOR UPDATE/);
     expect(calls.some(({ text }) => /JOIN playlists p/.test(text) && /p.user_id=\$1/.test(text))).toBe(true);
     expect(calls.some(({ text }) => /DELETE FROM songs/.test(text) && /status IN \('queued','playing'\)/.test(text))).toBe(true);
+    expect(calls.filter(({ text }) => /UPDATE users SET public_snapshot_revision/.test(text))).toHaveLength(1);
     expect(calls.at(-1)?.text).toBe("COMMIT");
     expect(select).toBe(0);
   });
@@ -140,6 +148,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(repository.replaceQueue(7, "stale", 7, [{ playlistId: 9, songId: 31 }]))
       .resolves.toEqual({ status: "stale", revision: 8 });
     expect(statements.some((text) => /DELETE FROM songs/.test(text))).toBe(false);
+    expect(statements.some((text) => /UPDATE users SET public_snapshot_revision/.test(text))).toBe(false);
 
     const foreignStatements: string[] = [];
     const foreignClient = { async query(text: string) {
@@ -153,6 +162,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(foreign.replaceQueue(7, "foreign", 0, [{ playlistId: 99, songId: 31 }]))
       .resolves.toEqual({ status: "not_found" });
     expect(foreignStatements.some((text) => /DELETE FROM songs/.test(text))).toBe(false);
+    expect(foreignStatements.some((text) => /UPDATE users SET public_snapshot_revision/.test(text))).toBe(false);
   });
 
   it("rolls back an injected queue replacement failure", async () => {
@@ -191,6 +201,7 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(cleanup?.values).toEqual([7]);
     expect(statements.find(({ text }) => /SELECT request_hash/.test(text))?.text)
       .toMatch(/expires_at>transaction_timestamp\(\)/i);
+    expect(statements.some(({ text }) => /UPDATE users SET public_snapshot_revision/.test(text))).toBe(false);
   });
   it("owner-predicates every playlist read/update/delete family", async () => {
     // Break caught: a resource ID alone can observe or mutate another owner's playlist.
@@ -301,6 +312,7 @@ describe("MusicDomainRepository owner predicates", () => {
       if (/SELECT request_hash,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
       if (/SELECT p\.id,count/.test(normalized)) return { rows: [{ id: 9, count: inserts }], rowCount: 1 };
       if (/INSERT INTO playlist_songs/.test(normalized)) { inserts += 1; return { rows: [song], rowCount: 1 }; }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [], rowCount: 1 };
       if (/INSERT INTO music_owner_operations/.test(normalized)) {
         stored = { request_hash: String(values[3]), response_body: JSON.parse(String(values[4])) };
         return { rows: [], rowCount: 1 };
@@ -525,15 +537,17 @@ describe("MusicDomainRepository owner predicates", () => {
     ["private", undefined],
     ["public", undefined],
     ["unlisted", "f".repeat(64)],
-  ] as const)("changes publication to %s with one owner-predicated write in one transaction", async (mode, capabilityHash) => {
+  ] as const)("changes publication to %s and advances the public snapshot in one transaction", async (mode, capabilityHash) => {
     const harness = recordingPool([{ guest_url: "public-slug" }]);
     const repository = new MusicDomainRepository(harness.pool);
     await repository.setPublicationMode(31, mode, capabilityHash);
     const writes = harness.calls.filter((call) => /update users/i.test(call.text));
-    expect(writes).toHaveLength(1);
+    expect(writes).toHaveLength(2);
     expect(writes[0].text.toLowerCase()).toContain("where id=$1");
     expect(writes[0].values[0]).toBe(31);
     expect(writes[0].values[1]).toBe(mode);
+    expect(writes[1].text).toMatch(/public_snapshot_revision=public_snapshot_revision\+1/);
+    expect(writes[1].values).toEqual([31]);
     expect(JSON.stringify(harness.calls)).not.toContain("capability\":");
   });
 
@@ -700,6 +714,7 @@ describe("MusicDomainRepository owner predicates", () => {
         revision += 1;
         return { rows: [{ music_queue_revision: revision }], rowCount: 1 };
       }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [], rowCount: 1 };
       if (/^SELECT id,user_id/.test(normalized)) return { rows: [{ id: 71, user_id: 23, youtube_id: "abcdefghijk", title: "Safe", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "playing", played_at: null }], rowCount: 1 };
       return { rows: [], rowCount: 0 };
     }, release() {} };
@@ -869,5 +884,129 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text.toLowerCase()).toContain("u.guest_discoverable=true");
     expect(harness.calls[0].text.toLowerCase()).toContain("u.identity_status='active'");
     expect(harness.calls[0].text.toLowerCase()).not.toContain("guest_capability_revoked_at");
+  });
+
+  const permissionKeys = [
+    "allowSongRequests",
+    "allowGuestPlayOnDevice",
+    "allowPlaylistSharing",
+    "allowRecentlyPlayedVisibility",
+    "allowQueueVisibility",
+  ] as const;
+
+  function publicResourceHarness(mask: number, oversized = false) {
+    const permissions = Object.fromEntries(permissionKeys.map((key, index) => [key, (mask & (1 << index)) !== 0])) as Record<typeof permissionKeys[number], boolean>;
+    const song = (id: number, status: "queued" | "playing" | "played" | "saved", position = 0) => ({
+      id,
+      youtube_id: `song${id}`.padEnd(11, "0").slice(0, 11),
+      title: oversized ? "T".repeat(1_024) : `${status} ${id}`,
+      artist: oversized ? "A".repeat(1_024) : "Artist",
+      thumbnail_url: oversized ? `https://img.example/${"x".repeat(1_900)}${id}` : `https://img.example/${id}`,
+      position,
+      status,
+      played_at: status === "played" ? new Date("2026-08-28T12:00:00.000Z") : null,
+    });
+    const queue = Array.from({ length: oversized ? 101 : 1 }, (_, index) => song(index + 10, "queued", index));
+    const history = Array.from({ length: oversized ? 51 : 1 }, (_, index) => song(index + 200, "played", index));
+    const playlists = Array.from({ length: oversized ? 21 : 2 }, (_, playlistIndex) => {
+      const privatePlaylist = !oversized && playlistIndex === 1;
+      const songCount = oversized ? 51 : 1;
+      return Array.from({ length: songCount }, (_, songIndex) => ({
+        playlist_internal_id: playlistIndex + 500,
+        playlist_name: privatePlaylist ? "Private playlist" : `Public playlist ${playlistIndex}`,
+        playlist_description: null,
+        playlist_visible: !privatePlaylist,
+        playlist_total: oversized ? 21 : 1,
+        playlist_song_total: songCount,
+        ...song(playlistIndex * 100 + songIndex + 1_000, "saved", songIndex),
+      }));
+    }).flat();
+    const calls: string[] = [];
+    const query = async (text: string) => {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      calls.push(normalized);
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/public_snapshot_revision/.test(normalized) && /FROM users u/.test(normalized)) return { rows: [{
+        identity_status: "active",
+        guest_capability_hash: null,
+        guest_capability_revoked_at: null,
+        guest_discoverable: true,
+        guest_url: "public-slug",
+        username: "display",
+        venue_name: "Venue",
+        public_snapshot_revision: 17,
+        allow_song_requests: permissions.allowSongRequests,
+        allow_guest_play_on_device: permissions.allowGuestPlayOnDevice,
+        allow_playlist_sharing: permissions.allowPlaylistSharing,
+        allow_recently_played_visibility: permissions.allowRecentlyPlayedVisibility,
+        allow_queue_visibility: permissions.allowQueueVisibility,
+        queue_total: queue.length,
+        history_total: history.length,
+        playlist_total: oversized ? 21 : 1,
+      }], rowCount: 1 };
+      if (/status='playing'/.test(normalized)) return { rows: [song(9, "playing")], rowCount: 1 };
+      if (/status='queued'/.test(normalized)) return { rows: queue, rowCount: queue.length };
+      if (/status='played'/.test(normalized)) return { rows: history, rowCount: history.length };
+      if (/bounded_playlists/.test(normalized)) return { rows: playlists, rowCount: playlists.length };
+      throw new Error(`Unexpected public resource query: ${normalized}`);
+    };
+    return { calls, permissions, pool: { query, connect: async () => ({ query, release() {} }) } };
+  }
+
+  it.each(Array.from({ length: 32 }, (_, mask) => mask))(
+    "enforces public resource field exposure and interactivity for permission mask %i",
+    async (mask) => {
+      // Break caught: any permission combination leaks a protected collection or upgrades queue visibility into playback authority.
+      const harness = publicResourceHarness(mask);
+      const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
+      const resource = result?.resource;
+      expect(result?.state).toBe("public");
+      expect(resource?.version).toBe("music-public-resource/v1");
+      expect(resource?.revision).toBe(17);
+      expect(resource?.permissions).toEqual(harness.permissions);
+      expect(resource?.currentlyPlaying !== null).toBe(
+        harness.permissions.allowGuestPlayOnDevice || harness.permissions.allowQueueVisibility,
+      );
+      expect(resource?.queue.items.length).toBe(harness.permissions.allowQueueVisibility ? 1 : 0);
+      expect(resource?.recentlyPlayed.items.length).toBe(harness.permissions.allowRecentlyPlayedVisibility ? 1 : 0);
+      expect(resource?.playlists.items.map((playlist: { name: string }) => playlist.name)).toEqual(
+        harness.permissions.allowPlaylistSharing ? ["Public playlist 0"] : [],
+      );
+      expect(resource?.permissions.allowGuestPlayOnDevice).toBe((mask & 2) !== 0);
+      if (!harness.permissions.allowGuestPlayOnDevice && harness.permissions.allowQueueVisibility) {
+        expect(resource?.currentlyPlaying).not.toBeNull();
+        expect(resource?.permissions.allowGuestPlayOnDevice).toBe(false);
+      }
+    },
+  );
+
+  it("bounds every public collection before aggregation, hides nested authority, and caps encoded JSON", async () => {
+    // Break caught: legacy oversized rows or an internal nested identifier can create an unbounded/authority-bearing public response.
+    const harness = publicResourceHarness(31, true);
+    const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    const resource = result.resource;
+    expect(resource.queue).toMatchObject({ total: 101, truncated: true });
+    expect(resource.queue.items.length).toBeLessThanOrEqual(100);
+    expect(resource.recentlyPlayed).toMatchObject({ total: 51, truncated: true });
+    expect(resource.recentlyPlayed.items.length).toBeLessThanOrEqual(50);
+    expect(resource.playlists).toMatchObject({ total: 21, truncated: true });
+    expect(resource.playlists.items.length).toBeLessThanOrEqual(20);
+    expect(resource.playlists.items.every((playlist: { songs: { items: unknown[] } }) => playlist.songs.items.length <= 50)).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(resource), "utf8")).toBeLessThanOrEqual(512 * 1_024);
+    expect(harness.calls.find((sql) => /status='queued'/.test(sql))).toMatch(/LIMIT 100/);
+    expect(harness.calls.find((sql) => /status='played'/.test(sql))).toMatch(/LIMIT 50/);
+    expect(harness.calls.find((sql) => /bounded_playlists/.test(sql))).toMatch(/LIMIT 20/);
+    expect(harness.calls.find((sql) => /bounded_playlists/.test(sql))).toMatch(/LIMIT 50/);
+
+    const inspect = (value: unknown): void => {
+      if (Array.isArray(value)) return value.forEach(inspect);
+      if (!value || typeof value !== "object") return;
+      for (const [key, nested] of Object.entries(value)) {
+        expect(key).not.toMatch(/^(?:userId|playlistId|accountId|documentId|strapi|capability|credential)/i);
+        if (key === "id") expect(nested).toEqual(expect.stringMatching(/^[A-Za-z0-9_-]{43}$/));
+        inspect(nested);
+      }
+    };
+    inspect(resource);
   });
 });

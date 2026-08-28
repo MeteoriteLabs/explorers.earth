@@ -74,6 +74,7 @@ const PUBLIC_PATHS = new Set([
   "/health/ready",
   "/api/music-entry/status",
   "/api/music/public-profile/:accountDocumentId",
+  "/api/music/public-resource/v1/:publicSlug",
   "/robots.txt",
   "/sitemap.xml",
   "/api/explorers-sitemap.xml",

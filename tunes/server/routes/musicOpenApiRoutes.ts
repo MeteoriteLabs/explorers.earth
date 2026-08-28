@@ -95,6 +95,7 @@ const ownerOperation = (options: {
 const playlistId = pathParameter("playlistId", "Owner-predicated saved playlist identifier");
 const songId = pathParameter("songId", "Owner-predicated song identifier");
 const guestUrl = pathParameter("guestUrl", "Public playlist slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
+const publicSlug = pathParameter("publicSlug", "Stable public Music resource slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
 const accountDocumentId = {
   name: "accountDocumentId",
   in: "path" as const,
@@ -372,6 +373,22 @@ const paths = {
       "x-authority-policy": "stable-account-document-id-discovery-only",
     },
   },
+  "/api/music/public-resource/v1/{publicSlug}": {
+    get: {
+      summary: "Read one strict bounded public Music resource",
+      description: "Additive versioned resource for public or header-authorized unlisted access. Permission-protected fields are empty or null, collections are deterministically ordered and bounded, and the encoded response never exceeds 512 KiB. The legacy guest endpoint remains unchanged.",
+      security: [],
+      parameters: [requestIdParameter, publicSlug, guestCapabilityOptional],
+      responses: {
+        "200": success("Strict music-public-resource/v1 snapshot. X-Robots-Tag is present only for unlisted capability access.", ref("PublicMusicResource"), { "X-Robots-Tag": { $ref: "#/components/headers/RobotsTag" } }),
+        "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
+        "429": failure("The public read rate limit was exceeded.", ["RATE_LIMITED"], true),
+        "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+      },
+      "x-publication-modes": ["public/discoverable", "unlisted capability; noindex/no-sitemap"],
+      "x-max-encoded-bytes": 524288,
+    },
+  },
   "/api/playlist/{guestUrl}": {
     get: {
       summary: "Read an explicit public or unlisted capability playlist",
@@ -545,6 +562,55 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       Dashboard: { type: "object", additionalProperties: false, required: ["queueRevision", "playbackRevision", "songs", "currentlyPlaying", "playedSongs", "publication", "guestControls"], properties: { queueRevision: { type: "integer", minimum: 0 }, playbackRevision: { type: "integer", minimum: 0 }, songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } }, guestControls: ref("GuestControls") } },
       GuestControls: { type: "object", additionalProperties: false, required: ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"], properties: { allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
       GuestControlsUpdate: { type: "object", additionalProperties: false, required: ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility"], properties: { allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
+      PublicMusicSong: {
+        type: "object", additionalProperties: false,
+        required: ["id", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt"],
+        properties: {
+          id: { type: "string", minLength: 43, maxLength: 43, pattern: "^[A-Za-z0-9_-]{43}$" },
+          youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" },
+          title: { type: "string", minLength: 1, maxLength: 1_024 },
+          artist: { type: "string", minLength: 1, maxLength: 1_024 },
+          thumbnailUrl: { type: "string", format: "uri", minLength: 1, maxLength: 2_048 },
+          position: { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
+          status: { type: "string", enum: ["queued", "playing", "played", "saved"] },
+          playedAt: { type: ["string", "null"], format: "date-time" },
+        },
+      },
+      PublicMusicSongEnvelope100: {
+        type: "object", additionalProperties: false, required: ["items", "total", "truncated"],
+        properties: { items: { type: "array", maxItems: 100, items: ref("PublicMusicSong") }, total: { type: "integer", minimum: 0 }, truncated: { type: "boolean" } },
+      },
+      PublicMusicSongEnvelope50: {
+        type: "object", additionalProperties: false, required: ["items", "total", "truncated"],
+        properties: { items: { type: "array", maxItems: 50, items: ref("PublicMusicSong") }, total: { type: "integer", minimum: 0 }, truncated: { type: "boolean" } },
+      },
+      PublicMusicPlaylist: {
+        type: "object", additionalProperties: false, required: ["id", "name", "description", "songs"],
+        properties: {
+          id: { type: "string", minLength: 43, maxLength: 43, pattern: "^[A-Za-z0-9_-]{43}$" },
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          description: { type: ["string", "null"], maxLength: 2_000 },
+          songs: ref("PublicMusicSongEnvelope50"),
+        },
+      },
+      PublicMusicPlaylistEnvelope: {
+        type: "object", additionalProperties: false, required: ["items", "total", "truncated"],
+        properties: { items: { type: "array", maxItems: 20, items: ref("PublicMusicPlaylist") }, total: { type: "integer", minimum: 0 }, truncated: { type: "boolean" } },
+      },
+      PublicMusicResource: {
+        type: "object", additionalProperties: false,
+        required: ["version", "revision", "user", "permissions", "currentlyPlaying", "queue", "recentlyPlayed", "playlists"],
+        properties: {
+          version: { type: "string", const: "music-public-resource/v1" },
+          revision: { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
+          user: { type: "object", additionalProperties: false, required: ["username", "venueName"], properties: { username: { type: "string", minLength: 1, maxLength: 255 }, venueName: { type: ["string", "null"], maxLength: 255 } } },
+          permissions: ref("GuestControls"),
+          currentlyPlaying: { oneOf: [ref("PublicMusicSong"), { type: "null" }] },
+          queue: ref("PublicMusicSongEnvelope100"),
+          recentlyPlayed: ref("PublicMusicSongEnvelope50"),
+          playlists: ref("PublicMusicPlaylistEnvelope"),
+        },
+      },
       PublicTheme: { type: "object", additionalProperties: false, required: ["primary"], properties: { primary: { type: "string" } } },
       PublicUser: { type: "object", additionalProperties: false, required: ["id", "username", "guestUrl", "venueName", "theme", "allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"], properties: { id: { type: "integer", minimum: 1 }, username: { type: "string" }, guestUrl: { type: "string" }, venueName: { type: ["string", "null"] }, theme: { oneOf: [ref("PublicTheme"), { type: "null" }] }, allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
       PublicPlaylist: { type: "object", additionalProperties: false, required: ["songs", "currentlyPlaying", "playedSongs", "user", "allowGuestPlayOnDevice", "allowRecentlyPlayedVisibility", "allowQueueVisibility", "playlists"], properties: { songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, user: ref("PublicUser"), allowGuestPlayOnDevice: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" }, playlists: { type: "array", items: ref("Playlist") } } },

@@ -34,6 +34,7 @@ describe("complete C10 REST, GraphQL, and socket security qualification", () => 
       expect.objectContaining({ method: "GET", path: "/api/playlists", decision: "owner" }),
       expect.objectContaining({ method: "POST", path: "/api/music/identity/ensure", decision: "strapi-identity" }),
       expect.objectContaining({ method: "GET", path: "/api/music/public-profile/:accountDocumentId", decision: "public" }),
+      expect.objectContaining({ method: "GET", path: "/api/music/public-resource/v1/:publicSlug", decision: "public" }),
       expect.objectContaining({ method: "GET", path: "/api/playlist/:guestUrl", decision: "guest" }),
     ]));
     const descriptor = matrix.routes.find(({ method, path }) => method === "GET" && path === "/api/music/public-profile/:accountDocumentId");
@@ -45,6 +46,8 @@ describe("complete C10 REST, GraphQL, and socket security qualification", () => 
       pendingDeletion: false,
       internalAdmin: false,
     });
+    const publicResource = matrix.routes.find(({ method, path }) => method === "GET" && path === "/api/music/public-resource/v1/:publicSlug");
+    expect(publicResource?.allowed).toMatchObject({ unauthenticated: true, owner: false, otherUser: false });
     expect(matrix.retirementMatchers).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: "/graphql", match: "exact", decision: "tombstone" }),
     ]));

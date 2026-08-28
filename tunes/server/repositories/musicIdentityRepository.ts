@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { MusicIdentityError } from "../../shared/musicError";
 import type { MusicLifecycleStatus } from "../services/musicLifecycleService";
 import type { ClaimedLifecycleDeletion } from "../workers/musicLifecycleWorker";
+import { advancePublicMusicSnapshotRevision } from "./publicMusicRevision";
 
 export interface MusicIdentityProjection {
   id: number;
@@ -586,6 +587,7 @@ export class MusicIdentityRepository {
         throw new Error("immutable external identity mismatch");
       }
       if (live.rows[0]) {
+        await advancePublicMusicSnapshotRevision(client, live.rows[0].id, "publication_changed");
         await client.query("SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text)", [
           live.rows[0].id,input.operationId,input.reason,
         ]);
@@ -676,6 +678,7 @@ export class MusicIdentityRepository {
         WHERE id=$1 RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
         locked.id,input.targetStatus,resultSessionVersion,input.operationId,
       ]);
+      await advancePublicMusicSnapshotRevision(client, locked.id, "publication_changed");
       await client.query("COMMIT");
       return projection(updated.rows[0]);
     } catch (error) {
@@ -789,6 +792,7 @@ export class MusicIdentityRepository {
           RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, [
           live.id,targetStatus,nextSessionVersion,input.operationId,
         ])).rows[0];
+        await advancePublicMusicSnapshotRevision(client, live.id, "publication_changed");
         await this.hooks.afterWrite?.();
         await client.query("COMMIT");
         return projection(updated);
@@ -916,6 +920,7 @@ export class MusicIdentityRepository {
         identity_status,session_version,lifecycle_operation_id,lifecycle_state,lifecycle_retention_stage,lifecycle_error_code`, [
         identity.id,resultSessionVersion,input.operationId,
       ])).rows[0];
+      await advancePublicMusicSnapshotRevision(client, identity.id, "publication_changed");
       await this.hooks.afterWrite?.();
       await client.query("COMMIT");
       return lifecycleStatusForRow(updated, {
@@ -1201,6 +1206,7 @@ export class MusicIdentityRepository {
         lifecycle_error_code=NULL,lifecycle_retention_stage='identity-suspended',updated_at=now()
         WHERE id=$1 RETURNING *`, [identity.id,input.operationId])).rows[0];
       await client.query("UPDATE users SET lifecycle_state='cancelled' WHERE id=$1", [identity.id]);
+      await advancePublicMusicSnapshotRevision(client, identity.id, "publication_changed");
       await client.query("COMMIT");
       return {
         ...lifecycleStatusForRow(updated, { operation_id: input.operationId, operation_phase: "prepared", operation_state: "completed" }),
@@ -1441,6 +1447,7 @@ export class MusicIdentityRepository {
       await client.query("UPDATE youtube_api_usage SET user_id=NULL WHERE user_id=$1", [operation.musicUserId]);
       await client.query("DELETE FROM session WHERE sess->'passport'->>'user'=$1 OR sess->>'userId'=$1", [String(operation.musicUserId)]);
       await this.hooks.afterRetentionCleanup?.();
+      await advancePublicMusicSnapshotRevision(client, operation.musicUserId, "publication_changed");
       const finalized = await client.query("SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text) AS finalized", [
         operation.musicUserId,operation.operationId,"authoritative-absence",
       ]);

@@ -93,6 +93,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
     resolvePublicDescriptor: vi.fn(async (accountDocumentId: string) => accountDocumentId === "account-public"
       ? { mode: "public" as const, publicSlug: "stable-public-slug", revision: 7 }
       : undefined),
+    resolvePublicMusicResource: vi.fn(async () => undefined),
     resolveGuestResource: vi.fn(async () => undefined),
     resolveGuestSocketAuthority: vi.fn(async (capability: string) => capability === "G".repeat(43)
       ? { musicUserId: 77, active: true, allowSongRequests: true } : undefined),
@@ -713,6 +714,78 @@ describe("canonical Music REST surfaces", () => {
     const response = await request(app).get("/api/playlist/public-empty");
     expect(response.status).toBe(200);
     expect(response.body.playlists).toEqual([]);
+  });
+
+  it("serves the additive exact public-resource v1 DTO while leaving the legacy response byte-shape unchanged", async () => {
+    // Break caught: the backend rollout replaces /api/playlist/:guestUrl or lets canonical internal IDs leak into v1.
+    const legacyPlaylist = {
+      songs: [], currentlyPlaying: null, playedSongs: [],
+      user: {
+        id: 11, username: "display", guestUrl: "public-owner", venueName: null, theme: null,
+        allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true,
+        allowRecentlyPlayedVisibility: false, allowQueueVisibility: false,
+      },
+      allowGuestPlayOnDevice: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false,
+      playlists: [],
+    };
+    const resource = {
+      version: "music-public-resource/v1" as const,
+      revision: 19,
+      user: { username: "display", venueName: null },
+      permissions: {
+        allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true,
+        allowRecentlyPlayedVisibility: false, allowQueueVisibility: false,
+      },
+      currentlyPlaying: null,
+      queue: { items: [], total: 0, truncated: false },
+      recentlyPlayed: { items: [], total: 0, truncated: false },
+      playlists: { items: [], total: 0, truncated: false },
+    };
+    const resolvePublicMusicResource = vi.fn(async (_slug: string, capability?: string) => ({
+      state: capability ? "unlisted" : "public", noindex: !!capability, resource,
+    }));
+    const { app } = appFor({
+      resolvePublicMusicResource,
+      resolveGuestResource: vi.fn(async () => ({ state: "public", playlist: legacyPlaylist })),
+    });
+
+    const canonical = await request(app).get("/api/music/public-resource/v1/public-owner")
+      .set("X-Music-Guest-Capability", "C".repeat(43));
+    expect(canonical.status).toBe(200);
+    expect(canonical.headers["x-robots-tag"]).toBe("noindex, nofollow");
+    expect(canonical.body).toEqual(resource);
+    expect(resolvePublicMusicResource).toHaveBeenCalledWith("public-owner", "C".repeat(43));
+
+    const legacy = await request(app).get("/api/playlist/public-owner");
+    expect(legacy.status).toBe(200);
+    expect(legacy.body).toEqual(legacyPlaylist);
+    expect(legacy.body).not.toHaveProperty("version");
+    expect(legacy.body).not.toHaveProperty("revision");
+    expect(legacy.body).not.toHaveProperty("permissions");
+  });
+
+  it("keeps every unavailable canonical public resource enumeration-safe and rate-limited before lookup", async () => {
+    for (const state of [undefined, "private", "revoked", "suspended", "pending_deletion"] as const) {
+      const lookup = vi.fn(async () => state ? { state } : undefined);
+      const response = await request(appFor({ resolvePublicMusicResource: lookup as any }).app)
+        .get("/api/music/public-resource/v1/public-owner");
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("PUBLIC_NOT_FOUND");
+    }
+    const lookup = vi.fn(async () => ({ state: "public", resource: {} }));
+    const limited = appFor({ resolvePublicMusicResource: lookup as any }, { publicRateLimited: () => true });
+    const response = await request(limited.app).get("/api/music/public-resource/v1/public-owner");
+    expect(response.status).toBe(429);
+    expect(response.headers["retry-after"]).toBe("60");
+    expect(lookup).not.toHaveBeenCalled();
+
+    const malformedCapabilityLookup = vi.fn(async () => ({ state: "public", resource: {} }));
+    const malformedCapability = await request(appFor({ resolvePublicMusicResource: malformedCapabilityLookup as any }).app)
+      .get("/api/music/public-resource/v1/public-owner")
+      .set("X-Music-Guest-Capability", "not-a-capability");
+    expect(malformedCapability.status).toBe(404);
+    expect(malformedCapability.body.error.code).toBe("PUBLIC_NOT_FOUND");
+    expect(malformedCapabilityLookup).not.toHaveBeenCalled();
   });
 
   it("changes publication with one owner-derived idempotent command and never persists capability material", async () => {

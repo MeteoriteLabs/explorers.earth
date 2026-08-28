@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { advancePublicMusicSnapshotRevision } from "./publicMusicRevision";
 import {
   MUSIC_PUBLICATION_IDEMPOTENCY_FUTURE_SKEW_MS,
   MUSIC_PUBLICATION_IDEMPOTENCY_RETENTION_MS,
@@ -197,21 +198,34 @@ export class MusicPublicationOperationRepository {
       if (capability && !/^[A-Za-z0-9_-]{43}$/.test(capability)) {
         throw new Error("Publication capability generation failed.");
       }
-      const publication = (await client.query<{ guest_url: string }>(
+      const changedPublication = (await client.query<{ guest_url: string }>(
         `UPDATE users
             SET guest_discoverable=($2='public'),
                 guest_capability_hash=CASE WHEN $2='unlisted' THEN $3 ELSE guest_capability_hash END,
                 guest_capability_rotated_at=CASE WHEN $2='unlisted' THEN transaction_timestamp() ELSE guest_capability_rotated_at END,
                 guest_capability_revoked_at=CASE WHEN $2='unlisted' THEN NULL ELSE transaction_timestamp() END
-          WHERE id=$1 AND identity_status='active'
+          WHERE id=$1 AND identity_status='active' AND (
+            ($2='unlisted' AND (guest_discoverable IS NOT FALSE
+              OR guest_capability_hash IS DISTINCT FROM $3 OR guest_capability_revoked_at IS NOT NULL))
+            OR ($2='public' AND guest_discoverable IS NOT TRUE)
+            OR ($2='private' AND (guest_discoverable IS NOT FALSE
+              OR (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL)))
+          )
           RETURNING guest_url`,
         [musicUserId, mode, capability ? hashGuestCapability(capability) : null],
+      )).rows[0];
+      if (changedPublication) {
+        await advancePublicMusicSnapshotRevision(client, musicUserId, "publication_changed");
+        await this.dependencies.afterWrite?.("publication");
+      }
+      const publication = changedPublication ?? (await client.query<{ guest_url: string }>(
+        "SELECT guest_url FROM users WHERE id=$1 AND identity_status='active' FOR UPDATE",
+        [musicUserId],
       )).rows[0];
       if (!publication) {
         await client.query("COMMIT");
         return { status: "not_found" };
       }
-      await this.dependencies.afterWrite?.("publication");
 
       const response: MusicPublicationCommandResponse = {
         version: MUSIC_PUBLICATION_RESPONSE_VERSION,

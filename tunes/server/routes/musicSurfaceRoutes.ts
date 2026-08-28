@@ -11,6 +11,7 @@ import {
   type MusicEntitlementState,
 } from "../policies/musicSurfacePolicy";
 import { matchRetiredMusicSurface } from "../policies/musicRetirementPolicy";
+import type { PublicMusicResource } from "../repositories/musicDomainRepository";
 
 interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
@@ -75,6 +76,11 @@ interface CanonicalMusicRepository {
     mode: "public";
     publicSlug: string;
     revision: number;
+  } | undefined>;
+  resolvePublicMusicResource(publicSlug: string, capability?: string): Promise<{
+    state: string;
+    noindex?: boolean;
+    resource?: PublicMusicResource;
   } | undefined>;
   resolveGuestResource(publicSlug: string, capability?: string): Promise<{ state: string; noindex?: boolean; playlist?: unknown } | undefined>;
   resolveGuestSocketAuthority(capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
@@ -161,6 +167,27 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
           revision: descriptor.revision,
         },
       });
+    } catch (error) { next(error); }
+  });
+  app.get("/api/music/public-resource/v1/:publicSlug", identify, async (req, res, next) => {
+    try {
+      if (hasUnexpectedPublicResourceAuthority(req) || !/^[A-Za-z0-9_-]{8,128}$/.test(req.params.publicSlug)) throw notFound();
+      const suppliedCapability = req.get("x-music-guest-capability");
+      if (suppliedCapability && !/^[A-Za-z0-9_-]{43}$/.test(suppliedCapability)) throw notFound();
+      const capability = suppliedCapability && /^[A-Za-z0-9_-]{43}$/.test(suppliedCapability)
+        ? suppliedCapability
+        : undefined;
+      const source = publicRequestSource(req, dependencies);
+      const rateInput = { source, resource: req.params.publicSlug, ...(capability ? { capability } : {}) };
+      const limited = dependencies.publicRateLimited?.(rateInput) ?? consumePublicSurfaceLimit(rateInput);
+      if (limited) throw new MusicIdentityError(
+        "RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60,
+      );
+      const result = await dependencies.repository.resolvePublicMusicResource(req.params.publicSlug, capability);
+      if (!result || !["public", "unlisted"].includes(result.state) || !result.resource) throw notFound();
+      if (Buffer.byteLength(JSON.stringify(result.resource), "utf8") > 512 * 1_024) throw new Error("Public Music resource exceeded its encoded limit.");
+      if (result.noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.status(200).json(result.resource);
     } catch (error) { next(error); }
   });
   app.get("/api/playlists", ...owner(async (req, res, next) => {
@@ -657,6 +684,18 @@ const PUBLIC_DESCRIPTOR_AUTHORITY_HEADERS = [
 function hasUnexpectedPublicDescriptorAuthority(req: Request): boolean {
   const contentLength = req.get("content-length");
   return PUBLIC_DESCRIPTOR_AUTHORITY_HEADERS.some((header) => req.get(header) !== undefined)
+    || Object.keys(req.query).length > 0
+    || req.body !== undefined
+    || contentLength !== undefined && contentLength !== "0"
+    || req.get("transfer-encoding") !== undefined;
+}
+
+function hasUnexpectedPublicResourceAuthority(req: Request): boolean {
+  const contentLength = req.get("content-length");
+  return [
+    "authorization", "x-username", "x-email", "x-user-id", "x-music-user-id", "x-owner-id", "x-account-id",
+    "x-document-id", "x-strapi-user-document-id", "x-strapi-account-document-id",
+  ].some((header) => req.get(header) !== undefined)
     || Object.keys(req.query).length > 0
     || req.body !== undefined
     || contentLength !== undefined && contentLength !== "0"
