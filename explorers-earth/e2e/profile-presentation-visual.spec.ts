@@ -1523,14 +1523,12 @@ test.describe("public recommendation presentation visual matrix", () => {
         .locator(":scope > [data-category-id]");
       const first = await categories.nth(0).boundingBox();
       const second = await categories.nth(1).boundingBox();
-      const renderedColumnCount = await page
-        .getByTestId("recommendations-grid")
-        .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length);
-      if (renderedColumnCount === 1) {
-        expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeGreaterThan(10);
-      } else {
-        expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeLessThan(2);
-      }
+      const rowDelta = Math.abs((first?.y || 0) - (second?.y || 0));
+      const isStacked = rowDelta > 10;
+      const isSameRow = rowDelta < 2;
+      expect(isStacked || isSameRow).toBe(true);
+      if (width < 640) expect(isStacked).toBe(true);
+      if (width >= 768) expect(isSameRow).toBe(true);
       await expectNoHorizontalOverflow(page);
     }
 
