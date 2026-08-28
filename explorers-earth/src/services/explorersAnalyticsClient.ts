@@ -141,26 +141,13 @@ export async function postExplorersAnalyticsEvent(
     : new Error('Analytics request failed');
 }
 
-type AnalyticsReadScope =
-  | {
-      accountId: string;
-      fromDate: string;
-      toDate: string;
-      timeZone: string;
-      token: string;
-    }
-  | {
-      accountId: string;
-      from: string;
-      to: string;
-      token: string;
-    };
-
-const formatBrowserCalendarDate = (value: string) => {
-  const date = new Date(value);
-  const pad = (part: number) => String(part).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-};
+export interface AnalyticsReadScope {
+  accountId: string;
+  fromDate: string;
+  toDate: string;
+  timeZone: string;
+  token: string;
+}
 
 export async function readExplorersAnalyticsEvents(
   scope: AnalyticsReadScope,
@@ -172,20 +159,15 @@ export async function readExplorersAnalyticsEvents(
   if (!scope.token) {
     throw new Error('Analytics dashboard authentication is required');
   }
+  if (!scope.fromDate || !scope.toDate || !scope.timeZone) {
+    throw new Error('Analytics dashboard date-only scope is required');
+  }
 
   const url = new URL(endpoint(baseUrl));
-  const dateScope =
-    'fromDate' in scope
-      ? scope
-      : {
-          fromDate: formatBrowserCalendarDate(scope.from),
-          toDate: formatBrowserCalendarDate(scope.to),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        };
   url.searchParams.set('accountId', scope.accountId);
-  url.searchParams.set('fromDate', dateScope.fromDate);
-  url.searchParams.set('toDate', dateScope.toDate);
-  url.searchParams.set('timeZone', dateScope.timeZone);
+  url.searchParams.set('fromDate', scope.fromDate);
+  url.searchParams.set('toDate', scope.toDate);
+  url.searchParams.set('timeZone', scope.timeZone);
 
   const response = await fetchImpl(url.toString(), {
     method: 'GET',

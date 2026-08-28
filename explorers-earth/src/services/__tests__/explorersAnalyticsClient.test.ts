@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import {
   createAnalyticsEventId,
   hasAnalyticsConsent,
@@ -26,6 +26,13 @@ const payload: ExplorersAnalyticsWritePayload = {
       utm_content: 'hero',
     },
   },
+};
+
+type LegacyAnalyticsReadScope = {
+  accountId: string;
+  from: string;
+  to: string;
+  token: string;
 };
 
 describe('explorersAnalyticsClient', () => {
@@ -257,31 +264,30 @@ describe('explorersAnalyticsClient', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('normalizes legacy instant callers to the date-only request boundary', async () => {
+  it('rejects legacy instant read scopes before a request', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ events: [] }), { status: 200 }),
     );
 
-    await readExplorersAnalyticsEvents(
-      {
-        accountId: 'account-1',
-        from: '2026-08-01T00:00:00.000Z',
-        to: '2026-08-24T23:59:59.999Z',
-        token: 'private-user-token',
-      },
-      { baseUrl: 'http://localhost:5000', fetchImpl },
-    );
-
-    const parsed = new URL(fetchImpl.mock.calls[0][0]);
-    const expectedDate = (value: string) => {
-      const date = new Date(value);
-      const pad = (part: number) => String(part).padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const legacyScope: LegacyAnalyticsReadScope = {
+      accountId: 'account-1',
+      from: '2026-08-01T00:00:00.000Z',
+      to: '2026-08-24T23:59:59.999Z',
+      token: 'private-user-token',
     };
-    expect(parsed.searchParams.get('fromDate')).toBe('2026-08-01');
-    expect(parsed.searchParams.get('toDate')).toBe(expectedDate('2026-08-24T23:59:59.999Z'));
-    expect(parsed.searchParams.get('timeZone')).toBe(
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-    );
+
+    await expect(
+      readExplorersAnalyticsEvents(
+        legacyScope as never,
+        { baseUrl: 'http://localhost:5000', fetchImpl },
+      ),
+    ).rejects.toThrow('date-only');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('excludes legacy instants from the public read scope type', () => {
+    expectTypeOf<LegacyAnalyticsReadScope>().not.toMatchTypeOf<
+      Parameters<typeof readExplorersAnalyticsEvents>[0]
+    >();
   });
 });
