@@ -3,6 +3,7 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { createMusicPublicationIdempotencyKey } from "../../shared/musicPublicationContract";
 import { setupCanonicalMusicRoutes } from "../routes/musicSurfaceRoutes";
+import { createMusicPublicObservability } from "../observability/musicPublicObservability";
 
 const routeNow = Date.parse("2026-08-14T10:00:00.000Z");
 const publicationKey = createMusicPublicationIdempotencyKey(routeNow, "11111111-2222-4333-8444-555555555555");
@@ -126,6 +127,11 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
 }
 
 describe("canonical Music REST surfaces", () => {
+  it("completes public HTTP responses when operational telemetry throws", async () => {
+    const { app } = appFor({}, { observability: createMusicPublicObservability({ sink: () => { throw new Error("monitor down"); } }) });
+    await request(app).get("/api/music/public-profile/account-public").expect(200);
+  });
+
   it("records a safe descriptor outcome without authority dimensions", async () => {
     const finish = vi.fn();
     const observability = { startHttp: vi.fn(() => finish) };

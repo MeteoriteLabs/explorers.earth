@@ -148,7 +148,7 @@ const canonicalRequestSongSchema = z.object({
 export type PublicMusicRequestVideo = z.infer<typeof publicRequestVideoSchema>;
 export type PublicMusicRequestSong = z.infer<typeof canonicalRequestSongSchema>;
 
-async function publicRequestJson(response: Response): Promise<unknown> {
+async function publicRequestJson(response: Response, observability: PublicMusicObservability): Promise<unknown> {
   const requestId = safeResponseRequestId(response);
   if (response.status === 403 || response.status === 404) throw new PublicMusicError("REQUEST_FORBIDDEN", undefined, requestId);
   if (response.status === 409) throw new PublicMusicError("REQUEST_INVALID", undefined, requestId);
@@ -159,7 +159,12 @@ async function publicRequestJson(response: Response): Promise<unknown> {
   }
   if (response.status === 400) throw new PublicMusicError("REQUEST_INVALID", undefined, requestId);
   if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
-  try { return await response.json(); } catch { throw new PublicMusicError("PUBLIC_UNAVAILABLE"); }
+  try {
+    return JSON.parse(await readBoundedPublicMusicBody(response, 64 * 1_024));
+  } catch (error) {
+    observability.record("parser_rejected", { parser: "request", reason: error instanceof Error && error.message === "oversized response" ? "size" : error instanceof TypeError ? "encoding" : "json" });
+    throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, requestId);
+  }
 }
 
 const safeResponseRequestId = (response: Response): string | undefined => {
@@ -176,10 +181,10 @@ function normalizedBaseUrl(value: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
-async function readBoundedPublicMusicBody(response: Response): Promise<string> {
+async function readBoundedPublicMusicBody(response: Response, maxBytes = PUBLIC_MUSIC_RESOURCE_MAX_BYTES): Promise<string> {
   const contentLength = response.headers.get("content-length");
   if (contentLength !== null && /^\d+$/.test(contentLength)
-      && Number(contentLength) > PUBLIC_MUSIC_RESOURCE_MAX_BYTES) {
+      && Number(contentLength) > maxBytes) {
     await response.body?.cancel();
     throw new Error("oversized response");
   }
@@ -194,7 +199,7 @@ async function readBoundedPublicMusicBody(response: Response): Promise<string> {
       const { done, value } = await reader.read();
       if (done) break;
       byteLength += value.byteLength;
-      if (byteLength > PUBLIC_MUSIC_RESOURCE_MAX_BYTES) {
+      if (byteLength > maxBytes) {
         await reader.cancel();
         throw new Error("oversized response");
       }
@@ -274,8 +279,8 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/search`, {
         method: "POST", headers: requestHeaders(capability), body: JSON.stringify({ query: normalized }), ...(signal ? { signal } : {}),
       });
-      const parsed = publicRequestSearchSchema.safeParse(await publicRequestJson(response));
-      if (!parsed.success) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      const parsed = publicRequestSearchSchema.safeParse(await publicRequestJson(response, observability));
+      if (!parsed.success) { observability.record("parser_rejected", { parser: "request", reason: "schema" }); throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, safeResponseRequestId(response)); }
       return parsed.data;
     },
     async videoFromUrl(publicSlug: string, url: string, capability?: string, signal?: AbortSignal) {
@@ -285,8 +290,8 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/video-from-url`, {
         method: "POST", headers: requestHeaders(capability), body: JSON.stringify({ url: parsedUrl.data }), ...(signal ? { signal } : {}),
       });
-      const parsed = publicRequestVideoSchema.safeParse(await publicRequestJson(response));
-      if (!parsed.success) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      const parsed = publicRequestVideoSchema.safeParse(await publicRequestJson(response, observability));
+      if (!parsed.success) { observability.record("parser_rejected", { parser: "request", reason: "schema" }); throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, safeResponseRequestId(response)); }
       return parsed.data;
     },
     async requestSong(publicSlug: string, song: PublicMusicRequestSong, capability: string | undefined, idempotencyKey: string) {
@@ -296,8 +301,8 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/requests`, {
         method: "POST", headers: requestHeaders(capability, idempotencyKey), body: JSON.stringify(canonical.data),
       });
-      const parsed = z.object({ accepted: z.literal(true) }).strict().safeParse(await publicRequestJson(response));
-      if (!parsed.success) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      const parsed = z.object({ accepted: z.literal(true) }).strict().safeParse(await publicRequestJson(response, observability));
+      if (!parsed.success) { observability.record("parser_rejected", { parser: "request", reason: "schema" }); throw new PublicMusicError("PUBLIC_UNAVAILABLE", undefined, safeResponseRequestId(response)); }
       return parsed.data;
     },
   };

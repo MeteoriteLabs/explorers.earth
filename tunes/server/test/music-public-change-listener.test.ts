@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { startMusicPublicChangeListener } from "../services/musicPublicChangeListener";
+import { createMusicPublicObservability } from "../observability/musicPublicObservability";
 
 class FakeClient extends EventEmitter {
   queries: string[] = [];
@@ -10,6 +11,15 @@ class FakeClient extends EventEmitter {
 }
 
 describe("Music public change LISTEN service", () => {
+  it("continues listener fanout when its injected telemetry sink throws", async () => {
+    const client = new FakeClient(); const fanout = vi.fn(async () => undefined);
+    const listener = await startMusicPublicChangeListener({ pool: { connect: async () => client }, fanout,
+      observability: createMusicPublicObservability({ sink: () => { throw new Error("monitor down"); } }) });
+    client.emit("notification", { channel: "music_public_change", payload: JSON.stringify({ musicUserId: 1, kind: "queue_changed", revision: 1 }) });
+    await vi.waitFor(() => expect(fanout).toHaveBeenCalledOnce());
+    await expect(listener.stop()).resolves.toBeUndefined();
+  });
+
   it("fans one PostgreSQL notification to every replica listener without shared process state", async () => {
     // Break caught: fanout is process-local (or Redis-dependent), so only the mutating replica updates.
     const left = new FakeClient(); const right = new FakeClient();

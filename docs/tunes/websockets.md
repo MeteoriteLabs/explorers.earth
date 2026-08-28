@@ -209,6 +209,10 @@ The socket is only an invalidation signal. `music_public_change` contains
 `version`, `kind`, and `revision`; accepted events refetch canonical HTTP state.
 Operational events cover admission/rejection/disconnect, reconnect,
 invalidation acceptance/staleness, fallback polling, and revocation enforcement.
+Browser collectors also emit identifier-free active-session lifecycle counters;
+`started - stopped` is the denominator and fallback `entered - exited` is the
+numerator, so repeated retries cannot inflate the rate. Listener reconnect records
+carry bounded `disconnectMs`, so no instance or connection label is required.
 
 ## Key Files
 

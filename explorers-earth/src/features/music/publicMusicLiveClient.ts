@@ -40,6 +40,7 @@ export function subscribeToPublicMusic(
     },
   ));
   const socket = socketFactory({ publicSlug: options.publicSlug, ...(options.capability ? { guestCapability: options.capability } : {}) });
+  observability.record("active_session", { outcome: "started" });
   let stopped = false;
   let socketAvailable = true;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -51,6 +52,9 @@ export function subscribeToPublicMusic(
   let failureIndex = 0;
   let catchUpIndex = 0;
   let generation = 0;
+  let fallbackActive = false;
+  const enterFallback = () => { if (!fallbackActive) { fallbackActive = true; observability.record("fallback_state", { outcome: "entered" }); } };
+  const exitFallback = () => { if (fallbackActive) { fallbackActive = false; observability.record("fallback_state", { outcome: "exited" }); } };
 
   const active = () => !stopped && document.visibilityState !== "hidden" && navigator.onLine !== false;
   const clearTimer = () => { if (timer) clearTimeout(timer); timer = undefined; };
@@ -128,8 +132,8 @@ export function subscribeToPublicMusic(
     pendingRevision = Math.max(pendingRevision, Number(event.revision));
     if (!inFlight && !timer && active()) timer = setTimeout(() => { timer = undefined; void refresh("event"); }, 0);
   };
-  const onConnect = () => { socketAvailable = true; observability.record("socket_reconnect", { outcome: "connected" }); clearTimer(); void refresh("reconnect"); };
-  const onDisconnect = () => { socketAvailable = false; observability.record("socket_reconnect", { outcome: "disconnected" }); schedulePoll(30_000); };
+  const onConnect = () => { socketAvailable = true; exitFallback(); observability.record("socket_reconnect", { outcome: "connected" }); clearTimer(); void refresh("reconnect"); };
+  const onDisconnect = () => { socketAvailable = false; enterFallback(); observability.record("socket_reconnect", { outcome: "disconnected" }); schedulePoll(30_000); };
   const onVisibility = () => {
     clearTimer();
     if (document.visibilityState === "hidden") {
@@ -146,6 +150,8 @@ export function subscribeToPublicMusic(
     socket.off("music_public_change", onChange); socket.off("connect", onConnect); socket.off("disconnect", onDisconnect); socket.off("connect_error", onDisconnect);
     document.removeEventListener("visibilitychange", onVisibility); window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline);
     socket.disconnect();
+    exitFallback();
+    observability.record("active_session", { outcome: "stopped" });
   };
   socket.on("music_public_change", onChange); socket.on("connect", onConnect); socket.on("disconnect", onDisconnect); socket.on("connect_error", onDisconnect);
   document.addEventListener("visibilitychange", onVisibility); window.addEventListener("online", onOnline); window.addEventListener("offline", onOffline);

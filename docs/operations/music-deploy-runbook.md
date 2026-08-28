@@ -764,3 +764,21 @@ Operator query shape: filter exactly on `version`, then aggregate `event`,
 `retryDelayMs`, and `delayMs`. Reject a query definition that extracts another
 field. Alert separately on 5xx, parser rejection, reconnect/disconnect churn,
 listener fatal/reconnect, revocation enforcement, and fallback polling.
+
+Export those two structured versions as sanitized JSONL in timestamp order.
+Include active-session `started`/`stopped` and fallback-state `entered`/`exited`
+records from each browser collector's current process lifetime (to reconstruct
+the current numerator and denominator), plus HTTP/listener records from the last
+five minutes. Repeated fallback poll attempts do not affect the rate.
+Merge replica exports by concatenating the JSONL files; no identity join is
+needed or allowed. Run the executable gate from `tunes`:
+
+```text
+npm run music:public-canary -- ../.artifacts/music-public-canary.jsonl
+```
+
+Exit `0` means promote, `1` means contain/hold, and `2` means immediate rollback.
+Empty or incomplete windows fail closed with `"missing"` measurements.
+Each versioned backend `security` outcome (`authorization_leak`,
+`cross_owner_event`, or `capability_exposure`) causes exit `2` immediately and
+must contain no additional fields.

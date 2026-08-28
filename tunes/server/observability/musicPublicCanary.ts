@@ -27,3 +27,39 @@ export function evaluateMusicPublicCanary(value: MusicPublicCanaryMeasurements):
   if (value.fallbackPollingRate >= 0.1) failed.push("fallback_polling");
   return failed.length ? { action: "contain", failedGates: failed } : { action: "promote", failedGates: [] };
 }
+
+const percentile95 = (values: number[]): number => {
+  if (!values.length) return Number.POSITIVE_INFINITY;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)];
+};
+
+export function collectMusicPublicCanary(events: readonly unknown[]): MusicPublicCanaryMeasurements {
+  const descriptor: number[] = []; const resource: number[] = []; const fanout: number[] = []; const disconnect: number[] = [];
+  let http = 0; let fiveXx = 0; let activeStarts = 0; let activeStops = 0; let fallbackEnters = 0; let fallbackExits = 0;
+  let authorizationLeaks = 0; let crossOwnerEvents = 0; let capabilityExposures = 0;
+  for (const raw of events) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const event = raw as Record<string, unknown>;
+    if (event.version === "music-public-ops/v1" && event.event === "http" && typeof event.status === "number" && typeof event.latencyMs === "number") {
+      http += 1; if (event.status >= 500) fiveXx += 1;
+      if (event.operation === "descriptor") descriptor.push(event.latencyMs);
+      if (event.operation === "resource") resource.push(event.latencyMs);
+    }
+    if (event.version === "music-public-ops/v1" && event.event === "listener" && event.outcome === "connected" && typeof event.disconnectMs === "number") disconnect.push(event.disconnectMs);
+    if (event.version === "music-public-ops/v1" && event.event === "listener" && event.outcome === "notification_fanout" && typeof event.lagMs === "number") fanout.push(event.lagMs);
+    if (event.version === "music-public-browser-ops/v1" && event.event === "active_session" && event.outcome === "started") activeStarts += 1;
+    if (event.version === "music-public-browser-ops/v1" && event.event === "active_session" && event.outcome === "stopped") activeStops += 1;
+    if (event.version === "music-public-browser-ops/v1" && event.event === "fallback_state" && event.outcome === "entered") fallbackEnters += 1;
+    if (event.version === "music-public-browser-ops/v1" && event.event === "fallback_state" && event.outcome === "exited") fallbackExits += 1;
+    if (event.version === "music-public-ops/v1" && event.event === "security" && event.outcome === "authorization_leak") authorizationLeaks += 1;
+    if (event.version === "music-public-ops/v1" && event.event === "security" && event.outcome === "cross_owner_event") crossOwnerEvents += 1;
+    if (event.version === "music-public-ops/v1" && event.event === "security" && event.outcome === "capability_exposure") capabilityExposures += 1;
+  }
+  return {
+    descriptorP95Ms: percentile95(descriptor), resourceP95Ms: percentile95(resource), fiveXxRate: http ? fiveXx / http : Number.POSITIVE_INFINITY,
+    listenerDisconnectSeconds: percentile95(disconnect) / 1_000, notificationFanoutP95Ms: percentile95(fanout),
+    fallbackPollingRate: Math.max(0, activeStarts - activeStops) ? Math.max(0, fallbackEnters - fallbackExits) / Math.max(0, activeStarts - activeStops) : Number.POSITIVE_INFINITY,
+    authorizationLeaks, crossOwnerEvents, capabilityExposures,
+  };
+}

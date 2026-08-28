@@ -32,4 +32,15 @@ describe("public Music browser operational observability", () => {
     });
     vi.unstubAllGlobals();
   });
+
+  it("contains sink failures and reports malformed request responses with support references", async () => {
+    const throwing = createPublicMusicObservability(() => { throw new Error("monitor down"); });
+    expect(() => throwing.record("active_session", { outcome: "started" })).not.toThrow();
+    const sink = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not-json", { status: 200, headers: { "X-Request-Id": "request-support-1" } })));
+    const client = createPublicMusicClient("https://music.example", createPublicMusicObservability(sink));
+    await expect(client.search("public_slug-123", "song")).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: "request-support-1" });
+    expect(sink).toHaveBeenCalledWith({ version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "request", reason: "json" });
+    vi.unstubAllGlobals();
+  });
 });

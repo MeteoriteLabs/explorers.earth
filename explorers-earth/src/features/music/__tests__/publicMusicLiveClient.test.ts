@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { subscribeToPublicMusic } from "../publicMusicLiveClient";
+import { createPublicMusicObservability } from "../publicMusicObservability";
 
 class FakeSocket extends EventEmitter {
   disconnected = false;
@@ -9,6 +10,20 @@ class FakeSocket extends EventEmitter {
 
 describe("public Music live client", () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it("keeps reconnect, polling, and cleanup alive when telemetry delivery throws", async () => {
+    vi.useFakeTimers();
+    const socket = new FakeSocket();
+    const onInvalidate = vi.fn(async () => ({ revision: 1 }));
+    const observability = createPublicMusicObservability(() => { throw new Error("monitor down"); });
+    const subscription = subscribeToPublicMusic({ publicSlug: "public-one", onInvalidate }, {
+      socketFactory: () => socket as never, random: () => 0.5, observability,
+    });
+    socket.emit("disconnect");
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(onInvalidate).toHaveBeenCalledOnce();
+    expect(() => subscription.unsubscribe()).not.toThrow();
+  });
 
   it("coalesces bursts, rejects stale revisions, and permits only one canonical refetch", async () => {
     // Break caught: socket payload becomes content authority or a burst starts concurrent HTTP reads.

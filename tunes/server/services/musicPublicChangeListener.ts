@@ -46,6 +46,7 @@ export async function startMusicPublicChangeListener(options: {
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   let connecting: Promise<void> | undefined;
   const now = options.now ?? Date.now;
+  let disconnectedAt: number | undefined;
 
   const detach = (target: ListenClient): void => {
     target.removeAllListeners("notification");
@@ -86,6 +87,8 @@ export async function startMusicPublicChangeListener(options: {
         })).catch(() => options.observability?.listener("fanout_failed", { kind: change.kind }));
       };
       const onError = (error: unknown): void => {
+        disconnectedAt = disconnectedAt ?? now();
+        options.observability?.listener("disconnected");
         release(next);
         scheduleReconnect(error);
       };
@@ -94,7 +97,8 @@ export async function startMusicPublicChangeListener(options: {
       try {
         await next.query(`LISTEN ${CHANNEL}`);
         client = next;
-        options.observability?.listener("connected");
+        options.observability?.listener("connected", disconnectedAt === undefined ? {} : { disconnectMs: now() - disconnectedAt });
+        disconnectedAt = undefined;
       } catch (error) {
         release(next);
         throw error;

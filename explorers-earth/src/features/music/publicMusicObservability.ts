@@ -3,7 +3,9 @@ export type PublicMusicBrowserOperationalEvent =
   | { version: "music-public-browser-ops/v1"; event: "socket_reconnect"; outcome: "connected" | "disconnected" | "failed" }
   | { version: "music-public-browser-ops/v1"; event: "invalidation"; outcome: "accepted" | "stale" | "malformed" }
   | { version: "music-public-browser-ops/v1"; event: "fallback_poll"; outcome: "activated" | "success" | "failure"; delayMs?: number }
-  | { version: "music-public-browser-ops/v1"; event: "revocation"; outcome: "enforced" };
+  | { version: "music-public-browser-ops/v1"; event: "revocation"; outcome: "enforced" }
+  | { version: "music-public-browser-ops/v1"; event: "active_session"; outcome: "started" | "stopped" }
+  | { version: "music-public-browser-ops/v1"; event: "fallback_state"; outcome: "entered" | "exited" };
 
 type EventFields = {
   parser_rejected: { parser: "descriptor" | "resource" | "request"; reason: "json" | "schema" | "size" | "encoding" };
@@ -11,6 +13,8 @@ type EventFields = {
   invalidation: { outcome: "accepted" | "stale" | "malformed" };
   fallback_poll: { outcome: "activated" | "success" | "failure"; delayMs?: number };
   revocation: { outcome: "enforced" };
+  active_session: { outcome: "started" | "stopped" };
+  fallback_state: { outcome: "entered" | "exited" };
 };
 
 export function createPublicMusicObservability(sink: (event: PublicMusicBrowserOperationalEvent) => void = (event) => {
@@ -27,10 +31,10 @@ export function createPublicMusicObservability(sink: (event: PublicMusicBrowserO
         entry = { version: "music-public-browser-ops/v1", event, outcome: safe.outcome,
           ...(safe.delayMs === undefined ? {} : { delayMs: Math.max(0, Math.min(300_000, Math.round(safe.delayMs))) }) };
       } else {
-        const safe = fields as { outcome: "connected" | "disconnected" | "failed" | "accepted" | "stale" | "malformed" | "enforced" };
+        const safe = fields as { outcome: "connected" | "disconnected" | "failed" | "accepted" | "stale" | "malformed" | "enforced" | "started" | "stopped" | "entered" | "exited" };
         entry = { version: "music-public-browser-ops/v1", event, outcome: safe.outcome } as PublicMusicBrowserOperationalEvent;
       }
-      sink(entry);
+      try { sink(entry); } catch { /* operational telemetry cannot change product behavior */ }
     },
   };
 }
