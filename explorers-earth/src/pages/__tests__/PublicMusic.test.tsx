@@ -54,10 +54,10 @@ describe("public Music page", () => {
     expect(screen.getByRole("link", { name: "Return to Explorers" })).toHaveAttribute("href", "/");
   });
 
-  it("uses the approved zero-public-playlist copy", () => {
+  it("uses the approved page-level empty copy when nothing is shared", () => {
     render(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
-    expect(screen.getByText("No public playlists yet.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing has been shared here yet")).toBeInTheDocument();
   });
 
   it("renders public playlist content without edit controls", () => {
@@ -89,7 +89,7 @@ describe("public Music page", () => {
       currentlyPlaying: playing,
       queue: { items: [queued], total: 1, truncated: false },
     })} /></MemoryRouter>);
-    expect(screen.getByRole("heading", { name: "Playing now & up next" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Up next" })).toBeInTheDocument();
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Up next" })).toHaveTextContent("Next");
     expect(screen.getByRole("list", { name: "Up next" })).not.toHaveTextContent("Now");
@@ -99,15 +99,16 @@ describe("public Music page", () => {
     expect(screen.queryByRole("heading", { name: "Playing now & up next" })).not.toBeInTheDocument();
   });
 
-  it("renders playback-visible current state and player control without exposing the queue", () => {
+  it("renders a playback-eligible source without prematurely shipping player controls", () => {
     render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
       permissions: { ...resource().permissions, allowGuestPlayOnDevice: true },
       currentlyPlaying: playing,
     })} /></MemoryRouter>);
-    expect(screen.getByRole("heading", { name: "Playing now" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Play on this device" })).toBeInTheDocument();
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Up next" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Play Now" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=abcdefghijk");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("enables Retry only after the server delay and runs the supplied recovery", () => {
