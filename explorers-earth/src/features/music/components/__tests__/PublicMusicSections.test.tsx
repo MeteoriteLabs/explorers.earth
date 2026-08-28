@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
@@ -6,11 +6,13 @@ import { PublicMusicError, type PublicMusicResource, type PublicMusicSong } from
 import { PublicMusicSections } from "../PublicMusicSections";
 
 const mediaRenders = vi.hoisted(() => [] as Array<{ src: string; playing: boolean }>);
+let latestMediaProps: Record<string, unknown> = {};
 
 vi.mock("react-player", async () => {
   const React = await import("react");
   return {
     default: React.forwardRef((props: Record<string, unknown>, ref) => {
+      latestMediaProps = props;
       mediaRenders.push({ src: String(props.src), playing: Boolean(props.playing) });
       React.useImperativeHandle(ref, () => ({ play: async () => undefined, pause: () => undefined }));
       return <div data-testid="guest-media" data-playing={String(props.playing)} data-src={String(props.src)} />;
@@ -70,6 +72,37 @@ function populatedResource(mask: number): PublicMusicResource {
 }
 
 describe("PublicMusicSections permission oracle", () => {
+  it.each([
+    ["current", (() => { const value = populatedResource(2); value.queue.items = []; value.playlists.items = []; return value; })()],
+    ["queue", (() => { const value = populatedResource(2 | 16); value.currentlyPlaying = null; return value; })()],
+    ["playlist", (() => { const value = populatedResource(2 | 4); value.currentlyPlaying = null; value.queue.items = []; return value; })()],
+    ["queue", (() => { const value = populatedResource(2 | 4 | 16); value.currentlyPlaying = null; return value; })()],
+  ] as const)("attributes default playback to its actual %s origin", (source, resource) => {
+    const onAnalytics = vi.fn();
+    render(<PublicMusicSections resource={resource} onAnalytics={onAnalytics} />);
+    act(() => (latestMediaProps.onPlay as () => void)());
+    expect(onAnalytics).toHaveBeenCalledWith({ name: "playback_started", source });
+  });
+
+  it("preserves explicit queue and playlist origins with duplicate IDs, then falls back after removal", async () => {
+    const onAnalytics = vi.fn();
+    const duplicatePlaylist = { ...saved, id: queued.id };
+    const initial = populatedResource(2 | 4 | 16);
+    initial.playlists.items[0].songs.items = [duplicatePlaylist];
+    const view = render(<PublicMusicSections resource={initial} onAnalytics={onAnalytics} />);
+    await userEvent.click(screen.getByRole("button", { name: "Choose Queue signal to play on this device" }));
+    act(() => (latestMediaProps.onPlay as () => void)());
+    expect(onAnalytics).toHaveBeenLastCalledWith({ name: "playback_started", source: "queue" });
+    await userEvent.click(screen.getByRole("button", { name: "Choose Playlist signal to play on this device" }));
+    act(() => (latestMediaProps.onPlay as () => void)());
+    expect(onAnalytics).toHaveBeenLastCalledWith({ name: "playback_started", source: "playlist" });
+
+    view.rerender(<PublicMusicSections resource={{ ...initial, revision: 8, queue: { items: [], total: 0, truncated: false }, playlists: { items: [], total: 0, truncated: false } }} onAnalytics={onAnalytics} />);
+    act(() => (latestMediaProps.onPlay as () => void)());
+    expect(onAnalytics).toHaveBeenLastCalledWith({ name: "playback_started", source: "current" });
+    view.rerender(<PublicMusicSections resource={{ ...initial, revision: 9, permissions: { ...initial.permissions, allowGuestPlayOnDevice: false } }} onAnalytics={onAnalytics} />);
+    expect(screen.queryByTestId("guest-media")).not.toBeInTheDocument();
+  });
   it("tracks one outside-to-inside section engagement across nested focus and pointer modalities", () => {
     const onAnalytics = vi.fn();
     render(<><button type="button">Outside</button><PublicMusicSections resource={populatedResource(31)} publicSlug="public-owner" onAnalytics={onAnalytics} /></>);

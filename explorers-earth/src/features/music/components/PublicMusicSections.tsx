@@ -104,7 +104,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
   requestClient?: ComponentProps<typeof PublicMusicRequest>["client"];
   onAnalytics?: (event: PublicMusicProductEvent) => void;
 }) {
-  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
+  const [selectedSong, setSelectedSong] = useState<{ id: string; source: "queue" | "playlist" } | null>(null);
   const [revocationAnnouncement, setRevocationAnnouncement] = useState("");
   const playerHasFocus = useRef(false);
   const previousPlayerEligible = useRef(false);
@@ -112,24 +112,27 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
   const previousRequestEligible = useRef(false);
   const [requestRevoked, setRequestRevoked] = useState(false);
   const policy = derivePublicMusicViewPolicy(resource);
-  const playableSong = policy.playerEligible
-    ? resource.currentlyPlaying
-      ?? (policy.queueVisible ? resource.queue.items[0] : undefined)
-      ?? (policy.playlistsVisible
-        ? resource.playlists.items.find((playlist) => playlist.songs.items.length > 0)?.songs.items[0]
-        : undefined)
+  const firstPlaylistSong = policy.playlistsVisible
+    ? resource.playlists.items.find((playlist) => playlist.songs.items.length > 0)?.songs.items[0]
     : undefined;
-  const selectableSongs = policy.playerEligible
-    ? [
-      ...(policy.currentVisible && resource.currentlyPlaying ? [resource.currentlyPlaying] : []),
-      ...(policy.queueVisible ? resource.queue.items : []),
-      ...(policy.playlistsVisible ? resource.playlists.items.flatMap((playlist) => playlist.songs.items) : []),
-    ]
-    : [];
-  const selectedSong = selectableSongs.find(({ id }) => id === selectedSongId) ?? playableSong;
-  const selectedSource: "current" | "queue" | "playlist" = selectedSongId
-    ? resource.queue.items.some(({ id }) => id === selectedSongId) ? "queue" : "playlist"
-    : "current";
+  const explicitSong = selectedSong?.source === "queue" && policy.queueVisible
+    ? resource.queue.items.find(({ id }) => id === selectedSong.id)
+    : selectedSong?.source === "playlist" && policy.playlistsVisible
+      ? resource.playlists.items.flatMap((playlist) => playlist.songs.items).find(({ id }) => id === selectedSong.id)
+      : undefined;
+  const playableSelection = policy.playerEligible
+    ? explicitSong && selectedSong
+      ? { song: explicitSong, source: selectedSong.source }
+      : resource.currentlyPlaying
+        ? { song: resource.currentlyPlaying, source: "current" as const }
+        : policy.queueVisible && resource.queue.items[0]
+          ? { song: resource.queue.items[0], source: "queue" as const }
+          : firstPlaylistSong
+            ? { song: firstPlaylistSong, source: "playlist" as const }
+            : undefined
+    : undefined;
+  const playableSong = playableSelection?.song;
+  const selectedSource = playableSelection?.source ?? "current";
   const requestEligible = policy.requestEligible && Boolean(publicSlug) && !requestRevoked;
   const hasVisibleContent = requestEligible
     || policy.currentVisible
@@ -141,6 +144,14 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
   const queueEngagement = useSectionEngagement("queue", hasVisibleContent && policy.queueVisible, onAnalytics);
   const playlistsEngagement = useSectionEngagement("playlists", hasVisibleContent && policy.playlistsVisible, onAnalytics);
   const historyEngagement = useSectionEngagement("history", hasVisibleContent && policy.historyVisible, onAnalytics);
+
+  useLayoutEffect(() => {
+    if (!selectedSong) return;
+    const stillAvailable = selectedSong.source === "queue"
+      ? policy.queueVisible && resource.queue.items.some(({ id }) => id === selectedSong.id)
+      : policy.playlistsVisible && resource.playlists.items.some((playlist) => playlist.songs.items.some(({ id }) => id === selectedSong.id));
+    if (!stillAvailable) setSelectedSong(null);
+  }, [policy.playlistsVisible, policy.queueVisible, resource.playlists.items, resource.queue.items, selectedSong]);
 
   useLayoutEffect(() => {
     const revoked = previousPlayerEligible.current && !policy.playerEligible;
@@ -195,7 +206,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
           }}
         >
           <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
-          {selectedSong ? <PublicMusicPlayer key={selectedSong.id} song={selectedSong} allowed={policy.playerEligible} onPlaybackStart={() => onAnalytics?.({ name: "playback_started", source: selectedSource })} /> : null}
+          {playableSong ? <PublicMusicPlayer key={`${selectedSource}:${playableSong.id}`} song={playableSong} allowed={policy.playerEligible} onPlaybackStart={() => onAnalytics?.({ name: "playback_started", source: selectedSource })} /> : null}
         </section>
       ) : null}
 
@@ -223,8 +234,8 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
                   key={song.id}
                   song={song}
                   playable={policy.playerEligible}
-                  selected={selectedSong?.id === song.id}
-                  onSelect={(selection) => { setSelectedSongId(selection.id); onAnalytics?.({ name: "song_selected", source: "queue" }); }}
+                  selected={selectedSong?.source === "queue" && selectedSong.id === song.id}
+                  onSelect={(selection) => { setSelectedSong({ id: selection.id, source: "queue" }); onAnalytics?.({ name: "song_selected", source: "queue" }); }}
                 />
               ))}
             </ol>
@@ -254,8 +265,8 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
                           key={song.id}
                           song={song}
                           playable={policy.playerEligible}
-                          selected={selectedSong?.id === song.id}
-                          onSelect={(selection) => { setSelectedSongId(selection.id); onAnalytics?.({ name: "playlist_opened" }); onAnalytics?.({ name: "song_selected", source: "playlist" }); }}
+                          selected={selectedSong?.source === "playlist" && selectedSong.id === song.id}
+                          onSelect={(selection) => { setSelectedSong({ id: selection.id, source: "playlist" }); onAnalytics?.({ name: "playlist_opened" }); onAnalytics?.({ name: "song_selected", source: "playlist" }); }}
                         />
                       ))}
                     </ol>
