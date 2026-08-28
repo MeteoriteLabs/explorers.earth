@@ -1521,11 +1521,20 @@ test.describe("public recommendation presentation visual matrix", () => {
       const categories = page
         .getByTestId("recommendations-grid")
         .locator(":scope > [data-category-id]");
+      await expect(categories.nth(0)).toBeVisible();
+      await expect(categories.nth(1)).toBeVisible();
       const first = await categories.nth(0).boundingBox();
       const second = await categories.nth(1).boundingBox();
-      const rowDelta = Math.abs((first?.y || 0) - (second?.y || 0));
-      const isStacked = rowDelta > 10;
-      const isSameRow = rowDelta < 2;
+      expect(first).not.toBeNull();
+      expect(second).not.toBeNull();
+      const horizontalOverlap =
+        Math.min(first!.x + first!.width, second!.x + second!.width) -
+        Math.max(first!.x, second!.x);
+      const verticalOverlap =
+        Math.min(first!.y + first!.height, second!.y + second!.height) -
+        Math.max(first!.y, second!.y);
+      const isStacked = horizontalOverlap > 10 && verticalOverlap <= 10;
+      const isSameRow = verticalOverlap > 10 && horizontalOverlap <= 10;
       expect(isStacked || isSameRow).toBe(true);
       if (width < 640) expect(isStacked).toBe(true);
       if (width >= 768) expect(isSameRow).toBe(true);
