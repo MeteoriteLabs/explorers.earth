@@ -15,10 +15,20 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
   const [message, setMessage] = useState("");
   const [retrySeconds, setRetrySeconds] = useState(0);
   const active = useRef<AbortController>();
-  const canonicalRevoked = useRef(false);
+  const mounted = useRef(true);
+  const scope = useRef({ publicSlug, capability, generation: 0, revoked: false });
+  if (scope.current.publicSlug !== publicSlug || scope.current.capability !== capability) {
+    active.current?.abort();
+    active.current = undefined;
+    scope.current = { publicSlug, capability, generation: scope.current.generation + 1, revoked: false };
+    setBusy(false);
+    setSubmitting(undefined);
+    setResults([]);
+    setMessage("");
+    setRetrySeconds(0);
+  }
   const statusRef = useRef<HTMLParagraphElement>(null);
-  useEffect(() => () => active.current?.abort(), []);
-  useEffect(() => { canonicalRevoked.current = false; }, [publicSlug, capability]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; active.current?.abort(); }; }, []);
   useEffect(() => {
     if (retrySeconds <= 0) return;
     const timer = window.setTimeout(() => setRetrySeconds((value) => Math.max(0, value - 1)), 1_000);
@@ -33,10 +43,11 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
           : error.code === "REQUEST_INVALID" ? "Enter a valid song search or YouTube URL."
             : "Music is temporarily unavailable."
     : "Music is temporarily unavailable.";
-  const handleCanonicalRevocation = (error: unknown): boolean => {
+  const handleCanonicalRevocation = (error: unknown, generation: number): boolean => {
+    if (!mounted.current || generation !== scope.current.generation) return true;
     if (!isCanonicalRevocation(error)) return false;
-    if (canonicalRevoked.current) return true;
-    canonicalRevoked.current = true;
+    if (scope.current.revoked) return true;
+    scope.current.revoked = true;
     active.current?.abort();
     active.current = undefined;
     setBusy(false);
@@ -46,31 +57,33 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
     return true;
   };
   const search = async () => {
+    const generation = scope.current.generation;
     active.current?.abort();
     const controller = new AbortController(); active.current = controller; setBusy(true); setMessage(""); setResults([]);
     try {
       const value = /^https?:\/\//i.test(query.trim())
         ? { items: [await client.videoFromUrl(publicSlug, query.trim(), capability, controller.signal)] }
         : await client.search(publicSlug, query, capability, controller.signal);
-      if (!controller.signal.aborted) { setRetrySeconds(0); setResults(value.items); onOutcome?.({ action: "search", outcome: value.items.length ? "success" : "empty" }); if (value.items.length === 0) setMessage("No songs found."); }
-    } catch (error) { if (!controller.signal.aborted) { if (handleCanonicalRevocation(error)) return; setMessage(errorCopy(error)); if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60); onOutcome?.({ action: "search", outcome: normalizedOutcome(error) }); } }
-    finally { if (!controller.signal.aborted && !canonicalRevoked.current) setBusy(false); }
+      if (!controller.signal.aborted && mounted.current && generation === scope.current.generation && !scope.current.revoked) { setRetrySeconds(0); setResults(value.items); onOutcome?.({ action: "search", outcome: value.items.length ? "success" : "empty" }); if (value.items.length === 0) setMessage("No songs found."); }
+    } catch (error) { if (!controller.signal.aborted) { if (handleCanonicalRevocation(error, generation)) return; setMessage(errorCopy(error)); if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60); onOutcome?.({ action: "search", outcome: normalizedOutcome(error) }); } }
+    finally { if (!controller.signal.aborted && mounted.current && generation === scope.current.generation && !scope.current.revoked) setBusy(false); }
   };
   const submit = async (video: PublicMusicRequestVideo) => {
     if (submitting) return;
+    const generation = scope.current.generation;
     setSubmitting(video.id.videoId); setMessage("");
     try {
       await client.requestSong(publicSlug, { youtubeId: video.id.videoId, title: video.snippet.title, artist: video.snippet.channelTitle, thumbnailUrl: video.snippet.thumbnails.default.url }, capability, `tunes-share-v1-${Date.now()}-${crypto.randomUUID()}`);
-      if (canonicalRevoked.current) return;
+      if (!mounted.current || generation !== scope.current.generation || scope.current.revoked) return;
       setResults([]); setMessage("Song requested."); onOutcome?.({ action: "request", outcome: "success" });
       window.setTimeout(() => statusRef.current?.focus(), 0);
     } catch (error) {
-      if (handleCanonicalRevocation(error)) return;
+      if (handleCanonicalRevocation(error, generation)) return;
       setMessage(errorCopy(error));
       if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60);
       onOutcome?.({ action: "request", outcome: normalizedOutcome(error) });
     }
-    finally { if (!canonicalRevoked.current) setSubmitting(undefined); }
+    finally { if (mounted.current && generation === scope.current.generation && !scope.current.revoked) setSubmitting(undefined); }
   };
   return <section aria-labelledby="public-music-request-heading" className="min-w-0">
     <h2 id="public-music-request-heading" className="text-xl font-semibold">Request a song</h2>

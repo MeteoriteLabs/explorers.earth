@@ -173,4 +173,45 @@ describe("PublicMusicRequest", () => {
     expect(onOutcome.mock.calls.filter(([event]) => event?.outcome === "forbidden")).toHaveLength(0);
     expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument();
   });
+
+  it.each(["slug", "capability"] as const)("suppresses old pending search success and revocation across %s scope changes", async (dimension) => {
+    let settle!: (value: { items: typeof video[]; nextPageToken: null }) => void;
+    const onCanonicalRevoked = vi.fn();
+    const onOutcome = vi.fn();
+    const client = { search: vi.fn(() => new Promise((resolve) => { settle = resolve; })), videoFromUrl: vi.fn(), requestSong: vi.fn() };
+    const first = { publicSlug: "public_slug-123", capability: dimension === "capability" ? "A".repeat(43) : undefined };
+    const second = { publicSlug: dimension === "slug" ? "public_slug-456" : first.publicSlug, capability: dimension === "capability" ? "B".repeat(43) : undefined };
+    const view = render(<PublicMusicRequest {...first} allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} onOutcome={onOutcome} />);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "old");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    view.rerender(<PublicMusicRequest {...second} allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} onOutcome={onOutcome} />);
+    settle({ items: [video], nextPageToken: null });
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument();
+    expect(onOutcome).not.toHaveBeenCalled();
+    expect(onCanonicalRevoked).not.toHaveBeenCalled();
+  });
+
+  it.each(["slug", "capability"] as const)("suppresses old pending submit revocation across %s scope changes while the new scope remains usable", async (dimension) => {
+    let rejectSubmit!: (error: unknown) => void;
+    const onCanonicalRevoked = vi.fn();
+    const onOutcome = vi.fn();
+    const client = { search: vi.fn().mockResolvedValue({ items: [video], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn(() => new Promise((_, reject) => { rejectSubmit = reject; })) };
+    const first = { publicSlug: "public_slug-123", capability: dimension === "capability" ? "A".repeat(43) : undefined };
+    const second = { publicSlug: dimension === "slug" ? "public_slug-456" : first.publicSlug, capability: dimension === "capability" ? "B".repeat(43) : undefined };
+    const view = render(<PublicMusicRequest {...first} allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} onOutcome={onOutcome} />);
+    const input = screen.getByLabelText("Search for a song or paste a YouTube URL");
+    await userEvent.type(input, "old");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    view.rerender(<PublicMusicRequest {...second} allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} onOutcome={onOutcome} />);
+    rejectSubmit(new PublicMusicError("REQUEST_FORBIDDEN"));
+    await act(async () => { await Promise.resolve(); });
+    expect(onCanonicalRevoked).not.toHaveBeenCalled();
+    expect(onOutcome.mock.calls.filter(([event]) => event.outcome === "forbidden")).toHaveLength(0);
+    await userEvent.clear(input);
+    await userEvent.type(input, "new");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByRole("button", { name: "Request Song by Artist" })).toBeEnabled();
+  });
 });
