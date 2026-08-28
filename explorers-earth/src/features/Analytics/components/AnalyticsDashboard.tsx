@@ -15,6 +15,7 @@ import MediaListEngagementChart from './charts/MediaListEngagementChart';
 import MediaItemsInListChart from './charts/MediaItemsInListChart';
 import GuidesChart from './charts/GuidesChart';
 import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyticsClient';
+import { selectCompletedAccount } from '../../music/musicIdentityCoordinator';
 import { getAnalyticsDateRange } from '../utils/analyticsDateRange';
 
 // Time filter types
@@ -76,6 +77,9 @@ const AnalyticsDashboard: React.FC = () => {
         createdAt
         accounts {
           documentId
+          Account_Name
+          Account_Type
+          mobile_number
           createdAt
         }
       }
@@ -85,7 +89,10 @@ const AnalyticsDashboard: React.FC = () => {
     skip: !user?.documentId,
   });
 
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const selectedAccount = selectCompletedAccount(
+    accountData?.usersPermissionsUser?.accounts,
+  );
+  const accountDocumentId = selectedAccount?.documentId;
   const loading = accountLoading || analyticsLoading;
   const error = accountError || analyticsError;
 

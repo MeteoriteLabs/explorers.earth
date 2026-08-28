@@ -35,7 +35,13 @@ import type { TypePolicies } from '@apollo/client';
  * field-casing difference — each matches its own Strapi collection.
  */
 export const typePolicies: TypePolicies = {
-  Account: { keyFields: (object) => typeof object.documentId === 'string' ? ['documentId'] : false },
+  Account: {
+    keyFields: (object) => typeof object.documentId === 'string' ? ['documentId'] : false,
+    fields: {
+      bg_picture: { merge: true },
+      profile_picture: { merge: true },
+    },
+  },
   UsersPermissionsUser: { keyFields: (object) => typeof object.documentId === 'string' ? ['documentId'] : false },
   Query: {
     fields: {

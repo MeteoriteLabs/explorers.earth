@@ -346,8 +346,7 @@
     "signupSubtitle": "สมัครสมาชิกเพื่อเพลิดเพลินกับฟีเจอร์ของ explorers",
     "signUpWithGoogle": "สมัครสมาชิกด้วย Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ชื่อผู้ใช้",
@@ -1789,49 +1788,6 @@
           "title": "แอป เครื่องมือ และลิงก์ที่เป็นประโยชน์"
         }
       ]
-    },
-    "localTunes": {
-      "body": "การสำรวจไม่ใช่แค่ภาพ เสียงนำพาความทรงจำ บริบท และอารมณ์\n\nTunes ช่วยให้คุณรวบรวมและแชร์เพลงประกอบสำหรับสถานที่ การเดินทาง และอารมณ์ — ไม่ว่าจะเป็นเพลงที่ค้นพบระหว่างทางหรือเสียงที่กำหนดสถานที่สำหรับคุณ\n\nเชื่อมต่ออย่างราบรื่นกับโปรไฟล์ Explorer ของคุณ",
-      "closingStatement": "Tunes <strong>ฟรี</strong>สำหรับการสำรวจ และสำหรับคุณสมบัติแบบชำระเงินคุณสามารถอัปเกรดได้ในภายหลัง",
-      "exploreButton": "สำรวจ Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "เหมาะสำหรับค่ำคืนคาราโอเกะด้วยเพลย์ลิสต์แบบร่วมมือและคำขอเพลงแบบเรียลไทม์",
-          "title": "พร้อมคาราโอเกะ"
-        },
-        "qrCodeSharing": {
-          "description": "แชร์ประสบการณ์ดนตรีของคุณด้วยการสแกน QR Code แบบง่าย — ไม่ต้องใช้แอปหรือดาวน์โหลด",
-          "title": "แชร์ QR Code"
-        },
-        "realtimeCollaboration": {
-          "description": "ให้แขกเพิ่มเพลงลงในเพลย์ลิสต์ของคุณทันทีในขณะที่คุณควบคุมสิ่งที่เล่นได้อย่างสมบูรณ์",
-          "title": "การทำงานร่วมกันแบบเรียลไทม์"
-        },
-        "silentParties": {
-          "description": "จัดปาร์ตี้เงียบที่ไม่เหมือนใครที่ทุกคนฟังผ่านหูฟังของตัวเอง",
-          "title": "ปาร์ตี้เงียบ"
-        },
-        "voteLikeSystem": {
-          "description": "แขกสามารถโหวตเพลงโปรดของพวกเขาเพื่อส่งผลต่อคิวเพลย์ลิสต์แบบเรียลไทม์",
-          "title": "ระบบโหวตและไลค์"
-        },
-        "youtubeIntegration": {
-          "description": "รวมเข้ากับ YouTube อย่างราบรื่นเพื่อเข้าถึงเพลงนับล้านและสร้างบรรยากาศที่สมบูรณ์แบบ",
-          "title": "การรวม YouTube"
-        }
-      },
-      "featuresHeading": "คุณสมบัติที่ทรงพลัง",
-      "mainHeading": "Tunes",
-      "title": "ฟังขณะที่คุณสำรวจ",
-      "venueHeading": "เหมาะสำหรับทุกสถานที่",
-      "venues": {
-        "barsPubs": "บาร์และผับ",
-        "coffeeShops": "ร้านกาแฟ",
-        "eventsWeddings": "งานอีเวนต์และงานแต่งงาน",
-        "gymsFitness": "ยิมและฟิตเนส",
-        "restaurants": "ร้านอาหาร",
-        "retailStores": "ร้านค้าปลีก"
-      }
     }
   },
   "seo": {

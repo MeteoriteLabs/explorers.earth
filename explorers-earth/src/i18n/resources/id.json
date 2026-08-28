@@ -346,8 +346,7 @@
     "signupSubtitle": "Daftar untuk menikmati fitur-fitur explorers",
     "signUpWithGoogle": "Daftar dengan Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nama Pengguna",
@@ -1789,49 +1788,6 @@
           "title": "Aplikasi, alat, dan tautan bermanfaat"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Eksplorasi tidak hanya visual. Suara membawa memori, konteks, dan emosi.\n\nTunes memungkinkan Anda mengumpulkan dan berbagi soundtrack untuk tempat, perjalanan, dan suasana hati — baik itu musik yang ditemukan di jalan atau suara yang mendefinisikan tempat untuk Anda.\n\nTerhubung mulus dengan profil Explorer Anda.",
-      "closingStatement": "Tunes <strong>gratis</strong> untuk dijelajahi, dan untuk fitur berbayar Anda dapat meningkatkan nanti.",
-      "exploreButton": "Jelajahi Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Sempurna untuk malam karaoke dengan playlist kolaboratif dan permintaan lagu real-time.",
-          "title": "Siap Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Bagikan pengalaman musik Anda dengan pemindaian kode QR sederhana — tidak perlu aplikasi atau unduhan.",
-          "title": "Berbagi Kode QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Biarkan tamu menambahkan lagu ke playlist Anda secara instan sambil Anda mempertahankan kontrol penuh atas apa yang diputar.",
-          "title": "Kolaborasi Waktu Nyata"
-        },
-        "silentParties": {
-          "description": "Selenggarakan pesta sunyi unik di mana semua orang mendengarkan melalui headphone mereka sendiri.",
-          "title": "Pesta Sunyi"
-        },
-        "voteLikeSystem": {
-          "description": "Tamu dapat memilih lagu favorit mereka untuk mempengaruhi antrian playlist secara real-time.",
-          "title": "Sistem Voting & Suka"
-        },
-        "youtubeIntegration": {
-          "description": "Terintegrasi mulus dengan YouTube untuk mengakses jutaan lagu dan menciptakan suasana yang sempurna.",
-          "title": "Integrasi YouTube"
-        }
-      },
-      "featuresHeading": "Fitur Kuat",
-      "mainHeading": "Tunes",
-      "title": "Dengarkan sambil menjelajah",
-      "venueHeading": "Sempurna untuk Setiap Tempat",
-      "venues": {
-        "barsPubs": "Bar & Pub",
-        "coffeeShops": "Kedai Kopi",
-        "eventsWeddings": "Acara & Pernikahan",
-        "gymsFitness": "Gym & Kebugaran",
-        "restaurants": "Restoran",
-        "retailStores": "Toko Ritel"
-      }
     }
   },
   "seo": {

@@ -1,6 +1,5 @@
 import { gql, useMutation } from "@apollo/client";
 import { useTranslation } from "react-i18next";
-import { updateLocalTunesUsername } from "../../../services/localTunesService";
 import useAuthStore from "../../../store/store";
 import { readSocialVisibility } from "../config/socialVisibility";
 import type { KeyValuePair } from "../types/profileSave";
@@ -319,20 +318,6 @@ export const useUpdateProfile = (
         token: authStore.token || "",
       });
 
-      try {
-        const localTunesResult = await updateLocalTunesUsername(
-          incomingUsername,
-          currentUsername,
-        );
-        if (!localTunesResult.success) {
-          console.warn(
-            "LocalTunes username sync did not complete:",
-            localTunesResult.message,
-          );
-        }
-      } catch (localTunesError) {
-        console.warn("LocalTunes username sync failed:", localTunesError);
-      }
     }
 
     await refetch();

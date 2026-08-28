@@ -346,8 +346,7 @@
     "signupSubtitle": "Rekisteröidy nauttimaan explorers:n ominaisuuksista",
     "signUpWithGoogle": "Rekisteröidy Googlella",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Käyttäjänimi",
@@ -1789,49 +1788,6 @@
           "title": "Sovelluksia, työkaluja ja hyödyllisiä linkkejä"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Tutkiminen ei ole vain visuaalista. Ääni kantaa muistia, kontekstia ja tunnetta.\n\nTunes antaa sinun kerätä ja jakaa ääniraitoja paikoille, matkoille ja mielialoille — olipa se sitten matkalla löydettyä musiikkia tai ääniä, jotka määrittelevät paikan sinulle.\n\nSaumattomasti yhdistetty Explorer-profiiliisi.",
-      "closingStatement": "Tunes on <strong>ilmainen</strong> tutkittavaksi, ja maksullisista ominaisuuksista voit päivittää myöhemmin.",
-      "exploreButton": "Tutki Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Täydellinen karaoke-illille yhteistyösoittolistojen ja reaaliaikaisten kappalepyyntöjen kanssa.",
-          "title": "Karaoke Valmis"
-        },
-        "qrCodeSharing": {
-          "description": "Jaa musiikkikokemuksesi yksinkertaisella QR-koodin skannauksella — sovelluksia tai latauksia ei tarvita.",
-          "title": "QR-koodin Jakaminen"
-        },
-        "realtimeCollaboration": {
-          "description": "Anna vieraiden lisätä kappaleita soittolistaasi heti, samalla kun pidät täyden kontrollin siitä, mitä soitetaan.",
-          "title": "Reaaliaikainen Yhteistyö"
-        },
-        "silentParties": {
-          "description": "Järjestä ainutlaatuisia hiljaisia juhlia, joissa kaikki kuuntelevat omien kuulokkeidensa kautta.",
-          "title": "Hiljaiset Juhlat"
-        },
-        "voteLikeSystem": {
-          "description": "Vieraat voivat äänestää suosikkikappaleitaan vaikuttamaan soittolistajonoon reaaliaikaisesti.",
-          "title": "Äänestys- ja Tykkäysjärjestelmä"
-        },
-        "youtubeIntegration": {
-          "description": "Integroi saumattomasti YouTubeen päästäksesi miljooniin kappaleisiin ja luodaksesi täydellisen tunnelman.",
-          "title": "YouTube-integraatio"
-        }
-      },
-      "featuresHeading": "Tehokkaat Ominaisuudet",
-      "mainHeading": "Tunes",
-      "title": "Kuuntele tutkiessasi",
-      "venueHeading": "Täydellinen Jokaiseen Paikkaan",
-      "venues": {
-        "barsPubs": "Baarit ja Pubit",
-        "coffeeShops": "Kahvilat",
-        "eventsWeddings": "Tapahtumat ja Häät",
-        "gymsFitness": "Kuntosalit ja Kuntoilu",
-        "restaurants": "Ravintolat",
-        "retailStores": "Vähittäiskaupat"
-      }
     }
   },
   "seo": {

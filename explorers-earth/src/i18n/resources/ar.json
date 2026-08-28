@@ -346,8 +346,7 @@
     "signupSubtitle": "سجل للاستمتاع بميزات explorers",
     "signUpWithGoogle": "التسجيل عبر Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "اسم المستخدم",
@@ -1789,49 +1788,6 @@
           "title": "التطبيقات والأدوات والروابط المفيدة"
         }
       ]
-    },
-    "localTunes": {
-      "body": "الاستكشاف ليس مرئياً فقط. الصوت يحمل الذاكرة والسياق والعاطفة.\n\nTunes يتيح لك جمع ومشاركة الموسيقى التصويرية للأماكن والرحلات والمزاجات — سواء كانت موسيقى اكتُشفت على الطريق أو أصوات تحدد مكاناً بالنسبة لك.\n\nمتصل بسلاسة بملف Explorer الخاص بك.",
-      "closingStatement": "Tunes <strong>مجاني</strong> للاستكشاف، وبالنسبة للميزات المدفوعة يمكنك الترقية لاحقاً.",
-      "exploreButton": "استكشف Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "مثالي لأمسيات الكاريوكي مع قوائم تشغيل تعاونية وطلبات أغاني في الوقت الفعلي.",
-          "title": "جاهز للكاريوكي"
-        },
-        "qrCodeSharing": {
-          "description": "شارك تجربتك الموسيقية مع مسح بسيط لرمز QR - لا حاجة لتطبيقات أو تنزيلات.",
-          "title": "مشاركة رمز QR"
-        },
-        "realtimeCollaboration": {
-          "description": "اسمح للضيوف بإضافة الأغاني إلى قائمة التشغيل الخاصة بك على الفور مع الحفاظ على السيطرة الكاملة على ما يتم تشغيله.",
-          "title": "التعاون في الوقت الفعلي"
-        },
-        "silentParties": {
-          "description": "استضف حفلات صامتة فريدة حيث يستمع الجميع من خلال سماعاتهم الخاصة.",
-          "title": "حفلات صامتة"
-        },
-        "voteLikeSystem": {
-          "description": "يمكن للضيوف التصويت لأغنياتهم المفضلة للتأثير على قائمة الانتظار في الوقت الفعلي.",
-          "title": "نظام التصويت والإعجاب"
-        },
-        "youtubeIntegration": {
-          "description": "تكامل بسلاسة مع YouTube للوصول إلى ملايين الأغاني وإنشاء الجو المثالي.",
-          "title": "تكامل YouTube"
-        }
-      },
-      "featuresHeading": "ميزات قوية",
-      "mainHeading": "Tunes",
-      "title": "استمع أثناء الاستكشاف",
-      "venueHeading": "مثالي لكل مكان",
-      "venues": {
-        "barsPubs": "الحانات والحانات",
-        "coffeeShops": "مقاهي",
-        "eventsWeddings": "الأحداث والأعراس",
-        "gymsFitness": "الصالات الرياضية واللياقة",
-        "restaurants": "المطاعم",
-        "retailStores": "متاجر التجزئة"
-      }
     }
   },
   "seo": {

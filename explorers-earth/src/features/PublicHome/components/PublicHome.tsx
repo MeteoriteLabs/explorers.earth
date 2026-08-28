@@ -36,10 +36,17 @@ import { buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpe
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
 import { deduplicateProducts } from "../../Products/utils/productHelpers";
-import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
+import {
+  AdvancedMarker,
+  Map,
+  Pin,
+  useApiIsLoaded,
+  useMap,
+} from "@vis.gl/react-google-maps";
 import { getPlaceCoordinatesQuery } from "../api/query";
 import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import ErrorBoundary from "../../../components/ErrorBoundary";
 
 type CardDataItem = {
   Media: {
@@ -118,6 +125,10 @@ const MapPreviewController = ({ targetCoords, targetZoom }: { targetCoords: { la
 };
 
 const PublicHome = memo(() => {
+  const mapsApiLoaded = useApiIsLoaded();
+  // Map previews are decorative hero slides. Keeping them static avoids loading
+  // several interactive map instances (and markers) before a visitor asks for a map.
+  const enableLiveMapPreviews = false;
   const { username, placeSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,7 +177,7 @@ const PublicHome = memo(() => {
     }
   }, [loading, outletContext]);
   const [_isQRVisible, setIsQRVisible] = useState(false);
-  const accountData = data?.accounts[0];
+  const accountData = data?.accounts?.[0];
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
@@ -1138,7 +1149,12 @@ const PublicHome = memo(() => {
                       >
                         {heroSlides[activeHeroIndex].isMap ? (
                           <div className="absolute inset-0 z-0 pointer-events-auto">
-                            {!mapLoading && mapPreviewData.places.length > 0 ? (
+                            {enableLiveMapPreviews && mapsApiLoaded && !mapLoading && mapPreviewData.places.length > 0 ? (
+                              <ErrorBoundary fallback={
+                                <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
+                                  <span className="text-white text-sm">Map preview unavailable</span>
+                                </div>
+                              }>
                               <Map
                                 defaultCenter={mapPreviewData.center}
                                 defaultZoom={mapPreviewData.zoom}
@@ -1171,6 +1187,7 @@ const PublicHome = memo(() => {
                                   </AdvancedMarker>
                                 ))}
                               </Map>
+                              </ErrorBoundary>
                             ) : mapLoading ? (
                               <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
                                 <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -1350,7 +1367,12 @@ const PublicHome = memo(() => {
                           >
                             {slide.isMap ? (
                               <div className="absolute inset-0 z-0 pointer-events-auto">
-                                {!mapLoading && mapPreviewData.places.length > 0 ? (
+                                {enableLiveMapPreviews && mapsApiLoaded && !mapLoading && mapPreviewData.places.length > 0 ? (
+                                  <ErrorBoundary fallback={
+                                    <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
+                                      <span className="text-white text-xs">Map preview unavailable</span>
+                                    </div>
+                                  }>
                                   <Map
                                     defaultCenter={mapPreviewData.center}
                                     defaultZoom={mapPreviewData.zoom}
@@ -1383,6 +1405,7 @@ const PublicHome = memo(() => {
                                       </AdvancedMarker>
                                     ))}
                                   </Map>
+                                  </ErrorBoundary>
                                 ) : mapLoading ? (
                                   <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
                                     <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />

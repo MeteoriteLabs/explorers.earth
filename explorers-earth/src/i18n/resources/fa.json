@@ -346,8 +346,7 @@
     "signupSubtitle": "برای لذت بردن از ویژگی‌های explorers ثبت نام کنید",
     "signUpWithGoogle": "ثبت نام با Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "نام کاربری",
@@ -1789,49 +1788,6 @@
           "title": "برنامه ها، ابزارها و لینک های مفید"
         }
       ]
-    },
-    "localTunes": {
-      "body": "کاوش فقط بصری نیست. صدا حافظه، زمینه و احساس را حمل می‌کند.\n\nTunes به شما امکان می‌دهد ساندترک‌ها را برای مکان‌ها، سفرها و حالات جمع‌آوری و به اشتراک بگذارید — چه موسیقی کشف شده در جاده باشد یا صداهایی که مکانی را برای شما تعریف می‌کند.\n\nبه‌طور یکپارچه به پروفایل Explorer شما متصل است.",
-      "closingStatement": "Tunes برای کاوش <strong>رایگان</strong> است و برای ویژگی‌های پولی می‌توانید بعداً ارتقا دهید.",
-      "exploreButton": "Tunes را کاوش کنید",
-      "features": {
-        "karaokeReady": {
-          "description": "عالی برای شب‌های کارائوکه با لیست‌های پخش مشارکتی و درخواست‌های آهنگ در زمان واقعی.",
-          "title": "آماده کارائوکه"
-        },
-        "qrCodeSharing": {
-          "description": "تجربه موسیقی خود را با اسکن ساده کد QR به اشتراک بگذارید — نیازی به برنامه یا دانلود نیست.",
-          "title": "اشتراک‌گذاری کد QR"
-        },
-        "realtimeCollaboration": {
-          "description": "به مهمانان اجازه دهید فوراً آهنگ‌ها را به لیست پخش شما اضافه کنند در حالی که کنترل کامل بر آنچه پخش می‌شود را حفظ می‌کنید.",
-          "title": "همکاری در زمان واقعی"
-        },
-        "silentParties": {
-          "description": "مهمانی‌های ساکت منحصر به فرد برگزار کنید که همه از طریق هدفون‌های خود گوش می‌دهند.",
-          "title": "مهمانی‌های ساکت"
-        },
-        "voteLikeSystem": {
-          "description": "مهمانان می‌توانند برای آهنگ‌های مورد علاقه خود رای دهند تا بر صف لیست پخش در زمان واقعی تأثیر بگذارند.",
-          "title": "سیستم رای و لایک"
-        },
-        "youtubeIntegration": {
-          "description": "به‌طور یکپارچه با YouTube ادغام شوید تا به میلیون‌ها آهنگ دسترسی پیدا کنید و فضای کامل ایجاد کنید.",
-          "title": "ادغام YouTube"
-        }
-      },
-      "featuresHeading": "ویژگی‌های قدرتمند",
-      "mainHeading": "Tunes",
-      "title": "هنگام کاوش گوش دهید",
-      "venueHeading": "عالی برای هر مکان",
-      "venues": {
-        "barsPubs": "بارها و پاب‌ها",
-        "coffeeShops": "کافی‌شاپ‌ها",
-        "eventsWeddings": "رویدادها و عروسی‌ها",
-        "gymsFitness": "باشگاه‌های ورزشی و فیتنس",
-        "restaurants": "رستوران‌ها",
-        "retailStores": "فروشگاه‌های خرده‌فروشی"
-      }
     }
   },
   "seo": {

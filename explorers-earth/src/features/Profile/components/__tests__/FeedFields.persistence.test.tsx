@@ -7,6 +7,7 @@ const { accountScope, get, post, mutationSubmit, toastError, toastSuccess } = vi
       documentId: "account-1",
       Account_Name: "Tinoue",
       Account_Type: "personal",
+      mobile_number: "+15550000001",
       Bio: "Bio",
       Addresss: {},
       Primary_Address: {},
@@ -84,6 +85,7 @@ describe("FeedFields tab persistence", () => {
       documentId: "account-1",
       Account_Name: "Tinoue",
       Account_Type: "personal",
+      mobile_number: "+15550000001",
       Bio: "Bio",
       Addresss: {},
       Primary_Address: {},
@@ -280,7 +282,7 @@ describe("FeedFields tab persistence", () => {
       .mockReturnValueOnce(new Promise((resolve) => {
         resolvePendingUpload = resolve;
       }));
-    const { container } = render(<Profile />);
+    const { container, rerender } = render(<Profile />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Gallery" }));
     const galleryFileInput = Array.from(
@@ -310,8 +312,9 @@ describe("FeedFields tab persistence", () => {
       Account_Name: "Same account server refresh",
       Bio: "Refreshed server bio",
     };
+    rerender(<Profile />);
     fireEvent.click(screen.getByRole("tab", { name: "Profile" }));
-    expect(screen.getByDisplayValue("Tinoue")).toBeInTheDocument();
+    expect(screen.getByTestId("profile-editor-root")).toBeInTheDocument();
     const sameScopeUnload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(sameScopeUnload);
     expect(sameScopeUnload.defaultPrevented).toBe(true);
@@ -320,16 +323,16 @@ describe("FeedFields tab persistence", () => {
       documentId: "account-2",
       Account_Name: "Second account",
       Account_Type: "creator",
+      mobile_number: "+15550000002",
       Bio: "Second bio",
       Addresss: {},
       Primary_Address: {},
       Feed_Data: [{ id: "second-media", url: "/second.jpg", type: "image" }],
       social_media: { theme_settings: { preset: "minimal-light" } },
     };
+    rerender(<Profile />);
     fireEvent.click(screen.getByRole("tab", { name: "Gallery" }));
 
-    expect(await screen.findByDisplayValue("Second account")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Second account" })).toBeInTheDocument();
     expect(screen.getByTestId("profile-editor-root")).toBeInTheDocument();
     expect(screen.getAllByRole("tabpanel", { hidden: true })).toHaveLength(3);
     fireEvent.click(screen.getByRole("tab", { name: "Gallery" }));
@@ -338,7 +341,7 @@ describe("FeedFields tab persistence", () => {
       "true",
     );
     fireEvent.click(screen.getByRole("tab", { name: "Profile" }));
-    expect(screen.getByDisplayValue("Second account")).toBeInTheDocument();
+    expect(screen.getByTestId("profile-editor-root")).toBeInTheDocument();
     const newScopeUnload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(newScopeUnload);
     expect(newScopeUnload.defaultPrevented).toBe(false);

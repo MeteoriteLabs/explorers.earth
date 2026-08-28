@@ -64,7 +64,12 @@ describe('AnalyticsDashboard data boundary', () => {
     const accountQueryResult = {
       data: {
         usersPermissionsUser: {
-          accounts: [{ documentId: 'account-1' }],
+          accounts: [{
+            documentId: 'account-1',
+            Account_Name: 'TK Explorer',
+            Account_Type: 'personal',
+            mobile_number: '+919999999999',
+          }],
         },
       },
       loading: false,
@@ -110,6 +115,41 @@ describe('AnalyticsDashboard data boundary', () => {
 
     const queriedOperations = queryMock.mock.calls.map(([query]) => operationName(query));
     expect(new Set(queriedOperations)).toEqual(new Set(['GetAccountId']));
+  });
+
+  it('uses the only completed account when an incomplete row is returned first', async () => {
+    queryMock.mockImplementation((query: any) => {
+      if (operationName(query) === 'GetAccountId') {
+        return {
+          data: {
+            usersPermissionsUser: {
+              accounts: [
+                {
+                  documentId: 'provisioning-account',
+                  Account_Name: 'Provisioning',
+                  Account_Type: 'personal',
+                  mobile_number: '',
+                },
+                {
+                  documentId: 'account-1',
+                  Account_Name: 'TK Explorer',
+                  Account_Type: 'personal',
+                  mobile_number: '+919999999999',
+                },
+              ],
+            },
+          },
+          loading: false,
+          error: undefined,
+        } as any;
+      }
+      throw new Error(`Unexpected analytics GraphQL operation: ${operationName(query)}`);
+    });
+
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
+    expect(readEvents.mock.calls[0][0].accountId).toBe('account-1');
   });
 
   it('uses the coarse country supplied by the server without client IP resolution', async () => {

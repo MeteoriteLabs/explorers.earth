@@ -19,6 +19,7 @@ import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 const PublicRoutes = [
   <Route
@@ -48,17 +49,23 @@ const PublicRoutes = [
       } />
       <Route path="map" element={
         <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <MapView />
+          <ErrorBoundary fallback={<UsernameRootRedirect />}>
+            <MapView />
+          </ErrorBoundary>
         </TabVisibilityGuard>
       } />
       <Route path=":placeSlug/map" element={
         <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <MapView />
+          <ErrorBoundary fallback={<UsernameRootRedirect />}>
+            <MapView />
+          </ErrorBoundary>
         </TabVisibilityGuard>
       } />
       <Route path=":place/placesmap" element={
         <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <PlaceMapView />
+          <ErrorBoundary fallback={<UsernameRootRedirect />}>
+            <PlaceMapView />
+          </ErrorBoundary>
         </TabVisibilityGuard>
       } />
     </Route>

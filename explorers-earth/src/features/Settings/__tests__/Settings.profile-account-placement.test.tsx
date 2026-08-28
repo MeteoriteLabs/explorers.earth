@@ -5,10 +5,23 @@ vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
   return {
     ...actual,
+    useApolloClient: () => ({ query: vi.fn() }),
     useMutation: () => [vi.fn()],
     useQuery: () => ({
       data: {
-        usersPermissionsUser: { provider: "google" },
+        usersPermissionsUser: {
+          provider: "google",
+          accounts: [
+            {
+              documentId: "account-1",
+              Account_Name: "Test account",
+              Account_Type: "personal",
+              mobile_number: "1234567890",
+              pinned_nav_tabs: [],
+              auto_pinning: true,
+            },
+          ],
+        },
         accounts: [
           {
             documentId: "account-1",
@@ -34,9 +47,10 @@ vi.mock("@apollo/client", async (importOriginal) => {
   };
 });
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: [] }),
-}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return { ...actual, useQuery: () => ({ data: [] }) };
+});
 
 vi.mock("../../../store/store", () => ({
   default: () => ({
@@ -69,7 +83,6 @@ vi.mock("../components/ProfileAccountSettings", () => ({
 vi.mock("../components/BillingTab", () => ({
   default: () => <div data-testid="existing-billing">Existing billing</div>,
 }));
-vi.mock("../components/ConnectedAccounts", () => ({ default: () => null }));
 vi.mock("../components/LanguageSelector", () => ({
   default: () => null,
   LANGUAGES: [

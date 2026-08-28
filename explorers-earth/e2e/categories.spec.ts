@@ -42,11 +42,17 @@ const user = {
   documentId: "mock-user-123",
   username: "testuser",
   email: "test@explorers.earth",
+  provider: "local",
+  confirmed: true,
+  blocked: false,
   accounts: [account],
 };
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  await page.route("**/__localtunes/api/music/identity/ensure", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
   await context.addInitScript(() => {
     sessionStorage.setItem("localtunes_sync_done", "1");
   });
@@ -84,6 +90,9 @@ test.beforeEach(async ({ context, page }) => {
       operation === "CheckOnboardingStatus" ||
       operation === "CheckOnboardingForSync" ||
       operation === "SidebarAccount" ||
+      operation === "MusicIdentityEligibility" ||
+      operation === "SettingsAccount" ||
+      operation === "RecommendationsHubAccount" ||
       operation === "user"
     ) {
       return route.fulfill({

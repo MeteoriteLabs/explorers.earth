@@ -346,8 +346,7 @@
     "signupSubtitle": "explorers کی خصوصیات سے لطف اندوز ہونے کے لیے سائن اپ کریں",
     "signUpWithGoogle": "Google کے ساتھ سائن اپ کریں",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "صارف نام",
@@ -1789,49 +1788,6 @@
           "title": "ایپس، ٹولز، اور مفید لنکس"
         }
       ]
-    },
-    "localTunes": {
-      "body": "دریافت صرف بصری نہیں ہے۔ آواز یاد، سیاق اور جذبات لے کر آتی ہے۔\n\nLocalTunes آپ کو جگہوں، سفر اور موڈ کے لیے ساؤنڈ ٹریکس جمع کرنے اور شیئر کرنے دیتا ہے — چاہے یہ سڑک پر دریافت شدہ موسیقی ہو یا وہ آوازیں جو آپ کے لیے کسی جگہ کی وضاحت کرتی ہیں۔\n\nآپ کے Explorer پروفائل سے بلا روک ٹوک منسلک۔",
-      "closingStatement": "Tunes دریافت کرنا <strong>مفت</strong> ہے، اور ادائیگی والی خصوصیات کے لیے آپ بعد میں اپ گریڈ کر سکتے ہیں۔",
-      "exploreButton": "Tunes دریافت کریں",
-      "features": {
-        "karaokeReady": {
-          "description": "تعاون پر مبنی پلے لسٹ اور ریئل ٹائم گانا درخواستوں کے ساتھ کریوکی راتوں کے لیے بہترین۔",
-          "title": "کریوکی تیار"
-        },
-        "qrCodeSharing": {
-          "description": "ایک سادہ QR کوڈ سکین کے ساتھ اپنا میوزک تجربہ شیئر کریں - کوئی ایپس یا ڈاؤن لوڈز درکار نہیں۔",
-          "title": "QR کوڈ شیئرنگ"
-        },
-        "realtimeCollaboration": {
-          "description": "مہمانوں کو فوری طور پر اپنے پلے لسٹ میں گانے شامل کرنے دیں جبکہ آپ جو چلتا ہے اس پر مکمل کنٹرول برقرار رکھیں۔",
-          "title": "ریئل ٹائم تعاون"
-        },
-        "silentParties": {
-          "description": "منفرد خاموش پارٹیاں منعقد کریں جہاں ہر کوئی اپنے ہیڈ فون کے ذریعے سنتا ہے۔",
-          "title": "خاموش پارٹیاں"
-        },
-        "voteLikeSystem": {
-          "description": "مہمان اپنے پسندیدہ گانوں کے لیے ووٹ دے سکتے ہیں تاکہ ریئل ٹائم میں پلے لسٹ قطار کو متاثر کریں۔",
-          "title": "ووٹ اور لائک سسٹم"
-        },
-        "youtubeIntegration": {
-          "description": "لاکھوں گانوں تک رسائی حاصل کرنے اور کامل ماحول بنانے کے لیے YouTube کے ساتھ بلا روک ٹوک انضمام کریں۔",
-          "title": "YouTube انضمام"
-        }
-      },
-      "featuresHeading": "طاقتور خصوصیات",
-      "mainHeading": "Tunes",
-      "title": "جیسے آپ دریافت کرتے ہیں ویسے سنیں",
-      "venueHeading": "ہر وینو کے لیے کامل",
-      "venues": {
-        "barsPubs": "بارز اور پبز",
-        "coffeeShops": "کافی شاپس",
-        "eventsWeddings": "ایونٹس اور شادیاں",
-        "gymsFitness": "جمز اور فٹنس",
-        "restaurants": "ریسٹورنٹس",
-        "retailStores": "ریٹیل اسٹورز"
-      }
     }
   },
   "seo": {

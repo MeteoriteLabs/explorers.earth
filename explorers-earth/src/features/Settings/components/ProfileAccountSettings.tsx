@@ -24,6 +24,7 @@ import { EarthLoader } from "../../../components/EarthLoader";
 import useAuthStore from "../../../store/store";
 import { mapAddressComponents } from "../../../utils/mapAddress";
 import { validateUsername } from "../../../utils/usernameValidation";
+import { selectCompletedAccount } from "../../music/musicIdentityCoordinator";
 
 interface ProfileAccountSettingsProps {
   section: "account" | "billing";
@@ -61,7 +62,12 @@ const ProfileAccountSettings = ({
     fetchPolicy: "cache-and-network",
   });
 
-  const account = data?.usersPermissionsUser?.accounts?.[0];
+  const accountCandidates = data?.usersPermissionsUser?.accounts;
+  const selectedAccount = selectCompletedAccount(accountCandidates);
+  const account = accountCandidates?.find(
+    (candidate: { documentId?: string }) =>
+      candidate.documentId === selectedAccount?.documentId,
+  );
   const resolvedUsername =
     data?.usersPermissionsUser?.username || user?.username || "";
   const hasCompleteAccountSnapshot = Boolean(

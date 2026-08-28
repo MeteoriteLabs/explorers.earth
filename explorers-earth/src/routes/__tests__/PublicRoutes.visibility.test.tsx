@@ -36,9 +36,6 @@ vi.mock("../../features/PublicHome/components/MapView", () => ({
 vi.mock("../../features/PublicHome/components/PlaceMapView", () => ({
   default: () => <div>place-map</div>,
 }));
-vi.mock("../../pages/public/PublicMusic", () => ({
-  default: () => <div>music</div>,
-}));
 vi.mock("../../features/PublicHome/components/PublicGuides", () => ({
   default: () => <div>guides-index</div>,
 }));
@@ -75,7 +72,6 @@ vi.mock("../../features/People", () => ({
 }));
 
 const cases = [
-  ["/tk2727/music", "public_music", "music"],
   ["/tk2727/places", "public_recommendations", "places-index"],
   ["/tk2727/places/paris", "public_recommendations", "places-index"],
   ["/tk2727/places/map", "public_recommendations", "places-map"],

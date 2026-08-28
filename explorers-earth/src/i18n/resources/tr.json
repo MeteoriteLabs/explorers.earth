@@ -346,8 +346,7 @@
     "signupSubtitle": "explorers özelliklerinin keyfini çıkarmak için kayıt olun",
     "signUpWithGoogle": "Google ile Kayıt Ol",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Kullanıcı Adı",
@@ -1789,49 +1788,6 @@
           "title": "Uygulamalar, araçlar ve faydalı bağlantılar"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Keşif sadece görsel değildir. Ses hafıza, bağlam ve duygu taşır.\n\nTunes, yerler, yolculuklar ve ruh halleri için müzik parçaları toplamanıza ve paylaşmanıza olanak tanır — yolda keşfedilen müzik olsun veya sizin için bir yeri tanımlayan sesler olsun.\n\nExplorer profilinizle sorunsuz bir şekilde bağlanır.",
-      "closingStatement": "Tunes keşfetmek için <strong>ücretsiz</strong>dir ve ücretli özellikler için daha sonra yükseltebilirsiniz.",
-      "exploreButton": "Tunes'u Keşfet",
-      "features": {
-        "karaokeReady": {
-          "description": "İşbirlikçi çalma listeleri ve gerçek zamanlı şarkı istekleriyle karaoke geceleri için mükemmel.",
-          "title": "Karaoke Hazır"
-        },
-        "qrCodeSharing": {
-          "description": "Basit bir QR kod taramasıyla müzik deneyiminizi paylaşın — uygulama veya indirme gerekmez.",
-          "title": "QR Kod Paylaşımı"
-        },
-        "realtimeCollaboration": {
-          "description": "Misafirlerin çalma listenize anında şarkı eklemesine izin verin, çalan içeriği tam kontrol altında tutun.",
-          "title": "Gerçek Zamanlı İşbirliği"
-        },
-        "silentParties": {
-          "description": "Herkesin kendi kulaklıklarından dinlediği benzersiz sessiz partiler düzenleyin.",
-          "title": "Sessiz Partiler"
-        },
-        "voteLikeSystem": {
-          "description": "Misafirler favori şarkılarına oy vererek çalma listesi kuyruğunu gerçek zamanlı olarak etkileyebilir.",
-          "title": "Oylama ve Beğeni Sistemi"
-        },
-        "youtubeIntegration": {
-          "description": "Milyonlarca şarkıya erişmek ve mükemmel atmosferi yaratmak için YouTube ile sorunsuz bir şekilde entegre olun.",
-          "title": "YouTube Entegrasyonu"
-        }
-      },
-      "featuresHeading": "Güçlü Özellikler",
-      "mainHeading": "Tunes",
-      "title": "Keşfederken dinleyin",
-      "venueHeading": "Her Mekan İçin Mükemmel",
-      "venues": {
-        "barsPubs": "Barlar ve Pub'lar",
-        "coffeeShops": "Kahve Dükkanları",
-        "eventsWeddings": "Etkinlikler ve Düğünler",
-        "gymsFitness": "Spor Salonları ve Fitness",
-        "restaurants": "Restoranlar",
-        "retailStores": "Perakende Mağazalar"
-      }
     }
   },
   "seo": {

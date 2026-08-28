@@ -346,8 +346,7 @@
     "signupSubtitle": "注册以享受explorers的功能",
     "signUpWithGoogle": "使用Google注册",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "用户名",
@@ -1789,49 +1788,6 @@
           "title": "应用程序、工具和有用的链接"
         }
       ]
-    },
-    "localTunes": {
-      "body": "探索不仅仅是视觉的。声音承载着记忆、背景和情感。\n\nTunes让您可以为地点、旅程和心情收集和分享配乐——无论是路上发现的音乐，还是为您定义某个地方的声音。\n\n与您的Explorer个人资料无缝连接。",
-      "closingStatement": "Tunes可以<strong>免费</strong>探索，付费功能可以稍后升级。",
-      "exploreButton": "探索Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "非常适合卡拉OK之夜，具有协作播放列表和实时歌曲请求。",
-          "title": "卡拉OK就绪"
-        },
-        "qrCodeSharing": {
-          "description": "通过简单的二维码扫描分享您的音乐体验——无需应用程序或下载。",
-          "title": "二维码分享"
-        },
-        "realtimeCollaboration": {
-          "description": "让客人立即将歌曲添加到您的播放列表，同时您完全控制播放内容。",
-          "title": "实时协作"
-        },
-        "silentParties": {
-          "description": "举办独特的无声派对，每个人通过自己的耳机聆听。",
-          "title": "无声派对"
-        },
-        "voteLikeSystem": {
-          "description": "客人可以为他们最喜欢的歌曲投票，以实时影响播放列表队列。",
-          "title": "投票和点赞系统"
-        },
-        "youtubeIntegration": {
-          "description": "与YouTube无缝集成，访问数百万首歌曲并创造完美氛围。",
-          "title": "YouTube集成"
-        }
-      },
-      "featuresHeading": "强大功能",
-      "mainHeading": "Tunes",
-      "title": "在探索时聆听",
-      "venueHeading": "适合任何场所",
-      "venues": {
-        "barsPubs": "酒吧和酒馆",
-        "coffeeShops": "咖啡店",
-        "eventsWeddings": "活动和婚礼",
-        "gymsFitness": "健身房和健身",
-        "restaurants": "餐厅",
-        "retailStores": "零售店"
-      }
     }
   },
   "seo": {

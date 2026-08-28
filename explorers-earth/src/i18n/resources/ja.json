@@ -346,8 +346,7 @@
     "signupSubtitle": "explorersの機能をお楽しみください",
     "signUpWithGoogle": "Googleでサインアップ",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ユーザー名",
@@ -1789,49 +1788,6 @@
           "title": "アプリ、ツール、便利なリンク"
         }
       ]
-    },
-    "localTunes": {
-      "body": "探索は視覚的なものだけではありません。音は記憶、文脈、感情を運びます。\n\nTunesは、場所、旅、気分のためのサウンドトラックを収集して共有することを可能にします — 道で発見した音楽であろうと、場所を定義する音であろうと。\n\nあなたのExplorerプロフィールにシームレスに接続されています。",
-      "closingStatement": "Tunesは<strong>無料</strong>で探索でき、有料機能については後でアップグレードできます。",
-      "exploreButton": "Tunesを探索",
-      "features": {
-        "karaokeReady": {
-          "description": "コラボレーティブなプレイリストとリアルタイムの曲リクエストでカラオケの夜に最適です。",
-          "title": "カラオケ対応"
-        },
-        "qrCodeSharing": {
-          "description": "シンプルなQRコードスキャンで音楽体験を共有 — アプリやダウンロードは不要です。",
-          "title": "QRコード共有"
-        },
-        "realtimeCollaboration": {
-          "description": "ゲストがプレイリストに即座に曲を追加できるようにしながら、再生内容を完全にコントロールできます。",
-          "title": "リアルタイムコラボレーション"
-        },
-        "silentParties": {
-          "description": "全員が自分のヘッドフォンで聞くユニークなサイレントパーティーを開催します。",
-          "title": "サイレントパーティー"
-        },
-        "voteLikeSystem": {
-          "description": "ゲストはお気に入りの曲に投票して、プレイリストのキューをリアルタイムで影響させることができます。",
-          "title": "投票・いいねシステム"
-        },
-        "youtubeIntegration": {
-          "description": "YouTubeとシームレスに統合して、数百万曲にアクセスし、完璧な雰囲気を作り出します。",
-          "title": "YouTube統合"
-        }
-      },
-      "featuresHeading": "強力な機能",
-      "mainHeading": "Tunes",
-      "title": "探索しながら聞く",
-      "venueHeading": "あらゆる場所に最適",
-      "venues": {
-        "barsPubs": "バー＆パブ",
-        "coffeeShops": "コーヒーショップ",
-        "eventsWeddings": "イベント＆結婚式",
-        "gymsFitness": "ジム＆フィットネス",
-        "restaurants": "レストラン",
-        "retailStores": "小売店"
-      }
     }
   },
   "seo": {

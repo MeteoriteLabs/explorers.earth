@@ -133,6 +133,7 @@ const accountFixture = (state: FixtureState) => {
     documentId: "fixture-account",
     Account_Name: "Fixture Explorer",
     Account_Type: "personal",
+    mobile_number: null,
     Primary_Address: { address: "Fixture City" },
     Bio: "A deterministic public profile fixture.",
     Feed_Data: [],
@@ -401,6 +402,10 @@ async function installPublicFixture(
   );
   await page.route("**/graphql", async (route) => {
     const operation = operationName(route);
+    const payload = route.request().postDataJSON() as
+      | { query?: string }
+      | undefined;
+    const query = payload?.query || "";
     observedOperations.push(operation);
     state.attempts[operation] = (state.attempts[operation] || 0) + 1;
 
@@ -450,7 +455,36 @@ async function installPublicFixture(
         body: JSON.stringify({ data: { accounts: [account] } }),
       });
     }
-    if (operation === "user" || operation === "Account") {
+    if (operation === "user" && /\baccounts\s*\(/.test(query)) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { accounts: [account] } }),
+      });
+    }
+    if (operation === "user") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            usersPermissionsUser: {
+              __typename: "UsersPermissionsUser",
+              documentId: "fixture-user",
+              username: "presentation-fixture",
+              email: "fixture@example.test",
+              provider: "local",
+              confirmed: true,
+              blocked: false,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              accounts: [account],
+            },
+          },
+        }),
+      });
+    }
+    if (operation === "Account") {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -463,9 +497,31 @@ async function installPublicFixture(
         contentType: "application/json",
         body: JSON.stringify({
           data: {
-            usersPermissionsUsers: [
-              { documentId: "fixture-user", username: "presentation-fixture" },
-            ],
+            usersPermissionsUser: {
+              __typename: "UsersPermissionsUser",
+              documentId: "fixture-user",
+              username: "presentation-fixture",
+            },
+          },
+        }),
+      });
+    }
+    if (operation === "MusicIdentityEligibility") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            usersPermissionsUser: {
+              __typename: "UsersPermissionsUser",
+              documentId: "fixture-user",
+              username: "testuser",
+              email: "fixture@example.test",
+              provider: "local",
+              confirmed: true,
+              blocked: false,
+              accounts: [account],
+            },
           },
         }),
       });
@@ -922,7 +978,6 @@ test.describe("public recommendation presentation visual matrix", () => {
       { tab: "Places", id: "public_recommendations", path: "places", ready: "No locations available" },
       { tab: "Guides", id: "public_guides", path: "guides", ready: "No Guides Yet" },
       { tab: "Movies", id: "public_movie", path: "movies", ready: "No movies shared yet" },
-      { tab: "Music", id: "public_music", path: "music", ready: "No song playing" },
       { tab: "Books", id: "public_books", path: "books", ready: "Public sanitizer fixture" },
       { tab: "Games", id: "public_games", path: "games", ready: "No games shared yet" },
       { tab: "Apps", id: "public_apps", path: "apps", ready: "No apps shared yet" },
@@ -1590,6 +1645,13 @@ test.describe("public recommendation presentation visual matrix", () => {
         body: JSON.stringify({ success: true }),
       });
     });
+    await page.route("**/__localtunes/api/music/identity/ensure", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
+      });
+    });
     const mutations: string[] = [];
     const dashboardAccount = {
       __typename: "Account",
@@ -1641,6 +1703,8 @@ test.describe("public recommendation presentation visual matrix", () => {
         operation === "CheckOnboardingStatus" ||
         operation === "CheckOnboardingForSync" ||
         operation === "SidebarAccount" ||
+        operation === "MusicIdentityEligibility" ||
+        operation === "SettingsAccount" ||
         operation === "user"
       ) {
         return route.fulfill({
@@ -1653,6 +1717,9 @@ test.describe("public recommendation presentation visual matrix", () => {
                 documentId: "mock-user-123",
                 username: "testuser",
                 email: "test@explorers.earth",
+                provider: "local",
+                confirmed: true,
+                blocked: false,
                 createdAt: "2026-01-01T00:00:00.000Z",
                 updatedAt: "2026-01-01T00:00:00.000Z",
                 accounts: [

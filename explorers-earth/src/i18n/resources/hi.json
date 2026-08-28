@@ -346,8 +346,7 @@
     "signupSubtitle": "explorers की सुविधाओं का आनंद लेने के लिए साइन अप करें",
     "signUpWithGoogle": "Google के साथ साइन अप करें",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "उपयोगकर्ता नाम",
@@ -1789,49 +1788,6 @@
           "title": "ऐप्स, टूल और उपयोगी लिंक"
         }
       ]
-    },
-    "localTunes": {
-      "body": "अन्वेषण केवल दृश्य नहीं है। ध्वनि स्मृति, संदर्भ और भावना ले जाती है।\n\nTunes आपको स्थानों, यात्राओं और मूड के लिए साउंडट्रैक एकत्र करने और साझा करने की अनुमति देता है — चाहे वह सड़क पर खोजी गई संगीत हो या ऐसी ध्वनियाँ जो आपके लिए एक स्थान को परिभाषित करती हैं।\n\nआपके Explorer प्रोफ़ाइल से निर्बाध रूप से जुड़ा हुआ है।",
-      "closingStatement": "Tunes <strong>मुफ्त</strong> में अन्वेषण करने के लिए है, और भुगतान सुविधाओं के लिए आप बाद में अपग्रेड कर सकते हैं।",
-      "exploreButton": "Tunes अन्वेषण करें",
-      "features": {
-        "karaokeReady": {
-          "description": "सहयोगी प्लेलिस्ट और रीयल-टाइम गाना अनुरोधों के साथ कराओके रातों के लिए परफेक्ट।",
-          "title": "कराओके तैयार"
-        },
-        "qrCodeSharing": {
-          "description": "एक साधारण QR कोड स्कैन के साथ अपना संगीत अनुभव साझा करें - कोई ऐप या डाउनलोड की आवश्यकता नहीं।",
-          "title": "QR कोड साझाकरण"
-        },
-        "realtimeCollaboration": {
-          "description": "मेहमानों को तुरंत अपनी प्लेलिस्ट में गाने जोड़ने दें जबकि आप जो चलता है उस पर पूर्ण नियंत्रण बनाए रखें।",
-          "title": "रीयल-टाइम सहयोग"
-        },
-        "silentParties": {
-          "description": "अनूठी साइलेंट पार्टियाँ आयोजित करें जहाँ हर कोई अपने हेडफ़ोन के माध्यम से सुनता है।",
-          "title": "साइलेंट पार्टियाँ"
-        },
-        "voteLikeSystem": {
-          "description": "मेहमान रीयल-टाइम में प्लेलिस्ट कतार को प्रभावित करने के लिए अपने पसंदीदा गानों के लिए वोट कर सकते हैं।",
-          "title": "वोट और लाइक सिस्टम"
-        },
-        "youtubeIntegration": {
-          "description": "लाखों गानों तक पहुंचने और सही माहौल बनाने के लिए YouTube के साथ निर्बाध रूप से एकीकृत करें।",
-          "title": "YouTube एकीकरण"
-        }
-      },
-      "featuresHeading": "शक्तिशाली सुविधाएँ",
-      "mainHeading": "Tunes",
-      "title": "अन्वेषण करते समय सुनें",
-      "venueHeading": "हर स्थान के लिए परफेक्ट",
-      "venues": {
-        "barsPubs": "बार और पब",
-        "coffeeShops": "कॉफी शॉप्स",
-        "eventsWeddings": "इवेंट्स और शादियाँ",
-        "gymsFitness": "जिम और फिटनेस",
-        "restaurants": "रेस्तरां",
-        "retailStores": "खुदरा स्टोर"
-      }
     }
   },
   "seo": {

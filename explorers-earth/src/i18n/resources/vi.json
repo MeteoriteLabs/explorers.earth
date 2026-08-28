@@ -346,8 +346,7 @@
     "signupSubtitle": "Đăng ký để tận hưởng các tính năng của explorers",
     "signUpWithGoogle": "Đăng ký bằng Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Tên người dùng",
@@ -1789,49 +1788,6 @@
           "title": "Ứng dụng, công cụ và liên kết hữu ích"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Khám phá không chỉ là hình ảnh. Âm thanh mang theo ký ức, ngữ cảnh và cảm xúc.\n\nTunes cho phép bạn thu thập và chia sẻ nhạc nền cho địa điểm, hành trình và tâm trạng — cho dù đó là âm nhạc được phát hiện trên đường hay âm thanh xác định một nơi cho bạn.\n\nKết nối liền mạch với hồ sơ Explorer của bạn.",
-      "closingStatement": "Tunes <strong>miễn phí</strong> để khám phá, và đối với các tính năng trả phí bạn có thể nâng cấp sau.",
-      "exploreButton": "Khám Phá Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Hoàn hảo cho các buổi tối karaoke với danh sách phát hợp tác và yêu cầu bài hát thời gian thực.",
-          "title": "Sẵn Sàng Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Chia sẻ trải nghiệm âm nhạc của bạn với quét mã QR đơn giản — không cần ứng dụng hoặc tải xuống.",
-          "title": "Chia Sẻ Mã QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Cho phép khách thêm bài hát vào danh sách phát của bạn ngay lập tức trong khi bạn duy trì quyền kiểm soát hoàn toàn đối với những gì được phát.",
-          "title": "Hợp Tác Thời Gian Thực"
-        },
-        "silentParties": {
-          "description": "Tổ chức các bữa tiệc im lặng độc đáo nơi mọi người nghe qua tai nghe của riêng họ.",
-          "title": "Bữa Tiệc Im Lặng"
-        },
-        "voteLikeSystem": {
-          "description": "Khách có thể bình chọn cho bài hát yêu thích của họ để ảnh hưởng đến hàng đợi danh sách phát theo thời gian thực.",
-          "title": "Hệ Thống Bình Chọn & Thích"
-        },
-        "youtubeIntegration": {
-          "description": "Tích hợp liền mạch với YouTube để truy cập hàng triệu bài hát và tạo bầu không khí hoàn hảo.",
-          "title": "Tích Hợp YouTube"
-        }
-      },
-      "featuresHeading": "Tính Năng Mạnh Mẽ",
-      "mainHeading": "Tunes",
-      "title": "Nghe khi bạn khám phá",
-      "venueHeading": "Hoàn Hảo Cho Mọi Địa Điểm",
-      "venues": {
-        "barsPubs": "Quán Bar & Pub",
-        "coffeeShops": "Quán Cà Phê",
-        "eventsWeddings": "Sự Kiện & Đám Cưới",
-        "gymsFitness": "Phòng Gym & Thể Dục",
-        "restaurants": "Nhà Hàng",
-        "retailStores": "Cửa Hàng Bán Lẻ"
-      }
     }
   },
   "seo": {

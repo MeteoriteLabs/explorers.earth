@@ -47,6 +47,9 @@ async function installAuthenticatedDashboardFixture(
   page: Page,
 ) {
   await setupMockAuthentication(context);
+  await page.route("**/__localtunes/api/music/identity/ensure", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
   const operations: string[] = [];
 
   await page.route('**/graphql', async (route) => {
@@ -62,7 +65,13 @@ async function installAuthenticatedDashboardFixture(
             usersPermissionsUser: {
               createdAt: '2026-01-01T00:00:00.000Z',
               accounts: [
-                { documentId: account.documentId, createdAt: '2026-01-01T00:00:00.000Z' },
+                {
+                  documentId: account.documentId,
+                  Account_Name: account.Account_Name,
+                  Account_Type: account.Account_Type,
+                  mobile_number: account.mobile_number,
+                  createdAt: '2026-01-01T00:00:00.000Z',
+                },
               ],
             },
           },
@@ -74,6 +83,8 @@ async function installAuthenticatedDashboardFixture(
       operation === 'CheckOnboardingStatus' ||
       operation === 'UsersPermissionsUser' ||
       operation === 'SidebarAccount' ||
+      operation === 'MusicIdentityEligibility' ||
+      operation === 'SettingsAccount' ||
       operation === 'user'
     ) {
       return route.fulfill({
@@ -85,6 +96,9 @@ async function installAuthenticatedDashboardFixture(
               id: 'mock-user-123',
               documentId: 'mock-user-123',
               email: 'test@explorers.earth',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
               username: 'testuser',
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',

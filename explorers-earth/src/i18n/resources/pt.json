@@ -346,8 +346,7 @@
     "signupSubtitle": "Cadastre-se para aproveitar os recursos do explorers",
     "signUpWithGoogle": "Cadastrar com Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nome de usuário",
@@ -1789,49 +1788,6 @@
           "title": "Aplicativos, ferramentas e links úteis"
         }
       ]
-    },
-    "localTunes": {
-      "body": "A exploração não é apenas visual. O som carrega memória, contexto e emoção.\n\nTunes permite coletar e compartilhar trilhas sonoras para lugares, viagens e humores — seja música descoberta na estrada ou sons que definem um lugar para você.\n\nPerfeitamente conectado ao seu perfil Explorer.",
-      "closingStatement": "Tunes é <strong>gratuito</strong> para explorar, e para recursos pagos você pode atualizar depois.",
-      "exploreButton": "Explorar Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfeito para noites de karaokê com playlists colaborativas e pedidos de músicas em tempo real.",
-          "title": "Pronto para Karaokê"
-        },
-        "qrCodeSharing": {
-          "description": "Compartilhe sua experiência musical com uma simples leitura de código QR - sem necessidade de aplicativos ou downloads.",
-          "title": "Compartilhamento de Código QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Permita que os convidados adicionem músicas à sua playlist instantaneamente enquanto você mantém controle total sobre o que toca.",
-          "title": "Colaboração em Tempo Real"
-        },
-        "silentParties": {
-          "description": "Organize festas silenciosas únicas onde todos ouvem através de seus próprios fones de ouvido.",
-          "title": "Festas Silenciosas"
-        },
-        "voteLikeSystem": {
-          "description": "Os convidados podem votar em suas músicas favoritas para influenciar a fila da playlist em tempo real.",
-          "title": "Sistema de Votação e Curtidas"
-        },
-        "youtubeIntegration": {
-          "description": "Integre perfeitamente com o YouTube para acessar milhões de músicas e criar a atmosfera perfeita.",
-          "title": "Integração com YouTube"
-        }
-      },
-      "featuresHeading": "Recursos Poderosos",
-      "mainHeading": "Tunes",
-      "title": "Ouça enquanto explora",
-      "venueHeading": "Perfeito para Qualquer Local",
-      "venues": {
-        "barsPubs": "Bares e Pubs",
-        "coffeeShops": "Cafeterias",
-        "eventsWeddings": "Eventos e Casamentos",
-        "gymsFitness": "Academias e Fitness",
-        "restaurants": "Restaurantes",
-        "retailStores": "Lojas de Varejo"
-      }
     }
   },
   "seo": {

@@ -346,8 +346,7 @@
     "signupSubtitle": "הירשמו כדי ליהנות מהתכונות של explorers",
     "signUpWithGoogle": "הרשמה עם Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "שם משתמש",
@@ -1789,49 +1788,6 @@
           "title": "אפליקציות, כלים וקישורים שימושיים"
         }
       ]
-    },
-    "localTunes": {
-      "body": "גילוי אינו רק ויזואלי. צליל נושא זיכרון, הקשר ורגש.\n\nTunes מאפשר לכם לאסוף ולשתף פסקולים למקומות, מסעות ומצבי רוח — בין אם זה מוזיקה שהתגלתה בדרך או צלילים שמגדירים מקום עבורכם.\n\nמחובר בצורה חלקה לפרופיל Explorer שלכם.",
-      "closingStatement": "Tunes <strong>חינם</strong> לגילוי, ולפיצ'רים בתשלום תוכלו לשדרג מאוחר יותר.",
-      "exploreButton": "גלו Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "מושלם לערבי קריוקי עם רשימות השמעה שיתופיות ובקשות שירים בזמן אמת.",
-          "title": "מוכן לקריוקי"
-        },
-        "qrCodeSharing": {
-          "description": "שתפו את חוויית המוזיקה שלכם עם סריקת קוד QR פשוטה — אין צורך באפליקציות או הורדות.",
-          "title": "שיתוף קוד QR"
-        },
-        "realtimeCollaboration": {
-          "description": "אפשרו לאורחים להוסיף שירים לרשימת ההשמעה שלכם מיד תוך שמירה על שליטה מלאה על מה שמתנגן.",
-          "title": "שיתוף פעולה בזמן אמת"
-        },
-        "silentParties": {
-          "description": "ארגנו מסיבות שקטות ייחודיות שבהן כולם מאזינים דרך האוזניות שלהם.",
-          "title": "מסיבות שקטות"
-        },
-        "voteLikeSystem": {
-          "description": "אורחים יכולים להצביע לשירים האהובים עליהם כדי להשפיע על תור רשימת ההשמעה בזמן אמת.",
-          "title": "מערכת הצבעה ואוהבים"
-        },
-        "youtubeIntegration": {
-          "description": "התחברו בצורה חלקה עם YouTube כדי לגשת למיליוני שירים וליצור את האווירה המושלמת.",
-          "title": "אינטגרציה עם YouTube"
-        }
-      },
-      "featuresHeading": "תכונות חזקות",
-      "mainHeading": "Tunes",
-      "title": "האזינו תוך כדי גילוי",
-      "venueHeading": "מושלם לכל מקום",
-      "venues": {
-        "barsPubs": "ברים ופאבים",
-        "coffeeShops": "בתי קפה",
-        "eventsWeddings": "אירועים וחתונות",
-        "gymsFitness": "מכוני כושר ופיטנס",
-        "restaurants": "מסעדות",
-        "retailStores": "חנויות"
-      }
     }
   },
   "seo": {

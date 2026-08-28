@@ -346,8 +346,7 @@
     "signupSubtitle": "Registrera dig för att njuta av explorers-funktionerna",
     "signUpWithGoogle": "Registrera dig med Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Användarnamn",
@@ -1789,49 +1788,6 @@
           "title": "Appar, verktyg och användbara länkar"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Utforskning är inte bara visuell. Ljud bär minne, sammanhang och känsla.\n\nTunes låter dig samla och dela soundtrack för platser, resor och stämningar — vare sig det är musik upptäckt på vägen eller ljud som definierar en plats för dig.\n\nSömlöst ansluten till din Explorer-profil.",
-      "closingStatement": "Tunes är <strong>gratis</strong> att utforska, och för betalfunktioner kan du uppgradera senare.",
-      "exploreButton": "Utforska Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfekt för karaoke-kvällar med samarbetslistor och realtidslåtförfrågningar.",
-          "title": "Karaoke Redo"
-        },
-        "qrCodeSharing": {
-          "description": "Dela din musikupplevelse med en enkel QR-kodskanning — inga appar eller nedladdningar krävs.",
-          "title": "QR-koddelning"
-        },
-        "realtimeCollaboration": {
-          "description": "Låt gäster lägga till låtar i din spellista omedelbart medan du behåller full kontroll över vad som spelas.",
-          "title": "Realtidssamarbete"
-        },
-        "silentParties": {
-          "description": "Anordna unika tysta fester där alla lyssnar genom sina egna hörlurar.",
-          "title": "Tysta Fester"
-        },
-        "voteLikeSystem": {
-          "description": "Gäster kan rösta på sina favoritlåtar för att påverka spellistekön i realtid.",
-          "title": "Röstnings- och Gilla-system"
-        },
-        "youtubeIntegration": {
-          "description": "Integrera sömlöst med YouTube för att komma åt miljontals låtar och skapa den perfekta atmosfären.",
-          "title": "YouTube-integration"
-        }
-      },
-      "featuresHeading": "Kraftfulla Funktioner",
-      "mainHeading": "Tunes",
-      "title": "Lyssna medan du utforskar",
-      "venueHeading": "Perfekt för Varje Plats",
-      "venues": {
-        "barsPubs": "Barer & Pubar",
-        "coffeeShops": "Kaféer",
-        "eventsWeddings": "Evenemang & Bröllop",
-        "gymsFitness": "Gym & Fitness",
-        "restaurants": "Restauranger",
-        "retailStores": "Butiker"
-      }
     }
   },
   "seo": {

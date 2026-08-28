@@ -1,4 +1,4 @@
-import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded, useMap } from "@vis.gl/react-google-maps";
 import { memo, useState, useCallback, useEffect, useRef } from "react";
 import Button from "../../../components/ui/Button";
 import WhiteMap from "../../../assets/icons/WhiteMap";
@@ -194,6 +194,7 @@ const SmoothMapController = ({ targetCoords, targetZoom }: { targetCoords: Geome
 };
 
 const MapView = memo(() => {
+  const mapsApiLoaded = useApiIsLoaded();
   const [currentCoords, setCurrentCoords] = useState<Geometry>({
     lat: 20.5937,
     lng: 78.9629,
@@ -569,6 +570,16 @@ const MapView = memo(() => {
           >
             Retry
           </button>
+        </div>
+      </div>
+    );
+
+  if (!mapsApiLoaded)
+    return (
+      <div className="flex bg-black items-center justify-center min-h-screen">
+        <div className="text-white text-center px-6">
+          <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
+          <p className="text-gray-400">Use the list view while the map service is unavailable.</p>
         </div>
       </div>
     );

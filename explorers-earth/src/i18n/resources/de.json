@@ -346,8 +346,7 @@
     "signupSubtitle": "Registrieren Sie sich, um die Funktionen von explorers zu nutzen",
     "signUpWithGoogle": "Mit Google registrieren",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Benutzername",
@@ -1789,49 +1788,6 @@
           "title": "Apps, Tools und nützliche Links"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Erkundung ist nicht nur visuell. Klang trägt Erinnerung, Kontext und Emotion.\n\nTunes ermöglicht es Ihnen, Soundtracks für Orte, Reisen und Stimmungen zu sammeln und zu teilen — sei es Musik, die auf der Straße entdeckt wurde, oder Klänge, die einen Ort für Sie definieren.\n\nNahtlos mit Ihrem Explorer-Profil verbunden.",
-      "closingStatement": "Tunes ist <strong>kostenlos</strong> zu erkunden, und für kostenpflichtige Funktionen können Sie später upgraden.",
-      "exploreButton": "Tunes erkunden",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfekt für Karaoke-Nächte mit kollaborativen Playlists und Echtzeit-Song-Anfragen.",
-          "title": "Karaoke-Bereit"
-        },
-        "qrCodeSharing": {
-          "description": "Teilen Sie Ihr Musikerlebnis mit einem einfachen QR-Code-Scan - keine Apps oder Downloads erforderlich.",
-          "title": "QR-Code-Sharing"
-        },
-        "realtimeCollaboration": {
-          "description": "Lassen Sie Gäste sofort Songs zu Ihrer Playlist hinzufügen, während Sie die volle Kontrolle darüber behalten, was abgespielt wird.",
-          "title": "Echtzeit-Kollaboration"
-        },
-        "silentParties": {
-          "description": "Veranstalten Sie einzigartige stille Partys, bei denen jeder über seine eigenen Kopfhörer hört.",
-          "title": "Stille Partys"
-        },
-        "voteLikeSystem": {
-          "description": "Gäste können für ihre Lieblingssongs abstimmen, um die Playlist-Warteschlange in Echtzeit zu beeinflussen.",
-          "title": "Abstimmungs- und Like-System"
-        },
-        "youtubeIntegration": {
-          "description": "Integrieren Sie nahtlos mit YouTube, um auf Millionen von Songs zuzugreifen und die perfekte Atmosphäre zu schaffen.",
-          "title": "YouTube-Integration"
-        }
-      },
-      "featuresHeading": "Leistungsstarke Funktionen",
-      "mainHeading": "Tunes",
-      "title": "Hören Sie, während Sie erkunden",
-      "venueHeading": "Perfekt für jeden Ort",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "coffeeShops": "Cafés",
-        "eventsWeddings": "Veranstaltungen & Hochzeiten",
-        "gymsFitness": "Fitnessstudios & Fitness",
-        "restaurants": "Restaurants",
-        "retailStores": "Einzelhandelsgeschäfte"
-      }
     }
   },
   "seo": {

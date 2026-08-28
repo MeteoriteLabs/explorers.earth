@@ -346,8 +346,7 @@
     "signupSubtitle": "Meld je aan om te genieten van de functies van explorers",
     "signUpWithGoogle": "Aanmelden met Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Gebruikersnaam",
@@ -1789,49 +1788,6 @@
           "title": "Apps, tools en handige links"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Verkennen is niet alleen visueel. Geluid draagt geheugen, context en emotie.\n\nTunes stelt je in staat om soundtracks te verzamelen en te delen voor plaatsen, reizen en stemmingen — of het nu muziek is die onderweg is ontdekt of geluiden die een plek voor jou definiëren.\n\nNaadloos verbonden met je Explorer-profiel.",
-      "closingStatement": "Tunes is <strong>gratis</strong> om te verkennen, en voor betaalde functies kun je daarna upgraden.",
-      "exploreButton": "Verken Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfect voor karaokenachten met collaboratieve afspeellijsten en realtime nummerverzoeken.",
-          "title": "Karaoke Klaar"
-        },
-        "qrCodeSharing": {
-          "description": "Deel je muziekervaring met een eenvoudige QR-code scan - geen apps of downloads vereist.",
-          "title": "QR-code Delen"
-        },
-        "realtimeCollaboration": {
-          "description": "Laat gasten direct nummers aan je afspeellijst toevoegen terwijl je volledige controle behoudt over wat er speelt.",
-          "title": "Realtime Samenwerking"
-        },
-        "silentParties": {
-          "description": "Organiseer unieke stille feesten waar iedereen via hun eigen koptelefoon luistert.",
-          "title": "Stille Feesten"
-        },
-        "voteLikeSystem": {
-          "description": "Gasten kunnen stemmen op hun favoriete nummers om de afspeellijstwachtrij in realtime te beïnvloeden.",
-          "title": "Stem & Like Systeem"
-        },
-        "youtubeIntegration": {
-          "description": "Integreer naadloos met YouTube om toegang te krijgen tot miljoenen nummers en de perfecte sfeer te creëren.",
-          "title": "YouTube Integratie"
-        }
-      },
-      "featuresHeading": "Krachtige Functies",
-      "mainHeading": "Tunes",
-      "title": "Luister terwijl je verkent",
-      "venueHeading": "Perfect voor Elke Locatie",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "coffeeShops": "Koffiehuizen",
-        "eventsWeddings": "Evenementen & Bruiloften",
-        "gymsFitness": "Sportscholen & Fitness",
-        "restaurants": "Restaurants",
-        "retailStores": "Winkels"
-      }
     }
   },
   "seo": {

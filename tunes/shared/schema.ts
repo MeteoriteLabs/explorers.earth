@@ -238,6 +238,7 @@ export const explorersAnalyticsReceipts = pgTable("explorers_analytics_receipts"
   status: text("status").notNull().default("pending"),
   strapiDocumentId: text("strapi_document_id"),
   lastError: text("last_error"),
+  leaseId: text("lease_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

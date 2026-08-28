@@ -346,8 +346,7 @@
     "signupSubtitle": "Daftar untuk menikmati ciri-ciri explorers",
     "signUpWithGoogle": "Daftar dengan Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nama Pengguna",
@@ -1789,49 +1788,6 @@
           "title": "Apl, alatan dan pautan berguna"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Penerokaan bukan hanya visual. Bunyi membawa ingatan, konteks, dan emosi.\n\nLocalTunes membolehkan anda mengumpul dan berkongsi runut bunyi untuk tempat, perjalanan, dan mood — sama ada muzik yang ditemui di jalan raya atau bunyi yang mentakrifkan tempat untuk anda.\n\nDisambungkan dengan lancar ke profil Explorer anda.",
-      "closingStatement": "Tunes adalah <strong>percuma</strong> untuk diterokai, dan untuk ciri berbayar anda boleh naik taraf kemudian.",
-      "exploreButton": "Terokai Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Sempurna untuk malam karaoke dengan senarai main kolaboratif dan permintaan lagu masa nyata.",
-          "title": "Sedia untuk Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Kongsi pengalaman muzik anda dengan imbasan kod QR yang mudah - tiada aplikasi atau muat turun diperlukan.",
-          "title": "Perkongsian Kod QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Biarkan tetamu menambah lagu ke senarai main anda dengan segera sambil anda mengekalkan kawalan penuh ke atas apa yang dimainkan.",
-          "title": "Kolaborasi Masa Nyata"
-        },
-        "silentParties": {
-          "description": "Anjurkan pesta senyap yang unik di mana semua orang mendengar melalui fon kepala mereka sendiri.",
-          "title": "Pesta Senyap"
-        },
-        "voteLikeSystem": {
-          "description": "Tetamu boleh mengundi lagu kegemaran mereka untuk mempengaruhi barisan senarai main dalam masa nyata.",
-          "title": "Sistem Undi & Suka"
-        },
-        "youtubeIntegration": {
-          "description": "Integrasikan dengan lancar dengan YouTube untuk mengakses berjuta-juta lagu dan mencipta suasana yang sempurna.",
-          "title": "Integrasi YouTube"
-        }
-      },
-      "featuresHeading": "Ciri Berkuasa",
-      "mainHeading": "Tunes",
-      "title": "Dengar semasa anda meneroka",
-      "venueHeading": "Sempurna untuk Setiap Venue",
-      "venues": {
-        "barsPubs": "Bar & Pub",
-        "coffeeShops": "Kedai Kopi",
-        "eventsWeddings": "Acara & Perkahwinan",
-        "gymsFitness": "Gim & Kecergasan",
-        "restaurants": "Restoran",
-        "retailStores": "Kedai Runcit"
-      }
     }
   },
   "seo": {

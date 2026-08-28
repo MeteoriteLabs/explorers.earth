@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authState, harness, queryState, updateSubmit, toastError, toastSuccess } = vi.hoisted(() => ({
+const { authState, harness, queryState, updateSubmit, updateTargets, toastError, toastSuccess } = vi.hoisted(() => ({
   authState: {
     user: {
       id: "user-1",
@@ -20,6 +20,7 @@ const { authState, harness, queryState, updateSubmit, toastError, toastSuccess }
     refetch: vi.fn(),
   },
   updateSubmit: vi.fn(),
+  updateTargets: [] as Array<string | undefined>,
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
@@ -61,7 +62,10 @@ vi.mock("@apollo/client", async (importOriginal) => {
 });
 
 vi.mock("../../../Profile/hooks/useUpdateProfile", () => ({
-  useUpdateProfile: () => ({ handleSubmit: updateSubmit }),
+  useUpdateProfile: (documentId?: string) => {
+    updateTargets.push(documentId);
+    return { handleSubmit: updateSubmit };
+  },
 }));
 
 vi.mock("../../../Profile/hooks/useReverseGeocoding", () => ({
@@ -123,6 +127,7 @@ describe("ProfileAccountSettings", () => {
     harness.profileFormProps = undefined;
     harness.usernameModalProps = undefined;
     updateSubmit.mockReset();
+    updateTargets.length = 0;
     updateSubmit.mockResolvedValue({ documentId: "account-1" });
     toastError.mockReset();
     toastSuccess.mockReset();
@@ -200,6 +205,29 @@ describe("ProfileAccountSettings", () => {
       }),
     );
     expect(toastSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("pins the only completed account when an incomplete row is first", async () => {
+    queryState.data.usersPermissionsUser.accounts = [
+      {
+        documentId: "provisioning-account",
+        Account_Name: "Provisioning",
+        Account_Type: "personal",
+        mobile_number: "",
+      },
+      account,
+    ];
+
+    render(<ProfileAccountSettings section="account" />);
+
+    expect(harness.profileFormProps.initialValues.accountName).toBe("TK Explorer");
+    expect(updateTargets.at(-1)).toBe("account-1");
+    await act(async () => {
+      await harness.profileFormProps.onSubmit(
+        harness.profileFormProps.initialValues,
+      );
+    });
+    expect(updateSubmit).toHaveBeenCalledTimes(1);
   });
 
   it("uses every detailed address field in Settings Billing", () => {

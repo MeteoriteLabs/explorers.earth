@@ -346,8 +346,7 @@
     "signupSubtitle": "Mag-sign up upang masiyahan sa mga feature ng explorers",
     "signUpWithGoogle": "Mag-sign up gamit ang Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Username",
@@ -1789,49 +1788,6 @@
           "title": "Mga app, tool, at kapaki-pakinabang na link"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Ang pag-e-explore ay hindi lamang visual. Ang tunog ay nagdadala ng memorya, konteksto, at emosyon.\n\nBinibigyang-daan ng LocalTunes na kolektahin at ibahagi ang mga soundtrack para sa mga lugar, paglalakbay, at mood — maging ito ay musika na natuklasan sa daan o mga tunog na nagbibigay-kahulugan sa isang lugar para sa inyo.\n\nWalang putol na nakakonekta sa inyong Explorer profile.",
-      "closingStatement": "Ang Tunes ay <strong>libre</strong> na i-explore, at para sa paid features maaari kayong mag-upgrade pagkatapos.",
-      "exploreButton": "I-explore ang Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perpekto para sa mga gabi ng karaoke na may collaborative playlists at real-time na song requests.",
-          "title": "Handa para sa Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Ibahagi ang inyong karanasan sa musika sa pamamagitan ng simpleng QR code scan - walang apps o downloads na kailangan.",
-          "title": "QR Code Sharing"
-        },
-        "realtimeCollaboration": {
-          "description": "Hayaan ang mga bisita na magdagdag ng mga kanta sa inyong playlist agad habang pinapanatili ninyo ang buong kontrol sa kung ano ang tumutugtog.",
-          "title": "Real-time na Pakikipagtulungan"
-        },
-        "silentParties": {
-          "description": "Mag-host ng natatanging silent parties kung saan lahat ay nakikinig sa pamamagitan ng kanilang sariling headphones.",
-          "title": "Silent Parties"
-        },
-        "voteLikeSystem": {
-          "description": "Maaaring bumoto ang mga bisita para sa kanilang mga paboritong kanta upang maimpluwensyahan ang playlist queue sa real-time.",
-          "title": "Vote & Like System"
-        },
-        "youtubeIntegration": {
-          "description": "Walang putol na isama sa YouTube upang ma-access ang milyun-milyong kanta at lumikha ng perpektong kapaligiran.",
-          "title": "YouTube Integration"
-        }
-      },
-      "featuresHeading": "Malakas na Features",
-      "mainHeading": "Tunes",
-      "title": "Makinig habang nag-e-explore kayo",
-      "venueHeading": "Perpekto para sa Bawat Venue",
-      "venues": {
-        "barsPubs": "Mga Bar & Pub",
-        "coffeeShops": "Mga Coffee Shop",
-        "eventsWeddings": "Mga Event & Kasal",
-        "gymsFitness": "Mga Gym & Fitness",
-        "restaurants": "Mga Restaurant",
-        "retailStores": "Mga Retail Store"
-      }
     }
   },
   "seo": {

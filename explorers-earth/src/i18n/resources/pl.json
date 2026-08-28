@@ -346,8 +346,7 @@
     "signupSubtitle": "Zarejestruj się, aby cieszyć się funkcjami explorers",
     "signUpWithGoogle": "Zarejestruj się przez Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nazwa użytkownika",
@@ -1789,49 +1788,6 @@
           "title": "Aplikacje, narzędzia i przydatne linki"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Eksploracja nie jest tylko wizualna. Dźwięk niesie pamięć, kontekst i emocje.\n\nTunes pozwala zbierać i udostępniać ścieżki dźwiękowe dla miejsc, podróży i nastrojów — czy to muzyka odkryta w drodze, czy dźwięki, które definiują miejsce dla Ciebie.\n\nBezproblemowo połączone z Twoim profilem Explorer.",
-      "closingStatement": "Tunes jest <strong>darmowe</strong> do eksploracji, a dla płatnych funkcji możesz później zaktualizować.",
-      "exploreButton": "Eksploruj Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Idealne na wieczory karaoke z wspólnotowymi playlistami i prośbami o utwory w czasie rzeczywistym.",
-          "title": "Gotowe na Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Udostępnij swoje doświadczenie muzyczne prostym skanowaniem kodu QR — bez aplikacji ani pobierania.",
-          "title": "Udostępnianie Kodu QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Pozwól gościom natychmiast dodawać utwory do swojej playlisty, zachowując pełną kontrolę nad tym, co jest odtwarzane.",
-          "title": "Współpraca w Czasie Rzeczywistym"
-        },
-        "silentParties": {
-          "description": "Organizuj unikalne ciche imprezy, gdzie wszyscy słuchają przez własne słuchawki.",
-          "title": "Ciche Imprezy"
-        },
-        "voteLikeSystem": {
-          "description": "Goście mogą głosować na swoje ulubione utwory, aby wpływać na kolejkę playlisty w czasie rzeczywistym.",
-          "title": "System Głosowania i Polubień"
-        },
-        "youtubeIntegration": {
-          "description": "Bezproblemowo integruj się z YouTube, aby uzyskać dostęp do milionów utworów i stworzyć idealną atmosferę.",
-          "title": "Integracja z YouTube"
-        }
-      },
-      "featuresHeading": "Potężne Funkcje",
-      "mainHeading": "Tunes",
-      "title": "Słuchaj podczas eksploracji",
-      "venueHeading": "Idealne dla Każdego Miejsca",
-      "venues": {
-        "barsPubs": "Bary i Puby",
-        "coffeeShops": "Kawiarnie",
-        "eventsWeddings": "Wydarzenia i Wesela",
-        "gymsFitness": "Siłownie i Fitness",
-        "restaurants": "Restauracje",
-        "retailStores": "Sklepy Detaliczne"
-      }
     }
   },
   "seo": {

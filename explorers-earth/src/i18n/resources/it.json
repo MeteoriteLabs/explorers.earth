@@ -346,8 +346,7 @@
     "signupSubtitle": "Registrati per godere delle funzionalità di explorers",
     "signUpWithGoogle": "Registrati con Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nome utente",
@@ -1789,49 +1788,6 @@
           "title": "App, strumenti e collegamenti utili"
         }
       ]
-    },
-    "localTunes": {
-      "body": "L'esplorazione non è solo visiva. Il suono porta memoria, contesto ed emozione.\n\nTunes ti permette di raccogliere e condividere colonne sonore per luoghi, viaggi e stati d'animo — che si tratti di musica scoperta sulla strada o suoni che definiscono un luogo per te.\n\nPerfettamente connesso al tuo profilo Explorer.",
-      "closingStatement": "Tunes è <strong>gratuito</strong> da esplorare, e per le funzionalità a pagamento puoi aggiornare successivamente.",
-      "exploreButton": "Esplora Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Perfetto per serate karaoke con playlist collaborative e richieste di canzoni in tempo reale.",
-          "title": "Pronto per il Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Condividi la tua esperienza musicale con una semplice scansione del codice QR - nessuna app o download richiesto.",
-          "title": "Condivisione Codice QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Consenti agli ospiti di aggiungere canzoni alla tua playlist istantaneamente mantenendo il controllo completo su ciò che viene riprodotto.",
-          "title": "Collaborazione in Tempo Reale"
-        },
-        "silentParties": {
-          "description": "Organizza feste silenziose uniche dove tutti ascoltano attraverso le proprie cuffie.",
-          "title": "Feste Silenziose"
-        },
-        "voteLikeSystem": {
-          "description": "Gli ospiti possono votare per le loro canzoni preferite per influenzare la coda della playlist in tempo reale.",
-          "title": "Sistema di Voto e Mi Piace"
-        },
-        "youtubeIntegration": {
-          "description": "Integra perfettamente con YouTube per accedere a milioni di canzoni e creare l'atmosfera perfetta.",
-          "title": "Integrazione YouTube"
-        }
-      },
-      "featuresHeading": "Funzionalità Potenti",
-      "mainHeading": "Tunes",
-      "title": "Ascolta mentre esplori",
-      "venueHeading": "Perfetto per Ogni Luogo",
-      "venues": {
-        "barsPubs": "Bar e Pub",
-        "coffeeShops": "Caffè",
-        "eventsWeddings": "Eventi e Matrimoni",
-        "gymsFitness": "Palestre e Fitness",
-        "restaurants": "Ristoranti",
-        "retailStores": "Negozi al Dettaglio"
-      }
     }
   },
   "seo": {

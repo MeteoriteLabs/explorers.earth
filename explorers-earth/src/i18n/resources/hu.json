@@ -346,8 +346,7 @@
     "signupSubtitle": "Regisztráljatok, hogy élvezzétek a explorers funkcióit",
     "signUpWithGoogle": "Regisztráció Google-lel",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Felhasználónév",
@@ -1789,49 +1788,6 @@
           "title": "Alkalmazások, eszközök és hasznos linkek"
         }
       ]
-    },
-    "localTunes": {
-      "body": "A felfedezés nem csak vizuális. A hang emléket, kontextust és érzelmet hordoz.\n\nA Tunes lehetővé teszi, hogy helyekhez, utazásokhoz és hangulatokhoz gyűjts és ossz meg zenéket — legyen az úton felfedezett zene vagy hangok, amelyek egy helyet definiálnak számodra.\n\nZökkenőmentesen csatlakozik az Explorer profilodhoz.",
-      "closingStatement": "A Tunes <strong>ingyenes</strong> felfedezésre, és a fizetős funkciókhoz később frissíthetsz.",
-      "exploreButton": "Felfedezés Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Tökéletes karaoke estékhez együttműködő lejátszási listákkal és valós idejű dal kérésekkel.",
-          "title": "Karaoke Kész"
-        },
-        "qrCodeSharing": {
-          "description": "Oszd meg zenei élményedet egy egyszerű QR kód szkenneléssel — nincs szükség alkalmazásokra vagy letöltésekre.",
-          "title": "QR Kód Megosztás"
-        },
-        "realtimeCollaboration": {
-          "description": "Engedélyezd a vendégeknek, hogy azonnal adjanak hozzá dalokat a lejátszási listádhoz, miközben teljes kontrollt tartasz azon, ami lejátszódik.",
-          "title": "Valós Idejű Együttműködés"
-        },
-        "silentParties": {
-          "description": "Rendezz egyedi csendes bulikat, ahol mindenki a saját fejhallgatóján keresztül hallgat.",
-          "title": "Csendes Buli"
-        },
-        "voteLikeSystem": {
-          "description": "A vendégek szavazhatnak kedvenc dalaikra, hogy valós időben befolyásolják a lejátszási lista sorát.",
-          "title": "Szavazási és Kedvelési Rendszer"
-        },
-        "youtubeIntegration": {
-          "description": "Zökkenőmentesen integrálódj a YouTube-dal, hogy hozzáférj milliók dalához és tökéletes légkört teremts.",
-          "title": "YouTube Integráció"
-        }
-      },
-      "featuresHeading": "Erős Funkciók",
-      "mainHeading": "Tunes",
-      "title": "Hallgass, miközben felfedezel",
-      "venueHeading": "Tökéletes Minden Helyhez",
-      "venues": {
-        "barsPubs": "Bárok és Pubok",
-        "coffeeShops": "Kávézók",
-        "eventsWeddings": "Események és Esküvők",
-        "gymsFitness": "Edzőtermek és Fitness",
-        "restaurants": "Étteremek",
-        "retailStores": "Kiskereskedelmi Üzletek"
-      }
     }
   },
   "seo": {

@@ -14,6 +14,7 @@ const { settingsQuery } = vi.hoisted(() => ({
           documentId: "settings-account",
           Account_Name: "Settings account",
           Account_Type: "personal",
+          mobile_number: "+919999999999",
           Bio: "Settings bio",
           Addresss: {},
           Primary_Address: {},

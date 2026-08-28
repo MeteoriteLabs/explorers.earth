@@ -346,8 +346,7 @@
     "signupSubtitle": "Inscrivez-vous pour profiter des fonctionnalités de explorers",
     "signUpWithGoogle": "S'inscrire avec Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Nom d'utilisateur",
@@ -1789,49 +1788,6 @@
           "title": "Applications, outils et liens utiles"
         }
       ]
-    },
-    "localTunes": {
-      "body": "L'exploration n'est pas seulement visuelle. Le son porte la mémoire, le contexte et l'émotion.\n\nTunes vous permet de collecter et partager des bandes sonores pour des lieux, des voyages et des humeurs — qu'il s'agisse de musique découverte sur la route ou de sons qui définissent un lieu pour vous.\n\nParfaitement connecté à votre profil Explorer.",
-      "closingStatement": "Tunes est <strong>gratuit</strong> à explorer, et pour les fonctionnalités payantes, vous pouvez mettre à niveau par la suite.",
-      "exploreButton": "Explorer Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Parfait pour les soirées karaoké avec des listes de lecture collaboratives et des demandes de chansons en temps réel.",
-          "title": "Prêt pour le Karaoké"
-        },
-        "qrCodeSharing": {
-          "description": "Partagez votre expérience musicale avec un simple scan de code QR - aucune application ou téléchargement requis.",
-          "title": "Partage de Code QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Permettez aux invités d'ajouter des chansons à votre liste de lecture instantanément tout en gardant le contrôle total sur ce qui est joué.",
-          "title": "Collaboration en Temps Réel"
-        },
-        "silentParties": {
-          "description": "Organisez des fêtes silencieuses uniques où tout le monde écoute à travers ses propres écouteurs.",
-          "title": "Fêtes Silencieuses"
-        },
-        "voteLikeSystem": {
-          "description": "Les invités peuvent voter pour leurs chansons préférées pour influencer la file de lecture en temps réel.",
-          "title": "Système de Vote et J'aime"
-        },
-        "youtubeIntegration": {
-          "description": "Intégrez parfaitement avec YouTube pour accéder à des millions de chansons et créer l'atmosphère parfaite.",
-          "title": "Intégration YouTube"
-        }
-      },
-      "featuresHeading": "Fonctionnalités Puissantes",
-      "mainHeading": "Tunes",
-      "title": "Écoutez pendant que vous explorez",
-      "venueHeading": "Parfait pour Tous les Lieux",
-      "venues": {
-        "barsPubs": "Bars et Pubs",
-        "coffeeShops": "Cafés",
-        "eventsWeddings": "Événements et Mariages",
-        "gymsFitness": "Salles de Sport et Fitness",
-        "restaurants": "Restaurants",
-        "retailStores": "Magasins de Détail"
-      }
     }
   },
   "seo": {

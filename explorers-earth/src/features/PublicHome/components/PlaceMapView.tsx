@@ -1,4 +1,4 @@
-import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded } from "@vis.gl/react-google-maps";
 import { memo, useState, useCallback, useEffect } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import Button from "../../../components/ui/Button";
@@ -36,6 +36,7 @@ type Geometry = {
   lng: number;
 };
 const PlaceMapView = memo(() => {
+  const mapsApiLoaded = useApiIsLoaded();
   const [currentCoords, setCurrentCoords] = useState<Geometry | null>(null);
   const [activeMarker, setActiveMarker] = useState<Geometry | null>(null);
   // local state for handle catgeories
@@ -124,6 +125,16 @@ const PlaceMapView = memo(() => {
     return (
       <div className="flex bg-black items-center justify-center min-h-screen">
         <EarthLoader context="general" size="small" />
+      </div>
+    );
+
+  if (!mapsApiLoaded)
+    return (
+      <div className="flex bg-black items-center justify-center min-h-screen">
+        <div className="text-white text-center px-6">
+          <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
+          <p className="text-gray-400">Use the list view while the map service is unavailable.</p>
+        </div>
       </div>
     );
 

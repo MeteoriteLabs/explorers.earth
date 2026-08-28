@@ -1,5 +1,4 @@
 import { gql, useQuery } from "@apollo/client";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
 import {
   BookOpen,
   Compass,
@@ -13,10 +12,7 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { apiRequest } from "../../../lib/queryClient";
-import type { PlaylistResponse } from "../../../types/music";
 import { toUrlSlug } from "../../../utils/formatAddress";
-import { extractGuestUrlFromLocalTunesLink } from "../../../utils/localTunesUtils";
 import {
   isRecommendationCategoryVisible,
   normalizeRecommendationsPresentation,
@@ -423,20 +419,6 @@ const ProfileRecommendationsTab = ({
   const peopleQuery = useQuery(GET_PEOPLE_LISTS, apolloOptions(enabled.people));
   const guidesQuery = useQuery(GET_GUIDES_LISTS, apolloOptions(enabled.guides));
 
-  const guestUrl = useMemo(
-    () =>
-      accountData.localtunes_public
-        ? extractGuestUrlFromLocalTunesLink(accountData.localtunes_public)
-        : null,
-    [accountData.localtunes_public],
-  );
-  const musicQuery = useReactQuery<PlaylistResponse>({
-    queryKey: ["public-profile-playlists", guestUrl],
-    queryFn: () => apiRequest("GET", `/api/playlist/${guestUrl}`),
-    enabled: Boolean(guestUrl && enabled.music),
-    staleTime: 5 * 60 * 1000,
-  });
-
   const placesRaw = placesQuery.data?.recommendationLists || [];
   const placesLists = placesRaw
     .filter((list: any) => list.Visibility === true)
@@ -602,26 +584,6 @@ const ProfileRecommendationsTab = ({
       href: `/${username}/guides/${guide.slug || toUrlSlug(guide.Title || "") || guide.documentId}`,
     }));
 
-  const musicRaw = musicQuery.data?.playlists || [];
-  const musicLists = musicRaw
-    .filter((playlist: any) => playlist.isVisibleToGuests)
-    .map((playlist: any) => ({
-      id: String(playlist.id),
-      title: playlist.name || "",
-      image: null,
-      previewImages: previewUrls(
-        (playlist.songs || []).map((song: any) =>
-          resolveCoverUrl(song.thumbnailUrl, "music"),
-        ),
-      ),
-      subtitle: formatCount(
-        { value: playlist.songs?.length || 0, isLowerBound: false },
-        "Song",
-        "Songs",
-      ),
-      href: `/${username}/music`,
-    }));
-
   const states = [
     makeApolloState({
       id: "places",
@@ -631,31 +593,6 @@ const ProfileRecommendationsTab = ({
       lists: placesLists,
       itemCount: aggregateCount(placesRaw, "place", "places"),
     }),
-    enabled.music
-      ? {
-          id: "music" as const,
-          dataStatus:
-            (musicQuery.isLoading || musicQuery.isFetching) && !musicQuery.data
-              ? ("loading" as const)
-              : musicLists.length
-                ? ("ready" as const)
-                : ("empty" as const),
-          lists: musicLists,
-          listCount: musicLists.length,
-          itemCount: {
-            value: musicRaw.reduce(
-              (total: number, playlist: any) =>
-                total + (playlist.songs?.length || 0),
-              0,
-            ),
-            isLowerBound: false,
-            singular: "song",
-            plural: "songs",
-          },
-          error: musicQuery.error || null,
-          retry: async () => musicQuery.refetch(),
-        }
-      : null,
     makeApolloState({
       id: "movies",
       enabled: enabled.movies,

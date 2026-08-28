@@ -272,34 +272,6 @@ describe("ProfileRecommendationsTab", () => {
     ).toBe(true);
   });
 
-  it("keeps cached Music visible during a refetch error", () => {
-    musicResult.data = {
-      playlists: [
-        {
-          id: 7,
-          name: "Road songs",
-          isVisibleToGuests: true,
-          songs: [{ thumbnailUrl: "/song.jpg" }],
-        },
-      ],
-    };
-    musicResult.isRefetchError = true;
-    musicResult.error = new Error("music refresh failed");
-    renderTab({
-      accountData: {
-        ...visibleAccount,
-        public_recommendations: "No",
-        public_books: "No",
-        public_music: "Yes",
-        localtunes_public: "https://localtunes.example/guest/abc",
-      },
-      presentation: { layout: "grid", categoryOrder: ["music"] },
-    });
-
-    expect(screen.getByRole("link", { name: "Open Music" })).toBeVisible();
-    expect(screen.getByText("Some categories are unavailable")).toBeVisible();
-  });
-
   it("uses shelves defaults and skips every disabled category request", () => {
     renderTab({
       accountData: {

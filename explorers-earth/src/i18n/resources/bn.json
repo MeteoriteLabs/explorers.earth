@@ -346,8 +346,7 @@
     "signupSubtitle": "explorers-এর বৈশিষ্ট্যগুলি উপভোগ করতে সাইন আপ করুন",
     "signUpWithGoogle": "Google দিয়ে সাইন আপ করুন",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ব্যবহারকারীর নাম",
@@ -1789,49 +1788,6 @@
           "title": "অ্যাপস, টুলস এবং দরকারী লিঙ্ক"
         }
       ]
-    },
-    "localTunes": {
-      "body": "অন্বেষণ শুধু দৃশ্যমান নয়। শব্দ স্মৃতি, প্রসঙ্গ এবং আবেগ বহন করে।\n\nTunes আপনাকে স্থান, যাত্রা এবং মেজাজের জন্য সাউন্ডট্র্যাক সংগ্রহ এবং ভাগ করতে দেয় — সেটা রাস্তায় আবিষ্কৃত সঙ্গীত হোক বা এমন শব্দ যা আপনার জন্য একটি স্থানকে সংজ্ঞায়িত করে।\n\nআপনার Explorer প্রোফাইলের সাথে নির্বিঘ্নে সংযুক্ত।",
-      "closingStatement": "Tunes <strong>বিনামূল্যে</strong> অন্বেষণের জন্য, এবং প্রদত্ত বৈশিষ্ট্যগুলির জন্য আপনি পরে আপগ্রেড করতে পারেন।",
-      "exploreButton": "Tunes অন্বেষণ করুন",
-      "features": {
-        "karaokeReady": {
-          "description": "সহযোগিতামূলক প্লেলিস্ট এবং রিয়েল-টাইম গান অনুরোধ সহ কaraoke রাতের জন্য নিখুঁত।",
-          "title": "কaraoke প্রস্তুত"
-        },
-        "qrCodeSharing": {
-          "description": "একটি সহজ QR কোড স্ক্যান দিয়ে আপনার সঙ্গীত অভিজ্ঞতা শেয়ার করুন — কোনো অ্যাপ বা ডাউনলোডের প্রয়োজন নেই।",
-          "title": "QR কোড শেয়ারিং"
-        },
-        "realtimeCollaboration": {
-          "description": "অতিথিদের আপনার প্লেলিস্টে তৎক্ষণাৎ গান যোগ করতে দিন যখন আপনি যা বাজানো হচ্ছে তার উপর সম্পূর্ণ নিয়ন্ত্রণ বজায় রাখেন।",
-          "title": "রিয়েল-টাইম সহযোগিতা"
-        },
-        "silentParties": {
-          "description": "অনন্য নীরব পার্টি আয়োজন করুন যেখানে সবাই তাদের নিজস্ব হেডফোনের মাধ্যমে শোনে।",
-          "title": "নীরব পার্টি"
-        },
-        "voteLikeSystem": {
-          "description": "অতিথিরা তাদের প্রিয় গানে ভোট দিতে পারে রিয়েল-টাইমে প্লেলিস্ট সারিতে প্রভাব ফেলতে।",
-          "title": "ভোট এবং লাইক সিস্টেম"
-        },
-        "youtubeIntegration": {
-          "description": "লক্ষাধিক গানে অ্যাক্সেস পেতে এবং নিখুঁত পরিবেশ তৈরি করতে YouTube-এর সাথে নির্বিঘ্নে সংহত করুন।",
-          "title": "YouTube ইন্টিগ্রেশন"
-        }
-      },
-      "featuresHeading": "শক্তিশালী বৈশিষ্ট্য",
-      "mainHeading": "Tunes",
-      "title": "আপনি যখন অন্বেষণ করেন তখন শুনুন",
-      "venueHeading": "প্রতিটি স্থানের জন্য নিখুঁত",
-      "venues": {
-        "barsPubs": "বার এবং পাব",
-        "coffeeShops": "কফি শপ",
-        "eventsWeddings": "ইভেন্ট এবং বিবাহ",
-        "gymsFitness": "জিম এবং ফিটনেস",
-        "restaurants": "রেস্তোরাঁ",
-        "retailStores": "খুচরা দোকান"
-      }
     }
   },
   "seo": {

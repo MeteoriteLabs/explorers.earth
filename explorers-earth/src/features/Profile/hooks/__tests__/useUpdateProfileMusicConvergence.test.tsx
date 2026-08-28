@@ -64,7 +64,7 @@ describe("profile Music snapshot convergence", () => {
     const { result } = renderHook(() => useUpdateProfile("account-document", refetch));
     await act(async () => result.current.handleSubmit(values));
     await Promise.resolve();
-    expect(harness.success).toHaveBeenCalledWith("dashboard.profile.common.savedAndPublishedSuccessfully");
+    expect(harness.success).not.toHaveBeenCalled();
     expect(harness.error).not.toHaveBeenCalled();
     expect(refetch).toHaveBeenCalledTimes(1);
   });

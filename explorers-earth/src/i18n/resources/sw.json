@@ -346,8 +346,7 @@
     "signupSubtitle": "Jisajili ili kufurahia vipengele vya explorers",
     "signUpWithGoogle": "Jisajili na Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Jina la Mtumiaji",
@@ -1789,49 +1788,6 @@
           "title": "Programu, zana na viungo muhimu"
         }
       ]
-    },
-    "localTunes": {
-      "body": "Uchunguzi sio wa kuona tu. Sauti hubeba kumbukumbu, muktadha na hisia.\n\nTunes inakuruhusu kukusanya na kushiriki sauti za maeneo, safari na hali — iwe ni muziki uliogunduliwa njiani au sauti zinazofafanua eneo kwako.\n\nImeunganishwa kwa urahisi na wasifu wako wa Explorer.",
-      "closingStatement": "Tunes ni <strong>bure</strong> kuchunguza, na kwa vipengele vilivyolipwa unaweza kuboresha baadaye.",
-      "exploreButton": "Chunguza Tunes",
-      "features": {
-        "karaokeReady": {
-          "description": "Bora kwa usiku wa karaoke na orodha za kucheza za ushirikiano na maombi ya nyimbo kwa wakati halisi.",
-          "title": "Tayari kwa Karaoke"
-        },
-        "qrCodeSharing": {
-          "description": "Shiriki uzoefu wako wa muziki kwa kuchanganua msimbo wa QR kwa urahisi — hakuna programu au upakuaji unahitajika.",
-          "title": "Kushiriki Msimbo wa QR"
-        },
-        "realtimeCollaboration": {
-          "description": "Wacha wageni waongeze nyimbo kwenye orodha yako ya kucheza mara moja huku ukidumisha udhibiti kamili wa kinachochezwa.",
-          "title": "Ushirikiano wa Wakati Halisi"
-        },
-        "silentParties": {
-          "description": "Andaa sherehe za kimya za kipekee ambapo kila mtu anasikiliza kupitia vichwa vya kusikilizia vyake.",
-          "title": "Sherehe za Kimya"
-        },
-        "voteLikeSystem": {
-          "description": "Wageni wanaweza kupiga kura kwa nyimbo zao za kupenda ili kuathiri foleni ya orodha ya kucheza kwa wakati halisi.",
-          "title": "Mfumo wa Kupiga Kura na Kupenda"
-        },
-        "youtubeIntegration": {
-          "description": "Jumuisha kwa urahisi na YouTube ili kufikia mamilioni ya nyimbo na kuunda hali kamili.",
-          "title": "Ujumuishaji wa YouTube"
-        }
-      },
-      "featuresHeading": "Vipengele Vikuu",
-      "mainHeading": "Tunes",
-      "title": "Sikiliza wakati unachunguza",
-      "venueHeading": "Bora kwa Kila Eneo",
-      "venues": {
-        "barsPubs": "Baa na Pubs",
-        "coffeeShops": "Vikahawa",
-        "eventsWeddings": "Matukio na Arusi",
-        "gymsFitness": "Vyumba vya Mazoezi na Fitness",
-        "restaurants": "Mikahawa",
-        "retailStores": "Maduka"
-      }
     }
   },
   "seo": {

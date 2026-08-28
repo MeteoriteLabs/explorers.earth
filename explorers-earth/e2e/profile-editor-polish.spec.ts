@@ -637,6 +637,8 @@ class SyntheticProfileFixture {
       username: "synthetic-explorer",
       email: "synthetic@example.test",
       provider: "local",
+      confirmed: true,
+      blocked: false,
       razorpay_customer_id: null,
       mobile_number: account.mobile_number,
       mobile_number_visibility: account.mobile_number_visibility,
@@ -649,6 +651,8 @@ class SyntheticProfileFixture {
       operation === "CheckOnboardingStatus" ||
       operation === "CheckOnboardingForSync" ||
       operation === "SidebarAccount" ||
+      operation === "MusicIdentityEligibility" ||
+      operation === "SettingsAccount" ||
       operation === "user" ||
       operation === "UsersPermissionsUser"
     ) {
@@ -1007,7 +1011,6 @@ test.describe("deterministic editor-to-public profile parity", () => {
     ).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
     expect(await publicCategoryIds(page)).toEqual([
-      "music",
       "movies",
       "books",
       "games",
@@ -1020,7 +1023,7 @@ test.describe("deterministic editor-to-public profile parity", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("recommendations-featured")).toBeVisible();
-    expect((await publicCategoryIds(page))[0]).toBe("music");
+    expect((await publicCategoryIds(page))[0]).toBe("movies");
     await expect(page.getByRole("tab", { name: "Business Details" })).toHaveCount(1);
   });
 
