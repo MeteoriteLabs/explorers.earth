@@ -16,6 +16,11 @@ function Consumer({ label }: { label: string }) {
   return <div>{label}:{availability.state}:{availability.descriptor?.publication.publicSlug ?? "none"}</div>;
 }
 
+function OrderedConsumer() {
+  const availability = usePublicMusicAvailability();
+  return <div><span>page:{availability.state === "revoked" ? "unavailable" : availability.state}</span><span>nav:{availability.state === "available" || availability.state === "revalidating" || availability.state === "revoked" ? "eligible" : "removed"}</span></div>;
+}
+
 function renderProvider() {
   return render(
     <MemoryRouter initialEntries={["/alice/music"]}>
@@ -60,6 +65,25 @@ describe("PublicMusicAvailabilityProvider", () => {
     await vi.waitFor(() => expect(screen.getByText("nav:available:public_slug-123")).toBeInTheDocument());
     await act(() => vi.advanceTimersByTimeAsync(30_000));
     await vi.waitFor(() => expect(screen.getByText("nav:not-public:none")).toBeInTheDocument());
+    expect(discover).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains stale eligibility while revalidating and exposes terminal page state before removal", async () => {
+    vi.useFakeTimers();
+    let rejectRevocation!: (reason: unknown) => void;
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false });
+    discover.mockResolvedValueOnce({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 1 } })
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRevocation = reject; }));
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes><Route path=":username/music" element={<PublicMusicAvailabilityProvider><OrderedConsumer /></PublicMusicAvailabilityProvider>} /></Routes></MemoryRouter>);
+    await vi.waitFor(() => expect(screen.getByText("page:available")).toBeInTheDocument());
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByText("page:revalidating")).toBeInTheDocument();
+    expect(screen.getByText("nav:eligible")).toBeInTheDocument();
+    await act(async () => rejectRevocation(Object.assign(new Error("PUBLIC_NOT_FOUND"), { code: "PUBLIC_NOT_FOUND" })));
+    expect(screen.getByText("page:unavailable")).toBeInTheDocument();
+    expect(screen.getByText("nav:eligible")).toBeInTheDocument();
+    await act(() => vi.runOnlyPendingTimersAsync());
+    expect(screen.getByText("nav:removed")).toBeInTheDocument();
     expect(discover).toHaveBeenCalledTimes(2);
   });
 });

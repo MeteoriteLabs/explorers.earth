@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams } from "react-router-dom";
 import { getPublicAccountBasicQuery } from "../PublicHome/api/query";
 import { publicMusicClient, PublicMusicError, type PublicMusicDescriptor } from "./publicMusicClient";
 
-type AvailabilityState = "loading" | "available" | "not-public" | "unavailable";
+type AvailabilityState = "loading" | "available" | "revalidating" | "revoked" | "not-public" | "unavailable";
 type Availability = { state: AvailabilityState; account?: Record<string, any>; descriptor?: PublicMusicDescriptor; retry: () => void };
 const AvailabilityContext = createContext<Availability | null>(null);
 const unavailableOutsideProfileShell: Availability = { state: "unavailable", retry: () => undefined };
@@ -14,6 +14,7 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
   const { username } = useParams();
   const [attempt, setAttempt] = useState(0);
   const [descriptor, setDescriptor] = useState<PublicMusicDescriptor>();
+  const descriptorAccountId = useRef<string>();
   const [descriptorState, setDescriptorState] = useState<AvailabilityState>("loading");
   const { data, loading, error } = useQuery(getPublicAccountBasicQuery, {
     variables: { filters: { username: { eq: username } } }, skip: !username, fetchPolicy: "cache-and-network",
@@ -22,16 +23,23 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
 
   useEffect(() => {
     const controller = new AbortController();
-    setDescriptor(undefined);
-    if (loading) { setDescriptorState("loading"); return () => controller.abort(); }
+    const staleAvailable = Boolean(descriptor && descriptorAccountId.current === account?.documentId);
+    if (!staleAvailable) setDescriptor(undefined);
+    if (loading) { if (!staleAvailable) setDescriptorState("loading"); return () => controller.abort(); }
     if (error || !account?.documentId) { setDescriptorState("unavailable"); return () => controller.abort(); }
     if (account.public_music !== "Yes") { setDescriptorState("not-public"); return () => controller.abort(); }
-    setDescriptorState("loading");
+    setDescriptorState(staleAvailable ? "revalidating" : "loading");
     publicMusicClient.discover(account.documentId, controller.signal).then((value) => {
-      if (!controller.signal.aborted) { setDescriptor(value); setDescriptorState("available"); }
+      if (!controller.signal.aborted) { setDescriptor(value); descriptorAccountId.current = account.documentId; setDescriptorState("available"); }
     }).catch((reason: unknown) => {
       const code = reason instanceof PublicMusicError ? reason.code : (reason as { code?: unknown } | null)?.code;
-      if (!controller.signal.aborted) setDescriptorState(code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable");
+      if (!controller.signal.aborted && code === "PUBLIC_NOT_FOUND" && staleAvailable) {
+        setDescriptorState("revoked");
+        window.setTimeout(() => { setDescriptor(undefined); descriptorAccountId.current = undefined; setDescriptorState("not-public"); }, 0);
+      } else if (!controller.signal.aborted) {
+        setDescriptor(undefined); descriptorAccountId.current = undefined;
+        setDescriptorState(code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable");
+      }
     });
     return () => controller.abort();
   }, [account?.documentId, account?.public_music, attempt, error, loading]);

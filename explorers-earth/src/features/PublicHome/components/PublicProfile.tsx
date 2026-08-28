@@ -8,9 +8,10 @@ import {
 } from "../../Profile/constants/recommendationsPresentation";
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
+import { PublicProfileFixedHeader, PublicProfileIdentity } from "./PublicProfileChromePrimitives";
 import { useQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
-import { Link, useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -41,7 +42,6 @@ import { buildWhatsAppHref } from "../../../utils/url";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createProfileGEOData } from "../../../utils/geoHelpers";
-import { toast } from "sonner";
 import ProfileRecommendationsTab from "./ProfileRecommendationsTab";
 import {
   normalizePublicEmailHref,
@@ -225,7 +225,7 @@ const PublicProfile = memo(() => {
     ? "#FFFFFF"
     : themeSettings.wallpaperMode === "ambient-gradient"
       ? "var(--text-primary)"
-    : "var(--text-secondary)";
+      : "var(--text-secondary)";
   const socialLinkClassName =
     "profile-presentation-focus inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition-opacity hover:opacity-75";
 
@@ -644,48 +644,7 @@ const PublicProfile = memo(() => {
           color: "var(--text-primary)",
         }}
       >
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b h-14 transition-colors duration-300" style={{ backgroundColor: "var(--nav-bg)", borderColor: "var(--border-card)" }}>
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <Link
-              to="/"
-              aria-label="Explorers.Earth home"
-              className="profile-presentation-focus inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl transition-opacity hover:opacity-80"
-            >
-              <img src="/eoe-icon.svg" alt="" className="h-8 w-auto" />
-            </Link>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = getCleanShareUrl();
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${accountData?.Account_Name || username}'s Profile`,
-                      text: "Check out this profile!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    // Copy clean URL without QR code UTM params
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                  analytics.trackClick('share-button', { context: 'profile-header' });
-                }}
-                className="profile-presentation-focus min-h-11 min-w-11 p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-              </button>
-
-            </div>
-          </div>
-        </div>
+        <PublicProfileFixedHeader shareUrl={getCleanShareUrl()} />
 
         {/* Profile Content */}
 
@@ -739,37 +698,11 @@ const PublicProfile = memo(() => {
 
           {/* Profile Header Content (Profile Pic, Name, Social Icons) */}
           <div className="relative z-10 pt-16 md:pt-32 pb-0 md:pb-4 text-center px-4">
-            {/* Profile Picture */}
-            <div className="relative mb-2 px-4">
-              <button
-                type="button"
-                aria-label={`View ${profileName}'s profile photo`}
-                className="profile-presentation-focus block w-[7.5rem] h-[7.5rem] mx-auto rounded-full overflow-hidden cursor-pointer shadow-xl ring-1 ring-black/15 transition-transform hover:scale-[1.02]"
-                style={{ backgroundColor: "var(--bg-card)" }}
-                onClick={handleImageClick}
-              >
-                <img
-                  src={profileImageUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            </div>
-
             <div
               className="mx-auto mt-1 max-w-xl"
               data-testid="public-profile-header-metadata"
             >
-              {/* Name & Location */}
-              <div className="text-center px-6">
-                <h1 className="text-base font-poppins font-bold tracking-tight transition-colors drop-shadow-md" style={{ color: headerPrimaryColor }}>
-                  {accountData?.Account_Name}
-                </h1>
-                <div className="flex items-center justify-center gap-1.5 text-xs font-poppins mt-0.5 drop-shadow-sm transition-colors" style={{ color: headerSecondaryColor }}>
-                  <Location className="w-3 h-3" fill="currentColor" />
-                  <span>{accountData?.Primary_Address?.address}</span>
-                </div>
-              </div>
+              <PublicProfileIdentity account={accountData} interactive onAvatarClick={handleImageClick} primaryColor={headerPrimaryColor} secondaryColor={headerSecondaryColor} />
 
               {/* Social Links */}
               <div

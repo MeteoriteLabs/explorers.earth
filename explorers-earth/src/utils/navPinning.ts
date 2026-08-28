@@ -99,6 +99,7 @@ export function getNavSlotExclusion(
   tabId: string,
   options: { musicAvailable?: boolean } = {},
 ): { reason: "slot-limit"; maxSlots: number } | null {
+  if (tabId === "public_music" && !normalizePinnedTabs(account).includes(tabId)) return null;
   const eligible = getVisibleNavTabIds(account);
   if (account?.public_music === "Yes" && options.musicAvailable) eligible.add("public_music");
   if (!eligible.has(tabId)) return null;

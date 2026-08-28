@@ -60,7 +60,7 @@ const PublicNav = memo(() => {
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
   const showPeopleTab = accountData?.public_people === "Yes";
-  const showMusicTab = accountData?.public_music === "Yes" && availability.state === "available";
+  const showMusicTab = accountData?.public_music === "Yes" && ["available", "revalidating", "revoked"].includes(availability.state);
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {

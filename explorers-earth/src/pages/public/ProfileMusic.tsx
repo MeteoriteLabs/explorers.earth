@@ -18,7 +18,7 @@ export default function ProfileMusic() {
   const descriptorSlug = availability.descriptor?.publication.publicSlug;
 
   useEffect(() => {
-    if (availability.state === "loading") return;
+    if (availability.state === "loading" || availability.state === "revalidating") return;
     if (availability.state !== "available" || !descriptorSlug) {
       setState(availability.state === "not-public" ? "not-found" : "unavailable");
       settleReadiness?.(true);

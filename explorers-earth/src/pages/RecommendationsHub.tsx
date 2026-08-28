@@ -17,6 +17,7 @@ import { selectCompletedAccount } from "../features/music/musicIdentityCoordinat
 import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
 import { computePinnedNavTabIds, getNavSlotExclusion, getVisibleNavTabIds, resolveAutoPinning } from "../utils/navPinning";
 import MusicNavLimitNotice from "../components/MusicNavLimitNotice";
+import { publicMusicClient } from "../features/music/publicMusicClient";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -902,6 +903,17 @@ const RecommendationsHub = () => {
   const accountCandidates = accountData?.usersPermissionsUser?.accounts;
   const selectedAccount = selectCompletedAccount(accountCandidates);
   const account = accountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedAccount?.documentId);
+  const [canonicalMusicAvailable, setCanonicalMusicAvailable] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCanonicalMusicAvailable(false);
+    if (account?.public_music === "Yes" && account?.documentId) {
+      publicMusicClient.discover(account.documentId, controller.signal)
+        .then(() => { if (!controller.signal.aborted) setCanonicalMusicAvailable(true); })
+        .catch(() => { if (!controller.signal.aborted) setCanonicalMusicAvailable(false); });
+    }
+    return () => controller.abort();
+  }, [account?.documentId, account?.public_music]);
   const accountDocumentId = account?.documentId;
 
   // Published-list counts per category — drives both the nav auto-ranking and the
@@ -960,7 +972,7 @@ const RecommendationsHub = () => {
 
   // Effective public-nav state, derived exactly like PublicNav (the live nav).
   const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);
-  const musicAvailable = account?.public_music === "Yes";
+  const musicAvailable = account?.public_music === "Yes" && canonicalMusicAvailable;
   const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap, { musicAvailable }), [account, countMap, musicAvailable]);
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
   const musicSlotExclusion = getNavSlotExclusion(account, "public_music", { musicAvailable });
