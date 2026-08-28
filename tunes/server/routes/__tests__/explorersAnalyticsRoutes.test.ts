@@ -157,8 +157,9 @@ describe("explorers analytics routes", () => {
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "other-account",
-        from: "2026-08-01T00:00:00.000Z",
-        to: "2026-08-31T23:59:59.999Z",
+        fromDate: "2026-08-01",
+        toDate: "2026-08-31",
+        timeZone: "America/New_York",
       });
 
     expect(response.status).toBe(403);
@@ -176,15 +177,16 @@ describe("explorers analytics routes", () => {
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
-        from: "2026-08-01T00:00:00.000Z",
-        to: "2026-08-31T23:59:59.999Z",
+        fromDate: "2026-08-01",
+        toDate: "2026-08-31",
+        timeZone: "America/New_York",
       });
 
     expect(response.status).toBe(200);
     expect(service.readAccountEvents).toHaveBeenCalledWith({
       accountId: "account-1",
-      from: "2026-08-01T00:00:00.000Z",
-      to: "2026-08-31T23:59:59.999Z",
+      from: "2026-08-01T04:00:00.000Z",
+      to: "2026-09-01T03:59:59.999Z",
     });
     expect(response.body).toEqual({ events: [{ eventId: "evt-1" }] });
   });
@@ -193,7 +195,7 @@ describe("explorers analytics routes", () => {
     const { app, service, authorizeOwner } = buildApp();
     const response = await request(app)
       .get("/api/explorers/analytics/events")
-      .query({ accountId: "account-1", from: "not-a-date", to: "also-bad" });
+      .query({ accountId: "account-1", fromDate: "not-a-date", toDate: "also-bad", timeZone: "invalid" });
     expect(response.status).toBe(400);
     expect(authorizeOwner).not.toHaveBeenCalled();
     expect(service.readAccountEvents).not.toHaveBeenCalled();
@@ -201,12 +203,14 @@ describe("explorers analytics routes", () => {
 
   it.each([
     {
-      from: "2026-08-31T00:00:00.000Z",
-      to: "2026-08-01T00:00:00.000Z",
+      fromDate: "2026-08-31",
+      toDate: "2026-08-01",
+      timeZone: "America/New_York",
     },
     {
-      from: "2025-01-01T00:00:00.000Z",
-      to: "2026-08-01T00:00:00.000Z",
+      fromDate: "2025-01-01",
+      toDate: "2026-08-01",
+      timeZone: "America/New_York",
     },
   ])("rejects reversed or oversized analytics windows", async (scope) => {
     const { app, authorizeOwner } = buildApp();
@@ -215,6 +219,49 @@ describe("explorers analytics routes", () => {
       .query({ accountId: "account-1", ...scope });
     expect(response.status).toBe(400);
     expect(authorizeOwner).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["2026-08-15", "2026-11-15"],
+    ["2026-02-15", "2026-05-18"],
+  ])("accepts 93 calendar days across DST in America/New_York", async (fromDate, toDate) => {
+    const { app, service } = buildApp();
+    const response = await request(app)
+      .get("/api/explorers/analytics/events")
+      .query({ accountId: "account-1", fromDate, toDate, timeZone: "America/New_York" });
+
+    expect(response.status).toBe(200);
+    expect(service.readAccountEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["2026-08-15", "2026-11-16"],
+    ["2026-02-15", "2026-05-19"],
+  ])("rejects 94 calendar days across DST in America/New_York", async (fromDate, toDate) => {
+    const { app, service, authorizeOwner } = buildApp();
+    const response = await request(app)
+      .get("/api/explorers/analytics/events")
+      .query({ accountId: "account-1", fromDate, toDate, timeZone: "America/New_York" });
+
+    expect(response.status).toBe(400);
+    expect(authorizeOwner).not.toHaveBeenCalled();
+    expect(service.readAccountEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects a timezone alias that is not an IANA timezone", async () => {
+    const { app, service, authorizeOwner } = buildApp();
+    const response = await request(app)
+      .get("/api/explorers/analytics/events")
+      .query({
+        accountId: "account-1",
+        fromDate: "2026-08-01",
+        toDate: "2026-08-31",
+        timeZone: "EST",
+      });
+
+    expect(response.status).toBe(400);
+    expect(authorizeOwner).not.toHaveBeenCalled();
+    expect(service.readAccountEvents).not.toHaveBeenCalled();
   });
 
   it("returns a controlled 502 when authorization or scoped reads fail", async () => {
@@ -226,8 +273,9 @@ describe("explorers analytics routes", () => {
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
-        from: "2026-08-01T00:00:00.000Z",
-        to: "2026-08-31T23:59:59.999Z",
+        fromDate: "2026-08-01",
+        toDate: "2026-08-31",
+        timeZone: "America/New_York",
       });
     expect(authResponse.status).toBe(502);
 
@@ -239,8 +287,9 @@ describe("explorers analytics routes", () => {
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
-        from: "2026-08-01T00:00:00.000Z",
-        to: "2026-08-31T23:59:59.999Z",
+        fromDate: "2026-08-01",
+        toDate: "2026-08-31",
+        timeZone: "America/New_York",
       });
     expect(readResponse.status).toBe(502);
   });

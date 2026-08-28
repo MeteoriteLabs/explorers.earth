@@ -208,7 +208,7 @@ describe('explorersAnalyticsClient', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('reads only an authenticated account and server-side date range', async () => {
+  it('reads only an authenticated account with date-only values and an IANA timezone', async () => {
     const records = [{ Account_Id: 'account-1', Stats: [] }];
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ events: records }), {
@@ -220,8 +220,9 @@ describe('explorersAnalyticsClient', () => {
     const result = await readExplorersAnalyticsEvents(
       {
         accountId: 'account-1',
-        from: '2026-08-01T00:00:00.000Z',
-        to: '2026-08-24T23:59:59.999Z',
+        fromDate: '2026-08-01',
+        toDate: '2026-08-24',
+        timeZone: 'America/New_York',
         token: 'private-user-token',
       },
       { baseUrl: 'http://localhost:5000/', fetchImpl },
@@ -232,8 +233,9 @@ describe('explorersAnalyticsClient', () => {
     const parsed = new URL(url);
     expect(parsed.pathname).toBe('/api/explorers/analytics/events');
     expect(parsed.searchParams.get('accountId')).toBe('account-1');
-    expect(parsed.searchParams.get('from')).toBe('2026-08-01T00:00:00.000Z');
-    expect(parsed.searchParams.get('to')).toBe('2026-08-24T23:59:59.999Z');
+    expect(parsed.searchParams.get('fromDate')).toBe('2026-08-01');
+    expect(parsed.searchParams.get('toDate')).toBe('2026-08-24');
+    expect(parsed.searchParams.get('timeZone')).toBe('America/New_York');
     expect(init.headers).toEqual({ Authorization: 'Bearer private-user-token' });
     expect(url).not.toContain('private-user-token');
   });
@@ -244,13 +246,42 @@ describe('explorersAnalyticsClient', () => {
       readExplorersAnalyticsEvents(
         {
           accountId: 'account-1',
-          from: '2026-08-01T00:00:00.000Z',
-          to: '2026-08-24T23:59:59.999Z',
+          fromDate: '2026-08-01',
+          toDate: '2026-08-24',
+          timeZone: 'America/New_York',
           token: '',
         },
         { baseUrl: 'http://localhost:5000', fetchImpl },
       ),
     ).rejects.toThrow('authentication');
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('normalizes legacy instant callers to the date-only request boundary', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ events: [] }), { status: 200 }),
+    );
+
+    await readExplorersAnalyticsEvents(
+      {
+        accountId: 'account-1',
+        from: '2026-08-01T00:00:00.000Z',
+        to: '2026-08-24T23:59:59.999Z',
+        token: 'private-user-token',
+      },
+      { baseUrl: 'http://localhost:5000', fetchImpl },
+    );
+
+    const parsed = new URL(fetchImpl.mock.calls[0][0]);
+    const expectedDate = (value: string) => {
+      const date = new Date(value);
+      const pad = (part: number) => String(part).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    };
+    expect(parsed.searchParams.get('fromDate')).toBe('2026-08-01');
+    expect(parsed.searchParams.get('toDate')).toBe(expectedDate('2026-08-24T23:59:59.999Z'));
+    expect(parsed.searchParams.get('timeZone')).toBe(
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
   });
 });

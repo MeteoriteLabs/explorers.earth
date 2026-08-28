@@ -6,27 +6,89 @@ import {
   type ExplorersAnalyticsService,
 } from "../services/explorers-analytics-service";
 
+const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}, "must be a canonical calendar date");
+
+const ianaTimeZones = new Set(Intl.supportedValuesOf("timeZone"));
+const timeZoneSchema = z.string().trim().min(1).max(128).refine(
+  (value) => value === "UTC" || ianaTimeZones.has(value),
+  "must be a valid IANA timezone",
+);
+
+const datePartsInZone = (date: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), second: get("second") };
+};
+
+const localDateTimeToInstant = (value: string, timeZone: string, endOfDay: boolean) => {
+  const [year, month, day] = value.split("-").map(Number);
+  const hour = endOfDay ? 23 : 0;
+  const minute = endOfDay ? 59 : 0;
+  const second = endOfDay ? 59 : 0;
+  const millisecond = endOfDay ? 999 : 0;
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+  const zoneParts = datePartsInZone(new Date(utcGuess), timeZone);
+  const observedAsUtc = Date.UTC(
+    zoneParts.year,
+    zoneParts.month - 1,
+    zoneParts.day,
+    zoneParts.hour,
+    zoneParts.minute,
+    zoneParts.second,
+    millisecond,
+  );
+  return new Date(utcGuess - (observedAsUtc - utcGuess));
+};
+
+const calendarDayIndex = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+};
+
 const readScopeSchema = z.object({
   accountId: z.string().trim().min(1).max(128),
-  from: z.string().datetime(),
-  to: z.string().datetime(),
-}).superRefine((scope, context) => {
-  const from = Date.parse(scope.from);
-  const to = Date.parse(scope.to);
-  const maxWindowMs = 93 * 24 * 60 * 60 * 1_000;
-  if (from > to) {
+  fromDate: dateOnlySchema,
+  toDate: dateOnlySchema,
+  timeZone: timeZoneSchema,
+}).transform((scope, context) => {
+  const inclusiveDays = Math.floor(
+    (calendarDayIndex(scope.toDate) - calendarDayIndex(scope.fromDate)) /
+      (24 * 60 * 60 * 1_000),
+  ) + 1;
+  if (inclusiveDays < 1) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["from"],
-      message: "from must not be after to",
+      path: ["fromDate"],
+      message: "fromDate must not be after toDate",
     });
-  } else if (to - from > maxWindowMs) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["from"],
-      message: "analytics window must not exceed 93 days",
-    });
+    return z.NEVER;
   }
+  if (inclusiveDays > 93) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["fromDate"],
+      message: "analytics window must not exceed 93 calendar days",
+    });
+    return z.NEVER;
+  }
+  return {
+    accountId: scope.accountId,
+    from: localDateTimeToInstant(scope.fromDate, scope.timeZone, false).toISOString(),
+    to: localDateTimeToInstant(scope.toDate, scope.timeZone, true).toISOString(),
+  };
 });
 
 export interface ExplorersAnalyticsRouteDependencies {
