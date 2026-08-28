@@ -1,14 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { Music2 } from "lucide-react";
 import SEO from "../../components/SEO";
-import {
-  publicMusicClient,
-  PublicMusicError,
-  type PublicMusicResource,
-} from "../../features/music/publicMusicClient";
+import { type PublicMusicResource } from "../../features/music/publicMusicClient";
 import { PublicMusicSections } from "../../features/music/components/PublicMusicSections";
-import { subscribeToPublicMusic } from "../../features/music/publicMusicLiveClient";
+import { usePublicMusicResource } from "../../features/music/usePublicMusicResource";
 
 type PublicMusicViewState = "loading" | "ready" | "not-found" | "rate-limited" | "unavailable";
 
@@ -123,68 +119,22 @@ function RateLimitedMusic({ retryAfterSeconds, onRetry }: { retryAfterSeconds: n
 export default function PublicMusic() {
   const { publicSlug } = useParams<{ publicSlug: string }>();
   const location = useLocation();
-  const [state, setState] = useState<PublicMusicViewState>(publicSlug ? "loading" : "not-found");
-  const [resource, setResource] = useState<PublicMusicResource>();
-  const [retryAfterSeconds, setRetryAfterSeconds] = useState(60);
-  const [attempt, setAttempt] = useState(0);
   const capability = publicSlug ? capabilityFromFragment(location.hash || window.location.hash) ?? retainedCapability(publicSlug) : undefined;
+  const revoke = useCallback(() => { if (publicSlug) forgetCapability(publicSlug); }, [publicSlug]);
 
   useEffect(() => {
     if (!publicSlug) return;
-    const controller = new AbortController();
     const fragment = location.hash || window.location.hash;
     const fragmentCapability = capabilityFromFragment(fragment);
     if (fragmentCapability) retainCapability(publicSlug, fragmentCapability);
-    const capability = fragmentCapability ?? retainedCapability(publicSlug);
     if (window.location.hash) {
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
     }
-    setResource(undefined);
-    setState("loading");
-    publicMusicClient.load(publicSlug, capability, controller.signal).then((value) => {
-      if (controller.signal.aborted) return;
-      setResource(value);
-      setState("ready");
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted) return;
-      if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") {
-        forgetCapability(publicSlug);
-        setState("not-found");
-      }
-      else if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") {
-        setRetryAfterSeconds(error.retryAfterSeconds ?? 60);
-        setState("rate-limited");
-      } else setState("unavailable");
-    });
-    return () => { controller.abort(); };
-  }, [attempt, location.hash, location.pathname, publicSlug]);
+  }, [location.hash, location.pathname, publicSlug]);
 
-  useEffect(() => {
-    if (!publicSlug || state !== "ready") return;
-    const controller = new AbortController();
-    const subscription = subscribeToPublicMusic({
-      publicSlug,
-      capability,
-      signal: controller.signal,
-      onInvalidate: async (signal) => {
-        try {
-          const value = await publicMusicClient.load(publicSlug, capability, signal);
-          if (signal.aborted) return;
-          setResource(value);
-          return { revision: value.revision };
-        } catch (error) {
-          if (signal.aborted) return;
-          if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") {
-            forgetCapability(publicSlug);
-            setResource(undefined);
-            setState("not-found");
-          }
-          throw error;
-        }
-      },
-    });
-    return () => { controller.abort(); subscription.unsubscribe(); };
-  }, [capability, publicSlug, state]);
+  const music = usePublicMusicResource({
+    publicSlug, capability, enabled: Boolean(publicSlug), disabledState: "not-found", onRevoked: revoke,
+  });
 
   return (
     <>
@@ -195,7 +145,7 @@ export default function PublicMusic() {
         noIndex={Boolean(capability)}
         noFollow={Boolean(capability)}
       />
-      <PublicMusicContent state={state} resource={resource} publicSlug={publicSlug} capability={capability} retryAfterSeconds={retryAfterSeconds} onRetry={() => setAttempt((value) => value + 1)} />
+      <PublicMusicContent state={music.state} resource={music.resource} publicSlug={publicSlug} capability={capability} retryAfterSeconds={music.retryAfterSeconds} onRetry={music.retry} />
     </>
   );
 }

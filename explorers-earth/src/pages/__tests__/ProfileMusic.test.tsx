@@ -5,6 +5,7 @@ import ProfileMusic from "../public/ProfileMusic";
 
 const load = vi.hoisted(() => vi.fn());
 const retry = vi.hoisted(() => vi.fn());
+const subscribe = vi.hoisted(() => vi.fn(() => ({ unsubscribe: vi.fn() })));
 vi.mock("../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../features/music/publicMusicClient", async (importOriginal) => ({
   ...(await importOriginal<object>()), publicMusicClient: { load },
@@ -16,6 +17,7 @@ vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({
     retry,
   }),
 }));
+vi.mock("../../features/music/publicMusicLiveClient", () => ({ subscribeToPublicMusic: subscribe }));
 
 const emptyResource = {
   version: "music-public-resource/v1", revision: 3, user: { username: "Alice", venueName: null },
@@ -27,7 +29,7 @@ const emptyResource = {
 };
 
 describe("ProfileMusic", () => {
-  beforeEach(() => { load.mockReset(); retry.mockReset(); });
+  beforeEach(() => { load.mockReset(); retry.mockReset(); subscribe.mockClear(); });
 
   it("loads by descriptor slug and settles profile-shell readiness exactly once", async () => {
     load.mockResolvedValue(emptyResource);
@@ -42,5 +44,21 @@ describe("ProfileMusic", () => {
     expect(load).toHaveBeenCalledWith("stable-public-slug", undefined, expect.any(AbortSignal));
     await waitFor(() => expect(settle).toHaveBeenCalledTimes(1));
     expect(settle).toHaveBeenCalledWith(true);
+  });
+
+  it("uses the shared live controller for canonical updates and revocation cleanup", async () => {
+    // Break caught: friendly Music remains a one-shot fetch while direct share updates live.
+    load.mockResolvedValueOnce(emptyResource).mockResolvedValueOnce({ ...emptyResource, revision: 4 });
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes>
+      <Route path=":username" element={<Outlet />}><Route path="music" element={<ProfileMusic />} /></Route>
+    </Routes></MemoryRouter>);
+    await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
+    expect(subscribe.mock.calls[0][0]).toMatchObject({ publicSlug: "stable-public-slug", initialRevision: 3 });
+    const result = await subscribe.mock.calls[0][0].onInvalidate(new AbortController().signal);
+    expect(result.revision).toBe(4);
+    result.apply();
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    subscribe.mock.calls[0][0].onError(new (await import("../../features/music/publicMusicClient")).PublicMusicError("PUBLIC_NOT_FOUND"));
+    await screen.findByRole("heading", { name: "Music page unavailable" });
   });
 });

@@ -188,7 +188,9 @@ describe("public Music page", () => {
     render(<MemoryRouter initialEntries={["/music/share/public-slug"]}><Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes></MemoryRouter>);
     await waitFor(() => expect(subscribeToPublicMusic).toHaveBeenCalledOnce());
     const options = subscribeToPublicMusic.mock.calls[0][0];
-    await expect(options.onInvalidate(new AbortController().signal)).resolves.toEqual({ revision: 4 });
+    const update = await options.onInvalidate(new AbortController().signal);
+    expect(update.revision).toBe(4);
+    update.apply();
     expect(loadPublicMusic).toHaveBeenCalledTimes(2);
   });
 });
