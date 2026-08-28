@@ -894,27 +894,42 @@ describe("MusicDomainRepository owner predicates", () => {
     "allowQueueVisibility",
   ] as const;
 
-  function publicResourceHarness(mask: number, oversized = false) {
+  function publicResourceHarness(mask: number, options: {
+    oversized?: boolean;
+    internalIdOffset?: number;
+    playlistDescription?: string | null;
+    thumbnailUrl?: string;
+    duplicateQueue?: boolean;
+  } = {}) {
+    const {
+      oversized = false,
+      internalIdOffset = 0,
+      playlistDescription = null,
+      thumbnailUrl,
+      duplicateQueue = false,
+    } = options;
     const permissions = Object.fromEntries(permissionKeys.map((key, index) => [key, (mask & (1 << index)) !== 0])) as Record<typeof permissionKeys[number], boolean>;
-    const song = (id: number, status: "queued" | "playing" | "played" | "saved", position = 0) => ({
-      id,
-      youtube_id: `song${id}`.padEnd(11, "0").slice(0, 11),
-      title: oversized ? "T".repeat(1_024) : `${status} ${id}`,
+    const song = (contentId: number, status: "queued" | "playing" | "played" | "saved", position = 0) => ({
+      id: contentId + internalIdOffset,
+      youtube_id: `song${contentId}`.padEnd(11, "0").slice(0, 11),
+      title: oversized ? "T".repeat(1_024) : `${status} ${contentId}`,
       artist: oversized ? "A".repeat(1_024) : "Artist",
-      thumbnail_url: oversized ? `https://img.example/${"x".repeat(1_900)}${id}` : `https://img.example/${id}`,
+      thumbnail_url: thumbnailUrl ?? (oversized ? `https://img.example/${"x".repeat(1_900)}${contentId}` : `https://img.example/${contentId}`),
       position,
       status,
       played_at: status === "played" ? new Date("2026-08-28T12:00:00.000Z") : null,
     });
-    const queue = Array.from({ length: oversized ? 101 : 1 }, (_, index) => song(index + 10, "queued", index));
+    const queue = duplicateQueue
+      ? [song(10, "queued", 0), { ...song(10, "queued", 0), id: 11 + internalIdOffset }]
+      : Array.from({ length: oversized ? 101 : 1 }, (_, index) => song(index + 10, "queued", index));
     const history = Array.from({ length: oversized ? 51 : 1 }, (_, index) => song(index + 200, "played", index));
     const playlists = Array.from({ length: oversized ? 21 : 2 }, (_, playlistIndex) => {
       const privatePlaylist = !oversized && playlistIndex === 1;
       const songCount = oversized ? 51 : 1;
       return Array.from({ length: songCount }, (_, songIndex) => ({
-        playlist_internal_id: playlistIndex + 500,
+        playlist_internal_id: playlistIndex + 500 + internalIdOffset,
         playlist_name: privatePlaylist ? "Private playlist" : `Public playlist ${playlistIndex}`,
-        playlist_description: null,
+        playlist_description: playlistDescription,
         playlist_visible: !privatePlaylist,
         playlist_total: oversized ? 21 : 1,
         playlist_song_total: songCount,
@@ -982,7 +997,7 @@ describe("MusicDomainRepository owner predicates", () => {
 
   it("bounds every public collection before aggregation, hides nested authority, and caps encoded JSON", async () => {
     // Break caught: legacy oversized rows or an internal nested identifier can create an unbounded/authority-bearing public response.
-    const harness = publicResourceHarness(31, true);
+    const harness = publicResourceHarness(31, { oversized: true });
     const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
     const resource = result.resource;
     expect(resource.queue).toMatchObject({ total: 101, truncated: true });
@@ -1008,5 +1023,42 @@ describe("MusicDomainRepository owner predicates", () => {
       }
     };
     inspect(resource);
+  });
+
+  it("preserves empty descriptions and normalizes legacy non-URL thumbnails to null", async () => {
+    // Break caught: valid empty owner text or legacy thumbnail values turn a public resource into a 500/parser mismatch.
+    const harness = publicResourceHarness(31, { playlistDescription: "", thumbnailUrl: "legacy-thumbnail" });
+    const result = await (new MusicDomainRepository(harness.pool as never) as any).resolvePublicMusicResource("public-slug");
+
+    expect(result.resource.playlists.items[0].description).toBe("");
+    expect(result.resource.currentlyPlaying.thumbnailUrl).toBeNull();
+    expect(result.resource.queue.items[0].thumbnailUrl).toBeNull();
+    expect(result.resource.recentlyPlayed.items[0].thumbnailUrl).toBeNull();
+    expect(result.resource.playlists.items[0].songs.items[0].thumbnailUrl).toBeNull();
+
+    const canonicalHarness = publicResourceHarness(31, { thumbnailUrl: "HTTP://IMG.EXAMPLE/legacy cover" });
+    const canonical = await (new MusicDomainRepository(canonicalHarness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    expect(canonical.resource.currentlyPlaying.thumbnailUrl).toBe("http://img.example/legacy%20cover");
+
+    const credentialHarness = publicResourceHarness(31, { thumbnailUrl: "https://user:secret@img.example/cover" });
+    const credentialSafe = await (new MusicDomainRepository(credentialHarness.pool as never) as any).resolvePublicMusicResource("public-slug");
+    expect(credentialSafe.resource.currentlyPlaying.thumbnailUrl).toBeNull();
+  });
+
+  it("derives unique public content keys without numeric internal IDs", async () => {
+    // Break caught: low-entropy serial database IDs remain an oracle in otherwise opaque public keys.
+    const first = publicResourceHarness(31, { duplicateQueue: true });
+    const shifted = publicResourceHarness(31, { duplicateQueue: true, internalIdOffset: 10_000 });
+    const firstResource = (await (new MusicDomainRepository(first.pool as never) as any).resolvePublicMusicResource("public-slug")).resource;
+    const shiftedResource = (await (new MusicDomainRepository(shifted.pool as never) as any).resolvePublicMusicResource("public-slug")).resource;
+    const publicIds = (resource: any) => ({
+      current: resource.currentlyPlaying.id,
+      queue: resource.queue.items.map((song: any) => song.id),
+      history: resource.recentlyPlayed.items.map((song: any) => song.id),
+      playlists: resource.playlists.items.map((playlist: any) => ({ id: playlist.id, songs: playlist.songs.items.map((song: any) => song.id) })),
+    });
+
+    expect(publicIds(firstResource)).toEqual(publicIds(shiftedResource));
+    expect(new Set(firstResource.queue.items.map((song: any) => song.id)).size).toBe(2);
   });
 });

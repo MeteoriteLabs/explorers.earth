@@ -377,11 +377,12 @@ const paths = {
     get: {
       summary: "Read one strict bounded public Music resource",
       description: "Additive versioned resource for public or header-authorized unlisted access. Permission-protected fields are empty or null, collections are deterministically ordered and bounded, and the encoded response never exceeds 512 KiB. The legacy guest endpoint remains unchanged.",
-      security: [],
+      security: [{}, ...guestSecurity],
       parameters: [requestIdParameter, publicSlug, guestCapabilityOptional],
       responses: {
         "200": success("Strict music-public-resource/v1 snapshot. X-Robots-Tag is present only for unlisted capability access.", ref("PublicMusicResource"), { "X-Robots-Tag": { $ref: "#/components/headers/RobotsTag" } }),
         "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
+        "413": failure("The public resource exceeds its 512 KiB encoded contract.", ["PAYLOAD_TOO_LARGE"]),
         "429": failure("The public read rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
       },
@@ -570,7 +571,7 @@ export const MUSIC_OPENAPI_DOCUMENT = {
           youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" },
           title: { type: "string", minLength: 1, maxLength: 1_024 },
           artist: { type: "string", minLength: 1, maxLength: 1_024 },
-          thumbnailUrl: { type: "string", format: "uri", minLength: 1, maxLength: 2_048 },
+          thumbnailUrl: { type: ["string", "null"], format: "uri", minLength: 1, maxLength: 2_048 },
           position: { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
           status: { type: "string", enum: ["queued", "playing", "played", "saved"] },
           playedAt: { type: ["string", "null"], format: "date-time" },

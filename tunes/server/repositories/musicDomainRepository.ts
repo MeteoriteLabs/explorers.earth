@@ -30,7 +30,7 @@ export interface PublicMusicSong {
   youtubeId: string;
   title: string;
   artist: string;
-  thumbnailUrl: string;
+  thumbnailUrl: string | null;
   position: number;
   status: PublicMusicSongStatus;
   playedAt: string | null;
@@ -1164,7 +1164,7 @@ export class MusicDomainRepository {
             ORDER BY position,id LIMIT 1`,
           [owner.id],
         )).rows[0];
-        currentlyPlaying = row ? publicSongFromRow(publicSlug, "current", row, "playing") : null;
+        currentlyPlaying = row ? publicSongFromRow(publicSlug, "current", 0, row, "playing") : null;
       }
 
       let queueRows: any[] = [];
@@ -1184,7 +1184,7 @@ export class MusicDomainRepository {
         queueTotal = publicQueryTotal(queueRows, owner.queue_total);
       }
       const queueItems = queueRows.filter((row) => row.id !== null && row.id !== undefined).slice(0, 100)
-        .map((row) => publicSongFromRow(publicSlug, "queue", row, "queued"));
+        .map((row, ordinal) => publicSongFromRow(publicSlug, "queue", ordinal, row, "queued"));
 
       let historyRows: any[] = [];
       let historyTotal = 0;
@@ -1204,7 +1204,7 @@ export class MusicDomainRepository {
         historyTotal = publicQueryTotal(historyRows, owner.history_total);
       }
       const historyItems = historyRows.filter((row) => row.id !== null && row.id !== undefined).slice(0, 50)
-        .map((row) => publicSongFromRow(publicSlug, "history", row, "played"));
+        .map((row, ordinal) => publicSongFromRow(publicSlug, "history", ordinal, row, "played"));
 
       let playlistRows: any[] = [];
       let playlistTotal = 0;
@@ -1379,6 +1379,10 @@ function boundedPublicText(value: unknown, maxLength: number): string | undefine
   return typeof value === "string" && value.length >= 1 && value.length <= maxLength ? value : undefined;
 }
 
+function boundedPublicOptionalText(value: unknown, maxLength: number): string | undefined {
+  return typeof value === "string" && value.length <= maxLength ? value : undefined;
+}
+
 function boundedPublicTotal(value: unknown): number | undefined {
   const total = Number(value);
   return Number.isSafeInteger(total) && total >= 0 ? total : undefined;
@@ -1389,22 +1393,44 @@ function publicQueryTotal(rows: any[], fallback: unknown): number {
   return total ?? rows.filter((row) => row.id !== null && row.id !== undefined).length;
 }
 
-function publicOpaqueId(publicSlug: string, kind: string, internalId: unknown): string {
-  return createHash("sha256").update(`${publicSlug}\0${kind}\0${String(internalId)}`, "utf8").digest("base64url");
+function publicContentId(
+  publicSlug: string,
+  scope: string,
+  ordinal: number,
+  publicIdentity: readonly (string | number | null)[],
+): string {
+  return createHash("sha256")
+    .update(JSON.stringify([publicSlug, scope, ordinal, ...publicIdentity]), "utf8")
+    .digest("base64url");
+}
+
+function publicThumbnailUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length < 1 || value.length > 2_048) return null;
+  try {
+    const parsed = new URL(value);
+    const canonical = parsed.toString();
+    return (parsed.protocol === "https:" || parsed.protocol === "http:")
+      && parsed.username.length === 0 && parsed.password.length === 0 && canonical.length <= 2_048
+      ? canonical
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function publicSongFromRow(
   publicSlug: string,
-  kind: string,
+  scope: string,
+  ordinal: number,
   row: any,
   status: PublicMusicSongStatus,
 ): PublicMusicSong {
   const youtubeId = boundedPublicText(row.youtube_id ?? row.youtubeId, 11);
   const title = boundedPublicText(row.title, 1_024);
   const artist = boundedPublicText(row.artist, 1_024);
-  const thumbnailUrl = boundedPublicText(row.thumbnail_url ?? row.thumbnailUrl, 2_048);
+  const thumbnailUrl = publicThumbnailUrl(row.thumbnail_url ?? row.thumbnailUrl);
   const position = boundedPublicTotal(row.position);
-  if (!youtubeId || !/^[A-Za-z0-9_-]{11}$/.test(youtubeId) || !title || !artist || !thumbnailUrl || position === undefined) {
+  if (!youtubeId || !/^[A-Za-z0-9_-]{11}$/.test(youtubeId) || !title || !artist || position === undefined) {
     throw new Error("The public Music song projection is invalid.");
   }
   const rawPlayedAt = row.played_at ?? row.playedAt;
@@ -1413,7 +1439,7 @@ function publicSongFromRow(
     : null;
   if (status === "played" && !playedAt) throw new Error("The public Music history projection is invalid.");
   return {
-    id: publicOpaqueId(publicSlug, kind, row.id),
+    id: publicContentId(publicSlug, scope, ordinal, [youtubeId, title, artist, thumbnailUrl, position, status, playedAt ?? null]),
     youtubeId,
     title,
     artist,
@@ -1425,7 +1451,7 @@ function publicSongFromRow(
 }
 
 function publicPlaylistsFromRows(publicSlug: string, rows: any[]): PublicMusicPlaylist[] {
-  const grouped = new Map<unknown, { playlist: PublicMusicPlaylist; total: number }>();
+  const grouped = new Map<unknown, { playlist: PublicMusicPlaylist; total: number; ordinal: number }>();
   for (const row of rows) {
     const internalId = row.playlist_internal_id;
     if (internalId === null || internalId === undefined || row.playlist_visible !== true) continue;
@@ -1434,16 +1460,18 @@ function publicPlaylistsFromRows(publicSlug: string, rows: any[]): PublicMusicPl
       const name = boundedPublicText(row.playlist_name, 120);
       let description: string | null = null;
       if (row.playlist_description !== null) {
-        const boundedDescription = boundedPublicText(row.playlist_description, 2_000);
-        if (!boundedDescription) throw new Error("The public Music playlist projection is invalid.");
+        const boundedDescription = boundedPublicOptionalText(row.playlist_description, 2_000);
+        if (boundedDescription === undefined) throw new Error("The public Music playlist projection is invalid.");
         description = boundedDescription;
       }
       if (!name) throw new Error("The public Music playlist projection is invalid.");
       const total = boundedPublicTotal(row.playlist_song_total) ?? 0;
+      const ordinal = grouped.size;
       entry = {
         total,
+        ordinal,
         playlist: {
-          id: publicOpaqueId(publicSlug, "playlist", internalId),
+          id: publicContentId(publicSlug, "playlist", ordinal, [name, description]),
           name,
           description,
           songs: { items: [], total, truncated: total > 0 },
@@ -1453,7 +1481,13 @@ function publicPlaylistsFromRows(publicSlug: string, rows: any[]): PublicMusicPl
     }
     const current = entry!;
     if (row.id !== null && row.id !== undefined && current.playlist.songs.items.length < 50) {
-      current.playlist.songs.items.push(publicSongFromRow(publicSlug, `playlist:${internalId}`, row, "saved"));
+      current.playlist.songs.items.push(publicSongFromRow(
+        publicSlug,
+        `playlist:${current.ordinal}`,
+        current.playlist.songs.items.length,
+        row,
+        "saved",
+      ));
       current.playlist.songs.truncated = current.total > current.playlist.songs.items.length;
     }
   }

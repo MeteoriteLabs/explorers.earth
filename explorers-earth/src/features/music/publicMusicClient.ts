@@ -22,7 +22,7 @@ const publicMusicSongSchema = z.object({
   youtubeId: youtubeIdSchema,
   title: z.string().min(1).max(1_024),
   artist: z.string().min(1).max(1_024),
-  thumbnailUrl: z.string().url().max(2_048),
+  thumbnailUrl: z.string().url().max(2_048).refine((value) => value.startsWith("https://") || value.startsWith("http://")).nullable(),
   position: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   status: z.enum(["queued", "playing", "played", "saved"]),
   playedAt: dateTimeSchema.nullable(),
@@ -107,6 +107,9 @@ export type PublicMusicSong = z.infer<typeof publicMusicSongSchema>;
 export type PublicMusicPlaylist = z.infer<typeof publicMusicPlaylistSchema>;
 export type PublicMusicResource = z.infer<typeof publicMusicResourceSchema>;
 
+export { derivePublicMusicViewPolicy } from "./publicMusicViewPolicy";
+export type { PublicMusicViewPolicy } from "./publicMusicViewPolicy";
+
 export function parsePublicMusicDescriptor(value: unknown): PublicMusicDescriptor {
   return publicMusicDescriptorSchema.parse(value);
 }
@@ -133,6 +136,40 @@ function normalizedBaseUrl(value: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
+async function readBoundedPublicMusicBody(response: Response): Promise<string> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength !== null && /^\d+$/.test(contentLength)
+      && Number(contentLength) > PUBLIC_MUSIC_RESOURCE_MAX_BYTES) {
+    await response.body?.cancel();
+    throw new Error("oversized response");
+  }
+  if (!response.body) throw new Error("missing response body");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let byteLength = 0;
+  let body = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      byteLength += value.byteLength;
+      if (byteLength > PUBLIC_MUSIC_RESOURCE_MAX_BYTES) {
+        await reader.cancel();
+        throw new Error("oversized response");
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return body;
+  } catch (error) {
+    try { await reader.cancel(); } catch { /* the transport is already closed */ }
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export function createPublicMusicClient(baseUrl: string) {
   const base = normalizedBaseUrl(baseUrl);
   return {
@@ -151,9 +188,8 @@ export function createPublicMusicClient(baseUrl: string) {
         throw new PublicMusicError("RATE_LIMITED", Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : 60);
       }
       if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
-      const body = await response.text();
       try {
-        if (new TextEncoder().encode(body).byteLength > PUBLIC_MUSIC_RESOURCE_MAX_BYTES) throw new Error("oversized response");
+        const body = await readBoundedPublicMusicBody(response);
         return parsePublicMusicResource(JSON.parse(body));
       } catch {
         throw new PublicMusicError("PUBLIC_UNAVAILABLE");

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createPublicMusicClient, parsePublicMusicDescriptor, parsePublicMusicResource } from "../publicMusicClient";
+import {
+  createPublicMusicClient,
+  derivePublicMusicViewPolicy,
+  parsePublicMusicDescriptor,
+  parsePublicMusicResource,
+  PUBLIC_MUSIC_RESOURCE_MAX_BYTES,
+} from "../publicMusicClient";
 
 const publicSong = {
   id: "S".repeat(43), youtubeId: "abcdefghijk", title: "Song", artist: "Artist",
@@ -36,6 +42,26 @@ function success(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
 }
 
+function streamedSuccess(chunks: string[], contentLength?: string) {
+  const encoder = new TextEncoder();
+  let index = 0;
+  let cancelled = false;
+  const response = new Response(new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (index >= chunks.length) controller.close();
+      else controller.enqueue(encoder.encode(chunks[index++]));
+    },
+    cancel() { cancelled = true; },
+  }), {
+    status: 200,
+    headers: {
+      "content-type": "application/json",
+      ...(contentLength === undefined ? {} : { "content-length": contentLength }),
+    },
+  });
+  return { response, wasCancelled: () => cancelled };
+}
+
 describe("public Music client", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -48,6 +74,75 @@ describe("public Music client", () => {
     expect(() => parsePublicMusicDescriptor({ ...descriptor, publication: { ...descriptor.publication, publicSlug: "short" } })).toThrow();
     expect(() => parsePublicMusicDescriptor({ ...descriptor, publication: { ...descriptor.publication, revision: -1 } })).toThrow();
     expect(() => parsePublicMusicDescriptor({ ...descriptor, publication: { ...descriptor.publication, userId: 9 } })).toThrow();
+  });
+
+  it.each([
+    [0, false, false, false, false, false, false],
+    [1, true, false, false, false, false, false],
+    [2, false, true, false, false, false, true],
+    [3, true, true, false, false, false, true],
+    [4, false, false, true, false, false, false],
+    [5, true, false, true, false, false, false],
+    [6, false, true, true, false, false, true],
+    [7, true, true, true, false, false, true],
+    [8, false, false, false, true, false, false],
+    [9, true, false, false, true, false, false],
+    [10, false, true, false, true, false, true],
+    [11, true, true, false, true, false, true],
+    [12, false, false, true, true, false, false],
+    [13, true, false, true, true, false, false],
+    [14, false, true, true, true, false, true],
+    [15, true, true, true, true, false, true],
+    [16, false, false, false, false, true, true],
+    [17, true, false, false, false, true, true],
+    [18, false, true, false, false, true, true],
+    [19, true, true, false, false, true, true],
+    [20, false, false, true, false, true, true],
+    [21, true, false, true, false, true, true],
+    [22, false, true, true, false, true, true],
+    [23, true, true, true, false, true, true],
+    [24, false, false, false, true, true, true],
+    [25, true, false, false, true, true, true],
+    [26, false, true, false, true, true, true],
+    [27, true, true, false, true, true, true],
+    [28, false, false, true, true, true, true],
+    [29, true, false, true, true, true, true],
+    [30, false, true, true, true, true, true],
+    [31, true, true, true, true, true, true],
+  ] as const)("derives data visibility and interactivity independently for permission mask %i", (
+    mask,
+    requestEligible,
+    playerEligible,
+    playlistsVisible,
+    historyVisible,
+    queueVisible,
+    currentVisible,
+  ) => {
+    // Break caught: one permission grants another field/control, especially queue visibility granting playback.
+    const permissions = {
+      allowSongRequests: (mask & 1) !== 0,
+      allowGuestPlayOnDevice: (mask & 2) !== 0,
+      allowPlaylistSharing: (mask & 4) !== 0,
+      allowRecentlyPlayedVisibility: (mask & 8) !== 0,
+      allowQueueVisibility: (mask & 16) !== 0,
+    };
+    expect(derivePublicMusicViewPolicy({ ...publicResource, permissions })).toEqual({
+      requestEligible,
+      playerEligible,
+      playlistsVisible,
+      historyVisible,
+      queueVisible,
+      currentVisible,
+    });
+  });
+
+  it("requires exposed current-song data before current visibility or playback interactivity", () => {
+    // Break caught: playback permission alone renders a player without an exposed playable song.
+    expect(derivePublicMusicViewPolicy({
+      ...publicResource,
+      currentlyPlaying: null,
+      permissions: { ...publicResource.permissions, allowGuestPlayOnDevice: true, allowQueueVisibility: true },
+    })).toMatchObject({ requestEligible: true, playerEligible: false, currentVisible: false, queueVisible: true });
   });
 
   it("reads the additive versioned resource without owner authority or browser persistence", async () => {
@@ -105,6 +200,27 @@ describe("public Music client", () => {
     ]) expect(() => parsePublicMusicResource(malformed)).toThrow();
   });
 
+  it("accepts empty playlist descriptions and canonical nullable thumbnails", () => {
+    const legacySafeResource = {
+      ...publicResource,
+      currentlyPlaying: { ...publicResource.currentlyPlaying!, thumbnailUrl: null },
+      queue: { ...publicResource.queue, items: [{ ...publicSong, thumbnailUrl: null }] },
+      playlists: {
+        ...publicResource.playlists,
+        items: [{
+          ...publicResource.playlists.items[0],
+          description: "",
+          songs: { ...publicResource.playlists.items[0].songs, items: [{ ...publicResource.playlists.items[0].songs.items[0], thumbnailUrl: null }] },
+        }],
+      },
+    };
+    expect(parsePublicMusicResource(legacySafeResource)).toEqual(legacySafeResource);
+    expect(() => parsePublicMusicResource({
+      ...publicResource,
+      currentlyPlaying: { ...publicResource.currentlyPlaying!, thumbnailUrl: "legacy-thumbnail" },
+    })).toThrow();
+  });
+
   it("rejects oversized collections, invalid public song IDs/status, and inconsistent envelopes", () => {
     const queue101 = Array.from({ length: 101 }, (_, index) => ({
       ...publicSong, id: index.toString(36).padStart(43, "A"), position: index,
@@ -147,6 +263,33 @@ describe("public Music client", () => {
     await expect(client.load("public_slug-123")).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
     await expect(client.load("public_slug-123")).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
     await expect(client.load("public_slug-123")).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+  });
+
+  it("rejects oversized Content-Length before reading the response stream", async () => {
+    const streamed = streamedSuccess([JSON.stringify(publicResource)], String(PUBLIC_MUSIC_RESOURCE_MAX_BYTES + 1));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamed.response));
+
+    await expect(createPublicMusicClient("https://music.example").load("public_slug-123"))
+      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    expect(streamed.wasCancelled()).toBe(true);
+  });
+
+  it("cancels a chunked response as soon as a lying small Content-Length crosses the byte limit", async () => {
+    const streamed = streamedSuccess(["x".repeat(PUBLIC_MUSIC_RESOURCE_MAX_BYTES), "y", "unread-tail"], "1");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamed.response));
+
+    await expect(createPublicMusicClient("https://music.example").load("public_slug-123"))
+      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    expect(streamed.wasCancelled()).toBe(true);
+  });
+
+  it("counts multibyte UTF-8 bytes instead of JavaScript characters while streaming", async () => {
+    const streamed = streamedSuccess(["😀".repeat(70_000), "😀".repeat(70_000), "unread-tail"]);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamed.response));
+
+    await expect(createPublicMusicClient("https://music.example").load("public_slug-123"))
+      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    expect(streamed.wasCancelled()).toBe(true);
   });
 
   it("contains rate limits with parsed or default retry durations", async () => {

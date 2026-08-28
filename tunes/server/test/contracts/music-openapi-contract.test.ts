@@ -104,19 +104,25 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     });
     const publicResource = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/public-resource/v1/{publicSlug}"]?.get;
     expect(publicResource).toBeDefined();
-    expect(publicResource?.security).toEqual([]);
+    expect(publicResource?.security).toEqual([{}, { guestCapability: [] }]);
     expect(publicResource?.parameters).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: "publicSlug", in: "path", required: true }),
       expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: false }),
     ]));
-    expect(Object.keys(publicResource?.responses ?? {}).sort()).toEqual(["200", "404", "429", "500"]);
+    expect(Object.keys(publicResource?.responses ?? {}).sort()).toEqual(["200", "404", "413", "429", "500"]);
     expect(JSON.stringify(publicResource?.responses["200"])).toContain("music-public-resource/v1");
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicResource).toMatchObject({
       type: "object", additionalProperties: false,
       required: ["version", "revision", "user", "permissions", "currentlyPlaying", "queue", "recentlyPlayed", "playlists"],
     });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicSong).toMatchObject({ type: "object", additionalProperties: false });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicSong.properties.thumbnailUrl).toEqual({
+      type: ["string", "null"], format: "uri", minLength: 1, maxLength: 2_048,
+    });
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicPlaylist).toMatchObject({ type: "object", additionalProperties: false });
+    expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicPlaylist.properties.description).toEqual({
+      type: ["string", "null"], maxLength: 2_000,
+    });
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicSong)).not.toMatch(/userId|playlistId|documentId|capability|credential/);
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicPlaylist)).not.toMatch(/userId|playlistId|documentId|capability|credential/);
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/music/paid/import"].post.responses)).toContain("ENTITLEMENT_REQUIRED");

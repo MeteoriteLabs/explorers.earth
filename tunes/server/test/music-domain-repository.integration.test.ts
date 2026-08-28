@@ -193,6 +193,37 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     expect(await revision()).toBe(7);
   });
 
+  it("qualifies the bounded public history count and sort plan at 5,000 played rows", async () => {
+    const owner = await identities.ensureIdentity(identityInput("public-history-plan"));
+    await pool.query(`INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at)
+      SELECT $1,'perf'||lpad(series::text,7,'0'),'History '||series,'Artist','https://img/history',series,'played',
+             transaction_timestamp()-series*interval '1 second'
+        FROM generate_series(1,5000) series`, [owner.id]);
+
+    const explained = await pool.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON)
+      WITH total AS (
+        SELECT count(*)::integer AS total FROM songs WHERE user_id=$1 AND status='played'
+      ), bounded AS (
+        SELECT id,youtube_id,title,artist,thumbnail_url,position,status,played_at
+          FROM songs WHERE user_id=$1 AND status='played'
+         ORDER BY played_at DESC NULLS LAST,id DESC LIMIT 50
+      )
+      SELECT bounded.*,total.total FROM total LEFT JOIN bounded ON true
+       ORDER BY bounded.played_at DESC NULLS LAST,bounded.id DESC`, [owner.id]);
+    const document = explained.rows[0]["QUERY PLAN"][0] as { Plan: Record<string, unknown>; "Execution Time": number };
+    const nodes: Array<Record<string, unknown>> = [];
+    const visit = (node: Record<string, unknown>): void => {
+      nodes.push(node);
+      for (const child of (node.Plans ?? []) as Array<Record<string, unknown>>) visit(child);
+    };
+    visit(document.Plan);
+
+    expect(nodes.some((node) => node["Node Type"] === "Aggregate")).toBe(true);
+    expect(nodes.some((node) => node["Node Type"] === "Sort")).toBe(true);
+    expect(nodes.find((node) => node["Node Type"] === "Limit")?.["Actual Rows"]).toBe(50);
+    expect(document["Execution Time"]).toBeLessThan(1_000);
+  });
+
   it("serializes concurrent duplicate queue replacements and durably replays the exact result", async () => {
     // Break caught: two retries both delete/insert, or replay returns newly generated row IDs.
     const owner = await identities.ensureIdentity(identityInput("queue-replace"));

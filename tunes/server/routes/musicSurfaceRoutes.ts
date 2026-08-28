@@ -109,6 +109,8 @@ const OWNER_KEYS = new Set([
 const SAFE_REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const PUBLIC_DESCRIPTOR_PATH_PREFIX = "/api/music/public-profile/";
 const MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE = "malformed-account-document-id";
+const PUBLIC_RESOURCE_PATH_PREFIX = "/api/music/public-resource/v1/";
+const MALFORMED_PUBLIC_RESOURCE = "malformed-public-slug";
 
 export function isExactMusicOriginAllowed(req: Pick<Request, "get">, allowedOrigins: readonly string[]): boolean {
   const origin = req.get("origin");
@@ -185,7 +187,9 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       );
       const result = await dependencies.repository.resolvePublicMusicResource(req.params.publicSlug, capability);
       if (!result || !["public", "unlisted"].includes(result.state) || !result.resource) throw notFound();
-      if (Buffer.byteLength(JSON.stringify(result.resource), "utf8") > 512 * 1_024) throw new Error("Public Music resource exceeded its encoded limit.");
+      if (Buffer.byteLength(JSON.stringify(result.resource), "utf8") > 512 * 1_024) throw new MusicIdentityError(
+        "PAYLOAD_TOO_LARGE", 413, "The public Music resource exceeds its encoded limit.", "none", false,
+      );
       if (result.noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow");
       res.status(200).json(result.resource);
     } catch (error) { next(error); }
@@ -600,21 +604,21 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
 
   app.use((cause: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (res.headersSent) return;
-    const descriptorDecodeFailure = isPublicDescriptorDecodeFailure(cause, req);
-    const limited = descriptorDecodeFailure && (dependencies.publicRateLimited?.({
+    const malformedPublicResource = malformedPublicDecodeResource(cause, req);
+    const limited = malformedPublicResource !== undefined && (dependencies.publicRateLimited?.({
       source: publicRequestSource(req, dependencies),
       // A constant dimension prevents malformed encodings from manufacturing unbounded resource buckets.
-      resource: MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE,
+      resource: malformedPublicResource,
     }) ?? consumePublicSurfaceLimit({
       source: publicRequestSource(req, dependencies),
-      resource: MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE,
+      resource: malformedPublicResource,
     }));
     const error = limited
       ? new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60)
-      : descriptorDecodeFailure ? notFound() : safeRouteError(cause);
+      : malformedPublicResource !== undefined ? notFound() : safeRouteError(cause);
     if (error.status === 429 || error.status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
     const currentHeader = res.getHeader("X-Request-Id");
-    const supplied = descriptorDecodeFailure ? req.get("x-request-id") : undefined;
+    const supplied = malformedPublicResource !== undefined ? req.get("x-request-id") : undefined;
     const requestId = res.locals.musicRequestId
       ?? (typeof currentHeader === "string" ? currentHeader : undefined)
       ?? (supplied && SAFE_REQUEST_ID.test(supplied) ? supplied : undefined)
@@ -631,19 +635,25 @@ function publicRequestSource(req: Request, dependencies: CanonicalMusicRouteDepe
     : (peerAddress ?? "unknown");
 }
 
-function isPublicDescriptorDecodeFailure(cause: unknown, req: Request): boolean {
-  if (!(cause instanceof URIError) || req.method !== "GET") return false;
+function malformedPublicDecodeResource(cause: unknown, req: Request): string | undefined {
+  if (!(cause instanceof URIError) || req.method !== "GET") return undefined;
   const queryOffset = req.originalUrl.indexOf("?");
   const path = queryOffset === -1 ? req.originalUrl : req.originalUrl.slice(0, queryOffset);
-  if (!path.startsWith(PUBLIC_DESCRIPTOR_PATH_PREFIX)) return false;
-  const encodedAccountDocumentId = path.slice(PUBLIC_DESCRIPTOR_PATH_PREFIX.length);
-  if (encodedAccountDocumentId.length === 0 || encodedAccountDocumentId.includes("/")) return false;
-  try {
-    decodeURIComponent(encodedAccountDocumentId);
-    return false;
-  } catch (error) {
-    return error instanceof URIError;
+  for (const [prefix, resource] of [
+    [PUBLIC_DESCRIPTOR_PATH_PREFIX, MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE],
+    [PUBLIC_RESOURCE_PATH_PREFIX, MALFORMED_PUBLIC_RESOURCE],
+  ] as const) {
+    if (!path.startsWith(prefix)) continue;
+    const encodedSegment = path.slice(prefix.length);
+    if (encodedSegment.length === 0 || encodedSegment.includes("/")) return undefined;
+    try {
+      decodeURIComponent(encodedSegment);
+      return undefined;
+    } catch (error) {
+      return error instanceof URIError ? resource : undefined;
+    }
   }
+  return undefined;
 }
 
 /**

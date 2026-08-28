@@ -18,6 +18,7 @@ vi.mock("../../components/SEO", () => ({ default: () => null }));
 const playing = { id: "P".repeat(43), youtubeId: "abcdefghijk", title: "Now", artist: "Artist", thumbnailUrl: "https://images.example/now.jpg", position: 0, status: "playing" as const, playedAt: null };
 const queued = { ...playing, id: "Q".repeat(43), title: "Next", status: "queued" as const, position: 1 };
 const saved = { ...playing, id: "S".repeat(43), title: "North", artist: "Sky", status: "saved" as const };
+const played = { ...playing, id: "H".repeat(43), title: "Past", status: "played" as const, playedAt: "2026-08-28T10:00:00.000Z" };
 
 function resource(overrides: Partial<PublicMusicResource> = {}): PublicMusicResource {
   return {
@@ -67,6 +68,16 @@ describe("public Music page", () => {
     expect(screen.getByRole("heading", { name: "Roads" })).toBeInTheDocument();
     expect(screen.getByText("North")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("applies the permission policy even if protected collection data is supplied", () => {
+    render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
+      recentlyPlayed: { items: [played], total: 1, truncated: false },
+      playlists: { items: [{ id: "L".repeat(43), name: "Protected", description: null, songs: { items: [saved], total: 1, truncated: false } }], total: 1, truncated: false },
+    }) as PublicMusicResource} /></MemoryRouter>);
+
+    expect(screen.queryByText("Past")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Protected" })).not.toBeInTheDocument();
   });
 
   it("renders queue-visible current state without upgrading it to playback interactivity", () => {

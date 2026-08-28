@@ -764,6 +764,79 @@ describe("canonical Music REST surfaces", () => {
     expect(legacy.body).not.toHaveProperty("permissions");
   });
 
+  it("contains malformed public-resource path decoding as the same rate-limited public 404", async () => {
+    const lookup = vi.fn(async () => undefined);
+    const publicRateLimited = vi.fn(() => false);
+    const { app } = appFor({ resolvePublicMusicResource: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-resource/v1/%E0%A4%A")
+      .set("X-Request-Id", "resource-decode-request");
+
+    expect(response.status).toBe(404);
+    expect(response.headers["x-request-id"]).toBe("resource-decode-request");
+    expect(response.body.error).toMatchObject({ code: "PUBLIC_NOT_FOUND", requestId: "resource-decode-request" });
+    expect(publicRateLimited).toHaveBeenCalledTimes(1);
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "malformed-public-slug",
+    });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("rate limits malformed public-resource paths and replaces unsafe request IDs", async () => {
+    const lookup = vi.fn(async () => undefined);
+    const publicRateLimited = vi.fn(() => true);
+    const { app } = appFor({ resolvePublicMusicResource: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-resource/v1/%E0%A4%A")
+      .set("X-Request-Id", "unsafe request id");
+
+    expect(response.status).toBe(429);
+    expect(response.headers["retry-after"]).toBe("60");
+    expect(response.headers["x-request-id"]).toBe("route-request-id");
+    expect(response.body.error).toMatchObject({ code: "RATE_LIMITED", requestId: "route-request-id" });
+    expect(publicRateLimited).toHaveBeenCalledTimes(1);
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "malformed-public-slug",
+    });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("keeps downstream URIError on a valid public-resource path internal without double limiting", async () => {
+    const lookup = vi.fn(async () => { throw new URIError("resource-uri-secret"); });
+    const publicRateLimited = vi.fn(() => false);
+    const { app } = appFor({ resolvePublicMusicResource: lookup }, { publicRateLimited });
+    const response = await request(app).get("/api/music/public-resource/v1/public-owner")
+      .set("X-Request-Id", "resource-uri-request");
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toMatchObject({ code: "INTERNAL_ERROR", requestId: "resource-uri-request" });
+    expect(JSON.stringify(response.body)).not.toContain("resource-uri-secret");
+    expect(publicRateLimited).toHaveBeenCalledTimes(1);
+    expect(publicRateLimited).toHaveBeenCalledWith({
+      source: expect.stringMatching(/127\.0\.0\.1$/),
+      resource: "public-owner",
+    });
+    expect(lookup).toHaveBeenCalledWith("public-owner", undefined);
+  });
+
+  it("returns a typed 413 if a repository result exceeds the public resource byte contract", async () => {
+    const resource = {
+      version: "music-public-resource/v1" as const,
+      revision: 1,
+      user: { username: "x".repeat(512 * 1_024), venueName: null },
+      permissions: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
+      currentlyPlaying: null,
+      queue: { items: [], total: 0, truncated: false },
+      recentlyPlayed: { items: [], total: 0, truncated: false },
+      playlists: { items: [], total: 0, truncated: false },
+    };
+    const { app } = appFor({ resolvePublicMusicResource: vi.fn(async () => ({ state: "public", resource })) });
+    const response = await request(app).get("/api/music/public-resource/v1/public-owner");
+
+    expect(response.status).toBe(413);
+    expect(response.body.error).toMatchObject({ code: "PAYLOAD_TOO_LARGE", retryable: false });
+  });
+
   it("keeps every unavailable canonical public resource enumeration-safe and rate-limited before lookup", async () => {
     for (const state of [undefined, "private", "revoked", "suspended", "pending_deletion"] as const) {
       const lookup = vi.fn(async () => state ? { state } : undefined);
