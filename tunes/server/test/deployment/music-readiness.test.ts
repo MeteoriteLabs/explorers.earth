@@ -59,6 +59,14 @@ describe("Music liveness and readiness", () => {
       ...common,
       migrationState: async () => ({ ready: true, currentId: "0019_queue_visibility_control", currentChecksum: checksum }),
     })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
+    await expect(evaluateReadiness({
+      ...common,
+      migrationState: async () => ({
+        ready: true,
+        currentId: CURRENT_MIGRATION_MARKER,
+        currentChecksum: "0".repeat(64),
+      }),
+    })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
   });
 
   it("fails closed for a digest-mismatched attestation even when DB is reachable", async () => {

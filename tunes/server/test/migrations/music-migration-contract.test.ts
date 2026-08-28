@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -83,9 +85,62 @@ describe("Music migration authority contracts", () => {
     expect(migration?.sql).toMatch(/GRANT UPDATE\(public_snapshot_revision\) ON users TO music_runtime/i);
     expect(migration?.sql).not.toMatch(/music_queue_revision|DROP TABLE|DROP COLUMN|GRANT UPDATE ON users/i);
     expect(migrations.find(({ id }) => id === "0018_transactional_queue_replacement")?.checksum)
-      .toBe("52679c1bdbe2fde3f29312ccb060e563b1eb4beb09f8e4bcc133af55426bf291");
+      .toBe("f2afbacf1fea7edce6190620405d2b8ee7a50493f40eebdd00a8bee624b34461");
     expect(migrations.find(({ id }) => id === "0019_queue_visibility_control")?.checksum)
-      .toBe("04eab06a9f334b3e8174edf794c607344b5a00199d007a051dcf43e1809b4839");
+      .toBe("8f1889a1b5d9c2a292caded84cf64fd697629808b5eed07010b43f6d39eaa012");
+  });
+
+  it("uses canonical LF Git blobs as migration checksum authority on every checkout platform", () => {
+    // Break caught: Git checks SQL out with CRLF, so the raw-text migration
+    // loader produces a different journal checksum on Windows than Linux CI.
+    const expected = [
+      {
+        id: "0018_transactional_queue_replacement",
+        lf: "f2afbacf1fea7edce6190620405d2b8ee7a50493f40eebdd00a8bee624b34461",
+        crlf: "52679c1bdbe2fde3f29312ccb060e563b1eb4beb09f8e4bcc133af55426bf291",
+      },
+      {
+        id: "0019_queue_visibility_control",
+        lf: "8f1889a1b5d9c2a292caded84cf64fd697629808b5eed07010b43f6d39eaa012",
+        crlf: "04eab06a9f334b3e8174edf794c607344b5a00199d007a051dcf43e1809b4839",
+      },
+      {
+        id: "0020_public_snapshot_revision",
+        lf: "fcb3b932c7c5ea853bd14d8131bc100b898317bdd76c60e3f8386d4c8593ceee",
+        crlf: "e1731f20761f37d76ba45694f991bd2439a7624cd23cba97df0f35a39b4b83e4",
+      },
+    ] as const;
+    const migrations = new Map(loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"))
+      .map((migration) => [migration.id, migration]));
+    for (const authority of expected) {
+      const path = `tunes/migrations/${authority.id}.sql`;
+      const blob = execFileSync("git", ["show", `HEAD:${path}`], { cwd: repositoryRoot });
+      const lf = blob.toString("utf8");
+      const crlf = Buffer.from(lf.replace(/\r?\n/g, "\r\n"), "utf8");
+      const checksum = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
+      expect(lf).not.toContain("\r\n");
+      expect(checksum(blob)).toBe(authority.lf);
+      expect(checksum(crlf)).toBe(authority.crlf);
+      expect(authority.crlf).not.toBe(authority.lf);
+      expect(migrations.get(authority.id)?.checksum).toBe(authority.lf);
+      expect(migrations.get(authority.id)?.sql).toBe(lf);
+      const attributes = execFileSync("git", ["check-attr", "text", "eol", "--", path], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+      });
+      expect(attributes).toContain(`${path}: text: set`);
+      expect(attributes).toContain(`${path}: eol: lf`);
+      const normalizedObject = execFileSync("git", ["hash-object", "--path", path, "--stdin"], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        input: crlf,
+      }).trim();
+      const blobObject = execFileSync("git", ["rev-parse", `HEAD:${path}`], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+      }).trim();
+      expect(normalizedObject).toBe(blobObject);
+    }
   });
 
   it("defines one explicit ordered deployment marker authority", () => {
