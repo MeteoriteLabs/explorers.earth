@@ -3,9 +3,10 @@ import { PublicMusicError, publicMusicClient, type PublicMusicRequestVideo } fro
 
 type RequestClient = Pick<typeof publicMusicClient, "search" | "videoFromUrl" | "requestSong">;
 
-export function PublicMusicRequest({ publicSlug, capability, allowed, client = publicMusicClient, onOutcome }: {
+export function PublicMusicRequest({ publicSlug, capability, allowed, client = publicMusicClient, onOutcome, onCanonicalRevoked }: {
   publicSlug: string; capability?: string; allowed: boolean; client?: RequestClient;
   onOutcome?: (event: { action: "search" | "request"; outcome: "success" | "empty" | "invalid" | "rate_limited" | "queue_full" | "forbidden" | "unavailable" }) => void;
+  onCanonicalRevoked?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PublicMusicRequestVideo[]>([]);
@@ -51,6 +52,10 @@ export function PublicMusicRequest({ publicSlug, capability, allowed, client = p
     } catch (error) {
       setMessage(errorCopy(error));
       if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") setRetrySeconds(error.retryAfterSeconds ?? 60);
+      if (error instanceof PublicMusicError && (error.code === "REQUEST_FORBIDDEN" || error.code === "PUBLIC_NOT_FOUND")) {
+        setResults([]);
+        onCanonicalRevoked?.();
+      }
       onOutcome?.({ action: "request", outcome: normalizedOutcome(error) });
     }
     finally { setSubmitting(undefined); }

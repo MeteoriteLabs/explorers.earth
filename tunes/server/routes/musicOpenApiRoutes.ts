@@ -433,9 +433,9 @@ const paths = {
   "/api/playlist/{guestUrl}/youtube/search": {
     post: {
       summary: "Run bounded YouTube search for an authorized guest request",
-      description: "The per-slug capability is sent only in the header and is resolved with the slug before server-only lookup. No C5 owner credential or browser entitlement is accepted.",
-      security: guestSecurity,
-      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityRequired],
+      description: "Public publications work anonymously. Unlisted publications use the optional per-slug capability header, which is hashed and resolved with the slug. No C5 owner credential or browser entitlement is accepted.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional],
       requestBody: body(ref("YouTubeSearchInput"), "Bounded guest search query"),
       responses: {
         "200": success("Bounded guest search results.", ref("YouTubeSearchResponse")),
@@ -451,9 +451,9 @@ const paths = {
   "/api/playlist/{guestUrl}/youtube/video-from-url": {
     post: {
       summary: "Resolve one YouTube URL for an authorized guest request",
-      description: "The per-slug capability is sent only in the header and is resolved with the slug before server-only lookup. No C5 owner credential or browser entitlement is accepted.",
-      security: guestSecurity,
-      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityRequired],
+      description: "Public publications work anonymously. Unlisted publications use the optional per-slug capability header, which is hashed and resolved with the slug. No C5 owner credential or browser entitlement is accepted.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional],
       requestBody: body(ref("YouTubeUrlInput"), "Bounded guest YouTube URL"),
       responses: {
         "200": success("Resolved guest video.", ref("YouTubeVideo")),

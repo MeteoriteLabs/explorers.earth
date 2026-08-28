@@ -64,6 +64,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const client = { async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim(); calls.push(normalized);
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT id FROM users WHERE guest_url/.test(normalized)) return { rows: [{ id: 7 }], rowCount: 1 };
       if (/SELECT id,allow_song_requests/.test(normalized)) return { rows: [{ id: 7, allow_song_requests: true, guest_discoverable: true, guest_capability_hash: null }], rowCount: 1 };
       if (/SELECT request_hash,response_body FROM music_owner_operations/.test(normalized)) return { rows: receipt ? [receipt] : [], rowCount: receipt ? 1 : 0 };
       if (/WITH ordered AS/.test(normalized)) return { rows: [], rowCount: 0 };
@@ -85,6 +86,10 @@ describe("MusicDomainRepository owner predicates", () => {
       .resolves.toEqual({ status: "conflict" });
     expect({ queueInserts, queueRevisions, publicRevisions, notifications }).toEqual({ queueInserts: 1, queueRevisions: 1, publicRevisions: 1, notifications: 1 });
     expect(calls.filter((text) => text === "COMMIT")).toHaveLength(3);
+    expect(calls.findIndex((text) => text.includes("SELECT id FROM users WHERE guest_url")))
+      .toBeLessThan(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")));
+    expect(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")))
+      .toBeLessThan(calls.findIndex((text) => text.includes("SELECT id,allow_song_requests") && text.includes("FOR UPDATE")));
   });
   it("replays one owner playlist create after its response is lost", async () => {
     // Break caught: retrying an acknowledged-but-lost create response inserts a duplicate playlist.

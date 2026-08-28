@@ -1031,18 +1031,25 @@ export class MusicDomainRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      const resolved = (await client.query(
+        `SELECT id FROM users WHERE guest_url=$1 AND identity_status='active'
+           AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
+        [publicSlug, capabilityHash, capabilityValid],
+      )).rows[0];
+      if (!resolved) { await client.query("ROLLBACK"); return { status: "forbidden" }; }
+      const musicUserId = Number(resolved.id);
+      await client.query("SELECT pg_advisory_xact_lock($1,$2)", [QUEUE_MUTATION_LOCK, musicUserId]);
       const owner = (await client.query(
         `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash
            FROM users WHERE guest_url=$1 AND identity_status='active'
-             AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))
+              AND id=$4
+              AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))
            FOR UPDATE`,
-        [publicSlug, capabilityHash, capabilityValid],
+        [publicSlug, capabilityHash, capabilityValid, musicUserId],
       )).rows[0];
       const authorized = owner && owner.allow_song_requests === true && (owner.guest_discoverable === true
         || (capabilityValid && verifyGuestCapability(capability!, owner.guest_capability_hash)));
       if (!authorized) { await client.query("ROLLBACK"); return { status: "forbidden" }; }
-      const musicUserId = Number(owner.id);
-      await client.query("SELECT pg_advisory_xact_lock($1,$2)", [QUEUE_MUTATION_LOCK, musicUserId]);
       await client.query(
         `DELETE FROM music_owner_operations WHERE music_user_id=$1 AND operation LIKE $2 AND idempotency_key_hash=$3
            AND expires_at<=transaction_timestamp()`, [musicUserId, operation, keyHash],

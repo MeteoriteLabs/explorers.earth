@@ -31,7 +31,9 @@ function liveCanonicalOperations(): string[] {
       "strapi-identity-boundary", "local-music-owner", "paid-local-music-owner", "guest-capability",
     ].includes(route.classification) || route.path === "/api-docs"
       || route.path === "/api/music/public-profile/:accountDocumentId"
-      || route.path === "/api/music/public-resource/v1/:publicSlug")
+      || route.path === "/api/music/public-resource/v1/:publicSlug"
+      || route.path === "/api/playlist/:guestUrl/youtube/search"
+      || route.path === "/api/playlist/:guestUrl/youtube/video-from-url")
     .map((route) => `${route.method.toLowerCase()} ${openApiPath(route.path)}`)
     .sort();
 }
@@ -107,6 +109,12 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     const publicResource = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/public-resource/v1/{publicSlug}"]?.get;
     expect(publicResource).toBeDefined();
     expect(publicResource?.security).toEqual([{}, { guestCapability: [] }]);
+    for (const path of ["/api/playlist/{guestUrl}/youtube/search", "/api/playlist/{guestUrl}/youtube/video-from-url"] as const) {
+      const operation = MUSIC_OPENAPI_DOCUMENT.paths[path]?.post;
+      expect(operation?.security).toEqual([{}, { guestCapability: [] }]);
+      expect(operation?.parameters).toContainEqual(expect.objectContaining({ name: "X-Music-Guest-Capability", required: false }));
+      expect(JSON.stringify(operation)).toMatch(/Public publications work anonymously.*optional.*hashed/i);
+    }
     expect(publicResource?.parameters).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: "publicSlug", in: "path", required: true }),
       expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: false }),

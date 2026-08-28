@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient";
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
 import { PublicMusicPlayer } from "./PublicMusicPlayer";
@@ -58,11 +58,14 @@ function SongRow({ song, playable = false, selected = false, onSelect }: {
   );
 }
 
-export function PublicMusicSections({ resource, publicSlug, capability, headingId = "public-music-heading" }: { resource: PublicMusicResource; publicSlug?: string; capability?: string; headingId?: string }) {
+export function PublicMusicSections({ resource, publicSlug, capability, headingId = "public-music-heading", onReconcile, requestClient }: { resource: PublicMusicResource; publicSlug?: string; capability?: string; headingId?: string; onReconcile?: () => void; requestClient?: ComponentProps<typeof PublicMusicRequest>["client"] }) {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [revocationAnnouncement, setRevocationAnnouncement] = useState("");
   const playerHasFocus = useRef(false);
   const previousPlayerEligible = useRef(false);
+  const requestHasFocus = useRef(false);
+  const previousRequestEligible = useRef(false);
+  const [requestRevoked, setRequestRevoked] = useState(false);
   const policy = derivePublicMusicViewPolicy(resource);
   const playableSong = policy.playerEligible
     ? resource.currentlyPlaying
@@ -79,7 +82,8 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
     ]
     : [];
   const selectedSong = selectableSongs.find(({ id }) => id === selectedSongId) ?? playableSong;
-  const hasVisibleContent = (policy.requestEligible && Boolean(publicSlug))
+  const requestEligible = policy.requestEligible && Boolean(publicSlug) && !requestRevoked;
+  const hasVisibleContent = requestEligible
     || policy.currentVisible
     || (policy.queueVisible && resource.queue.items.length > 0)
     || (policy.historyVisible && resource.recentlyPlayed.items.length > 0)
@@ -94,6 +98,19 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
     setRevocationAnnouncement("Playback on this device is no longer available.");
     document.getElementById(headingId)?.focus();
   }, [headingId, policy.playerEligible]);
+  useLayoutEffect(() => {
+    const revoked = previousRequestEligible.current && !requestEligible;
+    previousRequestEligible.current = requestEligible;
+    if (!revoked) return;
+    setRevocationAnnouncement("Song requests are no longer available.");
+    if (!requestHasFocus.current) return;
+    requestHasFocus.current = false;
+    document.getElementById(headingId)?.focus();
+  }, [headingId, requestEligible]);
+  const revokeRequest = () => {
+    setRequestRevoked(true);
+    onReconcile?.();
+  };
   const revocationStatus = revocationAnnouncement
     ? <p role="status" aria-live="polite" className="sr-only">{revocationAnnouncement}</p>
     : null;
@@ -111,7 +128,7 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
 
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
-      {policy.requestEligible && publicSlug ? <PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed /> : null}
+      {requestEligible && publicSlug ? <div onFocusCapture={() => { requestHasFocus.current = true; }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; }}><PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed client={requestClient} onCanonicalRevoked={revokeRequest} /></div> : null}
       {playableSong ? (
         <section
           className="min-w-0"

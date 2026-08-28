@@ -161,6 +161,27 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       .resolves.toMatchObject({ status: "completed", replayed: false });
   });
 
+  it.each(["replace", "append", "add"] as const)("serializes guest requests with owner %s mutations without deadlock", async (kind) => {
+    const owner = await identities.ensureIdentity(identityInput(`guest-owner-lock-${kind}`));
+    await pool.query("UPDATE users SET guest_discoverable=true,allow_song_requests=true WHERE id=$1", [owner.id]);
+    const playlist = await domain.createPlaylist(owner.id, { name: `Lock ${kind}`, description: null }) as { id: number };
+    const saved = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: `saved${kind}01`.padEnd(11, "x").slice(0, 11), title: "Saved", artist: "Owner", thumbnailUrl: "https://img/saved" }) as { id: number };
+    const revision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const ownerMutation = kind === "replace"
+      ? domain.replaceQueue(owner.id, `owner-${kind}`, revision, [{ playlistId: playlist.id, songId: saved.id }])
+      : kind === "append"
+        ? domain.appendQueue(owner.id, `owner-${kind}`, revision, [{ playlistId: playlist.id, songId: saved.id }])
+        : domain.addSong(owner.id, { youtubeId: "owneradd001", title: "Owner", artist: "Owner", thumbnailUrl: "https://img/owner" });
+    const guestMutation = domain.addGuestSongIdempotent(`c6-public-guest-owner-lock-${kind}`, undefined, `198.51.100.${kind.length}`, `guest-lock-${kind}`, { youtubeId: `guest${kind}1`.padEnd(11, "x").slice(0, 11), title: "Guest", artist: "Guest", thumbnailUrl: "https://img/guest" });
+    const results = await Promise.race([
+      Promise.allSettled([ownerMutation, guestMutation]),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`guest/${kind} lock order timed out`)), 5_000)),
+    ]);
+    expect(results.every((result) => result.status === "fulfilled")).toBe(true);
+    expect((results[1] as PromiseFulfilledResult<Awaited<typeof guestMutation>>).value).toMatchObject({ status: "completed" });
+    expect(Number((await pool.query("SELECT count(*) FROM songs WHERE user_id=$1 AND status IN ('queued','playing')", [owner.id])).rows[0].count)).toBeGreaterThan(0);
+  });
+
   it("advances one public snapshot revision per committed visible mutation and never for no-op, replay, stale, conflict, or lifecycle replay", async () => {
     // Break caught: descriptor/resource/event cursors can advance independently or spend revisions on rejected commands.
     const owner = await identities.ensureIdentity(identityInput("public-revision-oracle"));

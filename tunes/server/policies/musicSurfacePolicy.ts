@@ -117,7 +117,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.path === "/api/music/publication" || route.path === "/api/music/queue/replace" || route.path === "/api/music/queue/append") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
   if (route.path === "/api/playlist/:guestUrl/requests") return "guest";
-  if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "guest";
+  if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "public";
   if (PUBLIC_PATHS.has(route.path) || route.classification === "public") return "public";
   if (route.path.startsWith("/api/admin/")) return "admin-tombstone";
   if (route.path === "/graphql" || route.path === "/api/strapi/graphql"

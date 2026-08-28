@@ -103,4 +103,16 @@ describe("PublicMusicRequest", () => {
       expect(screen.getByRole("button", { name: "Request Song by Artist" })).toBeEnabled();
     } finally { vi.useRealTimers(); }
   });
+
+  it("clears stale results and signals canonical reconciliation when submission is forbidden", async () => {
+    const onCanonicalRevoked = vi.fn();
+    const client = { search: vi.fn().mockResolvedValue({ items: [video], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn().mockRejectedValue(new PublicMusicError("REQUEST_FORBIDDEN")) };
+    render(<PublicMusicRequest publicSlug="public_slug-123" allowed client={client as never} onCanonicalRevoked={onCanonicalRevoked} />);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "song");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    await screen.findByText("Song requests are no longer available.");
+    expect(screen.queryByRole("list", { name: "Song search results" })).not.toBeInTheDocument();
+    expect(onCanonicalRevoked).toHaveBeenCalledTimes(1);
+  });
 });

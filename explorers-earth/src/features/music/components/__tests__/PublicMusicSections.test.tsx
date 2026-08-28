@@ -1,8 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
-import type { PublicMusicResource, PublicMusicSong } from "../../publicMusicClient";
+import { PublicMusicError, type PublicMusicResource, type PublicMusicSong } from "../../publicMusicClient";
 import { PublicMusicSections } from "../PublicMusicSections";
 
 const mediaRenders = vi.hoisted(() => [] as Array<{ src: string; playing: boolean }>);
@@ -70,6 +70,18 @@ function populatedResource(mask: number): PublicMusicResource {
 }
 
 describe("PublicMusicSections permission oracle", () => {
+  it("reconciles request revocation, unmounts stale controls, and restores contained focus", async () => {
+    const onReconcile = vi.fn();
+    const requestClient = { search: vi.fn().mockResolvedValue({ items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } }], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn().mockRejectedValue(new PublicMusicError("PUBLIC_NOT_FOUND")) };
+    render(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><button type="button">Outside</button><PublicMusicSections resource={populatedResource(1)} publicSlug="public-owner" onReconcile={onReconcile} requestClient={requestClient as never} /></>);
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "song");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Song requests are no longer available");
+    expect(screen.queryByLabelText("Search for a song or paste a YouTube URL")).not.toBeInTheDocument();
+    expect(onReconcile).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Music" })).toHaveFocus());
+  });
   it.each(Array.from({ length: 32 }, (_, mask) => [mask]))(
     "renders only permitted data and interactivity for mask %i",
     (mask) => {
@@ -187,6 +199,24 @@ describe("PublicMusicSections permission oracle", () => {
 
     expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
     expect(screen.queryByText("Playback on this device is no longer available.")).not.toBeInTheDocument();
+  });
+
+  it("announces canonical request permission revocation and preserves outside focus", () => {
+    const initial = populatedResource(1 | 4);
+    const { rerender } = render(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><button type="button">Outside</button><PublicMusicSections resource={initial} publicSlug="public-owner" /></>);
+    screen.getByRole("button", { name: "Outside" }).focus();
+    rerender(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><button type="button">Outside</button><PublicMusicSections resource={{ ...initial, revision: 8, permissions: { ...initial.permissions, allowSongRequests: false } }} publicSlug="public-owner" /></>);
+    expect(screen.queryByLabelText("Search for a song or paste a YouTube URL")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Song requests are no longer available.");
+    expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
+  });
+
+  it("moves contained focus to the Music heading when canonical request permission is revoked", () => {
+    const initial = populatedResource(1 | 4);
+    const { rerender } = render(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><PublicMusicSections resource={initial} publicSlug="public-owner" /></>);
+    screen.getByLabelText("Search for a song or paste a YouTube URL").focus();
+    rerender(<><h1 id="public-music-heading" tabIndex={-1}>Music</h1><PublicMusicSections resource={{ ...initial, revision: 8, permissions: { ...initial.permissions, allowSongRequests: false } }} publicSlug="public-owner" /></>);
+    expect(screen.getByRole("heading", { name: "Music" })).toHaveFocus();
   });
 
   it("uses one page-level empty state instead of stacking enabled-empty messages", () => {

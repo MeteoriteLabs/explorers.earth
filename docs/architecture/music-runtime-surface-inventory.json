@@ -853,9 +853,9 @@
     {
       "method": "POST",
       "path": "/api/playlist/:guestUrl/youtube/search",
-      "classification": "guest-capability",
-      "ownerSource": "hashed-guest-capability",
-      "policy": "hashed-capability+guest-allowlist",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "line": 566
@@ -863,9 +863,9 @@
     {
       "method": "POST",
       "path": "/api/playlist/:guestUrl/youtube/video-from-url",
-      "classification": "guest-capability",
-      "ownerSource": "hashed-guest-capability",
-      "policy": "hashed-capability+guest-allowlist",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "line": 580
