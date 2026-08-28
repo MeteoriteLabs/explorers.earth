@@ -4,6 +4,7 @@ import type { Express } from "express";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError";
 import { MusicPrincipalError, type MusicPrincipal, type MusicSocketCredentialContext } from "../middleware/musicPrincipal";
+import type { PublicMusicInvalidationKind } from "../repositories/publicMusicRevision";
 
 interface OwnerCredentialVerifier {
   handshake(input: { token: string }): Promise<MusicSocketCredentialContext>;
@@ -55,6 +56,22 @@ export class MusicOwnerSocketRegistry {
   }
 }
 
+type PublicMusicChange = { musicUserId: number; kind: PublicMusicInvalidationKind; revision: number };
+
+export class MusicPublicSocketRegistry {
+  private publishChange: ((change: PublicMusicChange) => Promise<void>) | undefined;
+
+  bind(publish: (change: PublicMusicChange) => Promise<void>): void {
+    if (this.publishChange) throw new Error("Music public socket registry is already bound");
+    this.publishChange = publish;
+  }
+
+  async publish(change: PublicMusicChange): Promise<void> {
+    if (!this.publishChange) throw new Error("Music public socket registry is unavailable");
+    await this.publishChange(change);
+  }
+}
+
 export interface MusicSocketDependencies {
   allowedOrigins: string[];
   ownerCredentials: OwnerCredentialVerifier;
@@ -63,15 +80,21 @@ export interface MusicSocketDependencies {
     active: boolean;
     allowSongRequests: boolean;
   } | undefined>;
+  resolvePublicMusicAuthority?(publicSlug: string, capability?: string): Promise<{
+    musicUserId: number;
+    active: boolean;
+  } | undefined>;
   eventLimit?: number;
   eventWindowMs?: number;
   eventRateMaxEntries?: number;
   ownerRegistry?: MusicOwnerSocketRegistry;
+  publicRegistry?: MusicPublicSocketRegistry;
 }
 
 type SocketAuthority =
   | { role: "owner"; musicUserId: number; owner: MusicSocketCredentialContext; rateKey: string }
-  | { role: "guest"; musicUserId: number; capability: string; rateKey: string };
+  | { role: "guest"; musicUserId: number; capability: string; rateKey: string }
+  | { role: "public"; musicUserId: number; publicSlug: string; capability?: string; rateKey: string };
 
 export class BoundedSocketEventLimiter {
   private readonly entries = new Map<string, { count: number; resetAt: number }>();
@@ -140,6 +163,16 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
     },
     async () => { io.disconnectSockets(true); },
   );
+  dependencies.publicRegistry?.bind(async ({ musicUserId, kind, revision }) => {
+    const recipients = await io.in(`music-public:${musicUserId}`).fetchSockets();
+    await Promise.all(recipients.map(async (recipient) => {
+      const authority = recipient.data.musicAuthority as SocketAuthority | undefined;
+      if (authority?.role !== "public") return;
+      const current = await dependencies.resolvePublicMusicAuthority?.(authority.publicSlug, authority.capability).catch(() => undefined);
+      recipient.emit("music_public_change", { version: "music-public-change/v1", kind, revision });
+      if (!current?.active || current.musicUserId !== musicUserId) recipient.disconnect(true);
+    }));
+  });
   const eventLimit = dependencies.eventLimit ?? 10;
   const eventWindowMs = dependencies.eventWindowMs ?? 60_000;
   const limiter = new BoundedSocketEventLimiter({
@@ -154,6 +187,10 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       if (authority.role === "owner") {
         const principal = await dependencies.ownerCredentials.recheck(authority.owner);
         return principal.musicUserId === authority.musicUserId;
+      }
+      if (authority.role === "public") {
+        const publication = await dependencies.resolvePublicMusicAuthority?.(authority.publicSlug, authority.capability);
+        return publication?.active === true && publication.musicUserId === authority.musicUserId;
       }
       const guest = await dependencies.resolveGuestCapability(authority.capability);
       return guest?.active === true && guest.musicUserId === authority.musicUserId;
@@ -191,7 +228,8 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       const auth = socket.handshake.auth;
       const token = typeof auth?.token === "string" ? auth.token : undefined;
       const capability = typeof auth?.guestCapability === "string" ? auth.guestCapability : undefined;
-      if ((token ? 1 : 0) + (capability ? 1 : 0) !== 1) throw new MusicPrincipalError("TOKEN_INVALID", 401, "A single Music socket credential is required.");
+      const publicSlug = typeof auth?.publicSlug === "string" ? auth.publicSlug : undefined;
+      if ((token ? 1 : 0) + (publicSlug ? 1 : 0) + (!publicSlug && capability ? 1 : 0) !== 1) throw new MusicPrincipalError("TOKEN_INVALID", 401, "A single Music socket credential is required.");
       let authority: SocketAuthority;
       if (token) {
         const owner = await dependencies.ownerCredentials.handshake({ token });
@@ -200,6 +238,15 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
           musicUserId: owner.principal.musicUserId,
           owner,
           rateKey: `owner:${owner.principal.subject}`,
+        };
+      } else if (publicSlug) {
+        if (!/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug)
+            || capability !== undefined && !/^[A-Za-z0-9_-]{43}$/.test(capability)) throw guestInvalid();
+        const publication = await dependencies.resolvePublicMusicAuthority?.(publicSlug, capability);
+        if (!publication?.active) throw guestInvalid();
+        authority = {
+          role: "public", musicUserId: publication.musicUserId, publicSlug, capability,
+          rateKey: `public:${createHash("sha256").update(`${publicSlug}:${capability ?? "public"}`).digest("hex")}`,
         };
       } else {
         if (!capability || !/^[A-Za-z0-9_-]{43}$/.test(capability)) throw guestInvalid();
@@ -232,7 +279,7 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       || dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch) === true;
     const room = authority.role === "owner"
       ? `music-owner:${authority.musicUserId}`
-      : `music-guest:${authority.musicUserId}`;
+      : authority.role === "guest" ? `music-guest:${authority.musicUserId}` : `music-public:${authority.musicUserId}`;
     const ownerEpoch = authority.role === "owner"
       ? dependencies.ownerRegistry?.captureEpoch(authority.musicUserId)
       : undefined;

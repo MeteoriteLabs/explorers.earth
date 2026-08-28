@@ -1366,6 +1366,28 @@ export class MusicDomainRepository {
     });
   }
 
+  async resolvePublicMusicSocketAuthority(publicSlug: string, capability?: string): Promise<{
+    musicUserId: number;
+    active: boolean;
+  } | undefined> {
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug)) return undefined;
+    const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+    const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
+    const row = (await this.pool.query(
+      `SELECT id,identity_status,guest_discoverable,guest_capability_hash,guest_capability_revoked_at
+         FROM users
+        WHERE guest_url=$2
+          AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$1))
+        LIMIT 1`,
+      [capabilityHash, publicSlug, capabilityValid],
+    )).rows[0];
+    if (!row || row.identity_status !== "active") return undefined;
+    const publicAuthority = row.guest_discoverable === true;
+    const unlistedAuthority = row.guest_discoverable !== true && capabilityValid
+      && !row.guest_capability_revoked_at && verifyGuestCapability(capability!, row.guest_capability_hash);
+    return publicAuthority || unlistedAuthority ? { musicUserId: Number(row.id), active: true } : undefined;
+  }
+
   async resolveGuestResource(publicSlug: string, capability?: string) {
     const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
     const capabilityHash = capabilityValid

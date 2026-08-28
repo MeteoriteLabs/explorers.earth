@@ -416,6 +416,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/Loader.tsx
 !explorers-earth/src/components/LoadingSpinner.tsx
 !explorers-earth/src/components/MusicDashboard.tsx
+!explorers-earth/src/components/MusicNavLimitNotice.tsx
 !explorers-earth/src/components/MusicSubscriptionContainment.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
@@ -489,6 +490,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/contexts/DashboardThemeContext.tsx
 !explorers-earth/src/features/Analytics/api/queries.ts
 !explorers-earth/src/features/Analytics/components/AnalyticsDashboard.tsx
+!explorers-earth/src/features/Analytics/components/AnalyticsDateRangeControls.tsx
 !explorers-earth/src/features/Analytics/components/EmptyState.tsx
 !explorers-earth/src/features/Analytics/components/charts/ContentEngagementChart.tsx
 !explorers-earth/src/features/Analytics/components/charts/GuidesChart.tsx
@@ -805,7 +807,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/PublicHome.tsx
 !explorers-earth/src/features/PublicHome/components/PublicPlaceCard.tsx
 !explorers-earth/src/features/PublicHome/components/PublicProfile.tsx
+!explorers-earth/src/features/PublicHome/components/PublicProfileChromePrimitives.tsx
 !explorers-earth/src/features/PublicHome/components/PublicProfileFooter.tsx
+!explorers-earth/src/features/PublicHome/components/PublicProfileThemeProvider.tsx
 !explorers-earth/src/features/PublicHome/components/SafePublicRichText.tsx
 !explorers-earth/src/features/PublicHome/utils/publicProfileContent.ts
 !explorers-earth/src/features/Settings/Settings.tsx
@@ -815,6 +819,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Settings/components/BillingTab.tsx
 !explorers-earth/src/features/Settings/components/LanguageSelector.tsx
 !explorers-earth/src/features/Settings/components/ProfileAccountSettings.tsx
+!explorers-earth/src/features/music/PublicMusicAvailabilityProvider.tsx
 !explorers-earth/src/features/music/components/MusicGuestControls.tsx
 !explorers-earth/src/features/music/components/MusicHistory.tsx
 !explorers-earth/src/features/music/components/MusicPlayer.tsx
@@ -824,6 +829,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/components/MusicSectionTabs.css
 !explorers-earth/src/features/music/components/MusicSectionTabs.tsx
 !explorers-earth/src/features/music/components/MusicWorkspaceShell.tsx
+!explorers-earth/src/features/music/components/PublicMusicPlayer.tsx
+!explorers-earth/src/features/music/components/PublicMusicRequest.tsx
+!explorers-earth/src/features/music/components/PublicMusicSections.tsx
 !explorers-earth/src/features/music/components/musicPlaybackCommand.ts
 !explorers-earth/src/features/music/fixtureConsoleDiagnostics.ts
 !explorers-earth/src/features/music/musicApi.ts
@@ -831,6 +839,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/musicEntitlementContract.ts
 !explorers-earth/src/features/music/musicIdentityCoordinator.ts
 !explorers-earth/src/features/music/musicPublicationCommandRegistry.ts
+!explorers-earth/src/features/music/musicPublicationReadiness.ts
 !explorers-earth/src/features/music/musicQueueClient.ts
 !explorers-earth/src/features/music/musicRollout.ts
 !explorers-earth/src/features/music/musicSearchClient.ts
@@ -839,6 +848,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/musicState.ts
 !explorers-earth/src/features/music/musicWorkspaceClient.ts
 !explorers-earth/src/features/music/publicMusicClient.ts
+!explorers-earth/src/features/music/publicMusicLiveClient.ts
+!explorers-earth/src/features/music/publicMusicViewPolicy.ts
 !explorers-earth/src/hooks/useAIGuideQuota.ts
 !explorers-earth/src/hooks/useDeviceDetection.tsx
 !explorers-earth/src/hooks/useDistanceValidation.ts
@@ -945,6 +956,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/onboardingAccountDecision.ts
 !explorers-earth/src/pages/onboardingFinalizeLock.ts
 !explorers-earth/src/pages/public/PlaceDetailsPage.tsx
+!explorers-earth/src/pages/public/ProfileMusic.tsx
 !explorers-earth/src/pages/public/PublicHomePage.tsx
 !explorers-earth/src/pages/public/PublicMusic.tsx
 !explorers-earth/src/pages/public/PublicProfilePage.tsx
@@ -954,6 +966,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/routes/PublicRoutes.tsx
 !explorers-earth/src/routes/StatePreservingRedirect.tsx
 !explorers-earth/src/routes/validators/DashboardRouteValidator.tsx
+!explorers-earth/src/routes/validators/PublicMusicVisibilityBoundary.tsx
 !explorers-earth/src/routes/validators/TabVisibilityGuard.tsx
 !explorers-earth/src/routes/validators/UsernameRootRedirect.tsx
 !explorers-earth/src/routes/validators/UsernameValidator.tsx

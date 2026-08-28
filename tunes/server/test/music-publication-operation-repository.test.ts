@@ -28,6 +28,7 @@ function harness(
   idempotencyAuthorityTime: unknown = databaseOperationTime,
 ) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
+  let publicRevision = 0;
   const client = {
     async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim();
@@ -40,6 +41,9 @@ function harness(
       }
       if (normalized.startsWith("SELECT clock_timestamp()::text AS idempotency_authority_time")) {
         return { rows: [{ idempotency_authority_time: idempotencyAuthorityTime }], rowCount: 1 };
+      }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) {
+        return { rows: [{ public_snapshot_revision: ++publicRevision }], rowCount: 1 };
       }
       const handled = { rows: [], rowCount: 0, ...handler(normalized, values) };
       if (normalized.includes("AS global_active_count") && handled.rows.length === 0) {

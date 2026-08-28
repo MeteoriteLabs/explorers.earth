@@ -46,11 +46,16 @@ export async function advancePublicMusicSnapshotRevision(
   client: Pick<PoolClient, "query">,
   musicUserId: number,
   kind: PublicMusicInvalidationKind,
-): Promise<void> {
-  void kind;
+): Promise<number> {
   const result = await client.query(
-    "UPDATE users SET public_snapshot_revision=public_snapshot_revision+1 WHERE id=$1",
+    "UPDATE users SET public_snapshot_revision=public_snapshot_revision+1 WHERE id=$1 RETURNING public_snapshot_revision",
     [musicUserId],
   );
   if (result.rowCount !== 1) throw new Error("Public Music snapshot revision authority is unavailable.");
+  const revision = Number(result.rows[0]?.public_snapshot_revision);
+  if (!Number.isSafeInteger(revision) || revision < 1) throw new Error("Public Music snapshot revision authority is invalid.");
+  await client.query("SELECT pg_notify('music_public_change',$1)", [
+    JSON.stringify({ musicUserId, kind, revision }),
+  ]);
+  return revision;
 }

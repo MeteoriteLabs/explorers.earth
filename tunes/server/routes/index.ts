@@ -26,7 +26,8 @@ import { createYouTubeReadService } from "../services/youtubeReadService";
 import { setupCanonicalMusicRoutes, setupMusicSurfaceBoundary } from "./musicSurfaceRoutes";
 import { setupMusicOpenApiRoutes } from "./musicOpenApiRoutes";
 import { MusicLifecycleService } from "../services/musicLifecycleService";
-import { MusicOwnerSocketRegistry } from "../socket/musicSocketServer";
+import { MusicOwnerSocketRegistry, MusicPublicSocketRegistry } from "../socket/musicSocketServer";
+import { startMusicPublicChangeListener } from "../services/musicPublicChangeListener";
 import {
   runMusicLifecycleWorkerOnce,
   startMusicLifecycleWorker,
@@ -85,6 +86,7 @@ export async function registerRoutes(
   const musicTokens = new MusicTokenService(musicConfig.musicToken);
   const musicPrincipals = new MusicPrincipalService(musicTokens, identityRepository);
   const ownerSocketRegistry = new MusicOwnerSocketRegistry();
+  const publicSocketRegistry = new MusicPublicSocketRegistry();
   const lifecycle = new MusicLifecycleService(identityGateway, identityRepository, {
     disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
   });
@@ -149,7 +151,18 @@ export async function registerRoutes(
     allowedOrigins: canonicalDependencies.allowedOrigins,
     ownerCredentials: createMusicSocketCredentialVerifier(musicPrincipals),
     resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
+    resolvePublicMusicAuthority: (publicSlug, capability) => musicDomain.resolvePublicMusicSocketAuthority(publicSlug, capability),
     ownerRegistry: ownerSocketRegistry,
+    publicRegistry: publicSocketRegistry,
+  });
+  const publicChangeListener = await startMusicPublicChangeListener({
+    pool,
+    fanout: (change) => publicSocketRegistry.publish(change),
+    onFatal: () => {
+      console.error("music_public_change_listener_failed");
+      if (server.listening) server.close();
+      void ownerSocketRegistry.disconnectAllSockets().catch(() => undefined);
+    },
   });
   let suspensionSafetyFailed = false;
   const failClosedSuspensionSafety = (): void => {
@@ -202,6 +215,9 @@ export async function registerRoutes(
     clearInterval(publicationShredTimer);
     void suspensionListener.stop().catch(() => {
       console.error("music_reconciliation_suspension_listener_stop_failed");
+    });
+    void publicChangeListener.stop().catch(() => {
+      console.error("music_public_change_listener_stop_failed");
     });
   });
 

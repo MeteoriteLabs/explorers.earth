@@ -5,6 +5,7 @@ import PublicMusic, { PublicMusicContent } from "../public/PublicMusic";
 import type { PublicMusicResource } from "../../features/music/publicMusicClient";
 
 const loadPublicMusic = vi.hoisted(() => vi.fn());
+const subscribeToPublicMusic = vi.hoisted(() => vi.fn(() => ({ unsubscribe: vi.fn() })));
 
 vi.mock("../../features/music/publicMusicClient", () => ({
   publicMusicClient: { load: loadPublicMusic },
@@ -17,6 +18,7 @@ vi.mock("../../components/SEO", () => ({ default: () => null }));
 vi.mock("react-player", () => ({
   default: (props: Record<string, unknown>) => <div data-testid="guest-media" data-playing={String(props.playing)} />,
 }));
+vi.mock("../../features/music/publicMusicLiveClient", () => ({ subscribeToPublicMusic }));
 
 const playing = { id: "P".repeat(43), youtubeId: "abcdefghijk", title: "Now", artist: "Artist", thumbnailUrl: "https://images.example/now.jpg", position: 0, status: "playing" as const, playedAt: null };
 const queued = { ...playing, id: "Q".repeat(43), title: "Next", status: "queued" as const, position: 1 };
@@ -46,6 +48,7 @@ function resource(overrides: Partial<PublicMusicResource> = {}): PublicMusicReso
 describe("public Music page", () => {
   afterEach(() => {
     loadPublicMusic.mockReset();
+    subscribeToPublicMusic.mockClear();
     vi.useRealTimers();
     window.history.replaceState({}, "", "/");
     window.sessionStorage.clear();
@@ -175,5 +178,17 @@ describe("public Music page", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(loadPublicMusic).toHaveBeenCalledWith("public-slug", "C".repeat(43), expect.any(AbortSignal)));
+  });
+
+  it("applies canonical live refetches and removes revoked content and capability", async () => {
+    // Break caught: a socket envelope mutates rendered content directly or revocation leaves
+    // stale protected content/capability in the mounted page.
+    loadPublicMusic.mockResolvedValueOnce(resource({ revision: 1 })).mockResolvedValueOnce(resource({ revision: 4 }));
+    window.history.replaceState({}, "", `/music/share/public-slug#access=${"D".repeat(43)}`);
+    render(<MemoryRouter initialEntries={["/music/share/public-slug"]}><Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes></MemoryRouter>);
+    await waitFor(() => expect(subscribeToPublicMusic).toHaveBeenCalledOnce());
+    const options = subscribeToPublicMusic.mock.calls[0][0];
+    await expect(options.onInvalidate(new AbortController().signal)).resolves.toEqual({ revision: 4 });
+    expect(loadPublicMusic).toHaveBeenCalledTimes(2);
   });
 });

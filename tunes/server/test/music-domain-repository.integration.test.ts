@@ -5,6 +5,7 @@ import { migrateMusicDatabase } from "../db/migrate";
 import { createGuestCapability, hashGuestCapability } from "../policies/musicSurfacePolicy";
 import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
+import { advancePublicMusicSnapshotRevision } from "../repositories/publicMusicRevision";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C6_POSTGRES_TEST === "1";
@@ -51,6 +52,29 @@ async function withReplicationTriggersDisabled(operation: (client: pg.PoolClient
 }
 
 describePg("C6 owner predicates on real PostgreSQL 15", () => {
+  it("releases exactly one public invalidation after commit and none after rollback", async () => {
+    // Break caught: route callbacks emit before commit, or a rolled-back mutation escapes to another replica.
+    const owner = await identities.ensureIdentity(identityInput("public-notify-commit"));
+    const listener = await pool.connect();
+    await listener.query("LISTEN music_public_change");
+    const messages: string[] = [];
+    listener.on("notification", ({ channel, payload }) => { if (channel === "music_public_change" && payload) messages.push(payload); });
+    const rollback = await pool.connect();
+    await rollback.query("BEGIN");
+    await advancePublicMusicSnapshotRevision(rollback, owner.id, "queue_changed");
+    await rollback.query("ROLLBACK");
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(messages).toEqual([]);
+
+    const commit = await pool.connect();
+    await commit.query("BEGIN");
+    await expect(advancePublicMusicSnapshotRevision(commit, owner.id, "playback_changed")).resolves.toBe(1);
+    await commit.query("COMMIT");
+    await expect.poll(() => messages.length).toBe(1);
+    expect(JSON.parse(messages[0])).toEqual({ musicUserId: owner.id, kind: "playback_changed", revision: 1 });
+    rollback.release(); commit.release();
+    await listener.query("UNLISTEN music_public_change"); listener.release();
+  });
   it("durably replays one saved-playlist song and rejects a changed replay", async () => {
     const owner = await identities.ensureIdentity(identityInput("playlist-song-replay"));
     const playlist = await domain.createPlaylist(owner.id, { name: "Durable songs", description: null }) as { id: number };

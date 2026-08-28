@@ -4,10 +4,11 @@ import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 
 function recordingPool(rows: unknown[] = []) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
+  let publicRevision = 0;
   const query = async (text: string, values: unknown[] = []) => {
     calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
     if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
-    if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [], rowCount: 1 };
+    if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [{ public_snapshot_revision: ++publicRevision }], rowCount: 1 };
     return { rows, rowCount: rows.length };
   };
   return {
@@ -54,6 +55,18 @@ function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: numb
 }
 
 describe("MusicDomainRepository owner predicates", () => {
+  it("accepts a retained unlisted capability after the same publication becomes public", async () => {
+    // Break caught: promotion from unlisted to public strands the mounted client because its
+    // session-retained capability makes otherwise-public read-only socket admission fail.
+    const capability = "R".repeat(43);
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [{
+      id: 17, identity_status: "active", guest_discoverable: true,
+      guest_capability_hash: hashGuestCapability(capability), guest_capability_revoked_at: null,
+    }], rowCount: 1 }) } as never);
+    await expect(repository.resolvePublicMusicSocketAuthority("public-slug", capability))
+      .resolves.toEqual({ musicUserId: 17, active: true });
+  });
+
   it("atomically stores and replays one guest request without another queue revision or notification", async () => {
     let receipt: { request_hash: string; response_body: { accepted: true } } | undefined;
     let queueInserts = 0;
@@ -132,6 +145,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const calls: Array<{ text: string; values: unknown[] }> = [];
     let select = 0;
     const client = {
+      publicRevision: 0,
       async query(text: string, values: unknown[] = []) {
         calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
         if (/SELECT request_hash,status_code,response_body/.test(text)) return { rows: [], rowCount: 0 };
@@ -145,6 +159,7 @@ describe("MusicDomainRepository owner predicates", () => {
           { id: 102, user_id: 7, youtube_id: "a", title: "A", artist: "Artist A", thumbnail_url: "https://img/a", position: 1, status: "queued", played_at: null },
         ], rowCount: 2 };
         if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 5 }], rowCount: 1 };
+        if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [{ public_snapshot_revision: ++this.publicRevision }], rowCount: 1 };
         if (/SELECT id,user_id/.test(text)) { select += 1; return { rows: [], rowCount: 0 }; }
         return { rows: [], rowCount: 1 };
       },
@@ -271,6 +286,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await repository.removeSongs(23, [71, 72]);
     await repository.clearHistory(23);
     for (const call of harness.calls) {
+      if (call.text.includes("pg_notify('music_public_change'")) continue;
       if (call.text.toLowerCase().includes("insert into songs")) {
         expect(call.text.toLowerCase()).toContain("insert into songs(user_id");
         expect(call.values[0]).toBe(23);
@@ -349,7 +365,7 @@ describe("MusicDomainRepository owner predicates", () => {
       if (/SELECT request_hash,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
       if (/SELECT p\.id,count/.test(normalized)) return { rows: [{ id: 9, count: inserts }], rowCount: 1 };
       if (/INSERT INTO playlist_songs/.test(normalized)) { inserts += 1; return { rows: [song], rowCount: 1 }; }
-      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [], rowCount: 1 };
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [{ public_snapshot_revision: 1 }], rowCount: 1 };
       if (/INSERT INTO music_owner_operations/.test(normalized)) {
         stored = { request_hash: String(values[3]), response_body: JSON.parse(String(values[4])) };
         return { rows: [], rowCount: 1 };
@@ -488,6 +504,7 @@ describe("MusicDomainRepository owner predicates", () => {
         if (/DELETE FROM songs/.test(text)) return { rows: [{ status: "queued" }], rowCount: 1 };
         if (/RETURNING id,user_id/.test(text)) return { rows: [{ id: 1, user_id: 7, position: 0, status: "queued" }], rowCount: 1 };
         if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
+        if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [{ public_snapshot_revision: 1 }], rowCount: 1 };
         return { rows: [], rowCount: 1 };
       }, release() {} };
       await execute(new MusicDomainRepository({ query: async () => { throw new Error("outside transaction"); }, connect: async () => client } as never));
@@ -751,7 +768,7 @@ describe("MusicDomainRepository owner predicates", () => {
         revision += 1;
         return { rows: [{ music_queue_revision: revision }], rowCount: 1 };
       }
-      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [], rowCount: 1 };
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [{ public_snapshot_revision: 1 }], rowCount: 1 };
       if (/^SELECT id,user_id/.test(normalized)) return { rows: [{ id: 71, user_id: 23, youtube_id: "abcdefghijk", title: "Safe", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "playing", played_at: null }], rowCount: 1 };
       return { rows: [], rowCount: 0 };
     }, release() {} };

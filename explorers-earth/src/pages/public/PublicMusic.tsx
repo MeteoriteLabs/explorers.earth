@@ -8,6 +8,7 @@ import {
   type PublicMusicResource,
 } from "../../features/music/publicMusicClient";
 import { PublicMusicSections } from "../../features/music/components/PublicMusicSections";
+import { subscribeToPublicMusic } from "../../features/music/publicMusicLiveClient";
 
 type PublicMusicViewState = "loading" | "ready" | "not-found" | "rate-limited" | "unavailable";
 
@@ -157,6 +158,33 @@ export default function PublicMusic() {
     });
     return () => { controller.abort(); };
   }, [attempt, location.hash, location.pathname, publicSlug]);
+
+  useEffect(() => {
+    if (!publicSlug || state !== "ready") return;
+    const controller = new AbortController();
+    const subscription = subscribeToPublicMusic({
+      publicSlug,
+      capability,
+      signal: controller.signal,
+      onInvalidate: async (signal) => {
+        try {
+          const value = await publicMusicClient.load(publicSlug, capability, signal);
+          if (signal.aborted) return;
+          setResource(value);
+          return { revision: value.revision };
+        } catch (error) {
+          if (signal.aborted) return;
+          if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") {
+            forgetCapability(publicSlug);
+            setResource(undefined);
+            setState("not-found");
+          }
+          throw error;
+        }
+      },
+    });
+    return () => { controller.abort(); subscription.unsubscribe(); };
+  }, [capability, publicSlug, state]);
 
   return (
     <>

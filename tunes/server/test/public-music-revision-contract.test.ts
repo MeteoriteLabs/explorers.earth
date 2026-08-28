@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { PUBLIC_MUSIC_MUTATION_REVISION_COMPATIBILITY } from "../repositories/publicMusicRevision";
+import { advancePublicMusicSnapshotRevision, PUBLIC_MUSIC_MUTATION_REVISION_COMPATIBILITY } from "../repositories/publicMusicRevision";
 
 describe("public Music mutation revision compatibility", () => {
+  it("advances and transactionally publishes the exact low-cardinality invalidation", async () => {
+    // Break caught: a committed public mutation increments the snapshot but never reaches
+    // the cross-replica LISTEN channel, or leaks authority into the notification envelope.
+    const calls: Array<{ text: string; parameters?: unknown[] }> = [];
+    const client = {
+      query: async (text: string, parameters?: unknown[]) => {
+        calls.push({ text, parameters });
+        if (text.startsWith("UPDATE users")) return { rowCount: 1, rows: [{ public_snapshot_revision: "42" }] };
+        return { rowCount: 1, rows: [] };
+      },
+    };
+
+    await expect(advancePublicMusicSnapshotRevision(client as never, 17, "queue_changed")).resolves.toBe(42);
+    expect(calls).toEqual([
+      expect.objectContaining({ text: expect.stringContaining("RETURNING public_snapshot_revision"), parameters: [17] }),
+      { text: "SELECT pg_notify('music_public_change',$1)", parameters: [JSON.stringify({ musicUserId: 17, kind: "queue_changed", revision: 42 })] },
+    ]);
+  });
   it("keeps one explicit mutation-to-kind-to-transaction-to-revision oracle", () => {
     // Break caught: a new or legacy public-output mutation can silently bypass the one canonical snapshot revision.
     expect(PUBLIC_MUSIC_MUTATION_REVISION_COMPATIBILITY).toEqual([
