@@ -87,6 +87,7 @@ function renderedProductionEnvironment(): Record<string, string> {
     STRAPI_URL: "https://cms.example.com",
     MUSIC_STRAPI_ALLOWED_ORIGINS: "https://cms.example.com",
     STRAPI_ACCESS_TOKEN: "read-only-token",
+    STRAPI_ANALYTICS_ACCESS_TOKEN: "analytics-read-only-token",
     STRAPI_JWT_SECRET: "production-jwt-secret-at-least-32-characters",
     MUSIC_GATE_ATTESTATION_KEY: "production-gate-key-at-least-32-characters",
     MUSIC_TOKEN_CURRENT_KID: "production-current",
@@ -160,6 +161,7 @@ describe("discriminated Music startup bootstrap", () => {
 
   it("validates the rendered live Compose environment exactly once before application import and listen", async () => {
     const environment = withSigningFile(renderedProductionEnvironment());
+    expect(environment.MUSIC_MIGRATION_MARKER).toBe("0020_public_snapshot_revision");
     for (const fixtureOnly of [
       "MUSIC_FIXTURE_VERSION", "STRAPI_FIXTURE_URL", "DATABASE_URL_TEST",
       "MUSIC_SIGNING_KEY_CURRENT_ID", "MUSIC_SIGNING_KEY_CURRENT_SECRET",

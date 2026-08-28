@@ -204,7 +204,15 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       expectedSessionVersion: 1,
       reason: "logout_all",
     })).resolves.toMatchObject({ resultSessionVersion: 2 });
-    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(19);
+    await expect(runtime.query(
+      `UPDATE users SET public_snapshot_revision=public_snapshot_revision+1
+       WHERE id=$1 RETURNING public_snapshot_revision`,
+      [identity.id],
+    )).resolves.toMatchObject({ rows: [{ public_snapshot_revision: "1" }] });
+    expect((await owner.query(`SELECT privilege_type FROM information_schema.column_privileges
+      WHERE grantee='music_runtime' AND table_schema='public' AND table_name='users'
+        AND column_name='public_snapshot_revision' AND privilege_type='UPDATE'`)).rowCount).toBeGreaterThan(0);
+    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(20);
 
     for (const statement of [
       "SET session_replication_role='replica'",

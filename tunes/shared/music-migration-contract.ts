@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0019_queue_visibility_control" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0020_public_snapshot_revision" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -18,6 +18,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0016_publication_operation_retention",
   "0017_publication_idempotency_key_retirement",
   "0018_transactional_queue_replacement",
+  "0019_queue_visibility_control",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -41,6 +42,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0016_publication_operation_retention",
   "0017_publication_idempotency_key_retirement",
   "0018_transactional_queue_replacement",
+  "0019_queue_visibility_control",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

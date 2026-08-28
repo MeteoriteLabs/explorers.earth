@@ -13,8 +13,10 @@ export const GATE_KIND = "music-schema-deployment-gate-v2" as const;
 export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
 
 export function rollbackCompatibilityFloorMarker(marker: DeployableMusicMigrationMarker): DeployableMusicMigrationMarker {
-  return marker === "0019_queue_visibility_control"
-    ? "0018_transactional_queue_replacement"
+  return marker === "0020_public_snapshot_revision"
+    ? "0019_queue_visibility_control"
+    : marker === "0019_queue_visibility_control"
+      ? "0018_transactional_queue_replacement"
     : marker === "0018_transactional_queue_replacement"
       ? "0017_publication_idempotency_key_retirement"
       : marker;

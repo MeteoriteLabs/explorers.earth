@@ -21,7 +21,7 @@ function ensureSupportedCliFixtureAuthority(): void {
     const values = Object.fromEntries(contents.trim().split(/\r?\n/).map((line) => line.split("=", 2)));
     if (values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID !== "fixture-publication-v1"
         || values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY !== "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI"
-        || values.MUSIC_EXPECTED_MIGRATION_ID !== "0019_queue_visibility_control") {
+        || values.MUSIC_EXPECTED_MIGRATION_ID !== "0020_public_snapshot_revision") {
       throw new Error("fixture environment authority is from an older schema epoch");
     }
     const tokenDirectory = resolve(repositoryRoot, ".artifacts", "music-token-secrets");
