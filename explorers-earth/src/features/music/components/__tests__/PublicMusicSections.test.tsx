@@ -77,6 +77,14 @@ describe("PublicMusicSections permission oracle", () => {
       expect(screen.queryByText("Playlist signal")).toBe(playlists ? screen.getByText("Playlist signal") : null);
       expect(screen.queryByText("Current signal")).toBe(playback || queue ? screen.getByText("Current signal") : null);
 
+      const expectedReadingOrder = [
+        ...(playback ? ["Play on this device"] : []),
+        ...(queue ? ["Up next"] : []),
+        ...(playlists ? ["Shared playlists"] : []),
+        ...(history ? ["Recently played"] : []),
+      ];
+      expect(screen.queryAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(expectedReadingOrder);
+
       // Task 8 exposes sources but does not ship Task 9 playback controls or
       // Task 10 request controls early.
       expect(screen.queryByRole("button")).not.toBeInTheDocument();

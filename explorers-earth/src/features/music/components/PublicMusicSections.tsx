@@ -58,83 +58,79 @@ export function PublicMusicSections({ resource }: { resource: PublicMusicResourc
 
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
-      <div className="min-w-0 space-y-8">
-        {playableSong ? (
-          <section data-testid="public-music-player" aria-labelledby="public-music-player-heading">
-            <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
+      {playableSong ? (
+        <section className="min-w-0 xl:col-start-1" data-testid="public-music-player" aria-labelledby="public-music-player-heading">
+          <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
+          <div className="mt-3 flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-dashboard-card p-4">
+            <SongArtwork song={playableSong} />
+            <SongDetails song={playableSong} />
+          </div>
+        </section>
+      ) : null}
+
+      {policy.queueVisible ? (
+        <section className="min-w-0 xl:col-start-2 xl:row-start-1" aria-labelledby="public-music-queue-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="public-music-queue-heading" className="text-xl font-semibold">Up next</h2>
+            <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
+          </div>
+          {!policy.playerEligible && policy.currentVisible && resource.currentlyPlaying ? (
             <div className="mt-3 flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-dashboard-card p-4">
-              <SongArtwork song={playableSong} />
-              <SongDetails song={playableSong} />
+              <SongArtwork song={resource.currentlyPlaying} />
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-wide text-dashboard-accent">Playing now</span>
+                <SongDetails song={resource.currentlyPlaying} />
+              </span>
             </div>
-          </section>
-        ) : null}
+          ) : null}
+          {resource.queue.items.length > 0 ? (
+            <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
+              {resource.queue.items.map((song) => <SongRow key={song.id} song={song} />)}
+            </ol>
+          ) : <p className="mt-3 text-dashboard-text-muted">Nothing queued yet</p>}
+        </section>
+      ) : null}
 
-        {policy.playlistsVisible ? (
-          <section aria-labelledby="public-music-playlists-heading">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="public-music-playlists-heading" className="text-xl font-semibold">Shared playlists</h2>
-              <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
+      {policy.playlistsVisible ? (
+        <section className="min-w-0 xl:col-start-1" aria-labelledby="public-music-playlists-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="public-music-playlists-heading" className="text-xl font-semibold">Shared playlists</h2>
+            <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
+          </div>
+          {resource.playlists.items.length === 0 ? (
+            <p className="mt-3 text-dashboard-text-muted">No shared playlists yet</p>
+          ) : (
+            <div className="mt-4 grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-1">
+              {resource.playlists.items.map((playlist) => (
+                <article key={playlist.id} className="min-w-0 rounded-xl bg-dashboard-card p-5">
+                  <h3 className="truncate text-lg font-semibold">{playlist.name}</h3>
+                  {playlist.description ? <p className="mt-1 break-words text-sm text-dashboard-text-muted">{playlist.description}</p> : null}
+                  <CollectionSummary shown={playlist.songs.items.length} total={playlist.songs.total} noun="songs" />
+                  {playlist.songs.items.length > 0 ? (
+                    <ol className="mt-3 divide-y divide-dashboard-border" aria-label={`${playlist.name} songs`}>
+                      {playlist.songs.items.map((song) => <SongRow key={song.id} song={song} />)}
+                    </ol>
+                  ) : <p className="mt-3 text-sm text-dashboard-text-muted">No songs in this playlist yet</p>}
+                </article>
+              ))}
             </div>
-            {resource.playlists.items.length === 0 ? (
-              <p className="mt-3 text-dashboard-text-muted">No shared playlists yet</p>
-            ) : (
-              <div className="mt-4 grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-1">
-                {resource.playlists.items.map((playlist) => (
-                  <article key={playlist.id} className="min-w-0 rounded-xl bg-dashboard-card p-5">
-                    <h3 className="truncate text-lg font-semibold">{playlist.name}</h3>
-                    {playlist.description ? <p className="mt-1 break-words text-sm text-dashboard-text-muted">{playlist.description}</p> : null}
-                    <CollectionSummary shown={playlist.songs.items.length} total={playlist.songs.total} noun="songs" />
-                    {playlist.songs.items.length > 0 ? (
-                      <ol className="mt-3 divide-y divide-dashboard-border" aria-label={`${playlist.name} songs`}>
-                        {playlist.songs.items.map((song) => <SongRow key={song.id} song={song} />)}
-                      </ol>
-                    ) : <p className="mt-3 text-sm text-dashboard-text-muted">No songs in this playlist yet</p>}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        ) : null}
-      </div>
+          )}
+        </section>
+      ) : null}
 
-      <div className="min-w-0 space-y-8">
-        {policy.queueVisible ? (
-          <section aria-labelledby="public-music-queue-heading">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="public-music-queue-heading" className="text-xl font-semibold">Up next</h2>
-              <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
-            </div>
-            {!policy.playerEligible && policy.currentVisible && resource.currentlyPlaying ? (
-              <div className="mt-3 flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-dashboard-card p-4">
-                <SongArtwork song={resource.currentlyPlaying} />
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold uppercase tracking-wide text-dashboard-accent">Playing now</span>
-                  <SongDetails song={resource.currentlyPlaying} />
-                </span>
-              </div>
-            ) : null}
-            {resource.queue.items.length > 0 ? (
-              <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
-                {resource.queue.items.map((song) => <SongRow key={song.id} song={song} />)}
-              </ol>
-            ) : <p className="mt-3 text-dashboard-text-muted">Nothing queued yet</p>}
-          </section>
-        ) : null}
-
-        {policy.historyVisible ? (
-          <section aria-labelledby="public-music-history-heading">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="public-music-history-heading" className="text-xl font-semibold">Recently played</h2>
-              <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />
-            </div>
-            {resource.recentlyPlayed.items.length > 0 ? (
-              <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Recently played">
-                {resource.recentlyPlayed.items.map((song) => <SongRow key={song.id} song={song} />)}
-              </ol>
-            ) : <p className="mt-3 text-dashboard-text-muted">Nothing played recently</p>}
-          </section>
-        ) : null}
-      </div>
+      {policy.historyVisible ? (
+        <section className="min-w-0 xl:col-start-2" aria-labelledby="public-music-history-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="public-music-history-heading" className="text-xl font-semibold">Recently played</h2>
+            <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />
+          </div>
+          {resource.recentlyPlayed.items.length > 0 ? (
+            <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Recently played">
+              {resource.recentlyPlayed.items.map((song) => <SongRow key={song.id} song={song} />)}
+            </ol>
+          ) : <p className="mt-3 text-dashboard-text-muted">Nothing played recently</p>}
+        </section>
+      ) : null}
     </div>
   );
 }
