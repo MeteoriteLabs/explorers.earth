@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "Ikiwa wewe ni mwenye udadisi.\nIkiwa wewe ni mwenye kufikiria.\nIkiwa wewe tayari kupunguza kasi na kuangalia karibu zaidi —\ntayari unahusika hapa.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Uchunguzi huanza na ufahamu.",
       "line2": "Kwa kutambua kile wengine wanachokipita.",
@@ -53,15 +49,19 @@
         "hadithi ya explorers",
         "sisi ni nani explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Wachunguzi wa Dunia | Kuhusu Sisi"
+      "title": "Wachunguzi wa Dunia | Kuhusu Sisi",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Jumuiya ya kimataifa ya watu wanaochunguza kwa uangalifu — kwa watu, tamaduni na sayari tunayoshiriki.",
       "line2": "Uchunguzi kwetu sio kuhusu umbali tunaloenda.",
       "line3": "Ni kuhusu kina tunachounganisha."
     },
-    "title": "Wachunguzi wa Dunia"
+    "title": "Wachunguzi wa Dunia",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "Inaonekana",
         "whatsappNumber": "Nambari ya WhatsApp"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "Uhamishaji wa {{category}} umeghairiwa. Mpangilio umerejeshwa.",
-          "drop": "{{category}} imewekwa katika nafasi ya {{position}} kati ya {{total}}.",
-          "handle": "Buruta {{category}}",
-          "instructions": "Bonyeza Space au Enter ili kuinua. Tumia vitufe vya mishale au Home na End kusogeza. Bonyeza Space au Enter ili kuweka, au Escape kughairi.",
-          "lift": "{{category}} imeinuliwa. Nafasi ya {{position}} kati ya {{total}}.",
-          "move": "{{category}} imehamishwa hadi nafasi ya {{position}} kati ya {{total}}."
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "Biashara",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "Akaunti",
         "publicProfile": "Wasifu wa Umma"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Uhamishaji wa {{category}} umeghairiwa. Mpangilio umerejeshwa.",
+          "drop": "{{category}} imewekwa katika nafasi ya {{position}} kati ya {{total}}.",
+          "handle": "Buruta {{category}}",
+          "instructions": "Bonyeza Space au Enter ili kuinua. Tumia vitufe vya mishale au Home na End kusogeza. Bonyeza Space au Enter ili kuweka, au Escape kughairi.",
+          "lift": "{{category}} imeinuliwa. Nafasi ya {{position}} kati ya {{total}}.",
+          "move": "{{category}} imehamishwa hadi nafasi ya {{position}} kati ya {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Orodha ya mapendekezo imechapishwa kwa mafanikio!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Orodha ya mapendekezo imeondolewa kwenye uchapishaji kwa mafanikio!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Safari kama mwenyeji",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 wagunduzi. Haki zote zimehifadhiwa.",
+    "tagline": "Ruhusu mapendekezo yako yasafiri ulimwenguni kote.",
     "email": "hello@explorers.earth",
-    "freeForever": "Bure milele.",
-    "links": {
-      "about": "Kuhusu",
-      "contact": "Wasiliana",
-      "cookies": "Sera ya Vidakuzi",
-      "faq": "Maswali Yanayoulizwa Mara kwa Mara",
-      "howItWorks": "Jinsi inavyofanya kazi",
-      "privacy": "Sera ya Faragha",
-      "product": "Bidhaa",
-      "shareAnywhere": "Shiriki popote",
-      "terms": "Sheria na Masharti",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "Imetengenezwa kwa upendo duniani",
     "sections": {
-      "company": "Kampuni",
+      "product": "Bidhaa",
       "contact": "Wasiliana",
       "legal": "Kisheria",
-      "product": "Bidhaa"
+      "company": "Kampuni"
     },
-    "tagline": "Ruhusu mapendekezo yako yasafiri ulimwenguni kote."
+    "links": {
+      "howItWorks": "Jinsi inavyofanya kazi",
+      "faq": "Maswali Yanayoulizwa Mara kwa Mara",
+      "contact": "Wasiliana",
+      "about": "Kuhusu",
+      "terms": "Sheria na Masharti",
+      "privacy": "Sera ya Faragha",
+      "cookies": "Sera ya Vidakuzi",
+      "product": "Bidhaa",
+      "shareAnywhere": "Shiriki popote",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 wagunduzi. Haki zote zimehifadhiwa.",
+    "madeWithLove": "Imetengenezwa kwa upendo duniani",
+    "freeForever": "Bure milele."
   },
   "header": {
-    "auth": {
-      "claimFree": "Dai bila malipo",
-      "claimFreePage": "Dai ukurasa usiolipishwa",
-      "login": "Ingia",
-      "signUp": "Jisajili"
-    },
     "nav": {
-      "about": "Kuhusu",
-      "closeMenu": "Funga menyu ya kusogeza",
-      "contact": "Wasiliana",
-      "faq": "Maswali Yanayoulizwa Mara kwa Mara",
       "howItWorks": "Jinsi inavyofanya kazi",
-      "openMenu": "Fungua menyu ya kusogeza",
+      "whoIsFor": "Kwa Nani",
+      "faq": "Maswali Yanayoulizwa Mara kwa Mara",
+      "about": "Kuhusu",
+      "contact": "Wasiliana",
       "product": "Bidhaa",
       "share": "Shiriki",
-      "useCases": "Use Cases",
-      "whoIsFor": "Kwa Nani"
+      "openMenu": "Fungua menyu ya kusogeza",
+      "closeMenu": "Funga menyu ya kusogeza",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "Ingia",
+      "signUp": "Jisajili",
+      "claimFreePage": "Dai ukurasa usiolipishwa",
+      "claimFree": "Dai bila malipo"
     }
   },
   "hero": {
-    "badge": "Bure milele",
-    "countries": {
-      "ae": "UAE",
-      "au": "Australia",
-      "br": "Brazili",
-      "de": "Ujerumani",
-      "fr": "Ufaransa",
-      "gb": "Uingereza",
-      "in": "India",
-      "jp": "Japani",
-      "sg": "Singapore",
-      "us": "Marekani"
-    },
-    "ctaButton": "Dai ukurasa wako wa Explorer",
-    "globalStrip": "Explorers hushiriki mapendekezo kote ulimwenguni",
     "headline": "Mapendekezo yako yote - kiungo kimoja, moja QR",
-    "headlinePrefix": "Yote yako",
-    "headlineSuffix": "katika kiungo kimoja na QR.",
+    "subtext": "Unda ukurasa mmoja unaoweza kushirikiwa kwa kila kitu unachopendekeza - maeneo, watu, bidhaa, vitabu, filamu, maonyesho, muziki, michezo, programu, na zaidi.",
     "inputLabel": "Dai URL yako ya wagunduzi:",
     "inputPlaceholder": "jina lako",
-    "preview": {
-      "items": {
-        "book": "Kitabu",
-        "game": "Mchezo",
-        "music": "Muziki",
-        "place": "Mahali"
-      },
-      "onePageText": "Ishiriki kama kiungo, QR, ujumbe, au mwongozo.",
-      "onePageTitle": "Ukurasa mmoja kwa kila pendekezo zuri.",
-      "screenAlt": "Skrini ya mapendekezo ya ukurasa wa Explorer",
-      "todayList": "Orodha ya leo"
-    },
+    "ctaButton": "Dai ukurasa wako wa Explorer",
+    "signupPrompt": "Jisajili ili ujipatie yako sasa",
+    "headlinePrefix": "Yote yako",
     "rotatingWords": [
       "mapendekezo",
       "tiba",
       "makusanyo",
       "vipendwa"
     ],
-    "signupPrompt": "Jisajili ili ujipatie yako sasa",
-    "subtext": "Unda ukurasa mmoja unaoweza kushirikiwa kwa kila kitu unachopendekeza - maeneo, watu, bidhaa, vitabu, filamu, maonyesho, muziki, michezo, programu, na zaidi."
+    "headlineSuffix": "katika kiungo kimoja na QR.",
+    "badge": "Bure milele",
+    "globalStrip": "Explorers hushiriki mapendekezo kote ulimwenguni",
+    "preview": {
+      "todayList": "Orodha ya leo",
+      "onePageTitle": "Ukurasa mmoja kwa kila pendekezo zuri.",
+      "onePageText": "Ishiriki kama kiungo, QR, ujumbe, au mwongozo.",
+      "items": {
+        "place": "Mahali",
+        "book": "Kitabu",
+        "music": "Muziki",
+        "game": "Mchezo"
+      },
+      "screenAlt": "Skrini ya mapendekezo ya ukurasa wa Explorer"
+    },
+    "countries": {
+      "in": "India",
+      "us": "Marekani",
+      "gb": "Uingereza",
+      "jp": "Japani",
+      "fr": "Ufaransa",
+      "au": "Australia",
+      "br": "Brazili",
+      "ae": "UAE",
+      "sg": "Singapore",
+      "de": "Ujerumani"
+    }
   },
   "languageModal": {
     "close": "Funga",
-    "escToClose": "Bonyeza Esc ili kufunga",
-    "languagesAvailable": "Lugha za {{count}} zinapatikana",
-    "noLanguagesFound": "Hakuna lugha zilizopatikana",
     "searchPlaceholder": "Tafuta lugha...",
-    "subtitle": "Chagua lugha unayotaka kutumia kwa wagunduzi.",
     "title": "Chagua Lugha",
-    "tryDifferentSearch": "Jaribu neno tofauti la utafutaji."
+    "subtitle": "Chagua lugha unayotaka kutumia kwa wagunduzi.",
+    "noLanguagesFound": "Hakuna lugha zilizopatikana",
+    "tryDifferentSearch": "Jaribu neno tofauti la utafutaji.",
+    "languagesAvailable": "Lugha za {{count}} zinapatikana",
+    "escToClose": "Bonyeza Esc ili kufunga"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Dashibodi ya uchanganuzi",
-      "engagement": "Uchumba",
-      "headline": "Tazama watu wanajihusisha nayo.",
-      "last30Days": "Siku 30 zilizopita",
-      "livePreview": "Onyesho la kukagua moja kwa moja",
-      "referrals": "Marejeleo",
-      "scanningDesc": "Tazama jinsi watu wanavyofikia ukurasa wako kutoka kwa viungo, misimbo ya QR, na sehemu za kugusa zinazoshirikiwa.",
-      "scanningTitle": "Kuelewa scans na kubofya",
-      "spotsDesc": "Jifunze ni maeneo gani, bidhaa, orodha na miongozo inayopendwa zaidi.",
-      "spotsTitle": "Pata mapendekezo ya juu",
-      "subtext": "Elewa mapendekezo ambayo watu hufungua, kuhifadhi, na kutembelea tena kwenye viungo vyako na misimbo ya QR.",
-      "totalScans": "Jumla ya Uchanganuzi",
-      "workingDesc": "Fuatilia mapendekezo ambayo watu hufungua, kuhifadhi na kutembelea tena.",
-      "workingTitle": "Tazama kinachofanya kazi"
-    },
     "createCustomize": {
+      "headline": "Unda ukurasa wako wa Explorer kwa dakika",
+      "subtext": "Kusanya unachopendekeza, kipange kwa njia yako, na ukishiriki popote ukitumia kiungo kimoja au QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Ongeza maeneo, matumizi, njia, sauti na madokezo"
-        },
-        "generate": {
-          "description": "",
-          "title": "Badilisha wakati wowote - kiungo chako hudumu sawa kila wakati"
+          "title": "Ongeza maeneo, matumizi, njia, sauti na madokezo",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Panga kulingana na eneo au maslahi"
+          "title": "Panga kulingana na eneo au maslahi",
+          "description": ""
+        },
+        "generate": {
+          "title": "Badilisha wakati wowote - kiungo chako hudumu sawa kila wakati",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Shiriki kidijitali au kupitia QR katika ulimwengu halisi"
+          "title": "Shiriki kidijitali au kupitia QR katika ulimwengu halisi",
+          "description": ""
         }
       },
-      "headline": "Unda ukurasa wako wa Explorer kwa dakika",
       "mockup": {
-        "addPlace": "Ongeza Mahali",
-        "title": "Mapendekezo Yangu"
+        "title": "Mapendekezo Yangu",
+        "addPlace": "Ongeza Mahali"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "Ukurasa wako unasasishwa wakati wowote huku kiungo sawa na QR kikiendelea kufanya kazi kila mahali.",
           "title": "Shiriki kiungo kimoja au QR"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Kiungo kimoja. Safari nyingi.",
+      "subtext": "Kiungo chako cha Explorer kinakuwa mwongozo hai - kitu ambacho watu wanaweza kuhifadhi, kukitembelea upya, na kuchunguza kwa kasi yao wenyewe.\n\nIshiriki kwenye wasifu, ujumbe, meza, ukuta au kadi.\nPopote inapokwenda, mtazamo wako unaenda nayo.",
+      "scanText": "Changanua mapendekezo ya karibu nawe",
+      "storefrontText": "Ni kamili kwa maonyesho ya mbele ya duka",
+      "instagramTitle": "Ongeza kwenye Wasifu wako wa Instagram/Tiktok",
+      "instagramDesc": "Shiriki na wafuasi wako papo hapo",
+      "menuTitle": "Ichapishe kwa Mbele ya Duka",
+      "menuDesc": "Sehemu za kugusa za kimwili zimerahisishwa",
+      "welcomeTitle": "Jumuisha katika vitabu vya kukaribisha",
+      "welcomeDesc": "Ni kamili kwa wenyeji na waelekezi",
+      "cafeMenu": "Menyu ya Mkahawa",
+      "tokyoFoodGuide": "Mwongozo wangu wa chakula wa Tokyo explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "Profaili-tayari",
+          "title": "Link kwenye bio"
+        },
+        {
+          "eyebrow": "Tayari nje ya mtandao",
+          "title": "Nambari za QR"
+        },
+        {
+          "eyebrow": "Tayari gumzo",
+          "title": "Ujumbe"
+        },
+        {
+          "eyebrow": "Mgeni tayari",
+          "title": "Karibu viongozi"
+        }
       ],
-      "subtext": "Kusanya unachopendekeza, kipange kwa njia yako, na ukishiriki popote ukitumia kiungo kimoja au QR."
+      "visual": {
+        "scanForPicks": "Changanua kwa chaguo",
+        "messageBubble": "Hii hapa orodha yangu ya Kyoto",
+        "welcomeGuide": "Karibu mwongozo",
+        "guideItems": [
+          "Kifungua kinywa karibu",
+          "Njia ya makumbusho",
+          "Matembezi ya jioni"
+        ],
+        "savedRecommendation": "Pendekezo lililohifadhiwa"
+      },
+      "profileCarouselCaption": "Profaili za Instagram & TikTok",
+      "qrEverywhereTitle": "Ongeza kiungo cha QR kila mahali",
+      "qrEverywhereDesc": "Kamili kwa Kila Ukumbi"
+    },
+    "analytics": {
+      "headline": "Tazama watu wanajihusisha nayo.",
+      "subtext": "Elewa mapendekezo ambayo watu hufungua, kuhifadhi, na kutembelea tena kwenye viungo vyako na misimbo ya QR.",
+      "workingTitle": "Tazama kinachofanya kazi",
+      "workingDesc": "Fuatilia mapendekezo ambayo watu hufungua, kuhifadhi na kutembelea tena.",
+      "scanningTitle": "Kuelewa scans na kubofya",
+      "scanningDesc": "Tazama jinsi watu wanavyofikia ukurasa wako kutoka kwa viungo, misimbo ya QR, na sehemu za kugusa zinazoshirikiwa.",
+      "spotsTitle": "Pata mapendekezo ya juu",
+      "spotsDesc": "Jifunze ni maeneo gani, bidhaa, orodha na miongozo inayopendwa zaidi.",
+      "dashboardTitle": "Dashibodi ya uchanganuzi",
+      "last30Days": "Siku 30 zilizopita",
+      "totalScans": "Jumla ya Uchanganuzi",
+      "engagement": "Uchumba",
+      "referrals": "Marejeleo",
+      "livePreview": "Onyesho la kukagua moja kwa moja"
+    },
+    "referEarn": {
+      "headline": "Shiriki, rejea na pata",
+      "subtext": "Badilisha mapendekezo yako kuwa malipo ya kujitegemea — pata kredi wakati wengine wanatumia QR yako.",
+      "comingSoon": "Mpango wa malipo ya marejeleo (hivi karibuni)",
+      "rewardsTitle": "Pata Malipo",
+      "rewardsDesc": "Pata pesa wakati watu wanatumia mapendekezo yako",
+      "earnedThisMonth": "Imepatikana mwezi huu",
+      "passiveTitle": "Badilisha mapendekezo kuwa malipo ya kujitegemea",
+      "networkTitle": "Jenga mtandao wako na pata kiotomatiki"
+    },
+    "whoIsFor": {
+      "headline": "Imeundwa kwa watu ambao ladha yao husaidia wengine.",
+      "subtext": "Iwe unashiriki jiji, rafu, orodha ya bidhaa, orodha ya kucheza, au mwongozo wa wageni, wagunduzi hukupa mapendekezo yako nyumbani.",
+      "cards": [
+        "Wachunguzi wa kibinafsi",
+        "Waumbaji na wahifadhi",
+        "Wenyeji na biashara",
+        "Chapa na mashirika"
+      ],
+      "useCases": {
+        "travelers": "Wasafiri",
+        "travelersDesc": "Shiriki vito vilivyogunduliwa na wagunduzi wenzako",
+        "influencers": "Washawishi",
+        "influencersDesc": "Pokea maarifa ya ndani na ujenge jumuiya",
+        "airbnbHosts": "Wapangishi wa Airbnb",
+        "airbnbHostsDesc": "Boresha matumizi ya wageni kwa maarifa ya ndani",
+        "hotels": "Hoteli",
+        "hotelsDesc": "Toa mapendekezo ya ndani yaliyoratibiwa",
+        "restaurants": "Mikahawa",
+        "restaurantsDesc": "Tangaza pamoja na biashara zingine za ndani",
+        "cafes": "Mikahawa",
+        "cafesDesc": "Shiriki vipendwa vya ujirani na wateja",
+        "localGuides": "Wajuzi wa Mitaa",
+        "localGuidesDesc": "Ongeza utaalamu zaidi ya ziara za mtu binafsi",
+        "creators": "Waumbaji",
+        "creatorsDesc": "Ongeza thamani zaidi ya maudhui kwa vidokezo vinavyoweza kutekelezeka",
+        "tourOperators": "Waendeshaji wa Ziara",
+        "tourOperatorsDesc": "Ongeza matumizi zaidi ya ziara zilizoratibiwa",
+        "anyBusiness": "Biashara Yoyote",
+        "anyBusinessDesc": "Jenga uaminifu wa jamii na wateja"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Mkahawa",
+          "Kitabu",
+          "Njia",
+          "Albamu",
+          "Filamu",
+          "Mchezo"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Wasafiri",
+        "Wenyeji",
+        "Familia",
+        "Wanafunzi",
+        "Wahamaji",
+        "Waumbaji",
+        "Washawishi",
+        "Wanablogu",
+        "Wakaguzi",
+        "Wapiga picha",
+        "Waelimishaji",
+        "Viongozi wa jumuiya",
+        "Hoteli",
+        "Airbnbs",
+        "Hosteli",
+        "Mikahawa",
+        "Mikahawa",
+        "Maduka ya rejareja",
+        "Gym",
+        "Saluni",
+        "Kliniki",
+        "Boutiques",
+        "Bidhaa",
+        "Vianzio",
+        "Mashirika",
+        "Vyuo vikuu",
+        "Mashirika",
+        "Viwanja vya ndege",
+        "NGOs",
+        "Timu za serikali"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "Inapendwa na wasafiri, watayarishi na waandaji",
+      "subtext": "Tazama jinsi watu ulimwenguni kote wanavyotumia wagunduzi kushiriki kile ambacho ni muhimu zaidi.",
+      "scrollLeft": "Peleka ushahidi kushoto",
+      "scrollRight": "Peleka ushahidi kulia",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, India",
+          "name": "Priya Sharma",
+          "quote": "wagunduzi walibadilisha jinsi ninavyoshiriki maarifa yangu ya kusafiri. Wafuasi wangu wanapenda kupata ufikiaji wa papo hapo kwa mapendekezo yangu yaliyoratibiwa!",
+          "role": "Blogger ya Kusafiri"
+        },
+        {
+          "id": "2",
+          "location": "Delhi, India",
+          "name": "Raj Patel",
+          "quote": "Wageni wangu wanapenda kabisa msimbo wa QR uliobinafsishwa katika vifaa vyao vya kukaribisha. Imekuwa mguso wangu wa saini!",
+          "role": "Mpangishi wa Airbnb"
+        },
+        {
+          "id": "3",
+          "location": "Tokyo, Japan",
+          "name": "Yuki Tanaka",
+          "quote": "Tunashiriki wagunduzi wetu na wateja ili kupendekeza maeneo mengine ya karibu. Imeunda miunganisho ya ajabu ya jamii.",
+          "role": "Mmiliki wa Mgahawa"
+        },
+        {
+          "id": "4",
+          "location": "São Paulo, Brazili",
+          "name": "Maria Silva",
+          "quote": "wagunduzi hunisaidia kupanua ujuzi wangu zaidi ya saa za ziara. Wateja wanaweza kufikia mapendekezo yangu wakati wowote!",
+          "role": "Mwongozo wa Watalii"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "Kama mshawishi wa usafiri, wagunduzi hurahisisha sana kushiriki maeneo ninayopenda na hadhira yangu. Kipengele cha nambari ya QR ni nzuri!",
+          "role": "Mshawishi wa Kusafiri"
+        },
+        {
+          "id": "6",
+          "location": "Paris, Ufaransa",
+          "name": "Sophie Martin",
+          "quote": "Ninatumia wagunduzi kuunda safari za kutembea kwa wateja wangu. Wanaweza kuchanganua QR na kuchunguza kwa mwendo wao wenyewe!",
+          "role": "Mjuzi wa Mitaa"
+        }
+      ]
     },
     "faq": {
+      "headline": "Una maswali?",
+      "subtext": "Tumekuwa tukijibu maswali ya kawaida zaidi ambayo watu huuliza kabla ya kuanza.",
+      "loading": "Inapakia FAQ...",
       "error": "Hitilafu katika kupakia FAQ. Tafadhali jaribu tena baadaye.",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "Je, wagunduzi ni bure milele?",
           "Sequence": 4
         }
-      ],
-      "headline": "Una maswali?",
-      "loading": "Inapakia FAQ...",
-      "subtext": "Tumekuwa tukijibu maswali ya kawaida zaidi ambayo watu huuliza kabla ya kuanza."
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Ugunduzi unaoendeshwa na jamii"
+      "title": "Imejengwa ili kukaa mbali na njia",
+      "subtitle": "Vipengele rahisi na vya kufikirika vinavyoruhusu mapendekezo yako kuangaza.",
+      "simpleLinks": {
+        "title": "Viungo rahisi na kushiriki QR"
       },
       "livingGuides": {
         "title": "Mwongozo hai, unaoweza kuhaririwa"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "Mapendekezo yanayojua eneo"
       },
-      "privacyFirst": {
-        "title": "Faragha kwanza kwa muundo"
-      },
-      "simpleLinks": {
-        "title": "Viungo rahisi na kushiriki QR"
-      },
       "soundPlaylists": {
         "title": "Sauti na orodha za kucheza za hiari"
       },
-      "subtitle": "Vipengele rahisi na vya kufikirika vinavyoruhusu mapendekezo yako kuangaza.",
-      "title": "Imejengwa ili kukaa mbali na njia"
+      "privacyFirst": {
+        "title": "Faragha kwanza kwa muundo"
+      },
+      "communityDriven": {
+        "title": "Ugunduzi unaoendeshwa na jamii"
+      }
     },
     "finalCTA": {
-      "creating": "Inaunda explorers yako...",
+      "headline": "Anza kushiriki ulimwengu wako leo",
+      "subtext": "Hifadhi explorers yako ya bure na ubadilishe ufahamu wako wa kienyeji kuwa miongozo ya kushiriki.",
       "ctaButton": "Hifadhi explorers Yako – Bure Milele",
       "disclaimer": "Kadi ya mkopo haihitajiki • Usanidi kwa dakika 2",
-      "headline": "Anza kushiriki ulimwengu wako leo",
-      "subtext": "Hifadhi explorers yako ya bure na ubadilishe ufahamu wako wa kienyeji kuwa miongozo ya kushiriki."
+      "creating": "Inaunda explorers yako..."
     },
     "productCategories": {
+      "headline": "Pendekeza zaidi ya maeneo.",
+      "subtext": "Unda ukurasa mmoja wa maeneo, watu, bidhaa, vitabu, filamu, maonyesho, muziki, michezo, programu na zana.",
       "actions": [
         "Hifadhi",
         "Panga",
         "Shiriki"
       ],
+      "overlayLabel": "Ukurasa wa Explorer",
+      "visualLabels": {
+        "products": "Vipendwa vya kweli",
+        "apps": "Rafu muhimu"
+      },
+      "visualDetails": {
+        "products": [
+          "Vyombo vya usafiri",
+          "Ubebaji wa kila siku",
+          "Seti ya watayarishi"
+        ],
+        "apps": [
+          "Zana za kupanga",
+          "Programu muhimu",
+          "Viungo vya rasilimali"
+        ]
+      },
       "categories": [
         {
           "description": "Migahawa, vitongoji, makumbusho, njia, na vito vilivyofichwa ambavyo watu wanaweza kutembelea.",
@@ -1602,244 +1793,15 @@
           "label": "Programu na Zana",
           "title": "Programu, zana na viungo muhimu"
         }
-      ],
-      "headline": "Pendekeza zaidi ya maeneo.",
-      "overlayLabel": "Ukurasa wa Explorer",
-      "subtext": "Unda ukurasa mmoja wa maeneo, watu, bidhaa, vitabu, filamu, maonyesho, muziki, michezo, programu na zana.",
-      "visualDetails": {
-        "apps": [
-          "Zana za kupanga",
-          "Programu muhimu",
-          "Viungo vya rasilimali"
-        ],
-        "products": [
-          "Vyombo vya usafiri",
-          "Ubebaji wa kila siku",
-          "Seti ya watayarishi"
-        ]
-      },
-      "visualLabels": {
-        "apps": "Rafu muhimu",
-        "products": "Vipendwa vya kweli"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Mpango wa malipo ya marejeleo (hivi karibuni)",
-      "earnedThisMonth": "Imepatikana mwezi huu",
-      "headline": "Shiriki, rejea na pata",
-      "networkTitle": "Jenga mtandao wako na pata kiotomatiki",
-      "passiveTitle": "Badilisha mapendekezo kuwa malipo ya kujitegemea",
-      "rewardsDesc": "Pata pesa wakati watu wanatumia mapendekezo yako",
-      "rewardsTitle": "Pata Malipo",
-      "subtext": "Badilisha mapendekezo yako kuwa malipo ya kujitegemea — pata kredi wakati wengine wanatumia QR yako."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Menyu ya Mkahawa",
-      "cards": [
-        {
-          "eyebrow": "Profaili-tayari",
-          "title": "Link kwenye bio"
-        },
-        {
-          "eyebrow": "Tayari nje ya mtandao",
-          "title": "Nambari za QR"
-        },
-        {
-          "eyebrow": "Tayari gumzo",
-          "title": "Ujumbe"
-        },
-        {
-          "eyebrow": "Mgeni tayari",
-          "title": "Karibu viongozi"
-        }
-      ],
-      "headline": "Kiungo kimoja. Safari nyingi.",
-      "instagramDesc": "Shiriki na wafuasi wako papo hapo",
-      "instagramTitle": "Ongeza kwenye Wasifu wako wa Instagram/Tiktok",
-      "menuDesc": "Sehemu za kugusa za kimwili zimerahisishwa",
-      "menuTitle": "Ichapishe kwa Mbele ya Duka",
-      "profileCarouselCaption": "Profaili za Instagram & TikTok",
-      "qrEverywhereDesc": "Kamili kwa Kila Ukumbi",
-      "qrEverywhereTitle": "Ongeza kiungo cha QR kila mahali",
-      "scanText": "Changanua mapendekezo ya karibu nawe",
-      "storefrontText": "Ni kamili kwa maonyesho ya mbele ya duka",
-      "subtext": "Kiungo chako cha Explorer kinakuwa mwongozo hai - kitu ambacho watu wanaweza kuhifadhi, kukitembelea upya, na kuchunguza kwa kasi yao wenyewe.\n\nIshiriki kwenye wasifu, ujumbe, meza, ukuta au kadi.\nPopote inapokwenda, mtazamo wako unaenda nayo.",
-      "tokyoFoodGuide": "Mwongozo wangu wa chakula wa Tokyo explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "Kifungua kinywa karibu",
-          "Njia ya makumbusho",
-          "Matembezi ya jioni"
-        ],
-        "messageBubble": "Hii hapa orodha yangu ya Kyoto",
-        "savedRecommendation": "Pendekezo lililohifadhiwa",
-        "scanForPicks": "Changanua kwa chaguo",
-        "welcomeGuide": "Karibu mwongozo"
-      },
-      "welcomeDesc": "Ni kamili kwa wenyeji na waelekezi",
-      "welcomeTitle": "Jumuisha katika vitabu vya kukaribisha"
-    },
-    "testimonials": {
-      "headline": "Inapendwa na wasafiri, watayarishi na waandaji",
-      "items": [
-        {
-          "id": "1",
-          "location": "Mumbai, India",
-          "name": "Priya Sharma",
-          "quote": "wagunduzi walibadilisha jinsi ninavyoshiriki maarifa yangu ya kusafiri. Wafuasi wangu wanapenda kupata ufikiaji wa papo hapo kwa mapendekezo yangu yaliyoratibiwa!",
-          "role": "Blogger ya Kusafiri"
-        },
-        {
-          "id": "2",
-          "location": "Delhi, India",
-          "name": "Raj Patel",
-          "quote": "Wageni wangu wanapenda kabisa msimbo wa QR uliobinafsishwa katika vifaa vyao vya kukaribisha. Imekuwa mguso wangu wa saini!",
-          "role": "Mpangishi wa Airbnb"
-        },
-        {
-          "id": "3",
-          "location": "Tokyo, Japan",
-          "name": "Yuki Tanaka",
-          "quote": "Tunashiriki wagunduzi wetu na wateja ili kupendekeza maeneo mengine ya karibu. Imeunda miunganisho ya ajabu ya jamii.",
-          "role": "Mmiliki wa Mgahawa"
-        },
-        {
-          "id": "4",
-          "location": "São Paulo, Brazili",
-          "name": "Maria Silva",
-          "quote": "wagunduzi hunisaidia kupanua ujuzi wangu zaidi ya saa za ziara. Wateja wanaweza kufikia mapendekezo yangu wakati wowote!",
-          "role": "Mwongozo wa Watalii"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "Kama mshawishi wa usafiri, wagunduzi hurahisisha sana kushiriki maeneo ninayopenda na hadhira yangu. Kipengele cha nambari ya QR ni nzuri!",
-          "role": "Mshawishi wa Kusafiri"
-        },
-        {
-          "id": "6",
-          "location": "Paris, Ufaransa",
-          "name": "Sophie Martin",
-          "quote": "Ninatumia wagunduzi kuunda safari za kutembea kwa wateja wangu. Wanaweza kuchanganua QR na kuchunguza kwa mwendo wao wenyewe!",
-          "role": "Mjuzi wa Mitaa"
-        }
-      ],
-      "scrollLeft": "Peleka ushahidi kushoto",
-      "scrollRight": "Peleka ushahidi kulia",
-      "subtext": "Tazama jinsi watu ulimwenguni kote wanavyotumia wagunduzi kushiriki kile ambacho ni muhimu zaidi."
-    },
-    "whoIsFor": {
-      "cards": [
-        "Wachunguzi wa kibinafsi",
-        "Waumbaji na wahifadhi",
-        "Wenyeji na biashara",
-        "Chapa na mashirika"
-      ],
-      "chips": [
-        "Wasafiri",
-        "Wenyeji",
-        "Familia",
-        "Wanafunzi",
-        "Wahamaji",
-        "Waumbaji",
-        "Washawishi",
-        "Wanablogu",
-        "Wakaguzi",
-        "Wapiga picha",
-        "Waelimishaji",
-        "Viongozi wa jumuiya",
-        "Hoteli",
-        "Airbnbs",
-        "Hosteli",
-        "Mikahawa",
-        "Mikahawa",
-        "Maduka ya rejareja",
-        "Gym",
-        "Saluni",
-        "Kliniki",
-        "Boutiques",
-        "Bidhaa",
-        "Vianzio",
-        "Mashirika",
-        "Vyuo vikuu",
-        "Mashirika",
-        "Viwanja vya ndege",
-        "NGOs",
-        "Timu za serikali"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "Imeundwa kwa watu ambao ladha yao husaidia wengine.",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "Iwe unashiriki jiji, rafu, orodha ya bidhaa, orodha ya kucheza, au mwongozo wa wageni, wagunduzi hukupa mapendekezo yako nyumbani.",
-      "useCases": {
-        "airbnbHosts": "Wapangishi wa Airbnb",
-        "airbnbHostsDesc": "Boresha matumizi ya wageni kwa maarifa ya ndani",
-        "anyBusiness": "Biashara Yoyote",
-        "anyBusinessDesc": "Jenga uaminifu wa jamii na wateja",
-        "cafes": "Mikahawa",
-        "cafesDesc": "Shiriki vipendwa vya ujirani na wateja",
-        "creators": "Waumbaji",
-        "creatorsDesc": "Ongeza thamani zaidi ya maudhui kwa vidokezo vinavyoweza kutekelezeka",
-        "hotels": "Hoteli",
-        "hotelsDesc": "Toa mapendekezo ya ndani yaliyoratibiwa",
-        "influencers": "Washawishi",
-        "influencersDesc": "Pokea maarifa ya ndani na ujenge jumuiya",
-        "localGuides": "Wajuzi wa Mitaa",
-        "localGuidesDesc": "Ongeza utaalamu zaidi ya ziara za mtu binafsi",
-        "restaurants": "Mikahawa",
-        "restaurantsDesc": "Tangaza pamoja na biashara zingine za ndani",
-        "tourOperators": "Waendeshaji wa Ziara",
-        "tourOperatorsDesc": "Ongeza matumizi zaidi ya ziara zilizoratibiwa",
-        "travelers": "Wasafiri",
-        "travelersDesc": "Shiriki vito vilivyogunduliwa na wagunduzi wenzako"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "Mkahawa",
-          "Kitabu",
-          "Njia",
-          "Albamu",
-          "Filamu",
-          "Mchezo"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "wagunduzi - Gundua na Ushiriki Mapendekezo Yanayobinafsishwa ya Karibu Nawe",
       "description": "Gundua na ushiriki maeneo yako unayopenda na wagunduzi. Unda miongozo ya jiji iliyobinafsishwa, panga maeneo ya lazima-tembelee, na uyafanye yaweze kutambulika kwa misimbo ya QR inayoweza kushirikiwa. Gundua vito vilivyofichwa, mapendekezo yaliyoratibiwa, na vidokezo vya usafiri wa ndani kwenye ramani shirikishi.",
-      "geoDescription": "Gundua na ushiriki maeneo yako unayopenda kwa misimbo ya QR iliyobinafsishwa na viungo vinavyoweza kushirikiwa",
-      "geoFeatures": [
-        "Uzalishaji wa msimbo wa QR uliobinafsishwa",
-        "Ushiriki wa mapendekezo ya eneo lako",
-        "Uchanganuzi na maarifa",
-        "Muundo ulioboreshwa kwa rununu",
-        "Ugunduzi wa jumuiya"
-      ],
-      "geoIndustry": "Teknolojia",
       "keywords": [
         "gundua maeneo karibu nami",
         "miongozo ya kusafiri ya kibinafsi",
@@ -1867,10 +1829,16 @@
         "vidokezo vya kusafiri",
         "matangazo ya ndani"
       ],
-      "title": "wagunduzi - Gundua na Ushiriki Mapendekezo Yanayobinafsishwa ya Karibu Nawe"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "Gundua na ushiriki maeneo yako unayopenda kwa misimbo ya QR iliyobinafsishwa na viungo vinavyoweza kushirikiwa",
+      "geoFeatures": [
+        "Uzalishaji wa msimbo wa QR uliobinafsishwa",
+        "Ushiriki wa mapendekezo ya eneo lako",
+        "Uchanganuzi na maarifa",
+        "Muundo ulioboreshwa kwa rununu",
+        "Ugunduzi wa jumuiya"
+      ],
+      "geoIndustry": "Teknolojia"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Validation is pending. Please wait"
     }
   },
+  "usernameClaim": {
+    "validating": "Inathibitisha...",
+    "claimFree": "Dai bila malipo",
+    "trySuggestions": "Jaribu: {{suggestions}}",
+    "available": "Jina la mtumiaji linapatikana.",
+    "unavailable": "Jina la mtumiaji halipatikani.",
+    "confirmOnSignup": "Tutathibitisha upatikanaji wakati wa kujisajili.",
+    "checkingAvailability": "Inakagua upatikanaji..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "Jina la mtumiaji linapatikana.",
-    "checkingAvailability": "Inakagua upatikanaji...",
-    "claimFree": "Dai bila malipo",
-    "confirmOnSignup": "Tutathibitisha upatikanaji wakati wa kujisajili.",
-    "trySuggestions": "Jaribu: {{suggestions}}",
-    "unavailable": "Jina la mtumiaji halipatikani.",
-    "validating": "Inathibitisha..."
   }
 }

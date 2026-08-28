@@ -317,7 +317,11 @@ const Home = memo(() => {
   });
 
   // Get account documentId for guides query (reuse existing query pattern)
-  const { data: accountDataForGuides } = useQuery(GET_USER_ACCOUNT_QUERY, {
+  const {
+    data: accountDataForGuides,
+    loading: accountLookupLoading,
+    error: accountLookupError,
+  } = useQuery(GET_USER_ACCOUNT_QUERY, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
     fetchPolicy: "cache-first", // Reuse cache if available
@@ -404,7 +408,15 @@ const Home = memo(() => {
   // backend boundary. Never download another account's analytics to the browser.
   useEffect(() => {
     let active = true;
-    if (!accountDocumentId || !token) {
+    if (accountLookupLoading) {
+      setAnalyticsData([]);
+      setAnalyticsState("loading");
+      return () => {
+        active = false;
+      };
+    }
+
+    if (accountLookupError || !accountDocumentId || !token) {
       setAnalyticsData([]);
       setAnalyticsState("unavailable");
       return () => {
@@ -434,7 +446,7 @@ const Home = memo(() => {
     return () => {
       active = false;
     };
-  }, [accountDocumentId, token]);
+  }, [accountDocumentId, accountLookupError, accountLookupLoading, token]);
 
   // Refetch guides when navigating back from guide creation/editing (matching Recommendations pattern)
   useEffect(() => {

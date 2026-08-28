@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "Ako ste znatiželjni.\nAko ste promišljeni.\nAko ste spremni usporiti i pogledati bliže —\nveć ovdje pripadate.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Istraživanje počinje sviješću.",
       "line2": "Primjećivanjem onoga što drugi propuštaju.",
@@ -53,15 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Globalna zajednica ljudi koji istražuju s pažnjom — za ljude, kulturu i planet koji dijelimo.",
       "line2": "Istraživanje za nas nije o tome koliko daleko idemo.",
       "line3": "O tome je koliko duboko se povezujemo."
     },
-    "title": "Istraživači Zemlje"
+    "title": "Istraživači Zemlje",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "Vidljivo",
         "whatsappNumber": "Broj WhatsApp"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "Premještanje stavke {{category}} je otkazano. Redoslijed je vraćen.",
-          "drop": "Stavka {{category}} ispuštena je na položaj {{position}} od {{total}}.",
-          "handle": "Povucite {{category}}",
-          "instructions": "Pritisnite razmaknicu ili Enter za podizanje. Za pomicanje koristite strelice ili Home i End. Pritisnite razmaknicu ili Enter za ispuštanje ili Escape za odustajanje.",
-          "lift": "Stavka {{category}} je podignuta. Položaj {{position}} od {{total}}.",
-          "move": "Stavka {{category}} premještena je na položaj {{position}} od {{total}}."
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "Posao",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "Račun",
         "publicProfile": "Javni Profil"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Premještanje stavke {{category}} je otkazano. Redoslijed je vraćen.",
+          "drop": "Stavka {{category}} ispuštena je na položaj {{position}} od {{total}}.",
+          "handle": "Povucite {{category}}",
+          "instructions": "Pritisnite razmaknicu ili Enter za podizanje. Za pomicanje koristite strelice ili Home i End. Pritisnite razmaknicu ili Enter za ispuštanje ili Escape za odustajanje.",
+          "lift": "Stavka {{category}} je podignuta. Položaj {{position}} od {{total}}.",
+          "move": "Stavka {{category}} premještena je na položaj {{position}} od {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Lista preporuka uspješno objavljena!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Lista preporuka uspješno uklonjena iz objave!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Putuj kao lokalac",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 istraživači. Sva prava pridržana.",
+    "tagline": "Neka vaše preporuke putuju svijetom.",
     "email": "hello@explorers.earth",
-    "freeForever": "Slobodan zauvijek.",
-    "links": {
-      "about": "Oko",
-      "contact": "Kontakt",
-      "cookies": "Politika kolačića",
-      "faq": "FAQ",
-      "howItWorks": "Kako radi",
-      "privacy": "Politika privatnosti",
-      "product": "Proizvod",
-      "shareAnywhere": "Podijelite bilo gdje",
-      "terms": "Odredbe i uvjeti",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "Napravljeno s ljubavlju na zemlji",
     "sections": {
-      "company": "Tvrtka",
+      "product": "Proizvod",
       "contact": "Kontakt",
       "legal": "Pravno",
-      "product": "Proizvod"
+      "company": "Tvrtka"
     },
-    "tagline": "Neka vaše preporuke putuju svijetom."
+    "links": {
+      "howItWorks": "Kako radi",
+      "faq": "FAQ",
+      "contact": "Kontakt",
+      "about": "Oko",
+      "terms": "Odredbe i uvjeti",
+      "privacy": "Politika privatnosti",
+      "cookies": "Politika kolačića",
+      "product": "Proizvod",
+      "shareAnywhere": "Podijelite bilo gdje",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 istraživači. Sva prava pridržana.",
+    "madeWithLove": "Napravljeno s ljubavlju na zemlji",
+    "freeForever": "Slobodan zauvijek."
   },
   "header": {
-    "auth": {
-      "claimFree": "Traži besplatno",
-      "claimFreePage": "Zatražite besplatnu stranicu",
-      "login": "Prijava",
-      "signUp": "Registracija"
-    },
     "nav": {
-      "about": "O nama",
-      "closeMenu": "Zatvori navigacijski izbornik",
-      "contact": "Kontakt",
-      "faq": "FAQ",
       "howItWorks": "Kako radi",
-      "openMenu": "Otvorite navigacijski izbornik",
+      "whoIsFor": "Za koga",
+      "faq": "FAQ",
+      "about": "O nama",
+      "contact": "Kontakt",
       "product": "Proizvod",
       "share": "Udio",
-      "useCases": "Use Cases",
-      "whoIsFor": "Za koga"
+      "openMenu": "Otvorite navigacijski izbornik",
+      "closeMenu": "Zatvori navigacijski izbornik",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "Prijava",
+      "signUp": "Registracija",
+      "claimFreePage": "Zatražite besplatnu stranicu",
+      "claimFree": "Traži besplatno"
     }
   },
   "hero": {
-    "badge": "Slobodan zauvijek",
-    "countries": {
-      "ae": "UAE",
-      "au": "Australija",
-      "br": "Brazil",
-      "de": "Njemačka",
-      "fr": "Francuska",
-      "gb": "Velika Britanija",
-      "in": "Indija",
-      "jp": "Japan",
-      "sg": "Singapur",
-      "us": "Sjedinjene Države"
-    },
-    "ctaButton": "Zatražite svoju Explorer stranicu",
-    "globalStrip": "Explorers dijele preporuke diljem svijeta",
     "headline": "Sve vaše preporuke - jedan link, jedan QR",
-    "headlinePrefix": "Sve tvoje",
-    "headlineSuffix": "u jednom linku i QR.",
+    "subtext": "Napravite jednu stranicu za dijeljenje za sve što preporučite - mjesta, ljude, proizvode, knjige, filmove, emisije, glazbu, igre, aplikacije i još mnogo toga.",
     "inputLabel": "Zatražite svoj URL istraživača:",
     "inputPlaceholder": "tvoje ime",
-    "preview": {
-      "items": {
-        "book": "Rezervirati",
-        "game": "Igra",
-        "music": "Glazba",
-        "place": "Mjesto"
-      },
-      "onePageText": "Podijelite ga kao poveznicu, QR, poruku ili vodič.",
-      "onePageTitle": "Jedna stranica za svaku dobru preporuku.",
-      "screenAlt": "Explorer zaslon s preporukama stranice",
-      "todayList": "Današnji popis"
-    },
+    "ctaButton": "Zatražite svoju Explorer stranicu",
+    "signupPrompt": "Prijavite se da biste dobili svoj sada",
+    "headlinePrefix": "Sve tvoje",
     "rotatingWords": [
       "preporuke",
       "kuracije",
       "zbirke",
       "favoriti"
     ],
-    "signupPrompt": "Prijavite se da biste dobili svoj sada",
-    "subtext": "Napravite jednu stranicu za dijeljenje za sve što preporučite - mjesta, ljude, proizvode, knjige, filmove, emisije, glazbu, igre, aplikacije i još mnogo toga."
+    "headlineSuffix": "u jednom linku i QR.",
+    "badge": "Slobodan zauvijek",
+    "globalStrip": "Explorers dijele preporuke diljem svijeta",
+    "preview": {
+      "todayList": "Današnji popis",
+      "onePageTitle": "Jedna stranica za svaku dobru preporuku.",
+      "onePageText": "Podijelite ga kao poveznicu, QR, poruku ili vodič.",
+      "items": {
+        "place": "Mjesto",
+        "book": "Rezervirati",
+        "music": "Glazba",
+        "game": "Igra"
+      },
+      "screenAlt": "Explorer zaslon s preporukama stranice"
+    },
+    "countries": {
+      "in": "Indija",
+      "us": "Sjedinjene Države",
+      "gb": "Velika Britanija",
+      "jp": "Japan",
+      "fr": "Francuska",
+      "au": "Australija",
+      "br": "Brazil",
+      "ae": "UAE",
+      "sg": "Singapur",
+      "de": "Njemačka"
+    }
   },
   "languageModal": {
     "close": "Zatvoriti",
-    "escToClose": "Pritisnite Esc za zatvaranje",
-    "languagesAvailable": "{{count}} dostupni jezici",
-    "noLanguagesFound": "Nema pronađenih jezika",
     "searchPlaceholder": "Traži jezike...",
-    "subtitle": "Odaberite jezik koji želite koristiti u svim istraživačima.",
     "title": "Odaberite jezik",
-    "tryDifferentSearch": "Pokušajte s drugim pojmom za pretraživanje."
+    "subtitle": "Odaberite jezik koji želite koristiti u svim istraživačima.",
+    "noLanguagesFound": "Nema pronađenih jezika",
+    "tryDifferentSearch": "Pokušajte s drugim pojmom za pretraživanje.",
+    "languagesAvailable": "{{count}} dostupni jezici",
+    "escToClose": "Pritisnite Esc za zatvaranje"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Nadzorna ploča analitike",
-      "engagement": "Angažman",
-      "headline": "Pogledajte čime se ljudi bave.",
-      "last30Days": "Zadnjih 30 dana",
-      "livePreview": "Pregled uživo",
-      "referrals": "Preporuke",
-      "scanningDesc": "Pogledajte kako ljudi dolaze do vaše stranice putem poveznica, QR kodova i zajedničkih dodirnih točaka.",
-      "scanningTitle": "Razumijevanje skeniranja i klikova",
-      "spotsDesc": "Saznajte koja mjesta, proizvodi, popisi i vodiči najviše vole.",
-      "spotsTitle": "Pronađite najbolje preporuke",
-      "subtext": "Saznajte koje preporuke ljudi otvaraju, spremaju i ponovno posjećuju preko vaših veza i kodova QR.",
-      "totalScans": "Ukupno skeniranje",
-      "workingDesc": "Pratite koje preporuke ljudi otvaraju, spremaju i ponovno posjećuju.",
-      "workingTitle": "Vidite što radi"
-    },
     "createCustomize": {
+      "headline": "Izradite svoju Explorer stranicu za nekoliko minuta",
+      "subtext": "Prikupite ono što preporučujete, organizirajte to na svoj način i podijelite bilo gdje s jednom vezom ili QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Dodajte mjesta, iskustva, rute, zvukove i bilješke"
-        },
-        "generate": {
-          "description": "",
-          "title": "Uredite bilo kada — vaša veza uvijek ostaje ista"
+          "title": "Dodajte mjesta, iskustva, rute, zvukove i bilješke",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Organizirajte prema lokaciji ili interesu"
+          "title": "Organizirajte prema lokaciji ili interesu",
+          "description": ""
+        },
+        "generate": {
+          "title": "Uredite bilo kada — vaša veza uvijek ostaje ista",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Podijelite digitalno ili putem QR u stvarnom svijetu"
+          "title": "Podijelite digitalno ili putem QR u stvarnom svijetu",
+          "description": ""
         }
       },
-      "headline": "Izradite svoju Explorer stranicu za nekoliko minuta",
       "mockup": {
-        "addPlace": "Dodaj mjesto",
-        "title": "Moje preporuke"
+        "title": "Moje preporuke",
+        "addPlace": "Dodaj mjesto"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "Vaša se stranica ažurira u bilo kojem trenutku dok ista veza i QR rade posvuda.",
           "title": "Podijelite jednu vezu ili QR"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Jedna poveznica. Mnoga putovanja.",
+      "subtext": "Vaša poveznica Explorer postaje živi vodič — nešto što ljudi mogu spremiti, ponovno posjetiti i istražiti vlastitim tempom.\n\nPodijelite to na profilu, poruci, stolu, zidu ili kartici.\nGdje god ide, vaša perspektiva ide s njim.",
+      "scanText": "Potražite lokalne preporuke",
+      "storefrontText": "Savršeno za izloge u trgovinama",
+      "instagramTitle": "Dodajte u svoju Instagram/Tiktok biografiju",
+      "instagramDesc": "Odmah podijelite sa svojim pratiteljima",
+      "menuTitle": "Ispišite ga za Storefront",
+      "menuDesc": "Olakšane fizičke dodirne točke",
+      "welcomeTitle": "Uključite u knjige dobrodošlice",
+      "welcomeDesc": "Savršeno za domaćine i vodiče",
+      "cafeMenu": "Jelovnik kafića",
+      "tokyoFoodGuide": "Moj vodič za hranu u Tokiju explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "Profil spreman",
+          "title": "Link u bio"
+        },
+        {
+          "eyebrow": "Spreman za izvanmrežni rad",
+          "title": "QR kodovi"
+        },
+        {
+          "eyebrow": "Spreman za razgovor",
+          "title": "Poruke"
+        },
+        {
+          "eyebrow": "Spreman za goste",
+          "title": "Dobrodošli vodiči"
+        }
       ],
-      "subtext": "Prikupite ono što preporučujete, organizirajte to na svoj način i podijelite bilo gdje s jednom vezom ili QR."
+      "visual": {
+        "scanForPicks": "Skenirajte odabire",
+        "messageBubble": "Ovo je moj Kyoto popis",
+        "welcomeGuide": "Vodič dobrodošlice",
+        "guideItems": [
+          "Doručak u blizini",
+          "Muzejska ruta",
+          "Večernja šetnja"
+        ],
+        "savedRecommendation": "Spremljena preporuka"
+      },
+      "profileCarouselCaption": "Instagram & TikTok profili",
+      "qrEverywhereTitle": "Posvuda dodajte vezu QR",
+      "qrEverywhereDesc": "Savršeno za svako mjesto"
+    },
+    "analytics": {
+      "headline": "Pogledajte čime se ljudi bave.",
+      "subtext": "Saznajte koje preporuke ljudi otvaraju, spremaju i ponovno posjećuju preko vaših veza i kodova QR.",
+      "workingTitle": "Vidite što radi",
+      "workingDesc": "Pratite koje preporuke ljudi otvaraju, spremaju i ponovno posjećuju.",
+      "scanningTitle": "Razumijevanje skeniranja i klikova",
+      "scanningDesc": "Pogledajte kako ljudi dolaze do vaše stranice putem poveznica, QR kodova i zajedničkih dodirnih točaka.",
+      "spotsTitle": "Pronađite najbolje preporuke",
+      "spotsDesc": "Saznajte koja mjesta, proizvodi, popisi i vodiči najviše vole.",
+      "dashboardTitle": "Nadzorna ploča analitike",
+      "last30Days": "Zadnjih 30 dana",
+      "totalScans": "Ukupno skeniranje",
+      "engagement": "Angažman",
+      "referrals": "Preporuke",
+      "livePreview": "Pregled uživo"
+    },
+    "referEarn": {
+      "headline": "Podijelite, preporučite i zaradite",
+      "subtext": "Pretvorite vaše preporuke u pasivne nagrade — dobijte kredit kada drugi koriste vaš QR.",
+      "comingSoon": "Program nagrada za preporuke (uskoro)",
+      "rewardsTitle": "Zaradite nagrade",
+      "rewardsDesc": "Dobijte novac kada ljudi koriste vaše preporuke",
+      "earnedThisMonth": "Zarađeno ovaj mjesec",
+      "passiveTitle": "Pretvorite preporuke u pasivne nagrade",
+      "networkTitle": "Izgradite vašu mrežu i zaradite automatski"
+    },
+    "whoIsFor": {
+      "headline": "Napravljen za ljude čiji ukus pomaže drugima.",
+      "subtext": "Bilo da dijelite grad, policu, popis proizvoda, popis za reprodukciju ili vodič za goste, istraživači pružaju dom vašim preporukama.",
+      "cards": [
+        "Osobni istraživači",
+        "Kreatori i kustosi",
+        "Domaćini i poduzeća",
+        "Marke i organizacije"
+      ],
+      "useCases": {
+        "travelers": "Putnici",
+        "travelersDesc": "Podijelite otkrivene dragulje s kolegama istraživačima",
+        "influencers": "Influenceri",
+        "influencersDesc": "Unovčite lokalno znanje i izgradite zajednicu",
+        "airbnbHosts": "Airbnb Domaćini",
+        "airbnbHostsDesc": "Poboljšajte iskustvo gostiju s lokalnim uvidima",
+        "hotels": "hoteli",
+        "hotelsDesc": "Pružite odabrane lokalne preporuke",
+        "restaurants": "Restorani",
+        "restaurantsDesc": "Unakrsna promidžba s drugim lokalnim tvrtkama",
+        "cafes": "Kafići",
+        "cafesDesc": "Podijelite favorite iz susjedstva s kupcima",
+        "localGuides": "Lokalni vodiči",
+        "localGuidesDesc": "Povećajte stručnost izvan pojedinačnih obilazaka",
+        "creators": "Kreatori",
+        "creatorsDesc": "Dodajte vrijednost izvan sadržaja s korisnim savjetima",
+        "tourOperators": "Turoperatori",
+        "tourOperatorsDesc": "Proširite iskustvo izvan planiranih obilazaka",
+        "anyBusiness": "Bilo koji posao",
+        "anyBusinessDesc": "Izgradite zajednicu i lojalnost kupaca"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kafić",
+          "Rezervirati",
+          "Trag",
+          "Album",
+          "Film",
+          "Igra"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Putnici",
+        "Mještani",
+        "Obitelji",
+        "Studenti",
+        "Nomadi",
+        "Kreatori",
+        "Influenceri",
+        "Blogeri",
+        "Recenzenti",
+        "Fotografi",
+        "Odgojitelji",
+        "Vođe zajednice",
+        "hoteli",
+        "Airbnbs",
+        "hosteli",
+        "Kafići",
+        "Restorani",
+        "Maloprodajne trgovine",
+        "teretane",
+        "Saloni",
+        "Klinike",
+        "Butici",
+        "Marke",
+        "Startupi",
+        "Agencije",
+        "Sveučilišta",
+        "Korporacije",
+        "Zračne luke",
+        "nevladine organizacije",
+        "Vladini timovi"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "Vole ga putnici, kreatori i domaćini",
+      "subtext": "Pogledajte kako ljudi diljem svijeta koriste istraživače za dijeljenje onoga što im je najvažnije.",
+      "scrollLeft": "Skrolujte preporuke ulijevo",
+      "scrollRight": "Skrolujte preporuke udesno",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, Indija",
+          "name": "Priya Sharma",
+          "quote": "Istraživači su promijenili način na koji dijelim svoje znanje o putovanju. Moji pratitelji vole dobiti trenutni pristup mojim odabranim preporukama!",
+          "role": "Travel Blogger"
+        },
+        {
+          "id": "2",
+          "location": "Delhi, Indija",
+          "name": "Raj Patel",
+          "quote": "Moji gosti apsolutno vole personalizirani kod QR u svom paketu dobrodošlice. Postao je moj potpis!",
+          "role": "Airbnb Domaćin"
+        },
+        {
+          "id": "3",
+          "location": "Tokio, Japan",
+          "name": "Yuki Tanaka",
+          "quote": "Svoje istraživače dijelimo s klijentima kako bismo im preporučili druga lokalna mjesta. Stvorio je nevjerojatne veze u zajednici.",
+          "role": "Vlasnik restorana"
+        },
+        {
+          "id": "4",
+          "location": "São Paulo, Brazil",
+          "name": "Marija Silva",
+          "quote": "istraživači mi pomažu da proširim svoju stručnost izvan sati obilaska. Klijenti mogu pristupiti mojim preporukama bilo kada!",
+          "role": "Turistički vodič"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australija",
+          "name": "James Wilson",
+          "quote": "Kao osoba koja utječe na putovanja, istraživači olakšavaju dijeljenje mojih omiljenih mjesta s publikom. Značajka koda QR je sjajna!",
+          "role": "Influencer putovanja"
+        },
+        {
+          "id": "6",
+          "location": "Pariz, Francuska",
+          "name": "Sophie Martin",
+          "quote": "Koristim istraživače za izradu pješačkih tura za svoje klijente. Mogu skenirati QR i istraživati ​​vlastitim tempom!",
+          "role": "Lokalni vodič"
+        }
+      ]
     },
     "faq": {
+      "headline": "Imate pitanja?",
+      "subtext": "Odgovorili smo na najčešće stvari koje ljudi pitaju prije početka.",
+      "loading": "Učitavanje FAQ...",
       "error": "Greška pri učitavanju FAQ. Molimo pokušajte kasnije.",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "Jesu li istraživači zauvijek slobodni?",
           "Sequence": 4
         }
-      ],
-      "headline": "Imate pitanja?",
-      "loading": "Učitavanje FAQ...",
-      "subtext": "Odgovorili smo na najčešće stvari koje ljudi pitaju prije početka."
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Otkrivanje vođeno zajednicom"
+      "title": "Izgrađeno da ostane po strani",
+      "subtitle": "Jednostavne, promišljene značajke koje omogućuju vašim preporukama da sjaje.",
+      "simpleLinks": {
+        "title": "Jednostavne veze i dijeljenje QR"
       },
       "livingGuides": {
         "title": "Živi, uredivi vodiči"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "Preporuke svjesne lokacije"
       },
-      "privacyFirst": {
-        "title": "Privatnost na prvom mjestu po dizajnu"
-      },
-      "simpleLinks": {
-        "title": "Jednostavne veze i dijeljenje QR"
-      },
       "soundPlaylists": {
         "title": "Neobavezni zvuk i playliste"
       },
-      "subtitle": "Jednostavne, promišljene značajke koje omogućuju vašim preporukama da sjaje.",
-      "title": "Izgrađeno da ostane po strani"
+      "privacyFirst": {
+        "title": "Privatnost na prvom mjestu po dizajnu"
+      },
+      "communityDriven": {
+        "title": "Otkrivanje vođeno zajednicom"
+      }
     },
     "finalCTA": {
-      "creating": "Kreiranje vašeg explorers...",
+      "headline": "Počnite dijeliti vaš svijet danas",
+      "subtext": "Rezervirajte vaš besplatni explorers i pretvorite vaše lokalne uvide u djeljive vodiče.",
       "ctaButton": "Rezervirajte vaš explorers – Besplatno zauvijek",
       "disclaimer": "Kreditna kartica nije potrebna • Postavka za 2 minute",
-      "headline": "Počnite dijeliti vaš svijet danas",
-      "subtext": "Rezervirajte vaš besplatni explorers i pretvorite vaše lokalne uvide u djeljive vodiče."
+      "creating": "Kreiranje vašeg explorers..."
     },
     "productCategories": {
+      "headline": "Preporučite više od mjesta.",
+      "subtext": "Napravite jednu stranicu za mjesta, ljude, proizvode, knjige, filmove, emisije, glazbu, igre, aplikacije i alate.",
       "actions": [
         "Uštedjeti",
         "Organizirajte se",
         "Udio"
       ],
+      "overlayLabel": "Explorer stranica",
+      "visualLabels": {
+        "products": "Pravi favoriti",
+        "apps": "Koristan stog"
+      },
+      "visualDetails": {
+        "products": [
+          "Putna oprema",
+          "Dnevno nošenje",
+          "Kreator kit"
+        ],
+        "apps": [
+          "Alati za planiranje",
+          "Korisne aplikacije",
+          "Linkovi resursa"
+        ]
+      },
       "categories": [
         {
           "description": "Restorani, četvrti, muzeji, rute i skriveni dragulji koje ljudi mogu posjetiti.",
@@ -1602,244 +1793,15 @@
           "label": "Aplikacije i alati",
           "title": "Aplikacije, alati i korisne veze"
         }
-      ],
-      "headline": "Preporučite više od mjesta.",
-      "overlayLabel": "Explorer stranica",
-      "subtext": "Napravite jednu stranicu za mjesta, ljude, proizvode, knjige, filmove, emisije, glazbu, igre, aplikacije i alate.",
-      "visualDetails": {
-        "apps": [
-          "Alati za planiranje",
-          "Korisne aplikacije",
-          "Linkovi resursa"
-        ],
-        "products": [
-          "Putna oprema",
-          "Dnevno nošenje",
-          "Kreator kit"
-        ]
-      },
-      "visualLabels": {
-        "apps": "Koristan stog",
-        "products": "Pravi favoriti"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Program nagrada za preporuke (uskoro)",
-      "earnedThisMonth": "Zarađeno ovaj mjesec",
-      "headline": "Podijelite, preporučite i zaradite",
-      "networkTitle": "Izgradite vašu mrežu i zaradite automatski",
-      "passiveTitle": "Pretvorite preporuke u pasivne nagrade",
-      "rewardsDesc": "Dobijte novac kada ljudi koriste vaše preporuke",
-      "rewardsTitle": "Zaradite nagrade",
-      "subtext": "Pretvorite vaše preporuke u pasivne nagrade — dobijte kredit kada drugi koriste vaš QR."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Jelovnik kafića",
-      "cards": [
-        {
-          "eyebrow": "Profil spreman",
-          "title": "Link u bio"
-        },
-        {
-          "eyebrow": "Spreman za izvanmrežni rad",
-          "title": "QR kodovi"
-        },
-        {
-          "eyebrow": "Spreman za razgovor",
-          "title": "Poruke"
-        },
-        {
-          "eyebrow": "Spreman za goste",
-          "title": "Dobrodošli vodiči"
-        }
-      ],
-      "headline": "Jedna poveznica. Mnoga putovanja.",
-      "instagramDesc": "Odmah podijelite sa svojim pratiteljima",
-      "instagramTitle": "Dodajte u svoju Instagram/Tiktok biografiju",
-      "menuDesc": "Olakšane fizičke dodirne točke",
-      "menuTitle": "Ispišite ga za Storefront",
-      "profileCarouselCaption": "Instagram & TikTok profili",
-      "qrEverywhereDesc": "Savršeno za svako mjesto",
-      "qrEverywhereTitle": "Posvuda dodajte vezu QR",
-      "scanText": "Potražite lokalne preporuke",
-      "storefrontText": "Savršeno za izloge u trgovinama",
-      "subtext": "Vaša poveznica Explorer postaje živi vodič — nešto što ljudi mogu spremiti, ponovno posjetiti i istražiti vlastitim tempom.\n\nPodijelite to na profilu, poruci, stolu, zidu ili kartici.\nGdje god ide, vaša perspektiva ide s njim.",
-      "tokyoFoodGuide": "Moj vodič za hranu u Tokiju explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "Doručak u blizini",
-          "Muzejska ruta",
-          "Večernja šetnja"
-        ],
-        "messageBubble": "Ovo je moj Kyoto popis",
-        "savedRecommendation": "Spremljena preporuka",
-        "scanForPicks": "Skenirajte odabire",
-        "welcomeGuide": "Vodič dobrodošlice"
-      },
-      "welcomeDesc": "Savršeno za domaćine i vodiče",
-      "welcomeTitle": "Uključite u knjige dobrodošlice"
-    },
-    "testimonials": {
-      "headline": "Vole ga putnici, kreatori i domaćini",
-      "items": [
-        {
-          "id": "1",
-          "location": "Mumbai, Indija",
-          "name": "Priya Sharma",
-          "quote": "Istraživači su promijenili način na koji dijelim svoje znanje o putovanju. Moji pratitelji vole dobiti trenutni pristup mojim odabranim preporukama!",
-          "role": "Travel Blogger"
-        },
-        {
-          "id": "2",
-          "location": "Delhi, Indija",
-          "name": "Raj Patel",
-          "quote": "Moji gosti apsolutno vole personalizirani kod QR u svom paketu dobrodošlice. Postao je moj potpis!",
-          "role": "Airbnb Domaćin"
-        },
-        {
-          "id": "3",
-          "location": "Tokio, Japan",
-          "name": "Yuki Tanaka",
-          "quote": "Svoje istraživače dijelimo s klijentima kako bismo im preporučili druga lokalna mjesta. Stvorio je nevjerojatne veze u zajednici.",
-          "role": "Vlasnik restorana"
-        },
-        {
-          "id": "4",
-          "location": "São Paulo, Brazil",
-          "name": "Marija Silva",
-          "quote": "istraživači mi pomažu da proširim svoju stručnost izvan sati obilaska. Klijenti mogu pristupiti mojim preporukama bilo kada!",
-          "role": "Turistički vodič"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australija",
-          "name": "James Wilson",
-          "quote": "Kao osoba koja utječe na putovanja, istraživači olakšavaju dijeljenje mojih omiljenih mjesta s publikom. Značajka koda QR je sjajna!",
-          "role": "Influencer putovanja"
-        },
-        {
-          "id": "6",
-          "location": "Pariz, Francuska",
-          "name": "Sophie Martin",
-          "quote": "Koristim istraživače za izradu pješačkih tura za svoje klijente. Mogu skenirati QR i istraživati ​​vlastitim tempom!",
-          "role": "Lokalni vodič"
-        }
-      ],
-      "scrollLeft": "Skrolujte preporuke ulijevo",
-      "scrollRight": "Skrolujte preporuke udesno",
-      "subtext": "Pogledajte kako ljudi diljem svijeta koriste istraživače za dijeljenje onoga što im je najvažnije."
-    },
-    "whoIsFor": {
-      "cards": [
-        "Osobni istraživači",
-        "Kreatori i kustosi",
-        "Domaćini i poduzeća",
-        "Marke i organizacije"
-      ],
-      "chips": [
-        "Putnici",
-        "Mještani",
-        "Obitelji",
-        "Studenti",
-        "Nomadi",
-        "Kreatori",
-        "Influenceri",
-        "Blogeri",
-        "Recenzenti",
-        "Fotografi",
-        "Odgojitelji",
-        "Vođe zajednice",
-        "hoteli",
-        "Airbnbs",
-        "hosteli",
-        "Kafići",
-        "Restorani",
-        "Maloprodajne trgovine",
-        "teretane",
-        "Saloni",
-        "Klinike",
-        "Butici",
-        "Marke",
-        "Startupi",
-        "Agencije",
-        "Sveučilišta",
-        "Korporacije",
-        "Zračne luke",
-        "nevladine organizacije",
-        "Vladini timovi"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "Napravljen za ljude čiji ukus pomaže drugima.",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "Bilo da dijelite grad, policu, popis proizvoda, popis za reprodukciju ili vodič za goste, istraživači pružaju dom vašim preporukama.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Domaćini",
-        "airbnbHostsDesc": "Poboljšajte iskustvo gostiju s lokalnim uvidima",
-        "anyBusiness": "Bilo koji posao",
-        "anyBusinessDesc": "Izgradite zajednicu i lojalnost kupaca",
-        "cafes": "Kafići",
-        "cafesDesc": "Podijelite favorite iz susjedstva s kupcima",
-        "creators": "Kreatori",
-        "creatorsDesc": "Dodajte vrijednost izvan sadržaja s korisnim savjetima",
-        "hotels": "hoteli",
-        "hotelsDesc": "Pružite odabrane lokalne preporuke",
-        "influencers": "Influenceri",
-        "influencersDesc": "Unovčite lokalno znanje i izgradite zajednicu",
-        "localGuides": "Lokalni vodiči",
-        "localGuidesDesc": "Povećajte stručnost izvan pojedinačnih obilazaka",
-        "restaurants": "Restorani",
-        "restaurantsDesc": "Unakrsna promidžba s drugim lokalnim tvrtkama",
-        "tourOperators": "Turoperatori",
-        "tourOperatorsDesc": "Proširite iskustvo izvan planiranih obilazaka",
-        "travelers": "Putnici",
-        "travelersDesc": "Podijelite otkrivene dragulje s kolegama istraživačima"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "Kafić",
-          "Rezervirati",
-          "Trag",
-          "Album",
-          "Film",
-          "Igra"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "istraživači - Otkrijte i podijelite prilagođene lokalne preporuke",
       "description": "Otkrijte i podijelite svoja omiljena lokalna mjesta s istraživačima. Izradite personalizirane gradske vodiče, organizirajte mjesta koja morate posjetiti i učinite ih vidljivima pomoću QR kodova koji se mogu dijeliti. Istražite skrivene dragulje, odabrane preporuke i lokalne savjete za putovanja na interaktivnim kartama.",
-      "geoDescription": "Otkrijte i podijelite svoja omiljena lokalna mjesta s personaliziranim QR kodovima i poveznicama za dijeljenje",
-      "geoFeatures": [
-        "Personalizirano generiranje koda QR",
-        "Dijeljenje lokalnih preporuka",
-        "Analitika i uvidi",
-        "Dizajn optimiziran za mobilne uređaje",
-        "Otkriće zajednice"
-      ],
-      "geoIndustry": "Tehnologija",
       "keywords": [
         "otkrij mjesta u mojoj blizini",
         "personalizirani turistički vodiči",
@@ -1867,10 +1829,16 @@
         "savjeti za putovanja",
         "lokalna mjesta"
       ],
-      "title": "istraživači - Otkrijte i podijelite prilagođene lokalne preporuke"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "Otkrijte i podijelite svoja omiljena lokalna mjesta s personaliziranim QR kodovima i poveznicama za dijeljenje",
+      "geoFeatures": [
+        "Personalizirano generiranje koda QR",
+        "Dijeljenje lokalnih preporuka",
+        "Analitika i uvidi",
+        "Dizajn optimiziran za mobilne uređaje",
+        "Otkriće zajednice"
+      ],
+      "geoIndustry": "Tehnologija"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Validation is pending. Please wait"
     }
   },
+  "usernameClaim": {
+    "validating": "Provjera...",
+    "claimFree": "Traži besplatno",
+    "trySuggestions": "Pokušajte: {{suggestions}}",
+    "available": "Korisničko ime je dostupno.",
+    "unavailable": "Korisničko ime nije dostupno.",
+    "confirmOnSignup": "Dostupnost ćemo potvrditi prilikom prijave.",
+    "checkingAvailability": "Provjera dostupnosti..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "Korisničko ime je dostupno.",
-    "checkingAvailability": "Provjera dostupnosti...",
-    "claimFree": "Traži besplatno",
-    "confirmOnSignup": "Dostupnost ćemo potvrditi prilikom prijave.",
-    "trySuggestions": "Pokušajte: {{suggestions}}",
-    "unavailable": "Korisničko ime nije dostupno.",
-    "validating": "Provjera..."
   }
 }

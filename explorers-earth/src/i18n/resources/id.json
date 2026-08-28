@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "Jika Anda penasaran.\nJika Anda bijaksana.\nJika Anda bersedia memperlambat dan melihat lebih dekat —\nAnda sudah termasuk di sini.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Eksplorasi dimulai dengan kesadaran.",
       "line2": "Dengan memperhatikan apa yang dilewatkan orang lain.",
@@ -53,15 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Komunitas global orang-orang yang menjelajah dengan penuh perhatian — untuk manusia, budaya, dan planet yang kita bagi.",
       "line2": "Eksplorasi bagi kami bukan tentang seberapa jauh kita pergi.",
       "line3": "Ini tentang seberapa dalam kita terhubung."
     },
-    "title": "Penjelajah Bumi"
+    "title": "Penjelajah Bumi",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "Terlihat",
         "whatsappNumber": "Nomor WhatsApp"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "Pemindahan {{category}} dibatalkan. Urutan dipulihkan.",
-          "drop": "{{category}} diletakkan di posisi {{position}} dari {{total}}.",
-          "handle": "Seret {{category}}",
-          "instructions": "Tekan Spasi atau Enter untuk mengangkat. Gunakan tombol panah atau Home dan End untuk memindahkan. Tekan Spasi atau Enter untuk meletakkan, atau Escape untuk membatalkan.",
-          "lift": "{{category}} diangkat. Posisi {{position}} dari {{total}}.",
-          "move": "{{category}} dipindahkan ke posisi {{position}} dari {{total}}."
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "Bisnis",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "Akun",
         "publicProfile": "Profil Publik"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Pemindahan {{category}} dibatalkan. Urutan dipulihkan.",
+          "drop": "{{category}} diletakkan di posisi {{position}} dari {{total}}.",
+          "handle": "Seret {{category}}",
+          "instructions": "Tekan Spasi atau Enter untuk mengangkat. Gunakan tombol panah atau Home dan End untuk memindahkan. Tekan Spasi atau Enter untuk meletakkan, atau Escape untuk membatalkan.",
+          "lift": "{{category}} diangkat. Posisi {{position}} dari {{total}}.",
+          "move": "{{category}} dipindahkan ke posisi {{position}} dari {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Daftar rekomendasi berhasil dipublikasikan!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Daftar rekomendasi berhasil dihapus dari publikasi!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Berwisata seperti lokal",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 penjelajah. Semua hak dilindungi undang-undang.",
+    "tagline": "Biarkan rekomendasi Anda menyebar ke seluruh dunia.",
     "email": "hello@explorers.earth",
-    "freeForever": "Gratis selamanya.",
-    "links": {
-      "about": "Tentang",
-      "contact": "Kontak",
-      "cookies": "Kebijakan Cookie",
-      "faq": "Pertanyaan Umum",
-      "howItWorks": "Bagaimana cara kerjanya",
-      "privacy": "Kebijakan Privasi",
-      "product": "Produk",
-      "shareAnywhere": "Bagikan di mana saja",
-      "terms": "Syarat & Ketentuan",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "Dibuat dengan cinta di bumi",
     "sections": {
-      "company": "Perusahaan",
+      "product": "Produk",
       "contact": "Kontak",
       "legal": "Legal",
-      "product": "Produk"
+      "company": "Perusahaan"
     },
-    "tagline": "Biarkan rekomendasi Anda menyebar ke seluruh dunia."
+    "links": {
+      "howItWorks": "Bagaimana cara kerjanya",
+      "faq": "Pertanyaan Umum",
+      "contact": "Kontak",
+      "about": "Tentang",
+      "terms": "Syarat & Ketentuan",
+      "privacy": "Kebijakan Privasi",
+      "cookies": "Kebijakan Cookie",
+      "product": "Produk",
+      "shareAnywhere": "Bagikan di mana saja",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 penjelajah. Semua hak dilindungi undang-undang.",
+    "madeWithLove": "Dibuat dengan cinta di bumi",
+    "freeForever": "Gratis selamanya."
   },
   "header": {
-    "auth": {
-      "claimFree": "Klaim gratis",
-      "claimFreePage": "Klaim halaman gratis",
-      "login": "Masuk",
-      "signUp": "Daftar"
-    },
     "nav": {
-      "about": "Tentang",
-      "closeMenu": "Tutup menu navigasi",
-      "contact": "Kontak",
-      "faq": "Pertanyaan Umum",
       "howItWorks": "Bagaimana cara kerjanya",
-      "openMenu": "Buka menu navigasi",
+      "whoIsFor": "Untuk Siapa",
+      "faq": "Pertanyaan Umum",
+      "about": "Tentang",
+      "contact": "Kontak",
       "product": "Produk",
       "share": "Membagikan",
-      "useCases": "Use Cases",
-      "whoIsFor": "Untuk Siapa"
+      "openMenu": "Buka menu navigasi",
+      "closeMenu": "Tutup menu navigasi",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "Masuk",
+      "signUp": "Daftar",
+      "claimFreePage": "Klaim halaman gratis",
+      "claimFree": "Klaim gratis"
     }
   },
   "hero": {
-    "badge": "Gratis selamanya",
-    "countries": {
-      "ae": "UEA",
-      "au": "Australia",
-      "br": "Brazil",
-      "de": "Jerman",
-      "fr": "Perancis",
-      "gb": "Inggris Raya",
-      "in": "India",
-      "jp": "Jepang",
-      "sg": "Singapura",
-      "us": "Amerika Serikat"
-    },
-    "ctaButton": "Klaim halaman Explorer Anda",
-    "globalStrip": "Explorers berbagi rekomendasi di seluruh dunia",
     "headline": "Semua rekomendasi Anda - satu tautan, satu QR",
-    "headlinePrefix": "Semua milikmu",
-    "headlineSuffix": "dalam satu tautan dan QR.",
+    "subtext": "Buat satu halaman yang dapat dibagikan untuk semua yang Anda rekomendasikan - tempat, orang, produk, buku, film, acara, musik, permainan, aplikasi, dan banyak lagi.",
     "inputLabel": "Klaim URL penjelajah Anda:",
     "inputPlaceholder": "namamu",
-    "preview": {
-      "items": {
-        "book": "Buku",
-        "game": "Permainan",
-        "music": "Musik",
-        "place": "Tempat"
-      },
-      "onePageText": "Bagikan sebagai tautan, QR, pesan, atau panduan.",
-      "onePageTitle": "Satu halaman untuk setiap rekomendasi bagus.",
-      "screenAlt": "Layar rekomendasi halaman Explorer",
-      "todayList": "Daftar hari ini"
-    },
+    "ctaButton": "Klaim halaman Explorer Anda",
+    "signupPrompt": "Daftar untuk mendapatkan milik Anda sekarang",
+    "headlinePrefix": "Semua milikmu",
     "rotatingWords": [
       "rekomendasi",
       "kurasi",
       "koleksi",
       "favorit"
     ],
-    "signupPrompt": "Daftar untuk mendapatkan milik Anda sekarang",
-    "subtext": "Buat satu halaman yang dapat dibagikan untuk semua yang Anda rekomendasikan - tempat, orang, produk, buku, film, acara, musik, permainan, aplikasi, dan banyak lagi."
+    "headlineSuffix": "dalam satu tautan dan QR.",
+    "badge": "Gratis selamanya",
+    "globalStrip": "Explorers berbagi rekomendasi di seluruh dunia",
+    "preview": {
+      "todayList": "Daftar hari ini",
+      "onePageTitle": "Satu halaman untuk setiap rekomendasi bagus.",
+      "onePageText": "Bagikan sebagai tautan, QR, pesan, atau panduan.",
+      "items": {
+        "place": "Tempat",
+        "book": "Buku",
+        "music": "Musik",
+        "game": "Permainan"
+      },
+      "screenAlt": "Layar rekomendasi halaman Explorer"
+    },
+    "countries": {
+      "in": "India",
+      "us": "Amerika Serikat",
+      "gb": "Inggris Raya",
+      "jp": "Jepang",
+      "fr": "Perancis",
+      "au": "Australia",
+      "br": "Brazil",
+      "ae": "UEA",
+      "sg": "Singapura",
+      "de": "Jerman"
+    }
   },
   "languageModal": {
     "close": "Menutup",
-    "escToClose": "Tekan Esc untuk menutup",
-    "languagesAvailable": "{{count}} bahasa tersedia",
-    "noLanguagesFound": "Tidak ada bahasa yang ditemukan",
     "searchPlaceholder": "Telusuri bahasa...",
-    "subtitle": "Pilih bahasa yang ingin Anda gunakan di seluruh penjelajah.",
     "title": "Pilih Bahasa",
-    "tryDifferentSearch": "Coba istilah pencarian lain."
+    "subtitle": "Pilih bahasa yang ingin Anda gunakan di seluruh penjelajah.",
+    "noLanguagesFound": "Tidak ada bahasa yang ditemukan",
+    "tryDifferentSearch": "Coba istilah pencarian lain.",
+    "languagesAvailable": "{{count}} bahasa tersedia",
+    "escToClose": "Tekan Esc untuk menutup"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Setiap kode QR atau tautan dengan nama pengguna lama Anda tidak akan berfungsi lagi — Anda perlu memperbarui dan membagikannya lagi."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Dasbor Analisis",
-      "engagement": "Pertunangan",
-      "headline": "Lihat apa yang orang-orang libatkan.",
-      "last30Days": "30 hari terakhir",
-      "livePreview": "Pratinjau langsung",
-      "referrals": "Referensi",
-      "scanningDesc": "Lihat bagaimana orang-orang menjangkau halaman Anda dari tautan, kode QR, dan titik kontak bersama.",
-      "scanningTitle": "Memahami pemindaian dan klik",
-      "spotsDesc": "Pelajari tempat, produk, daftar, dan panduan mana yang paling disukai.",
-      "spotsTitle": "Temukan rekomendasi teratas",
-      "subtext": "Pahami rekomendasi mana yang dibuka, disimpan, dan dikunjungi kembali oleh orang-orang di seluruh tautan dan kode QR Anda.",
-      "totalScans": "Pemindaian Total",
-      "workingDesc": "Lacak rekomendasi mana yang dibuka, disimpan, dan dikunjungi kembali oleh orang-orang.",
-      "workingTitle": "Lihat apa yang berhasil"
-    },
     "createCustomize": {
+      "headline": "Buat halaman Explorer Anda dalam hitungan menit",
+      "subtext": "Kumpulkan apa yang Anda rekomendasikan, atur sesuai keinginan Anda, dan bagikan di mana saja dengan satu tautan atau QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Tambahkan tempat, pengalaman, rute, suara, dan catatan"
-        },
-        "generate": {
-          "description": "",
-          "title": "Edit kapan saja — tautan Anda selalu sama"
+          "title": "Tambahkan tempat, pengalaman, rute, suara, dan catatan",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Atur berdasarkan lokasi atau minat"
+          "title": "Atur berdasarkan lokasi atau minat",
+          "description": ""
+        },
+        "generate": {
+          "title": "Edit kapan saja — tautan Anda selalu sama",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Bagikan secara digital atau melalui QR di dunia nyata"
+          "title": "Bagikan secara digital atau melalui QR di dunia nyata",
+          "description": ""
         }
       },
-      "headline": "Buat halaman Explorer Anda dalam hitungan menit",
       "mockup": {
-        "addPlace": "Tambahkan Tempat",
-        "title": "Rekomendasi Saya"
+        "title": "Rekomendasi Saya",
+        "addPlace": "Tambahkan Tempat"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "Halaman Anda diperbarui kapan saja sementara tautan yang sama dan QR tetap berfungsi di mana saja.",
           "title": "Bagikan satu tautan atau QR"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Satu tautan. Banyak perjalanan.",
+      "subtext": "Tautan Explorer Anda menjadi panduan hidup — sesuatu yang dapat disimpan, dikunjungi kembali, dan dijelajahi orang sesuai keinginan mereka.\n\nBagikan di profil, pesan, meja, dinding, atau kartu.\nKe mana pun ia pergi, perspektif Anda akan ikut bersamanya.",
+      "scanText": "Pindai rekomendasi lokal",
+      "storefrontText": "Sempurna untuk tampilan etalase",
+      "instagramTitle": "Tambahkan ke Bio Instagram/Tiktok Anda",
+      "instagramDesc": "Bagikan dengan pengikut Anda secara instan",
+      "menuTitle": "Cetak untuk Etalase",
+      "menuDesc": "Titik kontak fisik menjadi mudah",
+      "welcomeTitle": "Sertakan dalam buku selamat datang",
+      "welcomeDesc": "Sempurna untuk tuan rumah dan pemandu",
+      "cafeMenu": "Menu Kafe",
+      "tokyoFoodGuide": "Panduan kuliner Tokyo saya explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "Profil siap",
+          "title": "Tautan di bio"
+        },
+        {
+          "eyebrow": "Siap offline",
+          "title": "Kode QR"
+        },
+        {
+          "eyebrow": "Siap mengobrol",
+          "title": "Pesan"
+        },
+        {
+          "eyebrow": "Siap untuk tamu",
+          "title": "Panduan selamat datang"
+        }
       ],
-      "subtext": "Kumpulkan apa yang Anda rekomendasikan, atur sesuai keinginan Anda, dan bagikan di mana saja dengan satu tautan atau QR."
+      "visual": {
+        "scanForPicks": "Pindai pilihan",
+        "messageBubble": "Ini daftar Kyoto saya",
+        "welcomeGuide": "Panduan selamat datang",
+        "guideItems": [
+          "Sarapan di dekatnya",
+          "Rute museum",
+          "Jalan-jalan sore"
+        ],
+        "savedRecommendation": "Rekomendasi tersimpan"
+      },
+      "profileCarouselCaption": "Profil Instagram & TikTok",
+      "qrEverywhereTitle": "Tambahkan tautan QR di mana saja",
+      "qrEverywhereDesc": "Sempurna untuk Setiap Tempat"
+    },
+    "analytics": {
+      "headline": "Lihat apa yang orang-orang libatkan.",
+      "subtext": "Pahami rekomendasi mana yang dibuka, disimpan, dan dikunjungi kembali oleh orang-orang di seluruh tautan dan kode QR Anda.",
+      "workingTitle": "Lihat apa yang berhasil",
+      "workingDesc": "Lacak rekomendasi mana yang dibuka, disimpan, dan dikunjungi kembali oleh orang-orang.",
+      "scanningTitle": "Memahami pemindaian dan klik",
+      "scanningDesc": "Lihat bagaimana orang-orang menjangkau halaman Anda dari tautan, kode QR, dan titik kontak bersama.",
+      "spotsTitle": "Temukan rekomendasi teratas",
+      "spotsDesc": "Pelajari tempat, produk, daftar, dan panduan mana yang paling disukai.",
+      "dashboardTitle": "Dasbor Analisis",
+      "last30Days": "30 hari terakhir",
+      "totalScans": "Pemindaian Total",
+      "engagement": "Pertunangan",
+      "referrals": "Referensi",
+      "livePreview": "Pratinjau langsung"
+    },
+    "referEarn": {
+      "headline": "Bagikan, rujuk, dan dapatkan",
+      "subtext": "Ubah rekomendasi Anda menjadi hadiah pasif — dapatkan kredit saat orang lain menggunakan QR Anda.",
+      "comingSoon": "Program hadiah rujukan (segera hadir)",
+      "rewardsTitle": "Dapatkan Hadiah",
+      "rewardsDesc": "Dibayar saat orang menggunakan rekomendasi Anda",
+      "earnedThisMonth": "Diperoleh bulan ini",
+      "passiveTitle": "Ubah rekomendasi menjadi hadiah pasif",
+      "networkTitle": "Bangun jaringan Anda dan dapatkan secara otomatis"
+    },
+    "whoIsFor": {
+      "headline": "Dibangun untuk orang-orang yang seleranya membantu orang lain.",
+      "subtext": "Baik Anda berbagi kota, galeri, daftar produk, playlist, atau panduan tamu, penjelajah memberikan rumah bagi rekomendasi Anda.",
+      "cards": [
+        "Penjelajah pribadi",
+        "Pencipta dan kurator",
+        "Tuan rumah dan bisnis",
+        "Merek dan organisasi"
+      ],
+      "useCases": {
+        "travelers": "Wisatawan",
+        "travelersDesc": "Bagikan permata yang ditemukan dengan sesama penjelajah",
+        "influencers": "Influencer",
+        "influencersDesc": "Uangkan pengetahuan lokal dan bangun komunitas",
+        "airbnbHosts": "Airbnb Host",
+        "airbnbHostsDesc": "Tingkatkan pengalaman tamu dengan wawasan lokal",
+        "hotels": "Hotel",
+        "hotelsDesc": "Berikan rekomendasi lokal yang dikurasi",
+        "restaurants": "Restoran",
+        "restaurantsDesc": "Lakukan promosi silang dengan bisnis lokal lainnya",
+        "cafes": "Kafe",
+        "cafesDesc": "Bagikan favorit lingkungan dengan pelanggan",
+        "localGuides": "Pemandu Lokal",
+        "localGuidesDesc": "Tingkatkan keahlian di luar tur individual",
+        "creators": "Pencipta",
+        "creatorsDesc": "Tambahkan nilai di luar konten dengan tips yang dapat ditindaklanjuti",
+        "tourOperators": "Operator Tur",
+        "tourOperatorsDesc": "Perluas pengalaman di luar tur terjadwal",
+        "anyBusiness": "Bisnis Apa Pun",
+        "anyBusinessDesc": "Membangun komunitas dan loyalitas pelanggan"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Kafe",
+          "Buku",
+          "Jejak",
+          "Album",
+          "Film",
+          "Permainan"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Wisatawan",
+        "Penduduk setempat",
+        "Keluarga",
+        "Siswa",
+        "Pengembara",
+        "Pencipta",
+        "Influencer",
+        "Blogger",
+        "Peninjau",
+        "Fotografer",
+        "Pendidik",
+        "Tokoh masyarakat",
+        "Hotel",
+        "Airbnbs",
+        "Asrama",
+        "Kafe",
+        "Restoran",
+        "Toko eceran",
+        "pusat kebugaran",
+        "Salon",
+        "Klinik",
+        "Butik",
+        "Merek",
+        "Startup",
+        "Agensi",
+        "Universitas",
+        "Korporasi",
+        "Bandara",
+        "LSM",
+        "Tim pemerintah"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "Dicintai oleh wisatawan, pencipta, dan tuan rumah",
+      "subtext": "Lihat bagaimana orang-orang di seluruh dunia menggunakan penjelajah untuk berbagi hal yang paling penting.",
+      "scrollLeft": "Gulir testimonial ke kiri",
+      "scrollRight": "Gulir testimonial ke kanan",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, India",
+          "name": "Priya Sharma",
+          "quote": "penjelajah mengubah cara saya berbagi pengetahuan perjalanan saya. Pengikut saya senang mendapatkan akses instan ke rekomendasi pilihan saya!",
+          "role": "Blogger Perjalanan"
+        },
+        {
+          "id": "2",
+          "location": "Delhi, India",
+          "name": "Raj Patel",
+          "quote": "Tamu saya sangat menyukai kode QR yang dipersonalisasi dalam paket sambutan mereka. Ini menjadi sentuhan khas saya!",
+          "role": "Airbnb Tuan rumah"
+        },
+        {
+          "id": "3",
+          "location": "Tokyo, Jepang",
+          "name": "Yuki Tanaka",
+          "quote": "Kami berbagi penjelajah kami dengan pelanggan untuk merekomendasikan tempat lokal lainnya. Ini menciptakan hubungan komunitas yang luar biasa.",
+          "role": "Pemilik Restoran"
+        },
+        {
+          "id": "4",
+          "location": "Sao Paulo, Brasil",
+          "name": "Maria Silva",
+          "quote": "penjelajah membantu saya memperluas keahlian saya di luar jam tur. Klien dapat mengakses rekomendasi saya kapan saja!",
+          "role": "Pemandu wisata"
+        },
+        {
+          "id": "5",
+          "location": "Sidney, Australia",
+          "name": "James Wilson",
+          "quote": "Sebagai influencer perjalanan, penjelajah memudahkan saya berbagi tempat favorit dengan audiens. Fitur kode QR brilian!",
+          "role": "Influencer Perjalanan"
+        },
+        {
+          "id": "6",
+          "location": "Paris, Prancis",
+          "name": "Sophie Martin",
+          "quote": "Saya menggunakan penjelajah untuk membuat tur jalan kaki untuk klien saya. Mereka dapat memindai QR dan menjelajah sesuai keinginan mereka!",
+          "role": "Panduan Lokal"
+        }
+      ]
     },
     "faq": {
+      "headline": "Ada pertanyaan?",
+      "subtext": "Kami telah menjawab hal-hal paling umum yang ditanyakan orang sebelum memulai.",
+      "loading": "Memuat FAQ...",
       "error": "Kesalahan memuat FAQ. Silakan coba lagi nanti.",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "Apakah penjelajah gratis selamanya?",
           "Sequence": 4
         }
-      ],
-      "headline": "Ada pertanyaan?",
-      "loading": "Memuat FAQ...",
-      "subtext": "Kami telah menjawab hal-hal paling umum yang ditanyakan orang sebelum memulai."
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Penemuan yang digerakkan komunitas"
+      "title": "Dibangun untuk tetap di luar jalan",
+      "subtitle": "Fitur sederhana dan bijaksana yang membuat rekomendasi Anda bersinar.",
+      "simpleLinks": {
+        "title": "Tautan sederhana dan berbagi QR"
       },
       "livingGuides": {
         "title": "Panduan hidup dan dapat diedit"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "Rekomendasi yang sadar lokasi"
       },
-      "privacyFirst": {
-        "title": "Privasi pertama berdasarkan desain"
-      },
-      "simpleLinks": {
-        "title": "Tautan sederhana dan berbagi QR"
-      },
       "soundPlaylists": {
         "title": "Suara dan daftar putar opsional"
       },
-      "subtitle": "Fitur sederhana dan bijaksana yang membuat rekomendasi Anda bersinar.",
-      "title": "Dibangun untuk tetap di luar jalan"
+      "privacyFirst": {
+        "title": "Privasi pertama berdasarkan desain"
+      },
+      "communityDriven": {
+        "title": "Penemuan yang digerakkan komunitas"
+      }
     },
     "finalCTA": {
-      "creating": "Membuat explorers Anda...",
+      "headline": "Mulai berbagi dunia Anda hari ini",
+      "subtext": "Klaim explorers gratis Anda dan ubah wawasan lokal menjadi panduan yang dapat dibagikan.",
       "ctaButton": "Klaim explorers – Gratis Selamanya",
       "disclaimer": "Tidak perlu kartu kredit • Setup dalam 2 menit",
-      "headline": "Mulai berbagi dunia Anda hari ini",
-      "subtext": "Klaim explorers gratis Anda dan ubah wawasan lokal menjadi panduan yang dapat dibagikan."
+      "creating": "Membuat explorers Anda..."
     },
     "productCategories": {
+      "headline": "Merekomendasikan lebih dari sekedar tempat.",
+      "subtext": "Buat satu halaman untuk tempat, orang, produk, buku, film, acara, musik, permainan, aplikasi, dan alat.",
       "actions": [
         "Menyimpan",
         "Mengatur",
         "Membagikan"
       ],
+      "overlayLabel": "halaman Explorer",
+      "visualLabels": {
+        "products": "Favorit nyata",
+        "apps": "Tumpukan yang berguna"
+      },
+      "visualDetails": {
+        "products": [
+          "Perlengkapan perjalanan",
+          "Barang bawaan harian",
+          "Perlengkapan pembuat"
+        ],
+        "apps": [
+          "Alat perencanaan",
+          "Aplikasi yang berguna",
+          "Tautan sumber daya"
+        ]
+      },
       "categories": [
         {
           "description": "Restoran, lingkungan sekitar, museum, rute, dan permata tersembunyi yang sebenarnya dapat dikunjungi orang.",
@@ -1602,244 +1793,15 @@
           "label": "Aplikasi & Alat",
           "title": "Aplikasi, alat, dan tautan bermanfaat"
         }
-      ],
-      "headline": "Merekomendasikan lebih dari sekedar tempat.",
-      "overlayLabel": "halaman Explorer",
-      "subtext": "Buat satu halaman untuk tempat, orang, produk, buku, film, acara, musik, permainan, aplikasi, dan alat.",
-      "visualDetails": {
-        "apps": [
-          "Alat perencanaan",
-          "Aplikasi yang berguna",
-          "Tautan sumber daya"
-        ],
-        "products": [
-          "Perlengkapan perjalanan",
-          "Barang bawaan harian",
-          "Perlengkapan pembuat"
-        ]
-      },
-      "visualLabels": {
-        "apps": "Tumpukan yang berguna",
-        "products": "Favorit nyata"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Program hadiah rujukan (segera hadir)",
-      "earnedThisMonth": "Diperoleh bulan ini",
-      "headline": "Bagikan, rujuk, dan dapatkan",
-      "networkTitle": "Bangun jaringan Anda dan dapatkan secara otomatis",
-      "passiveTitle": "Ubah rekomendasi menjadi hadiah pasif",
-      "rewardsDesc": "Dibayar saat orang menggunakan rekomendasi Anda",
-      "rewardsTitle": "Dapatkan Hadiah",
-      "subtext": "Ubah rekomendasi Anda menjadi hadiah pasif — dapatkan kredit saat orang lain menggunakan QR Anda."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Menu Kafe",
-      "cards": [
-        {
-          "eyebrow": "Profil siap",
-          "title": "Tautan di bio"
-        },
-        {
-          "eyebrow": "Siap offline",
-          "title": "Kode QR"
-        },
-        {
-          "eyebrow": "Siap mengobrol",
-          "title": "Pesan"
-        },
-        {
-          "eyebrow": "Siap untuk tamu",
-          "title": "Panduan selamat datang"
-        }
-      ],
-      "headline": "Satu tautan. Banyak perjalanan.",
-      "instagramDesc": "Bagikan dengan pengikut Anda secara instan",
-      "instagramTitle": "Tambahkan ke Bio Instagram/Tiktok Anda",
-      "menuDesc": "Titik kontak fisik menjadi mudah",
-      "menuTitle": "Cetak untuk Etalase",
-      "profileCarouselCaption": "Profil Instagram & TikTok",
-      "qrEverywhereDesc": "Sempurna untuk Setiap Tempat",
-      "qrEverywhereTitle": "Tambahkan tautan QR di mana saja",
-      "scanText": "Pindai rekomendasi lokal",
-      "storefrontText": "Sempurna untuk tampilan etalase",
-      "subtext": "Tautan Explorer Anda menjadi panduan hidup — sesuatu yang dapat disimpan, dikunjungi kembali, dan dijelajahi orang sesuai keinginan mereka.\n\nBagikan di profil, pesan, meja, dinding, atau kartu.\nKe mana pun ia pergi, perspektif Anda akan ikut bersamanya.",
-      "tokyoFoodGuide": "Panduan kuliner Tokyo saya explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "Sarapan di dekatnya",
-          "Rute museum",
-          "Jalan-jalan sore"
-        ],
-        "messageBubble": "Ini daftar Kyoto saya",
-        "savedRecommendation": "Rekomendasi tersimpan",
-        "scanForPicks": "Pindai pilihan",
-        "welcomeGuide": "Panduan selamat datang"
-      },
-      "welcomeDesc": "Sempurna untuk tuan rumah dan pemandu",
-      "welcomeTitle": "Sertakan dalam buku selamat datang"
-    },
-    "testimonials": {
-      "headline": "Dicintai oleh wisatawan, pencipta, dan tuan rumah",
-      "items": [
-        {
-          "id": "1",
-          "location": "Mumbai, India",
-          "name": "Priya Sharma",
-          "quote": "penjelajah mengubah cara saya berbagi pengetahuan perjalanan saya. Pengikut saya senang mendapatkan akses instan ke rekomendasi pilihan saya!",
-          "role": "Blogger Perjalanan"
-        },
-        {
-          "id": "2",
-          "location": "Delhi, India",
-          "name": "Raj Patel",
-          "quote": "Tamu saya sangat menyukai kode QR yang dipersonalisasi dalam paket sambutan mereka. Ini menjadi sentuhan khas saya!",
-          "role": "Airbnb Tuan rumah"
-        },
-        {
-          "id": "3",
-          "location": "Tokyo, Jepang",
-          "name": "Yuki Tanaka",
-          "quote": "Kami berbagi penjelajah kami dengan pelanggan untuk merekomendasikan tempat lokal lainnya. Ini menciptakan hubungan komunitas yang luar biasa.",
-          "role": "Pemilik Restoran"
-        },
-        {
-          "id": "4",
-          "location": "Sao Paulo, Brasil",
-          "name": "Maria Silva",
-          "quote": "penjelajah membantu saya memperluas keahlian saya di luar jam tur. Klien dapat mengakses rekomendasi saya kapan saja!",
-          "role": "Pemandu wisata"
-        },
-        {
-          "id": "5",
-          "location": "Sidney, Australia",
-          "name": "James Wilson",
-          "quote": "Sebagai influencer perjalanan, penjelajah memudahkan saya berbagi tempat favorit dengan audiens. Fitur kode QR brilian!",
-          "role": "Influencer Perjalanan"
-        },
-        {
-          "id": "6",
-          "location": "Paris, Prancis",
-          "name": "Sophie Martin",
-          "quote": "Saya menggunakan penjelajah untuk membuat tur jalan kaki untuk klien saya. Mereka dapat memindai QR dan menjelajah sesuai keinginan mereka!",
-          "role": "Panduan Lokal"
-        }
-      ],
-      "scrollLeft": "Gulir testimonial ke kiri",
-      "scrollRight": "Gulir testimonial ke kanan",
-      "subtext": "Lihat bagaimana orang-orang di seluruh dunia menggunakan penjelajah untuk berbagi hal yang paling penting."
-    },
-    "whoIsFor": {
-      "cards": [
-        "Penjelajah pribadi",
-        "Pencipta dan kurator",
-        "Tuan rumah dan bisnis",
-        "Merek dan organisasi"
-      ],
-      "chips": [
-        "Wisatawan",
-        "Penduduk setempat",
-        "Keluarga",
-        "Siswa",
-        "Pengembara",
-        "Pencipta",
-        "Influencer",
-        "Blogger",
-        "Peninjau",
-        "Fotografer",
-        "Pendidik",
-        "Tokoh masyarakat",
-        "Hotel",
-        "Airbnbs",
-        "Asrama",
-        "Kafe",
-        "Restoran",
-        "Toko eceran",
-        "pusat kebugaran",
-        "Salon",
-        "Klinik",
-        "Butik",
-        "Merek",
-        "Startup",
-        "Agensi",
-        "Universitas",
-        "Korporasi",
-        "Bandara",
-        "LSM",
-        "Tim pemerintah"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "Dibangun untuk orang-orang yang seleranya membantu orang lain.",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "Baik Anda berbagi kota, galeri, daftar produk, playlist, atau panduan tamu, penjelajah memberikan rumah bagi rekomendasi Anda.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Host",
-        "airbnbHostsDesc": "Tingkatkan pengalaman tamu dengan wawasan lokal",
-        "anyBusiness": "Bisnis Apa Pun",
-        "anyBusinessDesc": "Membangun komunitas dan loyalitas pelanggan",
-        "cafes": "Kafe",
-        "cafesDesc": "Bagikan favorit lingkungan dengan pelanggan",
-        "creators": "Pencipta",
-        "creatorsDesc": "Tambahkan nilai di luar konten dengan tips yang dapat ditindaklanjuti",
-        "hotels": "Hotel",
-        "hotelsDesc": "Berikan rekomendasi lokal yang dikurasi",
-        "influencers": "Influencer",
-        "influencersDesc": "Uangkan pengetahuan lokal dan bangun komunitas",
-        "localGuides": "Pemandu Lokal",
-        "localGuidesDesc": "Tingkatkan keahlian di luar tur individual",
-        "restaurants": "Restoran",
-        "restaurantsDesc": "Lakukan promosi silang dengan bisnis lokal lainnya",
-        "tourOperators": "Operator Tur",
-        "tourOperatorsDesc": "Perluas pengalaman di luar tur terjadwal",
-        "travelers": "Wisatawan",
-        "travelersDesc": "Bagikan permata yang ditemukan dengan sesama penjelajah"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "Kafe",
-          "Buku",
-          "Jejak",
-          "Album",
-          "Film",
-          "Permainan"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "penjelajah - Temukan & Bagikan Rekomendasi Lokal yang Dipersonalisasi",
       "description": "Temukan dan bagikan tempat lokal favorit Anda dengan penjelajah. Buat panduan kota yang dipersonalisasi, atur tempat-tempat yang wajib dikunjungi, dan buat tempat-tempat tersebut mudah ditemukan dengan kode QR yang dapat dibagikan. Jelajahi permata tersembunyi, rekomendasi pilihan, dan tips perjalanan lokal di peta interaktif.",
-      "geoDescription": "Temukan dan bagikan tempat lokal favorit Anda dengan kode QR yang dipersonalisasi dan tautan yang dapat dibagikan",
-      "geoFeatures": [
-        "Pembuatan kode QR yang dipersonalisasi",
-        "Berbagi rekomendasi lokal",
-        "Analisis dan wawasan",
-        "Desain yang dioptimalkan untuk seluler",
-        "Penemuan komunitas"
-      ],
-      "geoIndustry": "Teknologi",
       "keywords": [
         "temukan tempat di dekat saya",
         "panduan perjalanan yang dipersonalisasi",
@@ -1867,10 +1829,16 @@
         "tip perjalanan",
         "tempat lokal"
       ],
-      "title": "penjelajah - Temukan & Bagikan Rekomendasi Lokal yang Dipersonalisasi"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "Temukan dan bagikan tempat lokal favorit Anda dengan kode QR yang dipersonalisasi dan tautan yang dapat dibagikan",
+      "geoFeatures": [
+        "Pembuatan kode QR yang dipersonalisasi",
+        "Berbagi rekomendasi lokal",
+        "Analisis dan wawasan",
+        "Desain yang dioptimalkan untuk seluler",
+        "Penemuan komunitas"
+      ],
+      "geoIndustry": "Teknologi"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Validasi tertunda. Harap tunggu"
     }
   },
+  "usernameClaim": {
+    "validating": "Memvalidasi...",
+    "claimFree": "Klaim gratis",
+    "trySuggestions": "Coba: {{suggestions}}",
+    "available": "Nama pengguna tersedia.",
+    "unavailable": "Nama pengguna tidak tersedia.",
+    "confirmOnSignup": "Kami akan mengonfirmasi ketersediaan saat mendaftar.",
+    "checkingAvailability": "Memeriksa ketersediaan..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "Nama pengguna tersedia.",
-    "checkingAvailability": "Memeriksa ketersediaan...",
-    "claimFree": "Klaim gratis",
-    "confirmOnSignup": "Kami akan mengonfirmasi ketersediaan saat mendaftar.",
-    "trySuggestions": "Coba: {{suggestions}}",
-    "unavailable": "Nama pengguna tidak tersedia.",
-    "validating": "Memvalidasi..."
   }
 }

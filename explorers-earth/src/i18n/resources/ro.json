@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "Dacă ești curios.\nDacă ești gânditor.\nDacă ești dispus să încetinești și să privești mai aproape —\naparțini deja aici.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Explorarea începe cu conștientizarea.",
       "line2": "Cu observarea a ceea ce alții trec cu vederea.",
@@ -53,15 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "O comunitate globală de oameni care explorează cu grijă — pentru oameni, cultură și planeta pe care o împărtășim.",
       "line2": "Explorarea pentru noi nu este despre cât de departe mergem.",
       "line3": "Este despre cât de profund ne conectăm."
     },
-    "title": "Exploratorii Pământului"
+    "title": "Exploratorii Pământului",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "Vizibil",
         "whatsappNumber": "Număr WhatsApp"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "Mutarea elementului {{category}} a fost anulată. Ordinea a fost restabilită.",
-          "drop": "Elementul {{category}} a fost plasat pe poziția {{position}} din {{total}}.",
-          "handle": "Trageți {{category}}",
-          "instructions": "Apăsați Spațiu sau Enter pentru a ridica. Folosiți săgețile sau tastele Home și End pentru a muta. Apăsați Spațiu sau Enter pentru a plasa ori Escape pentru a anula.",
-          "lift": "Elementul {{category}} a fost ridicat. Poziția {{position}} din {{total}}.",
-          "move": "Elementul {{category}} a fost mutat pe poziția {{position}} din {{total}}."
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "Afacere",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "Cont",
         "publicProfile": "Profil Public"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Mutarea elementului {{category}} a fost anulată. Ordinea a fost restabilită.",
+          "drop": "Elementul {{category}} a fost plasat pe poziția {{position}} din {{total}}.",
+          "handle": "Trageți {{category}}",
+          "instructions": "Apăsați Spațiu sau Enter pentru a ridica. Folosiți săgețile sau tastele Home și End pentru a muta. Apăsați Spațiu sau Enter pentru a plasa ori Escape pentru a anula.",
+          "lift": "Elementul {{category}} a fost ridicat. Poziția {{position}} din {{total}}.",
+          "move": "Elementul {{category}} a fost mutat pe poziția {{position}} din {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Lista de recomandări publicată cu succes!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Lista de recomandări eliminată cu succes din publicare!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Călătorește ca un local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 exploratori. Toate drepturile rezervate.",
+    "tagline": "Lasă recomandările tale să călătorească prin lume.",
     "email": "hello@explorers.earth",
-    "freeForever": "Liber pentru totdeauna.",
-    "links": {
-      "about": "Despre",
-      "contact": "Contact",
-      "cookies": "Politica cookie",
-      "faq": "FAQ",
-      "howItWorks": "Cum funcționează",
-      "privacy": "Politica de confidențialitate",
-      "product": "Produs",
-      "shareAnywhere": "Distribuie oriunde",
-      "terms": "Termeni și condiții",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "Făcută cu dragoste pe pământ",
     "sections": {
-      "company": "Companie",
+      "product": "Produs",
       "contact": "Contact",
       "legal": "Legal",
-      "product": "Produs"
+      "company": "Companie"
     },
-    "tagline": "Lasă recomandările tale să călătorească prin lume."
+    "links": {
+      "howItWorks": "Cum funcționează",
+      "faq": "FAQ",
+      "contact": "Contact",
+      "about": "Despre",
+      "terms": "Termeni și condiții",
+      "privacy": "Politica de confidențialitate",
+      "cookies": "Politica cookie",
+      "product": "Produs",
+      "shareAnywhere": "Distribuie oriunde",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 exploratori. Toate drepturile rezervate.",
+    "madeWithLove": "Făcută cu dragoste pe pământ",
+    "freeForever": "Liber pentru totdeauna."
   },
   "header": {
-    "auth": {
-      "claimFree": "Revendica gratuit",
-      "claimFreePage": "Revendicați pagina gratuită",
-      "login": "Autentificare",
-      "signUp": "Înregistrare"
-    },
     "nav": {
-      "about": "Despre",
-      "closeMenu": "Închideți meniul de navigare",
-      "contact": "Contact",
-      "faq": "FAQ",
       "howItWorks": "Cum funcționează",
-      "openMenu": "Deschideți meniul de navigare",
+      "whoIsFor": "Pentru cine",
+      "faq": "FAQ",
+      "about": "Despre",
+      "contact": "Contact",
       "product": "Produs",
       "share": "Distribuie",
-      "useCases": "Use Cases",
-      "whoIsFor": "Pentru cine"
+      "openMenu": "Deschideți meniul de navigare",
+      "closeMenu": "Închideți meniul de navigare",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "Autentificare",
+      "signUp": "Înregistrare",
+      "claimFreePage": "Revendicați pagina gratuită",
+      "claimFree": "Revendica gratuit"
     }
   },
   "hero": {
-    "badge": "Liber pentru totdeauna",
-    "countries": {
-      "ae": "Emiratele Arabe Unite",
-      "au": "Australia",
-      "br": "Brazilia",
-      "de": "Germania",
-      "fr": "Franţa",
-      "gb": "Regatul Unit",
-      "in": "India",
-      "jp": "Japonia",
-      "sg": "Singapore",
-      "us": "Statele Unite"
-    },
-    "ctaButton": "Revendicați-vă pagina Explorer",
-    "globalStrip": "Explorers împărtășesc recomandări în întreaga lume",
     "headline": "Toate recomandările dvs. - un link, unul QR",
-    "headlinePrefix": "Toate ale tale",
-    "headlineSuffix": "într-un singur link și QR.",
+    "subtext": "Creați o singură pagină care poate fi partajată pentru tot ceea ce recomandați - locuri, oameni, produse, cărți, filme, emisiuni, muzică, jocuri, aplicații și multe altele.",
     "inputLabel": "Revendicați adresa URL a exploratorilor dvs.:",
     "inputPlaceholder": "Numele dumneavoastră",
-    "preview": {
-      "items": {
-        "book": "Carte",
-        "game": "Joc",
-        "music": "Muzică",
-        "place": "Loc"
-      },
-      "onePageText": "Distribuiți-l ca link, QR, mesaj sau ghid.",
-      "onePageTitle": "O pagină pentru fiecare recomandare bună.",
-      "screenAlt": "Ecranul de recomandări de pagină Explorer",
-      "todayList": "Lista de azi"
-    },
+    "ctaButton": "Revendicați-vă pagina Explorer",
+    "signupPrompt": "Înscrieți-vă pentru a-l obține acum",
+    "headlinePrefix": "Toate ale tale",
     "rotatingWords": [
       "recomandări",
       "curatii",
       "colecții",
       "favorite"
     ],
-    "signupPrompt": "Înscrieți-vă pentru a-l obține acum",
-    "subtext": "Creați o singură pagină care poate fi partajată pentru tot ceea ce recomandați - locuri, oameni, produse, cărți, filme, emisiuni, muzică, jocuri, aplicații și multe altele."
+    "headlineSuffix": "într-un singur link și QR.",
+    "badge": "Liber pentru totdeauna",
+    "globalStrip": "Explorers împărtășesc recomandări în întreaga lume",
+    "preview": {
+      "todayList": "Lista de azi",
+      "onePageTitle": "O pagină pentru fiecare recomandare bună.",
+      "onePageText": "Distribuiți-l ca link, QR, mesaj sau ghid.",
+      "items": {
+        "place": "Loc",
+        "book": "Carte",
+        "music": "Muzică",
+        "game": "Joc"
+      },
+      "screenAlt": "Ecranul de recomandări de pagină Explorer"
+    },
+    "countries": {
+      "in": "India",
+      "us": "Statele Unite",
+      "gb": "Regatul Unit",
+      "jp": "Japonia",
+      "fr": "Franţa",
+      "au": "Australia",
+      "br": "Brazilia",
+      "ae": "Emiratele Arabe Unite",
+      "sg": "Singapore",
+      "de": "Germania"
+    }
   },
   "languageModal": {
     "close": "Aproape",
-    "escToClose": "Apăsați Esc pentru a închide",
-    "languagesAvailable": "{{count}} limbi disponibile",
-    "noLanguagesFound": "Nu s-au găsit limbi",
     "searchPlaceholder": "Căutați limbi...",
-    "subtitle": "Alegeți limba pe care doriți să o utilizați în exploratori.",
     "title": "Selectați Limbă",
-    "tryDifferentSearch": "Încercați un alt termen de căutare."
+    "subtitle": "Alegeți limba pe care doriți să o utilizați în exploratori.",
+    "noLanguagesFound": "Nu s-au găsit limbi",
+    "tryDifferentSearch": "Încercați un alt termen de căutare.",
+    "languagesAvailable": "{{count}} limbi disponibile",
+    "escToClose": "Apăsați Esc pentru a închide"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Orice coduri QR sau linkuri cu vechiul dvs. nume de utilizator nu vor mai funcționa — va trebui să le actualizați și să le partajați din nou."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Tabloul de bord Analytics",
-      "engagement": "Logodnă",
-      "headline": "Vezi cu ce interacționează oamenii.",
-      "last30Days": "Ultimele 30 de zile",
-      "livePreview": "Previzualizare live",
-      "referrals": "Recomandări",
-      "scanningDesc": "Vedeți cum ajung oamenii la pagina dvs. din linkuri, coduri QR și puncte de contact partajate.",
-      "scanningTitle": "Înțelegeți scanările și clicurile",
-      "spotsDesc": "Aflați ce locuri, produse, liste și ghiduri sunt cele mai apreciate.",
-      "spotsTitle": "Găsiți cele mai bune recomandări",
-      "subtext": "Înțelegeți ce recomandări deschid, salvează și revin utilizatorii prin linkurile și codurile QR.",
-      "totalScans": "Scanări totale",
-      "workingDesc": "Urmăriți recomandările deschise, salvate și revizuite de oameni.",
-      "workingTitle": "Vezi ce funcționează"
-    },
     "createCustomize": {
+      "headline": "Creați-vă pagina Explorer în câteva minute",
+      "subtext": "Colectați ceea ce recomandați, organizați-l în felul dvs. și partajați-l oriunde cu un singur link sau QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Adăugați locuri, experiențe, rute, sunete și note"
-        },
-        "generate": {
-          "description": "",
-          "title": "Editați oricând - linkul dvs. rămâne întotdeauna același"
+          "title": "Adăugați locuri, experiențe, rute, sunete și note",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Organizați după locație sau interes"
+          "title": "Organizați după locație sau interes",
+          "description": ""
+        },
+        "generate": {
+          "title": "Editați oricând - linkul dvs. rămâne întotdeauna același",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Distribuiți digital sau printr-un QR în lumea reală"
+          "title": "Distribuiți digital sau printr-un QR în lumea reală",
+          "description": ""
         }
       },
-      "headline": "Creați-vă pagina Explorer în câteva minute",
       "mockup": {
-        "addPlace": "Adăugați un loc",
-        "title": "Recomandările mele"
+        "title": "Recomandările mele",
+        "addPlace": "Adăugați un loc"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "Pagina ta se actualizează oricând, în timp ce același link și QR continuă să funcționeze peste tot.",
           "title": "Distribuiți un link sau QR"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Un singur link. Multe călătorii.",
+      "subtext": "Legătura dvs. Explorer devine un ghid viu - ceva ce oamenii îl pot salva, revedea și explora în propriul ritm.\n\nDistribuiți-l pe un profil, mesaj, masă, perete sau card.\nOriunde se duce, perspectiva ta merge cu ea.",
+      "scanText": "Scanați pentru recomandări locale",
+      "storefrontText": "Perfect pentru vitrinele magazinelor",
+      "instagramTitle": "Adaugă la Instagram/Tiktok Bio",
+      "instagramDesc": "Distribuie instantaneu cu urmăritorii tăi",
+      "menuTitle": "Imprimați-l pentru Storefront",
+      "menuDesc": "Puncte de contact fizice ușor de făcut",
+      "welcomeTitle": "Includeți în cărțile de bun venit",
+      "welcomeDesc": "Perfect pentru gazde și ghizi",
+      "cafeMenu": "Meniu cafenea",
+      "tokyoFoodGuide": "Ghidul meu de mâncare Tokyo explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "Pregătit pentru profil",
+          "title": "Link in bio"
+        },
+        {
+          "eyebrow": "Pregătit offline",
+          "title": "codurile QR"
+        },
+        {
+          "eyebrow": "Gata pentru chat",
+          "title": "Mesaje"
+        },
+        {
+          "eyebrow": "Gata pentru oaspeți",
+          "title": "Ghiduri de bun venit"
+        }
       ],
-      "subtext": "Colectați ceea ce recomandați, organizați-l în felul dvs. și partajați-l oriunde cu un singur link sau QR."
+      "visual": {
+        "scanForPicks": "Scanați pentru alegeri",
+        "messageBubble": "Iată lista mea de la Kyoto",
+        "welcomeGuide": "Ghid de bun venit",
+        "guideItems": [
+          "Micul dejun în apropiere",
+          "Traseul muzeului",
+          "Plimbare de seara"
+        ],
+        "savedRecommendation": "Recomandare salvată"
+      },
+      "profileCarouselCaption": "Profilurile Instagram și TikTok",
+      "qrEverywhereTitle": "Adăugați linkul QR peste tot",
+      "qrEverywhereDesc": "Perfect pentru fiecare locație"
+    },
+    "analytics": {
+      "headline": "Vezi cu ce interacționează oamenii.",
+      "subtext": "Înțelegeți ce recomandări deschid, salvează și revin utilizatorii prin linkurile și codurile QR.",
+      "workingTitle": "Vezi ce funcționează",
+      "workingDesc": "Urmăriți recomandările deschise, salvate și revizuite de oameni.",
+      "scanningTitle": "Înțelegeți scanările și clicurile",
+      "scanningDesc": "Vedeți cum ajung oamenii la pagina dvs. din linkuri, coduri QR și puncte de contact partajate.",
+      "spotsTitle": "Găsiți cele mai bune recomandări",
+      "spotsDesc": "Aflați ce locuri, produse, liste și ghiduri sunt cele mai apreciate.",
+      "dashboardTitle": "Tabloul de bord Analytics",
+      "last30Days": "Ultimele 30 de zile",
+      "totalScans": "Scanări totale",
+      "engagement": "Logodnă",
+      "referrals": "Recomandări",
+      "livePreview": "Previzualizare live"
+    },
+    "referEarn": {
+      "headline": "Împărtășește, referă și câștigă",
+      "subtext": "Transformă recomandările tale în recompense pasive — primește credit când alții folosesc QR-ul tău.",
+      "comingSoon": "Programul de recompense referințe (în curând)",
+      "rewardsTitle": "Câștigă Recompense",
+      "rewardsDesc": "Primește bani când oamenii folosesc recomandările tale",
+      "earnedThisMonth": "Câștigat luna aceasta",
+      "passiveTitle": "Transformă recomandările în recompense pasive",
+      "networkTitle": "Construiește rețeaua ta și câștigă automat"
+    },
+    "whoIsFor": {
+      "headline": "Creat pentru oameni al căror gust îi ajută pe alții.",
+      "subtext": "Indiferent dacă partajați un oraș, un raft, o listă de produse, o listă de redare sau un ghid pentru invitați, exploratorii oferă recomandărilor dvs. o casă.",
+      "cards": [
+        "Exploratori personali",
+        "Creatori și curatori",
+        "Gazde și afaceri",
+        "Mărci și organizații"
+      ],
+      "useCases": {
+        "travelers": "Călători",
+        "travelersDesc": "Distribuiți pietre prețioase descoperite cu colegii exploratori",
+        "influencers": "Influentori",
+        "influencersDesc": "Monetizați cunoștințele locale și construiți o comunitate",
+        "airbnbHosts": "Airbnb Gazde",
+        "airbnbHostsDesc": "Îmbunătățiți experiența oaspeților cu informații locale",
+        "hotels": "Hoteluri",
+        "hotelsDesc": "Oferă recomandări locale curate",
+        "restaurants": "Restaurante",
+        "restaurantsDesc": "Promovare încrucișată cu alte afaceri locale",
+        "cafes": "Cafenele",
+        "cafesDesc": "Distribuiți clienților favoritele din cartier",
+        "localGuides": "Local Guides",
+        "localGuidesDesc": "Experimentați la scară dincolo de tururile individuale",
+        "creators": "Creatori",
+        "creatorsDesc": "Adăugați valoare dincolo de conținut cu sfaturi utile",
+        "tourOperators": "Tour Operatori",
+        "tourOperatorsDesc": "Extindeți experiența dincolo de tururile programate",
+        "anyBusiness": "Orice afacere",
+        "anyBusinessDesc": "Construiți comunitatea și loialitatea clienților"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "Cafenea",
+          "Carte",
+          "Traseu",
+          "Album",
+          "Film",
+          "Joc"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Călători",
+        "Localnicii",
+        "Familiile",
+        "Elevii",
+        "Nomazi",
+        "Creatori",
+        "Influentori",
+        "Bloggeri",
+        "Recenzorii",
+        "Fotografii",
+        "Educatorii",
+        "Liderii comunitari",
+        "Hoteluri",
+        "Airbnbs",
+        "Pensiuni",
+        "Cafenele",
+        "Restaurante",
+        "Magazine de vânzare cu amănuntul",
+        "Săli de sport",
+        "Saloane",
+        "Clinici",
+        "Buticuri",
+        "Mărci",
+        "Startup-uri",
+        "Agenții",
+        "universități",
+        "Corporate",
+        "Aeroporturi",
+        "ONG-uri",
+        "Echipe guvernamentale"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "Iubit de călători, creatori și gazde",
+      "subtext": "Vedeți cum oamenii din întreaga lume folosesc exploratorii pentru a împărtăși ceea ce contează cel mai mult.",
+      "scrollLeft": "Derulează recomandările la stânga",
+      "scrollRight": "Derulează recomandările la dreapta",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, India",
+          "name": "Priya Sharma",
+          "quote": "exploratorii au transformat modul în care îmi împărtășesc cunoștințele de călătorie. Adepților mei le place să obțină acces instantaneu la recomandările mele personalizate!",
+          "role": "Blogger de călătorie"
+        },
+        {
+          "id": "2",
+          "location": "Delhi, India",
+          "name": "Raj Patel",
+          "quote": "Oaspeții mei iubesc absolut codul personalizat QR din trusa lor de bun venit. A devenit atingerea mea de semnătură!",
+          "role": "Airbnb Gazdă"
+        },
+        {
+          "id": "3",
+          "location": "Tokyo, Japonia",
+          "name": "Yuki Tanaka",
+          "quote": "Împărtășim exploratorii noștri cu clienții pentru a recomanda alte locuri locale. A creat conexiuni uimitoare cu comunitatea.",
+          "role": "Proprietar restaurant"
+        },
+        {
+          "id": "4",
+          "location": "São Paulo, Brazilia",
+          "name": "Maria Silva",
+          "quote": "exploratorii mă ajută să-mi extind experiența dincolo de orele de turneu. Clienții pot accesa recomandările mele oricând!",
+          "role": "Ghid turistic"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "În calitate de influent în călătorii, exploratorii fac atât de ușor să împărtășesc publicului meu locurile mele preferate. Caracteristica codului QR este genială!",
+          "role": "Influentor de călătorie"
+        },
+        {
+          "id": "6",
+          "location": "Paris, Franța",
+          "name": "Sophie Martin",
+          "quote": "Folosesc exploratori pentru a crea excursii pe jos pentru clienții mei. Ei pot scana QR și pot explora în ritmul lor!",
+          "role": "Local Guide"
+        }
+      ]
     },
     "faq": {
+      "headline": "Ai întrebări?",
+      "subtext": "Am răspuns la cele mai comune lucruri pe care oamenii le întreabă înainte de a începe.",
+      "loading": "Se încarcă FAQ-urile...",
       "error": "Eroare la încărcarea FAQ-urilor. Încearcă din nou mai târziu.",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "Exploratorii sunt liberi pentru totdeauna?",
           "Sequence": 4
         }
-      ],
-      "headline": "Ai întrebări?",
-      "loading": "Se încarcă FAQ-urile...",
-      "subtext": "Am răspuns la cele mai comune lucruri pe care oamenii le întreabă înainte de a începe."
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Descoperire condusă de comunitate"
+      "title": "Construit pentru a rămâne departe",
+      "subtitle": "Funcții simple și gândite care lasă recomandările tale să strălucească.",
+      "simpleLinks": {
+        "title": "Linkuri simple și partajare QR"
       },
       "livingGuides": {
         "title": "Ghiduri vii, editabile"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "Recomandări conștiente de locație"
       },
-      "privacyFirst": {
-        "title": "Confidențialitate primul prin design"
-      },
-      "simpleLinks": {
-        "title": "Linkuri simple și partajare QR"
-      },
       "soundPlaylists": {
         "title": "Sunet și liste de redare opționale"
       },
-      "subtitle": "Funcții simple și gândite care lasă recomandările tale să strălucească.",
-      "title": "Construit pentru a rămâne departe"
+      "privacyFirst": {
+        "title": "Confidențialitate primul prin design"
+      },
+      "communityDriven": {
+        "title": "Descoperire condusă de comunitate"
+      }
     },
     "finalCTA": {
-      "creating": "Se creează explorers-ul tău...",
+      "headline": "Începe să-ți împărtășești lumea astăzi",
+      "subtext": "Rezervă-ți explorers-ul gratuit și transformă perspectivele tale locale în ghiduri partajabile.",
       "ctaButton": "Rezervă explorers – Gratuit Pentru Totdeauna",
       "disclaimer": "Card de credit nu este necesar • Configurare în 2 minute",
-      "headline": "Începe să-ți împărtășești lumea astăzi",
-      "subtext": "Rezervă-ți explorers-ul gratuit și transformă perspectivele tale locale în ghiduri partajabile."
+      "creating": "Se creează explorers-ul tău..."
     },
     "productCategories": {
+      "headline": "Recomand mai mult decât locuri.",
+      "subtext": "Creați o pagină pentru locuri, oameni, produse, cărți, filme, emisiuni, muzică, jocuri, aplicații și instrumente.",
       "actions": [
         "Salva",
         "Organiza",
         "Distribuie"
       ],
+      "overlayLabel": "Explorer pagina",
+      "visualLabels": {
+        "products": "Adevărați favoriți",
+        "apps": "Stivă utilă"
+      },
+      "visualDetails": {
+        "products": [
+          "Echipament de călătorie",
+          "Transport zilnic",
+          "Trusa pentru creatori"
+        ],
+        "apps": [
+          "Instrumente de planificare",
+          "Aplicații utile",
+          "Legături de resurse"
+        ]
+      },
       "categories": [
         {
           "description": "Restaurante, cartiere, muzee, rute și pietre prețioase ascunse pe care oamenii le pot vizita.",
@@ -1602,244 +1793,15 @@
           "label": "Aplicații și instrumente",
           "title": "Aplicații, instrumente și link-uri utile"
         }
-      ],
-      "headline": "Recomand mai mult decât locuri.",
-      "overlayLabel": "Explorer pagina",
-      "subtext": "Creați o pagină pentru locuri, oameni, produse, cărți, filme, emisiuni, muzică, jocuri, aplicații și instrumente.",
-      "visualDetails": {
-        "apps": [
-          "Instrumente de planificare",
-          "Aplicații utile",
-          "Legături de resurse"
-        ],
-        "products": [
-          "Echipament de călătorie",
-          "Transport zilnic",
-          "Trusa pentru creatori"
-        ]
-      },
-      "visualLabels": {
-        "apps": "Stivă utilă",
-        "products": "Adevărați favoriți"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Programul de recompense referințe (în curând)",
-      "earnedThisMonth": "Câștigat luna aceasta",
-      "headline": "Împărtășește, referă și câștigă",
-      "networkTitle": "Construiește rețeaua ta și câștigă automat",
-      "passiveTitle": "Transformă recomandările în recompense pasive",
-      "rewardsDesc": "Primește bani când oamenii folosesc recomandările tale",
-      "rewardsTitle": "Câștigă Recompense",
-      "subtext": "Transformă recomandările tale în recompense pasive — primește credit când alții folosesc QR-ul tău."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Meniu cafenea",
-      "cards": [
-        {
-          "eyebrow": "Pregătit pentru profil",
-          "title": "Link in bio"
-        },
-        {
-          "eyebrow": "Pregătit offline",
-          "title": "codurile QR"
-        },
-        {
-          "eyebrow": "Gata pentru chat",
-          "title": "Mesaje"
-        },
-        {
-          "eyebrow": "Gata pentru oaspeți",
-          "title": "Ghiduri de bun venit"
-        }
-      ],
-      "headline": "Un singur link. Multe călătorii.",
-      "instagramDesc": "Distribuie instantaneu cu urmăritorii tăi",
-      "instagramTitle": "Adaugă la Instagram/Tiktok Bio",
-      "menuDesc": "Puncte de contact fizice ușor de făcut",
-      "menuTitle": "Imprimați-l pentru Storefront",
-      "profileCarouselCaption": "Profilurile Instagram și TikTok",
-      "qrEverywhereDesc": "Perfect pentru fiecare locație",
-      "qrEverywhereTitle": "Adăugați linkul QR peste tot",
-      "scanText": "Scanați pentru recomandări locale",
-      "storefrontText": "Perfect pentru vitrinele magazinelor",
-      "subtext": "Legătura dvs. Explorer devine un ghid viu - ceva ce oamenii îl pot salva, revedea și explora în propriul ritm.\n\nDistribuiți-l pe un profil, mesaj, masă, perete sau card.\nOriunde se duce, perspectiva ta merge cu ea.",
-      "tokyoFoodGuide": "Ghidul meu de mâncare Tokyo explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "Micul dejun în apropiere",
-          "Traseul muzeului",
-          "Plimbare de seara"
-        ],
-        "messageBubble": "Iată lista mea de la Kyoto",
-        "savedRecommendation": "Recomandare salvată",
-        "scanForPicks": "Scanați pentru alegeri",
-        "welcomeGuide": "Ghid de bun venit"
-      },
-      "welcomeDesc": "Perfect pentru gazde și ghizi",
-      "welcomeTitle": "Includeți în cărțile de bun venit"
-    },
-    "testimonials": {
-      "headline": "Iubit de călători, creatori și gazde",
-      "items": [
-        {
-          "id": "1",
-          "location": "Mumbai, India",
-          "name": "Priya Sharma",
-          "quote": "exploratorii au transformat modul în care îmi împărtășesc cunoștințele de călătorie. Adepților mei le place să obțină acces instantaneu la recomandările mele personalizate!",
-          "role": "Blogger de călătorie"
-        },
-        {
-          "id": "2",
-          "location": "Delhi, India",
-          "name": "Raj Patel",
-          "quote": "Oaspeții mei iubesc absolut codul personalizat QR din trusa lor de bun venit. A devenit atingerea mea de semnătură!",
-          "role": "Airbnb Gazdă"
-        },
-        {
-          "id": "3",
-          "location": "Tokyo, Japonia",
-          "name": "Yuki Tanaka",
-          "quote": "Împărtășim exploratorii noștri cu clienții pentru a recomanda alte locuri locale. A creat conexiuni uimitoare cu comunitatea.",
-          "role": "Proprietar restaurant"
-        },
-        {
-          "id": "4",
-          "location": "São Paulo, Brazilia",
-          "name": "Maria Silva",
-          "quote": "exploratorii mă ajută să-mi extind experiența dincolo de orele de turneu. Clienții pot accesa recomandările mele oricând!",
-          "role": "Ghid turistic"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Australia",
-          "name": "James Wilson",
-          "quote": "În calitate de influent în călătorii, exploratorii fac atât de ușor să împărtășesc publicului meu locurile mele preferate. Caracteristica codului QR este genială!",
-          "role": "Influentor de călătorie"
-        },
-        {
-          "id": "6",
-          "location": "Paris, Franța",
-          "name": "Sophie Martin",
-          "quote": "Folosesc exploratori pentru a crea excursii pe jos pentru clienții mei. Ei pot scana QR și pot explora în ritmul lor!",
-          "role": "Local Guide"
-        }
-      ],
-      "scrollLeft": "Derulează recomandările la stânga",
-      "scrollRight": "Derulează recomandările la dreapta",
-      "subtext": "Vedeți cum oamenii din întreaga lume folosesc exploratorii pentru a împărtăși ceea ce contează cel mai mult."
-    },
-    "whoIsFor": {
-      "cards": [
-        "Exploratori personali",
-        "Creatori și curatori",
-        "Gazde și afaceri",
-        "Mărci și organizații"
-      ],
-      "chips": [
-        "Călători",
-        "Localnicii",
-        "Familiile",
-        "Elevii",
-        "Nomazi",
-        "Creatori",
-        "Influentori",
-        "Bloggeri",
-        "Recenzorii",
-        "Fotografii",
-        "Educatorii",
-        "Liderii comunitari",
-        "Hoteluri",
-        "Airbnbs",
-        "Pensiuni",
-        "Cafenele",
-        "Restaurante",
-        "Magazine de vânzare cu amănuntul",
-        "Săli de sport",
-        "Saloane",
-        "Clinici",
-        "Buticuri",
-        "Mărci",
-        "Startup-uri",
-        "Agenții",
-        "universități",
-        "Corporate",
-        "Aeroporturi",
-        "ONG-uri",
-        "Echipe guvernamentale"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "Creat pentru oameni al căror gust îi ajută pe alții.",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "Indiferent dacă partajați un oraș, un raft, o listă de produse, o listă de redare sau un ghid pentru invitați, exploratorii oferă recomandărilor dvs. o casă.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Gazde",
-        "airbnbHostsDesc": "Îmbunătățiți experiența oaspeților cu informații locale",
-        "anyBusiness": "Orice afacere",
-        "anyBusinessDesc": "Construiți comunitatea și loialitatea clienților",
-        "cafes": "Cafenele",
-        "cafesDesc": "Distribuiți clienților favoritele din cartier",
-        "creators": "Creatori",
-        "creatorsDesc": "Adăugați valoare dincolo de conținut cu sfaturi utile",
-        "hotels": "Hoteluri",
-        "hotelsDesc": "Oferă recomandări locale curate",
-        "influencers": "Influentori",
-        "influencersDesc": "Monetizați cunoștințele locale și construiți o comunitate",
-        "localGuides": "Local Guides",
-        "localGuidesDesc": "Experimentați la scară dincolo de tururile individuale",
-        "restaurants": "Restaurante",
-        "restaurantsDesc": "Promovare încrucișată cu alte afaceri locale",
-        "tourOperators": "Tour Operatori",
-        "tourOperatorsDesc": "Extindeți experiența dincolo de tururile programate",
-        "travelers": "Călători",
-        "travelersDesc": "Distribuiți pietre prețioase descoperite cu colegii exploratori"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "Cafenea",
-          "Carte",
-          "Traseu",
-          "Album",
-          "Film",
-          "Joc"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "exploratori - Descoperiți și distribuiți recomandări locale personalizate",
       "description": "Descoperiți și împărtășiți cu exploratorii locurile dvs. locale preferate. Creați ghiduri de oraș personalizate, organizați locuri de vizitat obligatoriu și faceți-le descoperibile cu codurile QR care pot fi partajate. Explorați pietre prețioase ascunse, recomandări organizate și sfaturi de călătorie locale pe hărți interactive.",
-      "geoDescription": "Descoperiți și distribuiți locurile dvs. locale preferate cu coduri personalizate QR și linkuri care pot fi partajate",
-      "geoFeatures": [
-        "Generare personalizată de cod QR",
-        "Partajarea recomandărilor locale",
-        "Analize și perspective",
-        "Design optimizat pentru mobil",
-        "Descoperirea comunității"
-      ],
-      "geoIndustry": "Tehnologie",
       "keywords": [
         "descoperi locuri din apropierea mea",
         "ghiduri de călătorie personalizate",
@@ -1867,10 +1829,16 @@
         "sfaturi de călătorie",
         "pete locale"
       ],
-      "title": "exploratori - Descoperiți și distribuiți recomandări locale personalizate"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "Descoperiți și distribuiți locurile dvs. locale preferate cu coduri personalizate QR și linkuri care pot fi partajate",
+      "geoFeatures": [
+        "Generare personalizată de cod QR",
+        "Partajarea recomandărilor locale",
+        "Analize și perspective",
+        "Design optimizat pentru mobil",
+        "Descoperirea comunității"
+      ],
+      "geoIndustry": "Tehnologie"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Validation is pending. Please wait"
     }
   },
+  "usernameClaim": {
+    "validating": "Se validează...",
+    "claimFree": "Revendica gratuit",
+    "trySuggestions": "Încercați: {{suggestions}}",
+    "available": "Numele de utilizator este disponibil.",
+    "unavailable": "Numele de utilizator nu este disponibil.",
+    "confirmOnSignup": "Vom confirma disponibilitatea la înscriere.",
+    "checkingAvailability": "Se verifică disponibilitatea..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "Numele de utilizator este disponibil.",
-    "checkingAvailability": "Se verifică disponibilitatea...",
-    "claimFree": "Revendica gratuit",
-    "confirmOnSignup": "Vom confirma disponibilitatea la înscriere.",
-    "trySuggestions": "Încercați: {{suggestions}}",
-    "unavailable": "Numele de utilizator nu este disponibil.",
-    "validating": "Se validează..."
   }
 }

@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "Якщо ви допитливі.\nЯкщо ви обдумані.\nЯкщо ви готові уповільнитися і подивитися ближче —\nви вже належите сюди.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Дослідження починається з усвідомлення.",
       "line2": "З помічання того, що інші пропускають.",
@@ -53,15 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Глобальна спільнота людей, які досліджують з турботою — для людей, культури та планети, яку ми ділимося.",
       "line2": "Дослідження для нас не про те, як далеко ми йдемо.",
       "line3": "Це про те, як глибоко ми з'єднуємося."
     },
-    "title": "Дослідники Землі"
+    "title": "Дослідники Землі",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "Видимий",
         "whatsappNumber": "Номер WhatsApp"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "Переміщення {{category}} скасовано. Порядок відновлено.",
-          "drop": "{{category}} розміщено на позиції {{position}} з {{total}}.",
-          "handle": "Перетягнути {{category}}",
-          "instructions": "Натисніть Пробіл або Enter, щоб підняти. Для переміщення використовуйте стрілки або клавіші Home та End. Натисніть Пробіл або Enter, щоб опустити, або Escape для скасування.",
-          "lift": "{{category}} піднято. Позиція {{position}} з {{total}}.",
-          "move": "{{category}} переміщено на позицію {{position}} з {{total}}."
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "Бізнес",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "Обліковий Запис",
         "publicProfile": "Публічний Профіль"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Переміщення {{category}} скасовано. Порядок відновлено.",
+          "drop": "{{category}} розміщено на позиції {{position}} з {{total}}.",
+          "handle": "Перетягнути {{category}}",
+          "instructions": "Натисніть Пробіл або Enter, щоб підняти. Для переміщення використовуйте стрілки або клавіші Home та End. Натисніть Пробіл або Enter, щоб опустити, або Escape для скасування.",
+          "lift": "{{category}} піднято. Позиція {{position}} з {{total}}.",
+          "move": "{{category}} переміщено на позицію {{position}} з {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Recommendation list Published successfully!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Recommendation list Unpublished successfully!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Подорожуйте як місцевий",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 дослідники. Всі права захищені.",
+    "tagline": "Нехай ваші рекомендації мандрують світом.",
     "email": "hello@explorers.earth",
-    "freeForever": "Вільний назавжди.",
-    "links": {
-      "about": "про",
-      "contact": "контакт",
-      "cookies": "Політика використання файлів cookie",
-      "faq": "FAQ",
-      "howItWorks": "Як це працює",
-      "privacy": "Політика конфіденційності",
-      "product": "Продукт",
-      "shareAnywhere": "Поділіться будь-де",
-      "terms": "Правила та умови",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "Зроблено з любов'ю на землі",
     "sections": {
-      "company": "Компанія",
+      "product": "Продукт",
       "contact": "Контакти",
       "legal": "юридичний",
-      "product": "Продукт"
+      "company": "Компанія"
     },
-    "tagline": "Нехай ваші рекомендації мандрують світом."
+    "links": {
+      "howItWorks": "Як це працює",
+      "faq": "FAQ",
+      "contact": "контакт",
+      "about": "про",
+      "terms": "Правила та умови",
+      "privacy": "Політика конфіденційності",
+      "cookies": "Політика використання файлів cookie",
+      "product": "Продукт",
+      "shareAnywhere": "Поділіться будь-де",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 дослідники. Всі права захищені.",
+    "madeWithLove": "Зроблено з любов'ю на землі",
+    "freeForever": "Вільний назавжди."
   },
   "header": {
-    "auth": {
-      "claimFree": "Вимагати безкоштовно",
-      "claimFreePage": "Вимагайте безкоштовну сторінку",
-      "login": "Увійти",
-      "signUp": "Зареєструватися"
-    },
     "nav": {
-      "about": "Про нас",
-      "closeMenu": "Закрити навігаційне меню",
-      "contact": "Контакти",
-      "faq": "FAQ",
       "howItWorks": "Як це працює",
-      "openMenu": "Відкрити навігаційне меню",
+      "whoIsFor": "Для кого",
+      "faq": "FAQ",
+      "about": "Про нас",
+      "contact": "Контакти",
       "product": "Продукт",
       "share": "Поділіться",
-      "useCases": "Use Cases",
-      "whoIsFor": "Для кого"
+      "openMenu": "Відкрити навігаційне меню",
+      "closeMenu": "Закрити навігаційне меню",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "Увійти",
+      "signUp": "Зареєструватися",
+      "claimFreePage": "Вимагайте безкоштовну сторінку",
+      "claimFree": "Вимагати безкоштовно"
     }
   },
   "hero": {
-    "badge": "Вільний назавжди",
-    "countries": {
-      "ae": "ОАЕ",
-      "au": "Австралія",
-      "br": "Бразилія",
-      "de": "Німеччина",
-      "fr": "Франція",
-      "gb": "Велика Британія",
-      "in": "Індія",
-      "jp": "Японія",
-      "sg": "Сінгапур",
-      "us": "США"
-    },
-    "ctaButton": "Заявіть свою сторінку Explorer",
-    "globalStrip": "Explorers діляться рекомендаціями по всьому світу",
     "headline": "Всі ваші рекомендації - одне посилання, один QR",
-    "headlinePrefix": "Всі ваші",
-    "headlineSuffix": "в одне посилання і QR.",
+    "subtext": "Створіть одну сторінку для спільного доступу до всього, що ви рекомендуєте – місць, людей, продуктів, книг, фільмів, шоу, музики, ігор, програм тощо.",
     "inputLabel": "Вимагайте свою URL-адресу дослідників:",
     "inputPlaceholder": "твоє ім'я",
-    "preview": {
-      "items": {
-        "book": "книга",
-        "game": "Гра",
-        "music": "музика",
-        "place": "Місце"
-      },
-      "onePageText": "Поділіться ним як посиланням, QR, повідомленням або посібником.",
-      "onePageTitle": "Одна сторінка для кожної хорошої рекомендації.",
-      "screenAlt": "Екран рекомендацій щодо сторінки Explorer",
-      "todayList": "Сьогоднішній список"
-    },
+    "ctaButton": "Заявіть свою сторінку Explorer",
+    "signupPrompt": "Зареєструйтеся, щоб отримати свій зараз",
+    "headlinePrefix": "Всі ваші",
     "rotatingWords": [
       "рекомендації",
       "курації",
       "колекції",
       "обрані"
     ],
-    "signupPrompt": "Зареєструйтеся, щоб отримати свій зараз",
-    "subtext": "Створіть одну сторінку для спільного доступу до всього, що ви рекомендуєте – місць, людей, продуктів, книг, фільмів, шоу, музики, ігор, програм тощо."
+    "headlineSuffix": "в одне посилання і QR.",
+    "badge": "Вільний назавжди",
+    "globalStrip": "Explorers діляться рекомендаціями по всьому світу",
+    "preview": {
+      "todayList": "Сьогоднішній список",
+      "onePageTitle": "Одна сторінка для кожної хорошої рекомендації.",
+      "onePageText": "Поділіться ним як посиланням, QR, повідомленням або посібником.",
+      "items": {
+        "place": "Місце",
+        "book": "книга",
+        "music": "музика",
+        "game": "Гра"
+      },
+      "screenAlt": "Екран рекомендацій щодо сторінки Explorer"
+    },
+    "countries": {
+      "in": "Індія",
+      "us": "США",
+      "gb": "Велика Британія",
+      "jp": "Японія",
+      "fr": "Франція",
+      "au": "Австралія",
+      "br": "Бразилія",
+      "ae": "ОАЕ",
+      "sg": "Сінгапур",
+      "de": "Німеччина"
+    }
   },
   "languageModal": {
     "close": "Закрити",
-    "escToClose": "Натисніть Esc, щоб закрити",
-    "languagesAvailable": "Доступні мови {{count}}",
-    "noLanguagesFound": "Мови не знайдено",
     "searchPlaceholder": "Пошук мов...",
-    "subtitle": "Виберіть мову, яку ви хочете використовувати в дослідниках.",
     "title": "Виберіть мову",
-    "tryDifferentSearch": "Спробуйте інший термін пошуку."
+    "subtitle": "Виберіть мову, яку ви хочете використовувати в дослідниках.",
+    "noLanguagesFound": "Мови не знайдено",
+    "tryDifferentSearch": "Спробуйте інший термін пошуку.",
+    "languagesAvailable": "Доступні мови {{count}}",
+    "escToClose": "Натисніть Esc, щоб закрити"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Інформаційна панель Analytics",
-      "engagement": "Заручини",
-      "headline": "Подивіться, чим займаються люди.",
-      "last30Days": "Останні 30 днів",
-      "livePreview": "Попередній перегляд",
-      "referrals": "Реферали",
-      "scanningDesc": "Подивіться, як люди потрапляють на вашу сторінку за посиланнями, кодами QR і спільними точками взаємодії.",
-      "scanningTitle": "Розуміти сканування та клацання",
-      "spotsDesc": "Дізнайтеся, які місця, продукти, списки та путівники користуються найбільшою популярністю.",
-      "spotsTitle": "Знайдіть найкращі рекомендації",
-      "subtext": "Зрозумійте, які рекомендації люди відкривають, зберігають і переглядають за вашими посиланнями та кодами QR.",
-      "totalScans": "Загальні сканування",
-      "workingDesc": "Відстежуйте, які рекомендації люди відкривають, зберігають і переглядають повторно.",
-      "workingTitle": "Подивіться, що працює"
-    },
     "createCustomize": {
+      "headline": "Створіть свою сторінку Explorer за лічені хвилини",
+      "subtext": "Збирайте те, що ви рекомендуєте, упорядковуйте це як завгодно та діліться ними будь-де за допомогою одного посилання або QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Додайте місця, враження, маршрути, звуки та нотатки"
-        },
-        "generate": {
-          "description": "",
-          "title": "Редагуйте будь-коли — ваше посилання завжди залишається незмінним"
+          "title": "Додайте місця, враження, маршрути, звуки та нотатки",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Упорядкуйте за місцем розташування або за інтересами"
+          "title": "Упорядкуйте за місцем розташування або за інтересами",
+          "description": ""
+        },
+        "generate": {
+          "title": "Редагуйте будь-коли — ваше посилання завжди залишається незмінним",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Поділіться в цифровому вигляді або через QR у реальному світі"
+          "title": "Поділіться в цифровому вигляді або через QR у реальному світі",
+          "description": ""
         }
       },
-      "headline": "Створіть свою сторінку Explorer за лічені хвилини",
       "mockup": {
-        "addPlace": "Додати місце",
-        "title": "Мої рекомендації"
+        "title": "Мої рекомендації",
+        "addPlace": "Додати місце"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "Ваша сторінка оновлюється в будь-який час, а те саме посилання та QR продовжують працювати всюди.",
           "title": "Поділіться одним посиланням або QR"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Одне посилання. Багато подорожей.",
+      "subtext": "Ваше посилання Explorer стає живим путівником — те, що люди можуть зберігати, переглядати та досліджувати у своєму власному темпі.\n\nПоділіться ним у профілі, повідомленні, на столі, на стіні чи картці.\nКуди б він не йшов, ваша перспектива йде з ним.",
+      "scanText": "Пошук місцевих рекомендацій",
+      "storefrontText": "Ідеально підходить для вітрин",
+      "instagramTitle": "Додайте до свого Instagram/Tiktok Bio",
+      "instagramDesc": "Поділіться зі своїми підписниками миттєво",
+      "menuTitle": "Роздрукуйте його для Storefront",
+      "menuDesc": "Фізичні точки дотику легко",
+      "welcomeTitle": "Включити в вітальні книги",
+      "welcomeDesc": "Ідеально підходить для господарів та гідів",
+      "cafeMenu": "Меню кафе",
+      "tokyoFoodGuide": "Мій путівник по їжі в Токіо explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "Профіль готовий",
+          "title": "Посилання в біо"
+        },
+        {
+          "eyebrow": "Готовий до автономної роботи",
+          "title": "Коди QR"
+        },
+        {
+          "eyebrow": "Готовий до чату",
+          "title": "Повідомлення"
+        },
+        {
+          "eyebrow": "Готовий до гостей",
+          "title": "Вітаємо гідів"
+        }
       ],
-      "subtext": "Збирайте те, що ви рекомендуєте, упорядковуйте це як завгодно та діліться ними будь-де за допомогою одного посилання або QR."
+      "visual": {
+        "scanForPicks": "Сканувати вибірки",
+        "messageBubble": "Ось мій список Кіото",
+        "welcomeGuide": "Ласкаво просимо керівництво",
+        "guideItems": [
+          "Сніданок поруч",
+          "Музейний маршрут",
+          "Вечірня прогулянка"
+        ],
+        "savedRecommendation": "Збережена рекомендація"
+      },
+      "profileCarouselCaption": "Профілі Instagram і TikTok",
+      "qrEverywhereTitle": "Додайте скрізь посилання QR",
+      "qrEverywhereDesc": "Ідеально підходить для будь-якого місця"
+    },
+    "analytics": {
+      "headline": "Подивіться, чим займаються люди.",
+      "subtext": "Зрозумійте, які рекомендації люди відкривають, зберігають і переглядають за вашими посиланнями та кодами QR.",
+      "workingTitle": "Подивіться, що працює",
+      "workingDesc": "Відстежуйте, які рекомендації люди відкривають, зберігають і переглядають повторно.",
+      "scanningTitle": "Розуміти сканування та клацання",
+      "scanningDesc": "Подивіться, як люди потрапляють на вашу сторінку за посиланнями, кодами QR і спільними точками взаємодії.",
+      "spotsTitle": "Знайдіть найкращі рекомендації",
+      "spotsDesc": "Дізнайтеся, які місця, продукти, списки та путівники користуються найбільшою популярністю.",
+      "dashboardTitle": "Інформаційна панель Analytics",
+      "last30Days": "Останні 30 днів",
+      "totalScans": "Загальні сканування",
+      "engagement": "Заручини",
+      "referrals": "Реферали",
+      "livePreview": "Попередній перегляд"
+    },
+    "referEarn": {
+      "headline": "Поділіться, порекомендуйте та заробіть",
+      "subtext": "Перетворіть ваші рекомендації на пасивні винагороди — отримуйте кредити, коли інші використовують ваш QR.",
+      "comingSoon": "Програма реферальних винагород (незабаром)",
+      "rewardsTitle": "Заробляйте Винагороди",
+      "rewardsDesc": "Отримуйте гроші, коли люди використовують ваші рекомендації",
+      "earnedThisMonth": "Зароблено цього місяця",
+      "passiveTitle": "Перетворіть рекомендації на пасивні винагороди",
+      "networkTitle": "Побудуйте вашу мережу та заробляйте автоматично"
+    },
+    "whoIsFor": {
+      "headline": "Створено для людей, чий смак допомагає іншим.",
+      "subtext": "Незалежно від того, чи ділитеся ви містом, полицею, списком продуктів, списком відтворення чи путівником для гостей, дослідники нададуть ваші рекомендації домівці.",
+      "cards": [
+        "Персональні дослідники",
+        "Творці та куратори",
+        "Господарі та підприємства",
+        "Бренди та організації"
+      ],
+      "useCases": {
+        "travelers": "Мандрівники",
+        "travelersDesc": "Діліться знайденими дорогоцінними каменями з іншими дослідниками",
+        "influencers": "Інфлюенсери",
+        "influencersDesc": "Монетизуйте місцеві знання та створюйте спільноту",
+        "airbnbHosts": "Airbnb Хости",
+        "airbnbHostsDesc": "Покращуйте враження від гостей за допомогою місцевої інформації",
+        "hotels": "Готелі",
+        "hotelsDesc": "Надайте місцеві рекомендації",
+        "restaurants": "Ресторани",
+        "restaurantsDesc": "Перехресне просування з іншими місцевими підприємствами",
+        "cafes": "кафе",
+        "cafesDesc": "Поділіться з клієнтами улюбленими місцями",
+        "localGuides": "Місцеві гіди",
+        "localGuidesDesc": "Масштабуйте експертизу за межі окремих турів",
+        "creators": "Творці",
+        "creatorsDesc": "Додайте цінність за межі вмісту за допомогою практичних порад",
+        "tourOperators": "Туроператори",
+        "tourOperatorsDesc": "Розширення досвіду поза плановими турами",
+        "anyBusiness": "Будь-який бізнес",
+        "anyBusinessDesc": "Створіть спільноту та лояльність клієнтів"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "кафе",
+          "книга",
+          "Стежка",
+          "Альбом",
+          "плівка",
+          "Гра"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "Мандрівники",
+        "Місцеві жителі",
+        "Сім'ї",
+        "Студенти",
+        "Кочівники",
+        "Творці",
+        "Інфлюенсери",
+        "Блогери",
+        "Рецензенти",
+        "Фотографи",
+        "Вихователі",
+        "Лідери громад",
+        "Готелі",
+        "Airbnbs",
+        "Хостели",
+        "кафе",
+        "Ресторани",
+        "Роздрібні магазини",
+        "Спортзали",
+        "Салони",
+        "Клініки",
+        "Бутіки",
+        "Бренди",
+        "Стартапи",
+        "агентства",
+        "ВНЗ",
+        "Корпоративи",
+        "Аеропорти",
+        "НУО",
+        "Урядові команди"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "Люблять мандрівники, творці та господарі",
+      "subtext": "Подивіться, як люди в усьому світі використовують дослідники, щоб ділитися найважливішим.",
+      "scrollLeft": "Прокрутіть відгуки вліво",
+      "scrollRight": "Прокрутіть відгуки вправо",
+      "items": [
+        {
+          "id": "1",
+          "location": "Мумбаї, Індія",
+          "name": "Прія Шарма",
+          "quote": "Дослідники змінили те, як я ділюся своїми знаннями про подорожі. Мої підписники люблять отримувати миттєвий доступ до моїх підібраних рекомендацій!",
+          "role": "Туристичний блогер"
+        },
+        {
+          "id": "2",
+          "location": "Делі, Індія",
+          "name": "Радж Патель",
+          "quote": "Моїм гостям дуже подобається персоналізований код QR у їхньому вітальному наборі. Це стало моїм фірмовим штрихом!",
+          "role": "Хост Airbnb"
+        },
+        {
+          "id": "3",
+          "location": "Токіо, Японія",
+          "name": "Юкі Танака",
+          "quote": "Ми ділимося нашими дослідниками з клієнтами, щоб рекомендувати інші місцеві місця. Це створило дивовижні зв’язки між спільнотою.",
+          "role": "Власник ресторану"
+        },
+        {
+          "id": "4",
+          "location": "Сан-Паулу, Бразилія",
+          "name": "Марія Сільва",
+          "quote": "explores допомагає мені розширити свій досвід поза межами годин екскурсій. Клієнти можуть отримати доступ до моїх рекомендацій у будь-який час!",
+          "role": "Екскурсовод"
+        },
+        {
+          "id": "5",
+          "location": "Сідней, Австралія",
+          "name": "Джеймс Вілсон",
+          "quote": "Оскільки дослідники впливають на подорожі, мені так легко ділитися моїми улюбленими місцями зі своєю аудиторією. Функція коду QR чудова!",
+          "role": "Інфлюенсер подорожей"
+        },
+        {
+          "id": "6",
+          "location": "Париж, Франція",
+          "name": "Софі Мартін",
+          "quote": "Я використовую дослідники, щоб створювати пішохідні екскурсії для своїх клієнтів. Вони можуть сканувати QR і досліджувати у своєму власному темпі!",
+          "role": "Місцевий гід"
+        }
+      ]
     },
     "faq": {
+      "headline": "Є питання?",
+      "subtext": "Ми відповіли на найпоширеніші речі, які люди запитують перед початком.",
+      "loading": "Завантаження FAQ...",
       "error": "Помилка завантаження FAQ. Спробуйте пізніше.",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "Чи дослідники безкоштовні назавжди?",
           "Sequence": 4
         }
-      ],
-      "headline": "Є питання?",
-      "loading": "Завантаження FAQ...",
-      "subtext": "Ми відповіли на найпоширеніші речі, які люди запитують перед початком."
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Відкриття, кероване спільнотою"
+      "title": "Створено, щоб залишатися осторонь",
+      "subtitle": "Прості, продумані функції, які дозволяють вашим рекомендаціям сяяти.",
+      "simpleLinks": {
+        "title": "Прості посилання та обмін QR"
       },
       "livingGuides": {
         "title": "Живі, редаговані гіди"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "Рекомендації з урахуванням місцезнаходження"
       },
-      "privacyFirst": {
-        "title": "Конфіденційність на першому місці за дизайном"
-      },
-      "simpleLinks": {
-        "title": "Прості посилання та обмін QR"
-      },
       "soundPlaylists": {
         "title": "Опціональний звук та плейлисти"
       },
-      "subtitle": "Прості, продумані функції, які дозволяють вашим рекомендаціям сяяти.",
-      "title": "Створено, щоб залишатися осторонь"
+      "privacyFirst": {
+        "title": "Конфіденційність на першому місці за дизайном"
+      },
+      "communityDriven": {
+        "title": "Відкриття, кероване спільнотою"
+      }
     },
     "finalCTA": {
-      "creating": "Створення вашого explorers...",
+      "headline": "Почніть ділитися вашим світом сьогодні",
+      "subtext": "Зарезервуйте ваш безкоштовний explorers та перетворіть ваші локальні інсайти на ділимі гіди.",
       "ctaButton": "Зарезервувати explorers – Безкоштовно Назавжди",
       "disclaimer": "Кредитна картка не потрібна • Налаштування за 2 хвилини",
-      "headline": "Почніть ділитися вашим світом сьогодні",
-      "subtext": "Зарезервуйте ваш безкоштовний explorers та перетворіть ваші локальні інсайти на ділимі гіди."
+      "creating": "Створення вашого explorers..."
     },
     "productCategories": {
+      "headline": "Рекомендую більше, ніж місця.",
+      "subtext": "Створіть одну сторінку для місць, людей, продуктів, книг, фільмів, шоу, музики, ігор, програм та інструментів.",
       "actions": [
         "зберегти",
         "Організуйте",
         "Поділіться"
       ],
+      "overlayLabel": "Сторінка Explorer",
+      "visualLabels": {
+        "products": "Справжні фаворити",
+        "apps": "Корисний стек"
+      },
+      "visualDetails": {
+        "products": [
+          "Туристичне спорядження",
+          "Щоденне носіння",
+          "Набір творців"
+        ],
+        "apps": [
+          "Інструменти планування",
+          "Корисні програми",
+          "Посилання на ресурси"
+        ]
+      },
       "categories": [
         {
           "description": "Ресторани, райони, музеї, маршрути та приховані перлини, які люди можуть відвідати.",
@@ -1602,244 +1793,15 @@
           "label": "Програми та інструменти",
           "title": "Програми, інструменти та корисні посилання"
         }
-      ],
-      "headline": "Рекомендую більше, ніж місця.",
-      "overlayLabel": "Сторінка Explorer",
-      "subtext": "Створіть одну сторінку для місць, людей, продуктів, книг, фільмів, шоу, музики, ігор, програм та інструментів.",
-      "visualDetails": {
-        "apps": [
-          "Інструменти планування",
-          "Корисні програми",
-          "Посилання на ресурси"
-        ],
-        "products": [
-          "Туристичне спорядження",
-          "Щоденне носіння",
-          "Набір творців"
-        ]
-      },
-      "visualLabels": {
-        "apps": "Корисний стек",
-        "products": "Справжні фаворити"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Програма реферальних винагород (незабаром)",
-      "earnedThisMonth": "Зароблено цього місяця",
-      "headline": "Поділіться, порекомендуйте та заробіть",
-      "networkTitle": "Побудуйте вашу мережу та заробляйте автоматично",
-      "passiveTitle": "Перетворіть рекомендації на пасивні винагороди",
-      "rewardsDesc": "Отримуйте гроші, коли люди використовують ваші рекомендації",
-      "rewardsTitle": "Заробляйте Винагороди",
-      "subtext": "Перетворіть ваші рекомендації на пасивні винагороди — отримуйте кредити, коли інші використовують ваш QR."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Меню кафе",
-      "cards": [
-        {
-          "eyebrow": "Профіль готовий",
-          "title": "Посилання в біо"
-        },
-        {
-          "eyebrow": "Готовий до автономної роботи",
-          "title": "Коди QR"
-        },
-        {
-          "eyebrow": "Готовий до чату",
-          "title": "Повідомлення"
-        },
-        {
-          "eyebrow": "Готовий до гостей",
-          "title": "Вітаємо гідів"
-        }
-      ],
-      "headline": "Одне посилання. Багато подорожей.",
-      "instagramDesc": "Поділіться зі своїми підписниками миттєво",
-      "instagramTitle": "Додайте до свого Instagram/Tiktok Bio",
-      "menuDesc": "Фізичні точки дотику легко",
-      "menuTitle": "Роздрукуйте його для Storefront",
-      "profileCarouselCaption": "Профілі Instagram і TikTok",
-      "qrEverywhereDesc": "Ідеально підходить для будь-якого місця",
-      "qrEverywhereTitle": "Додайте скрізь посилання QR",
-      "scanText": "Пошук місцевих рекомендацій",
-      "storefrontText": "Ідеально підходить для вітрин",
-      "subtext": "Ваше посилання Explorer стає живим путівником — те, що люди можуть зберігати, переглядати та досліджувати у своєму власному темпі.\n\nПоділіться ним у профілі, повідомленні, на столі, на стіні чи картці.\nКуди б він не йшов, ваша перспектива йде з ним.",
-      "tokyoFoodGuide": "Мій путівник по їжі в Токіо explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "Сніданок поруч",
-          "Музейний маршрут",
-          "Вечірня прогулянка"
-        ],
-        "messageBubble": "Ось мій список Кіото",
-        "savedRecommendation": "Збережена рекомендація",
-        "scanForPicks": "Сканувати вибірки",
-        "welcomeGuide": "Ласкаво просимо керівництво"
-      },
-      "welcomeDesc": "Ідеально підходить для господарів та гідів",
-      "welcomeTitle": "Включити в вітальні книги"
-    },
-    "testimonials": {
-      "headline": "Люблять мандрівники, творці та господарі",
-      "items": [
-        {
-          "id": "1",
-          "location": "Мумбаї, Індія",
-          "name": "Прія Шарма",
-          "quote": "Дослідники змінили те, як я ділюся своїми знаннями про подорожі. Мої підписники люблять отримувати миттєвий доступ до моїх підібраних рекомендацій!",
-          "role": "Туристичний блогер"
-        },
-        {
-          "id": "2",
-          "location": "Делі, Індія",
-          "name": "Радж Патель",
-          "quote": "Моїм гостям дуже подобається персоналізований код QR у їхньому вітальному наборі. Це стало моїм фірмовим штрихом!",
-          "role": "Хост Airbnb"
-        },
-        {
-          "id": "3",
-          "location": "Токіо, Японія",
-          "name": "Юкі Танака",
-          "quote": "Ми ділимося нашими дослідниками з клієнтами, щоб рекомендувати інші місцеві місця. Це створило дивовижні зв’язки між спільнотою.",
-          "role": "Власник ресторану"
-        },
-        {
-          "id": "4",
-          "location": "Сан-Паулу, Бразилія",
-          "name": "Марія Сільва",
-          "quote": "explores допомагає мені розширити свій досвід поза межами годин екскурсій. Клієнти можуть отримати доступ до моїх рекомендацій у будь-який час!",
-          "role": "Екскурсовод"
-        },
-        {
-          "id": "5",
-          "location": "Сідней, Австралія",
-          "name": "Джеймс Вілсон",
-          "quote": "Оскільки дослідники впливають на подорожі, мені так легко ділитися моїми улюбленими місцями зі своєю аудиторією. Функція коду QR чудова!",
-          "role": "Інфлюенсер подорожей"
-        },
-        {
-          "id": "6",
-          "location": "Париж, Франція",
-          "name": "Софі Мартін",
-          "quote": "Я використовую дослідники, щоб створювати пішохідні екскурсії для своїх клієнтів. Вони можуть сканувати QR і досліджувати у своєму власному темпі!",
-          "role": "Місцевий гід"
-        }
-      ],
-      "scrollLeft": "Прокрутіть відгуки вліво",
-      "scrollRight": "Прокрутіть відгуки вправо",
-      "subtext": "Подивіться, як люди в усьому світі використовують дослідники, щоб ділитися найважливішим."
-    },
-    "whoIsFor": {
-      "cards": [
-        "Персональні дослідники",
-        "Творці та куратори",
-        "Господарі та підприємства",
-        "Бренди та організації"
-      ],
-      "chips": [
-        "Мандрівники",
-        "Місцеві жителі",
-        "Сім'ї",
-        "Студенти",
-        "Кочівники",
-        "Творці",
-        "Інфлюенсери",
-        "Блогери",
-        "Рецензенти",
-        "Фотографи",
-        "Вихователі",
-        "Лідери громад",
-        "Готелі",
-        "Airbnbs",
-        "Хостели",
-        "кафе",
-        "Ресторани",
-        "Роздрібні магазини",
-        "Спортзали",
-        "Салони",
-        "Клініки",
-        "Бутіки",
-        "Бренди",
-        "Стартапи",
-        "агентства",
-        "ВНЗ",
-        "Корпоративи",
-        "Аеропорти",
-        "НУО",
-        "Урядові команди"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "Створено для людей, чий смак допомагає іншим.",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "Незалежно від того, чи ділитеся ви містом, полицею, списком продуктів, списком відтворення чи путівником для гостей, дослідники нададуть ваші рекомендації домівці.",
-      "useCases": {
-        "airbnbHosts": "Airbnb Хости",
-        "airbnbHostsDesc": "Покращуйте враження від гостей за допомогою місцевої інформації",
-        "anyBusiness": "Будь-який бізнес",
-        "anyBusinessDesc": "Створіть спільноту та лояльність клієнтів",
-        "cafes": "кафе",
-        "cafesDesc": "Поділіться з клієнтами улюбленими місцями",
-        "creators": "Творці",
-        "creatorsDesc": "Додайте цінність за межі вмісту за допомогою практичних порад",
-        "hotels": "Готелі",
-        "hotelsDesc": "Надайте місцеві рекомендації",
-        "influencers": "Інфлюенсери",
-        "influencersDesc": "Монетизуйте місцеві знання та створюйте спільноту",
-        "localGuides": "Місцеві гіди",
-        "localGuidesDesc": "Масштабуйте експертизу за межі окремих турів",
-        "restaurants": "Ресторани",
-        "restaurantsDesc": "Перехресне просування з іншими місцевими підприємствами",
-        "tourOperators": "Туроператори",
-        "tourOperatorsDesc": "Розширення досвіду поза плановими турами",
-        "travelers": "Мандрівники",
-        "travelersDesc": "Діліться знайденими дорогоцінними каменями з іншими дослідниками"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "кафе",
-          "книга",
-          "Стежка",
-          "Альбом",
-          "плівка",
-          "Гра"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "дослідники – знаходьте й діліться персоналізованими місцевими рекомендаціями",
       "description": "Відкрийте для себе свої улюблені місцеві місця та поділіться ними з дослідниками. Створюйте персоналізовані путівники по містах, організовуйте місця, які варто відвідати, і зробіть їх доступними за допомогою кодів QR. Досліджуйте приховані перлини, підібрані рекомендації та поради щодо місцевих подорожей на інтерактивних картах.",
-      "geoDescription": "Відкривайте та діліться своїми улюбленими місцевими місцями за допомогою персоналізованих кодів QR і посилань для спільного використання",
-      "geoFeatures": [
-        "Генерація персоналізованого коду QR",
-        "Обмін місцевими рекомендаціями",
-        "Аналітика та аналітика",
-        "Оптимізований для мобільних пристроїв дизайн",
-        "Відкриття спільноти"
-      ],
-      "geoIndustry": "технології",
       "keywords": [
         "відкривати місця поруч зі мною",
         "персоналізовані путівники",
@@ -1867,10 +1829,16 @@
         "туристичні поради",
         "локальні плями"
       ],
-      "title": "дослідники – знаходьте й діліться персоналізованими місцевими рекомендаціями"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "Відкривайте та діліться своїми улюбленими місцевими місцями за допомогою персоналізованих кодів QR і посилань для спільного використання",
+      "geoFeatures": [
+        "Генерація персоналізованого коду QR",
+        "Обмін місцевими рекомендаціями",
+        "Аналітика та аналітика",
+        "Оптимізований для мобільних пристроїв дизайн",
+        "Відкриття спільноти"
+      ],
+      "geoIndustry": "технології"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Валідація очікує. Будь ласка, зачекайте"
     }
   },
+  "usernameClaim": {
+    "validating": "Перевірка...",
+    "claimFree": "Вимагати безкоштовно",
+    "trySuggestions": "Спробуйте: {{suggestions}}",
+    "available": "Ім'я користувача доступне.",
+    "unavailable": "Ім'я користувача недоступне.",
+    "confirmOnSignup": "Ми підтвердимо наявність під час реєстрації.",
+    "checkingAvailability": "Перевірка наявності..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "Ім'я користувача доступне.",
-    "checkingAvailability": "Перевірка наявності...",
-    "claimFree": "Вимагати безкоштовно",
-    "confirmOnSignup": "Ми підтвердимо наявність під час реєстрації.",
-    "trySuggestions": "Спробуйте: {{suggestions}}",
-    "unavailable": "Ім'я користувача недоступне.",
-    "validating": "Перевірка..."
   }
 }

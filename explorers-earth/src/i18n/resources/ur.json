@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "If you're curious.\nIf you're thoughtful.\nIf you're willing to slow down and look closer —\nyou already belong here.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Exploration begins with awareness.",
       "line2": "With noticing what others pass by.",
@@ -53,15 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "A global community of people who explore with care — for people, culture, and the planet we share.",
       "line2": "Exploration, for us, isn't about how far we go.",
       "line3": "It's about how deeply we connect."
     },
-    "title": "Explorers of Earth"
+    "title": "Explorers of Earth",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "دکھائی دینے والا",
         "whatsappNumber": "WhatsApp نمبر"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "{{category}} کو منتقل کرنا منسوخ کر دیا گیا۔ ترتیب بحال کر دی گئی۔",
-          "drop": "{{category}} کو کل {{total}} میں سے {{position}} مقام پر رکھ دیا گیا۔",
-          "handle": "{{category}} کو گھسیٹیں",
-          "instructions": "اٹھانے کے لیے Space یا Enter دبائیں۔ منتقل کرنے کے لیے تیر والے بٹن یا Home اور End استعمال کریں۔ رکھنے کے لیے Space یا Enter، یا منسوخ کرنے کے لیے Escape دبائیں۔",
-          "lift": "{{category}} کو اٹھا لیا گیا۔ کل {{total}} میں سے مقام {{position}}۔",
-          "move": "{{category}} کو کل {{total}} میں سے {{position}} مقام پر منتقل کر دیا گیا۔"
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "کاروبار",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "اکاؤنٹ",
         "publicProfile": "عوامی پروفائل"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "{{category}} کو منتقل کرنا منسوخ کر دیا گیا۔ ترتیب بحال کر دی گئی۔",
+          "drop": "{{category}} کو کل {{total}} میں سے {{position}} مقام پر رکھ دیا گیا۔",
+          "handle": "{{category}} کو گھسیٹیں",
+          "instructions": "اٹھانے کے لیے Space یا Enter دبائیں۔ منتقل کرنے کے لیے تیر والے بٹن یا Home اور End استعمال کریں۔ رکھنے کے لیے Space یا Enter، یا منسوخ کرنے کے لیے Escape دبائیں۔",
+          "lift": "{{category}} کو اٹھا لیا گیا۔ کل {{total}} میں سے مقام {{position}}۔",
+          "move": "{{category}} کو کل {{total}} میں سے {{position}} مقام پر منتقل کر دیا گیا۔"
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Recommendation list Published successfully!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Recommendation list Unpublished successfully!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "مقامی لوگوں کی طرح سفر کریں",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 متلاشی۔ جملہ حقوق محفوظ ہیں۔",
+    "tagline": "اپنی سفارشات کو دنیا کا سفر کرنے دیں۔",
     "email": "hello@explorers.earth",
-    "freeForever": "ہمیشہ کے لیے مفت۔",
-    "links": {
-      "about": "کے بارے میں",
-      "contact": "رابطہ کریں۔",
-      "cookies": "کوکی پالیسی",
-      "faq": "اکثر پوچھے گئے سوالات",
-      "howItWorks": "یہ کیسے کام کرتا ہے۔",
-      "privacy": "رازداری کی پالیسی",
-      "product": "پروڈکٹ",
-      "shareAnywhere": "کہیں بھی شئیر کریں۔",
-      "terms": "شرائط و ضوابط",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "زمین پر محبت کے ساتھ بنایا گیا ہے۔",
     "sections": {
-      "company": "کمپنی",
+      "product": "پروڈکٹ",
       "contact": "رابطہ",
       "legal": "قانونی",
-      "product": "پروڈکٹ"
+      "company": "کمپنی"
     },
-    "tagline": "اپنی سفارشات کو دنیا کا سفر کرنے دیں۔"
+    "links": {
+      "howItWorks": "یہ کیسے کام کرتا ہے۔",
+      "faq": "اکثر پوچھے گئے سوالات",
+      "contact": "رابطہ کریں۔",
+      "about": "کے بارے میں",
+      "terms": "شرائط و ضوابط",
+      "privacy": "رازداری کی پالیسی",
+      "cookies": "کوکی پالیسی",
+      "product": "پروڈکٹ",
+      "shareAnywhere": "کہیں بھی شئیر کریں۔",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 متلاشی۔ جملہ حقوق محفوظ ہیں۔",
+    "madeWithLove": "زمین پر محبت کے ساتھ بنایا گیا ہے۔",
+    "freeForever": "ہمیشہ کے لیے مفت۔"
   },
   "header": {
-    "auth": {
-      "claimFree": "مفت کا دعوی کریں۔",
-      "claimFreePage": "مفت صفحہ کا دعوی کریں۔",
-      "login": "لاگ ان",
-      "signUp": "سائن اپ"
-    },
     "nav": {
-      "about": "کے بارے میں",
-      "closeMenu": "نیویگیشن مینو بند کریں۔",
-      "contact": "رابطہ",
-      "faq": "اکثر پوچھے گئے سوالات",
       "howItWorks": "یہ کیسے کام کرتا ہے۔",
-      "openMenu": "نیویگیشن مینو کھولیں۔",
+      "whoIsFor": "کس کے لیے",
+      "faq": "اکثر پوچھے گئے سوالات",
+      "about": "کے بارے میں",
+      "contact": "رابطہ",
       "product": "پروڈکٹ",
       "share": "شیئر کریں۔",
-      "useCases": "Use Cases",
-      "whoIsFor": "کس کے لیے"
+      "openMenu": "نیویگیشن مینو کھولیں۔",
+      "closeMenu": "نیویگیشن مینو بند کریں۔",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "لاگ ان",
+      "signUp": "سائن اپ",
+      "claimFreePage": "مفت صفحہ کا دعوی کریں۔",
+      "claimFree": "مفت کا دعوی کریں۔"
     }
   },
   "hero": {
-    "badge": "ہمیشہ کے لیے مفت",
-    "countries": {
-      "ae": "یو اے ای",
-      "au": "آسٹریلیا",
-      "br": "برازیل",
-      "de": "جرمنی",
-      "fr": "فرانس",
-      "gb": "برطانیہ",
-      "in": "انڈیا",
-      "jp": "جاپان",
-      "sg": "سنگاپور",
-      "us": "ریاستہائے متحدہ"
-    },
-    "ctaButton": "اپنے Explorer صفحہ کا دعوی کریں۔",
-    "globalStrip": "Explorers دنیا بھر میں سفارشات کا اشتراک کرتا ہے۔",
     "headline": "آپ کی تمام سفارشات - ایک لنک، ایک QR",
-    "headlinePrefix": "آپ کے تمام",
-    "headlineSuffix": "ایک لنک اور QR میں۔",
+    "subtext": "اپنی تجویز کردہ ہر چیز کے لیے ایک قابل اشتراک صفحہ بنائیں - مقامات، لوگ، پروڈکٹس، کتابیں، فلمیں، شوز، موسیقی، گیمز، ایپس وغیرہ۔",
     "inputLabel": "اپنے متلاشی URL کا دعوی کریں:",
     "inputPlaceholder": "آپ کا نام",
-    "preview": {
-      "items": {
-        "book": "کتاب",
-        "game": "کھیل",
-        "music": "موسیقی",
-        "place": "جگہ"
-      },
-      "onePageText": "اسے بطور لنک، QR، پیغام، یا گائیڈ کے طور پر شیئر کریں۔",
-      "onePageTitle": "ہر اچھی تجویز کے لیے ایک صفحہ۔",
-      "screenAlt": "Explorer صفحہ کی سفارشات کی اسکرین",
-      "todayList": "آج کی فہرست"
-    },
+    "ctaButton": "اپنے Explorer صفحہ کا دعوی کریں۔",
+    "signupPrompt": "اپنا حاصل کرنے کے لیے ابھی سائن اپ کریں۔",
+    "headlinePrefix": "آپ کے تمام",
     "rotatingWords": [
       "سفارشات",
       "علاج",
       "مجموعے",
       "پسندیدہ"
     ],
-    "signupPrompt": "اپنا حاصل کرنے کے لیے ابھی سائن اپ کریں۔",
-    "subtext": "اپنی تجویز کردہ ہر چیز کے لیے ایک قابل اشتراک صفحہ بنائیں - مقامات، لوگ، پروڈکٹس، کتابیں، فلمیں، شوز، موسیقی، گیمز، ایپس وغیرہ۔"
+    "headlineSuffix": "ایک لنک اور QR میں۔",
+    "badge": "ہمیشہ کے لیے مفت",
+    "globalStrip": "Explorers دنیا بھر میں سفارشات کا اشتراک کرتا ہے۔",
+    "preview": {
+      "todayList": "آج کی فہرست",
+      "onePageTitle": "ہر اچھی تجویز کے لیے ایک صفحہ۔",
+      "onePageText": "اسے بطور لنک، QR، پیغام، یا گائیڈ کے طور پر شیئر کریں۔",
+      "items": {
+        "place": "جگہ",
+        "book": "کتاب",
+        "music": "موسیقی",
+        "game": "کھیل"
+      },
+      "screenAlt": "Explorer صفحہ کی سفارشات کی اسکرین"
+    },
+    "countries": {
+      "in": "انڈیا",
+      "us": "ریاستہائے متحدہ",
+      "gb": "برطانیہ",
+      "jp": "جاپان",
+      "fr": "فرانس",
+      "au": "آسٹریلیا",
+      "br": "برازیل",
+      "ae": "یو اے ای",
+      "sg": "سنگاپور",
+      "de": "جرمنی"
+    }
   },
   "languageModal": {
     "close": "بند",
-    "escToClose": "بند کرنے کے لیے Esc دبائیں۔",
-    "languagesAvailable": "{{count}} زبانیں دستیاب ہیں۔",
-    "noLanguagesFound": "کوئی زبانیں نہیں ملی",
     "searchPlaceholder": "زبانیں تلاش کریں...",
-    "subtitle": "وہ زبان منتخب کریں جسے آپ تلاش کرنے والوں میں استعمال کرنا چاہتے ہیں۔",
     "title": "زبان منتخب کریں۔",
-    "tryDifferentSearch": "تلاش کی ایک مختلف اصطلاح آزمائیں۔"
+    "subtitle": "وہ زبان منتخب کریں جسے آپ تلاش کرنے والوں میں استعمال کرنا چاہتے ہیں۔",
+    "noLanguagesFound": "کوئی زبانیں نہیں ملی",
+    "tryDifferentSearch": "تلاش کی ایک مختلف اصطلاح آزمائیں۔",
+    "languagesAvailable": "{{count}} زبانیں دستیاب ہیں۔",
+    "escToClose": "بند کرنے کے لیے Esc دبائیں۔"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "تجزیاتی ڈیش بورڈ",
-      "engagement": "مصروفیت",
-      "headline": "دیکھیں کہ لوگ کس چیز کے ساتھ مشغول ہیں۔",
-      "last30Days": "آخری 30 دن",
-      "livePreview": "لائیو پیش نظارہ",
-      "referrals": "حوالہ جات",
-      "scanningDesc": "دیکھیں کہ لوگ لنکس، QR کوڈز، اور مشترکہ ٹچ پوائنٹس سے آپ کے صفحہ تک کیسے پہنچتے ہیں۔",
-      "scanningTitle": "اسکینز اور کلکس کو سمجھیں۔",
-      "spotsDesc": "جانیں کہ کن جگہوں، مصنوعات، فہرستوں اور گائیڈز کو سب سے زیادہ پیار ملتا ہے۔",
-      "spotsTitle": "سر فہرست تجاویز تلاش کریں۔",
-      "subtext": "سمجھیں کہ لوگ آپ کے لنکس اور QR کوڈز پر کون سی سفارشات کھولتے، محفوظ کرتے اور دوبارہ دیکھتے ہیں۔",
-      "totalScans": "کل اسکینز",
-      "workingDesc": "ٹریک کریں کہ لوگ کن سفارشات کو کھولتے ہیں، محفوظ کرتے ہیں اور دوبارہ دیکھتے ہیں۔",
-      "workingTitle": "دیکھیں کیا کام کر رہا ہے۔"
-    },
     "createCustomize": {
+      "headline": "منٹوں میں اپنا Explorer صفحہ بنائیں",
+      "subtext": "آپ جو تجویز کرتے ہیں اسے جمع کریں، اسے اپنے طریقے سے ترتیب دیں، اور اسے ایک لنک یا QR کے ساتھ کہیں بھی شیئر کریں۔",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "مقامات، تجربات، راستے، آوازیں اور نوٹ شامل کریں۔"
-        },
-        "generate": {
-          "description": "",
-          "title": "کسی بھی وقت ترمیم کریں - آپ کا لنک ہمیشہ ایک جیسا رہتا ہے۔"
+          "title": "مقامات، تجربات، راستے، آوازیں اور نوٹ شامل کریں۔",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "مقام یا دلچسپی کے لحاظ سے منظم کریں۔"
+          "title": "مقام یا دلچسپی کے لحاظ سے منظم کریں۔",
+          "description": ""
+        },
+        "generate": {
+          "title": "کسی بھی وقت ترمیم کریں - آپ کا لنک ہمیشہ ایک جیسا رہتا ہے۔",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "حقیقی دنیا میں ڈیجیٹل طور پر یا QR کے ذریعے اشتراک کریں۔"
+          "title": "حقیقی دنیا میں ڈیجیٹل طور پر یا QR کے ذریعے اشتراک کریں۔",
+          "description": ""
         }
       },
-      "headline": "منٹوں میں اپنا Explorer صفحہ بنائیں",
       "mockup": {
-        "addPlace": "جگہ شامل کریں۔",
-        "title": "میری سفارشات"
+        "title": "میری سفارشات",
+        "addPlace": "جگہ شامل کریں۔"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "آپ کا صفحہ کسی بھی وقت اپ ڈیٹ ہوتا ہے جب کہ ایک ہی لنک اور QR ہر جگہ کام کرتے رہتے ہیں۔",
           "title": "ایک لنک یا QR شیئر کریں۔"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "ایک لنک۔ بہت سارے سفر۔",
+      "subtext": "آپ کا Explorer لنک ایک زندہ گائیڈ بن جاتا ہے — جسے لوگ محفوظ کر سکتے ہیں، دوبارہ دیکھ سکتے ہیں اور اپنی رفتار سے دریافت کر سکتے ہیں۔\n\nاسے پروفائل، پیغام، میز، دیوار، یا کارڈ پر شیئر کریں۔\nیہ جہاں بھی جاتا ہے، آپ کا نقطہ نظر اس کے ساتھ جاتا ہے۔",
+      "scanText": "مقامی سفارشات کے لیے اسکین کریں۔",
+      "storefrontText": "سٹور فرنٹ ڈسپلے کے لئے کامل",
+      "instagramTitle": "اپنے Instagram/Tiktok Bio میں شامل کریں۔",
+      "instagramDesc": "اپنے پیروکاروں کے ساتھ فوری طور پر اشتراک کریں۔",
+      "menuTitle": "اسے اسٹور فرنٹ کے لیے پرنٹ کریں۔",
+      "menuDesc": "جسمانی ٹچ پوائنٹس کو آسان بنا دیا گیا۔",
+      "welcomeTitle": "استقبالیہ کتابوں میں شامل کریں۔",
+      "welcomeDesc": "میزبانوں اور گائیڈز کے لیے بہترین",
+      "cafeMenu": "کیفے مینو",
+      "tokyoFoodGuide": "میری ٹوکیو فوڈ گائیڈ explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "پروفائل کے لیے تیار",
+          "title": "بائیو میں لنک"
+        },
+        {
+          "eyebrow": "آف لائن تیار",
+          "title": "QR کوڈز"
+        },
+        {
+          "eyebrow": "چیٹ کے لیے تیار",
+          "title": "پیغامات"
+        },
+        {
+          "eyebrow": "مہمان کے لیے تیار",
+          "title": "خوش آمدید گائیڈز"
+        }
       ],
-      "subtext": "آپ جو تجویز کرتے ہیں اسے جمع کریں، اسے اپنے طریقے سے ترتیب دیں، اور اسے ایک لنک یا QR کے ساتھ کہیں بھی شیئر کریں۔"
+      "visual": {
+        "scanForPicks": "چننے کے لیے اسکین کریں۔",
+        "messageBubble": "یہ میری کیوٹو کی فہرست ہے۔",
+        "welcomeGuide": "خوش آمدید گائیڈ",
+        "guideItems": [
+          "قریب ہی ناشتہ",
+          "میوزیم کا راستہ",
+          "شام کی سیر"
+        ],
+        "savedRecommendation": "محفوظ شدہ سفارش"
+      },
+      "profileCarouselCaption": "Instagram اور TikTok پروفائلز",
+      "qrEverywhereTitle": "ہر جگہ QR لنک شامل کریں۔",
+      "qrEverywhereDesc": "ہر مقام کے لیے بہترین"
+    },
+    "analytics": {
+      "headline": "دیکھیں کہ لوگ کس چیز کے ساتھ مشغول ہیں۔",
+      "subtext": "سمجھیں کہ لوگ آپ کے لنکس اور QR کوڈز پر کون سی سفارشات کھولتے، محفوظ کرتے اور دوبارہ دیکھتے ہیں۔",
+      "workingTitle": "دیکھیں کیا کام کر رہا ہے۔",
+      "workingDesc": "ٹریک کریں کہ لوگ کن سفارشات کو کھولتے ہیں، محفوظ کرتے ہیں اور دوبارہ دیکھتے ہیں۔",
+      "scanningTitle": "اسکینز اور کلکس کو سمجھیں۔",
+      "scanningDesc": "دیکھیں کہ لوگ لنکس، QR کوڈز، اور مشترکہ ٹچ پوائنٹس سے آپ کے صفحہ تک کیسے پہنچتے ہیں۔",
+      "spotsTitle": "سر فہرست تجاویز تلاش کریں۔",
+      "spotsDesc": "جانیں کہ کن جگہوں، مصنوعات، فہرستوں اور گائیڈز کو سب سے زیادہ پیار ملتا ہے۔",
+      "dashboardTitle": "تجزیاتی ڈیش بورڈ",
+      "last30Days": "آخری 30 دن",
+      "totalScans": "کل اسکینز",
+      "engagement": "مصروفیت",
+      "referrals": "حوالہ جات",
+      "livePreview": "لائیو پیش نظارہ"
+    },
+    "referEarn": {
+      "headline": "شیئر کریں، ریفر کریں اور کمائیں",
+      "subtext": "اپنی سفارشات کو پاسیو ریوارڈز میں تبدیل کریں — جب دوسرے آپ کا QR استعمال کریں تو کریڈٹ حاصل کریں۔",
+      "comingSoon": "ریفرل ریوارڈز پروگرام (جلد آرہا)",
+      "rewardsTitle": "ریوارڈز کمائیں",
+      "rewardsDesc": "جب لوگ آپ کی سفارشات استعمال کریں تو پیسے حاصل کریں",
+      "earnedThisMonth": "اس مہینے کمایا",
+      "passiveTitle": "سفارشات کو پاسیو ریوارڈز میں تبدیل کریں",
+      "networkTitle": "اپنا نیٹ ورک بنائیں اور خودکار کمائیں"
+    },
+    "whoIsFor": {
+      "headline": "ان لوگوں کے لیے بنایا گیا ہے جن کا ذائقہ دوسروں کی مدد کرتا ہے۔",
+      "subtext": "چاہے آپ شہر، شیلف، پروڈکٹ کی فہرست، پلے لسٹ، یا مہمان گائیڈ کا اشتراک کر رہے ہوں، متلاشی آپ کی سفارشات کو ایک گھر فراہم کرتے ہیں۔",
+      "cards": [
+        "ذاتی متلاشی",
+        "تخلیق کار اور کیوریٹر",
+        "میزبان اور کاروبار",
+        "برانڈز اور تنظیمیں۔"
+      ],
+      "useCases": {
+        "travelers": "مسافر",
+        "travelersDesc": "دریافت شدہ جواہرات کو ساتھی متلاشیوں کے ساتھ شیئر کریں۔",
+        "influencers": "متاثر کن",
+        "influencersDesc": "مقامی معلومات کو منیٹائز کریں اور کمیونٹی بنائیں",
+        "airbnbHosts": "Airbnb میزبان",
+        "airbnbHostsDesc": "مقامی بصیرت کے ساتھ مہمانوں کے تجربے کو بہتر بنائیں",
+        "hotels": "ہوٹل",
+        "hotelsDesc": "کیوریٹڈ مقامی سفارشات فراہم کریں۔",
+        "restaurants": "ریستوراں",
+        "restaurantsDesc": "دوسرے مقامی کاروبار کے ساتھ کراس پروموشن کریں۔",
+        "cafes": "کیفے",
+        "cafesDesc": "گاہکوں کے ساتھ پڑوس کی پسند کا اشتراک کریں۔",
+        "localGuides": "لوکل گائیڈز",
+        "localGuidesDesc": "انفرادی دوروں سے ہٹ کر مہارت کا پیمانہ",
+        "creators": "تخلیق کار",
+        "creatorsDesc": "قابل عمل تجاویز کے ساتھ مواد سے بڑھ کر قدر شامل کریں۔",
+        "tourOperators": "ٹور آپریٹرز",
+        "tourOperatorsDesc": "طے شدہ دوروں سے آگے تجربہ بڑھائیں۔",
+        "anyBusiness": "کوئی بھی کاروبار",
+        "anyBusinessDesc": "کمیونٹی اور کسٹمر کی وفاداری بنائیں"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "کیفے",
+          "کتاب",
+          "پگڈنڈی",
+          "البم",
+          "فلم",
+          "کھیل"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "مسافر",
+        "مقامی لوگ",
+        "خاندانوں",
+        "طلباء",
+        "خانہ بدوش",
+        "تخلیق کار",
+        "متاثر کن",
+        "بلاگرز",
+        "جائزہ لینے والے",
+        "فوٹوگرافرز",
+        "معلمین",
+        "کمیونٹی لیڈرز",
+        "ہوٹل",
+        "Airbnbs",
+        "ہاسٹلز",
+        "کیفے",
+        "ریستوراں",
+        "پرچون کی دکانیں۔",
+        "جم",
+        "سیلون",
+        "کلینکس",
+        "بوتیک",
+        "برانڈز",
+        "اسٹارٹ اپس",
+        "ایجنسیاں",
+        "یونیورسٹیاں",
+        "کارپوریٹس",
+        "ہوائی اڈے",
+        "این جی اوز",
+        "حکومتی ٹیمیں۔"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "مسافروں، تخلیق کاروں، اور میزبانوں سے پیار کیا جاتا ہے۔",
+      "subtext": "دیکھیں کہ دنیا بھر کے لوگ کس طرح ایکسپلوررز کو استعمال کرتے ہیں تاکہ وہ سب سے اہم چیز کا اشتراک کریں۔",
+      "scrollLeft": "ٹیسٹیمونیلز کو بائیں سکرول کریں",
+      "scrollRight": "ٹیسٹیمونیلز کو دائیں سکرول کریں",
+      "items": [
+        {
+          "id": "1",
+          "location": "ممبئی، انڈیا",
+          "name": "پریا شرما",
+          "quote": "متلاشیوں نے تبدیل کر دیا کہ میں اپنے سفری علم کو کس طرح بانٹتا ہوں۔ میرے پیروکار میری تیار کردہ سفارشات تک فوری رسائی حاصل کرنا پسند کرتے ہیں!",
+          "role": "ٹریول بلاگر"
+        },
+        {
+          "id": "2",
+          "location": "دہلی، انڈیا",
+          "name": "راج پٹیل",
+          "quote": "میرے مہمانوں کو ان کی ویلکم کٹ میں ذاتی نوعیت کا QR کوڈ بالکل پسند ہے۔ یہ میرا دستخطی ٹچ بن گیا ہے!",
+          "role": "Airbnb میزبان"
+        },
+        {
+          "id": "3",
+          "location": "ٹوکیو، جاپان",
+          "name": "یوکی تاناکا",
+          "quote": "ہم دوسرے مقامی مقامات کی سفارش کرنے کے لیے اپنے ایکسپلوررز کو صارفین کے ساتھ بانٹتے ہیں۔ اس نے حیرت انگیز کمیونٹی کنکشن بنائے ہیں۔",
+          "role": "ریستوراں کا مالک"
+        },
+        {
+          "id": "4",
+          "location": "ساؤ پالو، برازیل",
+          "name": "ماریہ سلوا",
+          "quote": "ایکسپلوررز میری مہارت کو ٹور کے اوقات سے آگے بڑھانے میں میری مدد کرتے ہیں۔ کلائنٹ کسی بھی وقت میری سفارشات تک رسائی حاصل کر سکتے ہیں!",
+          "role": "ٹور گائیڈ"
+        },
+        {
+          "id": "5",
+          "location": "سڈنی، آسٹریلیا",
+          "name": "جیمز ولسن",
+          "quote": "ایک سفر پر اثر انداز ہونے والے کے طور پر، متلاشی میرے ناظرین کے ساتھ میرے پسندیدہ مقامات کا اشتراک کرنا بہت آسان بنا دیتے ہیں۔ QR کوڈ کی خصوصیت شاندار ہے!",
+          "role": "ٹریول انفلوئنسر"
+        },
+        {
+          "id": "6",
+          "location": "پیرس، فرانس",
+          "name": "سوفی مارٹن",
+          "quote": "میں اپنے کلائنٹس کے لیے واکنگ ٹور بنانے کے لیے ایکسپلوررز کا استعمال کرتا ہوں۔ وہ QR کو اسکین کر سکتے ہیں اور اپنی رفتار سے دریافت کر سکتے ہیں!",
+          "role": "لوکل گائیڈ"
+        }
+      ]
     },
     "faq": {
+      "headline": "سوالات ہیں؟",
+      "subtext": "ہم نے شروع کرنے سے پہلے لوگوں کے پوچھنے والے سب سے عام سوالات کے جوابات دیے ہیں۔",
+      "loading": "FAQ لوڈ ہو رہے ہیں...",
       "error": "FAQ لوڈ کرنے میں خرابی۔ برائے کرم بعد میں دوبارہ کوشش کریں۔",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "کیا متلاشی ہمیشہ کے لیے آزاد ہیں؟",
           "Sequence": 4
         }
-      ],
-      "headline": "سوالات ہیں؟",
-      "loading": "FAQ لوڈ ہو رہے ہیں...",
-      "subtext": "ہم نے شروع کرنے سے پہلے لوگوں کے پوچھنے والے سب سے عام سوالات کے جوابات دیے ہیں۔"
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "کمیونٹی سے چلنے والی دریافت"
+      "title": "راستے سے دور رہنے کے لیے بنایا گیا",
+      "subtitle": "سادہ، سوچی سمجھی خصوصیات جو آپ کی سفارشات کو چمکاتی ہیں۔",
+      "simpleLinks": {
+        "title": "سادہ لنکس اور QR شیئرنگ"
       },
       "livingGuides": {
         "title": "زندہ، قابل ترمیم گائیڈز"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "مقام سے آگاہ سفارشات"
       },
-      "privacyFirst": {
-        "title": "ڈیزائن کے ذریعے پرائیویسی-پہلے"
-      },
-      "simpleLinks": {
-        "title": "سادہ لنکس اور QR شیئرنگ"
-      },
       "soundPlaylists": {
         "title": "اختیاری آواز اور پلے لسٹس"
       },
-      "subtitle": "سادہ، سوچی سمجھی خصوصیات جو آپ کی سفارشات کو چمکاتی ہیں۔",
-      "title": "راستے سے دور رہنے کے لیے بنایا گیا"
+      "privacyFirst": {
+        "title": "ڈیزائن کے ذریعے پرائیویسی-پہلے"
+      },
+      "communityDriven": {
+        "title": "کمیونٹی سے چلنے والی دریافت"
+      }
     },
     "finalCTA": {
-      "creating": "آپ کا explorers بن رہا ہے...",
+      "headline": "آج اپنی دنیا کو شیئر کرنا شروع کریں",
+      "subtext": "اپنا مفت explorers محفوظ کریں اور اپنی مقامی بصیرت کو شیئر کرنے والے گائیڈز میں تبدیل کریں۔",
       "ctaButton": "اپنا explorers محفوظ کریں – ہمیشہ کے لیے مفت",
       "disclaimer": "کریڈٹ کارڈ کی ضرورت نہیں • 2 منٹ میں سیٹ اپ",
-      "headline": "آج اپنی دنیا کو شیئر کرنا شروع کریں",
-      "subtext": "اپنا مفت explorers محفوظ کریں اور اپنی مقامی بصیرت کو شیئر کرنے والے گائیڈز میں تبدیل کریں۔"
+      "creating": "آپ کا explorers بن رہا ہے..."
     },
     "productCategories": {
+      "headline": "جگہوں سے زیادہ تجویز کریں۔",
+      "subtext": "جگہوں، لوگوں، مصنوعات، کتابوں، فلموں، شوز، موسیقی، گیمز، ایپس اور ٹولز کے لیے ایک صفحہ بنائیں۔",
       "actions": [
         "محفوظ کریں۔",
         "منظم کریں۔",
         "شیئر کریں۔"
       ],
+      "overlayLabel": "Explorer صفحہ",
+      "visualLabels": {
+        "products": "اصلی پسندیدہ",
+        "apps": "مفید اسٹیک"
+      },
+      "visualDetails": {
+        "products": [
+          "سفری سامان",
+          "روزانہ لے جانا",
+          "تخلیق کار کٹ"
+        ],
+        "apps": [
+          "منصوبہ بندی کے اوزار",
+          "مفید ایپس",
+          "وسائل کے لنکس"
+        ]
+      },
       "categories": [
         {
           "description": "ریستوراں، محلے، عجائب گھر، راستے، اور پوشیدہ جواہرات جو لوگ اصل میں جا سکتے ہیں۔",
@@ -1602,244 +1793,15 @@
           "label": "ایپس اور ٹولز",
           "title": "ایپس، ٹولز، اور مفید لنکس"
         }
-      ],
-      "headline": "جگہوں سے زیادہ تجویز کریں۔",
-      "overlayLabel": "Explorer صفحہ",
-      "subtext": "جگہوں، لوگوں، مصنوعات، کتابوں، فلموں، شوز، موسیقی، گیمز، ایپس اور ٹولز کے لیے ایک صفحہ بنائیں۔",
-      "visualDetails": {
-        "apps": [
-          "منصوبہ بندی کے اوزار",
-          "مفید ایپس",
-          "وسائل کے لنکس"
-        ],
-        "products": [
-          "سفری سامان",
-          "روزانہ لے جانا",
-          "تخلیق کار کٹ"
-        ]
-      },
-      "visualLabels": {
-        "apps": "مفید اسٹیک",
-        "products": "اصلی پسندیدہ"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "ریفرل ریوارڈز پروگرام (جلد آرہا)",
-      "earnedThisMonth": "اس مہینے کمایا",
-      "headline": "شیئر کریں، ریفر کریں اور کمائیں",
-      "networkTitle": "اپنا نیٹ ورک بنائیں اور خودکار کمائیں",
-      "passiveTitle": "سفارشات کو پاسیو ریوارڈز میں تبدیل کریں",
-      "rewardsDesc": "جب لوگ آپ کی سفارشات استعمال کریں تو پیسے حاصل کریں",
-      "rewardsTitle": "ریوارڈز کمائیں",
-      "subtext": "اپنی سفارشات کو پاسیو ریوارڈز میں تبدیل کریں — جب دوسرے آپ کا QR استعمال کریں تو کریڈٹ حاصل کریں۔"
-    },
-    "shareAnywhere": {
-      "cafeMenu": "کیفے مینو",
-      "cards": [
-        {
-          "eyebrow": "پروفائل کے لیے تیار",
-          "title": "بائیو میں لنک"
-        },
-        {
-          "eyebrow": "آف لائن تیار",
-          "title": "QR کوڈز"
-        },
-        {
-          "eyebrow": "چیٹ کے لیے تیار",
-          "title": "پیغامات"
-        },
-        {
-          "eyebrow": "مہمان کے لیے تیار",
-          "title": "خوش آمدید گائیڈز"
-        }
-      ],
-      "headline": "ایک لنک۔ بہت سارے سفر۔",
-      "instagramDesc": "اپنے پیروکاروں کے ساتھ فوری طور پر اشتراک کریں۔",
-      "instagramTitle": "اپنے Instagram/Tiktok Bio میں شامل کریں۔",
-      "menuDesc": "جسمانی ٹچ پوائنٹس کو آسان بنا دیا گیا۔",
-      "menuTitle": "اسے اسٹور فرنٹ کے لیے پرنٹ کریں۔",
-      "profileCarouselCaption": "Instagram اور TikTok پروفائلز",
-      "qrEverywhereDesc": "ہر مقام کے لیے بہترین",
-      "qrEverywhereTitle": "ہر جگہ QR لنک شامل کریں۔",
-      "scanText": "مقامی سفارشات کے لیے اسکین کریں۔",
-      "storefrontText": "سٹور فرنٹ ڈسپلے کے لئے کامل",
-      "subtext": "آپ کا Explorer لنک ایک زندہ گائیڈ بن جاتا ہے — جسے لوگ محفوظ کر سکتے ہیں، دوبارہ دیکھ سکتے ہیں اور اپنی رفتار سے دریافت کر سکتے ہیں۔\n\nاسے پروفائل، پیغام، میز، دیوار، یا کارڈ پر شیئر کریں۔\nیہ جہاں بھی جاتا ہے، آپ کا نقطہ نظر اس کے ساتھ جاتا ہے۔",
-      "tokyoFoodGuide": "میری ٹوکیو فوڈ گائیڈ explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "قریب ہی ناشتہ",
-          "میوزیم کا راستہ",
-          "شام کی سیر"
-        ],
-        "messageBubble": "یہ میری کیوٹو کی فہرست ہے۔",
-        "savedRecommendation": "محفوظ شدہ سفارش",
-        "scanForPicks": "چننے کے لیے اسکین کریں۔",
-        "welcomeGuide": "خوش آمدید گائیڈ"
-      },
-      "welcomeDesc": "میزبانوں اور گائیڈز کے لیے بہترین",
-      "welcomeTitle": "استقبالیہ کتابوں میں شامل کریں۔"
-    },
-    "testimonials": {
-      "headline": "مسافروں، تخلیق کاروں، اور میزبانوں سے پیار کیا جاتا ہے۔",
-      "items": [
-        {
-          "id": "1",
-          "location": "ممبئی، انڈیا",
-          "name": "پریا شرما",
-          "quote": "متلاشیوں نے تبدیل کر دیا کہ میں اپنے سفری علم کو کس طرح بانٹتا ہوں۔ میرے پیروکار میری تیار کردہ سفارشات تک فوری رسائی حاصل کرنا پسند کرتے ہیں!",
-          "role": "ٹریول بلاگر"
-        },
-        {
-          "id": "2",
-          "location": "دہلی، انڈیا",
-          "name": "راج پٹیل",
-          "quote": "میرے مہمانوں کو ان کی ویلکم کٹ میں ذاتی نوعیت کا QR کوڈ بالکل پسند ہے۔ یہ میرا دستخطی ٹچ بن گیا ہے!",
-          "role": "Airbnb میزبان"
-        },
-        {
-          "id": "3",
-          "location": "ٹوکیو، جاپان",
-          "name": "یوکی تاناکا",
-          "quote": "ہم دوسرے مقامی مقامات کی سفارش کرنے کے لیے اپنے ایکسپلوررز کو صارفین کے ساتھ بانٹتے ہیں۔ اس نے حیرت انگیز کمیونٹی کنکشن بنائے ہیں۔",
-          "role": "ریستوراں کا مالک"
-        },
-        {
-          "id": "4",
-          "location": "ساؤ پالو، برازیل",
-          "name": "ماریہ سلوا",
-          "quote": "ایکسپلوررز میری مہارت کو ٹور کے اوقات سے آگے بڑھانے میں میری مدد کرتے ہیں۔ کلائنٹ کسی بھی وقت میری سفارشات تک رسائی حاصل کر سکتے ہیں!",
-          "role": "ٹور گائیڈ"
-        },
-        {
-          "id": "5",
-          "location": "سڈنی، آسٹریلیا",
-          "name": "جیمز ولسن",
-          "quote": "ایک سفر پر اثر انداز ہونے والے کے طور پر، متلاشی میرے ناظرین کے ساتھ میرے پسندیدہ مقامات کا اشتراک کرنا بہت آسان بنا دیتے ہیں۔ QR کوڈ کی خصوصیت شاندار ہے!",
-          "role": "ٹریول انفلوئنسر"
-        },
-        {
-          "id": "6",
-          "location": "پیرس، فرانس",
-          "name": "سوفی مارٹن",
-          "quote": "میں اپنے کلائنٹس کے لیے واکنگ ٹور بنانے کے لیے ایکسپلوررز کا استعمال کرتا ہوں۔ وہ QR کو اسکین کر سکتے ہیں اور اپنی رفتار سے دریافت کر سکتے ہیں!",
-          "role": "لوکل گائیڈ"
-        }
-      ],
-      "scrollLeft": "ٹیسٹیمونیلز کو بائیں سکرول کریں",
-      "scrollRight": "ٹیسٹیمونیلز کو دائیں سکرول کریں",
-      "subtext": "دیکھیں کہ دنیا بھر کے لوگ کس طرح ایکسپلوررز کو استعمال کرتے ہیں تاکہ وہ سب سے اہم چیز کا اشتراک کریں۔"
-    },
-    "whoIsFor": {
-      "cards": [
-        "ذاتی متلاشی",
-        "تخلیق کار اور کیوریٹر",
-        "میزبان اور کاروبار",
-        "برانڈز اور تنظیمیں۔"
-      ],
-      "chips": [
-        "مسافر",
-        "مقامی لوگ",
-        "خاندانوں",
-        "طلباء",
-        "خانہ بدوش",
-        "تخلیق کار",
-        "متاثر کن",
-        "بلاگرز",
-        "جائزہ لینے والے",
-        "فوٹوگرافرز",
-        "معلمین",
-        "کمیونٹی لیڈرز",
-        "ہوٹل",
-        "Airbnbs",
-        "ہاسٹلز",
-        "کیفے",
-        "ریستوراں",
-        "پرچون کی دکانیں۔",
-        "جم",
-        "سیلون",
-        "کلینکس",
-        "بوتیک",
-        "برانڈز",
-        "اسٹارٹ اپس",
-        "ایجنسیاں",
-        "یونیورسٹیاں",
-        "کارپوریٹس",
-        "ہوائی اڈے",
-        "این جی اوز",
-        "حکومتی ٹیمیں۔"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "ان لوگوں کے لیے بنایا گیا ہے جن کا ذائقہ دوسروں کی مدد کرتا ہے۔",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "چاہے آپ شہر، شیلف، پروڈکٹ کی فہرست، پلے لسٹ، یا مہمان گائیڈ کا اشتراک کر رہے ہوں، متلاشی آپ کی سفارشات کو ایک گھر فراہم کرتے ہیں۔",
-      "useCases": {
-        "airbnbHosts": "Airbnb میزبان",
-        "airbnbHostsDesc": "مقامی بصیرت کے ساتھ مہمانوں کے تجربے کو بہتر بنائیں",
-        "anyBusiness": "کوئی بھی کاروبار",
-        "anyBusinessDesc": "کمیونٹی اور کسٹمر کی وفاداری بنائیں",
-        "cafes": "کیفے",
-        "cafesDesc": "گاہکوں کے ساتھ پڑوس کی پسند کا اشتراک کریں۔",
-        "creators": "تخلیق کار",
-        "creatorsDesc": "قابل عمل تجاویز کے ساتھ مواد سے بڑھ کر قدر شامل کریں۔",
-        "hotels": "ہوٹل",
-        "hotelsDesc": "کیوریٹڈ مقامی سفارشات فراہم کریں۔",
-        "influencers": "متاثر کن",
-        "influencersDesc": "مقامی معلومات کو منیٹائز کریں اور کمیونٹی بنائیں",
-        "localGuides": "لوکل گائیڈز",
-        "localGuidesDesc": "انفرادی دوروں سے ہٹ کر مہارت کا پیمانہ",
-        "restaurants": "ریستوراں",
-        "restaurantsDesc": "دوسرے مقامی کاروبار کے ساتھ کراس پروموشن کریں۔",
-        "tourOperators": "ٹور آپریٹرز",
-        "tourOperatorsDesc": "طے شدہ دوروں سے آگے تجربہ بڑھائیں۔",
-        "travelers": "مسافر",
-        "travelersDesc": "دریافت شدہ جواہرات کو ساتھی متلاشیوں کے ساتھ شیئر کریں۔"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "کیفے",
-          "کتاب",
-          "پگڈنڈی",
-          "البم",
-          "فلم",
-          "کھیل"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "متلاشی - ذاتی نوعیت کی مقامی سفارشات دریافت اور شیئر کریں۔",
       "description": "اپنے پسندیدہ مقامی مقامات کو دریافت کریں اور متلاشیوں کے ساتھ ان کا اشتراک کریں۔ ذاتی نوعیت کے سٹی گائیڈز بنائیں، ان جگہوں کو منظم کریں جو ضرور دیکھیں، اور انہیں قابل اشتراک QR کوڈز کے ساتھ قابل دریافت بنائیں۔ انٹرایکٹو نقشوں پر چھپے ہوئے جواہرات، تیار کردہ سفارشات اور مقامی سفری تجاویز کو دریافت کریں۔",
-      "geoDescription": "ذاتی QR کوڈز اور قابل اشتراک لنکس کے ساتھ اپنے پسندیدہ مقامی مقامات کو دریافت کریں اور ان کا اشتراک کریں۔",
-      "geoFeatures": [
-        "ذاتی QR کوڈ جنریشن",
-        "مقامی سفارشات کا اشتراک",
-        "تجزیات اور بصیرت",
-        "موبائل آپٹمائزڈ ڈیزائن",
-        "کمیونٹی کی دریافت"
-      ],
-      "geoIndustry": "ٹیکنالوجی",
       "keywords": [
         "میرے قریب جگہیں دریافت کریں۔",
         "ذاتی سفری رہنما",
@@ -1867,10 +1829,16 @@
         "سفر کی تجاویز",
         "مقامی مقامات"
       ],
-      "title": "متلاشی - ذاتی نوعیت کی مقامی سفارشات دریافت اور شیئر کریں۔"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "ذاتی QR کوڈز اور قابل اشتراک لنکس کے ساتھ اپنے پسندیدہ مقامی مقامات کو دریافت کریں اور ان کا اشتراک کریں۔",
+      "geoFeatures": [
+        "ذاتی QR کوڈ جنریشن",
+        "مقامی سفارشات کا اشتراک",
+        "تجزیات اور بصیرت",
+        "موبائل آپٹمائزڈ ڈیزائن",
+        "کمیونٹی کی دریافت"
+      ],
+      "geoIndustry": "ٹیکنالوجی"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Validation is pending. Please wait"
     }
   },
+  "usernameClaim": {
+    "validating": "تصدیق کر رہا ہے...",
+    "claimFree": "مفت کا دعوی کریں۔",
+    "trySuggestions": "آزمائیں: {{suggestions}}",
+    "available": "صارف نام دستیاب ہے۔",
+    "unavailable": "صارف نام دستیاب نہیں ہے۔",
+    "confirmOnSignup": "ہم سائن اپ پر دستیابی کی تصدیق کریں گے۔",
+    "checkingAvailability": "دستیابی کی جانچ ہو رہی ہے..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "صارف نام دستیاب ہے۔",
-    "checkingAvailability": "دستیابی کی جانچ ہو رہی ہے...",
-    "claimFree": "مفت کا دعوی کریں۔",
-    "confirmOnSignup": "ہم سائن اپ پر دستیابی کی تصدیق کریں گے۔",
-    "trySuggestions": "آزمائیں: {{suggestions}}",
-    "unavailable": "صارف نام دستیاب نہیں ہے۔",
-    "validating": "تصدیق کر رہا ہے..."
   }
 }

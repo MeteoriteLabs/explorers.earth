@@ -1,10 +1,6 @@
 {
   "about": {
     "closing": "Nếu bạn tò mò.\nNếu bạn có suy nghĩ.\nNếu bạn sẵn sàng chậm lại và nhìn gần hơn —\nbạn đã thuộc về đây rồi.",
-    "heroEyebrow": "Our shared perspective",
-    "join": "Join explorers",
-    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
-    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Khám phá bắt đầu bằng nhận thức.",
       "line2": "Bằng cách chú ý đến những gì người khác bỏ qua.",
@@ -53,15 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Một cộng đồng toàn cầu của những người khám phá với sự quan tâm — cho con người, văn hóa và hành tinh mà chúng ta chia sẻ.",
       "line2": "Khám phá đối với chúng ta không phải về việc chúng ta đi bao xa.",
       "line3": "Đó là về việc chúng ta kết nối sâu sắc như thế nào."
     },
-    "title": "Những Người Khám Phá Trái Đất"
+    "title": "Những Người Khám Phá Trái Đất",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -894,38 +894,6 @@
         "visible": "Hiển Thị",
         "whatsappNumber": "Số WhatsApp"
       },
-      "editor": {
-        "appearance": {
-          "categoryOrder": "Category order",
-          "hideFullPreview": "Hide full preview",
-          "promoted": "Promoted",
-          "publicLanding": "Public landing",
-          "publicLandingDescription": "Choose which public profile view visitors see first.",
-          "recommendationsLayout": "Recommendations layout",
-          "showFullPreview": "Show full preview",
-          "themeStyle": "Theme style",
-          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
-        },
-        "drag": {
-          "cancel": "Đã hủy di chuyển {{category}}. Thứ tự đã được khôi phục.",
-          "drop": "Đã thả {{category}} ở vị trí {{position}} trên {{total}}.",
-          "handle": "Kéo {{category}}",
-          "instructions": "Nhấn phím Cách hoặc Enter để nhấc lên. Dùng các phím mũi tên hoặc Home và End để di chuyển. Nhấn phím Cách hoặc Enter để thả, hoặc Escape để hủy.",
-          "lift": "Đã nhấc {{category}}. Vị trí {{position}} trên {{total}}.",
-          "move": "Đã chuyển {{category}} đến vị trí {{position}} trên {{total}}."
-        },
-        "headings": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile details"
-        },
-        "tablist": "Public profile editor",
-        "tabs": {
-          "appearance": "Appearance",
-          "gallery": "Gallery",
-          "profile": "Profile"
-        }
-      },
       "publicProfile": {
         "accountTypes": {
           "business": "Doanh Nghiệp",
@@ -980,6 +948,38 @@
       "tabs": {
         "account": "Tài Khoản",
         "publicProfile": "Hồ Sơ Công Khai"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Đã hủy di chuyển {{category}}. Thứ tự đã được khôi phục.",
+          "drop": "Đã thả {{category}} ở vị trí {{position}} trên {{total}}.",
+          "handle": "Kéo {{category}}",
+          "instructions": "Nhấn phím Cách hoặc Enter để nhấc lên. Dùng các phím mũi tên hoặc Home và End để di chuyển. Nhấn phím Cách hoặc Enter để thả, hoặc Escape để hủy.",
+          "lift": "Đã nhấc {{category}}. Vị trí {{position}} trên {{total}}.",
+          "move": "Đã chuyển {{category}} đến vị trí {{position}} trên {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
       },
       "themeAppearance": {
         "accentTitle": "Accent color",
@@ -1211,14 +1211,14 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
-        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Recommendation list Published successfully!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Recommendation list Unpublished successfully!",
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Du lịch như người địa phương",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1249,101 +1249,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "copyright": "© 2025 nhà thám hiểm. Mọi quyền được bảo lưu.",
+    "tagline": "Hãy để đề xuất của bạn đi khắp thế giới.",
     "email": "hello@explorers.earth",
-    "freeForever": "Miễn phí mãi mãi.",
-    "links": {
-      "about": "Về",
-      "contact": "Liên hệ",
-      "cookies": "Chính sách cookie",
-      "faq": "Câu hỏi thường gặp",
-      "howItWorks": "Nó hoạt động như thế nào",
-      "privacy": "Chính sách bảo mật",
-      "product": "Sản phẩm",
-      "shareAnywhere": "Chia sẻ mọi nơi",
-      "terms": "Điều khoản & Điều kiện",
-      "useCases": "Use Cases"
-    },
-    "madeWithLove": "Được tạo ra bằng tình yêu trên trái đất",
     "sections": {
-      "company": "Công ty",
+      "product": "Sản phẩm",
       "contact": "Liên Hệ",
       "legal": "Hợp pháp",
-      "product": "Sản phẩm"
+      "company": "Công ty"
     },
-    "tagline": "Hãy để đề xuất của bạn đi khắp thế giới."
+    "links": {
+      "howItWorks": "Nó hoạt động như thế nào",
+      "faq": "Câu hỏi thường gặp",
+      "contact": "Liên hệ",
+      "about": "Về",
+      "terms": "Điều khoản & Điều kiện",
+      "privacy": "Chính sách bảo mật",
+      "cookies": "Chính sách cookie",
+      "product": "Sản phẩm",
+      "shareAnywhere": "Chia sẻ mọi nơi",
+      "useCases": "Use Cases"
+    },
+    "copyright": "© 2025 nhà thám hiểm. Mọi quyền được bảo lưu.",
+    "madeWithLove": "Được tạo ra bằng tình yêu trên trái đất",
+    "freeForever": "Miễn phí mãi mãi."
   },
   "header": {
-    "auth": {
-      "claimFree": "Yêu cầu miễn phí",
-      "claimFreePage": "Yêu cầu trang miễn phí",
-      "login": "Đăng Nhập",
-      "signUp": "Đăng Ký"
-    },
     "nav": {
-      "about": "Về chúng tôi",
-      "closeMenu": "Đóng menu điều hướng",
-      "contact": "Liên Hệ",
-      "faq": "Câu hỏi thường gặp",
       "howItWorks": "Nó hoạt động như thế nào",
-      "openMenu": "Mở menu điều hướng",
+      "whoIsFor": "Dành Cho Ai",
+      "faq": "Câu hỏi thường gặp",
+      "about": "Về chúng tôi",
+      "contact": "Liên Hệ",
       "product": "Sản phẩm",
       "share": "Chia sẻ",
-      "useCases": "Use Cases",
-      "whoIsFor": "Dành Cho Ai"
+      "openMenu": "Mở menu điều hướng",
+      "closeMenu": "Đóng menu điều hướng",
+      "useCases": "Use Cases"
+    },
+    "auth": {
+      "login": "Đăng Nhập",
+      "signUp": "Đăng Ký",
+      "claimFreePage": "Yêu cầu trang miễn phí",
+      "claimFree": "Yêu cầu miễn phí"
     }
   },
   "hero": {
-    "badge": "Miễn phí mãi mãi",
-    "countries": {
-      "ae": "Các tiểu vương quốc Ả Rập thống nhất",
-      "au": "Úc",
-      "br": "Brazil",
-      "de": "nước Đức",
-      "fr": "Pháp",
-      "gb": "Vương quốc Anh",
-      "in": "Ấn Độ",
-      "jp": "Nhật Bản",
-      "sg": "Singapore",
-      "us": "Hoa Kỳ"
-    },
-    "ctaButton": "Yêu cầu trang Explorer của bạn",
-    "globalStrip": "Explorer chia sẻ đề xuất trên toàn thế giới",
     "headline": "Tất cả đề xuất của bạn - một liên kết, một QR",
-    "headlinePrefix": "Tất cả của bạn",
-    "headlineSuffix": "trong một liên kết và QR.",
+    "subtext": "Tạo một trang có thể chia sẻ cho mọi thứ bạn đề xuất - địa điểm, con người, sản phẩm, sách, phim, chương trình, âm nhạc, trò chơi, ứng dụng, v.v.",
     "inputLabel": "Xác nhận URL trình khám phá của bạn:",
     "inputPlaceholder": "tên của bạn",
-    "preview": {
-      "items": {
-        "book": "Sách",
-        "game": "Trò chơi",
-        "music": "Âm nhạc",
-        "place": "Địa điểm"
-      },
-      "onePageText": "Chia sẻ nó dưới dạng liên kết, QR, tin nhắn hoặc hướng dẫn.",
-      "onePageTitle": "Một trang cho mọi khuyến nghị tốt.",
-      "screenAlt": "Màn hình đề xuất trang Explorer",
-      "todayList": "Danh sách hôm nay"
-    },
+    "ctaButton": "Yêu cầu trang Explorer của bạn",
+    "signupPrompt": "Đăng ký để sở hữu ngay bây giờ",
+    "headlinePrefix": "Tất cả của bạn",
     "rotatingWords": [
       "khuyến nghị",
       "giám tuyển",
       "bộ sưu tập",
       "yêu thích"
     ],
-    "signupPrompt": "Đăng ký để sở hữu ngay bây giờ",
-    "subtext": "Tạo một trang có thể chia sẻ cho mọi thứ bạn đề xuất - địa điểm, con người, sản phẩm, sách, phim, chương trình, âm nhạc, trò chơi, ứng dụng, v.v."
+    "headlineSuffix": "trong một liên kết và QR.",
+    "badge": "Miễn phí mãi mãi",
+    "globalStrip": "Explorer chia sẻ đề xuất trên toàn thế giới",
+    "preview": {
+      "todayList": "Danh sách hôm nay",
+      "onePageTitle": "Một trang cho mọi khuyến nghị tốt.",
+      "onePageText": "Chia sẻ nó dưới dạng liên kết, QR, tin nhắn hoặc hướng dẫn.",
+      "items": {
+        "place": "Địa điểm",
+        "book": "Sách",
+        "music": "Âm nhạc",
+        "game": "Trò chơi"
+      },
+      "screenAlt": "Màn hình đề xuất trang Explorer"
+    },
+    "countries": {
+      "in": "Ấn Độ",
+      "us": "Hoa Kỳ",
+      "gb": "Vương quốc Anh",
+      "jp": "Nhật Bản",
+      "fr": "Pháp",
+      "au": "Úc",
+      "br": "Brazil",
+      "ae": "Các tiểu vương quốc Ả Rập thống nhất",
+      "sg": "Singapore",
+      "de": "nước Đức"
+    }
   },
   "languageModal": {
     "close": "Đóng",
-    "escToClose": "Nhấn Esc để đóng",
-    "languagesAvailable": "Có sẵn ngôn ngữ {{count}}",
-    "noLanguagesFound": "Không tìm thấy ngôn ngữ nào",
     "searchPlaceholder": "Tìm kiếm ngôn ngữ...",
-    "subtitle": "Chọn ngôn ngữ bạn muốn sử dụng trên các trình khám phá.",
     "title": "Chọn ngôn ngữ",
-    "tryDifferentSearch": "Hãy thử một cụm từ tìm kiếm khác."
+    "subtitle": "Chọn ngôn ngữ bạn muốn sử dụng trên các trình khám phá.",
+    "noLanguagesFound": "Không tìm thấy ngôn ngữ nào",
+    "tryDifferentSearch": "Hãy thử một cụm từ tìm kiếm khác.",
+    "languagesAvailable": "Có sẵn ngôn ngữ {{count}}",
+    "escToClose": "Nhấn Esc để đóng"
   },
   "legal": {
     "cookies": {
@@ -1385,38 +1385,6 @@
       "warning": "Bất kỳ mã QR hoặc liên kết nào với tên người dùng cũ của bạn sẽ không còn hoạt động — bạn sẽ cần cập nhật và chia sẻ lại chúng."
     }
   },
-  "publicProfile": {
-    "recommendations": {
-      "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
-      },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
-    }
-  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1434,45 +1402,30 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
-    "analytics": {
-      "dashboardTitle": "Trang tổng quan phân tích",
-      "engagement": "Hôn ước",
-      "headline": "Xem những gì mọi người tham gia.",
-      "last30Days": "30 ngày qua",
-      "livePreview": "Xem trước trực tiếp",
-      "referrals": "Giới thiệu",
-      "scanningDesc": "Xem cách mọi người truy cập trang của bạn từ các liên kết, mã QR và các điểm tiếp xúc được chia sẻ.",
-      "scanningTitle": "Hiểu thao tác quét và nhấp chuột",
-      "spotsDesc": "Tìm hiểu những địa điểm, sản phẩm, danh sách và hướng dẫn nào được yêu thích nhất.",
-      "spotsTitle": "Tìm đề xuất hàng đầu",
-      "subtext": "Hiểu những đề xuất nào mọi người mở, lưu và xem lại trên các liên kết và mã QR của bạn.",
-      "totalScans": "Tổng số lần quét",
-      "workingDesc": "Theo dõi những đề xuất mà mọi người mở, lưu và xem lại.",
-      "workingTitle": "Xem những gì đang hoạt động"
-    },
     "createCustomize": {
+      "headline": "Tạo trang Explorer của bạn trong vài phút",
+      "subtext": "Thu thập những gì bạn đề xuất, sắp xếp theo cách của bạn và chia sẻ nó ở bất cứ đâu bằng một liên kết hoặc QR.",
       "bulletPoints": {
         "addSpots": {
-          "description": "",
-          "title": "Thêm địa điểm, trải nghiệm, tuyến đường, âm thanh và ghi chú"
-        },
-        "generate": {
-          "description": "",
-          "title": "Chỉnh sửa bất cứ lúc nào - liên kết của bạn luôn giữ nguyên"
+          "title": "Thêm địa điểm, trải nghiệm, tuyến đường, âm thanh và ghi chú",
+          "description": ""
         },
         "organize": {
-          "description": "",
-          "title": "Sắp xếp theo vị trí hoặc sở thích"
+          "title": "Sắp xếp theo vị trí hoặc sở thích",
+          "description": ""
+        },
+        "generate": {
+          "title": "Chỉnh sửa bất cứ lúc nào - liên kết của bạn luôn giữ nguyên",
+          "description": ""
         },
         "share": {
-          "description": "",
-          "title": "Chia sẻ kỹ thuật số hoặc thông qua QR trong thế giới thực"
+          "title": "Chia sẻ kỹ thuật số hoặc thông qua QR trong thế giới thực",
+          "description": ""
         }
       },
-      "headline": "Tạo trang Explorer của bạn trong vài phút",
       "mockup": {
-        "addPlace": "Thêm địa điểm",
-        "title": "Khuyến nghị của tôi"
+        "title": "Khuyến nghị của tôi",
+        "addPlace": "Thêm địa điểm"
       },
       "steps": [
         {
@@ -1487,10 +1440,232 @@
           "body": "Trang của bạn cập nhật bất cứ lúc nào trong khi cùng một liên kết và QR tiếp tục hoạt động ở mọi nơi.",
           "title": "Chia sẻ một liên kết hoặc QR"
         }
+      ]
+    },
+    "shareAnywhere": {
+      "headline": "Một liên kết. Nhiều cuộc hành trình.",
+      "subtext": "Liên kết Explorer của bạn trở thành một hướng dẫn sống động — thứ mà mọi người có thể lưu, xem lại và khám phá theo tốc độ của riêng họ.\n\nChia sẻ nó trên hồ sơ, tin nhắn, bảng, tường hoặc thẻ.\nDù nó đi đến đâu, quan điểm của bạn cũng đi theo nó.",
+      "scanText": "Quét các đề xuất địa phương",
+      "storefrontText": "Hoàn hảo cho việc trưng bày mặt tiền cửa hàng",
+      "instagramTitle": "Thêm vào tiểu sử Instagram/Tiktok của bạn",
+      "instagramDesc": "Chia sẻ với những người theo dõi bạn ngay lập tức",
+      "menuTitle": "In nó cho Mặt tiền cửa hàng",
+      "menuDesc": "Điểm tiếp xúc vật lý được thực hiện dễ dàng",
+      "welcomeTitle": "Đưa vào sách chào mừng",
+      "welcomeDesc": "Hoàn hảo cho chủ nhà và hướng dẫn viên",
+      "cafeMenu": "Thực đơn cà phê",
+      "tokyoFoodGuide": "Hướng dẫn ẩm thực Tokyo của tôi explorers.earth/jane",
+      "cards": [
+        {
+          "eyebrow": "Hồ sơ sẵn sàng",
+          "title": "Liên kết trong sinh học"
+        },
+        {
+          "eyebrow": "Sẵn sàng ngoại tuyến",
+          "title": "Mã QR"
+        },
+        {
+          "eyebrow": "Sẵn sàng trò chuyện",
+          "title": "Tin nhắn"
+        },
+        {
+          "eyebrow": "Sẵn sàng cho khách",
+          "title": "Hướng dẫn chào mừng"
+        }
       ],
-      "subtext": "Thu thập những gì bạn đề xuất, sắp xếp theo cách của bạn và chia sẻ nó ở bất cứ đâu bằng một liên kết hoặc QR."
+      "visual": {
+        "scanForPicks": "Quét để chọn",
+        "messageBubble": "Đây là danh sách Kyoto của tôi",
+        "welcomeGuide": "Hướng dẫn chào mừng",
+        "guideItems": [
+          "Ăn sáng gần đó",
+          "Tuyến đường bảo tàng",
+          "Đi dạo buổi tối"
+        ],
+        "savedRecommendation": "Đề xuất đã lưu"
+      },
+      "profileCarouselCaption": "Hồ sơ Instagram & TikTok",
+      "qrEverywhereTitle": "Thêm link QR khắp mọi nơi",
+      "qrEverywhereDesc": "Hoàn hảo cho mọi địa điểm"
+    },
+    "analytics": {
+      "headline": "Xem những gì mọi người tham gia.",
+      "subtext": "Hiểu những đề xuất nào mọi người mở, lưu và xem lại trên các liên kết và mã QR của bạn.",
+      "workingTitle": "Xem những gì đang hoạt động",
+      "workingDesc": "Theo dõi những đề xuất mà mọi người mở, lưu và xem lại.",
+      "scanningTitle": "Hiểu thao tác quét và nhấp chuột",
+      "scanningDesc": "Xem cách mọi người truy cập trang của bạn từ các liên kết, mã QR và các điểm tiếp xúc được chia sẻ.",
+      "spotsTitle": "Tìm đề xuất hàng đầu",
+      "spotsDesc": "Tìm hiểu những địa điểm, sản phẩm, danh sách và hướng dẫn nào được yêu thích nhất.",
+      "dashboardTitle": "Trang tổng quan phân tích",
+      "last30Days": "30 ngày qua",
+      "totalScans": "Tổng số lần quét",
+      "engagement": "Hôn ước",
+      "referrals": "Giới thiệu",
+      "livePreview": "Xem trước trực tiếp"
+    },
+    "referEarn": {
+      "headline": "Chia sẻ, giới thiệu và kiếm tiền",
+      "subtext": "Biến gợi ý của bạn thành phần thưởng thụ động — kiếm tín dụng khi người khác sử dụng QR của bạn.",
+      "comingSoon": "Chương Trình Thưởng Giới Thiệu (Sắp Ra Mắt)",
+      "rewardsTitle": "Kiếm Phần Thưởng",
+      "rewardsDesc": "Nhận tiền khi mọi người sử dụng gợi ý của bạn",
+      "earnedThisMonth": "Kiếm được tháng này",
+      "passiveTitle": "Biến gợi ý thành phần thưởng thụ động",
+      "networkTitle": "Xây dựng mạng lưới và kiếm tiền tự động"
+    },
+    "whoIsFor": {
+      "headline": "Được xây dựng cho những người có sở thích giúp đỡ người khác.",
+      "subtext": "Cho dù bạn đang chia sẻ thành phố, kệ hàng, danh sách sản phẩm, danh sách phát hay hướng dẫn khách, những người khám phá sẽ cung cấp cho bạn một ngôi nhà cho các đề xuất của bạn.",
+      "cards": [
+        "Nhà thám hiểm cá nhân",
+        "Người sáng tạo và người quản lý",
+        "Chủ nhà và doanh nghiệp",
+        "Thương hiệu và tổ chức"
+      ],
+      "useCases": {
+        "travelers": "du khách",
+        "travelersDesc": "Chia sẻ những viên ngọc được khám phá với những người cùng khám phá",
+        "influencers": "Người ảnh hưởng",
+        "influencersDesc": "Kiếm tiền từ kiến ​​thức địa phương và xây dựng cộng đồng",
+        "airbnbHosts": "Máy chủ Airbnb",
+        "airbnbHostsDesc": "Nâng cao trải nghiệm của khách với những hiểu biết sâu sắc về địa phương",
+        "hotels": "Khách sạn",
+        "hotelsDesc": "Cung cấp các đề xuất địa phương được tuyển chọn",
+        "restaurants": "Nhà hàng",
+        "restaurantsDesc": "Quảng cáo chéo với các doanh nghiệp địa phương khác",
+        "cafes": "Quán cà phê",
+        "cafesDesc": "Chia sẻ các địa điểm yêu thích ở khu vực lân cận với khách hàng",
+        "localGuides": "Hướng dẫn viên địa phương",
+        "localGuidesDesc": "Mở rộng quy mô chuyên môn vượt ra ngoài các chuyến tham quan cá nhân",
+        "creators": "Người sáng tạo",
+        "creatorsDesc": "Thêm giá trị ngoài nội dung bằng các mẹo hữu ích",
+        "tourOperators": "Công ty lữ hành",
+        "tourOperatorsDesc": "Mở rộng trải nghiệm ngoài các chuyến tham quan theo lịch trình",
+        "anyBusiness": "Bất kỳ doanh nghiệp nào",
+        "anyBusinessDesc": "Xây dựng cộng đồng và lòng trung thành của khách hàng"
+      },
+      "explorerLabel": "Explorer",
+      "visual": {
+        "personal": [
+          "quán cà phê",
+          "Sách",
+          "Đường mòn",
+          "Album",
+          "Phim ảnh",
+          "Trò chơi"
+        ],
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR"
+      },
+      "chips": [
+        "du khách",
+        "Người dân địa phương",
+        "Gia đình",
+        "Sinh viên",
+        "dân du mục",
+        "Người sáng tạo",
+        "Người ảnh hưởng",
+        "Blogger",
+        "Người đánh giá",
+        "Nhiếp ảnh gia",
+        "nhà giáo dục",
+        "Lãnh đạo cộng đồng",
+        "Khách sạn",
+        "Airbnbs",
+        "Ký túc xá",
+        "Quán cà phê",
+        "Nhà hàng",
+        "Cửa hàng bán lẻ",
+        "phòng tập thể dục",
+        "Thẩm mỹ viện",
+        "Phòng khám",
+        "Cửa hàng",
+        "Thương hiệu",
+        "Khởi nghiệp",
+        "Đại lý",
+        "trường đại học",
+        "Doanh nghiệp",
+        "Sân bay",
+        "NGO",
+        "Đội ngũ chính phủ"
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
+    },
+    "testimonials": {
+      "headline": "Được khách du lịch, người sáng tạo và chủ nhà yêu thích",
+      "subtext": "Xem cách mọi người trên khắp thế giới sử dụng trình khám phá để chia sẻ những điều quan trọng nhất.",
+      "scrollLeft": "Cuộn lời chứng thực sang trái",
+      "scrollRight": "Cuộn lời chứng thực sang phải",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, Ấn Độ",
+          "name": "Priya Sharma",
+          "quote": "những người khám phá đã thay đổi cách tôi chia sẻ kiến ​​thức du lịch của mình. Những người theo dõi tôi thích được truy cập ngay vào các đề xuất được tuyển chọn của tôi!",
+          "role": "Blogger du lịch"
+        },
+        {
+          "id": "2",
+          "location": "Delhi, Ấn Độ",
+          "name": "Raj Patel",
+          "quote": "Khách của tôi hoàn toàn yêu thích mã QR được cá nhân hóa trong bộ sản phẩm chào mừng của họ. Nó đã trở thành dấu ấn đặc trưng của tôi!",
+          "role": "Máy chủ Airbnb"
+        },
+        {
+          "id": "3",
+          "location": "Tokyo, Nhật Bản",
+          "name": "Yuki Tanaka",
+          "quote": "Chúng tôi chia sẻ những người khám phá của mình với khách hàng để giới thiệu các địa điểm địa phương khác. Nó tạo ra những kết nối cộng đồng tuyệt vời.",
+          "role": "Chủ nhà hàng"
+        },
+        {
+          "id": "4",
+          "location": "São Paulo, Brazil",
+          "name": "Maria Silva",
+          "quote": "những nhà thám hiểm giúp tôi mở rộng kiến ​​thức chuyên môn của mình ngoài giờ tham quan. Khách hàng có thể truy cập các đề xuất của tôi bất cứ lúc nào!",
+          "role": "hướng dẫn du lịch"
+        },
+        {
+          "id": "5",
+          "location": "Sydney, Úc",
+          "name": "James Wilson",
+          "quote": "Với tư cách là người có ảnh hưởng về du lịch, những người khám phá giúp tôi dễ dàng chia sẻ những địa điểm yêu thích của mình với khán giả. Tính năng mã QR thật tuyệt vời!",
+          "role": "Người ảnh hưởng du lịch"
+        },
+        {
+          "id": "6",
+          "location": "Paris, Pháp",
+          "name": "Sophie Martin",
+          "quote": "Tôi sử dụng trình khám phá để tạo các chuyến đi bộ cho khách hàng của mình. Họ có thể quét QR và khám phá theo tốc độ của riêng mình!",
+          "role": "Hướng dẫn viên địa phương"
+        }
+      ]
     },
     "faq": {
+      "headline": "Có câu hỏi?",
+      "subtext": "Chúng tôi đã trả lời những điều phổ biến nhất mà mọi người hỏi trước khi bắt đầu.",
+      "loading": "Đang tải FAQ...",
       "error": "Lỗi khi tải FAQ. Vui lòng thử lại sau.",
       "fallbackItems": [
         {
@@ -1513,14 +1688,13 @@
           "Question": "Những nhà thám hiểm có được miễn phí mãi mãi không?",
           "Sequence": 4
         }
-      ],
-      "headline": "Có câu hỏi?",
-      "loading": "Đang tải FAQ...",
-      "subtext": "Chúng tôi đã trả lời những điều phổ biến nhất mà mọi người hỏi trước khi bắt đầu."
+      ]
     },
     "features": {
-      "communityDriven": {
-        "title": "Khám phá do cộng đồng dẫn dắt"
+      "title": "Được xây dựng để tránh xa",
+      "subtitle": "Các tính năng đơn giản, chu đáo giúp các đề xuất của bạn tỏa sáng.",
+      "simpleLinks": {
+        "title": "Liên kết đơn giản và chia sẻ QR"
       },
       "livingGuides": {
         "title": "Hướng dẫn sống động, có thể chỉnh sửa"
@@ -1528,31 +1702,48 @@
       "locationAware": {
         "title": "Đề xuất nhận biết vị trí"
       },
-      "privacyFirst": {
-        "title": "Quyền riêng tư trước tiên theo thiết kế"
-      },
-      "simpleLinks": {
-        "title": "Liên kết đơn giản và chia sẻ QR"
-      },
       "soundPlaylists": {
         "title": "Âm thanh và danh sách phát tùy chọn"
       },
-      "subtitle": "Các tính năng đơn giản, chu đáo giúp các đề xuất của bạn tỏa sáng.",
-      "title": "Được xây dựng để tránh xa"
+      "privacyFirst": {
+        "title": "Quyền riêng tư trước tiên theo thiết kế"
+      },
+      "communityDriven": {
+        "title": "Khám phá do cộng đồng dẫn dắt"
+      }
     },
     "finalCTA": {
-      "creating": "Đang tạo explorers của bạn...",
+      "headline": "Bắt đầu chia sẻ thế giới của bạn hôm nay",
+      "subtext": "Đặt trước explorers miễn phí của bạn và biến thông tin địa phương thành hướng dẫn có thể chia sẻ.",
       "ctaButton": "Đặt Trước explorers – Miễn Phí Mãi Mãi",
       "disclaimer": "Không cần thẻ tín dụng • Thiết lập trong 2 phút",
-      "headline": "Bắt đầu chia sẻ thế giới của bạn hôm nay",
-      "subtext": "Đặt trước explorers miễn phí của bạn và biến thông tin địa phương thành hướng dẫn có thể chia sẻ."
+      "creating": "Đang tạo explorers của bạn..."
     },
     "productCategories": {
+      "headline": "Đề xuất nhiều hơn địa điểm.",
+      "subtext": "Tạo một trang cho địa điểm, con người, sản phẩm, sách, phim, chương trình, âm nhạc, trò chơi, ứng dụng và công cụ.",
       "actions": [
         "Cứu",
         "Tổ chức",
         "Chia sẻ"
       ],
+      "overlayLabel": "trang Explorer",
+      "visualLabels": {
+        "products": "Yêu thích thực sự",
+        "apps": "Ngăn xếp hữu ích"
+      },
+      "visualDetails": {
+        "products": [
+          "Dụng cụ du lịch",
+          "Mang theo hàng ngày",
+          "Bộ công cụ sáng tạo"
+        ],
+        "apps": [
+          "Công cụ lập kế hoạch",
+          "Ứng dụng hữu ích",
+          "Liên kết tài nguyên"
+        ]
+      },
       "categories": [
         {
           "description": "Nhà hàng, khu phố, bảo tàng, tuyến đường và những viên ngọc ẩn mà mọi người thực sự có thể ghé thăm.",
@@ -1602,244 +1793,15 @@
           "label": "Ứng dụng & Công cụ",
           "title": "Ứng dụng, công cụ và liên kết hữu ích"
         }
-      ],
-      "headline": "Đề xuất nhiều hơn địa điểm.",
-      "overlayLabel": "trang Explorer",
-      "subtext": "Tạo một trang cho địa điểm, con người, sản phẩm, sách, phim, chương trình, âm nhạc, trò chơi, ứng dụng và công cụ.",
-      "visualDetails": {
-        "apps": [
-          "Công cụ lập kế hoạch",
-          "Ứng dụng hữu ích",
-          "Liên kết tài nguyên"
-        ],
-        "products": [
-          "Dụng cụ du lịch",
-          "Mang theo hàng ngày",
-          "Bộ công cụ sáng tạo"
-        ]
-      },
-      "visualLabels": {
-        "apps": "Ngăn xếp hữu ích",
-        "products": "Yêu thích thực sự"
-      }
-    },
-    "referEarn": {
-      "comingSoon": "Chương Trình Thưởng Giới Thiệu (Sắp Ra Mắt)",
-      "earnedThisMonth": "Kiếm được tháng này",
-      "headline": "Chia sẻ, giới thiệu và kiếm tiền",
-      "networkTitle": "Xây dựng mạng lưới và kiếm tiền tự động",
-      "passiveTitle": "Biến gợi ý thành phần thưởng thụ động",
-      "rewardsDesc": "Nhận tiền khi mọi người sử dụng gợi ý của bạn",
-      "rewardsTitle": "Kiếm Phần Thưởng",
-      "subtext": "Biến gợi ý của bạn thành phần thưởng thụ động — kiếm tín dụng khi người khác sử dụng QR của bạn."
-    },
-    "shareAnywhere": {
-      "cafeMenu": "Thực đơn cà phê",
-      "cards": [
-        {
-          "eyebrow": "Hồ sơ sẵn sàng",
-          "title": "Liên kết trong sinh học"
-        },
-        {
-          "eyebrow": "Sẵn sàng ngoại tuyến",
-          "title": "Mã QR"
-        },
-        {
-          "eyebrow": "Sẵn sàng trò chuyện",
-          "title": "Tin nhắn"
-        },
-        {
-          "eyebrow": "Sẵn sàng cho khách",
-          "title": "Hướng dẫn chào mừng"
-        }
-      ],
-      "headline": "Một liên kết. Nhiều cuộc hành trình.",
-      "instagramDesc": "Chia sẻ với những người theo dõi bạn ngay lập tức",
-      "instagramTitle": "Thêm vào tiểu sử Instagram/Tiktok của bạn",
-      "menuDesc": "Điểm tiếp xúc vật lý được thực hiện dễ dàng",
-      "menuTitle": "In nó cho Mặt tiền cửa hàng",
-      "profileCarouselCaption": "Hồ sơ Instagram & TikTok",
-      "qrEverywhereDesc": "Hoàn hảo cho mọi địa điểm",
-      "qrEverywhereTitle": "Thêm link QR khắp mọi nơi",
-      "scanText": "Quét các đề xuất địa phương",
-      "storefrontText": "Hoàn hảo cho việc trưng bày mặt tiền cửa hàng",
-      "subtext": "Liên kết Explorer của bạn trở thành một hướng dẫn sống động — thứ mà mọi người có thể lưu, xem lại và khám phá theo tốc độ của riêng họ.\n\nChia sẻ nó trên hồ sơ, tin nhắn, bảng, tường hoặc thẻ.\nDù nó đi đến đâu, quan điểm của bạn cũng đi theo nó.",
-      "tokyoFoodGuide": "Hướng dẫn ẩm thực Tokyo của tôi explorers.earth/jane",
-      "visual": {
-        "guideItems": [
-          "Ăn sáng gần đó",
-          "Tuyến đường bảo tàng",
-          "Đi dạo buổi tối"
-        ],
-        "messageBubble": "Đây là danh sách Kyoto của tôi",
-        "savedRecommendation": "Đề xuất đã lưu",
-        "scanForPicks": "Quét để chọn",
-        "welcomeGuide": "Hướng dẫn chào mừng"
-      },
-      "welcomeDesc": "Hoàn hảo cho chủ nhà và hướng dẫn viên",
-      "welcomeTitle": "Đưa vào sách chào mừng"
-    },
-    "testimonials": {
-      "headline": "Được khách du lịch, người sáng tạo và chủ nhà yêu thích",
-      "items": [
-        {
-          "id": "1",
-          "location": "Mumbai, Ấn Độ",
-          "name": "Priya Sharma",
-          "quote": "những người khám phá đã thay đổi cách tôi chia sẻ kiến ​​thức du lịch của mình. Những người theo dõi tôi thích được truy cập ngay vào các đề xuất được tuyển chọn của tôi!",
-          "role": "Blogger du lịch"
-        },
-        {
-          "id": "2",
-          "location": "Delhi, Ấn Độ",
-          "name": "Raj Patel",
-          "quote": "Khách của tôi hoàn toàn yêu thích mã QR được cá nhân hóa trong bộ sản phẩm chào mừng của họ. Nó đã trở thành dấu ấn đặc trưng của tôi!",
-          "role": "Máy chủ Airbnb"
-        },
-        {
-          "id": "3",
-          "location": "Tokyo, Nhật Bản",
-          "name": "Yuki Tanaka",
-          "quote": "Chúng tôi chia sẻ những người khám phá của mình với khách hàng để giới thiệu các địa điểm địa phương khác. Nó tạo ra những kết nối cộng đồng tuyệt vời.",
-          "role": "Chủ nhà hàng"
-        },
-        {
-          "id": "4",
-          "location": "São Paulo, Brazil",
-          "name": "Maria Silva",
-          "quote": "những nhà thám hiểm giúp tôi mở rộng kiến ​​thức chuyên môn của mình ngoài giờ tham quan. Khách hàng có thể truy cập các đề xuất của tôi bất cứ lúc nào!",
-          "role": "hướng dẫn du lịch"
-        },
-        {
-          "id": "5",
-          "location": "Sydney, Úc",
-          "name": "James Wilson",
-          "quote": "Với tư cách là người có ảnh hưởng về du lịch, những người khám phá giúp tôi dễ dàng chia sẻ những địa điểm yêu thích của mình với khán giả. Tính năng mã QR thật tuyệt vời!",
-          "role": "Người ảnh hưởng du lịch"
-        },
-        {
-          "id": "6",
-          "location": "Paris, Pháp",
-          "name": "Sophie Martin",
-          "quote": "Tôi sử dụng trình khám phá để tạo các chuyến đi bộ cho khách hàng của mình. Họ có thể quét QR và khám phá theo tốc độ của riêng mình!",
-          "role": "Hướng dẫn viên địa phương"
-        }
-      ],
-      "scrollLeft": "Cuộn lời chứng thực sang trái",
-      "scrollRight": "Cuộn lời chứng thực sang phải",
-      "subtext": "Xem cách mọi người trên khắp thế giới sử dụng trình khám phá để chia sẻ những điều quan trọng nhất."
-    },
-    "whoIsFor": {
-      "cards": [
-        "Nhà thám hiểm cá nhân",
-        "Người sáng tạo và người quản lý",
-        "Chủ nhà và doanh nghiệp",
-        "Thương hiệu và tổ chức"
-      ],
-      "chips": [
-        "du khách",
-        "Người dân địa phương",
-        "Gia đình",
-        "Sinh viên",
-        "dân du mục",
-        "Người sáng tạo",
-        "Người ảnh hưởng",
-        "Blogger",
-        "Người đánh giá",
-        "Nhiếp ảnh gia",
-        "nhà giáo dục",
-        "Lãnh đạo cộng đồng",
-        "Khách sạn",
-        "Airbnbs",
-        "Ký túc xá",
-        "Quán cà phê",
-        "Nhà hàng",
-        "Cửa hàng bán lẻ",
-        "phòng tập thể dục",
-        "Thẩm mỹ viện",
-        "Phòng khám",
-        "Cửa hàng",
-        "Thương hiệu",
-        "Khởi nghiệp",
-        "Đại lý",
-        "trường đại học",
-        "Doanh nghiệp",
-        "Sân bay",
-        "NGO",
-        "Đội ngũ chính phủ"
-      ],
-      "explore": "See this perspective",
-      "explorerLabel": "Explorer",
-      "eyebrow": "Ways to use explorers",
-      "headline": "Được xây dựng cho những người có sở thích giúp đỡ người khác.",
-      "perspectives": {
-        "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
-        },
-        "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
-        },
-        "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
-        }
-      },
-      "subtext": "Cho dù bạn đang chia sẻ thành phố, kệ hàng, danh sách sản phẩm, danh sách phát hay hướng dẫn khách, những người khám phá sẽ cung cấp cho bạn một ngôi nhà cho các đề xuất của bạn.",
-      "useCases": {
-        "airbnbHosts": "Máy chủ Airbnb",
-        "airbnbHostsDesc": "Nâng cao trải nghiệm của khách với những hiểu biết sâu sắc về địa phương",
-        "anyBusiness": "Bất kỳ doanh nghiệp nào",
-        "anyBusinessDesc": "Xây dựng cộng đồng và lòng trung thành của khách hàng",
-        "cafes": "Quán cà phê",
-        "cafesDesc": "Chia sẻ các địa điểm yêu thích ở khu vực lân cận với khách hàng",
-        "creators": "Người sáng tạo",
-        "creatorsDesc": "Thêm giá trị ngoài nội dung bằng các mẹo hữu ích",
-        "hotels": "Khách sạn",
-        "hotelsDesc": "Cung cấp các đề xuất địa phương được tuyển chọn",
-        "influencers": "Người ảnh hưởng",
-        "influencersDesc": "Kiếm tiền từ kiến ​​thức địa phương và xây dựng cộng đồng",
-        "localGuides": "Hướng dẫn viên địa phương",
-        "localGuidesDesc": "Mở rộng quy mô chuyên môn vượt ra ngoài các chuyến tham quan cá nhân",
-        "restaurants": "Nhà hàng",
-        "restaurantsDesc": "Quảng cáo chéo với các doanh nghiệp địa phương khác",
-        "tourOperators": "Công ty lữ hành",
-        "tourOperatorsDesc": "Mở rộng trải nghiệm ngoài các chuyến tham quan theo lịch trình",
-        "travelers": "du khách",
-        "travelersDesc": "Chia sẻ những viên ngọc được khám phá với những người cùng khám phá"
-      },
-      "visual": {
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR",
-        "personal": [
-          "quán cà phê",
-          "Sách",
-          "Đường mòn",
-          "Album",
-          "Phim ảnh",
-          "Trò chơi"
-        ]
-      }
+      ]
     }
   },
   "seo": {
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
+      "title": "nhà thám hiểm - Khám phá và chia sẻ Đề xuất địa phương được cá nhân hóa",
       "description": "Khám phá và chia sẻ các địa điểm địa phương yêu thích của bạn với những người khám phá. Tạo hướng dẫn thành phố được cá nhân hóa, sắp xếp các địa điểm phải ghé thăm và làm cho chúng có thể được khám phá bằng mã QR có thể chia sẻ. Khám phá những viên ngọc ẩn, những đề xuất được tuyển chọn và mẹo du lịch địa phương trên bản đồ tương tác.",
-      "geoDescription": "Khám phá và chia sẻ các địa điểm địa phương yêu thích của bạn với mã QR được cá nhân hóa và các liên kết có thể chia sẻ",
-      "geoFeatures": [
-        "Tạo mã QR được cá nhân hóa",
-        "Chia sẻ đề xuất địa phương",
-        "Phân tích và hiểu biết sâu sắc",
-        "Thiết kế tối ưu hóa cho thiết bị di động",
-        "Khám phá cộng đồng"
-      ],
-      "geoIndustry": "Công nghệ",
       "keywords": [
         "khám phá những địa điểm gần tôi",
         "hướng dẫn du lịch cá nhân",
@@ -1867,10 +1829,16 @@
         "mẹo du lịch",
         "điểm địa phương"
       ],
-      "title": "nhà thám hiểm - Khám phá và chia sẻ Đề xuất địa phương được cá nhân hóa"
-    },
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
+      "geoDescription": "Khám phá và chia sẻ các địa điểm địa phương yêu thích của bạn với mã QR được cá nhân hóa và các liên kết có thể chia sẻ",
+      "geoFeatures": [
+        "Tạo mã QR được cá nhân hóa",
+        "Chia sẻ đề xuất địa phương",
+        "Phân tích và hiểu biết sâu sắc",
+        "Thiết kế tối ưu hóa cho thiết bị di động",
+        "Khám phá cộng đồng"
+      ],
+      "geoIndustry": "Công nghệ"
+    }
   },
   "settings": {
     "account": {
@@ -2388,6 +2356,47 @@
       "validationPending": "Xác thực đang chờ. Vui lòng đợi"
     }
   },
+  "usernameClaim": {
+    "validating": "Đang xác thực...",
+    "claimFree": "Yêu cầu miễn phí",
+    "trySuggestions": "Hãy thử: {{suggestions}}",
+    "available": "Tên người dùng có sẵn.",
+    "unavailable": "Tên người dùng không có sẵn.",
+    "confirmOnSignup": "Chúng tôi sẽ xác nhận tính khả dụng khi đăng ký.",
+    "checkingAvailability": "Đang kiểm tra tính khả dụng..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "useCases": {
     "cta": {
       "button": "Claim your Explorer page",
@@ -2465,14 +2474,5 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
-  },
-  "usernameClaim": {
-    "available": "Tên người dùng có sẵn.",
-    "checkingAvailability": "Đang kiểm tra tính khả dụng...",
-    "claimFree": "Yêu cầu miễn phí",
-    "confirmOnSignup": "Chúng tôi sẽ xác nhận tính khả dụng khi đăng ký.",
-    "trySuggestions": "Hãy thử: {{suggestions}}",
-    "unavailable": "Tên người dùng không có sẵn.",
-    "validating": "Đang xác thực..."
   }
 }

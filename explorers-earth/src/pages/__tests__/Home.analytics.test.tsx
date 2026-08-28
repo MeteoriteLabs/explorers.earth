@@ -11,7 +11,12 @@ import Home, {
   getHomeRecentAnalyticsScope,
 } from "../Home";
 
-const { accountScope, translate } = vi.hoisted(() => ({
+const { accountQuery, accountScope, translate } = vi.hoisted(() => ({
+  accountQuery: {
+    loading: false,
+    error: undefined as Error | undefined,
+    hasCachedAccount: false,
+  },
   accountScope: { current: "account-1" },
   translate: vi.fn((key: string, options?: Record<string, string>) => {
     const messages: Record<string, string> = {
@@ -78,6 +83,9 @@ describe("Home analytics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Element.prototype.scrollIntoView = vi.fn();
+    accountQuery.loading = false;
+    accountQuery.error = undefined;
+    accountQuery.hasCachedAccount = false;
     accountScope.current = "account-1";
     useAuthStore.setState({
       isAuthenticated: true,
@@ -94,7 +102,7 @@ describe("Home analytics", () => {
       const operation = operationName(query);
       if (operation === "GetUserAccount") {
         return {
-          data: {
+          data: (accountQuery.loading && !accountQuery.hasCachedAccount) || accountQuery.error ? undefined : {
             usersPermissionsUser: {
               accounts: [{
                 documentId: accountScope.current,
@@ -104,8 +112,8 @@ describe("Home analytics", () => {
               }],
             },
           },
-          loading: false,
-          error: undefined,
+          loading: accountQuery.loading,
+          error: accountQuery.error,
           refetch: vi.fn(),
         } as never;
       }
@@ -161,6 +169,54 @@ describe("Home analytics", () => {
     });
     expect(Date.parse(scope.toDate) - Date.parse(scope.fromDate)).toBeLessThanOrEqual(93 * 86_400_000);
     expect(screen.getByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
+  });
+
+  it("keeps analytics loading on a cold account lookup before requesting the resolved account", async () => {
+    accountQuery.loading = true;
+    readEvents.mockReturnValue(new Promise(() => undefined));
+
+    const view = render(<Home />);
+
+    expect(readEvents).not.toHaveBeenCalled();
+
+    accountQuery.loading = false;
+    useAuthStore.setState((state) => ({
+      user: state.user ? { ...state.user } : null,
+    }));
+    view.rerender(<Home />);
+
+    await waitFor(() => expect(readEvents).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-1" })));
+    expect(screen.getByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
+  });
+
+  it("does not request analytics when the account lookup completes with an error", async () => {
+    accountQuery.error = new Error("account lookup failed");
+
+    render(<Home />);
+
+    await Promise.resolve();
+    expect(readEvents).not.toHaveBeenCalled();
+  });
+
+  it("keeps the card loading without querying a retained account while Apollo refetches it", async () => {
+    accountQuery.loading = true;
+    accountQuery.hasCachedAccount = true;
+
+    render(<Home />);
+
+    expect(screen.getByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
+    await Promise.resolve();
+    expect(readEvents).not.toHaveBeenCalled();
+  });
+
+  it("renders a successful empty analytics response as an accessible visible zero", async () => {
+    readEvents.mockResolvedValue([]);
+
+    render(<Home />);
+
+    const zero = await screen.findByRole("status", { name: "Views · last 90 days: 0" });
+    expect(zero).toHaveTextContent("0");
+    expect(zero).toBeVisible();
   });
 
   it("renders a failed read as an accessible unavailable value instead of zero", async () => {
