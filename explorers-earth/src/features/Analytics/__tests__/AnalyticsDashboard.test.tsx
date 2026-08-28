@@ -1,8 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuery } from '@apollo/client';
 import useAuthStore from '../../../store/store';
-import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyticsClient';
+import {
+  readExplorersAnalyticsEvents,
+  type ExplorersAnalyticsRecord,
+} from '../../../services/explorersAnalyticsClient';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 
 const chartSpies = vi.hoisted(() => ({
@@ -43,6 +47,21 @@ vi.mock('../components/charts/GuidesChart', () => ({ default: () => <div /> }));
 
 const operationName = (query: any) =>
   query?.definitions?.find((definition: any) => definition.kind === 'OperationDefinition')?.name?.value;
+
+const customControlStates: Array<[string, ExplorersAnalyticsRecord[]]> = [
+  ['empty', []],
+  ['populated', [{
+    Account_Id: 'account-1',
+    Location_Id: null,
+    Recommendation_Id: null,
+    Stats: [{
+      type: 'view',
+      timestamp: new Date(2026, 7, 24, 10).toISOString(),
+      page: 'public-profile',
+      canonicalPath: '/tk2727',
+    }],
+  }]],
+];
 
 describe('AnalyticsDashboard data boundary', () => {
   const queryMock = vi.mocked(useQuery);
@@ -109,7 +128,7 @@ describe('AnalyticsDashboard data boundary', () => {
       accountId: 'account-1',
       token: 'private-user-token',
     });
-    const requestedDuration = new Date(scope.to).getTime() - new Date(scope.from).getTime();
+    const requestedDuration = new Date(scope.toDate).getTime() - new Date(scope.fromDate).getTime();
     expect(requestedDuration).toBeGreaterThanOrEqual(29 * 24 * 60 * 60 * 1000);
     expect(requestedDuration).toBeLessThan(30 * 24 * 60 * 60 * 1000);
 
@@ -194,5 +213,40 @@ describe('AnalyticsDashboard data boundary', () => {
     fireEvent.change(from, { target: { value: '2026-01-01' } });
 
     expect(to.max).toBe('2026-04-03');
+  });
+
+  it.each(customControlStates)('uses one shared date range control in the %s dashboard state', async (_state, records) => {
+    const user = userEvent.setup();
+    readEvents.mockImplementation(() => (
+      readEvents.mock.calls.length === 1
+        ? Promise.resolve(records)
+        : new Promise(() => {})
+    ));
+    render(<AnalyticsDashboard />);
+
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', {
+      name: 'analytics.dashboard.timeFilter.last30days',
+    }));
+    await user.click(screen.getByRole('button', {
+      name: 'analytics.dashboard.timeFilter.custom',
+    }));
+
+    const fromInputs = screen.getAllByLabelText(/from/i);
+    const toInputs = screen.getAllByLabelText(/to/i);
+    expect(fromInputs).toHaveLength(1);
+    expect(toInputs).toHaveLength(1);
+
+    await user.type(fromInputs[0], '2026-03-08');
+    expect(fromInputs[0]).toHaveValue('2026-03-08');
+    await user.type(toInputs[0], '2026-03-10');
+
+    expect(toInputs[0]).toHaveValue('2026-03-10');
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(2));
+    expect(readEvents.mock.calls[1][0]).toMatchObject({
+      accountId: 'account-1',
+      fromDate: '2026-03-08',
+      toDate: '2026-03-10',
+    });
   });
 });

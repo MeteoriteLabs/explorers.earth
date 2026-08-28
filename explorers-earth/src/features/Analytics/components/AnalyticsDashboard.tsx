@@ -14,25 +14,16 @@ import PageViewsTrendChart from './charts/PageViewsTrendChart';
 import MediaListEngagementChart from './charts/MediaListEngagementChart';
 import MediaItemsInListChart from './charts/MediaItemsInListChart';
 import GuidesChart from './charts/GuidesChart';
+import AnalyticsDateRangeControls from './AnalyticsDateRangeControls';
 import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyticsClient';
 import { selectCompletedAccount } from '../../music/musicIdentityCoordinator';
 import {
+  AnalyticsTimeFilter,
   getAnalyticsDateRange,
 } from '../utils/analyticsDateRange';
 
 // Time filter types
 type TimeFilter = 'today' | 'last7days' | 'last30days' | 'custom';
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_CUSTOM_INPUT_SPAN_MS = 92 * ONE_DAY_MS;
-const inputDate = (date?: Date) => date?.toISOString().split('T')[0];
-const shiftDate = (date: Date | undefined, deltaMs: number) =>
-  date ? inputDate(new Date(date.getTime() + deltaMs)) : undefined;
-
-interface TimeFilterState {
-  type: TimeFilter;
-  startDate?: Date;
-  endDate?: Date;
-}
 
 // Time filter options will be created using translations
 
@@ -51,10 +42,8 @@ const AnalyticsDashboard: React.FC = () => {
   const [analyticsError, setAnalyticsError] = useState<Error | null>(null);
 
   // Time filter state
-  const [timeFilter, setTimeFilter] = useState<TimeFilterState>({
+  const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>({
     type: 'last30days',
-    startDate: undefined,
-    endDate: undefined
   });
 
   // Time filter dropdown state
@@ -180,12 +169,12 @@ const AnalyticsDashboard: React.FC = () => {
         return t('analytics.dashboard.emptyState.noDataForPeriod.last30days');
 
       case 'custom': {
-        const startDateStr = timeFilter.startDate
-          ? timeFilter.startDate.toLocaleDateString()
+        const startDateStr = getDateRange?.startDate
+          ? getDateRange.startDate.toLocaleDateString()
           : t('analytics.dashboard.dateRange.from');
 
-        const endDateStr = timeFilter.endDate
-          ? timeFilter.endDate.toLocaleDateString()
+        const endDateStr = getDateRange?.endDate
+          ? getDateRange.endDate.toLocaleDateString()
           : t('analytics.dashboard.dateRange.to');
 
         return t('analytics.dashboard.emptyState.noDataForPeriod.custom', {
@@ -237,8 +226,9 @@ const AnalyticsDashboard: React.FC = () => {
     setAnalyticsError(null);
     void readExplorersAnalyticsEvents({
       accountId: accountDocumentId,
-      from: getDateRange.startDate.toISOString(),
-      to: getDateRange.endDate.toISOString(),
+      fromDate: getDateRange.fromDate,
+      toDate: getDateRange.toDate,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       token,
     })
       .then((records) => {
@@ -421,12 +411,13 @@ const AnalyticsDashboard: React.FC = () => {
                           key={option.value}
                           type="button"
                           onClick={() => {
-                            setTimeFilter(prev => ({
-                              ...prev,
-                              type: option.value as TimeFilter,
-                              startDate: option.value === 'custom' ? prev.startDate : undefined,
-                              endDate: option.value === 'custom' ? prev.endDate : undefined
-                            }));
+                            setTimeFilter(prev => option.value === 'custom'
+                              ? {
+                                type: 'custom',
+                                startDate: prev.type === 'custom' ? prev.startDate : '',
+                                endDate: prev.type === 'custom' ? prev.endDate : '',
+                              }
+                              : { type: option.value as Exclude<TimeFilter, 'custom'> });
                             setIsTimeFilterDropdownOpen(false);
                           }}
                           className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
@@ -443,54 +434,22 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Custom Date Range Inputs */}
             {timeFilter.type === 'custom' && (
-              <div className="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <div className="flex items-center gap-2">
-                  <label className="dt-label text-sm">
-                    {t('analytics.dashboard.dateRange.from')} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_INPUT_SPAN_MS)}
-                    max={inputDate(timeFilter.endDate)}
-                    value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : undefined;
-                      setTimeFilter(prev => ({ ...prev, startDate: date }));
-                    }}
-                    className={`dt-input px-3 py-2 text-sm border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent ${timeFilter.type === 'custom' && !timeFilter.startDate
-                        ? 'border-red-300'
-                        : 'border-dashboard-border'
-                      }`}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="dt-label text-sm">
-                    {t('analytics.dashboard.dateRange.to')} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    min={inputDate(timeFilter.startDate)}
-                    max={shiftDate(timeFilter.startDate, MAX_CUSTOM_INPUT_SPAN_MS)}
-                    value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : undefined;
-                      setTimeFilter(prev => ({ ...prev, endDate: date }));
-                    }}
-                    className={`dt-input px-3 py-2 text-sm border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent ${timeFilter.type === 'custom' && !timeFilter.endDate
-                        ? 'border-red-300'
-                        : 'border-dashboard-border'
-                      }`}
-                  />
-                </div>
-                {!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate && (
-                  <p role="alert" className="dt-label text-sm text-red-600">
-                    {t('analytics.dashboard.dateRange.maxRange', {
-                      days: 93,
-                      defaultValue: 'Choose a date range of 93 days or less.',
-                    })}
-                  </p>
-                )}
-              </div>
+              <AnalyticsDateRangeControls
+                startDate={timeFilter.startDate}
+                endDate={timeFilter.endDate}
+                error={!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate
+                  ? t('analytics.dashboard.dateRange.maxRange', {
+                    days: 93,
+                    defaultValue: 'Choose a date range of 93 days or less.',
+                  })
+                  : null}
+                onStartDateChange={(startDate) => setTimeFilter(prev => (
+                  prev.type === 'custom' ? { ...prev, startDate } : prev
+                ))}
+                onEndDateChange={(endDate) => setTimeFilter(prev => (
+                  prev.type === 'custom' ? { ...prev, endDate } : prev
+                ))}
+              />
             )}
           </div>
 
@@ -564,17 +523,18 @@ const AnalyticsDashboard: React.FC = () => {
                   <div className="absolute top-full left-0 right-0 mt-1 dt-surface border border-dashboard rounded-lg shadow-dashboard-elevated z-50 max-h-60 overflow-y-auto scrollbar-hide">
                     {TIME_FILTER_OPTIONS.map(option => (
                       <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setTimeFilter(prev => ({
-                            ...prev,
-                            type: option.value as TimeFilter,
-                            startDate: option.value === 'custom' ? prev.startDate : undefined,
-                            endDate: option.value === 'custom' ? prev.endDate : undefined
-                          }));
-                          setIsTimeFilterDropdownOpen(false);
-                        }}
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setTimeFilter(prev => option.value === 'custom'
+                              ? {
+                                type: 'custom',
+                                startDate: prev.type === 'custom' ? prev.startDate : '',
+                                endDate: prev.type === 'custom' ? prev.endDate : '',
+                              }
+                              : { type: option.value as Exclude<TimeFilter, 'custom'> });
+                            setIsTimeFilterDropdownOpen(false);
+                          }}
                         className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
                           }`}
                       >
@@ -589,44 +549,22 @@ const AnalyticsDashboard: React.FC = () => {
 
           {/* Custom Date Range Inputs */}
           {timeFilter.type === 'custom' && (
-            <div className="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="flex items-center gap-2">
-                <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.from')}</label>
-                <input
-                  type="date"
-                  min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_INPUT_SPAN_MS)}
-                  max={inputDate(timeFilter.endDate)}
-                  value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value) : undefined;
-                    setTimeFilter(prev => ({ ...prev, startDate: date }));
-                  }}
-                  className="dt-input px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.to')}</label>
-                <input
-                  type="date"
-                  min={inputDate(timeFilter.startDate)}
-                  max={shiftDate(timeFilter.startDate, MAX_CUSTOM_INPUT_SPAN_MS)}
-                  value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value) : undefined;
-                    setTimeFilter(prev => ({ ...prev, endDate: date }));
-                  }}
-                  className="dt-input px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                />
-              </div>
-              {!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate && (
-                <p role="alert" className="dt-label text-sm text-red-600">
-                  {t('analytics.dashboard.dateRange.maxRange', {
-                    days: 93,
-                    defaultValue: 'Choose a date range of 93 days or less.',
-                  })}
-                </p>
-              )}
-            </div>
+            <AnalyticsDateRangeControls
+              startDate={timeFilter.startDate}
+              endDate={timeFilter.endDate}
+              error={!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate
+                ? t('analytics.dashboard.dateRange.maxRange', {
+                  days: 93,
+                  defaultValue: 'Choose a date range of 93 days or less.',
+                })
+                : null}
+              onStartDateChange={(startDate) => setTimeFilter(prev => (
+                prev.type === 'custom' ? { ...prev, startDate } : prev
+              ))}
+              onEndDateChange={(endDate) => setTimeFilter(prev => (
+                prev.type === 'custom' ? { ...prev, endDate } : prev
+              ))}
+            />
           )}
         </div>
 

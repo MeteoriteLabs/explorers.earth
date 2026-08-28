@@ -5,16 +5,6 @@ export type AnalyticsTimeFilter =
   | { type: 'last90days' }
   | { type: 'custom'; startDate: string; endDate: string };
 
-export interface AnalyticsTimeFilterState {
-  /**
-   * @deprecated Temporary Date-based compatibility for AnalyticsDashboard.
-   * Remove in Task 2 when its controls store canonical date-only strings.
-   */
-  type: AnalyticsTimeFilter['type'];
-  startDate?: Date;
-  endDate?: Date;
-}
-
 export interface AnalyticsDateRange {
   startDate: Date;
   endDate: Date;
@@ -69,20 +59,14 @@ const toRange = (startDate: Date, endDate: Date): AnalyticsDateRange => ({
 });
 
 export function getAnalyticsDateRange(
-  filter: AnalyticsTimeFilter | AnalyticsTimeFilterState,
+  filter: AnalyticsTimeFilter,
   now = new Date(),
 ): AnalyticsDateRange | null {
   const today = startOfDay(now);
 
   if (filter.type === 'custom') {
-    const startDate =
-      typeof filter.startDate === 'string'
-        ? parseLocalDateInput(filter.startDate)
-        : filter.startDate && startOfDay(filter.startDate);
-    const endDate =
-      typeof filter.endDate === 'string'
-        ? parseLocalDateInput(filter.endDate)
-        : filter.endDate && startOfDay(filter.endDate);
+    const startDate = parseLocalDateInput(filter.startDate);
+    const endDate = parseLocalDateInput(filter.endDate);
     if (!startDate || !endDate) return null;
     const inclusiveDays = inclusiveCalendarDays(startDate, endDate);
     if (inclusiveDays < 1 || inclusiveDays > MAX_ANALYTICS_CALENDAR_DAYS) return null;

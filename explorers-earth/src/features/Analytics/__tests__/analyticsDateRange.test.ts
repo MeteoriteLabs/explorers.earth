@@ -128,16 +128,4 @@ describe('getAnalyticsDateRange', () => {
     expect(labels.at(-1)).toBe('2026-11-15');
   });
 
-  it('retains Date filter compatibility until the Task 2 control migration', () => {
-    expect(
-      getAnalyticsDateRange(
-        {
-          type: 'custom',
-          startDate: local(2026, 7, 3),
-          endDate: local(2026, 7, 7),
-        },
-        now,
-      ),
-    ).toMatchObject({ fromDate: '2026-08-03', toDate: '2026-08-07' });
-  });
 });
