@@ -44,6 +44,10 @@ interface CanonicalMusicRepository {
   getGuestControls(ownerId: number): Promise<GuestControls | undefined>;
   updateGuestControls(ownerId: number, controls: GuestControlsUpdate): Promise<GuestControls | undefined>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
+  addGuestSongIdempotent(publicSlug: string, capability: string | undefined, source: string, idempotencyKey: string, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<
+    | { status: "completed"; replayed: boolean; response: { accepted: true } }
+    | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+  >;
   setPlaying(ownerId: number, songId: number | null, expectedRevision?: number, expectedPlaybackRevision?: number): Promise<unknown | null | undefined>;
   updateSongPosition(ownerId: number, songId: number, position: number): Promise<unknown | undefined>;
   removeSong(ownerId: number, songId: number): Promise<boolean>;
@@ -590,15 +594,18 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     try {
       const capability = req.get("x-music-guest-capability") ?? "";
       const capabilityValid = /^[A-Za-z0-9_-]{43}$/.test(capability);
-      const authorityKey = capabilityValid ? hashGuestCapability(capability) : `public:${req.params.guestUrl}`;
-      if (consumeContainmentLimit(`c6-guest-request:${authorityKey}`, 20, 60_000)) {
-        throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
-      }
-      const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capabilityValid ? capability : undefined);
-      if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
-      const song = await dependencies.repository.addSong(authority.musicUserId, songInput(req.body));
-      if (!song) throw queueLimitReached();
-      res.status(201).json(songDto(song));
+      const idempotencyKey = req.get("idempotency-key");
+      if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw invalidQueue();
+      const result = await dependencies.repository.addGuestSongIdempotent(
+        req.params.guestUrl, capabilityValid ? capability : undefined, publicRequestSource(req, dependencies), idempotencyKey, songInput(req.body),
+      );
+      if (result.status === "conflict") throw new MusicIdentityError("IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false);
+      else if (result.status === "limit") throw new MusicIdentityError("REQUEST_INVALID", 413, "The Music request queue is full.", "retry", true);
+      else if (result.status === "forbidden") throw invalidGuestCapability();
+      else if (result.status === "rate_limited") throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
+      if (result.status !== "completed") throw invalidGuestCapability();
+      if (result.replayed) res.setHeader("Idempotency-Replayed", "true");
+      res.status(201).json(result.response);
     } catch (error) { next(error); }
   });
 

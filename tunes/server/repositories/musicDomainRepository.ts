@@ -1009,6 +1009,98 @@ export class MusicDomainRepository {
     });
   }
 
+  async addGuestSongIdempotent(
+    publicSlug: string,
+    capability: string | undefined,
+    source: string,
+    idempotencyKey: string,
+    input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string },
+  ): Promise<
+    | { status: "completed"; replayed: boolean; response: { accepted: true } }
+    | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+  > {
+    assertCanonicalYouTubeVideoId(input.youtubeId);
+    const operationFamily = "guest.song.request:";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256").update(JSON.stringify(input), "utf8").digest("hex");
+    const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+    const capabilityHash = capabilityValid ? hashGuestCapability(capability) : null;
+    const rateAuthorityHash = createHash("sha256")
+      .update(`${source}\0${publicSlug}\0${capabilityHash ?? "public"}`, "utf8").digest("hex");
+    const operation = `${operationFamily}${rateAuthorityHash}`;
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const owner = (await client.query(
+        `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash
+           FROM users WHERE guest_url=$1 AND identity_status='active'
+             AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))
+           FOR UPDATE`,
+        [publicSlug, capabilityHash, capabilityValid],
+      )).rows[0];
+      const authorized = owner && owner.allow_song_requests === true && (owner.guest_discoverable === true
+        || (capabilityValid && verifyGuestCapability(capability!, owner.guest_capability_hash)));
+      if (!authorized) { await client.query("ROLLBACK"); return { status: "forbidden" }; }
+      const musicUserId = Number(owner.id);
+      await client.query("SELECT pg_advisory_xact_lock($1,$2)", [QUEUE_MUTATION_LOCK, musicUserId]);
+      await client.query(
+        `DELETE FROM music_owner_operations WHERE music_user_id=$1 AND operation LIKE $2 AND idempotency_key_hash=$3
+           AND expires_at<=transaction_timestamp()`, [musicUserId, operation, keyHash],
+      );
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND operation LIKE $2 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         ) DELETE FROM music_owner_operations operation USING expired WHERE operation.ctid=expired.ctid`,
+        [musicUserId, `${operationFamily}%`],
+      );
+      const existing = (await client.query(
+        `SELECT request_hash,response_body FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation LIKE $2 AND idempotency_key_hash=$3 AND expires_at>transaction_timestamp()`,
+        [musicUserId, `${operationFamily}%`, keyHash],
+      )).rows[0];
+      if (existing) {
+        await client.query("COMMIT");
+        if (existing.request_hash !== requestHash) return { status: "conflict" };
+        return { status: "completed", replayed: true, response: existing.response_body };
+      }
+      const recentForSource = Number((await client.query(
+        `SELECT count(*)::integer AS count FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND created_at>transaction_timestamp()-interval '1 minute'`,
+        [musicUserId, operation],
+      )).rows[0]?.count ?? 0);
+      if (recentForSource >= 20) { await client.query("ROLLBACK"); return { status: "rate_limited" }; }
+      await this.normalizeActiveQueue(client, musicUserId);
+      const activeCount = Number((await client.query(
+        "SELECT count(*)::integer AS count FROM songs WHERE user_id=$1 AND status IN ('queued','playing')", [musicUserId],
+      )).rows[0]?.count ?? 0);
+      if (activeCount >= 500) { await client.query("ROLLBACK"); return { status: "limit" }; }
+      await client.query(
+        `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
+         VALUES ($1,$2,$3,$4,$5,$6,'queued')`,
+        [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl, activeCount],
+      );
+      await client.query("UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1", [musicUserId]);
+      const revision = Number((await client.query(
+        "UPDATE users SET public_snapshot_revision=public_snapshot_revision+1 WHERE id=$1 RETURNING public_snapshot_revision", [musicUserId],
+      )).rows[0]?.public_snapshot_revision);
+      if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("Public Music snapshot revision authority is unavailable.");
+      await client.query("SELECT pg_notify('music_public_change',$1)", [JSON.stringify({ musicUserId, kind: "queue_changed", revision })]);
+      const response = { accepted: true as const };
+      await client.query(
+        `INSERT INTO music_owner_operations(music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at)
+         VALUES ($1,$2,$3,$4,201,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash, JSON.stringify(response)],
+      );
+      await client.query("COMMIT");
+      return { status: "completed", replayed: false, response };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally { client.release(); }
+  }
+
   async rotateGuestCapability(musicUserId: number, capabilityHash: string) {
     return this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
       const changed = (await client.query(

@@ -87,7 +87,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get.parameters)
       .toContainEqual(expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: false }));
     expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}/requests"].post.parameters)
-      .toContainEqual(expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: true }));
+      .toContainEqual(expect.objectContaining({ name: "X-Music-Guest-Capability", in: "header", required: false }));
+    expect(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}/requests"].post.parameters)
+      .toContainEqual(expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }));
     expect(JSON.stringify(MUSIC_OPENAPI_DOCUMENT.paths["/api/playlist/{guestUrl}"].get)).toMatch(/unlisted.*noindex/i);
     const descriptor = MUSIC_OPENAPI_DOCUMENT.paths["/api/music/public-profile/{accountDocumentId}"].get;
     expect(descriptor.security).toEqual([]);
@@ -240,6 +242,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       replaceQueue: async () => ({ status: "completed" as const, replayed: false, response: { version: "music-queue/v1" as const, revision: 1, songs: [queueRow] } }),
       appendQueue: async () => ({ status: "completed" as const, replayed: false, response: { version: "music-queue/v1" as const, revision: 1, songs: [queueRow] } }),
       addSong: async () => queueRow, setPlaying: async (_owner: number, songId: number | null) => songId === null ? null : queueRow,
+      addGuestSongIdempotent: async () => ({ status: "completed" as const, replayed: false, response: { accepted: true as const } }),
       updateSongPosition: async () => queueRow, removeSong: async () => true,
       removeHistorySong: async () => ({ status: "completed" as const, replayed: false }),
       removeSongs: async () => 1, clearHistory: async () => 1,
@@ -273,7 +276,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     });
     const ownerRead = { Authorization: "Bearer aaa.bbb.ccc" };
     const ownerWrite = { ...ownerRead, Origin: "https://explorers.example" };
-    const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43) };
+    const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43), "Idempotency-Key": "openapi-guest-request" };
     const songInput = { youtubeId: "abcdefghijk", title: "Video", artist: "Artist", thumbnailUrl: "https://img/video" };
     const cases = [
       ["get", "/api/music/public-profile/{accountDocumentId}", "/api/music/public-profile/account-public", 200, undefined, {}],

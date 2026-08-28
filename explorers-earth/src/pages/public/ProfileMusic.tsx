@@ -44,6 +44,7 @@ export default function ProfileMusic() {
       standalone={false}
       state={state}
       resource={resource}
+      publicSlug={descriptorSlug}
       returnTo={`/${username ?? ""}`}
       onRetry={() => { availability.retry(); setAttempt((value) => value + 1); }}
     />

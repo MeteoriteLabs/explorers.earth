@@ -66,6 +66,35 @@ function streamedSuccess(chunks: string[], contentLength?: string) {
 describe("public Music client", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("uses capability-safe public request endpoints and strict canonical song input", async () => {
+    const video = { id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(success({ items: [video], nextPageToken: null }))
+      .mockResolvedValueOnce(success(video))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ accepted: true }), { status: 201 }));
+    vi.stubGlobal("fetch", fetcher);
+    const client = createPublicMusicClient("https://music.example");
+    await expect(client.search("public_slug-123", " Song ", "a".repeat(43))).resolves.toMatchObject({ items: [video] });
+    await expect(client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", "a".repeat(43))).resolves.toEqual(video);
+    await expect(client.requestSong("public_slug-123", {
+      youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img.example/song.jpg",
+    }, "a".repeat(43), "request-key-12345678")).resolves.toMatchObject({ accepted: true });
+    expect(fetcher.mock.calls[0][1]).toMatchObject({ body: JSON.stringify({ query: "Song" }) });
+    expect(fetcher.mock.calls[2][1]).toMatchObject({ headers: expect.objectContaining({ "Idempotency-Key": "request-key-12345678" }) });
+    expect(JSON.stringify(fetcher.mock.calls)).not.toMatch(/username|ownerId|Authorization|rawQuery/);
+  });
+
+  it("rejects invalid public request input before network and normalizes request failures", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "RATE_LIMITED" } }), { status: 429, headers: { "Retry-After": "12" } }));
+    vi.stubGlobal("fetch", fetcher);
+    const client = createPublicMusicClient("https://music.example");
+    await expect(client.search("public_slug-123", " ")).rejects.toMatchObject({ code: "REQUEST_INVALID" });
+    await expect(client.search("public_slug-123", "x".repeat(201))).rejects.toMatchObject({ code: "REQUEST_INVALID" });
+    await expect(client.videoFromUrl("public_slug-123", "not a url")).rejects.toMatchObject({ code: "REQUEST_INVALID" });
+    expect(fetcher).not.toHaveBeenCalled();
+    await expect(client.search("public_slug-123", "valid")).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 12 });
+  });
+
   it("strictly parses the stable public descriptor without accepting authority aliases", () => {
     const descriptor = {
       version: "music-public-descriptor/v1",

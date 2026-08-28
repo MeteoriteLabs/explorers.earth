@@ -120,12 +120,43 @@ export function parsePublicMusicResource(value: unknown): PublicMusicResource {
 
 export class PublicMusicError extends Error {
   constructor(
-    public readonly code: "PUBLIC_NOT_FOUND" | "RATE_LIMITED" | "PUBLIC_UNAVAILABLE",
+    public readonly code: "PUBLIC_NOT_FOUND" | "RATE_LIMITED" | "PUBLIC_UNAVAILABLE" | "REQUEST_INVALID" | "QUEUE_FULL" | "REQUEST_FORBIDDEN",
     public readonly retryAfterSeconds?: number,
   ) {
     super(code);
     this.name = "PublicMusicError";
   }
+}
+
+const publicRequestVideoSchema = z.object({
+  id: z.object({ videoId: youtubeIdSchema }).strict(),
+  snippet: z.object({
+    title: z.string().min(1).max(1_024),
+    channelTitle: z.string().min(1).max(1_024),
+    thumbnails: z.object({ default: z.object({ url: z.string().url().max(2_048) }).strict() }).strict(),
+  }).strict(),
+}).strict();
+const publicRequestSearchSchema = z.object({ items: z.array(publicRequestVideoSchema).max(20), nextPageToken: z.string().max(256).nullable() }).strict();
+const canonicalRequestSongSchema = z.object({
+  youtubeId: youtubeIdSchema,
+  title: z.string().min(1).max(1_024),
+  artist: z.string().min(1).max(1_024),
+  thumbnailUrl: z.string().url().max(2_048),
+}).strict();
+export type PublicMusicRequestVideo = z.infer<typeof publicRequestVideoSchema>;
+export type PublicMusicRequestSong = z.infer<typeof canonicalRequestSongSchema>;
+
+async function publicRequestJson(response: Response): Promise<unknown> {
+  if (response.status === 403 || response.status === 404) throw new PublicMusicError("REQUEST_FORBIDDEN");
+  if (response.status === 409) throw new PublicMusicError("REQUEST_INVALID");
+  if (response.status === 413) throw new PublicMusicError("QUEUE_FULL");
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("retry-after"));
+    throw new PublicMusicError("RATE_LIMITED", Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : 60);
+  }
+  if (response.status === 400) throw new PublicMusicError("REQUEST_INVALID");
+  if (!response.ok) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+  try { return await response.json(); } catch { throw new PublicMusicError("PUBLIC_UNAVAILABLE"); }
 }
 
 function normalizedBaseUrl(value: string): string {
@@ -172,6 +203,11 @@ async function readBoundedPublicMusicBody(response: Response): Promise<string> {
 
 export function createPublicMusicClient(baseUrl: string) {
   const base = normalizedBaseUrl(baseUrl);
+  const requestHeaders = (capability?: string, idempotencyKey?: string) => ({
+    Accept: "application/json", "Content-Type": "application/json",
+    ...(capability && /^[A-Za-z0-9_-]{43}$/.test(capability) ? { "X-Music-Guest-Capability": capability } : {}),
+    ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+  });
   return {
     async discover(accountDocumentId: string, signal?: AbortSignal): Promise<PublicMusicDescriptor> {
       if (!/^[A-Za-z0-9_-]{1,255}$/.test(accountDocumentId)) throw new PublicMusicError("PUBLIC_NOT_FOUND");
@@ -209,6 +245,39 @@ export function createPublicMusicClient(baseUrl: string) {
       } catch {
         throw new PublicMusicError("PUBLIC_UNAVAILABLE");
       }
+    },
+    async search(publicSlug: string, query: string, capability?: string, signal?: AbortSignal) {
+      if (!publicSlugSchema.safeParse(publicSlug).success) throw new PublicMusicError("PUBLIC_NOT_FOUND");
+      const normalized = query.trim();
+      if (normalized.length < 1 || query.length > 200) throw new PublicMusicError("REQUEST_INVALID");
+      const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/search`, {
+        method: "POST", headers: requestHeaders(capability), body: JSON.stringify({ query: normalized }), ...(signal ? { signal } : {}),
+      });
+      const parsed = publicRequestSearchSchema.safeParse(await publicRequestJson(response));
+      if (!parsed.success) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      return parsed.data;
+    },
+    async videoFromUrl(publicSlug: string, url: string, capability?: string, signal?: AbortSignal) {
+      if (!publicSlugSchema.safeParse(publicSlug).success) throw new PublicMusicError("PUBLIC_NOT_FOUND");
+      const parsedUrl = z.string().url().max(2_048).safeParse(url);
+      if (!parsedUrl.success || !/^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(parsedUrl.data)) throw new PublicMusicError("REQUEST_INVALID");
+      const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/video-from-url`, {
+        method: "POST", headers: requestHeaders(capability), body: JSON.stringify({ url: parsedUrl.data }), ...(signal ? { signal } : {}),
+      });
+      const parsed = publicRequestVideoSchema.safeParse(await publicRequestJson(response));
+      if (!parsed.success) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      return parsed.data;
+    },
+    async requestSong(publicSlug: string, song: PublicMusicRequestSong, capability: string | undefined, idempotencyKey: string) {
+      if (!publicSlugSchema.safeParse(publicSlug).success || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw new PublicMusicError("REQUEST_INVALID");
+      const canonical = canonicalRequestSongSchema.safeParse(song);
+      if (!canonical.success) throw new PublicMusicError("REQUEST_INVALID");
+      const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/requests`, {
+        method: "POST", headers: requestHeaders(capability, idempotencyKey), body: JSON.stringify(canonical.data),
+      });
+      const parsed = z.object({ accepted: z.literal(true) }).strict().safeParse(await publicRequestJson(response));
+      if (!parsed.success) throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+      return parsed.data;
     },
   };
 }

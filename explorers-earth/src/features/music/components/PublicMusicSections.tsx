@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient";
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
 import { PublicMusicPlayer } from "./PublicMusicPlayer";
+import { PublicMusicRequest } from "./PublicMusicRequest";
 
 function CollectionSummary({ shown, total, noun }: { shown: number; total: number; noun?: string }) {
   if (total <= shown) return null;
@@ -57,7 +58,7 @@ function SongRow({ song, playable = false, selected = false, onSelect }: {
   );
 }
 
-export function PublicMusicSections({ resource, headingId = "public-music-heading" }: { resource: PublicMusicResource; headingId?: string }) {
+export function PublicMusicSections({ resource, publicSlug, capability, headingId = "public-music-heading" }: { resource: PublicMusicResource; publicSlug?: string; capability?: string; headingId?: string }) {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [revocationAnnouncement, setRevocationAnnouncement] = useState("");
   const playerHasFocus = useRef(false);
@@ -78,7 +79,8 @@ export function PublicMusicSections({ resource, headingId = "public-music-headin
     ]
     : [];
   const selectedSong = selectableSongs.find(({ id }) => id === selectedSongId) ?? playableSong;
-  const hasVisibleContent = policy.currentVisible
+  const hasVisibleContent = (policy.requestEligible && Boolean(publicSlug))
+    || policy.currentVisible
     || (policy.queueVisible && resource.queue.items.length > 0)
     || (policy.historyVisible && resource.recentlyPlayed.items.length > 0)
     || (policy.playlistsVisible && resource.playlists.items.length > 0);
@@ -109,6 +111,7 @@ export function PublicMusicSections({ resource, headingId = "public-music-headin
 
   return (
     <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
+      {policy.requestEligible && publicSlug ? <PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed /> : null}
       {playableSong ? (
         <section
           className="min-w-0"

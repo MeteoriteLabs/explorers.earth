@@ -129,6 +129,38 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await admin?.end();
   });
 
+  it("collapses concurrent public guest requests into one durable queue mutation and permits changed input after 24-hour expiry", async () => {
+    const owner = await identities.ensureIdentity(identityInput("guest-idempotency"));
+    await pool.query("UPDATE users SET guest_discoverable=true,allow_song_requests=true WHERE id=$1", [owner.id]);
+    const song = { youtubeId: "guestreq001", title: "Guest song", artist: "Guest", thumbnailUrl: "https://img/guest" };
+    const [left, right] = await Promise.all([
+      domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.1", "guest-request-concurrent", song),
+      domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.1", "guest-request-concurrent", song),
+    ]);
+    expect([left, right].filter((result) => result.status === "completed" && !result.replayed)).toHaveLength(1);
+    expect([left, right].filter((result) => result.status === "completed" && result.replayed)).toHaveLength(1);
+    expect(Number((await pool.query("SELECT count(*) FROM songs WHERE user_id=$1 AND youtube_id=$2", [owner.id, song.youtubeId])).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision)).toBe(1);
+    await expect(domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.2", "guest-request-concurrent", { ...song, title: "Changed" }))
+      .resolves.toEqual({ status: "conflict" });
+    await pool.query("UPDATE music_owner_operations SET created_at=transaction_timestamp()-interval '25 hours',expires_at=transaction_timestamp()-interval '1 hour' WHERE music_user_id=$1 AND operation LIKE 'guest.song.request:%'", [owner.id]);
+    await expect(domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.2", "guest-request-concurrent", { ...song, title: "Changed" }))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+    expect(Number((await pool.query("SELECT count(*) FROM songs WHERE user_id=$1 AND youtube_id=$2", [owner.id, song.youtubeId])).rows[0].count)).toBe(2);
+
+    const replica = new MusicDomainRepository(pool, undefined, Buffer.alloc(32, 0x54));
+    const source = "198.51.100.50";
+    const accepted = await Promise.all(Array.from({ length: 20 }, (_, index) => (index % 2 ? domain : replica)
+      .addGuestSongIdempotent("c6-public-guest-idempotency", undefined, source, `rate-key-${index}`, { ...song, youtubeId: `rate${String(index).padStart(7, "0")}` })));
+    expect(accepted.every((result) => result.status === "completed" && !result.replayed)).toBe(true);
+    await expect(replica.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, source, "rate-key-blocked", { ...song, youtubeId: "rateblocked" }))
+      .resolves.toEqual({ status: "rate_limited" });
+    await expect(replica.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, source, "rate-key-0", { ...song, youtubeId: "rate0000000" }))
+      .resolves.toMatchObject({ status: "completed", replayed: true });
+    await expect(replica.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.51", "rate-key-other-source", { ...song, youtubeId: "rateother01" }))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+  });
+
   it("advances one public snapshot revision per committed visible mutation and never for no-op, replay, stale, conflict, or lifecycle replay", async () => {
     // Break caught: descriptor/resource/event cursors can advance independently or spend revisions on rejected commands.
     const owner = await identities.ensureIdentity(identityInput("public-revision-oracle"));

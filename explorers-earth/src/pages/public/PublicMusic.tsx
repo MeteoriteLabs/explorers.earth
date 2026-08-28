@@ -44,6 +44,8 @@ export function PublicMusicContent({
   onRetry,
   standalone = true,
   returnTo = "/",
+  publicSlug,
+  capability,
 }: {
   state: PublicMusicViewState;
   resource?: PublicMusicResource;
@@ -51,6 +53,8 @@ export function PublicMusicContent({
   onRetry?: () => void;
   standalone?: boolean;
   returnTo?: string;
+  publicSlug?: string;
+  capability?: string;
 }) {
   const Frame = standalone ? "main" : "div";
   if (state === "loading") {
@@ -91,7 +95,7 @@ export function PublicMusicContent({
     <Frame className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-6xl">
         <h1 id="public-music-heading" tabIndex={-1} className="text-3xl font-semibold">Music</h1>
-        <PublicMusicSections resource={resource} />
+        <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} />
       </div>
     </Frame>
   );
@@ -163,7 +167,7 @@ export default function PublicMusic() {
         noIndex={Boolean(capability)}
         noFollow={Boolean(capability)}
       />
-      <PublicMusicContent state={state} resource={resource} retryAfterSeconds={retryAfterSeconds} onRetry={() => setAttempt((value) => value + 1)} />
+      <PublicMusicContent state={state} resource={resource} publicSlug={publicSlug} capability={capability} retryAfterSeconds={retryAfterSeconds} onRetry={() => setAttempt((value) => value + 1)} />
     </>
   );
 }

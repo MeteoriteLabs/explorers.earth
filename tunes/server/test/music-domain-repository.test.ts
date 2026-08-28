@@ -54,6 +54,38 @@ function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: numb
 }
 
 describe("MusicDomainRepository owner predicates", () => {
+  it("atomically stores and replays one guest request without another queue revision or notification", async () => {
+    let receipt: { request_hash: string; response_body: { accepted: true } } | undefined;
+    let queueInserts = 0;
+    let queueRevisions = 0;
+    let publicRevisions = 0;
+    let notifications = 0;
+    const calls: string[] = [];
+    const client = { async query(text: string, values: unknown[] = []) {
+      const normalized = text.replace(/\s+/g, " ").trim(); calls.push(normalized);
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT id,allow_song_requests/.test(normalized)) return { rows: [{ id: 7, allow_song_requests: true, guest_discoverable: true, guest_capability_hash: null }], rowCount: 1 };
+      if (/SELECT request_hash,response_body FROM music_owner_operations/.test(normalized)) return { rows: receipt ? [receipt] : [], rowCount: receipt ? 1 : 0 };
+      if (/WITH ordered AS/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT count\(\*\)::integer AS count FROM songs/.test(normalized)) return { rows: [{ count: queueInserts }], rowCount: 1 };
+      if (/INSERT INTO songs/.test(normalized)) { queueInserts += 1; return { rows: [], rowCount: 1 }; }
+      if (/music_queue_revision=music_queue_revision\+1/.test(normalized)) { queueRevisions += 1; return { rows: [], rowCount: 1 }; }
+      if (/public_snapshot_revision=public_snapshot_revision\+1/.test(normalized)) { publicRevisions += 1; return { rows: [{ public_snapshot_revision: publicRevisions }], rowCount: 1 }; }
+      if (/pg_notify\('music_public_change'/.test(normalized)) { notifications += 1; return { rows: [], rowCount: 1 }; }
+      if (/INSERT INTO music_owner_operations/.test(normalized)) { receipt = { request_hash: String(values[3]), response_body: JSON.parse(String(values[4])) }; return { rows: [], rowCount: 1 }; }
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    const song = { youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img.example/song.jpg" };
+    await expect(repository.addGuestSongIdempotent("public-owner", undefined, "198.51.100.1", "request-key-1", song))
+      .resolves.toEqual({ status: "completed", replayed: false, response: { accepted: true } });
+    await expect(repository.addGuestSongIdempotent("public-owner", undefined, "198.51.100.1", "request-key-1", song))
+      .resolves.toEqual({ status: "completed", replayed: true, response: { accepted: true } });
+    await expect(repository.addGuestSongIdempotent("public-owner", undefined, "198.51.100.2", "request-key-1", { ...song, title: "Different" }))
+      .resolves.toEqual({ status: "conflict" });
+    expect({ queueInserts, queueRevisions, publicRevisions, notifications }).toEqual({ queueInserts: 1, queueRevisions: 1, publicRevisions: 1, notifications: 1 });
+    expect(calls.filter((text) => text === "COMMIT")).toHaveLength(3);
+  });
   it("replays one owner playlist create after its response is lost", async () => {
     // Break caught: retrying an acknowledged-but-lost create response inserts a duplicate playlist.
     const playlist = {

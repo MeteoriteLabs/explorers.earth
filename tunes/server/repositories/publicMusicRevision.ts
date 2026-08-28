@@ -21,6 +21,7 @@ export const PUBLIC_MUSIC_MUTATION_REVISION_COMPATIBILITY = [
   ["MusicDomainRepository.replaceQueue", "queue_changed", "queue", "accepted-not-replay"],
   ["MusicDomainRepository.appendQueue", "queue_changed", "queue", "accepted-not-replay"],
   ["MusicDomainRepository.addSong", "queue_changed", "queue", "accepted"],
+  ["MusicDomainRepository.addGuestSongIdempotent", "queue_changed", "queue", "accepted-not-replay"],
   ["MusicDomainRepository.updateSongPosition", "queue_changed", "queue", "changed"],
   ["MusicDomainRepository.removeSong", "queue_changed", "queue", "deleted"],
   ["MusicDomainRepository.removeSongs", "queue_changed", "queue", "deleted"],

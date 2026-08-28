@@ -77,9 +77,10 @@ function ownerFor(path: string, classification: string): string {
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
   if (path.startsWith("/api/music/identity/lifecycle/")) return "authoritative-strapi-user+stored-account-binding";
   if (classification === "local-music-owner" || classification === "paid-local-music-owner") return "req.musicPrincipal.musicUserId";
-  if (classification === "guest-capability") return path !== "/api/playlist/:guestUrl"
-    ? "hashed-guest-capability"
-    : "hashed-guest-capability-or-explicit-publication";
+  if (classification === "guest-capability") return path === "/api/playlist/:guestUrl"
+      || path === "/api/playlist/:guestUrl/requests"
+    ? "hashed-guest-capability-or-explicit-publication"
+    : "hashed-guest-capability";
   if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";
   if (classification === "native-session") return "native-session-only";
   return "none";

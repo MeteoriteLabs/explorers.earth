@@ -99,6 +99,10 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
       ? { musicUserId: 77, active: true, allowSongRequests: true } : undefined),
     resolveGuestRequestAuthority: vi.fn(async (slug: string, capability: string) => slug === "owner-a" && capability === "G".repeat(43)
       ? { musicUserId: 77, active: true, allowSongRequests: true } : undefined),
+    addGuestSongIdempotent: vi.fn(async (slug: string, capability?: string) =>
+      (slug === "owner-a" && capability === "G".repeat(43)) || (slug === "public-owner" && capability === undefined)
+        ? { status: "completed" as const, replayed: false, response: { accepted: true as const } }
+        : { status: "forbidden" as const }),
     ...overrides,
   };
   const app = express();
@@ -1022,6 +1026,7 @@ describe("canonical Music REST surfaces", () => {
     const { app, calls } = appFor();
     const crossOwner = await request(app).post("/api/playlist/owner-b/requests")
       .set("Origin", "https://explorers.example")
+      .set("Idempotency-Key", "cross-owner-key")
       .set("X-Music-Guest-Capability", "G".repeat(43))
       .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(crossOwner.status).toBe(403);
@@ -1030,13 +1035,15 @@ describe("canonical Music REST surfaces", () => {
 
     const response = await request(app).post("/api/playlist/owner-a/requests")
       .set("Origin", "https://explorers.example")
+      .set("Idempotency-Key", "valid-owner-key")
       .set("X-Music-Guest-Capability", "G".repeat(43))
       .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(response.status).toBe(201);
-    expect(calls).toContainEqual(["add-song", 77, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
+    expect(calls).not.toContainEqual(expect.arrayContaining(["add-song"]));
 
     const invalid = await request(app).post("/api/playlist/owner-a/requests")
       .set("Origin", "https://explorers.example")
+      .set("Idempotency-Key", "invalid-cap-key")
       .set("X-Music-Guest-Capability", "public-slug")
       .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(invalid.status).toBe(403);
@@ -1051,15 +1058,42 @@ describe("canonical Music REST surfaces", () => {
     const { app, calls } = appFor({ resolveGuestRequestAuthority });
     const response = await request(app).post("/api/playlist/public-owner/requests")
       .set("Origin", "https://explorers.example")
+      .set("Idempotency-Key", "public-request-key")
       .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(response.status).toBe(201);
-    expect(resolveGuestRequestAuthority).toHaveBeenCalledWith("public-owner", undefined);
-    expect(calls).toContainEqual(["add-song", 88, { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" }]);
+    expect(resolveGuestRequestAuthority).not.toHaveBeenCalled();
+    expect(calls).not.toContainEqual(expect.arrayContaining(["add-song"]));
 
     const unlisted = await request(app).post("/api/playlist/unlisted-owner/requests")
       .set("Origin", "https://explorers.example")
+      .set("Idempotency-Key", "unlisted-request-key")
       .send({ youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" });
     expect(unlisted.status).toBe(403);
+  });
+
+  it("requires durable guest idempotency and maps replay, conflict, capacity, and revoked permission", async () => {
+    const addGuestSongIdempotent = vi.fn()
+      .mockResolvedValueOnce({ status: "completed", replayed: false, response: { accepted: true, song: { id: 1, user_id: 88, youtube_id: "abcdefghijk", title: "t", artist: "a", thumbnail_url: "https://img", position: 0, status: "queued", played_at: null } } })
+      .mockResolvedValueOnce({ status: "completed", replayed: true, response: { accepted: true, song: { id: 1, user_id: 88, youtube_id: "abcdefghijk", title: "t", artist: "a", thumbnail_url: "https://img", position: 0, status: "queued", played_at: null } } })
+      .mockResolvedValueOnce({ status: "conflict" })
+      .mockResolvedValueOnce({ status: "limit" })
+      .mockResolvedValueOnce({ status: "forbidden" })
+      .mockResolvedValueOnce({ status: "rate_limited" });
+    const { app } = appFor({ addGuestSongIdempotent });
+    const body = { youtubeId: "abcdefghijk", title: "t", artist: "a", thumbnailUrl: "https://img" };
+    const send = (key?: string) => request(app).post("/api/playlist/public-owner/requests")
+      .set("Origin", "https://explorers.example")
+      .set(key ? { "Idempotency-Key": key } : {})
+      .send(body);
+    expect((await send()).body.error.code).toBe("REQUEST_INVALID");
+    expect((await send("guest-request-key-1")).status).toBe(201);
+    expect((await send("guest-request-key-1")).headers["idempotency-replayed"]).toBe("true");
+    expect((await send("guest-request-key-1")).body.error.code).toBe("IDEMPOTENCY_CONFLICT");
+    expect((await send("guest-request-key-2")).body.error.code).toBe("REQUEST_INVALID");
+    expect((await send("guest-request-key-3")).body.error.code).toBe("GUEST_CAPABILITY_INVALID");
+    const limited = await send("guest-request-key-4");
+    expect(limited.status).toBe(429);
+    expect(limited.headers["retry-after"]).toBe("60");
   });
 
   it("binds guest search and URL lookup to the same per-slug capability without C5 authority", async () => {

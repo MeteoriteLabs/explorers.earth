@@ -420,6 +420,44 @@
     },
     {
       "method": "GET",
+      "path": "/api/music/public-profile/:accountDocumentId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-resource/v1/:publicSlug",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/playlists",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "decision": "owner",
@@ -994,7 +1032,7 @@
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "decision": "guest",
       "allowed": {
-        "unauthenticated": false,
+        "unauthenticated": true,
         "owner": false,
         "otherUser": false,
         "suspended": false,

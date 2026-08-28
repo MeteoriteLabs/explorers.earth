@@ -163,7 +163,7 @@ export function authorizationMatrixFromInventory(inventory: {
     routes: inventory.routes.map((route) => {
       const decision = decisionForRoute(route);
       const allowed = allowedFor(decision);
-      if (decision === "guest" && route.method !== "GET") allowed.unauthenticated = false;
+      if (decision === "guest" && route.method !== "GET" && route.path !== "/api/playlist/:guestUrl/requests") allowed.unauthenticated = false;
       return { method: route.method, path: route.path, source: route.source, decision, allowed };
     }),
     events: inventory.events.map((event) => {

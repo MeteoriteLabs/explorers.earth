@@ -118,6 +118,11 @@ const queueIdempotencyKeyParameter = {
   description: "Opaque owner-scoped replay key for one atomic queue replacement. Exact same-key replay returns the stored response; different input conflicts.",
   schema: { type: "string", minLength: 1, maxLength: 128 },
 };
+const guestRequestIdempotencyKeyParameter = {
+  name: "Idempotency-Key", in: "header" as const, required: true,
+  description: "Opaque guest replay key retained for 24 hours. Exact same-key replay returns the acknowledgement; different canonical song input conflicts.",
+  schema: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" },
+};
 const playlistCreateIdempotencyKeyParameter = {
   name: "Idempotency-Key", in: "header" as const, required: true,
   description: "Opaque owner-scoped replay key for one saved-playlist create. Exact same-key replay returns the stored playlist; different input conflicts.",
@@ -409,15 +414,16 @@ const paths = {
   "/api/playlist/{guestUrl}/requests": {
     post: {
       summary: "Submit an allowlisted guest song request bound to this public slug",
-      description: "The header capability and slug are resolved together in one owner-predicated SQL query. The secret is forbidden from URLs, logs, sitemap, and analytics.",
-      security: guestSecurity,
-      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityRequired],
+      description: "Public publications use the slug; unlisted publications bind the header capability and slug atomically. Idempotency receipts, queue insertion, revision, and notification commit together for 24 hours. Secrets are forbidden from URLs, logs, sitemap, and analytics.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional, guestRequestIdempotencyKeyParameter],
       requestBody: body(ref("SongInput"), "Allowlisted guest song request"),
       responses: {
-        "201": success("Guest request inserted only into the capability-and-slug owner queue.", ref("Song")),
+        "201": success("The request was accepted once; exact replays return the same safe acknowledgement.", { type: "object", additionalProperties: false, required: ["accepted"], properties: { accepted: { type: "boolean", enum: [true] } } }),
+        "409": failure("The idempotency key was reused with different canonical song input.", ["IDEMPOTENCY_CONFLICT"]),
         "400": failure("The request body is invalid.", ["REQUEST_INVALID"]),
         "403": failure("The capability, slug binding, lifecycle, permission, or origin is invalid.", ["GUEST_CAPABILITY_INVALID", "ORIGIN_FORBIDDEN"]),
-        "413": failure("The request body exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
+        "413": failure("The request body exceeds 64 KiB or the bounded Music queue is full.", ["PAYLOAD_TOO_LARGE", "REQUEST_INVALID"]),
         "429": failure("The guest request rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
       },
