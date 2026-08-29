@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createConnection } from "node:net";
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { settleMusicFixture } from "./music-fixture-cleanup.mjs";
+import { prepareMusicFixtureArtifacts, settleMusicFixture, stopMusicFixture } from "./music-fixture-cleanup.mjs";
 
 const VERSION = "music-public-e2e-fixture/v1";
 const CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE";
@@ -107,12 +107,15 @@ let initialSnapshot;
 let initialRestoreEvidence;
 let initialRestorePromise;
 function stopFixture() {
-  if (authStatePath && existsSync(authStatePath)) { unlinkSync(authStatePath); authStatePath = undefined; }
-  if (profileStorageStatePath && existsSync(profileStorageStatePath)) { unlinkSync(profileStorageStatePath); profileStorageStatePath = undefined; }
-  if (stateService) { stateService.kill(); stateService = undefined; }
-  if (!fixtureStarted) return 0;
+  const shouldDown = fixtureStarted;
   fixtureStarted = false;
-  return runNpm(["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1;
+  const status = stopMusicFixture({
+    artifactPaths: [authStatePath, profileStorageStatePath], exists: existsSync, unlink: unlinkSync,
+    stopStateService: () => { if (stateService) stateService.kill(); },
+    down: () => shouldDown ? (runNpm(["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1) : 0,
+  });
+  authStatePath = undefined; profileStorageStatePath = undefined; stateService = undefined;
+  return status;
 }
 async function restoreInitialSnapshot() {
   if (initialRestorePromise) return initialRestorePromise;
@@ -218,9 +221,10 @@ if (mode.lane === "live") {
   }
   try {
     profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
-    mkdirSync(path.dirname(profileStorageStatePath), { recursive: true });
-    writeFileSync(profileStorageStatePath, `${JSON.stringify({ cookies: [], origins: [] })}\n`, { encoding: "utf8", mode: 0o600 });
-    chmodSync(profileStorageStatePath, 0o600);
+    prepareMusicFixtureArtifacts({ directory: path.dirname(profileStorageStatePath), authPath: authStatePath, storagePath: profileStorageStatePath,
+      mkdir: (directory) => mkdirSync(directory, { recursive: true }),
+      write: (file, content) => writeFileSync(file, content, { encoding: "utf8", mode: 0o600 }),
+      chmod: (file) => chmodSync(file, 0o600) });
   } catch { await abortPostSnapshot("Live public Music E2E setup failed"); }
   const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
   const restoreEvidencePath = path.resolve(`.artifacts/music-public/${runId}/restore-evidence.jsonl`);
@@ -304,14 +308,18 @@ if (mode.lane === "live") {
   cleanup = hashesVerified && !evidenceParseFailed ? "restored" : (globalRestoreOk ? "evidence-missing" : "restore-failed");
   const teardownStatus = stopFixture();
   if (teardownStatus !== 0) cleanup = "teardown-failed";
-  if (!hashesVerified || teardownStatus !== 0) process.exitCode = 5;
+  if (cleanup !== "restored") process.exitCode = 5;
 }
 const passed = result.status === 0 && (cleanup === "not-required" || cleanup === "restored");
-const report = { ...baseReport, result: passed ? "passed" : "failed", cleanup, restoreHashes: restoreHashes.map(({ beforeHash, afterHash }) => ({ beforeHash, afterHash })) };
+let report = { ...baseReport, result: passed ? "passed" : "failed", cleanup, restoreHashes: restoreHashes.map(({ beforeHash, afterHash }) => ({ beforeHash, afterHash })) };
 const absoluteEvidence = path.resolve(evidencePath);
 try {
   mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
   writeFileSync(absoluteEvidence, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-} catch { process.exitCode ||= 5; }
+} catch {
+  cleanup = cleanup === "restored" ? "evidence-missing" : cleanup;
+  report = { ...report, result: "failed", cleanup };
+  process.exitCode ||= 5;
+}
 process.stdout.write(`${JSON.stringify(report)}\n`);
 process.exit(process.exitCode || result.status || 0);
