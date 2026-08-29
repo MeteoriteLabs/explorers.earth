@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { LIVE_MUTATION_TAG, LIVE_READ_ONLY_TAG } from "../scripts/music-public-live-preflight.mjs";
 import {
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
@@ -80,7 +81,7 @@ async function installFriendlyMusicFixture(page: Page, options: {
   return { descriptorRequests: () => descriptorRequests };
 }
 
-test.describe("PR-safe direct public Music routes", () => {
+test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG }, () => {
   test("pairwise permission matrix changes each concrete guest surface", async ({ page }) => {
     await page.route("**/socket.io/**", (route) => route.abort());
     for (const row of buildPairwisePermissionMatrix()) {
@@ -257,7 +258,7 @@ test.describe("PR-safe direct public Music routes", () => {
   }
 });
 
-test.describe("PR-safe friendly public Music routes", () => {
+test.describe("PR-safe friendly public Music routes", { tag: LIVE_READ_ONLY_TAG }, () => {
   test("friendly route resolves one stable Account descriptor and shares canonical content", async ({ page }) => {
     const fixture = await installFriendlyMusicFixture(page, { profileMusic: true, descriptor: "available" });
     await page.goto("/fixture-owner/music");
@@ -448,7 +449,7 @@ for (const control of [
   "allowRecentlyPlayedVisibility",
   "allowQueueVisibility",
 ] as const) {
-  liveTest(`live owner/guest toggle ${control} restores the exact permission snapshot`, async ({ page, browser }) => {
+  liveTest(`live owner/guest toggle ${control} restores the exact permission snapshot`, { tag: LIVE_MUTATION_TAG }, async ({ page, browser }) => {
     test.skip(
       Boolean(liveSkipReason),
       liveSkipReason ?? "authorized disposable Music live-write fixture",
@@ -495,7 +496,7 @@ for (const control of [
   });
 }
 
-liveTest("live guest reconnect refetches canonical state after transport interruption", async ({ page, browser }) => {
+liveTest("live guest reconnect refetches canonical state after transport interruption", { tag: LIVE_MUTATION_TAG }, async ({ page, browser }) => {
   test.skip(
     Boolean(liveSkipReason),
     liveSkipReason ?? "authorized disposable Music fixture socket",
@@ -532,7 +533,7 @@ liveTest("live guest reconnect refetches canonical state after transport interru
   }
 });
 
-liveTest("live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", async ({ page }) => {
+liveTest("live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", { tag: LIVE_MUTATION_TAG }, async ({ page }) => {
   test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized guest request fixture");
   const credential = await authenticateOwner(page);
   let originalSongIds = new Set<number>();
@@ -596,7 +597,7 @@ liveTest("live guest request accepts once, replays, conflicts, rate-limits, and 
   });
 });
 
-liveTest("live guest playback remains isolated while queue and player revisions refetch", async ({ page, browser }) => {
+liveTest("live guest playback remains isolated while queue and player revisions refetch", { tag: LIVE_MUTATION_TAG }, async ({ page, browser }) => {
   test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized guest playback fixture");
   const ownerCredential = await authenticateOwner(page);
   const guestA = await browser.newContext();
@@ -648,7 +649,7 @@ liveTest("live guest playback remains isolated while queue and player revisions 
   }
 });
 
-liveTest("owner publication, playlist visibility, and playlist-sharing settings persist and control fixture public access", async ({ page }) => {
+liveTest("owner publication, playlist visibility, and playlist-sharing settings persist and control fixture public access", { tag: LIVE_MUTATION_TAG }, async ({ page }) => {
   test.skip(
     Boolean(liveSkipReason),
     liveSkipReason ?? "authorized disposable integrated Music fixture",

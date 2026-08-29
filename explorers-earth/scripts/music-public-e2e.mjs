@@ -4,7 +4,7 @@ import { createConnection } from "node:net";
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { stopMusicFixture } from "./music-fixture-cleanup.mjs";
-import { runLivePreflight } from "./music-public-live-preflight.mjs";
+import { runLivePreflight, runPlaywrightJourneyExecution } from "./music-public-live-preflight.mjs";
 import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs";
 
 const VERSION = "music-public-e2e-fixture/v1";
@@ -284,7 +284,6 @@ if (mode.lane === "live") {
         return 4;
       }
 
-      const args = [playwrightCli, "test", ...mode.files, `--project=${mode.project}`, "--reporter=line,json"];
       const childEnvironment = {
         ...process.env,
         PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl,
@@ -294,12 +293,17 @@ if (mode.lane === "live") {
         E2E_PROFILE_LIVE_WRITES: "1",
         E2E_PROFILE_STORAGE_STATE: profileStorageStatePath,
         E2E_PROFILE_USERNAME: username,
-        PLAYWRIGHT_JSON_OUTPUT_FILE: journeyReportPath,
       };
-      const execution = spawnSync(process.execPath, args, { cwd: process.cwd(), stdio: "inherit", env: childEnvironment });
-      let executionReport;
-      try { executionReport = JSON.parse(readFileSync(journeyReportPath, "utf8")); } catch { /* typed runner will reject missing terminal evidence */ }
-      return { status: execution.status ?? 1, executionReport };
+      return runPlaywrightJourneyExecution({
+        spawn: spawnSync,
+        processExecPath: process.execPath,
+        playwrightCli,
+        files: mode.files,
+        project: mode.project,
+        cwd: process.cwd(),
+        environment: childEnvironment,
+        reportPath: journeyReportPath,
+      });
     },
     restore: restoreInitialSnapshot,
     teardown: {

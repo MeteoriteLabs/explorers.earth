@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 
 export const LIVE_JOURNEY_MANIFEST_VERSION = "explorers-live-mutation-journeys/v1";
 export const LIVE_JOURNEY_RESULT_VERSION = "explorers-live-mutation-journey-result/v1";
+export const LIVE_MUTATION_TAG = "@explorers-live-mutation";
+export const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
+const LIVE_MUTATION_REPORT_TAG = LIVE_MUTATION_TAG.replace(/^@/, "");
+const LIVE_READ_ONLY_REPORT_TAG = LIVE_READ_ONLY_TAG.replace(/^@/, "");
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
@@ -25,6 +29,40 @@ export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "profile.owner.pairwise.batch-04", title: "publishes pairwise matrix batch 4/6 and restores exact raw social_media", source: "e2e/profile-theme.spec.ts" },
   { id: "profile.owner.pairwise.batch-05", title: "publishes pairwise matrix batch 5/6 and restores exact raw social_media", source: "e2e/profile-theme.spec.ts" },
   { id: "profile.owner.pairwise.batch-06", title: "publishes pairwise matrix batch 6/6 and restores exact raw social_media", source: "e2e/profile-theme.spec.ts" },
+]);
+
+const LIVE_READ_ONLY_COLLECTION = Object.freeze([
+  { title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
+  { title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
+  { title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
+  { title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
+  { title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
+  { title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 768x1024", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 1440x900", source: "e2e/music-public-contract.spec.ts" },
+  { title: "friendly route resolves one stable Account descriptor and shares canonical content", source: "e2e/music-public-contract.spec.ts" },
+  { title: "friendly Music navigation preserves history, current-page semantics, heading order, and announcements", source: "e2e/music-public-contract.spec.ts" },
+  { title: "wrong username and descriptor outage use non-enumerating recovery", source: "e2e/music-public-contract.spec.ts" },
+  { title: "explicit friendly recovery: preference=true descriptor=missing", source: "e2e/music-public-contract.spec.ts" },
+  { title: "explicit friendly recovery: preference=true descriptor=outage", source: "e2e/music-public-contract.spec.ts" },
+  { title: "explicit friendly recovery: preference=false descriptor=available", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline dark-banner-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline minimal-light-solid", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline failed-image-fallback", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline mobile-reconnecting", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline 320-long-nav-stress", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline desktop-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { title: "restore guard uses one emergency cleanup and preserves the original failure", source: "e2e/profile-theme.spec.ts" },
+  { title: "restore guard never performs an emergency write after a confirmed normal restore", source: "e2e/profile-theme.spec.ts" },
+  { title: "restore guard refuses every write after a concurrent profile change", source: "e2e/profile-theme.spec.ts" },
+  { title: "covering array dry run proves all values and all factor pairs", source: "e2e/profile-theme.spec.ts" },
+  { title: "live timeout preserves at least five minutes for exact restore", source: "e2e/profile-theme.spec.ts" },
+  { title: "live matrix is split into ordered batches of at most twelve rows", source: "e2e/profile-theme.spec.ts" },
+  { title: "live row oracle promotes a category first view independently of saved order", source: "e2e/profile-theme.spec.ts" },
+  { title: "renders homepage, navigation, and theme system elements", source: "e2e/profile-theme.spec.ts" },
 ]);
 
 const PROFILE_FACTORS = Object.freeze({
@@ -151,26 +189,72 @@ function specResult(spec) {
     source: normalizeSource(spec.file),
     skipReason: skip ? (typeof skip.description === "string" && skip.description ? skip.description : "skipped") : null,
     status: typeof results.at(-1)?.status === "string" ? results.at(-1).status : null,
+    tags: [...new Set([...(Array.isArray(spec.tags) ? spec.tags : []), ...(Array.isArray(test?.tags) ? test.tags : [])]
+      .filter((tag) => typeof tag === "string")
+      .map((tag) => tag.replace(/^@/, "")))],
+  };
+}
+
+function extractLiveCollection(report) {
+  const parsed = typeof report === "string" ? JSON.parse(report) : report;
+  if (!parsed || !Array.isArray(parsed.suites)) throw new Error("Playwright collection report did not contain suites");
+  const collected = [];
+  const visit = (suite, inheritedSource) => {
+    const source = suite.file ? normalizeSource(suite.file) : inheritedSource;
+    for (const spec of suite.specs ?? []) {
+      const specSource = spec.file ? normalizeSource(spec.file) : source;
+      if (!specSource) throw new Error("Playwright collection spec did not contain a source file");
+      collected.push(specResult({ ...spec, file: specSource }));
+    }
+    for (const child of suite.suites ?? []) visit(child, source);
+  };
+  for (const suite of parsed.suites) visit(suite, undefined);
+  return {
+    mutations: collected.filter(({ tags }) => tags.includes(LIVE_MUTATION_REPORT_TAG) && !tags.includes(LIVE_READ_ONLY_REPORT_TAG)),
+    readOnly: collected.filter(({ tags }) => tags.includes(LIVE_READ_ONLY_REPORT_TAG) && !tags.includes(LIVE_MUTATION_REPORT_TAG)),
+    unclassified: collected.filter(({ tags }) => tags.includes(LIVE_MUTATION_REPORT_TAG) === tags.includes(LIVE_READ_ONLY_REPORT_TAG)),
   };
 }
 
 export function extractCollectedLiveJourneys(report) {
-  const parsed = typeof report === "string" ? JSON.parse(report) : report;
-  if (!parsed || !Array.isArray(parsed.suites)) throw new Error("Playwright collection report did not contain suites");
-  const collected = [];
-  for (const fileSuite of parsed.suites) {
-    const source = normalizeSource(fileSuite.file ?? fileSuite.title);
-    if (source === "e2e/music-fixture-fullstack.spec.ts" || source === "e2e/music-public-contract.spec.ts") {
-      for (const spec of fileSuite.specs ?? []) collected.push(specResult({ ...spec, file: spec.file ?? source }));
-    }
-    if (source === "e2e/profile-theme.spec.ts") {
-      for (const suite of fileSuite.suites ?? []) {
-        if (suite.title !== "approved live profile writes") continue;
-        for (const spec of suite.specs ?? []) collected.push(specResult({ ...spec, file: spec.file ?? source }));
-      }
-    }
+  return extractLiveCollection(report).mutations;
+}
+
+function readOnlyClassification(collection) {
+  if (collection.unclassified.length > 0) return { subcheck: "collection-unclassified" };
+  const expectedKeys = LIVE_READ_ONLY_COLLECTION.map(manifestKey);
+  const actualKeys = collection.readOnly.map(manifestKey);
+  const counts = new Map();
+  for (const key of actualKeys) counts.set(key, (counts.get(key) ?? 0) + 1);
+  if ([...counts.values()].some((count) => count > 1)) return { subcheck: "read-only-duplicate" };
+  const expectedSet = new Set(expectedKeys);
+  if (actualKeys.some((key) => !expectedSet.has(key))) return { subcheck: "read-only-unknown" };
+  const actualSet = new Set(actualKeys);
+  if (expectedKeys.some((key) => !actualSet.has(key))) return { subcheck: "read-only-missing" };
+  if (actualKeys.length !== expectedKeys.length) return { subcheck: "read-only-count" };
+  return undefined;
+}
+
+function liveCollectionClassification(collection) {
+  const manifestFailure = manifestClassification(collection.mutations);
+  if (manifestFailure) return manifestFailure;
+  return readOnlyClassification(collection);
+}
+
+function parsedLiveCollection(report) {
+  const collection = extractLiveCollection(report);
+  const failure = liveCollectionClassification(collection);
+  return { collection, failure };
+}
+
+function collectedMutationResults(report) {
+  const { collection, failure } = parsedLiveCollection(report);
+  if (failure) {
+    const error = new Error("Playwright collection did not match the classified live project");
+    error.classification = failure;
+    throw error;
   }
-  return collected;
+  return collection.mutations;
 }
 
 function manifestKey(entry) {
@@ -274,14 +358,14 @@ export function classifyLivePreflight({ authorityResult, collectionResult, works
   if (collectionResult?.error || collectionResult?.signal || collectionResult?.status !== 0) {
     return failedPreflight("collection-process", collectionResult, sanitization, []);
   }
-  let collected;
-  try { collected = extractCollectedLiveJourneys(collectionResult.stdout); } catch {
+  let collection;
+  try { collection = extractLiveCollection(collectionResult.stdout); } catch {
     return failedPreflight("collection-semantic", collectionResult, sanitization, []);
   }
-  const manifestFailure = manifestClassification(collected);
-  if (manifestFailure) {
-    const { subcheck, ...extra } = manifestFailure;
-    return failedPreflight(subcheck, collectionResult, sanitization, collected, extra);
+  const collectionFailure = liveCollectionClassification(collection);
+  if (collectionFailure) {
+    const { subcheck, ...extra } = collectionFailure;
+    return failedPreflight(subcheck, collectionResult, sanitization, collection.mutations, extra);
   }
   return {
     ok: true,
@@ -351,6 +435,36 @@ export function runLivePreflight({
   return classifyLivePreflight({ authorityResult, collectionResult, workspaceRoot, knownSecrets });
 }
 
+export function runPlaywrightJourneyExecution({
+  spawn,
+  processExecPath,
+  playwrightCli,
+  files,
+  project,
+  cwd,
+  environment,
+  reportPath,
+}) {
+  const childEnvironment = { ...environment, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath };
+  delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_NAME;
+  delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_DIR;
+  const execution = spawn(processExecPath, [
+    playwrightCli,
+    "test",
+    ...files,
+    `--project=${project}`,
+    "--reporter=json",
+  ], {
+    cwd,
+    stdio: "inherit",
+    env: childEnvironment,
+    windowsHide: true,
+  });
+  let executionReport;
+  try { executionReport = JSON.parse(readFileSync(reportPath, "utf8")); } catch { /* typed runner rejects missing or malformed terminal evidence */ }
+  return { status: execution.status ?? 1, executionReport };
+}
+
 export function liveJourneyManifestEntry(id) {
   return LIVE_JOURNEY_MANIFEST.find((entry) => entry.id === id);
 }
@@ -407,9 +521,9 @@ function validHashPair(record) {
 
 export function validateLiveJourneyEvidence({ executionReport, records }) {
   let collected;
-  try { collected = extractCollectedLiveJourneys(executionReport); } catch { return evidenceFailure("execution-report"); }
-  const manifestFailure = manifestClassification(collected);
-  if (manifestFailure) return evidenceFailure(manifestFailure.subcheck, records);
+  try { collected = collectedMutationResults(executionReport); } catch (error) {
+    return evidenceFailure(error?.classification?.subcheck ?? "execution-report", records);
+  }
   if (collected.some((entry) => entry.status !== "passed")) return evidenceFailure("execution-status", records);
   if (!Array.isArray(records)) return evidenceFailure("records-missing");
   const knownIds = new Set(LIVE_JOURNEY_MANIFEST.map(({ id }) => id));

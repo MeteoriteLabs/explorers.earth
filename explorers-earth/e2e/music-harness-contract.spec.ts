@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
@@ -53,6 +54,43 @@ const EXPECTED_LIVE_JOURNEYS = [
   })),
 ] as const;
 
+const EXPECTED_LIVE_READ_ONLY = [
+  { title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
+  { title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
+  { title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
+  { title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
+  { title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
+  { title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 768x1024", source: "e2e/music-public-contract.spec.ts" },
+  { title: "accessible public structure reflows at 1440x900", source: "e2e/music-public-contract.spec.ts" },
+  { title: "friendly route resolves one stable Account descriptor and shares canonical content", source: "e2e/music-public-contract.spec.ts" },
+  { title: "friendly Music navigation preserves history, current-page semantics, heading order, and announcements", source: "e2e/music-public-contract.spec.ts" },
+  { title: "wrong username and descriptor outage use non-enumerating recovery", source: "e2e/music-public-contract.spec.ts" },
+  { title: "explicit friendly recovery: preference=true descriptor=missing", source: "e2e/music-public-contract.spec.ts" },
+  { title: "explicit friendly recovery: preference=true descriptor=outage", source: "e2e/music-public-contract.spec.ts" },
+  { title: "explicit friendly recovery: preference=false descriptor=available", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline dark-banner-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline minimal-light-solid", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline failed-image-fallback", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline mobile-reconnecting", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline 320-long-nav-stress", source: "e2e/music-public-contract.spec.ts" },
+  { title: "visual baseline desktop-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { title: "restore guard uses one emergency cleanup and preserves the original failure", source: "e2e/profile-theme.spec.ts" },
+  { title: "restore guard never performs an emergency write after a confirmed normal restore", source: "e2e/profile-theme.spec.ts" },
+  { title: "restore guard refuses every write after a concurrent profile change", source: "e2e/profile-theme.spec.ts" },
+  { title: "covering array dry run proves all values and all factor pairs", source: "e2e/profile-theme.spec.ts" },
+  { title: "live timeout preserves at least five minutes for exact restore", source: "e2e/profile-theme.spec.ts" },
+  { title: "live matrix is split into ordered batches of at most twelve rows", source: "e2e/profile-theme.spec.ts" },
+  { title: "live row oracle promotes a category first view independently of saved order", source: "e2e/profile-theme.spec.ts" },
+  { title: "renders homepage, navigation, and theme system elements", source: "e2e/profile-theme.spec.ts" },
+] as const;
+
+const LIVE_MUTATION_TAG = "@explorers-live-mutation";
+const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
+
 function playwrightJourneyReport(
   entries: ReadonlyArray<{ id: string; title: string; source: string }> = EXPECTED_LIVE_JOURNEYS,
   options: { skippedId?: string; resultStatus?: string } = {},
@@ -60,6 +98,7 @@ function playwrightJourneyReport(
   const spec = (entry: { id: string; title: string; source: string }) => ({
     title: entry.title,
     file: entry.source.replace(/^e2e\//, ""),
+    tags: [LIVE_MUTATION_TAG],
     tests: [{
       annotations: entry.id === options.skippedId ? [{ type: "skip", description: "Bearer should-not-survive" }] : [],
       expectedStatus: "passed",
@@ -70,15 +109,28 @@ function playwrightJourneyReport(
   const fixture = entries.filter(({ source }) => source.endsWith("music-fixture-fullstack.spec.ts"));
   const music = entries.filter(({ source }) => source.endsWith("music-public-contract.spec.ts"));
   const profile = entries.filter(({ source }) => source.endsWith("profile-theme.spec.ts"));
+  const reviewedSources = new Set(["e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts", "e2e/profile-theme.spec.ts"]);
+  const unknownSources = entries.filter(({ source }) => !reviewedSources.has(source));
+  const musicReadOnly = EXPECTED_LIVE_READ_ONLY.filter(({ source }) => source.endsWith("music-public-contract.spec.ts"));
+  const profileReadOnly = EXPECTED_LIVE_READ_ONLY.filter(({ source }) => source.endsWith("profile-theme.spec.ts"));
+  const readOnlySpec = (entry: { title: string; source: string }) => ({
+    title: entry.title,
+    file: entry.source.replace(/^e2e\//, ""),
+    tags: [LIVE_READ_ONLY_TAG],
+    tests: [{ annotations: [], expectedStatus: "passed", results: options.resultStatus ? [{ status: options.resultStatus }] : [] }],
+  });
   return {
     suites: [
       { title: "music-fixture-fullstack.spec.ts", file: "music-fixture-fullstack.spec.ts", specs: fixture.map(spec) },
-      { title: "music-public-contract.spec.ts", file: "music-public-contract.spec.ts", specs: music.map(spec) },
+      { title: "music-public-contract.spec.ts", file: "music-public-contract.spec.ts", specs: [...music.map(spec), ...musicReadOnly.map(readOnlySpec)] },
       {
         title: "profile-theme.spec.ts",
         file: "profile-theme.spec.ts",
+        specs: profileReadOnly.slice(0, 7).map(readOnlySpec),
         suites: [{ title: "approved live profile writes", specs: profile.map(spec) }],
       },
+      { title: "profile-theme.spec.ts", file: "profile-theme.spec.ts", specs: profileReadOnly.slice(7).map(readOnlySpec) },
+      ...unknownSources.map((entry) => ({ title: entry.source, file: entry.source, specs: [spec(entry)] })),
     ],
   };
 }
@@ -101,6 +153,51 @@ function validJourneyEvidenceRecords() {
     afterHash: index < 11 ? String(index + 1).padStart(64, "a") : profileHash,
     ...(index < 11 ? {} : { rowCount: 12, rows: profileRows.slice((index - 11) * 12, (index - 10) * 12) }),
   }));
+}
+
+function inertLiveCollectionEnvironment() {
+  return {
+    ...process.env,
+    PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
+    PLAYWRIGHT_PR_SAFE: "false",
+    MUSIC_E2E_LIVE_WRITE: "true",
+    MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+    MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
+    MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-sentinel-owner",
+    MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-sentinel-account",
+    MUSIC_E2E_SERVICE_ORIGINS: "http://127.0.0.1:55173,http://127.0.0.1:55000,tcp://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55174",
+    MUSIC_E2E_STRAPI_TOKEN: "sentinel-authority-value",
+    E2E_PROFILE_LIVE_WRITES: "1",
+    E2E_PROFILE_STORAGE_STATE: resolve(".artifacts/inert-profile-storage-state.json"),
+    E2E_PROFILE_USERNAME: "e2e-profile-sentinel",
+  };
+}
+
+type JsonCollectionSuite = {
+  specs?: Array<{ title?: string; file?: string; tags?: string[] }>;
+  suites?: JsonCollectionSuite[];
+};
+
+function allJsonCollectionSpecs(report: { suites?: JsonCollectionSuite[] }) {
+  const specs: Array<{ title?: string; file?: string; tags: string[] }> = [];
+  const visit = (suite: JsonCollectionSuite) => {
+    for (const spec of suite.specs ?? []) specs.push({ ...spec, tags: (spec.tags ?? []).map((tag) => tag.replace(/^@/, "")) });
+    for (const child of suite.suites ?? []) visit(child);
+  };
+  for (const suite of report.suites ?? []) visit(suite);
+  return specs;
+}
+
+function syntheticJourneySpecSource(
+  mutations: ReadonlyArray<{ title: string }>,
+  readOnly: ReadonlyArray<{ title: string }>,
+) {
+  return [
+    'import { test } from "@playwright/test";',
+    ...mutations.map(({ title }) => `test(${JSON.stringify(title)}, { tag: ${JSON.stringify(LIVE_MUTATION_TAG)} }, async () => {});`),
+    ...readOnly.map(({ title }) => `test(${JSON.stringify(title)}, { tag: ${JSON.stringify(LIVE_READ_ONLY_TAG)} }, async () => {});`),
+    "",
+  ].join("\n");
 }
 
 test("live manifest binds exactly 17 collected mutation journeys", () => {
@@ -187,6 +284,13 @@ test("live preflight rejects each missing journey plus duplicate, unknown, renam
     source: "e2e/music-public-contract.spec.ts",
   }];
   expect(classify(unknown)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-unknown" } });
+
+  const unknownSource = [...EXPECTED_LIVE_JOURNEYS, {
+    id: "unknown-source-not-trusted",
+    title: "live mutation from an unreviewed source",
+    source: "e2e/unreviewed-live-mutation.spec.ts",
+  }];
+  expect(classify(unknownSource)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-unknown" } });
 
   const renamed = EXPECTED_LIVE_JOURNEYS.map((entry, index) => index === 8 ? { ...entry, title: `${entry.title} renamed` } : entry);
   expect(classify(renamed)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-unknown" } });
@@ -552,6 +656,98 @@ test("live preflight runner invokes package-resolved authority before exact JSON
   expect(calls[1].options.env).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_FILE");
 });
 
+test("real inert live-project JSON collection classifies exactly 17 mutations and 31 read-only cases", () => {
+  const result = spawnSync(process.execPath, [
+    "node_modules/@playwright/test/cli.js",
+    "test",
+    "--project=chromium-music-live",
+    "--list",
+    "--reporter=json",
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: inertLiveCollectionEnvironment(),
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  const report = JSON.parse(result.stdout) as { suites?: JsonCollectionSuite[] };
+  const specs = allJsonCollectionSpecs(report);
+  const mutationTag = LIVE_MUTATION_TAG.replace(/^@/, "");
+  const readOnlyTag = LIVE_READ_ONLY_TAG.replace(/^@/, "");
+  const mutationSpecs = specs.filter(({ tags }) => tags.includes(mutationTag));
+  const readOnlySpecs = specs.filter(({ tags }) => tags.includes(readOnlyTag));
+  expect(specs).toHaveLength(48);
+  expect(mutationSpecs).toHaveLength(17);
+  expect(readOnlySpecs).toHaveLength(31);
+  expect(specs.every(({ tags }) => Number(tags.includes(mutationTag)) + Number(tags.includes(readOnlyTag)) === 1)).toBe(true);
+  expect(classifyLivePreflight({
+    authorityResult: preflightChild(0, JSON.stringify({ skipReason: null })),
+    collectionResult: result,
+    workspaceRoot: process.cwd(),
+    knownSecrets: ["sentinel-authority-value"],
+  })).toMatchObject({
+    ok: true,
+    manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
+    journeyIds: EXPECTED_LIVE_JOURNEYS.map(({ id }) => id),
+  });
+});
+
+test("production journey execution command writes JSON that terminal evidence validation consumes", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const execute = module.runPlaywrightJourneyExecution;
+  expect(typeof execute).toBe("function");
+  if (typeof execute !== "function") return;
+
+  const artifactRoot = resolve(".artifacts");
+  mkdirSync(artifactRoot, { recursive: true });
+  const syntheticRoot = mkdtempSync(join(artifactRoot, "journey-report-contract-"));
+  const reportPath = join(syntheticRoot, "journey-results.json");
+  try {
+    const testDirectory = join(syntheticRoot, "e2e");
+    mkdirSync(testDirectory, { recursive: true });
+    writeFileSync(join(syntheticRoot, "playwright.config.mjs"), [
+      'import { defineConfig } from "@playwright/test";',
+      'export default defineConfig({ testDir: "./e2e", reporter: "line", projects: [{ name: "synthetic-journey-report" }] });',
+      "",
+    ].join("\n"));
+    for (const source of [
+      "e2e/music-fixture-fullstack.spec.ts",
+      "e2e/music-public-contract.spec.ts",
+      "e2e/profile-theme.spec.ts",
+    ]) {
+      writeFileSync(join(syntheticRoot, source), syntheticJourneySpecSource(
+        EXPECTED_LIVE_JOURNEYS.filter((entry) => entry.source === source),
+        EXPECTED_LIVE_READ_ONLY.filter((entry) => entry.source === source),
+      ));
+    }
+
+    const outcome = (execute as (input: Record<string, unknown>) => { status: number; executionReport?: unknown })({
+      spawn: spawnSync,
+      processExecPath: process.execPath,
+      playwrightCli: resolve("node_modules/@playwright/test/cli.js"),
+      files: [
+        "e2e/music-fixture-fullstack.spec.ts",
+        "e2e/music-public-contract.spec.ts",
+        "e2e/profile-theme.spec.ts",
+      ],
+      project: "synthetic-journey-report",
+      cwd: syntheticRoot,
+      environment: { ...process.env },
+      reportPath,
+    });
+    expect(outcome.status).toBe(0);
+    expect(existsSync(reportPath)).toBe(true);
+    const persistedReport = JSON.parse(readFileSync(reportPath, "utf8"));
+    expect(outcome.executionReport).toEqual(persistedReport);
+    expect(validateLiveJourneyEvidence({
+      executionReport: persistedReport,
+      records: validJourneyEvidenceRecords(),
+    })).toMatchObject({ ok: true });
+  } finally {
+    rmSync(syntheticRoot, { recursive: true, force: true });
+  }
+});
+
 test("clean PR-safe collection does not require live Music environment", () => {
   const env = { ...process.env, PLAYWRIGHT_PR_SAFE: "true" };
   for (const key of Object.keys(env)) if (key.startsWith("MUSIC_E2E_")) delete env[key];
@@ -859,7 +1055,6 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain('fetch(`${stateServiceUrl}/snapshot`');
   expect(runner).toContain('import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs"');
   expect(runner).toContain("runLivePreflight({");
-  expect(runner).toContain("PLAYWRIGHT_JSON_OUTPUT_FILE");
   expect(runner).not.toContain('path.resolve("node_modules/tsx/dist/cli.mjs")');
   expect(runner).toContain("const liveOutcome = await runMusicFixtureOrchestration({");
   expect(runner.indexOf('fetch(`${stateServiceUrl}/snapshot`')).toBeLessThan(runner.indexOf("runLivePreflight({"));

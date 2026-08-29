@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
+import { LIVE_MUTATION_TAG } from "../scripts/music-public-live-preflight.mjs";
 import {
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
@@ -148,7 +149,7 @@ test.afterEach(async ({ page }, testInfo) => {
   }
 });
 
-test("authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", async ({ page }) => {
+test("authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", { tag: LIVE_MUTATION_TAG }, async ({ page }) => {
   const requests: Array<{ path: string; method: string; authorization?: string; xUsername?: string }> = [];
   const fixtureAuthRequests: string[] = [];
   const assertCleanJourney = monitorBrowserJourney(page);
@@ -210,7 +211,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   assertCleanJourney();
 });
 
-test("full owner workspace remains usable at a mobile viewport", async ({ page }, testInfo) => {
+test("full owner workspace remains usable at a mobile viewport", { tag: LIVE_MUTATION_TAG }, async ({ page }, testInfo) => {
   const assertCleanJourney = monitorBrowserJourney(page);
   await page.setViewportSize({ width: 390, height: 844 });
   const fixtureStrapiToken = musicLiveStrapiTokenFromEnvironment();

@@ -8,6 +8,8 @@ import {
 } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
 import {
+  LIVE_MUTATION_TAG,
+  LIVE_READ_ONLY_TAG,
   appendLiveJourneyResult,
   buildProfileCoveringRows as buildManifestProfileCoveringRows,
   recordRestoredProfileJourney,
@@ -174,7 +176,7 @@ async function restoreWithEmergency({
   }
 }
 
-test('restore guard uses one emergency cleanup and preserves the original failure', async () => {
+test('restore guard uses one emergency cleanup and preserves the original failure', { tag: LIVE_READ_ONLY_TAG }, async () => {
   const originalFailure = new Error('normal restore failed');
   let emergencyCalls = 0;
   let verificationCalls = 0;
@@ -196,7 +198,7 @@ test('restore guard uses one emergency cleanup and preserves the original failur
   expect(verificationCalls).toBe(1);
 });
 
-test('restore guard never performs an emergency write after a confirmed normal restore', async () => {
+test('restore guard never performs an emergency write after a confirmed normal restore', { tag: LIVE_READ_ONLY_TAG }, async () => {
   const verificationFailure = new Error('restore verification failed');
   let emergencyCalls = 0;
 
@@ -214,7 +216,7 @@ test('restore guard never performs an emergency write after a confirmed normal r
   expect(emergencyCalls).toBe(0);
 });
 
-test('restore guard refuses every write after a concurrent profile change', async () => {
+test('restore guard refuses every write after a concurrent profile change', { tag: LIVE_READ_ONLY_TAG }, async () => {
   let emergencyCalls = 0;
   const conflict = new ConcurrentProfileChangeError('before', 'after');
 
@@ -232,7 +234,7 @@ test('restore guard refuses every write after a concurrent profile change', asyn
   expect(emergencyCalls).toBe(0);
 });
 
-test('covering array dry run proves all values and all factor pairs', () => {
+test('covering array dry run proves all values and all factor pairs', { tag: LIVE_READ_ONLY_TAG }, () => {
   const matrix = generateCoveringArray();
   const repeated = generateCoveringArray();
   const coveredPairs = new Set(matrix.flatMap(rowPairs));
@@ -283,7 +285,7 @@ test('covering array dry run proves all values and all factor pairs', () => {
   );
 });
 
-test('live timeout preserves at least five minutes for exact restore', () => {
+test('live timeout preserves at least five minutes for exact restore', { tag: LIVE_READ_ONLY_TAG }, () => {
   for (const batch of LIVE_BATCHES) {
     const batchPublishBudgetMs = (batch.length + 2) * 8_000;
     expect(liveBatchTimeoutMs(batch) - batchPublishBudgetMs).toBeGreaterThanOrEqual(
@@ -292,7 +294,7 @@ test('live timeout preserves at least five minutes for exact restore', () => {
   }
 });
 
-test('live matrix is split into ordered batches of at most twelve rows', () => {
+test('live matrix is split into ordered batches of at most twelve rows', { tag: LIVE_READ_ONLY_TAG }, () => {
   const matrix = generateCoveringArray();
   const batches = batchCoveringRows(matrix);
   expect(batches.length).toBeGreaterThan(1);
@@ -523,7 +525,7 @@ const expectedPublicOrderForRow = (
   return savedOrder;
 };
 
-test('live row oracle promotes a category first view independently of saved order', () => {
+test('live row oracle promotes a category first view independently of saved order', { tag: LIVE_READ_ONLY_TAG }, () => {
   expect(expectedPublicOrderForRow('reverse', 'places')).toEqual([
     'places',
     'people',
@@ -775,7 +777,7 @@ async function normalExactRestore(
   if (!restoreRequestSeen) throw new Error('Normal restore publish was not sent');
 }
 
-test.describe('approved live profile writes', () => {
+test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => {
   test.describe.configure({ mode: 'serial' });
   test.use({
     storageState: LIVE_STORAGE_STATE || undefined,
@@ -946,7 +948,7 @@ test.describe('approved live profile writes', () => {
   }
 });
 
-test.describe('Public Profile Theme & Customization E2E', () => {
+test.describe('Public Profile Theme & Customization E2E', { tag: LIVE_READ_ONLY_TAG }, () => {
   test('renders homepage, navigation, and theme system elements', async ({ context, page }) => {
     // 1. Visit homepage
     await page.goto('/');
