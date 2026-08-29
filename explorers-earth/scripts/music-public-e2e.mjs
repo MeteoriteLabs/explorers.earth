@@ -103,6 +103,7 @@ let stateToken;
 let authStatePath;
 let profileStorageStatePath;
 let initialSnapshot;
+let initialRestoreEvidence;
 function stopFixture() {
   if (authStatePath && existsSync(authStatePath)) { unlinkSync(authStatePath); authStatePath = undefined; }
   if (profileStorageStatePath && existsSync(profileStorageStatePath)) { unlinkSync(profileStorageStatePath); profileStorageStatePath = undefined; }
@@ -110,6 +111,22 @@ function stopFixture() {
   if (!fixtureStarted) return 0;
   fixtureStarted = false;
   return runNpm(["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1;
+}
+async function restoreInitialSnapshot() {
+  if (!initialSnapshot || !stateToken) return { ok: false, cleanup: "evidence-missing" };
+  try {
+    const response = await fetch(`${stateServiceUrl}/restore`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) });
+    if (!response.ok) return { ok: false, cleanup: "restore-failed" };
+    const result = await response.json();
+    const expected = initialSnapshot?.database?.dumpHash;
+    const ok = typeof expected === "string" && result.beforeHash === expected && result.afterHash === expected;
+    return { ok, cleanup: ok ? "restored" : "restore-failed", beforeHash: result.beforeHash, afterHash: result.afterHash };
+  } catch { return { ok: false, cleanup: "restore-failed" }; }
+}
+function writeLiveFailureEvidence(cleanup) {
+  const absoluteEvidence = path.resolve(evidencePath);
+  mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
+  writeFileSync(absoluteEvidence, `${JSON.stringify({ ...baseReport, result: "failed", cleanup, restoreHashes: initialRestoreEvidence?.ok ? [{ beforeHash: initialRestoreEvidence.beforeHash, afterHash: initialRestoreEvidence.afterHash }] : [] }, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
 }
 if (mode.lane === "live") {
   const authorityBootstrap = runNpm(["run", "--silent", "music-cli", "--", "bootstrap"], { cwd: monorepoRoot, stdio: "inherit", env: process.env });
@@ -176,21 +193,47 @@ if (mode.lane === "live") {
   }
   process.env.MUSIC_E2E_STATE_SERVICE_URL = stateServiceUrl;
   process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
-  const snapshotResponse = await fetch(`${stateServiceUrl}/snapshot`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}` }, signal: AbortSignal.timeout(60_000) });
-  if (!snapshotResponse.ok) {
+  try {
+    const snapshotResponse = await fetch(`${stateServiceUrl}/snapshot`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}` }, signal: AbortSignal.timeout(60_000) });
+    if (!snapshotResponse.ok) throw new Error("snapshot response was not successful");
+    initialSnapshot = await snapshotResponse.json();
+  } catch {
     process.stderr.write("Live public Music E2E preflight refused: initial full-state snapshot failed.\n");
-    stopFixture(); process.exit(4);
+    const teardownStatus = stopFixture();
+    writeLiveFailureEvidence(teardownStatus === 0 ? "evidence-missing" : "teardown-failed");
+    process.exit(4);
   }
-  initialSnapshot = await snapshotResponse.json();
-  const { chromium } = await import("@playwright/test");
-  const browser = await chromium.launch({ headless: true });
+  profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
+  mkdirSync(path.dirname(profileStorageStatePath), { recursive: true });
+  writeFileSync(profileStorageStatePath, `${JSON.stringify({ cookies: [], origins: [] })}\n`, { encoding: "utf8", mode: 0o600 });
+  chmodSync(profileStorageStatePath, 0o600);
+  const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
+  const restoreEvidencePath = path.resolve(`.artifacts/music-public/${runId}/restore-evidence.jsonl`);
+  const preflightEnvironment = { ...process.env, PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl, PLAYWRIGHT_PR_SAFE: "false", MUSIC_E2E_LIVE_WRITE: "true", MUSIC_E2E_RESTORE_EVIDENCE_PATH: restoreEvidencePath,
+    E2E_PROFILE_LIVE_WRITES: "1", E2E_PROFILE_STORAGE_STATE: profileStorageStatePath, E2E_PROFILE_USERNAME: username };
+  const tsxCli = path.resolve("node_modules/tsx/dist/cli.mjs");
+  const authorityPreflight = spawnSync(process.execPath, [tsxCli, "-e", "import { musicLiveWriteSkipReason } from './e2e/setup/music.ts'; const reason=musicLiveWriteSkipReason(); if(reason) throw new Error(reason);"], { cwd: process.cwd(), encoding: "utf8", env: preflightEnvironment });
+  const collectionPreflight = spawnSync(process.execPath, [playwrightCli, "test", `--project=${mode.project}`, "--list"], { cwd: process.cwd(), encoding: "utf8", env: preflightEnvironment });
+  const requiredJourneys = ["owner publication", "guest request", "guest playback", "pairwise matrix batch 1/6", "pairwise matrix batch 6/6"];
+  if (authorityPreflight.status !== 0 || collectionPreflight.status !== 0 || !requiredJourneys.every((title) => collectionPreflight.stdout.includes(title))) {
+    process.stderr.write("Live public Music E2E preflight refused: authority was skipped or expected mutation journeys did not collect.\n");
+    initialRestoreEvidence = await restoreInitialSnapshot();
+    const teardownStatus = stopFixture();
+    writeLiveFailureEvidence(teardownStatus === 0 ? initialRestoreEvidence.cleanup : "teardown-failed");
+    process.exit(4);
+  }
+
+  let browser;
   let mintedCredential = "";
   let callbackBootstrapError;
   try {
+    const { chromium } = await import("@playwright/test");
+    browser = await chromium.launch({ headless: true });
     const context = await browser.newContext(); const page = await context.newPage();
+    const browserApiPrefix = `${new URL(externalUrl).origin}/api/`;
     page.on("request", (request) => {
       const authorization = request.headers().authorization;
-      if (request.url().startsWith("http://localhost:55173/api/") && authorization?.startsWith("Bearer ")
+      if (request.url().startsWith(browserApiPrefix) && authorization?.startsWith("Bearer ")
           && authorization !== `Bearer ${strapiToken}`) mintedCredential = authorization;
     });
     await page.goto(`${externalUrl}/google-auth/callback?access_token=${encodeURIComponent(strapiToken)}`, { waitUntil: "domcontentloaded" });
@@ -199,7 +242,6 @@ if (mode.lane === "live") {
     await page.getByRole("tab", { name: "Playlists", exact: true }).waitFor({ timeout: 30_000 });
     if (!/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(mintedCredential)) throw new Error("callback did not mint owner Tunes authority");
     authStatePath = path.resolve(`.artifacts/music-public/${runId}/owner-auth.json`);
-    profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
     mkdirSync(path.dirname(authStatePath), { recursive: true });
     writeFileSync(authStatePath, `${JSON.stringify({ ownerCredential: mintedCredential })}\n`, { encoding: "utf8", mode: 0o600 });
     chmodSync(authStatePath, 0o600);
@@ -208,11 +250,13 @@ if (mode.lane === "live") {
     process.env.MUSIC_E2E_AUTH_STATE_PATH = authStatePath;
     process.env.E2E_PROFILE_STORAGE_STATE = profileStorageStatePath;
   } catch (error) { callbackBootstrapError = error; }
-  finally { await browser.close(); }
+  finally { if (browser) { try { await browser.close(); } catch { callbackBootstrapError ??= new Error("browser close failed"); } } }
   if (callbackBootstrapError) {
-    try { await fetch(`${stateServiceUrl}/restore`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) }); } catch { /* failing closed below */ }
-    process.stderr.write(`Live public Music E2E callback bootstrap failed: ${callbackBootstrapError instanceof Error ? callbackBootstrapError.message : "unavailable"}\n`);
-    stopFixture(); process.exit(4);
+    process.stderr.write("Live public Music E2E callback bootstrap failed; details redacted.\n");
+    initialRestoreEvidence = await restoreInitialSnapshot();
+    const teardownStatus = stopFixture();
+    writeLiveFailureEvidence(teardownStatus === 0 ? initialRestoreEvidence.cleanup : "teardown-failed");
+    process.exit(4);
   }
 
 }
@@ -232,17 +276,6 @@ const childEnvironment = {
     E2E_PROFILE_USERNAME: username,
   } : {}),
 };
-if (mode.lane === "live") {
-  const tsxCli = path.resolve("node_modules/tsx/dist/cli.mjs");
-  const authorityPreflight = spawnSync(process.execPath, [tsxCli, "-e", "import { musicLiveWriteSkipReason } from './e2e/setup/music.ts'; const reason=musicLiveWriteSkipReason(); if(reason) throw new Error(reason);"], { cwd: process.cwd(), encoding: "utf8", env: childEnvironment });
-  const collectionPreflight = spawnSync(process.execPath, [playwrightCli, "test", ...mode.files, `--project=${mode.project}`, "--list"], { cwd: process.cwd(), encoding: "utf8", env: childEnvironment });
-  const requiredJourneys = ["owner publication", "guest request", "guest playback", "pairwise matrix batch 1/6", "pairwise matrix batch 6/6"];
-  if (authorityPreflight.status !== 0 || collectionPreflight.status !== 0 || !requiredJourneys.every((title) => collectionPreflight.stdout.includes(title))) {
-    process.stderr.write("Live public Music E2E preflight refused: authority was skipped or expected mutation journeys did not collect.\n");
-    try { await fetch(`${stateServiceUrl}/restore`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) }); } catch { /* failing closed below */ }
-    stopFixture(); process.exit(4);
-  }
-}
 const result = spawnSync(process.execPath, args, {
   cwd: process.cwd(),
   stdio: "inherit",

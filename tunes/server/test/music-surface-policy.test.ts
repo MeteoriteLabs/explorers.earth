@@ -69,6 +69,17 @@ describe("Music surface authorization policy", () => {
     )).toBe(true);
   });
 
+  it("fails closed for a non-exempt guest POST surface", () => {
+    const matrix = authorizationMatrixFromInventory({
+      routes: [{ method: "POST", path: "/api/playlist/:guestUrl", source: "fixture", classification: "private" }],
+      events: [],
+    });
+    expect(matrix.routes[0]).toMatchObject({
+      decision: "guest",
+      allowed: { guestValid: true, unauthenticated: false },
+    });
+  });
+
   it.each([
     ["/api/music/identity/ensure", "private", "strapi-identity"],
     ["/api/music/identity/current", "private", "owner"],

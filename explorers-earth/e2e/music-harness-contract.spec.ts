@@ -326,6 +326,12 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain("Live public Music E2E preflight refused");
   expect(runner).toContain('fetch(`${stateServiceUrl}/snapshot`');
   expect(runner).toContain('globalRestoreOk ? "evidence-missing" : "restore-failed"');
+  expect(runner.indexOf('"--list"')).toBeLessThan(runner.indexOf("google-auth/callback?access_token="));
+  expect(runner).toContain("browserApiPrefix");
+  expect(runner).not.toContain("http://localhost:55173/api/");
+  expect(runner).toContain("callback bootstrap failed; details redacted");
+  expect(runner).not.toContain("callbackBootstrapError.message");
+  expect(runner).toContain("result.beforeHash === expected && result.afterHash === expected");
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
