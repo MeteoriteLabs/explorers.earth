@@ -285,8 +285,8 @@ export interface CanonicalMusicAccountSnapshot {
   queue: { coveredByDatabaseDump: true };
   playlists: { coveredByDatabaseDump: true };
   requests: { coveredByDatabaseDump: true };
-  profile: { accountDocumentId: string; publicMusic: boolean; profileRevision: number; profileHash: string };
-  database: { namespace: string; dumpHash: string };
+  profile: { accountDocumentId: string; publicMusic: boolean; profileRevision: number; profileHash: string; fieldCount: number };
+  database: { namespace: string; dumpHash: string; identityRows: number };
 }
 
 function requiredRecord(source: Record<string, unknown>, key: string): Record<string, unknown> {
@@ -316,12 +316,14 @@ export function assertCanonicalMusicAccountSnapshot(value: unknown): asserts val
   }
   const profile = requiredRecord(source, "profile");
   if (typeof profile.accountDocumentId !== "string" || typeof profile.publicMusic !== "boolean"
-      || !Number.isSafeInteger(profile.profileRevision) || !/^[a-f0-9]{64}$/.test(String(profile.profileHash))) {
+      || !Number.isSafeInteger(profile.profileRevision) || !/^[a-f0-9]{64}$/.test(String(profile.profileHash))
+      || !Number.isSafeInteger(profile.fieldCount) || Number(profile.fieldCount) < 1 || Number(profile.fieldCount) > 128) {
     throw new Error("canonical Music snapshot requires complete Strapi profile state");
   }
   const database = requiredRecord(source, "database");
   if (typeof database.namespace !== "string" || !/^e2e-public-music-[a-z0-9-]+$/.test(database.namespace)
-      || !/^[a-f0-9]{64}$/.test(String(database.dumpHash))) {
+      || !/^[a-f0-9]{64}$/.test(String(database.dumpHash))
+      || !Number.isSafeInteger(database.identityRows) || ![0, 1].includes(Number(database.identityRows))) {
     throw new Error("canonical Music snapshot requires the complete disposable database namespace");
   }
 }

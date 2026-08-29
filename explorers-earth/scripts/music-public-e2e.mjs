@@ -14,6 +14,12 @@ import {
   runMusicFixtureOrchestration,
 } from "./music-public-e2e-runner.mjs";
 import {
+  createLoopbackPrebrowserQualificationAdapter,
+  isDistinctMusicCallbackCredential,
+  runMusicPrebrowserQualification,
+  unavailableMusicPrebrowserQualification,
+} from "./music-public-prebrowser-qualification.mjs";
+import {
   MUSIC_PUBLIC_LIVE_AUTHORITY_ARGS,
   MUSIC_PUBLIC_LIVE_ACKNOWLEDGEMENT,
   MUSIC_PUBLIC_LIVE_FIXTURE_VERSION,
@@ -147,6 +153,8 @@ const journeyOutcomeLedgerPath = path.join(runArtifactDirectory, "journey-outcom
 const mutationGuardPath = path.join(runArtifactDirectory, "mutation-guard.json");
 const mutationRecoveryPath = path.join(runArtifactDirectory, "mutation-recovery.private.jsonl");
 let fixtureAuthorityRecord = createUnavailableQualificationFixtureAuthority();
+let prebrowserQualificationRecord = unavailableMusicPrebrowserQualification();
+let qualifierJwtFingerprint;
 
 if (dryRun) {
   const report = {
@@ -167,6 +175,7 @@ if (dryRun) {
     traces: [],
     gaps: ["qualification-not-run", "analytics-not-observed", "docker-inspection-not-run"],
     lifecycleCommands: [],
+    prebrowserQualification: prebrowserQualificationRecord,
     stateServiceLifecycle: {
       schemaVersion: "explorers-public-state-service-lifecycle/v1",
       error: { status: "unavailable" },
@@ -413,6 +422,7 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
     traces: [],
     gaps,
     lifecycleCommands: lifecycleCommandRecords,
+    prebrowserQualification: report.prebrowserQualification ?? prebrowserQualificationRecord,
     stateServiceLifecycle: stateServiceGuard?.snapshot().lifecycle ?? {
       schemaVersion: "explorers-public-state-service-lifecycle/v1",
       error: { status: "unavailable" },
@@ -677,6 +687,30 @@ async function runLiveQualification() {
       exists: existsSync,
       read: (file) => readFileSync(file, "utf8"),
     },
+    qualify: async () => {
+      const result = await runMusicPrebrowserQualification({
+        initialSnapshot,
+        adapter: createLoopbackPrebrowserQualificationAdapter({
+          authority: {
+            stateOrigin: stateServiceUrl,
+            tunesOrigin: "http://127.0.0.1:55000",
+            explorerOrigin: new URL(externalUrl).origin,
+            strapiOrigin: strapiUrl,
+            stateToken,
+            orchestrationToken: orchestrationStateToken,
+            fixtureToken: strapiToken,
+            namespace,
+            username,
+            accountDocumentId,
+            userDocumentId,
+          },
+          initialSnapshot,
+        }),
+      });
+      prebrowserQualificationRecord = result.record;
+      qualifierJwtFingerprint = result.qualifierJwtFingerprint;
+      return result;
+    },
     execute: async () => {
       const preflightEnvironment = { ...process.env, PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl, PLAYWRIGHT_PR_SAFE: "false", MUSIC_E2E_LIVE_WRITE: "true", MUSIC_E2E_RESTORE_EVIDENCE_PATH: restoreEvidencePath,
         E2E_PROFILE_LIVE_WRITES: "1", E2E_PROFILE_STORAGE_STATE: profileStorageStatePath, E2E_PROFILE_USERNAME: username };
@@ -717,7 +751,10 @@ async function runLiveQualification() {
         await page.getByText("Login successful! Redirecting...").waitFor({ timeout: 30_000 });
         await page.goto(`${externalUrl}/recommendations/music`, { waitUntil: "domcontentloaded" });
         await page.getByRole("tab", { name: "Playlists", exact: true }).waitFor({ timeout: 30_000 });
-        if (!/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(mintedCredential)) throw new Error("callback did not mint owner Tunes authority");
+        if (!/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(mintedCredential)
+            || !isDistinctMusicCallbackCredential({ qualifierJwtFingerprint, callbackCredential: mintedCredential })) {
+          throw new Error("callback did not mint distinct owner Tunes authority");
+        }
         mkdirSync(path.dirname(authStatePath), { recursive: true });
         writeFileSync(authStatePath, `${JSON.stringify({ ownerCredential: mintedCredential })}\n`, { encoding: "utf8", mode: 0o600 });
         chmodSync(authStatePath, 0o600);
@@ -726,7 +763,10 @@ async function runLiveQualification() {
         process.env.MUSIC_E2E_AUTH_STATE_PATH = authStatePath;
         process.env.E2E_PROFILE_STORAGE_STATE = profileStorageStatePath;
       } catch (error) { callbackBootstrapError = error; }
-      finally { if (browser) { try { await browser.close(); } catch { callbackBootstrapError ??= new Error("browser close failed"); } } }
+      finally {
+        qualifierJwtFingerprint = undefined;
+        if (browser) { try { await browser.close(); } catch { callbackBootstrapError ??= new Error("browser close failed"); } }
+      }
       if (qualificationCoordinator.signal.aborted) {
         liveExecutionOutcome = { status: qualificationCoordinator.snapshot().failure?.exitCode ?? 4 };
         return liveExecutionOutcome;

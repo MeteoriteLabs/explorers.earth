@@ -26,6 +26,13 @@ const guard = createMusicMutationGuard({
 });
 const snapshots = new Map();
 let initialSnapshotId;
+const MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL = [
+  "SELECT count(*) FROM users",
+  "WHERE strapi_user_document_id = :'fixture_user_document_id'",
+  "AND strapi_account_document_id = :'fixture_account_document_id'",
+  "AND username = :'fixture_username'",
+  "AND identity_status = 'active';",
+].join(" ");
 
 if (!Number.isInteger(port) || port < 1024 || port > 65535
     || !/^[A-Za-z0-9_-]{43,128}$/.test(journeyToken)
@@ -70,6 +77,24 @@ function databaseDump(containerId, dataOnly = false) {
   return result.stdout;
 }
 
+function databaseIdentityRows(containerId) {
+  const current = inspectDatabaseContainer();
+  if (current.containerId !== containerId) throw new Error("fixture restore target changed");
+  const result = spawnSync(dockerExecutable, [
+    "exec", "-i", containerId, "psql", "-X", "-U", "music_migrator", "-d", "music_fixture",
+    ...["-v", "ON_ERROR_STOP=1"],
+    ...["-v", `fixture_user_document_id=${userDocumentId}`],
+    ...["-v", `fixture_account_document_id=${accountDocumentId}`],
+    ...["-v", `fixture_username=${username}`],
+    "-Atc", MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL,
+  ], {
+    cwd: repositoryRoot, encoding: "utf8", windowsHide: true, maxBuffer: 4 * 1024,
+  });
+  const value = String(result.stdout ?? "").trim();
+  if (result.status !== 0 || !/^[01]$/.test(value)) throw new Error("fixture identity population inspection failed");
+  return Number(value);
+}
+
 async function json(url, options = {}) {
   const response = await fetch(url, { signal: AbortSignal.timeout(10_000), ...options });
   if (!response.ok) throw new Error("fixture profile operation failed");
@@ -81,6 +106,7 @@ async function capture({ initial = false } = {}) {
   const dump = databaseDump(containerId);
   const dataDump = databaseDump(containerId, true);
   const databaseHash = dumpHash(dump);
+  const identityRows = databaseIdentityRows(containerId);
   const profileState = await json(`${strapiOrigin}/__music-fixture/profile-state/snapshot`, {
     method: "POST",
     headers: { Authorization: `Bearer ${strapiToken}`, "Content-Type": "application/json" },
@@ -94,6 +120,13 @@ async function capture({ initial = false } = {}) {
   }
   const snapshotId = randomUUID();
   const publicMusic = profileState.snapshot.account?.public_music === "Yes";
+  const fieldCount = profileState.snapshot.account && typeof profileState.snapshot.account === "object"
+    && !Array.isArray(profileState.snapshot.account)
+    ? Object.keys(profileState.snapshot.account).length
+    : 0;
+  if (!Number.isSafeInteger(fieldCount) || fieldCount < 1 || fieldCount > 128) {
+    throw new Error("fixture profile snapshot failed");
+  }
   const snapshot = {
     version: "music-live-account-snapshot/v1", snapshotId,
     publication: { coveredByDatabaseDump: true }, guestControls: { coveredByDatabaseDump: true },
@@ -103,8 +136,9 @@ async function capture({ initial = false } = {}) {
       accountDocumentId, publicMusic,
       profileRevision: profileState.revision,
       profileHash: profileState.stateHash,
+      fieldCount,
     },
-    database: { namespace, dumpHash: databaseHash },
+    database: { namespace, dumpHash: databaseHash, identityRows },
   };
   snapshots.set(snapshotId, { containerId, dataDump, profileSnapshot: profileState.snapshot, snapshot });
   if (initial) {
@@ -140,8 +174,9 @@ async function restore(snapshot, { final = false } = {}) {
       restored.stage === "verification" ? "verification" : "restore");
     throw new Error("fixture database restoration failed");
   }
+  let profileRestored;
   try {
-    const profileRestored = await json(`${strapiOrigin}/__music-fixture/profile-state/restore`, {
+    profileRestored = await json(`${strapiOrigin}/__music-fixture/profile-state/restore`, {
       method: "POST",
       headers: { Authorization: `Bearer ${strapiToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ namespace, username, accountDocumentId, userDocumentId, snapshot: stored.profileSnapshot }),
@@ -154,7 +189,13 @@ async function restore(snapshot, { final = false } = {}) {
     throw new Error("fixture profile restoration failed");
   }
   if (!final) snapshots.delete(snapshot.snapshotId);
-  return { restored: true, beforeHash: restored.beforeHash, afterHash: restored.afterHash };
+  return {
+    restored: true,
+    beforeHash: restored.beforeHash,
+    afterHash: restored.afterHash,
+    profileHash: profileRestored.stateHash,
+    profileRevision: profileRestored.revision,
+  };
 }
 
 function authorized(request, expected) {

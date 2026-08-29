@@ -75,6 +75,15 @@ type MusicFixtureServiceConfig = {
   token: string;
 };
 
+type FixtureQualificationAuthority = {
+  expectedRevision: number;
+  namespace: string;
+  username: string;
+  accountDocumentId: string;
+  userDocumentId: string;
+  directLoopback: boolean;
+};
+
 function buildMusicFixtureService(config: MusicFixtureServiceConfig, allowStaticContractIdentity = false) {
   const staticContractIdentity = config.username === user.username
     && config.accountDocumentId === user.accounts[0]!.documentId
@@ -119,14 +128,32 @@ function buildMusicFixtureService(config: MusicFixtureServiceConfig, allowStatic
       }
       return { status: 404, body: { error: "fixture route not found" } };
     },
-    graphql(input: { authorization: string | undefined; method: string | undefined; query: string; variables: Record<string, unknown> }) {
+    graphql(input: {
+      authorization: string | undefined;
+      method: string | undefined;
+      query: string;
+      variables: Record<string, unknown>;
+      qualificationAuthority?: FixtureQualificationAuthority;
+    }) {
       if (input.authorization !== `Bearer ${config.token}`) return { status: 403, body: { error: "fixture lifecycle proof authority denied" } };
       if (input.method !== "POST") return { status: 405, body: { error: "fixture lifecycle proof operation denied" } };
+      const expectedNamespace = config.username.replace(/-owner$/, "");
+      if (input.qualificationAuthority && (!Number.isSafeInteger(input.qualificationAuthority.expectedRevision)
+          || input.qualificationAuthority.expectedRevision < 0
+          || input.qualificationAuthority.directLoopback !== true
+          || input.qualificationAuthority.namespace !== expectedNamespace
+          || input.qualificationAuthority.username !== config.username
+          || input.qualificationAuthority.accountDocumentId !== config.accountDocumentId
+          || input.qualificationAuthority.userDocumentId !== config.userDocumentId)) {
+        return { status: 403, body: { error: "fixture profile revision authority denied" } };
+      }
       if (normalizeGraphql(input.query) === normalizeGraphql(lifecycleAbsenceQuery)) return { status: 200, body: { data: {
         usersPermissionsUser: input.variables.userDocumentId === config.userDocumentId ? { documentId: config.userDocumentId } : null,
         account: input.variables.accountDocumentId === config.accountDocumentId ? { documentId: config.accountDocumentId } : null,
       } } };
-      return profile.graphql(input.query, input.variables);
+      return profile.graphql(input.query, input.variables, {
+        expectedRevision: input.qualificationAuthority?.expectedRevision,
+      });
     },
   };
 }
@@ -247,12 +274,41 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server
       let decoded: { query?: unknown; variables?: unknown } = {};
       try { decoded = JSON.parse(body) as typeof decoded; }
       catch { /* handled as an invalid exact operation */ }
+      const qualificationHeaders = [
+        "x-music-fixture-expected-revision", "x-music-fixture-namespace", "x-music-fixture-username",
+        "x-music-fixture-account-document-id", "x-music-fixture-user-document-id",
+      ] as const;
+      const suppliedQualificationHeaders = qualificationHeaders.filter((name) => request.headers[name] !== undefined);
+      let qualificationAuthority: FixtureQualificationAuthority | undefined;
+      if (suppliedQualificationHeaders.length === qualificationHeaders.length
+          && !request.headers["x-forwarded-for"]
+          && qualificationHeaders.every((name) => typeof request.headers[name] === "string")) {
+        const expectedRevision = Number(request.headers["x-music-fixture-expected-revision"]);
+        qualificationAuthority = {
+          expectedRevision,
+          namespace: String(request.headers["x-music-fixture-namespace"]),
+          username: String(request.headers["x-music-fixture-username"]),
+          accountDocumentId: String(request.headers["x-music-fixture-account-document-id"]),
+          userDocumentId: String(request.headers["x-music-fixture-user-document-id"]),
+          directLoopback: true,
+        };
+      } else if (suppliedQualificationHeaders.length > 0) {
+        qualificationAuthority = {
+          expectedRevision: -1,
+          namespace: "invalid",
+          username: "invalid",
+          accountDocumentId: "invalid",
+          userDocumentId: "invalid",
+          directLoopback: false,
+        };
+      }
       const result = runtimeService.graphql({
         authorization: request.headers.authorization,
         method: request.method,
         query: typeof decoded.query === "string" ? decoded.query : "",
         variables: decoded.variables && typeof decoded.variables === "object"
           ? decoded.variables as Record<string, unknown> : {},
+        qualificationAuthority,
       });
       response.writeHead(result.status, { "content-type": "application/json" });
       response.end(JSON.stringify(result.body));

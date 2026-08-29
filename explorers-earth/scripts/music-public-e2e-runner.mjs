@@ -1,5 +1,6 @@
 import { prepareMusicFixtureArtifacts, stopMusicFixture } from "./music-fixture-cleanup.mjs";
 import { LIVE_JOURNEY_MANIFEST, LIVE_JOURNEY_MANIFEST_VERSION, validateLiveJourneyEvidence } from "./music-public-live-preflight.mjs";
+import { validateMusicPrebrowserQualificationRecord } from "./music-public-prebrowser-qualification.mjs";
 
 function restorationHash(restoration) {
   if (!restoration?.ok || typeof restoration.beforeHash !== "string" || restoration.beforeHash.length === 0
@@ -135,6 +136,7 @@ export async function runMusicFixtureOrchestration({
   snapshotExists,
   coordinator: providedCoordinator,
   baseReport,
+  qualify,
   artifacts,
   restoreEvidence,
   execute,
@@ -150,25 +152,47 @@ export async function runMusicFixtureOrchestration({
   let setupOk = false;
   let executionStatus = 4;
   let executionOutcome;
-  try {
-    prepareMusicFixtureArtifacts(artifacts);
-    setupOk = true;
-    if (coordinator.beginExecution()) {
-      try {
-        const result = await execute();
-        if (Number.isInteger(result)) executionStatus = result;
-        else if (result && typeof result === "object" && Number.isInteger(result.status)) {
-          executionOutcome = result;
-          executionStatus = result.status;
-        } else executionStatus = 1;
-      } catch {
-        writeStderr("Live public Music E2E execution failed; details redacted.\n");
-      } finally {
-        coordinator.completeExecution();
+  let qualificationRefused = false;
+  let prebrowserQualification;
+  if (coordinator.beginExecution()) {
+    try {
+      if (qualify !== undefined) {
+        if (typeof qualify !== "function") throw new Error("pre-browser qualifier contract is invalid");
+        const result = await qualify();
+        if (!result || typeof result !== "object" || typeof result.ok !== "boolean"
+            || !validateMusicPrebrowserQualificationRecord(result.record)
+            || (result.ok && result.record.status !== "passed")
+            || (!result.ok && result.record.status !== "failed")) {
+          throw new Error("pre-browser qualifier result is invalid");
+        }
+        prebrowserQualification = result.record;
+        if (!result.ok) {
+          qualificationRefused = true;
+          executionStatus = 4;
+        }
       }
+      if (!qualificationRefused) {
+        prepareMusicFixtureArtifacts(artifacts);
+        setupOk = true;
+      }
+      if (!qualificationRefused) {
+        try {
+          const result = await execute();
+          if (Number.isInteger(result)) executionStatus = result;
+          else if (result && typeof result === "object" && Number.isInteger(result.status)) {
+            executionOutcome = result;
+            executionStatus = result.status;
+          } else executionStatus = 1;
+        } catch {
+          writeStderr("Live public Music E2E execution failed; details redacted.\n");
+        }
+      }
+    } catch {
+      qualificationRefused = true;
+      writeStderr("Live public Music E2E pre-browser qualification failed; details redacted.\n");
+    } finally {
+      coordinator.completeExecution();
     }
-  } catch {
-    writeStderr("Live public Music E2E setup failed; details redacted.\n");
   }
 
   let restoration = { ok: false, cleanup: "restore-failed" };
@@ -221,11 +245,13 @@ export async function runMusicFixtureOrchestration({
     && executionOutcome.outcomeLedgerStatus !== "persisted";
   const evidenceVerified = coordinatedFailure
     ? legacyEvidenceVerified && !privateArtifactCleanupFailed && !outcomeLedgerFailed
-    : (preflightRefusal
+    : (qualificationRefused
+      ? parsedEvidence.length === 0
+      : (preflightRefusal
       ? parsedEvidence.length === 0
       : (executionOutcome
         ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed && !outcomeLedgerFailed
-        : legacyEvidenceVerified));
+        : legacyEvidenceVerified)));
   let cleanup = initialHash && evidenceVerified && !evidenceParseFailed
     ? "restored"
     : (initialHash ? "evidence-missing" : "restore-failed");
@@ -252,6 +278,7 @@ export async function runMusicFixtureOrchestration({
     ...(executionOutcome?.outcomeLedgerStatus ? { journeyOutcomeLedgerStatus: executionOutcome.outcomeLedgerStatus } : {}),
     ...(executionOutcome?.privateArtifactCleanup ? { journeyArtifactCleanup: executionOutcome.privateArtifactCleanup } : {}),
     ...(preflightRefusal ? { preflightDiagnostics: executionOutcome.preflightDiagnostics } : {}),
+    ...(prebrowserQualification ? { prebrowserQualification } : {}),
   };
   try {
     await writeReport(report);

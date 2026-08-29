@@ -330,7 +330,7 @@ export function createFixtureProfileController(config: {
       }
       return undefined;
     },
-    graphql(query: string, variables: Record<string, unknown>): { status: number; body: unknown } {
+    graphql(query: string, variables: Record<string, unknown>, options: { expectedRevision?: number } = {}): { status: number; body: unknown } {
       const parsed = canonicalGraphql(query);
       if (!parsed || !graphqlRegistry.get(parsed.operation)?.has(parsed.signature)) {
         return { status: 403, body: { error: "fixture GraphQL operation denied" } };
@@ -342,6 +342,9 @@ export function createFixtureProfileController(config: {
         return { status: 200, body: { data: { usersPermissionsUser: identity() } } };
       }
       if (parsed.operation === "UpdateAccount") {
+        if (options.expectedRevision !== undefined && options.expectedRevision !== revision) {
+          return { status: 409, body: { error: "fixture profile revision stale" } };
+        }
         if (!exactKeys(variables, ["documentId", "data"]) || variables.documentId !== config.accountDocumentId
             || !validAccountInput(variables.data, config.username)) {
           return { status: 403, body: { error: "fixture profile mutation denied" } };

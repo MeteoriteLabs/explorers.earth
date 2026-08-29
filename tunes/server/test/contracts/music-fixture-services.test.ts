@@ -188,6 +188,71 @@ describe("deterministic Music fixture services", () => {
     expect(nginx).not.toMatch(/proxy_pass[^\n]*strapi[\s\S]{0,300}__music-fixture\/profile-state|location[^\n]*__music-fixture\/profile-state/);
   });
 
+  it("accepts optimistic revision authority only for the exact direct loopback token and tuple and rejects stale or proxied writes", () => {
+    const namespace = "e2e-public-music-revision-contract";
+    const username = `${namespace}-owner`;
+    const accountDocumentId = `${namespace}-account`;
+    const userDocumentId = `${namespace}-user`;
+    const token = "revision-contract-fixture-token";
+    const authority = `Bearer ${token}`;
+    const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
+    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    type QualificationAuthority = {
+      expectedRevision: number;
+      namespace: string;
+      username: string;
+      accountDocumentId: string;
+      userDocumentId: string;
+      directLoopback: boolean;
+    };
+    const graphql = service.graphql as (input: {
+      authorization: string;
+      method: string;
+      query: string;
+      variables: Record<string, unknown>;
+      qualificationAuthority?: QualificationAuthority;
+    }) => { status: number; body: unknown };
+    const exact = {
+      expectedRevision: 0,
+      namespace,
+      username,
+      accountDocumentId,
+      userDocumentId,
+      directLoopback: true,
+    };
+
+    expect(graphql({
+      authorization: authority, method: "POST", query: updateMutation,
+      variables: { documentId: accountDocumentId, data: { Bio: "qualified revision" } },
+      qualificationAuthority: exact,
+    })).toMatchObject({ status: 200, body: { data: { updateAccount: { Bio: "qualified revision" } } } });
+    const stale = graphql({
+      authorization: authority, method: "POST", query: updateMutation,
+      variables: { documentId: accountDocumentId, data: { Bio: "stale overwrite" } },
+      qualificationAuthority: exact,
+    });
+    expect(stale).toEqual({ status: 409, body: { error: "fixture profile revision stale" } });
+
+    for (const qualificationAuthority of [
+      { ...exact, expectedRevision: 1, directLoopback: false },
+      { ...exact, expectedRevision: 1, namespace: `${namespace}-other` },
+      { ...exact, expectedRevision: 1, userDocumentId: `${namespace}-other-user` },
+      { ...exact, expectedRevision: 1, accountDocumentId: `${namespace}-other-account` },
+    ]) {
+      expect(graphql({
+        authorization: authority, method: "POST", query: updateMutation,
+        variables: { documentId: accountDocumentId, data: { Bio: "authority bypass" } },
+        qualificationAuthority,
+      }).status).toBe(403);
+    }
+    const observed = graphql({ authorization: authority, method: "POST", query: profileQuery, variables: { documentId: userDocumentId } });
+    expect(observed).toMatchObject({ status: 200, body: { data: { usersPermissionsUser: { accounts: [{ Bio: "qualified revision" }] } } } });
+
+    const nginx = readFileSync(resolve(repositoryRoot, "explorers-earth/nginx.music-fixture.conf"), "utf8");
+    expect(nginx).toMatch(/location = \/graphql \{[\s\S]*proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;/);
+  });
+
   it("projects deterministic content for every exact checked-in public profile category document", () => {
     const namespace = "e2e-public-music-category-contract";
     const accountDocumentId = `${namespace}-account`;

@@ -171,8 +171,59 @@ function notRunJourneyOutcomeLedger() {
   };
 }
 
+function unavailablePrebrowserQualification() {
+  return {
+    schemaVersion: "explorers-public-prebrowser-qualification/v1",
+    status: "unavailable",
+    code: "not-run",
+    checks: {
+      populatedRollback: false, profileCapability: false, privateAuthority: false,
+      staleRejected: false, publicProjection: false, musicPrerequisites: false,
+      baselineRestored: false, ephemeralOwnerRetired: false, guardClear: false,
+    },
+    counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
+    hashes: {
+      populatedDatabase: null, rollbackDatabase: null, populatedProfile: null, rollbackProfile: null,
+      baselineDatabase: null, restoredBaselineDatabase: null, baselineProfile: null,
+      restoredBaselineProfile: null, publicSlug: null,
+    },
+    profileRevisions: { populated: null, rollback: null, baseline: null, restoredBaseline: null },
+  };
+}
+
+function passedPrebrowserQualification() {
+  return {
+    schemaVersion: "explorers-public-prebrowser-qualification/v1",
+    status: "passed",
+    code: "none",
+    checks: {
+      populatedRollback: true, profileCapability: true, privateAuthority: true,
+      staleRejected: true, publicProjection: true, musicPrerequisites: true,
+      baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true,
+    },
+    counts: { identityRows: 1, categoryQueries: 20, musicPrerequisites: 9 },
+    hashes: {
+      populatedDatabase: "1".repeat(64), rollbackDatabase: "1".repeat(64),
+      populatedProfile: "2".repeat(64), rollbackProfile: "2".repeat(64),
+      baselineDatabase: "3".repeat(64), restoredBaselineDatabase: "3".repeat(64),
+      baselineProfile: "4".repeat(64), restoredBaselineProfile: "4".repeat(64),
+      publicSlug: "5".repeat(64),
+    },
+    profileRevisions: { populated: 1, rollback: 1, baseline: 0, restoredBaseline: 0 },
+  };
+}
+
+function failedPrebrowserQualification() {
+  return {
+    ...unavailablePrebrowserQualification(),
+    status: "failed",
+    code: "public-capability-failed",
+  };
+}
+
 function seededQualificationEvidence() {
   return `${JSON.stringify({
+    prebrowserQualification: unavailablePrebrowserQualification(),
     journeyOutcomes: notRunJourneyOutcomeLedger(),
     mutationGuard: {
       version: "music-e2e-mutation-guard/v1", state: "clear", reason: "none", stage: "preflight",
@@ -830,8 +881,11 @@ test("live canonical restoration retains explicit journey identity for terminal 
     queue: { coveredByDatabaseDump: true },
     playlists: { coveredByDatabaseDump: true },
     requests: { coveredByDatabaseDump: true },
-    profile: { accountDocumentId: "e2e-public-music-evidence-account", publicMusic: true, profileRevision: 4, profileHash: "b".repeat(64) },
-    database: { namespace: "e2e-public-music-evidence", dumpHash: "a".repeat(64) },
+    profile: {
+      accountDocumentId: "e2e-public-music-evidence-account", publicMusic: true,
+      profileRevision: 4, profileHash: "b".repeat(64), fieldCount: 24,
+    },
+    database: { namespace: "e2e-public-music-evidence", dumpHash: "a".repeat(64), identityRows: 1 },
   };
   let current: unknown = structuredClone(baseline);
   const records: unknown[] = [];
@@ -3073,6 +3127,7 @@ test("authoritative per-source streams preserve later up down and state output a
       lane: "live",
       result: "failed",
       cleanup: "not-required-safe",
+      prebrowserQualification: unavailablePrebrowserQualification(),
       stateServiceLifecycle: {
         schemaVersion: "explorers-public-state-service-lifecycle/v1",
         error: { status: "unavailable" },
@@ -3541,6 +3596,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
         commit: "c".repeat(40),
         command: "npm run music:test:public-e2e",
         cwd: "explorers-earth",
+        prebrowserQualification: unavailablePrebrowserQualification(),
         stateServiceLifecycle: {
           schemaVersion: "explorers-public-state-service-lifecycle/v1",
           error: { status: "unavailable" },
@@ -4728,8 +4784,11 @@ test("one canonical adapter refuses incomplete account state and restores every 
     queue: { coveredByDatabaseDump: true },
     playlists: { coveredByDatabaseDump: true },
     requests: { coveredByDatabaseDump: true },
-    profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, profileRevision: 4, profileHash: "b".repeat(64) },
-    database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64) },
+    profile: {
+      accountDocumentId: "e2e-public-music-run-account", publicMusic: true,
+      profileRevision: 4, profileHash: "b".repeat(64), fieldCount: 24,
+    },
+    database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64), identityRows: 1 },
   } as const;
   let current: unknown = structuredClone(complete);
   let resetValue: unknown;
@@ -5095,4 +5154,641 @@ test("real restoration failures retain a sanitized recovery artifact without cus
     else process.env.MUSIC_E2E_RECOVERY_ARTIFACT_PATH = previousPath;
     resetMusicRestoreBlockForContractTest();
   }
+});
+
+async function loadPrebrowserQualificationContract(): Promise<Record<string, unknown>> {
+  try {
+    const modulePath: string = "../scripts/music-public-prebrowser-qualification.mjs";
+    return await import(modulePath);
+  } catch {
+    return {};
+  }
+}
+
+type QualificationSnapshot = {
+  version: "music-live-account-snapshot/v1";
+  snapshotId: string;
+  profile: { accountDocumentId: string; publicMusic: boolean; profileRevision: number; profileHash: string; fieldCount: number };
+  database: { namespace: string; dumpHash: string; identityRows: number };
+};
+
+function qualificationSnapshot(snapshotId: string, databaseHash: string, profileHash: string, profileRevision: number, identityRows: number): QualificationSnapshot {
+  return {
+    version: "music-live-account-snapshot/v1",
+    snapshotId,
+    profile: {
+      accountDocumentId: "e2e-public-music-qualification-account",
+      publicMusic: false,
+      profileRevision,
+      profileHash,
+      fieldCount: 24,
+    },
+    database: {
+      namespace: "e2e-public-music-qualification",
+      dumpHash: databaseHash,
+      identityRows,
+    },
+  };
+}
+
+function passingPrebrowserQualificationAdapter(events: string[]) {
+  const populated = qualificationSnapshot("populated-snapshot", "b".repeat(64), "c".repeat(64), 3, 1);
+  const publicPhase = qualificationSnapshot("public-snapshot", "d".repeat(64), "e".repeat(64), 4, 1);
+  let snapshots = 0;
+  return {
+    ensureEphemeralOwner: async () => { events.push("identity-ensure"); return "header.payload.qualifier-signature"; },
+    capture: async () => {
+      events.push(`snapshot:${snapshots === 0 ? "populated" : "public"}`);
+      return snapshots++ === 0 ? populated : publicPhase;
+    },
+    verifyRollbackProbe: async () => {
+      events.push("rollback-probe");
+      return { profileCapability: true, privateAuthority: true, staleRejected: true };
+    },
+    restore: async (snapshot: QualificationSnapshot) => {
+      events.push(`restore:${snapshot.snapshotId}`);
+      return {
+        restored: true,
+        beforeHash: snapshot.database.dumpHash,
+        afterHash: snapshot.database.dumpHash,
+        profileHash: snapshot.profile.profileHash,
+        profileRevision: snapshot.profile.profileRevision,
+      };
+    },
+    verifyPublicProfileAndMusic: async () => {
+      events.push("public-profile-category-music");
+      return { publicSlug: "actual-fixture-public-slug", categoryQueries: 20, musicPrerequisites: 9 };
+    },
+    restoreBaseline: async (snapshot: QualificationSnapshot) => {
+      events.push("restore:initial-baseline");
+      return {
+        restored: true,
+        beforeHash: snapshot.database.dumpHash,
+        afterHash: snapshot.database.dumpHash,
+        profileHash: snapshot.profile.profileHash,
+        profileRevision: snapshot.profile.profileRevision,
+      };
+    },
+    verifyEphemeralOwnerRetired: async (jwt: string) => {
+      events.push("qualifier-jwt-retired");
+      return jwt === "header.payload.qualifier-signature";
+    },
+    readGuard: async () => {
+      events.push("guard-clear");
+      return { version: "music-e2e-mutation-guard/v1", state: "clear", reason: "none", stage: "preflight" };
+    },
+  };
+}
+
+test("pre-browser qualifier proves populated rollback, public/category/music capability, JWT retirement, and returns only fixed safe metadata", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const run = contract.runMusicPrebrowserQualification as undefined | ((input: {
+    initialSnapshot: QualificationSnapshot;
+    adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown>; qualifierJwtFingerprint?: string }>);
+  expect(typeof run).toBe("function");
+  if (!run) return;
+  const events: string[] = [];
+  const initial = qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0);
+  const result = await run({ initialSnapshot: initial, adapter: passingPrebrowserQualificationAdapter(events) });
+
+  expect(events).toEqual([
+    "identity-ensure",
+    "snapshot:populated",
+    "rollback-probe",
+    "restore:populated-snapshot",
+    "snapshot:public",
+    "public-profile-category-music",
+    "restore:public-snapshot",
+    "restore:initial-baseline",
+    "qualifier-jwt-retired",
+    "guard-clear",
+  ]);
+  expect(result).toMatchObject({
+    ok: true,
+    qualifierJwtFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    record: {
+      schemaVersion: "explorers-public-prebrowser-qualification/v1",
+      status: "passed",
+      code: "none",
+      checks: {
+        populatedRollback: true,
+        profileCapability: true,
+        privateAuthority: true,
+        staleRejected: true,
+        publicProjection: true,
+        musicPrerequisites: true,
+        baselineRestored: true,
+        ephemeralOwnerRetired: true,
+        guardClear: true,
+      },
+      counts: { identityRows: 1, categoryQueries: 20, musicPrerequisites: 9 },
+      hashes: {
+        populatedDatabase: "b".repeat(64),
+        rollbackDatabase: "b".repeat(64),
+        populatedProfile: "c".repeat(64),
+        rollbackProfile: "c".repeat(64),
+        baselineDatabase: "a".repeat(64),
+        restoredBaselineDatabase: "a".repeat(64),
+        baselineProfile: "f".repeat(64),
+        restoredBaselineProfile: "f".repeat(64),
+        publicSlug: expect.stringMatching(/^[a-f0-9]{64}$/),
+      },
+      profileRevisions: { populated: 3, rollback: 3, baseline: 0, restoredBaseline: 0 },
+    },
+  });
+  const retained = JSON.stringify(result.record);
+  expect(retained).not.toMatch(/header\.payload|actual-fixture-public-slug|jwt|credential|authorization|token|snapshotId|path/i);
+});
+
+test("loopback qualifier adapter exercises exact fixture profile, stale, public category, and seeded Music protocols without persisting owner authority", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const createAdapter = contract.createLoopbackPrebrowserQualificationAdapter as undefined | ((input: {
+    authority: Record<string, unknown>;
+    initialSnapshot: QualificationSnapshot;
+    fetchImpl: typeof fetch;
+  }) => ReturnType<typeof passingPrebrowserQualificationAdapter>);
+  const run = contract.runMusicPrebrowserQualification as undefined | ((input: {
+    initialSnapshot: QualificationSnapshot;
+    adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+  expect(typeof createAdapter).toBe("function");
+  expect(typeof run).toBe("function");
+  if (!createAdapter || !run) return;
+
+  const initial = qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0);
+  const populated = qualificationSnapshot("populated-snapshot", "b".repeat(64), "c".repeat(64), 3, 1);
+  const publicPhase = qualificationSnapshot("public-snapshot", "d".repeat(64), "e".repeat(64), 4, 1);
+  const ownerJwt = "qualifier.header.ephemeral-owner";
+  const calls: Array<{
+    origin: string; path: string; method: string; operation?: string;
+    expectedRevision?: string; idempotencyKey?: string;
+  }> = [];
+  let snapshotCount = 0;
+  let playlistId = 40;
+  let songId = 100;
+  let playbackCalls = 0;
+  let baselineRestored = false;
+  let directRevisionWrites = 0;
+  const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
+    status, headers: { "content-type": "application/json" },
+  });
+  const fetchImpl: typeof fetch = async (input, init = {}) => {
+    const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+    const method = init.method ?? (input instanceof Request ? input.method : "GET");
+    const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : undefined));
+    const rawBody = typeof init.body === "string" ? init.body : "";
+    const decoded = rawBody ? JSON.parse(rawBody) as Record<string, any> : {};
+    const operation = typeof decoded.query === "string"
+      ? /(?:query|mutation)\s+([A-Za-z0-9_]+)/.exec(decoded.query)?.[1]
+      : undefined;
+    calls.push({
+      origin: url.origin, path: url.pathname, method, operation,
+      expectedRevision: headers.get("x-music-fixture-expected-revision") ?? undefined,
+      idempotencyKey: headers.get("idempotency-key") ?? undefined,
+    });
+
+    if (url.origin === "http://127.0.0.1:55174" && url.pathname === "/snapshot") {
+      return json(snapshotCount++ === 0 ? populated : publicPhase);
+    }
+    if (url.origin === "http://127.0.0.1:55174" && url.pathname === "/restore") {
+      const snapshot = decoded as unknown as QualificationSnapshot;
+      return json({ restored: true, beforeHash: snapshot.database.dumpHash, afterHash: snapshot.database.dumpHash,
+        profileHash: snapshot.profile.profileHash, profileRevision: snapshot.profile.profileRevision });
+    }
+    if (url.origin === "http://127.0.0.1:55174" && url.pathname === "/restore-final") {
+      baselineRestored = true;
+      return json({ restored: true, beforeHash: initial.database.dumpHash, afterHash: initial.database.dumpHash,
+        profileHash: initial.profile.profileHash, profileRevision: initial.profile.profileRevision });
+    }
+    if (url.origin === "http://127.0.0.1:55174" && url.pathname === "/health") {
+      return json({ status: "ready", service: "music-e2e-state",
+        mutationGuard: { version: "music-e2e-mutation-guard/v1", state: "clear", reason: "none", stage: "preflight" } });
+    }
+    if (url.origin === "http://127.0.0.1:55000" && url.pathname === "/api/music/identity/ensure") {
+      return json({ identity: { status: "active" }, credential: { token: ownerJwt } });
+    }
+    if (url.pathname === "/__music-fixture/profile-state/snapshot") {
+      const exactTuple = decoded.namespace === "e2e-public-music-qualification"
+        && decoded.username === "e2e-public-music-qualification-owner"
+        && decoded.accountDocumentId === "e2e-public-music-qualification-account"
+        && decoded.userDocumentId === "e2e-public-music-qualification-user";
+      if (headers.get("authorization") !== `Bearer ${"F".repeat(43)}` || !exactTuple) return json({ error: "denied" }, 403);
+      return json({ version: "music-fixture-profile-state/v1", revision: 3, stateHash: "c".repeat(64),
+        snapshot: { version: "music-fixture-profile-snapshot/v1", revision: 3, account: { documentId: "e2e-public-music-qualification-account" } } });
+    }
+    if (url.pathname === "/__music-fixture/profile-state/restore") {
+      return headers.get("authorization") === `Bearer ${"F".repeat(43)}`
+        ? json({ version: "music-fixture-profile-state/v1", restored: true, revision: 3, stateHash: "c".repeat(64) })
+        : json({ error: "denied" }, 403);
+    }
+    if (url.pathname === "/graphql") {
+      if (headers.has("x-music-fixture-expected-revision")) {
+        if (url.origin === "http://localhost:55173") return json({ error: "revision authority denied" }, 403);
+        directRevisionWrites += 1;
+        if (directRevisionWrites === 2) return json({ error: "fixture profile revision stale" }, 409);
+      }
+      if (operation === "UpdateAccount") return json({ data: { updateAccount: {
+        documentId: "e2e-public-music-qualification-account",
+        Bio: decoded.variables?.data?.Bio,
+        public_profile: decoded.variables?.data?.public_profile ?? "Yes",
+        public_recommendations: decoded.variables?.data?.public_recommendations ?? "Yes",
+        public_music: decoded.variables?.data?.public_music ?? "Yes",
+      } } });
+      if (operation === "UsersPermissionsUser") return json({ data: { usersPermissionsUser: {
+        documentId: "e2e-public-music-qualification-user", username: "e2e-public-music-qualification-owner",
+        accounts: [{ documentId: "e2e-public-music-qualification-account", Bio: "fixture", updatedAt: "2026-08-29T00:00:03.000Z" }],
+      } } });
+      if (operation === "PublicProfileData" || operation === "PublicAccountBasic") return json({ data: { accounts: [{
+        documentId: "e2e-public-music-qualification-account", username: "e2e-public-music-qualification-owner",
+        Account_Name: "Fixture Explorer",
+        public_profile: "Yes", public_recommendations: "Yes", public_music: "Yes",
+      }] } });
+      const categoryDefinitions: Record<string, { root: string; subject: string; contentKey: string }> = {
+        GetPlacesLists: { root: "recommendationLists", subject: "places", contentKey: "recommended_places" },
+        GetMoviesLists: { root: "movieLists", subject: "movies", contentKey: "recommended_movies" },
+        GetBooksLists: { root: "bookLists", subject: "books", contentKey: "recommended_books" },
+        GetGamesLists: { root: "gameLists", subject: "games", contentKey: "recommended_games" },
+        GetAppsLists: { root: "appLists", subject: "apps", contentKey: "recommended_apps" },
+        GetProductsLists: { root: "productLists", subject: "products", contentKey: "recommended_products" },
+        GetPeopleLists: { root: "personLists", subject: "people", contentKey: "recommended_people" },
+        GetGuidesLists: { root: "guides", subject: "guides", contentKey: "Title" },
+      };
+      if (operation === "PublicCategoryListCounts") return json({ data: Object.fromEntries(
+        Object.values(categoryDefinitions).map(({ root }) => [root, [{ documentId: `e2e-public-music-qualification-${root}-count` }]]),
+      ) });
+      const category = operation ? categoryDefinitions[operation] : undefined;
+      if (category) {
+        const documentId = `e2e-public-music-qualification-${category.subject}-list`;
+        return json({ data: { [category.root]: [{
+          documentId,
+          ...(category.contentKey === "Title"
+            ? { Title: "Fixture Guide" }
+            : { [category.contentKey]: [{ documentId: `${documentId}-item` }] }),
+        }] } });
+      }
+      return json({ error: "unknown operation" }, 403);
+    }
+    if (url.origin === "http://127.0.0.1:55000" && url.pathname === "/api/playlists" && method === "POST") {
+      return json({ id: ++playlistId, name: decoded.name }, 201);
+    }
+    if (url.origin === "http://127.0.0.1:55000" && url.pathname === "/api/playlists" && method === "GET") {
+      return baselineRestored ? json({ error: "retired" }, 401) : json([]);
+    }
+    if (/^\/api\/playlists\/\d+\/songs$/.test(url.pathname)) return json({ id: ++songId }, 201);
+    if (/^\/api\/playlists\/\d+\/visibility$/.test(url.pathname)) return new Response(null, { status: 204 });
+    if (url.pathname === "/api/music/dashboard") return json({ queueRevision: 0, playbackRevision: 0, publication: { mode: "private" } });
+    if (url.pathname === "/api/music/queue/replace") return json({ revision: 1 });
+    if (url.pathname === "/api/playlist/currently-playing") return json({ revision: 2 + playbackCalls, playbackRevision: ++playbackCalls });
+    if (url.pathname === "/api/music/guest-controls") return json({ updated: true });
+    if (url.pathname === "/api/music/publication") return json({ version: "music-publication/v1",
+      publication: { mode: "public", publicSlug: "actual-qualified-public-slug" } });
+    if (url.pathname === "/api/music/public-resource/v1/actual-qualified-public-slug") return json({
+      version: "music-public-resource/v1",
+      currentlyPlaying: { title: "Fixture playing song" },
+      queue: { items: [{ title: "Fixture queued song" }] },
+      recentlyPlayed: { items: [{ title: "Fixture history song" }] },
+      playlists: { items: [{ name: "Pre-browser public fixture" }] },
+      permissions: {
+        allowSongRequests: true, allowGuestPlayOnDevice: true, allowPlaylistSharing: true,
+        allowRecentlyPlayedVisibility: true, allowQueueVisibility: true,
+      },
+    });
+    return json({ error: "unexpected fixture request" }, 404);
+  };
+
+  const authority = {
+    stateOrigin: "http://127.0.0.1:55174",
+    tunesOrigin: "http://127.0.0.1:55000",
+    explorerOrigin: "http://localhost:55173",
+    strapiOrigin: "http://127.0.0.1:51337",
+    stateToken: "S".repeat(43),
+    orchestrationToken: "O".repeat(43),
+    fixtureToken: "F".repeat(43),
+    namespace: "e2e-public-music-qualification",
+    username: "e2e-public-music-qualification-owner",
+    accountDocumentId: "e2e-public-music-qualification-account",
+    userDocumentId: "e2e-public-music-qualification-user",
+  };
+  const result = await run({ initialSnapshot: initial, adapter: createAdapter({ authority, initialSnapshot: initial, fetchImpl }) });
+  expect(result).toMatchObject({ ok: true, record: { status: "passed", counts: { categoryQueries: 20, musicPrerequisites: 9 } } });
+  expect(calls.filter(({ operation }) => operation === "UsersPermissionsUser")).toHaveLength(2);
+  expect(calls.filter(({ operation }) => operation && [
+    "PublicProfileData", "PublicCategoryListCounts", "GetPlacesLists", "GetMoviesLists", "GetBooksLists",
+    "GetGamesLists", "GetAppsLists", "GetProductsLists", "GetPeopleLists", "GetGuidesLists",
+  ].includes(operation))).toHaveLength(20);
+  expect(calls.filter(({ expectedRevision }) => expectedRevision !== undefined)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ origin: "http://127.0.0.1:51337", operation: "UpdateAccount", expectedRevision: "3" }),
+    expect.objectContaining({ origin: "http://localhost:55173", operation: "UpdateAccount", expectedRevision: "3" }),
+  ]));
+  expect(calls.find(({ path }) => path === "/api/music/publication")).toMatchObject({
+    idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+  });
+  expect(calls.filter(({ path }) => path === "/api/music/public-resource/v1/actual-qualified-public-slug"))
+    .toEqual(expect.arrayContaining([
+      expect.objectContaining({ origin: "http://127.0.0.1:55000" }),
+      expect.objectContaining({ origin: "http://localhost:55173" }),
+    ]));
+  expect(JSON.stringify(result.record)).not.toContain(ownerJwt);
+});
+
+for (const [method, expectedCode] of [
+  ["ensureEphemeralOwner", "identity-ensure-failed"],
+  ["capture", "populated-snapshot-failed"],
+  ["verifyRollbackProbe", "rollback-probe-failed"],
+  ["restore", "phase-restore-failed"],
+  ["verifyPublicProfileAndMusic", "public-capability-failed"],
+  ["restoreBaseline", "baseline-restore-failed"],
+  ["verifyEphemeralOwnerRetired", "ephemeral-owner-not-retired"],
+  ["readGuard", "guard-not-clear"],
+] as const) {
+  test(`pre-browser qualifier maps ${method} failure to fixed ${expectedCode} and still attempts baseline restore and guard inspection`, async () => {
+    const contract = await loadPrebrowserQualificationContract();
+    const run = contract.runMusicPrebrowserQualification as undefined | ((input: {
+      initialSnapshot: QualificationSnapshot;
+      adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+    }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+    expect(typeof run).toBe("function");
+    if (!run) return;
+    const events: string[] = [];
+    const adapter = passingPrebrowserQualificationAdapter(events);
+    const original = adapter[method] as (...args: unknown[]) => Promise<unknown>;
+    Object.assign(adapter, {
+      [method]: async (...args: unknown[]) => {
+        await original(...args);
+        if (method === "verifyEphemeralOwnerRetired") return false;
+        if (method === "readGuard") return { version: "music-e2e-mutation-guard/v1", state: "blocked", reason: "restore-failed", stage: "restore" };
+        throw new Error("Bearer private-qualification-value from C:\\Users\\private\\state.json");
+      },
+    });
+    const result = await run({
+      initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
+      adapter,
+    });
+    expect(result).toMatchObject({ ok: false, record: { status: "failed", code: expectedCode } });
+    expect(events).toContain("restore:initial-baseline");
+    expect(events).toContain("guard-clear");
+    expect(JSON.stringify(result.record)).not.toMatch(/private-qualification|Bearer|C:\\Users|snapshotId|token|credential|authorization/i);
+  });
+}
+
+test("runner qualifier refusal restores and tears down before any storage, collection, callback, or auth write", async () => {
+  const events: string[] = [];
+  const hash = "a".repeat(64);
+  const outcome = await runMusicFixtureOrchestration({
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: "prebrowser-refusal", lane: "live" },
+    qualify: async () => {
+      events.push("qualify");
+      return { ok: false, record: failedPrebrowserQualification() };
+    },
+    artifacts: {
+      directory: "fixture-artifacts", authPath: "owner-auth.json", storagePath: "profile-storage-state.json",
+      mkdir: () => { events.push("artifact-mkdir"); },
+      write: (file: string) => { events.push(`auth-write:${file}`); },
+      chmod: () => undefined,
+    },
+    restoreEvidence: { path: "restore.jsonl", exists: () => false, read: () => "" },
+    execute: async () => { events.push("collection-callback-journeys"); return 0; },
+    restore: async () => { events.push("initial-restore"); return { ok: true, beforeHash: hash, afterHash: hash }; },
+    teardown: {
+      artifactPaths: [], exists: () => false, unlink: () => undefined,
+      stopStateService: async () => { events.push("state-service-stop"); },
+      down: () => { events.push("fixture-down"); return 0; },
+    },
+    writeReport: async () => undefined,
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
+  });
+  expect(events).toEqual(["qualify", "initial-restore", "state-service-stop", "fixture-down"]);
+  expect(outcome).toMatchObject({ exitCode: 4, report: { result: "failed", cleanup: "restored" } });
+});
+
+test("runner starts artifact setup and collection/callback execution only after a green qualifier", async () => {
+  const events: string[] = [];
+  const hash = "a".repeat(64);
+  await runMusicFixtureOrchestration({
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: "prebrowser-green", lane: "live" },
+    qualify: async () => { events.push("qualify-green"); return { ok: true, record: passedPrebrowserQualification() }; },
+    artifacts: {
+      directory: "fixture-artifacts", authPath: "owner-auth.json", storagePath: "profile-storage-state.json",
+      mkdir: () => { events.push("artifact-mkdir"); },
+      write: () => { events.push("storage-write"); },
+      chmod: () => undefined,
+    },
+    restoreEvidence: { path: "restore.jsonl", exists: () => false, read: () => "" },
+    execute: async () => { events.push("collection-callback-journeys"); return 0; },
+    restore: async () => { events.push("initial-restore"); return { ok: true, beforeHash: hash, afterHash: hash }; },
+    teardown: {
+      artifactPaths: [], exists: () => false, unlink: () => undefined,
+      stopStateService: async () => { events.push("state-service-stop"); },
+      down: () => { events.push("fixture-down"); return 0; },
+    },
+    writeReport: async () => undefined,
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
+  });
+  expect(events).toEqual([
+    "qualify-green", "artifact-mkdir", "storage-write", "collection-callback-journeys",
+    "initial-restore", "state-service-stop", "fixture-down",
+  ]);
+});
+
+test("runner rejects a hostile qualifier record before artifacts and never retains its extra field", async () => {
+  const events: string[] = [];
+  const reports: unknown[] = [];
+  const hash = "a".repeat(64);
+  const hostile = "Bearer hostile.qualifier.secret";
+  const outcome = await runMusicFixtureOrchestration({
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: "prebrowser-hostile", lane: "live" },
+    qualify: async () => {
+      events.push("qualify");
+      return { ok: true, record: { ...passedPrebrowserQualification(), credential: hostile } };
+    },
+    artifacts: {
+      directory: "fixture-artifacts", authPath: "owner-auth.json", storagePath: "profile-storage-state.json",
+      mkdir: () => { events.push("artifact-mkdir"); },
+      write: () => { events.push("storage-write"); },
+      chmod: () => undefined,
+    },
+    restoreEvidence: { path: "restore.jsonl", exists: () => false, read: () => "" },
+    execute: async () => { events.push("collection-callback-journeys"); return 0; },
+    restore: async () => { events.push("initial-restore"); return { ok: true, beforeHash: hash, afterHash: hash }; },
+    teardown: {
+      artifactPaths: [], exists: () => false, unlink: () => undefined,
+      stopStateService: async () => { events.push("state-service-stop"); },
+      down: () => { events.push("fixture-down"); return 0; },
+    },
+    writeReport: async (report: unknown) => { reports.push(report); },
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
+  });
+  expect(events).toEqual(["qualify", "initial-restore", "state-service-stop", "fixture-down"]);
+  expect(outcome).toMatchObject({ exitCode: 4, report: { result: "failed", cleanup: "restored" } });
+  expect(JSON.stringify(reports)).not.toContain(hostile);
+});
+
+test("pre-browser qualification records have one exact fixed safe schema and reject hostile additions", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const validate = contract.validateMusicPrebrowserQualificationRecord as undefined | ((value: unknown) => boolean);
+  expect(typeof validate).toBe("function");
+  if (!validate) return;
+  const events: string[] = [];
+  const result = await (contract.runMusicPrebrowserQualification as (input: {
+    initialSnapshot: QualificationSnapshot;
+    adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+  }) => Promise<{ record: Record<string, unknown> }>)({
+    initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
+    adapter: passingPrebrowserQualificationAdapter(events),
+  });
+  expect(validate(result.record)).toBe(true);
+  expect(validate({ ...result.record, token: "header.payload.secret" })).toBe(false);
+  expect(validate({ ...result.record, code: "C:\\Users\\private\\raw.txt" })).toBe(false);
+  expect(validate({ ...result.record, counts: { identityRows: 1, categoryQueries: 19, musicPrerequisites: 9 } })).toBe(false);
+  expect(validate({ ...result.record, hashes: { ...(result.record.hashes as object), publicSlug: "actual-private-slug" } })).toBe(false);
+});
+
+test("public qualification accepts only the exact profile, all counts, and every namespaced category fixture", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const validate = contract.validateMusicQualificationPublicGraphql as undefined | ((input: {
+    operation: string; root: string; body: unknown; namespace: string; accountDocumentId: string;
+  }) => boolean);
+  expect(typeof validate).toBe("function");
+  if (!validate) return;
+  const namespace = "e2e-public-music-qualification";
+  const accountDocumentId = `${namespace}-account`;
+  const profile = {
+    data: { accounts: [{
+      documentId: accountDocumentId, Account_Name: "Fixture Explorer",
+      public_profile: "Yes", public_recommendations: "Yes", public_music: "Yes",
+    }] },
+  };
+  expect(validate({ operation: "PublicProfileData", root: "accounts", body: profile, namespace, accountDocumentId })).toBe(true);
+  expect(validate({ operation: "PublicProfileData", root: "accounts", body: {
+    data: { accounts: [{ ...profile.data.accounts[0], documentId: `${namespace}-other-account` }] },
+  }, namespace, accountDocumentId })).toBe(false);
+
+  const roots = ["recommendationLists", "movieLists", "bookLists", "gameLists", "appLists", "productLists", "personLists", "guides"];
+  const counts = { data: Object.fromEntries(roots.map((root) => [root, [{ documentId: `${namespace}-${root}-count` }]])) };
+  expect(validate({ operation: "PublicCategoryListCounts", root: "recommendationLists", body: counts, namespace, accountDocumentId })).toBe(true);
+  expect(validate({ operation: "PublicCategoryListCounts", root: "recommendationLists", body: {
+    data: { ...counts.data, guides: [] },
+  }, namespace, accountDocumentId })).toBe(false);
+
+  const categoryCases = [
+    ["GetPlacesLists", "recommendationLists", "places", "recommended_places"],
+    ["GetMoviesLists", "movieLists", "movies", "recommended_movies"],
+    ["GetBooksLists", "bookLists", "books", "recommended_books"],
+    ["GetGamesLists", "gameLists", "games", "recommended_games"],
+    ["GetAppsLists", "appLists", "apps", "recommended_apps"],
+    ["GetProductsLists", "productLists", "products", "recommended_products"],
+    ["GetPeopleLists", "personLists", "people", "recommended_people"],
+    ["GetGuidesLists", "guides", "guides", "Title"],
+  ] as const;
+  for (const [operation, root, subject, contentKey] of categoryCases) {
+    const item = {
+      documentId: `${namespace}-${subject}-list`,
+      ...(contentKey === "Title" ? { Title: "Fixture Guide" } : { [contentKey]: [{ documentId: `${namespace}-${subject}-list-item` }] }),
+    };
+    expect(validate({ operation, root, body: { data: { [root]: [item] } }, namespace, accountDocumentId })).toBe(true);
+    expect(validate({ operation, root, body: { data: { [root]: [{ ...item, documentId: "foreign-list" }] } }, namespace, accountDocumentId })).toBe(false);
+  }
+});
+
+test("profile qualification requires the exact account and requested fields in UpdateAccount success", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const validate = contract.validateMusicQualificationUpdateResponse as undefined | ((input: {
+    status: number; body: unknown; accountDocumentId: string; expected: Record<string, unknown>;
+  }) => boolean);
+  expect(typeof validate).toBe("function");
+  if (!validate) return;
+  const accountDocumentId = "e2e-public-music-qualification-account";
+  const body = { data: { updateAccount: { documentId: accountDocumentId, Bio: "rollback probe" } } };
+  expect(validate({ status: 200, body, accountDocumentId, expected: { Bio: "rollback probe" } })).toBe(true);
+  expect(validate({ status: 200, body: { data: { updateAccount: null } }, accountDocumentId, expected: { Bio: "rollback probe" } })).toBe(false);
+  expect(validate({ status: 200, body, accountDocumentId: `${accountDocumentId}-other`, expected: { Bio: "rollback probe" } })).toBe(false);
+  expect(validate({ status: 200, body, accountDocumentId, expected: { Bio: "different" } })).toBe(false);
+});
+
+test("qualifier credential fingerprint must differ from the later callback owner credential", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const distinct = contract.isDistinctMusicCallbackCredential as undefined | ((input: {
+    qualifierJwtFingerprint: string;
+    callbackCredential: string;
+  }) => boolean);
+  expect(typeof distinct).toBe("function");
+  if (!distinct) return;
+  const qualifier = "qualifier.header.ephemeral-owner";
+  const fingerprint = createHash("sha256").update(qualifier).digest("hex");
+  expect(distinct({ qualifierJwtFingerprint: fingerprint, callbackCredential: `Bearer ${qualifier}` })).toBe(false);
+  expect(distinct({ qualifierJwtFingerprint: fingerprint, callbackCredential: "Bearer callback.header.distinct-owner" })).toBe(true);
+  expect(distinct({ qualifierJwtFingerprint: fingerprint, callbackCredential: "Bearer malformed" })).toBe(false);
+});
+
+test("canonical state snapshots require safe populated identity and profile field counts", async () => {
+  const base = {
+    version: "music-live-account-snapshot/v1",
+    snapshotId: "safe-populated-snapshot",
+    publication: { coveredByDatabaseDump: true },
+    guestControls: { coveredByDatabaseDump: true },
+    queue: { coveredByDatabaseDump: true },
+    playlists: { coveredByDatabaseDump: true },
+    requests: { coveredByDatabaseDump: true },
+    profile: {
+      accountDocumentId: "e2e-public-music-state-account", publicMusic: false,
+      profileRevision: 3, profileHash: "a".repeat(64),
+    },
+    database: { namespace: "e2e-public-music-state", dumpHash: "b".repeat(64) },
+  };
+  await expect(createCanonicalMusicFixtureAdapter({
+    readFullSnapshot: async () => base,
+    resetNamespace: async () => undefined,
+  }).snapshot()).rejects.toThrow(/complete Strapi profile state|database identity population/);
+  await expect(createCanonicalMusicFixtureAdapter({
+    readFullSnapshot: async () => ({
+      ...base,
+      profile: { ...base.profile, fieldCount: 24 },
+      database: { ...base.database, identityRows: 1 },
+    }),
+    resetNamespace: async () => undefined,
+  }).snapshot()).resolves.toMatchObject({
+    profile: { fieldCount: 24 }, database: { identityRows: 1 },
+  });
+});
+
+test("state service proves populated identity/profile metadata and returns exact profile restore equality", () => {
+  const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
+  expect(stateService).toContain("MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL");
+  expect(stateService).toMatch(/\["-v",\s*`fixture_user_document_id=/);
+  expect(stateService).toMatch(/\["-v",\s*`fixture_account_document_id=/);
+  expect(stateService).toMatch(/\["-v",\s*`fixture_username=/);
+  expect(stateService).toContain("identityRows");
+  expect(stateService).toContain("fieldCount");
+  expect(stateService).toMatch(/return \{[\s\S]{0,320}beforeHash: restored\.beforeHash,[\s\S]{0,160}afterHash: restored\.afterHash,[\s\S]{0,160}profileHash:[\s\S]{0,160}profileRevision:/);
+  expect(stateService).not.toMatch(/MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL\s*=\s*`[^`]*\$\{/);
+});
+
+test("live runner binds qualification before collection and callback without persisting qualifier authority", () => {
+  const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
+  const snapshot = runner.indexOf('fetch(`${stateServiceUrl}/snapshot`');
+  const qualification = runner.indexOf("runMusicPrebrowserQualification({");
+  const collection = runner.indexOf("runLivePreflight({");
+  const callback = runner.indexOf("google-auth/callback?access_token=");
+  const authWrite = runner.indexOf("writeFileSync(authStatePath");
+  expect(snapshot).toBeGreaterThan(-1);
+  expect(qualification).toBeGreaterThan(snapshot);
+  expect(collection).toBeGreaterThan(qualification);
+  expect(callback).toBeGreaterThan(collection);
+  expect(authWrite).toBeGreaterThan(callback);
+  expect(runner).toContain("isDistinctMusicCallbackCredential");
+  expect(runner).toContain("prebrowserQualificationRecord");
+  expect(runner).not.toMatch(/writeFileSync\([^\n]+qualifierJwt/i);
+});
+
+test("artifact finalization requires a validated safe pre-browser qualification record", () => {
+  const artifacts = readFileSync("scripts/music-public-qualification-artifacts.mjs", "utf8");
+  expect(artifacts).toContain("validateMusicPrebrowserQualificationRecord");
+  expect(artifacts).toMatch(/!validateMusicPrebrowserQualificationRecord\(evidence\.prebrowserQualification\)/);
 });
