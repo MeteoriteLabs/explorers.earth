@@ -7,7 +7,7 @@ import {
   MUSIC_E2E_STATE_CAPTURE_STAGES,
 } from "../../tunes/scripts/music-e2e-state-capture.mjs";
 
-export const PREBROWSER_QUALIFICATION_VERSION = "explorers-public-prebrowser-qualification/v3";
+export const PREBROWSER_QUALIFICATION_VERSION = "explorers-public-prebrowser-qualification/v4";
 
 const QUALIFICATION_CODES = new Set([
   "none", "not-run", "unexpected-failure", "identity-ensure-failed", "populated-snapshot-failed",
@@ -29,8 +29,12 @@ export const MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES = Object.freeze([
 export const MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES = Object.freeze([
   "operation-failed", "operation-timeout", "http-failed", "contract-invalid",
 ]);
+export const MUSIC_PREBROWSER_PUBLIC_FLOW_SUBSTAGES = Object.freeze([
+  "none", "transition-response", "dashboard-response",
+]);
 const PUBLIC_FLOW_STAGES = new Set(MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES);
 const PUBLIC_FLOW_FAILURE_CODES = new Set(MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES);
+const PUBLIC_FLOW_SUBSTAGES = new Set(MUSIC_PREBROWSER_PUBLIC_FLOW_SUBSTAGES);
 const CAPTURE_FAILURE_PHASES = new Set(["none", "populated", "public"]);
 const CAPTURE_FAILURE_STAGES = new Set(["none", ...MUSIC_E2E_STATE_CAPTURE_STAGES]);
 const CAPTURE_FAILURE_CODES = new Set(["none", ...MUSIC_E2E_STATE_CAPTURE_CODES]);
@@ -71,6 +75,13 @@ function validPublicFlowFailure(value) {
   return PUBLIC_FLOW_STAGES.has(value.stage) && PUBLIC_FLOW_FAILURE_CODES.has(value.code);
 }
 
+function validPublicFlowSubstage(stage, substage) {
+  if (!PUBLIC_FLOW_SUBSTAGES.has(substage)) return false;
+  return stage === "owner"
+    ? substage === "transition-response" || substage === "dashboard-response"
+    : substage === "none";
+}
+
 function validSnapshotFailure(value) {
   if (!exactKeys(value, ["phase", "stage", "code"])
       || !CAPTURE_FAILURE_PHASES.has(value.phase)
@@ -83,13 +94,15 @@ function validSnapshotFailure(value) {
 
 export function validateMusicPrebrowserQualificationRecord(value) {
   if (!exactKeys(value, [
-    "schemaVersion", "status", "code", "snapshotFailure", "publicFlowFailure", "checks", "counts", "hashes", "profileRevisions",
+    "schemaVersion", "status", "code", "snapshotFailure", "publicFlowFailure", "publicFlowSubstage",
+    "checks", "counts", "hashes", "profileRevisions",
   ])
       || value.schemaVersion !== PREBROWSER_QUALIFICATION_VERSION
       || !["unavailable", "failed", "passed"].includes(value.status)
       || !QUALIFICATION_CODES.has(value.code)
       || !validSnapshotFailure(value.snapshotFailure)
       || !validPublicFlowFailure(value.publicFlowFailure)
+      || !validPublicFlowSubstage(value.publicFlowFailure.stage, value.publicFlowSubstage)
       || !exactKeys(value.checks, CHECK_KEYS)
       || !CHECK_KEYS.every((key) => typeof value.checks[key] === "boolean")
       || !exactKeys(value.counts, ["identityRows", "categoryQueries", "musicPrerequisites"])
@@ -228,13 +241,17 @@ function clearGuard(value) {
     && value.state === "clear" && value.reason === "none" && value.stage === "preflight";
 }
 
-function safeRecord({ status, code, snapshotFailure, publicFlowFailure: retainedPublicFlowFailure, checks, counts, hashes, profileRevisions }) {
+function safeRecord({
+  status, code, snapshotFailure, publicFlowFailure: retainedPublicFlowFailure, publicFlowSubstage,
+  checks, counts, hashes, profileRevisions,
+}) {
   return {
     schemaVersion: PREBROWSER_QUALIFICATION_VERSION,
     status,
     code,
     snapshotFailure,
     publicFlowFailure: retainedPublicFlowFailure,
+    publicFlowSubstage,
     checks,
     counts,
     hashes,
@@ -248,6 +265,7 @@ export function unavailableMusicPrebrowserQualification() {
     code: "not-run",
     snapshotFailure: clearSnapshotFailure(),
     publicFlowFailure: clearPublicFlowFailure(),
+    publicFlowSubstage: "none",
     checks: clearChecks(),
     counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
     hashes: {
@@ -292,11 +310,12 @@ class MusicPrebrowserSnapshotFailure extends Error {
 }
 
 class MusicPrebrowserPublicFlowFailure extends Error {
-  constructor(stage, code) {
+  constructor(stage, code, publicFlowSubstage) {
     super("pre-browser public flow failed");
     this.name = "MusicPrebrowserPublicFlowFailure";
     this.stage = stage;
     this.code = code;
+    this.publicFlowSubstage = publicFlowSubstage;
   }
 }
 
@@ -307,19 +326,21 @@ class MusicPrebrowserResponseContractFailure extends Error {
   }
 }
 
-export function createMusicPrebrowserPublicFlowFailure(stage, code) {
-  if (!PUBLIC_FLOW_STAGES.has(stage) || !PUBLIC_FLOW_FAILURE_CODES.has(code)) {
+export function createMusicPrebrowserPublicFlowFailure(stage, code, publicFlowSubstage = "none") {
+  if (!PUBLIC_FLOW_STAGES.has(stage) || !PUBLIC_FLOW_FAILURE_CODES.has(code)
+      || !validPublicFlowSubstage(stage, publicFlowSubstage)) {
     throw new Error("pre-browser public failure contract is invalid");
   }
-  return new MusicPrebrowserPublicFlowFailure(stage, code);
+  return new MusicPrebrowserPublicFlowFailure(stage, code, publicFlowSubstage);
 }
 
-function publicFlowFailure(stage, code) {
-  throw createMusicPrebrowserPublicFlowFailure(stage, code);
+function publicFlowFailure(stage, code, publicFlowSubstage = "none") {
+  throw createMusicPrebrowserPublicFlowFailure(stage, code, publicFlowSubstage);
 }
 
-async function atPublicFlowBoundary(stage, operation) {
-  if (!PUBLIC_FLOW_STAGES.has(stage) || typeof operation !== "function") {
+async function atPublicFlowBoundary(stage, operation, publicFlowSubstage = "none") {
+  if (!PUBLIC_FLOW_STAGES.has(stage) || typeof operation !== "function"
+      || !validPublicFlowSubstage(stage, publicFlowSubstage)) {
     throw new Error("pre-browser public boundary contract is invalid");
   }
   try {
@@ -329,17 +350,17 @@ async function atPublicFlowBoundary(stage, operation) {
     const code = error instanceof MusicPrebrowserResponseContractFailure
       ? "contract-invalid"
       : (timeoutFailure(error) ? "operation-timeout" : "operation-failed");
-    throw createMusicPrebrowserPublicFlowFailure(stage, code);
+    throw createMusicPrebrowserPublicFlowFailure(stage, code, publicFlowSubstage);
   }
 }
 
-function requirePublicHttp(stage, response, expectedStatus) {
-  if (response?.status !== expectedStatus) publicFlowFailure(stage, "http-failed");
+function requirePublicHttp(stage, response, expectedStatus, publicFlowSubstage = "none") {
+  if (response?.status !== expectedStatus) publicFlowFailure(stage, "http-failed", publicFlowSubstage);
   return response;
 }
 
-function requirePublicContract(stage, valid) {
-  if (!valid) publicFlowFailure(stage, "contract-invalid");
+function requirePublicContract(stage, valid, publicFlowSubstage = "none") {
+  if (!valid) publicFlowFailure(stage, "contract-invalid", publicFlowSubstage);
 }
 
 function exactCaptureFailure(value) {
@@ -435,7 +456,11 @@ function exactPrivateOwnerDashboard(value, expectedSlug) {
     && exactKeys(publication, ["mode", "publicSlug"])
     && publication.mode === "private" && publication.publicSlug === expectedSlug
     && exactKeys(guestControls, GUEST_CONTROL_KEYS)
-    && GUEST_CONTROL_KEYS.every((key) => guestControls[key] === false);
+    && guestControls.allowSongRequests === true
+    && guestControls.allowGuestPlayOnDevice === true
+    && guestControls.allowPlaylistSharing === false
+    && guestControls.allowRecentlyPlayedVisibility === true
+    && guestControls.allowQueueVisibility === false;
 }
 
 function publicationUuidFromHash(hash) {
@@ -672,17 +697,17 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
           headers: ownerHeaders(qualifierJwt, `tunes-share-v1-${Date.now()}-${privatePublicationUuid}`),
           body: JSON.stringify({ mode: "private" }),
         },
-      ));
-      requirePublicHttp("owner", privatePublication, 200);
-      requirePublicContract("owner", exactPublicationResponse(privatePublication.body, "private"));
+      ), "transition-response");
+      requirePublicHttp("owner", privatePublication, 200, "transition-response");
+      requirePublicContract("owner", exactPublicationResponse(privatePublication.body, "private"), "transition-response");
       const privatePublicSlug = exactObject(privatePublication.body)?.publication?.publicSlug;
 
       const dashboard = await atPublicFlowBoundary("owner", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/dashboard`, {
         headers: ownerHeaders(qualifierJwt),
-      }));
-      requirePublicHttp("owner", dashboard, 200);
+      }), "dashboard-response");
+      requirePublicHttp("owner", dashboard, 200, "dashboard-response");
       const dashboardBody = exactObject(dashboard.body);
-      requirePublicContract("owner", exactPrivateOwnerDashboard(dashboardBody, privatePublicSlug));
+      requirePublicContract("owner", exactPrivateOwnerDashboard(dashboardBody, privatePublicSlug), "dashboard-response");
       const playlist = await atPublicFlowBoundary("playlist", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists`, {
         method: "POST", headers: ownerHeaders(qualifierJwt, "prebrowser-public-playlist"),
         body: JSON.stringify({ name: "Pre-browser public fixture", description: "Disposable public capability" }),
@@ -865,6 +890,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
   let code = "unexpected-failure";
   let snapshotFailure = clearSnapshotFailure();
   let retainedPublicFlowFailure = clearPublicFlowFailure();
+  let retainedPublicFlowSubstage = "none";
   let qualifierJwt = "";
   let qualifierJwtFingerprint;
   let corePassed = false;
@@ -953,6 +979,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
     } catch (error) {
       if (error instanceof MusicPrebrowserPublicFlowFailure) {
         retainedPublicFlowFailure = { stage: error.stage, code: error.code };
+        retainedPublicFlowSubstage = error.publicFlowSubstage;
       } else {
         code = "unexpected-failure";
       }
@@ -1014,6 +1041,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
     code: ok ? "none" : code,
     snapshotFailure,
     publicFlowFailure: retainedPublicFlowFailure,
+    publicFlowSubstage: retainedPublicFlowSubstage,
     checks,
     counts,
     hashes,

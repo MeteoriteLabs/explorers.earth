@@ -136,6 +136,9 @@ const EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES = [
 const EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES = [
   "operation-failed", "operation-timeout", "http-failed", "contract-invalid",
 ] as const;
+const EXPECTED_PREBROWSER_PUBLIC_FLOW_SUBSTAGES = [
+  "none", "transition-response", "dashboard-response",
+] as const;
 
 const AUTHORITATIVE_QUALIFICATION_STREAMS = [
   { role: "fixture-bootstrap-stdout", path: "logs/fixture-bootstrap.stdout.log", source: "fixture-bootstrap", stream: "stdout" },
@@ -199,11 +202,12 @@ function notRunJourneyOutcomeLedger() {
 
 function unavailablePrebrowserQualification() {
   return {
-    schemaVersion: "explorers-public-prebrowser-qualification/v3",
+    schemaVersion: "explorers-public-prebrowser-qualification/v4",
     status: "unavailable",
     code: "not-run",
     snapshotFailure: { phase: "none", stage: "none", code: "none" },
     publicFlowFailure: { stage: "none", code: "none" },
+    publicFlowSubstage: "none",
     checks: {
       populatedRollback: false, profileCapability: false, privateAuthority: false,
       staleRejected: false, publicProjection: false, musicPrerequisites: false,
@@ -221,11 +225,12 @@ function unavailablePrebrowserQualification() {
 
 function passedPrebrowserQualification() {
   return {
-    schemaVersion: "explorers-public-prebrowser-qualification/v3",
+    schemaVersion: "explorers-public-prebrowser-qualification/v4",
     status: "passed",
     code: "none",
     snapshotFailure: { phase: "none", stage: "none", code: "none" },
     publicFlowFailure: { stage: "none", code: "none" },
+    publicFlowSubstage: "none",
     checks: {
       populatedRollback: true, profileCapability: true, privateAuthority: true,
       staleRejected: true, publicProjection: true, musicPrerequisites: true,
@@ -5383,9 +5388,10 @@ test("pre-browser qualifier proves populated rollback, public/category/music cap
     ok: true,
     qualifierJwtFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     record: {
-      schemaVersion: "explorers-public-prebrowser-qualification/v3",
+      schemaVersion: "explorers-public-prebrowser-qualification/v4",
       snapshotFailure: { phase: "none", stage: "none", code: "none" },
       publicFlowFailure: { stage: "none", code: "none" },
+      publicFlowSubstage: "none",
       status: "passed",
       code: "none",
       checks: {
@@ -5444,11 +5450,12 @@ test("pre-browser qualifier distinguishes a valid populated snapshot with zero e
   expect(result).toMatchObject({
     ok: false,
     record: {
-      schemaVersion: "explorers-public-prebrowser-qualification/v3",
+      schemaVersion: "explorers-public-prebrowser-qualification/v4",
       status: "failed",
       code: "populated-identity-cardinality",
       snapshotFailure: { phase: "none", stage: "none", code: "none" },
       publicFlowFailure: { stage: "none", code: "none" },
+      publicFlowSubstage: "none",
       counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
     },
   });
@@ -5537,11 +5544,12 @@ test("loopback qualifier retains only fixed state-capture stage codes and reject
     expect(result).toMatchObject({
       ok: false,
       record: {
-        schemaVersion: "explorers-public-prebrowser-qualification/v3",
+        schemaVersion: "explorers-public-prebrowser-qualification/v4",
         status: "failed",
         code: "populated-snapshot-failed",
         snapshotFailure: scenario.failure,
         publicFlowFailure: { stage: "none", code: "none" },
+        publicFlowSubstage: "none",
       },
     });
     expect(JSON.stringify(result.record)).not.toMatch(/hostile|Bearer|C:\\Users|detail|path|token|authorization/i);
@@ -5591,7 +5599,12 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   let playbackPublicCalls = 0;
   let publicationMode: "private" | "unlisted" | "public" = "unlisted";
   let ownerTransitionMutation: "version" | "mode" | "slug" | "extra" | undefined;
-  let ownerDashboardMutation: "mode" | "queue-revision" | "playback-revision" | "slug" | undefined;
+  let ownerDashboardMutation:
+    | "mode" | "queue-revision" | "playback-revision" | "slug"
+    | "songs" | "currently-playing" | "played-songs"
+    | "allow-song-requests" | "allow-guest-play-on-device" | "allow-playlist-sharing"
+    | "allow-recently-played-visibility" | "allow-queue-visibility"
+    | undefined;
   const graphqlStageSuffix: Record<string, string> = {
     PublicProfileData: "public-profile-data",
     PublicCategoryListCounts: "public-category-list-counts",
@@ -5752,16 +5765,19 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       const dashboard = {
         queueRevision: ownerDashboardMutation === "queue-revision" ? 1 : 0,
         playbackRevision: ownerDashboardMutation === "playback-revision" ? 1 : 0,
-        songs: [],
-        currentlyPlaying: null,
-        playedSongs: [],
+        songs: ownerDashboardMutation === "songs" ? [{ id: 1 }] : [],
+        currentlyPlaying: ownerDashboardMutation === "currently-playing" ? { id: 1 } : null,
+        playedSongs: ownerDashboardMutation === "played-songs" ? [{ id: 1 }] : [],
         publication: {
           mode: ownerDashboardMutation === "mode" ? "unlisted" : publicationMode,
           publicSlug: ownerDashboardMutation === "slug" ? "different-qualified-public-slug" : "actual-qualified-public-slug",
         },
         guestControls: {
-          allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false,
-          allowRecentlyPlayedVisibility: false, allowQueueVisibility: false,
+          allowSongRequests: ownerDashboardMutation === "allow-song-requests" ? false : true,
+          allowGuestPlayOnDevice: ownerDashboardMutation === "allow-guest-play-on-device" ? false : true,
+          allowPlaylistSharing: ownerDashboardMutation === "allow-playlist-sharing" ? true : false,
+          allowRecentlyPlayedVisibility: ownerDashboardMutation === "allow-recently-played-visibility" ? false : true,
+          allowQueueVisibility: ownerDashboardMutation === "allow-queue-visibility" ? true : false,
         },
       };
       return json(dashboard);
@@ -5834,6 +5850,11 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   };
   const result = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
   expect(result, JSON.stringify(result.record)).toMatchObject({ ok: true, record: { status: "passed", counts: { categoryQueries: 20, musicPrerequisites: 9 } } });
+  expect(result.record).toMatchObject({
+    schemaVersion: "explorers-public-prebrowser-qualification/v4",
+    publicFlowFailure: { stage: "none", code: "none" },
+    publicFlowSubstage: "none",
+  });
   expect(calls.filter(({ operation }) => operation === "UsersPermissionsUser")).toHaveLength(2);
   expect(calls.filter(({ operation }) => operation && [
     "PublicProfileData", "PublicCategoryListCounts", "GetPlacesLists", "GetMoviesLists", "GetBooksLists",
@@ -5891,6 +5912,7 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       record: {
         code: "public-flow-failed",
         publicFlowFailure: { stage: "owner", code },
+        publicFlowSubstage: "transition-response",
         checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
       },
     });
@@ -5922,6 +5944,7 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       record: {
         code: "public-flow-failed",
         publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+        publicFlowSubstage: "transition-response",
         checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
       },
     });
@@ -5931,7 +5954,11 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   }
   ownerTransitionMutation = undefined;
 
-  for (const mutation of ["mode", "queue-revision", "playback-revision", "slug"] as const) {
+  for (const mutation of [
+    "mode", "queue-revision", "playback-revision", "slug", "songs", "currently-playing", "played-songs",
+    "allow-song-requests", "allow-guest-play-on-device", "allow-playlist-sharing",
+    "allow-recently-played-visibility", "allow-queue-visibility",
+  ] as const) {
     snapshotCount = 0;
     baselineRestored = false;
     directRevisionWrites = 0;
@@ -5948,6 +5975,7 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       record: {
         code: "public-flow-failed",
         publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+        publicFlowSubstage: "dashboard-response",
         checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
       },
     });
@@ -5984,6 +6012,7 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
         status: "failed",
         code: "public-flow-failed",
         publicFlowFailure: { stage, code: "http-failed" },
+        publicFlowSubstage: stage === "owner" ? "transition-response" : "none",
       },
     });
     expect(JSON.stringify(failed.record)).not.toMatch(/hostile|Bearer|C:\\Users|response\.json|https?:\/\//i);
@@ -6009,7 +6038,11 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
     expect(failed).toMatchObject({
       ok: false,
-      record: { code: "public-flow-failed", publicFlowFailure: { stage: "queue", code } },
+      record: {
+        code: "public-flow-failed",
+        publicFlowFailure: { stage: "queue", code },
+        publicFlowSubstage: "none",
+      },
     });
     expect(JSON.stringify(failed.record)).not.toMatch(/hostile|Bearer|C:\\Users|response\.json|https?:\/\//i);
   }
@@ -6042,6 +6075,8 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     counts: { graphqlOperations: 20, publicMusicResources: 2, queueSongs: 3 },
     qualification: {
       status: "passed",
+      schemaVersion: "explorers-public-prebrowser-qualification/v4",
+      publicFlowSubstage: "none",
       checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
     },
   });
@@ -6056,11 +6091,13 @@ test("pre-browser public failures retain one exact boundary and fixed safe code 
     adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
   }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
   const createFailure = contract.createMusicPrebrowserPublicFlowFailure as undefined | ((
-    stage: string, code: string,
+    stage: string, code: string, substage?: string,
   ) => Error);
   expect(contract.MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES).toEqual(EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES);
   expect(contract.MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES)
     .toEqual(EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES);
+  expect(contract.MUSIC_PREBROWSER_PUBLIC_FLOW_SUBSTAGES)
+    .toEqual(EXPECTED_PREBROWSER_PUBLIC_FLOW_SUBSTAGES);
   expect(typeof run).toBe("function");
   expect(typeof createFailure).toBe("function");
   if (!run || !createFailure) return;
@@ -6068,8 +6105,9 @@ test("pre-browser public failures retain one exact boundary and fixed safe code 
   for (const stage of EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES) {
     const events: string[] = [];
     const adapter = passingPrebrowserQualificationAdapter(events);
+    const publicFlowSubstage = stage === "owner" ? "transition-response" : "none";
     adapter.verifyPublicProfileAndMusic = async () => {
-      throw createFailure(stage, "operation-failed");
+      throw createFailure(stage, "operation-failed", publicFlowSubstage);
     };
     const result = await run({
       initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
@@ -6078,10 +6116,11 @@ test("pre-browser public failures retain one exact boundary and fixed safe code 
     expect(result).toMatchObject({
       ok: false,
       record: {
-        schemaVersion: "explorers-public-prebrowser-qualification/v3",
+        schemaVersion: "explorers-public-prebrowser-qualification/v4",
         status: "failed",
         code: "public-flow-failed",
         publicFlowFailure: { stage, code: "operation-failed" },
+        publicFlowSubstage,
       },
     });
     expect(JSON.stringify(result.record)).not.toMatch(/Bearer|C:\\Users|https?:\/\/|detail|body|statusText/i);
@@ -6089,8 +6128,10 @@ test("pre-browser public failures retain one exact boundary and fixed safe code 
 
   for (const [index, code] of EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES.entries()) {
     const adapter = passingPrebrowserQualificationAdapter([]);
+    const stage = EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES[index];
+    const publicFlowSubstage = stage === "owner" ? "dashboard-response" : "none";
     adapter.verifyPublicProfileAndMusic = async () => {
-      throw createFailure(EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES[index], code);
+      throw createFailure(stage, code, publicFlowSubstage);
     };
     const result = await run({
       initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
@@ -6098,9 +6139,13 @@ test("pre-browser public failures retain one exact boundary and fixed safe code 
     });
     expect(result).toMatchObject({
       ok: false,
-      record: { code: "public-flow-failed", publicFlowFailure: { code } },
+      record: { code: "public-flow-failed", publicFlowFailure: { code }, publicFlowSubstage },
     });
   }
+
+  expect(() => createFailure("owner", "contract-invalid", "none")).toThrow();
+  expect(() => createFailure("queue", "contract-invalid", "transition-response")).toThrow();
+  expect(() => createFailure("owner", "contract-invalid", "unknown")).toThrow();
 });
 
 test("pre-browser queue qualification accepts only three ordered queue-domain rows", async () => {
@@ -6336,6 +6381,27 @@ test("pre-browser qualification records have one exact fixed safe schema and rej
   expect(validate({ ...failedPrebrowserQualification(), publicFlowFailure: {
     stage: "https://private.example/path", code: "http-failed",
   } })).toBe(false);
+  const withoutSubstage = { ...result.record };
+  delete withoutSubstage.publicFlowSubstage;
+  expect(validate(withoutSubstage)).toBe(false);
+  expect(validate({ ...failedPrebrowserQualification(), publicFlowSubstage: "transition-response" })).toBe(false);
+  expect(validate({
+    ...failedPrebrowserQualification(),
+    publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+    publicFlowSubstage: "none",
+  })).toBe(false);
+  expect(validate({
+    ...failedPrebrowserQualification(),
+    publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+    publicFlowSubstage: "transition-response",
+  })).toBe(true);
+  expect(validate({
+    ...failedPrebrowserQualification(),
+    publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+    publicFlowSubstage: "dashboard-response",
+  })).toBe(true);
+  expect(validate({ ...passedPrebrowserQualification(), publicFlowSubstage: "dashboard-response" })).toBe(false);
+  expect(validate({ ...failedPrebrowserQualification(), publicFlowSubstage: "hostile-private-value" })).toBe(false);
 });
 
 test("public qualification accepts only the exact profile, all counts, and every namespaced category fixture", async () => {
@@ -6795,7 +6861,7 @@ test("C14 CLI executes the exact reviewed lifecycle and emits only canonical saf
       code: "none",
       exitCode: 0,
       initialSnapshotQualification: { status: "passed" },
-      qualifier: { schemaVersion: "explorers-public-prebrowser-qualification/v3", status: "passed" },
+      qualifier: { schemaVersion: "explorers-public-prebrowser-qualification/v4", status: "passed" },
       counts: { graphqlOperations: 20, publicMusicResources: 2, queueSongs: 3 },
       finalRestore: { status: "passed", databaseEqual: true, profileEqual: true },
       cleanup: {
