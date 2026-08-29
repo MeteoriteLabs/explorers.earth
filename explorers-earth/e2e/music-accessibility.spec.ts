@@ -74,7 +74,9 @@ for (const viewport of [
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
     await expect(sharing).toBeFocused();
-    await expect(page.getByText("Music is public.")).toBeVisible();
+    const publicAnnouncement = page.getByText("Music is public.");
+    await expect(publicAnnouncement).toBeVisible();
+    await expect(publicAnnouncement.locator("xpath=ancestor-or-self::*[@role='status' or @aria-live][1]")).toBeAttached();
     expect(qualification.publicationMode()).toBe("public");
     expect(qualification.publicationCommands).toEqual([{
       body: { mode: "public" },

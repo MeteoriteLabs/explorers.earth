@@ -5,10 +5,13 @@ import {
   musicLiveAuthorityFromEnvironment,
   buildPairwisePermissionMatrix,
   musicLiveWriteSkipReason,
+  musicLiveTest,
   runAuthorizedMusicMutation,
   withRestoredMusicFixture,
   type MusicMutationCallsite,
 } from "./setup/music";
+
+const liveTest = musicLiveTest;
 
 const fixtureOrigin = "http://localhost:55173";
 const liveSkipReason = musicLiveWriteSkipReason();
@@ -135,6 +138,30 @@ test.describe("PR-safe direct public Music routes", () => {
     await expect(page.getByText("Nothing has been shared here yet")).toBeVisible();
   });
 
+  test("screen readers receive actual loading and request-success announcements", async ({ page }) => {
+    let releaseResource!: () => void;
+    const resourceGate = new Promise<void>((resolve) => { releaseResource = resolve; });
+    await page.route("**/api/music/public-resource/v1/public_slug-123", async (route) => {
+      await resourceGate;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(publicResourceFixture) });
+    });
+    await page.route("**/api/playlist/public_slug-123/youtube/search", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "Announced song", channelTitle: "Fixture artist", thumbnails: { default: { url: `${fixtureOrigin}/images/tuneslogo.png` } } } }], nextPageToken: null }),
+    }));
+    await page.route("**/api/playlist/public_slug-123/requests", (route) => route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ accepted: true }) }));
+    await page.route("**/socket.io/**", (route) => route.abort());
+    const navigation = page.goto("/music/share/public_slug-123");
+    await expect(page.getByRole("status", { name: "" }).filter({ hasText: "Loading Music…" })).toHaveAttribute("aria-live", "polite");
+    releaseResource();
+    await navigation;
+    await page.getByRole("textbox", { name: /search for a song/i }).fill("announced");
+    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("button", { name: /Request Announced song/ }).click();
+    const success = page.getByRole("status").filter({ hasText: "Song requested." });
+    await expect(success).toBeVisible();
+    await expect(success).toBeFocused();
+  });
+
   test("public and unlisted shares preserve canonical and capability privacy", async ({ page }) => {
     const capabilities: Array<string | undefined> = [];
     await page.route("**/api/music/public-resource/v1/public_slug-123", async (route) => {
@@ -250,8 +277,10 @@ test.describe("PR-safe friendly public Music routes", () => {
     expect(levels[0]).toBe(1);
     expect(levels.every((level, index) => index === 0 || level <= levels[index - 1]! + 1)).toBe(true);
     await expect(page.locator('[role="status"], [aria-live="polite"], [aria-live="assertive"]').first()).toBeAttached();
-    await page.getByRole("link", { name: "Profile" }).click();
-    await expect(page).toHaveURL(/\/fixture-owner$/);
+    await Promise.all([
+      page.waitForURL(/\/fixture-owner$/),
+      page.locator('a[href="/fixture-owner"]').first().click(),
+    ]);
     await page.goBack();
     await expect(page).toHaveURL(/\/fixture-owner\/music$/);
     await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
@@ -407,7 +436,7 @@ for (const control of [
   "allowRecentlyPlayedVisibility",
   "allowQueueVisibility",
 ] as const) {
-  test(`live owner/guest toggle ${control} restores the exact permission snapshot`, async ({ page, browser }) => {
+  liveTest(`live owner/guest toggle ${control} restores the exact permission snapshot`, async ({ page, browser }) => {
     test.skip(
       Boolean(liveSkipReason),
       liveSkipReason ?? "authorized disposable Music live-write fixture",
@@ -453,21 +482,44 @@ for (const control of [
   });
 }
 
-test("live guest reconnect refetches canonical state after transport interruption", async ({ page, context }) => {
+liveTest("live guest reconnect refetches canonical state after transport interruption", async ({ page, browser }) => {
   test.skip(
     Boolean(liveSkipReason),
     liveSkipReason ?? "authorized disposable Music fixture socket",
   );
-  await page.goto("/music/share/qualification-public");
-  await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
-  await context.setOffline(true);
-  await expect(page.getByText(/reconnecting/i)).toBeVisible();
-  await context.setOffline(false);
-  await expect(page.getByText(/reconnecting/i)).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+  const credential = await authenticateOwner(page);
+  const guest = await browser.newContext();
+  try {
+    await withRestoredMusicFixture({ snapshot: async () => ({}), cleanupNamespace: async () => undefined, restore: async () => undefined }, async () => {
+      const initialControlsResponse = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } });
+      const initialControls = await initialControlsResponse.json() as GuestControls;
+      const beforeResponse = await publicResource(page, "qualification-public");
+      const beforeRevision = (await beforeResponse.json() as { revision: number }).revision;
+      const guestPage = await guest.newPage();
+      await guestPage.goto(`${fixtureOrigin}/music/share/qualification-public`);
+      await expect(guestPage.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+      await guest.setOffline(true);
+      await expect(guestPage.getByRole("status").filter({ hasText: /reconnecting/i })).toHaveAttribute("aria-live", "polite");
+      const changed = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
+        headers: mutationHeaders(credential), data: { ...initialControls, allowSongRequests: !initialControls.allowSongRequests },
+      }));
+      expect(changed.status()).toBe(200);
+      await guest.setOffline(false);
+      await expect(guestPage.getByText(/reconnecting/i)).toBeHidden();
+      await expect.poll(async () => {
+        const canonical = await publicResource(page, "qualification-public");
+        return (await canonical.json() as { revision: number }).revision;
+      }).toBeGreaterThan(beforeRevision);
+      const requestRegion = guestPage.getByRole("region", { name: "Request a song" });
+      if (initialControls.allowSongRequests) await expect(requestRegion).toHaveCount(0);
+      else await expect(requestRegion).toBeVisible();
+    });
+  } finally {
+    await guest.close();
+  }
 });
 
-test("live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", async ({ page }) => {
+liveTest("live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", async ({ page }) => {
   test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized guest request fixture");
   const credential = await authenticateOwner(page);
   let originalSongIds = new Set<number>();
@@ -530,7 +582,7 @@ test("live guest request accepts once, replays, conflicts, rate-limits, and owne
   });
 });
 
-test("live guest playback remains isolated while queue and player revisions refetch", async ({ page, browser }) => {
+liveTest("live guest playback remains isolated while queue and player revisions refetch", async ({ page, browser }) => {
   test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized guest playback fixture");
   const ownerCredential = await authenticateOwner(page);
   const guestA = await browser.newContext();
@@ -557,14 +609,22 @@ test("live guest playback remains isolated while queue and player revisions refe
     const b = await guestB.newPage();
     await Promise.all([a.goto(`${fixtureOrigin}/music/share/qualification-public`), b.goto(`${fixtureOrigin}/music/share/qualification-public`)]);
     const before = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
-    const beforeRevision = (await before.json() as { queueRevision: number }).queueRevision;
+    const beforeBody = await before.json() as { queueRevision: number; currentlyPlaying?: { id: number } | null };
+    const beforeRevision = beforeBody.queueRevision;
     await runAuthorizedMusicMutation(musicLiveAuthorityFromEnvironment(), "guest-playback", async () => {
       await a.getByRole("button", { name: /play .*device/i }).first().click();
     });
     await expect.poll(async () => {
       const current = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
       return (await current.json() as { queueRevision: number }).queueRevision;
-    }).toBeGreaterThanOrEqual(beforeRevision);
+    }).toBeGreaterThan(beforeRevision);
+    const changedDashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
+    const changedBody = await changedDashboard.json() as { currentlyPlaying?: { id: number; title: string } | null; songs: Array<{ id: number }> };
+    expect(changedBody.currentlyPlaying?.id, "guest playback changes canonical player state").not.toBe(beforeBody.currentlyPlaying?.id);
+    expect(changedBody.songs.map(({ id }) => id), "queue remains canonical after playback transition").toContain(changedBody.currentlyPlaying!.id);
+    await b.reload();
+    await expect(b.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+    await expect(b.getByText(changedBody.currentlyPlaying!.title).first(), "second guest canonically refetches changed player state").toBeVisible();
     await expect(b.locator("body")).not.toContainText(/credential|authorization|bearer/i);
     });
   } finally {
@@ -573,7 +633,7 @@ test("live guest playback remains isolated while queue and player revisions refe
   }
 });
 
-test("owner publication, playlist visibility, and playlist-sharing settings persist and control fixture public access", async ({ page }) => {
+liveTest("owner publication, playlist visibility, and playlist-sharing settings persist and control fixture public access", async ({ page }) => {
   test.skip(
     Boolean(liveSkipReason),
     liveSkipReason ?? "authorized disposable integrated Music fixture",

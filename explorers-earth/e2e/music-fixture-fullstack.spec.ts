@@ -1,12 +1,15 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
 import {
   musicLiveAuthorityFromEnvironment,
   musicLiveWriteSkipReason,
+  musicLiveTest,
   runAuthorizedMusicMutation,
   withRestoredMusicFixture,
   type MusicMutationCallsite,
 } from "./setup/music";
+
+const test = musicLiveTest;
 
 const fixtureOrigin = "http://localhost:55173";
 const liveSkipReason = musicLiveWriteSkipReason();

@@ -1,4 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { createConnection } from "node:net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -36,11 +38,16 @@ const username = process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? "not-configured";
 const fixtureVersion = process.env.MUSIC_E2E_FIXTURE_VERSION ?? "not-configured";
 const configuredServiceOrigins = (process.env.MUSIC_E2E_SERVICE_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 const healthUrls = (process.env.MUSIC_E2E_HEALTH_URLS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+const namespaceResetConfirmation = process.env.MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION;
+const ownerCredential = process.env.MUSIC_E2E_OWNER_CREDENTIAL ?? "";
+const strapiUrl = process.env.MUSIC_E2E_STRAPI_URL ?? "";
+const strapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN ?? "";
+const stateServiceUrl = "http://127.0.0.1:55174";
 
 function loopbackHttp(raw) {
   try {
     const url = new URL(raw);
-    return url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname);
+    return ["http:", "tcp:"].includes(url.protocol) && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname);
   } catch {
     return false;
   }
@@ -50,11 +57,13 @@ if (mode.lane === "live") {
   const namespaceMatch = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/);
   const validIdentity = namespaceMatch && accountDocumentId === `${namespaceMatch[1]}-account`;
   const fiveServices = configuredServiceOrigins.length === 5 && healthUrls.length === 5;
+  const fullSnapshotAuthority = ownerCredential.startsWith("Bearer ") && strapiToken.length > 0 && loopbackHttp(strapiUrl)
+    && namespaceResetConfirmation === "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE";
   const everyLoopback = [externalUrl, ...configuredServiceOrigins, ...healthUrls].every(loopbackHttp);
   if (process.env.MUSIC_E2E_LIVE_WRITE !== "true"
       || process.env.MUSIC_E2E_LIVE_WRITE_CONFIRMATION !== CONFIRMATION
-      || fixtureVersion !== VERSION || !validIdentity || !fiveServices || !everyLoopback) {
-    process.stderr.write("Live public Music E2E refused: require MUSIC_E2E_LIVE_WRITE=true, exact confirmation, fixture version, namespaced account/document ID, and five service loopback origins plus health URLs.\n");
+      || fixtureVersion !== VERSION || !validIdentity || !fiveServices || !everyLoopback || !fullSnapshotAuthority) {
+    process.stderr.write("Live public Music E2E refused: require MUSIC_E2E_LIVE_WRITE=true, exact confirmation, fixture version, namespaced account/document ID, owner credential, loopback Strapi URL/token, five service loopback origins plus health URLs, and exact disposable namespace reset confirmation.\n");
     process.exit(3);
   }
 }
@@ -78,7 +87,10 @@ if (dryRun) {
 const monorepoRoot = path.resolve("..");
 const npmExecutable = process.platform === "win32" ? "npm.cmd" : "npm";
 let fixtureStarted = false;
+let stateService;
+let stateToken;
 function stopFixture() {
+  if (stateService) { stateService.kill(); stateService = undefined; }
   if (!fixtureStarted) return 0;
   fixtureStarted = false;
   return spawnSync(npmExecutable, ["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1;
@@ -87,9 +99,27 @@ if (mode.lane === "live") {
   const bootstrap = spawnSync(npmExecutable, ["run", "--silent", "music-cli", "--", "up"], { cwd: monorepoRoot, stdio: "inherit" });
   if (bootstrap.status !== 0) process.exit(4);
   fixtureStarted = true;
+  stateToken = randomBytes(32).toString("base64url");
+  stateService = spawn(process.execPath, ["tunes/scripts/music-e2e-state-service.mjs"], {
+    cwd: monorepoRoot,
+    stdio: ["ignore", "pipe", "inherit"],
+    env: { ...process.env, MUSIC_E2E_STATE_TOKEN: stateToken },
+  });
   for (const healthUrl of healthUrls) {
+    if (healthUrl.startsWith(stateServiceUrl)) continue; // polled below with bounded startup retries
     let response;
-    try { response = await fetch(healthUrl, { signal: AbortSignal.timeout(5_000) }); } catch (error) {
+    try {
+      const endpoint = new URL(healthUrl);
+      if (endpoint.protocol === "tcp:") {
+        await new Promise((resolve, reject) => {
+          const socket = createConnection({ host: endpoint.hostname, port: Number(endpoint.port) }, () => { socket.destroy(); resolve(); });
+          socket.setTimeout(5_000, () => { socket.destroy(); reject(new Error("TCP health timeout")); });
+          socket.once("error", reject);
+        });
+        continue;
+      }
+      response = await fetch(healthUrl, { headers: healthUrl.startsWith(stateServiceUrl) ? { Authorization: `Bearer ${stateToken}` } : {}, signal: AbortSignal.timeout(5_000) });
+    } catch (error) {
       process.stderr.write(`Live public Music E2E health check failed for ${new URL(healthUrl).origin}: ${error instanceof Error ? error.message : "unavailable"}\n`);
       stopFixture();
       process.exit(4);
@@ -100,6 +130,21 @@ if (mode.lane === "live") {
       process.exit(4);
     }
   }
+  let stateReady = false;
+  for (let attempt = 0; attempt < 30 && !stateReady; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    try {
+      const response = await fetch(`${stateServiceUrl}/health`, { headers: { Authorization: `Bearer ${stateToken}` }, signal: AbortSignal.timeout(1_000) });
+      stateReady = response.ok;
+    } catch { /* service is still starting */ }
+  }
+  if (!stateReady) {
+    process.stderr.write("Live public Music E2E state service failed its loopback health check.\n");
+    stopFixture();
+    process.exit(4);
+  }
+  process.env.MUSIC_E2E_STATE_SERVICE_URL = stateServiceUrl;
+  process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
 }
 
 const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
@@ -118,10 +163,15 @@ const result = spawnSync(process.execPath, args, {
 let cleanup = "not-required";
 let restoreHashes = [];
 if (mode.lane === "live") {
+  let globalRestoreOk = false;
+  try {
+    const globalRestore = await fetch(`${stateServiceUrl}/restore-all`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}` }, signal: AbortSignal.timeout(60_000) });
+    globalRestoreOk = globalRestore.ok;
+  } catch { globalRestoreOk = false; }
   if (existsSync(restoreEvidencePath)) {
     restoreHashes = readFileSync(restoreEvidencePath, "utf8").trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
   }
-  const hashesVerified = restoreHashes.length > 0 && restoreHashes.every((entry) => entry.cleanup === "restored" && entry.beforeHash === entry.afterHash);
+  const hashesVerified = globalRestoreOk && restoreHashes.length > 0 && restoreHashes.every((entry) => entry.cleanup === "restored" && entry.beforeHash === entry.afterHash);
   cleanup = hashesVerified ? "restored" : "failed";
   const teardownStatus = stopFixture();
   if (!hashesVerified || teardownStatus !== 0) process.exitCode = 5;

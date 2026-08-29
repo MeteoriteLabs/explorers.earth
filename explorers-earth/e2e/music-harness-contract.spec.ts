@@ -9,8 +9,10 @@ import {
   buildPermissionMatrix,
   buildPairwisePermissionMatrix,
   buildSanitizedFixtureEvidence,
+  createCanonicalMusicFixtureAdapter,
   fixtureNamespace,
   normalizedSnapshotHash,
+  musicLiveTest,
   resetMusicRestoreBlockForContractTest,
   runAuthorizedMusicMutation,
   resolveMusicTestLane,
@@ -72,6 +74,16 @@ test("live authority requires the flag, exact fixture version, account document,
   expect(() => assertLiveWriteAuthority({ ...valid, accountDocumentId: "account-1" })).toThrow(/document ID/);
   expect(() => assertLiveWriteAuthority({ ...valid, serviceOrigins: [...valid.serviceOrigins, "https://tunes.example"] }))
     .toThrow(/service origin/);
+});
+
+test("live authority accepts owned PostgreSQL TCP and rejects remote TCP", () => {
+  const valid = {
+    lane: "live" as const, liveWriteEnabled: true, baseUrl: "http://127.0.0.1:55173",
+    accountDocumentId: "e2e-public-music-contract-account", accountUsername: "e2e-public-music-contract-owner",
+    fixtureVersion: MUSIC_PUBLIC_FIXTURE_VERSION, confirmation: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+  };
+  expect(assertLiveWriteAuthority({ ...valid, serviceOrigins: ["tcp://127.0.0.1:55432", "http://127.0.0.1:55000"] })).toMatchObject({ authorized: true });
+  expect(() => assertLiveWriteAuthority({ ...valid, serviceOrigins: ["tcp://db.example:5432"] })).toThrow(/loopback/);
 });
 
 test("every declared mutation callsite passes through the centralized authority gate", async () => {
@@ -222,10 +234,95 @@ test("live runner refuses before Playwright when any authority or five-service h
       PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
       MUSIC_E2E_LIVE_WRITE: "true",
       MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+      MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
+      MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-contract-owner",
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-contract-account",
+      MUSIC_E2E_SERVICE_ORIGINS: "http://127.0.0.1:55173,http://127.0.0.1:55000,http://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55174",
+      MUSIC_E2E_HEALTH_URLS: "http://127.0.0.1:55173/health,http://127.0.0.1:55000/health,http://127.0.0.1:55432/health,http://127.0.0.1:51337/health,http://127.0.0.1:55174/health",
     },
   });
   expect(result.status).toBe(3);
-  expect(result.stderr).toMatch(/account|fixture version|five service/i);
+  expect(result.stderr).toMatch(/full snapshot|namespace reset/i);
+});
+
+test("the documented root public E2E command is the hard-gated live orchestration path", () => {
+  const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
+  const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
+  expect(rootPackage.scripts["music:test:public-e2e"]).toContain("music:test:public-e2e");
+  expect(clientPackage.scripts["music:test:public-e2e"]).toContain("music-public-e2e.mjs live");
+  expect(clientPackage.scripts["music:test:public-fast"]).toContain("music-public-e2e.mjs fast");
+  expect(clientPackage.scripts["music:test:public-pr"]).toContain("music-public-e2e.mjs pr");
+  expect(clientPackage.scripts["music:fixture:public:verify"]).toContain("music-public-e2e.mjs verify");
+  const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
+  const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
+  expect(runner).toContain("music-e2e-state-service.mjs");
+  expect(stateService).toContain('"pg_dump"');
+  expect(stateService).toContain('"psql"');
+  expect(stateService).toContain("MUSIC_E2E_STRAPI_TOKEN");
+  expect(stateService).toContain("Strapi public_music restore verification mismatch");
+  expect(stateService).not.toContain("MUSIC_E2E_FULL_SNAPSHOT_URL");
+});
+
+test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
+  const complete = {
+    version: "music-live-account-snapshot/v1",
+    snapshotId: "snapshot-fixture",
+    publication: { mode: "unlisted", lifecycle: "active", publicSlug: "fixture_slug" },
+    guestControls: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: true, allowQueueVisibility: true },
+    queue: { revision: 7, songs: [{ id: 1, position: 0 }], currentlyPlaying: { id: 1 }, history: [{ id: 2 }] },
+    playlists: [{ id: 10, name: "Fixture", privacy: "shared", songs: [{ id: 3, position: 0 }] }],
+    requests: { pending: [{ id: "request-1", status: "pending" }], idempotencyReceipts: [{ id: "receipt-1" }], rateState: [{ key: "fixture", count: 1 }] },
+    profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, preferenceRevision: 4 },
+    database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64), domainHashes: Object.fromEntries(["publication", "controls", "queue", "history", "playlists", "requests", "receipts", "rate", "revisions", "strapiPublicMusic"].map((domain) => [domain, "b".repeat(64)])) },
+  } as const;
+  let current: unknown = structuredClone(complete);
+  let resetValue: unknown;
+  const adapter = createCanonicalMusicFixtureAdapter({
+    readFullSnapshot: async () => structuredClone(current),
+    resetNamespace: async (snapshot) => { resetValue = structuredClone(snapshot); current = structuredClone(snapshot); },
+  });
+  const snapshot = await adapter.snapshot();
+  current = { ...complete, playlists: [] };
+  await adapter.restore(snapshot);
+  expect(resetValue).toEqual(complete);
+  await expect(adapter.snapshot()).resolves.toEqual(complete);
+
+  current = { ...complete, requests: undefined };
+  await expect(adapter.snapshot()).rejects.toThrow(/requests/i);
+});
+
+test("mutating browser journeys use the automatic live-authority fixture before their test bodies", () => {
+  expect(musicLiveTest).toBeDefined();
+  const publicSource = readFileSync("e2e/music-public-contract.spec.ts", "utf8");
+  const fullstackSource = readFileSync("e2e/music-fixture-fullstack.spec.ts", "utf8");
+  expect(publicSource).toContain("const liveTest = musicLiveTest");
+  expect(fullstackSource).toContain("const test = musicLiveTest");
+  for (const title of [
+    "live owner/guest toggle",
+    "live guest reconnect",
+    "live guest request",
+    "live guest playback",
+    "owner publication, playlist visibility",
+  ]) {
+    expect(publicSource).toMatch(new RegExp(`liveTest\\([^\\n]*${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+});
+
+test("static mutation guard rejects raw API writes and standard-test live bypasses", () => {
+  for (const file of ["e2e/music-public-contract.spec.ts", "e2e/music-fixture-fullstack.spec.ts"]) {
+    const source = readFileSync(file, "utf8");
+    const lines = source.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (/\.request\.(?:post|put|patch|delete)\(/.test(line)) {
+        const guardedContext = lines.slice(Math.max(0, index - 2), index + 1).join("\n");
+        expect(guardedContext, `${file}:${index + 1} raw mutation bypass`).toMatch(/guardedMutation\(|runAuthorizedMusicMutation\(/);
+      }
+    });
+    expect(source, `${file} must not suite-skip in place of per-body authority`).not.toMatch(/test\.skip\(Boolean\(liveSkipReason\)[\s\S]{0,120}describe/);
+  }
+  const publicSource = readFileSync("e2e/music-public-contract.spec.ts", "utf8");
+  expect(publicSource).not.toMatch(/\btest\(["'`]live /);
+  expect(publicSource).not.toMatch(/\btest\(["'`]owner publication,/);
 });
 
 test("live fixture always restores and rejects normalized state drift", async () => {

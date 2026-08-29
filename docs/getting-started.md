@@ -53,6 +53,8 @@ npm run music:test:public-e2e
 npm run music:fixture:public:verify
 ```
 
+The first command is the hard-gated authorized live-write lane, not a default local smoke test. See `docs/testing.md` for the complete disposable-account, loopback-service, scoped Strapi token, and exact-reset environment tuple. The verify command and the public fast/PR commands remain non-mutating.
+
 The first two use read-only or route-mocked coverage. The E2E command accepts
 only the disposable loopback fixture. Each run records a sanitized manifest
 below `.artifacts/music-public/<runId>/`.

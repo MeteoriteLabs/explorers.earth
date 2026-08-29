@@ -1537,21 +1537,20 @@ test.describe("public recommendation presentation visual matrix", () => {
         .locator(":scope > [data-category-id]");
       await expect(categories.nth(0)).toBeVisible();
       await expect(categories.nth(1)).toBeVisible();
-      const first = await categories.nth(0).boundingBox();
-      const second = await categories.nth(1).boundingBox();
-      expect(first).not.toBeNull();
-      expect(second).not.toBeNull();
-      const horizontalOverlap =
-        Math.min(first!.x + first!.width, second!.x + second!.width) -
-        Math.max(first!.x, second!.x);
-      const verticalOverlap =
-        Math.min(first!.y + first!.height, second!.y + second!.height) -
-        Math.max(first!.y, second!.y);
-      const isStacked = horizontalOverlap > 10 && verticalOverlap <= 10;
-      const isSameRow = verticalOverlap > 10 && horizontalOverlap <= 10;
-      expect(isStacked || isSameRow).toBe(true);
+      const settledLayout = await expect.poll(async () => {
+        const [first, second] = await Promise.all([categories.nth(0).boundingBox(), categories.nth(1).boundingBox()]);
+        if (!first || !second) return "unsettled";
+        const horizontalOverlap = Math.min(first.x + first.width, second.x + second.width) - Math.max(first.x, second.x);
+        const verticalOverlap = Math.min(first.y + first.height, second.y + second.height) - Math.max(first.y, second.y);
+        if (horizontalOverlap > 10 && verticalOverlap <= 10) return "stacked";
+        if (verticalOverlap > 10 && horizontalOverlap <= 10) return "row";
+        return "unsettled";
+      }, { message: `recommendation grid settles without overlap at ${width}px` }).not.toBe("unsettled");
+      void settledLayout;
+      const [first, second] = await Promise.all([categories.nth(0).boundingBox(), categories.nth(1).boundingBox()]);
+      const isStacked = Math.abs(first!.x - second!.x) <= 10;
       if (width < 640) expect(isStacked).toBe(true);
-      if (width >= 768) expect(isSameRow).toBe(true);
+      if (width >= 768) expect(isStacked).toBe(false);
       await expectNoHorizontalOverflow(page);
     }
 

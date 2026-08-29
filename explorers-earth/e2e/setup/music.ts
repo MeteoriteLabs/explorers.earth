@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -83,7 +83,7 @@ export function assertLiveWriteAuthority(input: {
   const allOrigins = [input.baseUrl, ...input.serviceOrigins];
   for (const rawOrigin of allOrigins) {
     const url = new URL(rawOrigin);
-    if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
+    if (!["http:", "tcp:"].includes(url.protocol) || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
       throw new Error(`Live writes require every service origin to be disposable loopback: ${url.origin}`);
     }
   }
@@ -142,6 +142,18 @@ export function musicLiveWriteSkipReason(environment: Record<string, string | un
   }
 }
 
+export const musicLiveTest = base.extend<{
+  musicLiveAuthority: ReturnType<typeof assertLiveWriteAuthority>;
+}>({
+  musicLiveAuthority: [async ({ browserName }, use, testInfo) => {
+    void browserName;
+    const reason = musicLiveWriteSkipReason();
+    testInfo.skip(Boolean(reason), reason ?? "Complete disposable live-write authority is required.");
+    const authority = assertLiveWriteAuthority(musicLiveAuthorityFromEnvironment());
+    await use(authority);
+  }, { auto: true }],
+});
+
 export function buildPermissionMatrix(): MusicPermissionRow[] {
   return Array.from({ length: 32 }, (_, mask) => {
     const bits = mask.toString(2).padStart(5, "0");
@@ -178,7 +190,7 @@ export function buildPairwisePermissionMatrix(): MusicPermissionRow[] {
   return selected;
 }
 
-const VOLATILE_SNAPSHOT_KEYS = new Set(["capturedAt", "requestId", "updatedAt", "createdAt", "revision", "queueRevision", "playbackRevision"]);
+const VOLATILE_SNAPSHOT_KEYS = new Set(["capturedAt", "requestId", "snapshotId", "updatedAt", "createdAt", "revision", "queueRevision", "playbackRevision", "preferenceRevision"]);
 
 function canonicalSnapshotValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalSnapshotValue);
@@ -193,6 +205,100 @@ function canonicalSnapshotValue(value: unknown): unknown {
 
 export function normalizedSnapshotHash(snapshot: unknown): string {
   return createHash("sha256").update(JSON.stringify(canonicalSnapshotValue(snapshot))).digest("hex");
+}
+
+export const MUSIC_LIVE_ACCOUNT_SNAPSHOT_VERSION = "music-live-account-snapshot/v1" as const;
+
+export interface CanonicalMusicAccountSnapshot {
+  version: typeof MUSIC_LIVE_ACCOUNT_SNAPSHOT_VERSION;
+  snapshotId: string;
+  publication: { mode: "private" | "unlisted" | "public"; lifecycle: string; publicSlug: string };
+  guestControls: Record<string, boolean>;
+  queue: { revision: number; songs: unknown[]; currentlyPlaying: unknown | null; history: unknown[] };
+  playlists: unknown[];
+  requests: { pending: unknown[]; idempotencyReceipts: unknown[]; rateState: unknown[] };
+  profile: { accountDocumentId: string; publicMusic: boolean; preferenceRevision: number };
+  database: { namespace: string; dumpHash: string; domainHashes: Record<string, string> };
+}
+
+function requiredRecord(source: Record<string, unknown>, key: string): Record<string, unknown> {
+  const value = source[key];
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`canonical Music snapshot requires ${key}`);
+  return value as Record<string, unknown>;
+}
+
+export function assertCanonicalMusicAccountSnapshot(value: unknown): asserts value is CanonicalMusicAccountSnapshot {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("canonical Music snapshot is missing");
+  const source = value as Record<string, unknown>;
+  if (source.version !== MUSIC_LIVE_ACCOUNT_SNAPSHOT_VERSION) throw new Error("canonical Music snapshot version is invalid");
+  if (typeof source.snapshotId !== "string" || !source.snapshotId) throw new Error("canonical Music snapshot requires a restore identifier");
+  const publication = requiredRecord(source, "publication");
+  if (!["private", "unlisted", "public"].includes(String(publication.mode))
+      || typeof publication.lifecycle !== "string" || typeof publication.publicSlug !== "string") {
+    throw new Error("canonical Music snapshot requires complete publication lifecycle state");
+  }
+  requiredRecord(source, "guestControls");
+  const queue = requiredRecord(source, "queue");
+  if (!Number.isSafeInteger(queue.revision) || !Array.isArray(queue.songs)
+      || !("currentlyPlaying" in queue) || !Array.isArray(queue.history)) {
+    throw new Error("canonical Music snapshot requires queue, player, and history state");
+  }
+  if (!Array.isArray(source.playlists)) throw new Error("canonical Music snapshot requires playlists");
+  const requests = requiredRecord(source, "requests");
+  if (!Array.isArray(requests.pending) || !Array.isArray(requests.idempotencyReceipts) || !Array.isArray(requests.rateState)) {
+    throw new Error("canonical Music snapshot requires requests, idempotency receipts, and rate state");
+  }
+  const profile = requiredRecord(source, "profile");
+  if (typeof profile.accountDocumentId !== "string" || typeof profile.publicMusic !== "boolean"
+      || !Number.isSafeInteger(profile.preferenceRevision)) {
+    throw new Error("canonical Music snapshot requires Strapi public_music profile preference state");
+  }
+  const database = requiredRecord(source, "database");
+  const domainHashes = database.domainHashes as Record<string, unknown> | undefined;
+  if (typeof database.namespace !== "string" || !/^e2e-public-music-[a-z0-9-]+$/.test(database.namespace)
+      || !/^[a-f0-9]{64}$/.test(String(database.dumpHash)) || !domainHashes
+      || ["publication", "controls", "queue", "history", "playlists", "requests", "receipts", "rate", "revisions", "strapiPublicMusic"].some((domain) => !/^[a-f0-9]{64}$/.test(String(domainHashes[domain])))) {
+    throw new Error("canonical Music snapshot requires the complete disposable database namespace");
+  }
+}
+
+export function createCanonicalMusicFixtureAdapter(dependencies: {
+  readFullSnapshot: () => Promise<unknown>;
+  resetNamespace: (snapshot: CanonicalMusicAccountSnapshot) => Promise<void>;
+}) {
+  return {
+    snapshot: async (): Promise<CanonicalMusicAccountSnapshot> => {
+      const snapshot = await dependencies.readFullSnapshot();
+      assertCanonicalMusicAccountSnapshot(snapshot);
+      return snapshot;
+    },
+    cleanupNamespace: async (): Promise<void> => undefined,
+    restore: async (snapshot: unknown): Promise<void> => {
+      assertCanonicalMusicAccountSnapshot(snapshot);
+      await dependencies.resetNamespace(snapshot);
+    },
+  };
+}
+
+export function canonicalMusicFixtureAdapterFromEnvironment() {
+  const serviceUrl = process.env.MUSIC_E2E_STATE_SERVICE_URL;
+  const token = process.env.MUSIC_E2E_STATE_TOKEN;
+  if (!serviceUrl || !token || !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/.test(serviceUrl)) {
+    throw new Error("canonical Music state service authority is unavailable");
+  }
+  const call = async (path: "/snapshot" | "/restore", body?: unknown) => {
+    const response = await fetch(`${serviceUrl}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) throw new Error(`canonical Music state service failed ${path}: ${response.status}`);
+    return response.json();
+  };
+  return createCanonicalMusicFixtureAdapter({
+    readFullSnapshot: () => call("/snapshot"),
+    resetNamespace: async (snapshot) => { await call("/restore", snapshot); },
+  });
 }
 
 function sanitizedUrl(raw: string): string {
@@ -240,6 +346,7 @@ export async function withRestoredMusicFixture<T>(adapters: {
   beforeHash: string;
   afterHash: string;
 }> {
+  if (process.env.MUSIC_E2E_LIVE_WRITE === "true") adapters = canonicalMusicFixtureAdapterFromEnvironment();
   const before = await adapters.snapshot();
   const beforeHash = normalizedSnapshotHash(before);
   const writeRecoveryArtifact = async (artifact: { reason: string; beforeHash: string; afterHash?: string }) => {

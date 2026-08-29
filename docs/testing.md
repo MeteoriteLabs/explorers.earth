@@ -94,9 +94,28 @@ The public browser harness is intentionally split by authority. These commands a
 ```bash
 npm run music:test:public-fast       # deterministic mocked Chromium feedback
 npm run music:test:public-pr         # PR-safe read-only analytics/Music coverage
-npm run music:test:public-e2e        # disposable five-service fixture coverage
+npm run music:test:public-e2e        # authorized live-write lane; hard-gated and exactly restored
 npm run music:fixture:public:verify  # fixture/harness contract verification
 ```
+
+`music:test:public-fast`, `music:test:public-pr`, and `music:fixture:public:verify` never write. The live command starts the owned five-service `explorers-music-fixture`, plus its loopback PostgreSQL/Strapi snapshot helper, and refuses before Playwright unless every value below is supplied. Origins and health URLs must all be loopback; the username/document ID must share the same `e2e-public-music-<run>` namespace. Use a dedicated local Strapi test token that can GET and PUT only that Account's `public_music` field.
+
+```powershell
+$env:MUSIC_E2E_LIVE_WRITE='true'
+$env:MUSIC_E2E_LIVE_WRITE_CONFIRMATION='I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE'
+$env:MUSIC_E2E_FIXTURE_VERSION='music-public-e2e-fixture/v1'
+$env:MUSIC_E2E_ACCOUNT_USERNAME='e2e-public-music-local-owner'
+$env:MUSIC_E2E_ACCOUNT_DOCUMENT_ID='e2e-public-music-local-account'
+$env:MUSIC_E2E_OWNER_CREDENTIAL='Bearer <disposable-owner-token>'
+$env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:1337'
+$env:MUSIC_E2E_STRAPI_TOKEN='<account-scoped-local-test-token>'
+$env:MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION='RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE'
+$env:MUSIC_E2E_SERVICE_ORIGINS='tcp://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55000,http://localhost:55173,http://127.0.0.1:55174'
+$env:MUSIC_E2E_HEALTH_URLS='tcp://127.0.0.1:55432,http://127.0.0.1:51337/health,http://127.0.0.1:55000/api/music-fixture/readiness,http://localhost:55173/health,http://127.0.0.1:55174/health'
+npm run music:test:public-e2e
+```
+
+The runner captures the complete disposable PostgreSQL database plus the original Strapi `public_music` value before each mutation journey, restores both in `finally`, re-reads them, and stops all later live tests on any hash mismatch. It never accepts a production or non-loopback origin.
 
 Every command prints `music-public-e2e-fixture/v1`, service URLs, lane, result,
 cleanup result, and a sanitized evidence path. PR-safe tests cannot acquire
