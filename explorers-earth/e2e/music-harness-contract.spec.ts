@@ -5575,7 +5575,7 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   const ownerJwt = "qualifier.header.ephemeral-owner";
   const calls: Array<{
     origin: string; path: string; method: string; operation?: string;
-    expectedRevision?: string; idempotencyKey?: string;
+    expectedRevision?: string; idempotencyKey?: string; publicationMode?: string; ownerAuthorized?: boolean;
   }> = [];
   let snapshotCount = 0;
   let playlistId = 40;
@@ -5589,6 +5589,9 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   let publicFlowStarted = false;
   let savedPublicCalls = 0;
   let playbackPublicCalls = 0;
+  let publicationMode: "private" | "unlisted" | "public" = "unlisted";
+  let ownerTransitionMutation: "version" | "mode" | "slug" | "extra" | undefined;
+  let ownerDashboardMutation: "mode" | "queue-revision" | "playback-revision" | "slug" | undefined;
   const graphqlStageSuffix: Record<string, string> = {
     PublicProfileData: "public-profile-data",
     PublicCategoryListCounts: "public-category-list-counts",
@@ -5617,6 +5620,10 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       origin: url.origin, path: url.pathname, method, operation,
       expectedRevision: headers.get("x-music-fixture-expected-revision") ?? undefined,
       idempotencyKey: headers.get("idempotency-key") ?? undefined,
+      publicationMode: typeof decoded.mode === "string" ? decoded.mode : undefined,
+      ownerAuthorized: url.origin === "http://127.0.0.1:55000"
+        ? headers.get("authorization") === `Bearer ${ownerJwt}`
+        : undefined,
     });
 
     let publicStage: string | undefined;
@@ -5624,7 +5631,8 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       publicFlowStarted = true;
       publicStage = "visibility";
     } else if (publicFlowStarted) {
-      if (url.pathname === "/api/music/dashboard") publicStage = "owner";
+      if (url.pathname === "/api/music/publication" && decoded.mode === "private") publicStage = "owner";
+      else if (url.pathname === "/api/music/dashboard") publicStage = "owner";
       else if (url.pathname === "/api/playlists" && method === "POST") publicStage = "playlist";
       else if (/^\/api\/playlists\/\d+\/songs$/.test(url.pathname)) publicStage = `saved-song-${++savedPublicCalls}`;
       else if (/^\/api\/playlists\/\d+\/visibility$/.test(url.pathname)) publicStage = "playlist-visible";
@@ -5740,7 +5748,24 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     }
     if (/^\/api\/playlists\/\d+\/songs$/.test(url.pathname)) return json({ id: ++songId }, 201);
     if (/^\/api\/playlists\/\d+\/visibility$/.test(url.pathname)) return new Response(null, { status: 204 });
-    if (url.pathname === "/api/music/dashboard") return json({ queueRevision: 0, playbackRevision: 0, publication: { mode: "private" } });
+    if (url.pathname === "/api/music/dashboard") {
+      const dashboard = {
+        queueRevision: ownerDashboardMutation === "queue-revision" ? 1 : 0,
+        playbackRevision: ownerDashboardMutation === "playback-revision" ? 1 : 0,
+        songs: [],
+        currentlyPlaying: null,
+        playedSongs: [],
+        publication: {
+          mode: ownerDashboardMutation === "mode" ? "unlisted" : publicationMode,
+          publicSlug: ownerDashboardMutation === "slug" ? "different-qualified-public-slug" : "actual-qualified-public-slug",
+        },
+        guestControls: {
+          allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false,
+          allowRecentlyPlayedVisibility: false, allowQueueVisibility: false,
+        },
+      };
+      return json(dashboard);
+    }
     if (url.pathname === "/api/music/queue/replace") return json({
       version: "music-queue/v1",
       revision: 1,
@@ -5764,8 +5789,22 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       allowSongRequests: true, allowGuestPlayOnDevice: true, allowPlaylistSharing: true,
       allowRecentlyPlayedVisibility: true, allowQueueVisibility: true,
     });
-    if (url.pathname === "/api/music/publication") return json({ version: "music-publication/v1",
-      publication: { mode: "public", publicSlug: "actual-qualified-public-slug" } });
+    if (url.pathname === "/api/music/publication" && ["private", "public"].includes(decoded.mode)) {
+      publicationMode = decoded.mode;
+      const response: Record<string, unknown> = {
+        version: ownerTransitionMutation === "version" && decoded.mode === "private"
+          ? "music-publication/v0"
+          : "music-publication/v1",
+        publication: {
+          mode: ownerTransitionMutation === "mode" && decoded.mode === "private" ? "unlisted" : decoded.mode,
+          publicSlug: ownerTransitionMutation === "slug" && decoded.mode === "private"
+            ? "short"
+            : "actual-qualified-public-slug",
+        },
+      };
+      if (ownerTransitionMutation === "extra" && decoded.mode === "private") response.debug = "must-not-be-accepted";
+      return json(response);
+    }
     if (url.pathname === "/api/music/public-resource/v1/actual-qualified-public-slug") return json({
       version: "music-public-resource/v1",
       currentlyPlaying: { title: "Fixture playing song" },
@@ -5804,9 +5843,21 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     expect.objectContaining({ origin: "http://127.0.0.1:51337", operation: "UpdateAccount", expectedRevision: "3" }),
     expect.objectContaining({ origin: "http://localhost:55173", operation: "UpdateAccount", expectedRevision: "3" }),
   ]));
-  expect(calls.find(({ path }) => path === "/api/music/publication")).toMatchObject({
-    idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
-  });
+  const publicationCalls = calls.filter(({ path, method }) => path === "/api/music/publication" && method === "POST");
+  expect(publicationCalls).toHaveLength(2);
+  expect(publicationCalls).toEqual([
+    expect.objectContaining({
+      publicationMode: "private", ownerAuthorized: true,
+      idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+    }),
+    expect.objectContaining({
+      publicationMode: "public", ownerAuthorized: true,
+      idempotencyKey: expect.stringMatching(/^tunes-share-v1-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+    }),
+  ]);
+  expect(publicationCalls[0].idempotencyKey).not.toBe(publicationCalls[1].idempotencyKey);
+  expect(calls.findIndex(({ path, publicationMode: mode }) => path === "/api/music/publication" && mode === "private"))
+    .toBeLessThan(calls.findIndex(({ path }) => path === "/api/music/dashboard"));
   expect(calls.filter(({ path }) => path === "/api/music/public-resource/v1/actual-qualified-public-slug"))
     .toEqual(expect.arrayContaining([
       expect.objectContaining({ origin: "http://127.0.0.1:55000" }),
@@ -5815,6 +5866,100 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   expect(playbackSongIds).toEqual([901, 902]);
   expect(playbackSongIds).not.toEqual([101, 102]);
   expect(JSON.stringify(result.record)).not.toContain(ownerJwt);
+
+  for (const code of ["http-failed", "contract-invalid"] as const) {
+    snapshotCount = 0;
+    playlistId = 40;
+    songId = 100;
+    playbackCalls = 0;
+    playbackSongIds.length = 0;
+    baselineRestored = false;
+    directRevisionWrites = 0;
+    publicFlowStarted = false;
+    savedPublicCalls = 0;
+    playbackPublicCalls = 0;
+    publicationMode = "unlisted";
+    ownerTransitionMutation = undefined;
+    ownerDashboardMutation = undefined;
+    injectedPublicFailureStage = "owner";
+    injectedPublicFailureCode = code;
+    const callStart = calls.length;
+    const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
+    const runCalls = calls.slice(callStart);
+    expect(failed).toMatchObject({
+      ok: false,
+      record: {
+        code: "public-flow-failed",
+        publicFlowFailure: { stage: "owner", code },
+        checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
+      },
+    });
+    expect(runCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "/api/music/publication", method: "POST", publicationMode: "private", ownerAuthorized: true }),
+    ]));
+    const ownerCallIndex = runCalls.findIndex(({ path, publicationMode: mode }) => path === "/api/music/publication" && mode === "private");
+    expect(ownerCallIndex).toBeGreaterThanOrEqual(0);
+    expect(runCalls.slice(ownerCallIndex + 1).some(({ path, method }) => path === "/api/playlists" && method === "POST")).toBe(false);
+    expect(JSON.stringify(failed.record)).not.toMatch(/hostile|Bearer|C:\\Users|response\.json|https?:\/\//i);
+  }
+  injectedPublicFailureStage = undefined;
+
+  for (const mutation of ["version", "mode", "slug", "extra"] as const) {
+    snapshotCount = 0;
+    baselineRestored = false;
+    directRevisionWrites = 0;
+    publicFlowStarted = false;
+    savedPublicCalls = 0;
+    playbackPublicCalls = 0;
+    publicationMode = "unlisted";
+    ownerTransitionMutation = mutation;
+    ownerDashboardMutation = undefined;
+    const callStart = calls.length;
+    const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
+    const runCalls = calls.slice(callStart);
+    expect(failed).toMatchObject({
+      ok: false,
+      record: {
+        code: "public-flow-failed",
+        publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+        checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
+      },
+    });
+    const ownerCallIndex = runCalls.findIndex(({ path, publicationMode: mode }) => path === "/api/music/publication" && mode === "private");
+    expect(ownerCallIndex).toBeGreaterThanOrEqual(0);
+    expect(runCalls.slice(ownerCallIndex + 1).some(({ path, method }) => path === "/api/playlists" && method === "POST")).toBe(false);
+  }
+  ownerTransitionMutation = undefined;
+
+  for (const mutation of ["mode", "queue-revision", "playback-revision", "slug"] as const) {
+    snapshotCount = 0;
+    baselineRestored = false;
+    directRevisionWrites = 0;
+    publicFlowStarted = false;
+    savedPublicCalls = 0;
+    playbackPublicCalls = 0;
+    publicationMode = "unlisted";
+    ownerDashboardMutation = mutation;
+    const callStart = calls.length;
+    const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
+    const runCalls = calls.slice(callStart);
+    expect(failed).toMatchObject({
+      ok: false,
+      record: {
+        code: "public-flow-failed",
+        publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+        checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
+      },
+    });
+    expect(runCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "/api/music/publication", publicationMode: "private", ownerAuthorized: true }),
+      expect.objectContaining({ path: "/api/music/dashboard", ownerAuthorized: true }),
+    ]));
+    const dashboardCallIndex = runCalls.findIndex(({ path }) => path === "/api/music/dashboard");
+    expect(dashboardCallIndex).toBeGreaterThanOrEqual(0);
+    expect(runCalls.slice(dashboardCallIndex + 1).some(({ path, method }) => path === "/api/playlists" && method === "POST")).toBe(false);
+  }
+  ownerDashboardMutation = undefined;
 
   for (const stage of EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES) {
     snapshotCount = 0;
@@ -5827,6 +5972,9 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     publicFlowStarted = false;
     savedPublicCalls = 0;
     playbackPublicCalls = 0;
+    publicationMode = "unlisted";
+    ownerTransitionMutation = undefined;
+    ownerDashboardMutation = undefined;
     injectedPublicFailureStage = stage;
     injectedPublicFailureCode = "http-failed";
     const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
@@ -5853,6 +6001,9 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     publicFlowStarted = false;
     savedPublicCalls = 0;
     playbackPublicCalls = 0;
+    publicationMode = "unlisted";
+    ownerTransitionMutation = undefined;
+    ownerDashboardMutation = undefined;
     injectedPublicFailureStage = "queue";
     injectedPublicFailureCode = code;
     const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
@@ -5874,6 +6025,9 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   publicFlowStarted = false;
   savedPublicCalls = 0;
   playbackPublicCalls = 0;
+  publicationMode = "unlisted";
+  ownerTransitionMutation = undefined;
+  ownerDashboardMutation = undefined;
   injectedPublicFailureCode = "http-failed";
   const c14 = await import("../scripts/music-public-prebrowser-c14.mjs");
   const c14Outcome = await c14.runMusicPrebrowserC14Integration({
@@ -6591,6 +6745,7 @@ test("C14 authority rejects malformed argv and hostile ambient input before rand
   }
   for (const environment of [
     { MUSIC_E2E_STRAPI_TOKEN: "hostile" },
+    { mUsIc_E2E_Strapi_Token: "hostile" },
     { DATABASE_URL: "postgresql://hostile" },
     { NODE_OPTIONS: "--require=hostile.cjs" },
     { C14_TOKEN: "hostile" },
@@ -6904,13 +7059,15 @@ test("fresh-process C14 refusals emit one valid null-run record and invoke zero 
       },
     );
     const malformed = invoke([]);
-    const hostile = invoke(EXACT_PUBLIC_C14_AUTHORITY_ARGS, { MUSIC_E2E_STRAPI_TOKEN: "hostile-ambient" });
+    const hostileExact = invoke(EXACT_PUBLIC_C14_AUTHORITY_ARGS, { DATABASE_URL: "hostile-ambient" });
+    const hostilePrefix = invoke(EXACT_PUBLIC_C14_AUTHORITY_ARGS, { MUSIC_E2E_STRAPI_TOKEN: "hostile-ambient" });
+    const hostileMixedCasePrefix = invoke(EXACT_PUBLIC_C14_AUTHORITY_ARGS, { mUsIc_E2E_Strapi_Token: "hostile-ambient" });
     const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
       validateMusicPrebrowserC14CliRecord(value: unknown): boolean;
     };
     expect(cli).not.toBeNull();
     if (!cli) return;
-    for (const result of [malformed, hostile]) {
+    for (const result of [malformed, hostileExact, hostilePrefix, hostileMixedCasePrefix]) {
       expect(result.status).toBe(3);
       expect(result.stderr).toBe("");
       const lines = result.stdout.trim().split(/\r?\n/);

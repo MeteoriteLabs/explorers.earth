@@ -402,6 +402,46 @@ function exactObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : undefined;
 }
 
+const PUBLIC_SLUG_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
+const OWNER_DASHBOARD_KEYS = Object.freeze([
+  "queueRevision", "playbackRevision", "songs", "currentlyPlaying", "playedSongs", "publication", "guestControls",
+]);
+const GUEST_CONTROL_KEYS = Object.freeze([
+  "allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing",
+  "allowRecentlyPlayedVisibility", "allowQueueVisibility",
+]);
+
+function exactPublicationResponse(value, expectedMode, expectedSlug) {
+  const body = exactObject(value);
+  const publication = exactObject(body?.publication);
+  return exactKeys(body, ["version", "publication"])
+    && body.version === "music-publication/v1"
+    && exactKeys(publication, ["mode", "publicSlug"])
+    && publication.mode === expectedMode
+    && typeof publication.publicSlug === "string"
+    && PUBLIC_SLUG_PATTERN.test(publication.publicSlug)
+    && (expectedSlug === undefined || publication.publicSlug === expectedSlug);
+}
+
+function exactPrivateOwnerDashboard(value, expectedSlug) {
+  const body = exactObject(value);
+  const publication = exactObject(body?.publication);
+  const guestControls = exactObject(body?.guestControls);
+  return exactKeys(body, OWNER_DASHBOARD_KEYS)
+    && body.queueRevision === 0 && body.playbackRevision === 0
+    && Array.isArray(body.songs) && body.songs.length === 0
+    && body.currentlyPlaying === null
+    && Array.isArray(body.playedSongs) && body.playedSongs.length === 0
+    && exactKeys(publication, ["mode", "publicSlug"])
+    && publication.mode === "private" && publication.publicSlug === expectedSlug
+    && exactKeys(guestControls, GUEST_CONTROL_KEYS)
+    && GUEST_CONTROL_KEYS.every((key) => guestControls[key] === false);
+}
+
+function publicationUuidFromHash(hash) {
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+}
+
 export function validateMusicQualificationUpdateResponse({ status, body, accountDocumentId, expected } = {}) {
   const expectedFields = exactObject(expected);
   const keys = expectedFields ? Object.keys(expectedFields) : [];
@@ -494,7 +534,11 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
     userDocumentId: authority.userDocumentId,
   };
   const namespaceHash = sha256(authority.namespace);
-  const publicationUuid = `${namespaceHash.slice(0, 8)}-${namespaceHash.slice(8, 12)}-4${namespaceHash.slice(13, 16)}-8${namespaceHash.slice(17, 20)}-${namespaceHash.slice(20, 32)}`;
+  const privatePublicationUuid = publicationUuidFromHash(sha256(`${authority.namespace}\0private`));
+  const publicPublicationUuid = publicationUuidFromHash(namespaceHash);
+  if (privatePublicationUuid === publicPublicationUuid) {
+    throw new Error("loopback pre-browser publication authority is invalid");
+  }
   const stateRequest = (path, token, body) => boundedResponse(fetchImpl, `${authority.stateOrigin}${path}`, {
     method: path === "/health" ? "GET" : "POST",
     headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
@@ -622,16 +666,23 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
         expected: visibilityVariables.data,
       }));
 
+      const privatePublication = await atPublicFlowBoundary("owner", () => boundedResponse(
+        fetchImpl, `${authority.tunesOrigin}/api/music/publication`, {
+          method: "POST",
+          headers: ownerHeaders(qualifierJwt, `tunes-share-v1-${Date.now()}-${privatePublicationUuid}`),
+          body: JSON.stringify({ mode: "private" }),
+        },
+      ));
+      requirePublicHttp("owner", privatePublication, 200);
+      requirePublicContract("owner", exactPublicationResponse(privatePublication.body, "private"));
+      const privatePublicSlug = exactObject(privatePublication.body)?.publication?.publicSlug;
+
       const dashboard = await atPublicFlowBoundary("owner", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/dashboard`, {
         headers: ownerHeaders(qualifierJwt),
       }));
       requirePublicHttp("owner", dashboard, 200);
       const dashboardBody = exactObject(dashboard.body);
-      requirePublicContract("owner", Number.isSafeInteger(dashboardBody?.queueRevision)
-          && dashboardBody.queueRevision >= 0
-          && Number.isSafeInteger(dashboardBody?.playbackRevision)
-          && dashboardBody.playbackRevision >= 0
-          && exactObject(dashboardBody?.publication)?.mode === "private");
+      requirePublicContract("owner", exactPrivateOwnerDashboard(dashboardBody, privatePublicSlug));
       const playlist = await atPublicFlowBoundary("playlist", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists`, {
         method: "POST", headers: ownerHeaders(qualifierJwt, "prebrowser-public-playlist"),
         body: JSON.stringify({ name: "Pre-browser public fixture", description: "Disposable public capability" }),
@@ -700,16 +751,15 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
       requirePublicContract("controls", exactKeys(controlBody, Object.keys(controls))
         && Object.entries(controls).every(([key, enabled]) => controlBody[key] === enabled));
       const publication = await atPublicFlowBoundary("publication", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/publication`, {
-        method: "POST", headers: ownerHeaders(qualifierJwt, `tunes-share-v1-${Date.now()}-${publicationUuid}`),
+        method: "POST", headers: ownerHeaders(qualifierJwt, `tunes-share-v1-${Date.now()}-${publicPublicationUuid}`),
         body: JSON.stringify({ mode: "public" }),
       }));
       requirePublicHttp("publication", publication, 200);
       const publicationBody = exactObject(publication.body);
       const publicationState = exactObject(publicationBody?.publication);
       const publicSlug = publicationState?.publicSlug;
-      requirePublicContract("publication", publicationBody?.version === "music-publication/v1"
-          && publicationState?.mode === "public" && typeof publicSlug === "string"
-          && /^[A-Za-z0-9_-]{8,128}$/.test(publicSlug) && publicSlug !== "qualification-public");
+      requirePublicContract("publication", exactPublicationResponse(publicationBody, "public", privatePublicSlug)
+          && publicSlug !== "qualification-public");
 
       const publicDocuments = [
         { operation: "PublicProfileData", document: documents.publicProfile,

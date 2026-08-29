@@ -82,6 +82,12 @@ function hasForbiddenAmbientAuthority(environment) {
   });
 }
 
+export function validateMusicPublicLiveInvocation({ args, environment } = {}) {
+  return exactArgs(args)
+    && environment && typeof environment === "object" && !Array.isArray(environment)
+    && !hasForbiddenAmbientAuthority(environment);
+}
+
 function generatedBytes(randomBytes, size) {
   const value = randomBytes(size);
   if (!(value instanceof Uint8Array) || value.byteLength !== size) {
@@ -96,8 +102,7 @@ function generatedBytes(randomBytes, size) {
  * callers decide when to install the derived environment.
  */
 export function buildMusicPublicLiveAuthority({ args, environment, randomBytes }) {
-  if (!exactArgs(args) || !environment || typeof environment !== "object"
-      || hasForbiddenAmbientAuthority(environment) || typeof randomBytes !== "function") {
+  if (!validateMusicPublicLiveInvocation({ args, environment }) || typeof randomBytes !== "function") {
     throw new Error("Live public Music E2E invocation refused.");
   }
 

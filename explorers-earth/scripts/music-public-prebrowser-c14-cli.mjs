@@ -19,6 +19,7 @@ import {
   MUSIC_PUBLIC_LIVE_NAMESPACE_RESET,
   MUSIC_PUBLIC_LIVE_PROJECT,
   buildMusicPublicLiveAuthority,
+  validateMusicPublicLiveInvocation,
 } from "./music-public-live-authority.mjs";
 import {
   MUSIC_PREBROWSER_C14_ACK,
@@ -96,7 +97,10 @@ function hasForbiddenC14Ambient(environment) {
 
 function invocationFailure(args, environment) {
   if (!exactArgs(args)) return "argv-refused";
-  if (hasForbiddenC14Ambient(environment)) return "ambient-refused";
+  if (hasForbiddenC14Ambient(environment)
+      || !validateMusicPublicLiveInvocation({ args: MUSIC_PUBLIC_LIVE_AUTHORITY_ARGS, environment })) {
+    return "ambient-refused";
+  }
   return null;
 }
 
