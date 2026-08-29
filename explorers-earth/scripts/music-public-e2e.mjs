@@ -6,6 +6,14 @@ import path from "node:path";
 import { stopMusicFixture } from "./music-fixture-cleanup.mjs";
 import { runLivePreflight, runPlaywrightJourneyExecution } from "./music-public-live-preflight.mjs";
 import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs";
+import {
+  assessQualificationCleanup,
+  buildQualificationOutcomeRecords,
+  createExclusiveQualificationRunDirectory,
+  finalizeQualificationRunArtifacts,
+  inspectQualificationDockerCleanup,
+  LIVE_QUALIFICATION_REQUIRED_ARTIFACTS,
+} from "./music-public-qualification-artifacts.mjs";
 
 const VERSION = "music-public-e2e-fixture/v1";
 const CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE";
@@ -86,19 +94,123 @@ const baseReport = {
   evidencePath,
 };
 
+const artifactParent = path.resolve(".artifacts/music-public");
+let runArtifactDirectory;
+try {
+  runArtifactDirectory = createExclusiveQualificationRunDirectory({ artifactParent, runId });
+} catch {
+  process.stderr.write("Live public Music E2E artifact initialization failed; details redacted.\n");
+  process.exit(5);
+}
+
 if (dryRun) {
-  process.stdout.write(`${JSON.stringify({ ...baseReport, result: "dry-run", cleanup: "not-required" })}\n`);
+  const report = {
+    ...baseReport,
+    result: "dry-run",
+    cleanup: "not-required",
+    git: { sha: "unavailable", reason: "dry-run" },
+    command: ["node", "scripts/music-public-e2e.mjs", modeName, "--dry-run"],
+    cwd: "<workspace>",
+    exitCode: 0,
+    totals: { total: 0, passed: 0, failed: 0, skipped: 0 },
+    artifactPaths: [
+      ...LIVE_QUALIFICATION_REQUIRED_ARTIFACTS.map((artifact) => artifact.path),
+      "manifest.json",
+      "manifest.sha256",
+    ],
+    visuals: [],
+    traces: [],
+    gaps: ["qualification-not-run", "analytics-not-observed", "docker-inspection-not-run"],
+  };
+  const stdoutLine = `${JSON.stringify(report)}\n`;
+  const dockerCommands = {
+    containers: [
+      "docker", "ps", "-aq",
+      "--filter", "label=com.explorers.music.fixture=true",
+      "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+    ],
+    volumes: [
+      "docker", "volume", "ls", "-q",
+      "--filter", "label=com.explorers.music.fixture=true",
+      "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+    ],
+  };
+  try {
+    finalizeQualificationRunArtifacts({
+      runDirectory: runArtifactDirectory,
+      workspaceRoot: process.cwd(),
+      knownSecrets: [strapiToken],
+      stdoutChunks: [stdoutLine],
+      stderrChunks: [],
+      analyticsLedger: {
+        schemaVersion: "explorers-public-analytics-ledger/v1",
+        status: "unavailable",
+        reason: "not-observed",
+        events: [],
+      },
+      visualTraceLedger: {
+        schemaVersion: "explorers-public-visual-trace-ledger/v1",
+        status: "none-retained",
+        visuals: [],
+        traces: [],
+      },
+      dockerInspection: {
+        schemaVersion: "explorers-public-docker-inspection/v1",
+        status: "unavailable",
+        reason: "dry-run",
+        cwd: "<workspace>",
+        labels: {
+          "com.explorers.music.fixture": "true",
+          "com.explorers.music.project": "explorers-music-fixture",
+        },
+        commands: dockerCommands,
+        exitCodes: { containers: null, volumes: null },
+        containerMatches: [],
+        volumeMatches: [],
+        containersRemaining: null,
+        volumesRemaining: null,
+        authArtifacts: [
+          { path: "owner-auth.json", state: "absent" },
+          { path: "profile-storage-state.json", state: "absent" },
+        ],
+      },
+      skipLedger: {
+        schemaVersion: "explorers-public-skip-ledger/v1",
+        lane: mode.lane,
+        execution: "not-run",
+        totals: { total: 0, passed: 0, failed: 0, skipped: 0 },
+        reasons: [{ scope: "lane", reason: "not-observed" }],
+      },
+      restorationRecord: {
+        schemaVersion: "explorers-public-restoration/v1",
+        status: "unavailable",
+        finalRestore: null,
+        journeys: [],
+      },
+      evidence: report,
+    });
+  } catch {
+    process.stderr.write("Live public Music E2E artifact finalization failed; details redacted.\n");
+    process.exit(5);
+  }
+  process.stdout.write(stdoutLine);
   process.exit(0);
 }
 
 const monorepoRoot = path.resolve("..");
 const npmExecPath = process.env.npm_execpath;
-if (!npmExecPath) {
-  process.stderr.write("Live public Music E2E requires invocation through the documented npm script.\n");
-  process.exit(4);
-}
 function runNpm(arguments_, options = {}) {
   return spawnSync(process.execPath, [npmExecPath, ...arguments_], { ...options, env: options.env ?? process.env });
+}
+const retainedStdoutChunks = [];
+const retainedStderrChunks = [];
+function writePublicStdout(text) {
+  retainedStdoutChunks.push(String(text ?? ""));
+  process.stdout.write(text);
+}
+function writePublicStderr(text) {
+  retainedStderrChunks.push(String(text ?? ""));
+  process.stderr.write(text);
 }
 let fixtureStarted = false;
 let stateService;
@@ -133,16 +245,112 @@ async function restoreInitialSnapshot() {
   })();
   return initialRestorePromise;
 }
-function writeLiveReport(report) {
-  const absoluteEvidence = path.resolve(evidencePath);
-  mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
-  writeFileSync(absoluteEvidence, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+function qualificationCommit() {
+  const result = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: monorepoRoot,
+    encoding: "utf8",
+    windowsHide: true,
+    maxBuffer: 4 * 1024,
+  });
+  const sha = String(result.stdout ?? "").trim();
+  return result.status === 0 && /^[a-f0-9]{40}$/.test(sha)
+    ? { sha }
+    : { sha: "unavailable", reason: "git-inspection-failed" };
+}
+function finalizeCurrentQualification({ report, executionOutcome, exitCode, stage }) {
+  const { skipLedger, restorationRecord } = buildQualificationOutcomeRecords({
+    lane: mode.lane,
+    executionOutcome,
+    report,
+  });
+  const dockerInspection = inspectQualificationDockerCleanup({
+    runDirectory: runArtifactDirectory,
+    inspectionCwd: monorepoRoot,
+    retainedCwd: "<repository>",
+    spawn: spawnSync,
+    exists: existsSync,
+  });
+  const cleanupAssessment = assessQualificationCleanup({ lane: mode.lane, dockerInspection });
+  const qualificationExitCode = exitCode === 0 && !cleanupAssessment.verified ? 5 : exitCode;
+  const gaps = ["analytics-not-observed", "visuals-none-retained", "traces-none-retained"];
+  gaps.push(...cleanupAssessment.gaps);
+  if (skipLedger.execution !== "completed") gaps.push(`execution-${skipLedger.execution}`);
+  const evidence = {
+    version: VERSION,
+    runId,
+    lane: mode.lane,
+    result: qualificationExitCode === 0 ? report.result : "failed",
+    cleanup: mode.lane === "live" && !cleanupAssessment.verified ? "cleanup-inspection-failed" : report.cleanup,
+    stage,
+    git: qualificationCommit(),
+    command: ["node", "scripts/music-public-e2e.mjs", modeName],
+    cwd: "<repository>/explorers-earth",
+    exitCode: qualificationExitCode,
+    totals: skipLedger.totals,
+    artifactPaths: [
+      ...LIVE_QUALIFICATION_REQUIRED_ARTIFACTS.map((artifact) => artifact.path),
+      "manifest.json",
+      "manifest.sha256",
+    ],
+    visuals: [],
+    traces: [],
+    gaps,
+  };
+  const finalized = finalizeQualificationRunArtifacts({
+    runDirectory: runArtifactDirectory,
+    workspaceRoot: monorepoRoot,
+    knownSecrets: [strapiToken, stateToken].filter(Boolean),
+    stdoutChunks: retainedStdoutChunks,
+    stderrChunks: retainedStderrChunks,
+    analyticsLedger: {
+      schemaVersion: "explorers-public-analytics-ledger/v1",
+      status: "unavailable",
+      reason: skipLedger.execution === "preflight-stopped" ? "preflight-stopped"
+        : (skipLedger.execution === "completed" ? "not-observed" : "execution-stopped"),
+      events: [],
+    },
+    visualTraceLedger: {
+      schemaVersion: "explorers-public-visual-trace-ledger/v1",
+      status: "none-retained",
+      visuals: [],
+      traces: [],
+    },
+    dockerInspection,
+    skipLedger,
+    restorationRecord,
+    evidence,
+  });
+  return { ...finalized, exitCode: qualificationExitCode };
+}
+function finishQualificationFailure({ message, exitCode = 4, stage, cleanup = "not-required", executionOutcome }) {
+  writePublicStderr(message);
+  const report = { ...baseReport, result: "failed", cleanup };
+  writePublicStdout(`${JSON.stringify(report)}\n`);
+  try {
+    finalizeCurrentQualification({ report, executionOutcome, exitCode, stage });
+  } catch {
+    process.stderr.write("Live public Music E2E artifact finalization failed; details redacted.\n");
+    process.exit(5);
+  }
+  process.exit(exitCode);
+}
+if (!npmExecPath) {
+  finishQualificationFailure({
+    message: "Live public Music E2E requires invocation through the documented npm script.\n",
+    stage: "invocation-refused",
+  });
 }
 if (mode.lane === "live") {
   const authorityBootstrap = runNpm(["run", "--silent", "music-cli", "--", "bootstrap"], { cwd: monorepoRoot, stdio: "inherit", env: process.env });
-  if (authorityBootstrap.status !== 0) process.exit(4);
+  if (authorityBootstrap.status !== 0) finishQualificationFailure({
+    message: "Live public Music E2E fixture authority bootstrap failed; details redacted.\n",
+    stage: "fixture-bootstrap-failed",
+  });
   const bootstrap = runNpm(["run", "--silent", "music-cli", "--", "up", "--detach", "--wait"], { cwd: monorepoRoot, stdio: "inherit" });
-  if (bootstrap.status !== 0) process.exit(4);
+  if (bootstrap.status !== 0) finishQualificationFailure({
+    message: "Live public Music E2E fixture startup failed; details redacted.\n",
+    stage: "fixture-startup-failed",
+  });
   fixtureStarted = true;
   stateToken = randomBytes(32).toString("base64url");
   stateService = spawn(process.execPath, ["tunes/scripts/music-e2e-state-service.mjs"], {
@@ -165,14 +373,20 @@ if (mode.lane === "live") {
       }
       response = await fetch(healthUrl, { headers: healthUrl.startsWith(stateServiceUrl) ? { Authorization: `Bearer ${stateToken}` } : {}, signal: AbortSignal.timeout(5_000) });
     } catch (error) {
-      process.stderr.write(`Live public Music E2E health check failed for ${new URL(healthUrl).origin}: ${error instanceof Error ? error.message : "unavailable"}\n`);
-      stopFixture();
-      process.exit(4);
+      const teardownStatus = stopFixture();
+      finishQualificationFailure({
+        message: `Live public Music E2E health check failed for ${new URL(healthUrl).origin}: ${error instanceof Error ? error.message : "unavailable"}\n`,
+        stage: "service-health-failed",
+        cleanup: teardownStatus === 0 ? "not-required" : "teardown-failed",
+      });
     }
     if (!response.ok) {
-      process.stderr.write(`Live public Music E2E health check returned ${response.status} for ${new URL(healthUrl).origin}.\n`);
-      stopFixture();
-      process.exit(4);
+      const teardownStatus = stopFixture();
+      finishQualificationFailure({
+        message: `Live public Music E2E health check returned ${response.status} for ${new URL(healthUrl).origin}.\n`,
+        stage: "service-health-failed",
+        cleanup: teardownStatus === 0 ? "not-required" : "teardown-failed",
+      });
     }
   }
   let stateReady = false;
@@ -184,9 +398,12 @@ if (mode.lane === "live") {
     } catch { /* service is still starting */ }
   }
   if (!stateReady) {
-    process.stderr.write("Live public Music E2E state service failed its loopback health check.\n");
-    stopFixture();
-    process.exit(4);
+    const teardownStatus = stopFixture();
+    finishQualificationFailure({
+      message: "Live public Music E2E state service failed its loopback health check.\n",
+      stage: "state-service-health-failed",
+      cleanup: teardownStatus === 0 ? "not-required" : "teardown-failed",
+    });
   }
   try {
     const [accountResponse, identityResponse] = await Promise.all([
@@ -198,8 +415,12 @@ if (mode.lane === "live") {
         || identity.username !== username || identity.documentId !== userDocumentId
         || identity.accounts?.[0]?.documentId !== accountDocumentId) throw new Error("fixture projected a different identity");
   } catch (error) {
-    process.stderr.write(`Live public Music E2E identity readiness failed: ${error instanceof Error ? error.message : "unavailable"}\n`);
-    stopFixture(); process.exit(4);
+    const teardownStatus = stopFixture();
+    finishQualificationFailure({
+      message: `Live public Music E2E identity readiness failed: ${error instanceof Error ? error.message : "unavailable"}\n`,
+      stage: "identity-readiness-failed",
+      cleanup: teardownStatus === 0 ? "not-required" : "teardown-failed",
+    });
   }
   process.env.MUSIC_E2E_STATE_SERVICE_URL = stateServiceUrl;
   process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
@@ -208,18 +429,21 @@ if (mode.lane === "live") {
     if (!snapshotResponse.ok) throw new Error("snapshot response was not successful");
     initialSnapshot = await snapshotResponse.json();
   } catch {
-    process.stderr.write("Live public Music E2E preflight refused: initial full-state snapshot failed.\n");
     const teardownStatus = stopFixture();
-    writeLiveReport({ ...baseReport, result: "failed", cleanup: teardownStatus === 0 ? "evidence-missing" : "teardown-failed", restoreHashes: [] });
-    process.exit(4);
+    finishQualificationFailure({
+      message: "Live public Music E2E preflight refused: initial full-state snapshot failed.\n",
+      stage: "snapshot-preflight-stopped",
+      cleanup: teardownStatus === 0 ? "evidence-missing" : "teardown-failed",
+      executionOutcome: { status: 4, preflightDiagnostics: { subcheck: "execution-stopped" } },
+    });
   }
-  const runArtifactDirectory = path.resolve(`.artifacts/music-public/${runId}`);
   authStatePath = path.join(runArtifactDirectory, "owner-auth.json");
   profileStorageStatePath = path.join(runArtifactDirectory, "profile-storage-state.json");
   const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
   const restoreEvidencePath = path.join(runArtifactDirectory, "restore-evidence.jsonl");
   const journeyReportPath = path.join(runArtifactDirectory, "playwright-journey-results.json");
   const journeyOutputDirectory = path.join(runArtifactDirectory, "private-playwright-output");
+  let liveExecutionOutcome;
   const liveOutcome = await runMusicFixtureOrchestration({
     snapshotExists: Boolean(initialSnapshot),
     baseReport,
@@ -250,8 +474,9 @@ if (mode.lane === "live") {
         knownSecrets: [strapiToken, stateToken],
       });
       if (!preflight.ok) {
-        process.stderr.write("Live public Music E2E preflight refused: authority was skipped or expected mutation journeys did not collect; details redacted.\n");
-        return { status: 4, preflightDiagnostics: preflight.diagnostics };
+        writePublicStderr("Live public Music E2E preflight refused: authority was skipped or expected mutation journeys did not collect; details redacted.\n");
+        liveExecutionOutcome = { status: 4, preflightDiagnostics: preflight.diagnostics };
+        return liveExecutionOutcome;
       }
 
       let browser;
@@ -282,8 +507,9 @@ if (mode.lane === "live") {
       } catch (error) { callbackBootstrapError = error; }
       finally { if (browser) { try { await browser.close(); } catch { callbackBootstrapError ??= new Error("browser close failed"); } } }
       if (callbackBootstrapError) {
-        process.stderr.write("Live public Music E2E callback bootstrap failed; details redacted.\n");
-        return 4;
+        writePublicStderr("Live public Music E2E callback bootstrap failed; details redacted.\n");
+        liveExecutionOutcome = { status: 4 };
+        return liveExecutionOutcome;
       }
 
       const childEnvironment = {
@@ -296,7 +522,7 @@ if (mode.lane === "live") {
         E2E_PROFILE_STORAGE_STATE: profileStorageStatePath,
         E2E_PROFILE_USERNAME: username,
       };
-      return runPlaywrightJourneyExecution({
+      liveExecutionOutcome = runPlaywrightJourneyExecution({
         spawn: spawnSync,
         processExecPath: process.execPath,
         playwrightCli,
@@ -307,10 +533,11 @@ if (mode.lane === "live") {
         reportPath: journeyReportPath,
         outputDirectory: journeyOutputDirectory,
       });
+      return liveExecutionOutcome;
     },
     restore: restoreInitialSnapshot,
     teardown: {
-      artifactPaths: [journeyReportPath, authStatePath, profileStorageStatePath],
+      artifactPaths: [restoreEvidencePath, authStatePath, profileStorageStatePath, journeyReportPath],
       artifactDirectories: [journeyOutputDirectory],
       exists: existsSync,
       unlink: unlinkSync,
@@ -322,15 +549,31 @@ if (mode.lane === "live") {
         return shouldDown ? (runNpm(["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1) : 0;
       },
     },
-    writeReport: async (report) => writeLiveReport(report),
-    writeStdout: (text) => process.stdout.write(text),
-    writeStderr: (text) => process.stderr.write(text),
+    writeReport: async () => undefined,
+    writeStdout: writePublicStdout,
+    writeStderr: writePublicStderr,
   });
-  process.exit(liveOutcome.exitCode);
+  let finalized;
+  try {
+    finalized = finalizeCurrentQualification({
+      report: liveOutcome.report,
+      executionOutcome: liveExecutionOutcome,
+      exitCode: liveOutcome.exitCode,
+      stage: liveExecutionOutcome?.preflightDiagnostics ? "preflight-stopped" : "execution-finished",
+    });
+  } catch {
+    process.stderr.write("Live public Music E2E artifact finalization failed; details redacted.\n");
+    process.exit(5);
+  }
+  process.exit(finalized.exitCode);
 }
 
 const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
-const args = [playwrightCli, "test", ...mode.files, `--project=${mode.project}`];
+const privatePlaywrightOutputDirectory = path.join(runArtifactDirectory, "private-playwright-output");
+const args = [
+  playwrightCli, "test", ...mode.files, `--project=${mode.project}`, "--reporter=json",
+  `--output=${privatePlaywrightOutputDirectory}`,
+];
 const restoreEvidencePath = path.resolve(`.artifacts/music-public/${runId}/restore-evidence.jsonl`);
 const childEnvironment = {
   ...process.env,
@@ -341,19 +584,39 @@ const childEnvironment = {
 };
 const result = spawnSync(process.execPath, args, {
   cwd: process.cwd(),
-  stdio: "inherit",
+  encoding: "utf8",
   env: childEnvironment,
+  windowsHide: true,
+  maxBuffer: 4 * 1024 * 1024,
 });
-let cleanup = "not-required";
-let report = { ...baseReport, result: result.status === 0 ? "passed" : "failed", cleanup, restoreHashes: [] };
-const absoluteEvidence = path.resolve(evidencePath);
+let executionReport;
 try {
-  mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
-  writeFileSync(absoluteEvidence, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-} catch {
-  cleanup = cleanup === "restored" ? "evidence-missing" : cleanup;
-  report = { ...report, result: "failed", cleanup };
-  process.exitCode ||= 5;
+  executionReport = JSON.parse(String(result.stdout ?? ""));
+} catch { /* represented as an explicit execution evidence gap below */ }
+const executionOutcome = {
+  status: Number.isInteger(result.status) ? result.status : 1,
+  ...(executionReport ? { executionReport } : {}),
+};
+let cleanup = "not-required";
+try { if (existsSync(restoreEvidencePath)) unlinkSync(restoreEvidencePath); }
+catch { cleanup = "evidence-delete-failed"; }
+try { rmSync(privatePlaywrightOutputDirectory, { recursive: true, force: true }); }
+catch { cleanup = "evidence-delete-failed"; }
+const exitCode = cleanup === "not-required" ? executionOutcome.status : 5;
+const report = { ...baseReport, result: exitCode === 0 ? "passed" : "failed", cleanup };
+if (result.error || result.signal || executionOutcome.status !== 0 || !executionReport) {
+  writePublicStderr("Public Music Playwright execution or structured result collection failed; details redacted.\n");
 }
-process.stdout.write(`${JSON.stringify(report)}\n`);
-process.exit(process.exitCode || result.status || 0);
+writePublicStdout(`${JSON.stringify(report)}\n`);
+try {
+  finalizeCurrentQualification({
+    report,
+    executionOutcome,
+    exitCode,
+    stage: "execution-finished",
+  });
+} catch {
+  process.stderr.write("Live public Music E2E artifact finalization failed; details redacted.\n");
+  process.exit(5);
+}
+process.exit(exitCode);

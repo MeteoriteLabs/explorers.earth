@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -91,6 +93,69 @@ const EXPECTED_LIVE_READ_ONLY = [
 
 const LIVE_MUTATION_TAG = "@explorers-live-mutation";
 const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
+
+const REQUIRED_QUALIFICATION_ARTIFACTS = [
+  { role: "stdout", path: "logs/stdout.log" },
+  { role: "stderr", path: "logs/stderr.log" },
+  { role: "analytics-ledger", path: "analytics-events.jsonl" },
+  { role: "visual-trace-ledger", path: "visual-trace-ledger.json" },
+  { role: "docker-inspection", path: "docker-inspection.json" },
+  { role: "skip-ledger", path: "skip-reasons.json" },
+  { role: "restoration-record", path: "restoration.json" },
+  { role: "evidence", path: "evidence.json" },
+] as const;
+const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
+  schemaVersion: "explorers-public-visual-trace-ledger/v1",
+  status: "none-retained",
+  visuals: [],
+  traces: [],
+})}\n`;
+
+function seedQualificationArtifacts(runDirectory: string) {
+  for (const artifact of REQUIRED_QUALIFICATION_ARTIFACTS) {
+    const artifactPath = join(runDirectory, ...artifact.path.split("/"));
+    mkdirSync(resolve(artifactPath, ".."), { recursive: true });
+    writeFileSync(artifactPath, artifact.role === "visual-trace-ledger" ? NONE_RETAINED_VISUAL_LEDGER : "abc");
+  }
+}
+
+function observedQualificationAnalyticsLedger() {
+  return {
+    schemaVersion: "explorers-public-analytics-ledger/v1",
+    status: "observed",
+    events: [{
+      sequence: 1,
+      event: { name: "navigation_opened", route: "friendly" },
+      utm: { utm_source: "newsletter", utm_medium: "email", utm_campaign: "music_launch" },
+      delivery: {
+        occurrenceSha256: "a".repeat(64),
+        eventIdSha256: "b".repeat(64),
+        attempts: 2,
+        distinctEventIds: 1,
+        committedEvents: 1,
+        duplicateResponses: 1,
+        exactlyOnce: true,
+      },
+    }],
+  };
+}
+
+function rewriteQualificationManifest(
+  runDirectory: string,
+  mutate: (manifest: { schemaVersion: string; artifacts: Array<Record<string, unknown>> }) => void,
+) {
+  const manifestPath = join(runDirectory, "manifest.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  mutate(manifest);
+  const bytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  writeQualificationManifestBytes(runDirectory, bytes);
+}
+
+function writeQualificationManifestBytes(runDirectory: string, bytes: Buffer) {
+  const manifestPath = join(runDirectory, "manifest.json");
+  writeFileSync(manifestPath, bytes);
+  writeFileSync(join(runDirectory, "manifest.sha256"), `${createHash("sha256").update(bytes).digest("hex")}\n`);
+}
 
 function playwrightJourneyReport(
   entries: ReadonlyArray<{ id: string; title: string; source: string }> = EXPECTED_LIVE_JOURNEYS,
@@ -1384,24 +1449,793 @@ test("fixture evidence prints useful metadata without capabilities or credential
 });
 
 test("developer fixture command prints a sanitized, versioned dry-run contract", () => {
-  const result = spawnSync(process.execPath, ["scripts/music-public-e2e.mjs", "verify", "--dry-run"], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: { ...process.env, MUSIC_PUBLIC_RUN_ID: "contract-run" },
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-dry-run-"));
+  try {
+    const runner = resolve("scripts/music-public-e2e.mjs");
+    const result = spawnSync(process.execPath, [runner, "verify", "--dry-run"], {
+      cwd: sandbox,
+      encoding: "utf8",
+      env: { ...process.env, MUSIC_PUBLIC_RUN_ID: "contract-run" },
+      windowsHide: true,
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const report = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
+    expect(report).toMatchObject({
+      version: "music-public-e2e-fixture/v1",
+      lane: "fixture",
+      result: "dry-run",
+      cleanup: "not-required",
+    });
+    expect(report).toHaveProperty("services");
+    expect(JSON.stringify(report)).not.toContain('"postgres":"fixture-owned"');
+    expect(report).toHaveProperty("accountDocumentId", "not-configured");
+    expect(report).toHaveProperty("username", "not-configured");
+    expect(report).toHaveProperty("evidencePath", ".artifacts/music-public/contract-run/evidence.json");
+
+    const runDirectory = join(sandbox, ".artifacts", "music-public", "contract-run");
+    const verify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
+    ], { cwd: sandbox, encoding: "utf8", windowsHide: true });
+    expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 8, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(JSON.parse(readFileSync(join(runDirectory, "analytics-events.jsonl"), "utf8"))).toEqual({
+      schemaVersion: "explorers-public-analytics-ledger/v1",
+      status: "unavailable",
+      reason: "not-observed",
+      events: [],
+    });
+    expect(JSON.parse(readFileSync(join(runDirectory, "docker-inspection.json"), "utf8"))).toMatchObject({
+      schemaVersion: "explorers-public-docker-inspection/v1",
+      status: "unavailable",
+      reason: "dry-run",
+      cwd: "<workspace>",
+      exitCodes: { containers: null, volumes: null },
+      containerMatches: [],
+      volumeMatches: [],
+      containersRemaining: null,
+      volumesRemaining: null,
+    });
+    expect(JSON.parse(readFileSync(join(runDirectory, "skip-reasons.json"), "utf8"))).toEqual({
+      schemaVersion: "explorers-public-skip-ledger/v1",
+      lane: "fixture",
+      execution: "not-run",
+      totals: { total: 0, passed: 0, failed: 0, skipped: 0 },
+      reasons: [{ scope: "lane", reason: "not-observed" }],
+    });
+    expect(JSON.parse(readFileSync(join(runDirectory, "restoration.json"), "utf8"))).toEqual({
+      schemaVersion: "explorers-public-restoration/v1",
+      status: "unavailable",
+      finalRestore: null,
+      journeys: [],
+    });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification run allocation refuses a reused run ID before any fixture action", () => {
+  // Production break caught: a repeated run ID reopens the same directory and
+  // can replace evidence that a reviewer already treated as immutable.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-exclusive-run-"));
+  try {
+    const environment = {
+      ...process.env,
+      MUSIC_PUBLIC_RUN_ID: "exclusive-contract-run",
+      MUSIC_E2E_LIVE_WRITE: "true",
+      MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+      MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
+      MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-exclusive-contract-owner",
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-exclusive-contract-account",
+      MUSIC_E2E_USER_DOCUMENT_ID: "e2e-public-music-exclusive-contract-user",
+      MUSIC_E2E_STRAPI_URL: "http://127.0.0.1:51337",
+      MUSIC_E2E_STRAPI_TOKEN: "exclusive-contract-private-token",
+      MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION: "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
+      MUSIC_E2E_SERVICE_ORIGINS: [
+        "http://127.0.0.1:55173",
+        "http://127.0.0.1:55000",
+        "tcp://127.0.0.1:55432",
+        "http://127.0.0.1:51337",
+        "http://127.0.0.1:55174",
+      ].join(","),
+      MUSIC_E2E_HEALTH_URLS: [
+        "http://127.0.0.1:55173/health",
+        "http://127.0.0.1:55000/health",
+        "tcp://127.0.0.1:55432",
+        "http://127.0.0.1:51337/health",
+        "http://127.0.0.1:55174/health",
+      ].join(","),
+    };
+    const invoke = () => spawnSync(process.execPath, [
+      resolve("scripts/music-public-e2e.mjs"),
+      "live",
+      "--dry-run",
+    ], { cwd: sandbox, env: environment, encoding: "utf8", windowsHide: true });
+
+    const first = invoke();
+    expect(first.status, `${first.stdout}\n${first.stderr}`).toBe(0);
+    expect(existsSync(join(sandbox, ".artifacts", "music-public", "exclusive-contract-run"))).toBe(true);
+
+    const second = invoke();
+    expect(second.status).toBe(5);
+    expect(second.stderr).toBe("Live public Music E2E artifact initialization failed; details redacted.\n");
+    expect(`${second.stdout}\n${second.stderr}`).not.toContain(sandbox);
+    expect(`${second.stdout}\n${second.stderr}`).not.toContain("exclusive-contract-private-token");
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification run allocation refuses a caller-selected parent outside the exact guarded path", async () => {
+  // Production break caught: an environment-controlled or mistaken parent can
+  // move retained evidence outside the reviewed .artifacts/music-public boundary.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-parent-guard-"));
+  try {
+    const { createExclusiveQualificationRunDirectory } = await import("../scripts/music-public-qualification-artifacts.mjs");
+    expect(() => createExclusiveQualificationRunDirectory({
+      artifactParent: join(sandbox, "unreviewed-artifact-parent"),
+      runId: "guard-contract-run",
+    })).toThrow("Qualification artifact parent must be the exact .artifacts/music-public directory");
+    expect(existsSync(join(sandbox, "unreviewed-artifact-parent"))).toBe(false);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification artifact CLI creates and verifies one canonical manifest with a hash-only sidecar", () => {
+  // Production break caught: copied evidence has no independently executable
+  // role/path/size/hash inventory, or recreating the manifest silently replaces authority.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-manifest-"));
+  try {
+    const artifactParent = join(sandbox, ".artifacts", "music-public");
+    const runDirectory = join(artifactParent, "manifest-contract-run");
+    mkdirSync(runDirectory, { recursive: true });
+    seedQualificationArtifacts(runDirectory);
+    const helper = resolve("scripts/music-public-qualification-artifacts.mjs");
+    const invoke = (operation: "create" | "verify") => spawnSync(
+      process.execPath,
+      [helper, operation, runDirectory],
+      { cwd: process.cwd(), encoding: "utf8", windowsHide: true },
+    );
+
+    const created = invoke("create");
+    expect(created.status, `${created.stdout}\n${created.stderr}`).toBe(0);
+    const manifestBytes = readFileSync(join(runDirectory, "manifest.json"));
+    const manifest = JSON.parse(manifestBytes.toString("utf8"));
+    expect(manifest).toEqual({
+      schemaVersion: "explorers-public-qualification-artifacts/v1",
+      artifacts: REQUIRED_QUALIFICATION_ARTIFACTS.map((artifact) => {
+        const content = artifact.role === "visual-trace-ledger" ? NONE_RETAINED_VISUAL_LEDGER : "abc";
+        return {
+          ...artifact,
+          bytes: Buffer.byteLength(content),
+          sha256: createHash("sha256").update(content).digest("hex"),
+        };
+      }),
+    });
+    const expectedManifestHash = createHash("sha256").update(manifestBytes).digest("hex");
+    expect(readFileSync(join(runDirectory, "manifest.sha256"), "utf8")).toBe(`${expectedManifestHash}\n`);
+    expect(JSON.parse(created.stdout)).toEqual({
+      schemaVersion: "explorers-public-qualification-artifacts/v1",
+      files: 8,
+      manifestSha256: expectedManifestHash,
+    });
+
+    const verified = invoke("verify");
+    expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
+    expect(JSON.parse(verified.stdout)).toEqual(JSON.parse(created.stdout));
+
+    const duplicateCreate = invoke("create");
+    expect(duplicateCreate.status).toBe(1);
+    expect(duplicateCreate.stderr).toBe("qualification artifact error: manifest files already exist\n");
+    expect(`${duplicateCreate.stdout}\n${duplicateCreate.stderr}`).not.toContain(sandbox);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification visual/trace ledger makes every retained relative file manifest-required", () => {
+  // Production break caught: a screenshot/trace can be retained without a hash
+  // row, or a ledger can smuggle an absolute/private path into reviewer evidence.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-visual-ledger-"));
+  try {
+    const runDirectory = join(sandbox, ".artifacts", "music-public", "visual-ledger-run");
+    mkdirSync(runDirectory, { recursive: true });
+    seedQualificationArtifacts(runDirectory);
+    const visualLedger = {
+      schemaVersion: "explorers-public-visual-trace-ledger/v1",
+      status: "retained",
+      visuals: ["visuals/owner-public-music.png"],
+      traces: ["traces/owner-public-music.zip"],
+    };
+    writeFileSync(join(runDirectory, "visual-trace-ledger.json"), `${JSON.stringify(visualLedger)}\n`);
+    mkdirSync(join(runDirectory, "visuals"));
+    mkdirSync(join(runDirectory, "traces"));
+    writeFileSync(join(runDirectory, "visuals", "owner-public-music.png"), "png");
+    writeFileSync(join(runDirectory, "traces", "owner-public-music.zip"), "zip");
+    const helper = resolve("scripts/music-public-qualification-artifacts.mjs");
+    const created = spawnSync(process.execPath, [helper, "create", runDirectory], {
+      cwd: process.cwd(), encoding: "utf8", windowsHide: true,
+    });
+    expect(created.status, `${created.stdout}\n${created.stderr}`).toBe(0);
+    const manifest = JSON.parse(readFileSync(join(runDirectory, "manifest.json"), "utf8"));
+    expect(manifest.artifacts.slice(-2)).toEqual([
+      {
+        role: "visual-001",
+        path: "visuals/owner-public-music.png",
+        bytes: 3,
+        sha256: "8f8cbb7dcf46e0bc7d53265749a6c17d116093a6ba95e442764060c76fd4a86c",
+      },
+      {
+        role: "trace-001",
+        path: "traces/owner-public-music.zip",
+        bytes: 3,
+        sha256: "4a70fe9aa6436e02c2dea340fbd1e352e4ef2d8ce6ca52ad25d4b95471fc8bf2",
+      },
+    ]);
+    const verified = spawnSync(process.execPath, [helper, "verify", runDirectory], {
+      cwd: process.cwd(), encoding: "utf8", windowsHide: true,
+    });
+    expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
+    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 10 });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+const qualificationManifestTamperCases: Array<{
+  name: string;
+  expected: string;
+  mutate: (runDirectory: string) => void;
+}> = [
+  {
+    name: "a malformed sidecar",
+    expected: "manifest sidecar format is invalid",
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "manifest.sha256"), "not-a-canonical-sha\n"),
+  },
+  {
+    name: "a sidecar hash that does not authenticate manifest bytes",
+    expected: "manifest sidecar hash mismatch",
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "manifest.sha256"), `${"0".repeat(64)}\n`),
+  },
+  {
+    name: "a missing required artifact",
+    expected: "required qualification artifact is missing or unreadable",
+    mutate: (runDirectory) => rmSync(join(runDirectory, "evidence.json")),
+  },
+  {
+    name: "a required artifact byte-count mismatch",
+    expected: "qualification artifact byte count mismatch",
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "evidence.json"), "abcd"),
+  },
+  {
+    name: "a same-size required artifact hash mismatch",
+    expected: "qualification artifact SHA-256 mismatch",
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "evidence.json"), "abd"),
+  },
+  {
+    name: "an unmanifested private artifact",
+    expected: "qualification artifact file set mismatch",
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "private-playwright-secret.json"), "must-not-survive"),
+  },
+  {
+    name: "a missing required manifest role/path",
+    expected: "manifest required artifact set mismatch",
+    mutate: (runDirectory) => rewriteQualificationManifest(runDirectory, (manifest) => { manifest.artifacts.pop(); }),
+  },
+  {
+    name: "a duplicate manifest role/path",
+    expected: "manifest contains duplicate role or path",
+    mutate: (runDirectory) => rewriteQualificationManifest(runDirectory, (manifest) => {
+      manifest.artifacts.push({ ...manifest.artifacts[0] });
+    }),
+  },
+  {
+    name: "an extra manifest role/path",
+    expected: "manifest required artifact set mismatch",
+    mutate: (runDirectory) => {
+      writeFileSync(join(runDirectory, "unexpected-required.json"), "abc");
+      rewriteQualificationManifest(runDirectory, (manifest) => {
+        manifest.artifacts.push({
+          role: "raw-reporter",
+          path: "unexpected-required.json",
+          bytes: 3,
+          sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        });
+      });
+    },
+  },
+  {
+    name: "a non-relative manifest artifact path",
+    expected: "qualification artifact path is not a safe relative path",
+    mutate: (runDirectory) => rewriteQualificationManifest(runDirectory, (manifest) => {
+      manifest.artifacts[0].path = resolve("must-not-be-retained", "stdout.log");
+    }),
+  },
+  {
+    name: "non-canonical manifest JSON bytes",
+    expected: "manifest JSON is not canonical",
+    mutate: (runDirectory) => {
+      const manifest = JSON.parse(readFileSync(join(runDirectory, "manifest.json"), "utf8"));
+      writeQualificationManifestBytes(runDirectory, Buffer.from(JSON.stringify(manifest), "utf8"));
+    },
+  },
+  {
+    name: "an extra top-level manifest field",
+    expected: "manifest contract is invalid",
+    mutate: (runDirectory) => rewriteQualificationManifest(runDirectory, (manifest) => {
+      Object.assign(manifest, { privateDiagnostic: "must-not-survive" });
+    }),
+  },
+  {
+    name: "an extra artifact-entry field",
+    expected: "manifest contract is invalid",
+    mutate: (runDirectory) => rewriteQualificationManifest(runDirectory, (manifest) => {
+      manifest.artifacts[0].privateDiagnostic = "must-not-survive";
+    }),
+  },
+  {
+    name: "a reordered required role/path set",
+    expected: "manifest required artifact set mismatch",
+    mutate: (runDirectory) => rewriteQualificationManifest(runDirectory, (manifest) => {
+      [manifest.artifacts[0], manifest.artifacts[1]] = [manifest.artifacts[1], manifest.artifacts[0]];
+    }),
+  },
+];
+
+for (const contract of qualificationManifestTamperCases) {
+  test(`qualification artifact verifier rejects ${contract.name}`, () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "music-public-manifest-tamper-"));
+    try {
+      const runDirectory = join(sandbox, ".artifacts", "music-public", "tamper-contract-run");
+      mkdirSync(runDirectory, { recursive: true });
+      seedQualificationArtifacts(runDirectory);
+      const helper = resolve("scripts/music-public-qualification-artifacts.mjs");
+      const create = spawnSync(process.execPath, [helper, "create", runDirectory], {
+        cwd: process.cwd(), encoding: "utf8", windowsHide: true,
+      });
+      expect(create.status, `${create.stdout}\n${create.stderr}`).toBe(0);
+      contract.mutate(runDirectory);
+
+      const verify = spawnSync(process.execPath, [helper, "verify", runDirectory], {
+        cwd: process.cwd(), encoding: "utf8", windowsHide: true,
+      });
+      expect(verify.status).toBe(1);
+      expect(verify.stderr).toBe(`qualification artifact error: ${contract.expected}\n`);
+      expect(`${verify.stdout}\n${verify.stderr}`).not.toContain(sandbox);
+      expect(`${verify.stdout}\n${verify.stderr}`).not.toContain("must-not-survive");
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
   });
-  expect(result.status, result.stderr).toBe(0);
-  const report = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
-  expect(report).toMatchObject({
-    version: "music-public-e2e-fixture/v1",
-    lane: "fixture",
-    result: "dry-run",
-    cleanup: "not-required",
+}
+
+test("qualification logs are exclusively written after bounded path and secret sanitization", async () => {
+  // Production break caught: child diagnostics can retain credentials, absolute
+  // worktree paths, or arbitrarily large stdout/stderr in reviewer artifacts.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-sanitized-log-"));
+  try {
+    const runDirectory = join(sandbox, ".artifacts", "music-public", "sanitized-log-run");
+    mkdirSync(runDirectory, { recursive: true });
+    const privateValue = "qualification-private-value-0123456789";
+    const hostile = [
+      `workspace=${process.cwd()}\\private\\report.json`,
+      `Bearer ${privateValue}`,
+      `access_token="${privateValue}" capability='${privateValue}' credential=${privateValue}`,
+      `C:\\Users\\Private\\outside.txt /private/absolute/outside.txt`,
+      "oversized=".repeat(2_000),
+    ].join("\n");
+    const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+    let result: { bytes: number; truncated: boolean } | undefined;
+    expect(() => {
+      result = qualificationArtifacts.writeSanitizedQualificationLog({
+        runDirectory,
+        relativePath: "logs/stdout.log",
+        chunks: [hostile],
+        workspaceRoot: process.cwd(),
+        knownSecrets: [privateValue],
+        maximumBytes: 4_096,
+      });
+    }).not.toThrow();
+    expect(result).toEqual({ bytes: expect.any(Number), truncated: true });
+    expect(result!.bytes).toBeLessThanOrEqual(4_096);
+    const retained = readFileSync(join(runDirectory, "logs", "stdout.log"), "utf8");
+    expect(Buffer.byteLength(retained)).toBe(result!.bytes);
+    expect(retained).toContain("<workspace>");
+    expect(retained).toContain("<redacted>");
+    expect(retained).toContain("<path>");
+    expect(retained).toMatch(/\[truncated\]\n$/);
+    expect(retained).not.toContain(privateValue);
+    expect(retained).not.toContain(process.cwd());
+    expect(retained).not.toContain("C:\\Users\\Private");
+    expect(retained).not.toContain("/private/absolute");
+
+    expect(() => qualificationArtifacts.writeSanitizedQualificationLog({
+      runDirectory,
+      relativePath: "logs/stdout.log",
+      chunks: ["replacement"],
+      workspaceRoot: process.cwd(),
+      knownSecrets: [],
+      maximumBytes: 4_096,
+    })).toThrow("qualification artifact already exists");
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification analytics ledger retains only safe UTM and exactly-once observations", async () => {
+  // Production break caught: analytics evidence stores raw event/authority IDs,
+  // accepts arbitrary event fields, or claims exactly-once without observed counts.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-analytics-ledger-"));
+  try {
+    const runDirectory = join(sandbox, ".artifacts", "music-public", "analytics-ledger-run");
+    mkdirSync(runDirectory, { recursive: true });
+    const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+    const ledger = observedQualificationAnalyticsLedger();
+    let result: { bytes: number; events: number; status: string } | undefined;
+    expect(() => {
+      result = qualificationArtifacts.writeQualificationAnalyticsLedger({ runDirectory, ledger });
+    }).not.toThrow();
+    expect(result).toEqual({ bytes: expect.any(Number), events: 1, status: "observed" });
+    const retained = readFileSync(join(runDirectory, "analytics-events.jsonl"), "utf8");
+    expect(retained).toBe(`${JSON.stringify(ledger)}\n`);
+    expect(Buffer.byteLength(retained)).toBe(result!.bytes);
+    expect(retained).not.toMatch(/Bearer|authorization|capability|credential|access[_-]?token|https?:\/\//i);
+    expect(() => qualificationArtifacts.writeQualificationAnalyticsLedger({ runDirectory, ledger }))
+      .toThrow("qualification artifact already exists");
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+const unsafeAnalyticsLedgerCases: Array<{
+  name: string;
+  mutate: (ledger: ReturnType<typeof observedQualificationAnalyticsLedger>) => void;
+}> = [
+  {
+    name: "a raw event ID field",
+    mutate: (ledger) => Object.assign(ledger.events[0].delivery, { eventId: "must-not-survive" }),
+  },
+  {
+    name: "an arbitrary authority field",
+    mutate: (ledger) => Object.assign(ledger.events[0], { authorization: "Bearer must-not-survive" }),
+  },
+  {
+    name: "an unknown product event",
+    mutate: (ledger) => { ledger.events[0].event = { name: "credential_exposed", route: "friendly" }; },
+  },
+  {
+    name: "a URL-shaped UTM value",
+    mutate: (ledger) => { ledger.events[0].utm.utm_source = "https://private.example/path"; },
+  },
+  {
+    name: "an unknown UTM key",
+    mutate: (ledger) => Object.assign(ledger.events[0].utm, { utm_token: "must-not-survive" }),
+  },
+  {
+    name: "a noncanonical observation sequence",
+    mutate: (ledger) => { ledger.events[0].sequence = 2; },
+  },
+  {
+    name: "a non-SHA occurrence identifier",
+    mutate: (ledger) => { ledger.events[0].delivery.occurrenceSha256 = "raw-occurrence-id"; },
+  },
+  {
+    name: "a false exactly-once assertion",
+    mutate: (ledger) => { ledger.events[0].delivery.exactlyOnce = false; },
+  },
+  {
+    name: "multiple distinct event IDs for one occurrence",
+    mutate: (ledger) => { ledger.events[0].delivery.distinctEventIds = 2; },
+  },
+  {
+    name: "multiple committed events for one occurrence",
+    mutate: (ledger) => { ledger.events[0].delivery.committedEvents = 2; },
+  },
+  {
+    name: "more duplicate responses than attempts",
+    mutate: (ledger) => { ledger.events[0].delivery.duplicateResponses = 3; },
+  },
+];
+
+for (const contract of unsafeAnalyticsLedgerCases) {
+  test(`qualification analytics ledger rejects ${contract.name}`, async () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "music-public-unsafe-analytics-"));
+    try {
+      const runDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-analytics-run");
+      mkdirSync(runDirectory, { recursive: true });
+      const ledger = observedQualificationAnalyticsLedger();
+      contract.mutate(ledger);
+      const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+      expect(() => qualificationArtifacts.writeQualificationAnalyticsLedger({ runDirectory, ledger }))
+        .toThrow("qualification analytics ledger contract is invalid");
+      expect(existsSync(join(runDirectory, "analytics-events.jsonl"))).toBe(false);
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
   });
-  expect(report).toHaveProperty("services");
-  expect(JSON.stringify(report)).not.toContain('"postgres":"fixture-owned"');
-  expect(report).toHaveProperty("accountDocumentId", "not-configured");
-  expect(report).toHaveProperty("username", "not-configured");
-  expect(report).toHaveProperty("evidencePath", ".artifacts/music-public/contract-run/evidence.json");
+}
+
+test("qualification analytics ledger records a preflight evidence gap without placeholder events", async () => {
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-unavailable-analytics-"));
+  try {
+    const runDirectory = join(sandbox, ".artifacts", "music-public", "unavailable-analytics-run");
+    mkdirSync(runDirectory, { recursive: true });
+    const ledger = {
+      schemaVersion: "explorers-public-analytics-ledger/v1",
+      status: "unavailable",
+      reason: "preflight-stopped",
+      events: [],
+    };
+    const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+    expect(qualificationArtifacts.writeQualificationAnalyticsLedger({ runDirectory, ledger })).toEqual({
+      bytes: Buffer.byteLength(`${JSON.stringify(ledger)}\n`),
+      events: 0,
+      status: "unavailable",
+    });
+    expect(readFileSync(join(runDirectory, "analytics-events.jsonl"), "utf8")).toBe(`${JSON.stringify(ledger)}\n`);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification Docker inspection retains exact bounded label-filter matches without raw command output", async () => {
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-docker-inspection-"));
+  try {
+    const runDirectory = join(sandbox, ".artifacts", "music-public", "docker-inspection-run");
+    mkdirSync(runDirectory, { recursive: true });
+    writeFileSync(join(runDirectory, "owner-auth.json"), "private material must never be retained");
+    const calls: Array<{ command: string; args: string[]; options: Record<string, unknown> }> = [];
+    const containerId = "a".repeat(64);
+    const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+    const inspection = qualificationArtifacts.inspectQualificationDockerCleanup({
+      runDirectory,
+      inspectionCwd: sandbox,
+      retainedCwd: "<repository>",
+      exists: existsSync,
+      spawn: (command: string, args: string[], options: Record<string, unknown>) => {
+        calls.push({ command, args, options });
+        return {
+          status: 0,
+          stdout: args[0] === "ps" ? `${containerId}\n` : "explorers_music_fixture_cache\n",
+          stderr: "must not be retained",
+        };
+      },
+    });
+    expect(inspection).toEqual({
+      schemaVersion: "explorers-public-docker-inspection/v1",
+      status: "observed",
+      cwd: "<repository>",
+      labels: {
+        "com.explorers.music.fixture": "true",
+        "com.explorers.music.project": "explorers-music-fixture",
+      },
+      commands: {
+        containers: [
+          "docker", "ps", "-aq",
+          "--filter", "label=com.explorers.music.fixture=true",
+          "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+        ],
+        volumes: [
+          "docker", "volume", "ls", "-q",
+          "--filter", "label=com.explorers.music.fixture=true",
+          "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+        ],
+      },
+      exitCodes: { containers: 0, volumes: 0 },
+      containerMatches: [containerId],
+      volumeMatches: ["explorers_music_fixture_cache"],
+      containersRemaining: 1,
+      volumesRemaining: 1,
+      authArtifacts: [
+        { path: "owner-auth.json", state: "present" },
+        { path: "profile-storage-state.json", state: "absent" },
+      ],
+    });
+    expect(calls).toHaveLength(2);
+    expect(calls.every(({ command }) => command === "docker")).toBe(true);
+    expect(calls.every(({ options }) => options.encoding === "utf8" && options.windowsHide === true
+      && options.maxBuffer === 8 * 1024)).toBe(true);
+    expect(JSON.stringify(inspection)).not.toContain("must not be retained");
+    expect(JSON.stringify(inspection)).not.toContain(sandbox);
+    expect(qualificationArtifacts.assessQualificationCleanup({ lane: "live", dockerInspection: inspection })).toEqual({
+      verified: false,
+      gaps: [
+        "docker-containers-remain",
+        "docker-volumes-remain",
+        "auth-artifact-present:owner-auth.json",
+      ],
+    });
+    expect(qualificationArtifacts.assessQualificationCleanup({
+      lane: "live",
+      dockerInspection: {
+        ...inspection,
+        containerMatches: [],
+        volumeMatches: [],
+        containersRemaining: 0,
+        volumesRemaining: 0,
+        authArtifacts: inspection.authArtifacts.map(({ path: relativePath }: { path: string }) => ({
+          path: relativePath,
+          state: "absent",
+        })),
+      },
+    })).toEqual({ verified: true, gaps: [] });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("qualification outcome projection derives exact totals, skip gaps, and restoration hashes without private rows", async () => {
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const finalHash = "f".repeat(64);
+  const records = validJourneyEvidenceRecords();
+  const completed = qualificationArtifacts.buildQualificationOutcomeRecords({
+    lane: "live",
+    executionOutcome: {
+      status: 0,
+      executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" }),
+    },
+    report: {
+      finalRestore: { cleanup: "restored", beforeHash: finalHash, afterHash: finalHash },
+      journeys: records,
+    },
+  });
+  expect(completed.skipLedger).toEqual({
+    schemaVersion: "explorers-public-skip-ledger/v1",
+    lane: "live",
+    execution: "completed",
+    totals: { total: 48, passed: 48, failed: 0, skipped: 0 },
+    reasons: [],
+  });
+  expect(completed.restorationRecord).toEqual({
+    schemaVersion: "explorers-public-restoration/v1",
+    status: "journeys-restored",
+    finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+    journeys: records.map(({ id, beforeHash, afterHash }) => ({ id, beforeHash, afterHash })),
+  });
+  expect(JSON.stringify(completed)).not.toContain("rowCount");
+  expect(JSON.stringify(completed)).not.toContain("rows");
+
+  const preflight = qualificationArtifacts.buildQualificationOutcomeRecords({
+    lane: "live",
+    executionOutcome: {
+      status: 4,
+      preflightDiagnostics: { failureStage: "preflight", subcheck: "authority-process" },
+    },
+    report: {
+      finalRestore: { cleanup: "restored", beforeHash: finalHash, afterHash: finalHash },
+    },
+  });
+  expect(preflight.skipLedger).toEqual({
+    schemaVersion: "explorers-public-skip-ledger/v1",
+    lane: "live",
+    execution: "preflight-stopped",
+    totals: { total: 0, passed: 0, failed: 0, skipped: 0 },
+    reasons: [{ scope: "authority", reason: "authority-process" }],
+  });
+  expect(preflight.restorationRecord).toEqual({
+    schemaVersion: "explorers-public-restoration/v1",
+    status: "initial-restored",
+    finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+    journeys: [],
+  });
+});
+
+test("preflight-stopped qualification finalization writes every safe artifact and verifies its manifest", async () => {
+  // Production break caught: a failed guarded run leaves only evidence.json,
+  // without immutable logs, exact cleanup inspection, skip/gap ledgers, or a verifier result.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-finalization-"));
+  try {
+    const runId = "preflight-finalization-run";
+    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    mkdirSync(runDirectory, { recursive: true });
+    const finalHash = "c".repeat(64);
+    const input = {
+      runDirectory,
+      workspaceRoot: process.cwd(),
+      knownSecrets: ["finalization-private-token"],
+      stdoutChunks: ["guarded run stopped before mutation callback\n"],
+      stderrChunks: ["access_token=finalization-private-token\n"],
+      analyticsLedger: {
+        schemaVersion: "explorers-public-analytics-ledger/v1",
+        status: "unavailable",
+        reason: "preflight-stopped",
+        events: [],
+      },
+      visualTraceLedger: {
+        schemaVersion: "explorers-public-visual-trace-ledger/v1",
+        status: "none-retained",
+        visuals: [],
+        traces: [],
+      },
+      dockerInspection: {
+        schemaVersion: "explorers-public-docker-inspection/v1",
+        status: "observed",
+        cwd: "<repository>",
+        labels: {
+          "com.explorers.music.fixture": "true",
+          "com.explorers.music.project": "explorers-music-fixture",
+        },
+        commands: {
+          containers: [
+            "docker", "ps", "-aq",
+            "--filter", "label=com.explorers.music.fixture=true",
+            "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+          ],
+          volumes: [
+            "docker", "volume", "ls", "-q",
+            "--filter", "label=com.explorers.music.fixture=true",
+            "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+          ],
+        },
+        exitCodes: { containers: 0, volumes: 0 },
+        containerMatches: [],
+        volumeMatches: [],
+        containersRemaining: 0,
+        volumesRemaining: 0,
+        authArtifacts: [
+          { path: "owner-auth.json", state: "absent" },
+          { path: "profile-storage-state.json", state: "absent" },
+        ],
+      },
+      skipLedger: {
+        schemaVersion: "explorers-public-skip-ledger/v1",
+        lane: "live",
+        execution: "preflight-stopped",
+        totals: { total: 0, passed: 0, failed: 0, skipped: 0 },
+        reasons: [{ scope: "live-manifest", reason: "manifest-missing" }],
+      },
+      restorationRecord: {
+        schemaVersion: "explorers-public-restoration/v1",
+        status: "initial-restored",
+        finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+        journeys: [],
+      },
+      evidence: {
+        version: MUSIC_PUBLIC_FIXTURE_VERSION,
+        runId,
+        lane: "live",
+        result: "failed",
+        cleanup: "restored",
+        commit: "c".repeat(40),
+        command: "npm run music:test:public-e2e",
+        cwd: "explorers-earth",
+      },
+    };
+    const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+    let finalized: { files: number; manifestSha256: string; verified: boolean } | undefined;
+    expect(() => { finalized = qualificationArtifacts.finalizeQualificationRunArtifacts(input); }).not.toThrow();
+    expect(finalized).toEqual({ files: 8, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
+    expect(readFileSync(join(runDirectory, "logs", "stdout.log"), "utf8"))
+      .toBe("guarded run stopped before mutation callback\n");
+    expect(readFileSync(join(runDirectory, "logs", "stderr.log"), "utf8"))
+      .toBe("access_token=<redacted>\n");
+    expect(JSON.parse(readFileSync(join(runDirectory, "docker-inspection.json"), "utf8")))
+      .toEqual(input.dockerInspection);
+    expect(JSON.parse(readFileSync(join(runDirectory, "skip-reasons.json"), "utf8")))
+      .toEqual(input.skipLedger);
+    expect(JSON.parse(readFileSync(join(runDirectory, "restoration.json"), "utf8")))
+      .toEqual(input.restorationRecord);
+    expect(readFileSync(join(runDirectory, "evidence.json"), "utf8").toString())
+      .not.toContain("finalization-private-token");
+    expect(existsSync(join(runDirectory, "restore-evidence.jsonl"))).toBe(false);
+    const verify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
+    ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
+    expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 8, manifestSha256: finalized!.manifestSha256 });
+
+    const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
+    mkdirSync(unsafeRunDirectory);
+    expect(() => qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: unsafeRunDirectory,
+      evidence: { ...input.evidence, observedPath: "/private/build/output.log" },
+    })).toThrow("qualification structured artifact is invalid");
+    expect(existsSync(join(unsafeRunDirectory, "logs", "stdout.log"))).toBe(false);
+    expect(existsSync(join(unsafeRunDirectory, "analytics-events.jsonl"))).toBe(false);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test("live runner refuses before Playwright when any authority or five-service health input is missing", () => {
@@ -1433,6 +2267,18 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
   expect(runner).toContain("process.env.npm_execpath");
   expect(runner).not.toContain('process.platform === "win32" ? "npm.cmd"');
+  expect(runner).toContain("inspectQualificationDockerCleanup");
+  expect(runner).toContain("assessQualificationCleanup");
+  expect(runner).toContain("buildQualificationOutcomeRecords");
+  expect(runner).toContain("finalizeQualificationRunArtifacts");
+  expect(runner).toMatch(/artifactPaths:\s*\[[^\]]*restoreEvidencePath[^\]]*authStatePath[^\]]*profileStorageStatePath[^\]]*\]/s);
+  expect(runner).toContain("writeReport: async () => undefined");
+  expect(runner).not.toContain("function writeLiveReport");
+  expect(runner).toContain('"--reporter=json"');
+  expect(runner).toMatch(/privatePlaywrightOutputDirectory[\s\S]+--output=/);
+  expect(runner).toMatch(/rmSync\(privatePlaywrightOutputDirectory, \{ recursive: true, force: true \}\)/);
+  expect(runner).toMatch(/const result = spawnSync[\s\S]+finalizeCurrentQualification\(\{[\s\S]+stage: "execution-finished"/);
+  expect(runner).toMatch(/finalized = finalizeCurrentQualification[\s\S]+process\.exit\(finalized\.exitCode\)/);
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
   expect(runner).toContain("music-e2e-state-service.mjs");
   expect(stateService).toContain('"pg_dump"');

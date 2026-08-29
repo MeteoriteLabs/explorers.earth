@@ -1,75 +1,136 @@
 # Analytics and public Music UAT evidence — 2026-08-29
 
-## Verdict
+## Verdict and evidence rule
 
-**Not release qualified.** Read-only regression and contract evidence is strong, but the required two-context live-write UAT did not execute its 17 mutation journeys and therefore produced no before/after restoration hashes. No production, real Strapi, Redis, deployment, or `GATE_PROD` action was used.
+**Not release qualified.** No retained evidence proves that the guarded owner/guest run executed all 17 mutation journeys, observed the required analytics deliveries, and restored every journey. No Task 3 command used the fixture stack or performed a live write.
 
-Qualification base was `25cc0ee`; `origin/main` resolved to `9284a5dbc606979bb3607a7f5934f8b61519ebdc`. The branch was already current with `origin/main`. Harness remediation is commit `45fcc34` and has not been exercised with writes pending independent pre-write review.
+This revision distinguishes a retained artifact from a contemporaneous report. `Proven` below means the cited bytes are still available and hashable. `Reported-but-not-retained` means a prior report states the result but the stdout, stderr, per-test report, or inspection output needed to reproduce it is absent. `Observed-not-proven` means the operator/reviewer observed a stage, but the retained artifact does not encode that stage. An unavailable field is written as unavailable rather than reconstructed.
 
-## Environment and commands
+The original qualification base was `25cc0ee296ca48ca59e14267bebcb8faf73efea9`; `origin/main` was reported as `9284a5dbc606979bb3607a7f5934f8b61519ebdc`. Current evidence-repair commits independently reviewed before this task are `e1e28a68630cfc065c091146ce14d4dd905e2505` (live evidence safety) and `8e16a08c9167228bc0b9f77ff2c75c9a7ea68065` (Explorer boundary coverage).
 
-- Windows PowerShell, Node/npm from the repository, Chrome/Playwright headless.
-- Guarded services: PostgreSQL `tcp://127.0.0.1:55432`, mock Strapi `http://127.0.0.1:51337`, Tunes `http://127.0.0.1:55000`, Explorers `http://localhost:55173`, state service `http://127.0.0.1:55174`.
-- Dedicated identity: `e2e-public-music-local-owner`, account `e2e-public-music-local-account`, user `e2e-public-music-local-user`.
+## Guarded-attempt chronology
 
-| Command/lane | Exact result |
-|---|---|
-| `git fetch origin main:refs/remotes/origin/main`; `git rebase origin/main` | passed; already up to date |
-| current HEAD `tunes: npm run check` | failed with broad TypeScript errors; same categories reproduced on detached `origin/main`, so recorded as baseline-attributed |
-| current HEAD `tunes: npm test` | 1,582 passed, 72 skipped, 92 failed, 1 failed suite (99 files); migration-marker/deploy/fixture-secret/timeouts dominate; detached baseline reproduced the same categories before its attribution run was interrupted |
-| `tunes: npm run test:music-critical-coverage` | 24 files passed; 551 passed, 1 skipped; 100% statements/branches/functions/lines |
-| current HEAD OpenAPI + security + load focused Vitest | 3 files, 13 passed, 0 failed |
-| repository integration coverage | safely refused: `MUSIC_C3_POSTGRES_TEST=1` and an explicitly owned destructive test database were absent |
-| current HEAD `explorers-earth: npm run test:unit` | 190 files, 1,916 passed |
-| current HEAD `npm run lint` | exit 0; 0 errors, 1,377 warnings |
-| current HEAD `npm run i18n:check` | passed |
-| current HEAD `npm run build` | passed, 5,397 modules; HTTPS-only Music transport contract |
-| current HEAD `npm run test:music-critical-coverage` | 369 passed, but coverage threshold failed: 96.99% statements / 95.65% branches / 100% functions / 99.31% lines; detached `origin/main` passes 321 tests at 100%, proving a branch-owned gap |
-| exact sanitized PR-safe Playwright lane at `e32ad35` | 251 passed, 45 explicitly skipped, 0 failed, 296 total; exit 0 in 16.8m |
-| harness remediation focused PR-safe | 28 passed, 0 skipped, 0 failed |
-| guarded local live attempt | Playwright: 31 passed, 17 skipped, 0 failed; runner failed closed because restoration evidence was absent |
+There were at least two distinct guarded attempts. Neither is the sole attempt, and their evidence must not be combined.
 
-## Timezone qualification
+| Attempt | Order and commit | Command / cwd | Exit and totals | What is retained | Qualification |
+| --- | --- | --- | --- | --- | --- |
+| A — earlier Playwright execution | Earlier than attempt B. Exact commit SHA unavailable. | Exact command and working directory unavailable. | Reported: runner nonzero; Playwright 48 total = 31 passed, 0 failed, 17 skipped. Exact runner exit code and skip reasons unavailable. | No immutable stdout/stderr, per-test report, skip ledger, analytics ledger, visual/trace, Docker inspection, or per-journey restoration hashes retained. | **Reported-but-not-retained.** It does not prove any mutation journey ran or restored. |
+| B — later reviewed preflight stop | Reported at `e32ad351c9dd4ba4c6c66f041649289ab705b388`. | Exact invoked command and working directory unavailable. The documented entry point was `npm run music:test:public-e2e`, but the retained artifact does not prove that invocation. | Exact exit code and Playwright totals unavailable; contemporaneous review says nonzero and stopped in preflight. | Local `explorers-earth/.artifacts/music-public/20260829041053317/evidence.json`, 756 bytes, SHA-256 `737cff10fbd4717cbd54c2126e818d9a1e4c5062306656654863fe0f1c9ae120`. | **Failed.** Preflight-stop/before-callback is observed-not-proven by the artifact. Equal final hashes are proven by its current bytes. |
 
-Fresh current-HEAD commands set `TZ` explicitly and ran the analytics date-range plus Home analytics suites. `UTC`, `America/New_York`, `America/Los_Angeles`, `Asia/Kolkata`, and `Pacific/Kiritimati` each passed 2 files and 28/28 tests (140 total). Coverage includes DST, leap day, inclusive 90-day behavior, 90-day Home labeling/failure states, and 93/94-day boundaries.
+Attempt B's retained JSON proves only `result=failed`, `cleanup=restored`, and one equal before/after pair:
 
-## Browser matrices and routes
+```text
+328835bdc95100d75ff52a873bfd697b5a03b1d2da1f9d5b842eeca75ec4efdd
+```
 
-Read-only deterministic coverage exercised friendly `/e2e-public-music-local-owner/music` and direct `/music/share/:publicSlug` routing, dashboard `/recommendations/music`, history/fallback behavior, five navigation slots, 32 permission combinations plus pairwise browser rows, loading/empty/error/private/unavailable states, analytics/UTM safety and exactly-once behavior, accessibility, reduced motion, and public/unlisted cache isolation.
+It does not contain a stage field, terminal journey records, an analytics ledger, a skip ledger, stdout/stderr, a Docker command/output record, or a manifest. Therefore the claims “preflight stopped before callback,” “zero labeled containers/volumes,” and “the cleanup command succeeded” remain observed-not-proven or reported-but-not-retained. A current directory audit finds only `evidence.json`, so the two private auth files are absent now; that current observation is not substitute proof of the historical deletion commands.
 
-Viewport contracts: `320x700`, `375x667`, `390x844`, `768x1024`, and `1440x900`. Theme structure covers six presets and four wallpaper modes. Six risk-based visual baselines live under `explorers-earth/e2e/*-snapshots`; failed-run trace/screenshots are retained under `explorers-earth/test-results`.
+## Historical lane register
 
-The one reviewed guarded attempt at `e32ad35` stopped before callback or business mutations because its combined preflight reported that authority was skipped or the expected mutation journeys did not collect. Standalone read-only diagnostics subsequently showed a null authority skip reason and all 48 live-project tests, including every required title, but the failed run retained no safe sub-result diagnostic to distinguish the child failure. It was not retried.
+The following register covers every lane named by the original UAT document. Unless a retained path is listed, no immutable stdout/stderr artifact exists.
 
-## Restoration and cleanup
+| Lane | Commit, exact command and cwd | Exit / totals | Retained evidence and gap |
+| --- | --- | --- | --- |
+| Tunes check | Reported current SHA `e32ad351c9dd4ba4c6c66f041649289ab705b388`; `npm run check`; cwd `tunes`. | Nonzero; exact exit/totals unavailable. | Broad TypeScript categories were reported on branch and detached baseline. Logs unavailable. |
+| Tunes full test | Same reported SHA; `npm test`; cwd `tunes`. | Reported 99 files: 89 passed, 9 failed, 1 skipped; 1,582 passed, 92 failed, 72 skipped plus one failed suite. Exact exit code unavailable. | Logs unavailable; baseline attribution is reported-but-not-retained here. |
+| Tunes critical coverage | Same reported SHA; `npm run test:music-critical-coverage`; cwd `tunes`. | Reported 551 passed, 1 skipped, 0 failed and 100% statements/branches/functions/lines; exact exit unavailable. | Logs unavailable. |
+| OpenAPI/security/load | Same reported SHA. Exact combined Vitest command unavailable; cwd `tunes`. | Reported 3 files, 13 passed, 0 failed; exact exit unavailable. | Logs unavailable. |
+| Repository/database integration | Same reported SHA. Exact command unavailable; cwd `tunes`. | Safely refused because `MUSIC_C3_POSTGRES_TEST=1` and an explicitly owned destructive database were absent; exact exit/totals unavailable. | Refusal stdout/stderr unavailable. Gap remains. |
+| Explorer unit | Same reported SHA; `npm run test:unit`; cwd `explorers-earth`. | Reported 190 files, 1,916 passed; exact exit unavailable. | Logs unavailable. Superseded by the current repair lane below. |
+| Explorer lint | Same reported SHA; `npm run lint`; cwd `explorers-earth`. | Reported exit 0, 0 errors, 1,377 warnings. | Logs unavailable. |
+| Explorer i18n | Same reported SHA; `npm run i18n:check`; cwd `explorers-earth`. | Reported pass; exact exit/totals unavailable. | Logs unavailable. |
+| Explorer build | Same reported SHA; `npm run build`; cwd `explorers-earth`. | Reported pass, 5,397 modules; exact exit unavailable. | Logs unavailable. |
+| Explorer critical coverage | Same reported SHA; `npm run test:music-critical-coverage`; cwd `explorers-earth`. | 369 tests passed but coverage threshold failed at 96.99% statements / 95.65% branches / 100% functions / 99.31% lines; exact exit unavailable. | Logs unavailable. Superseded by the current repair lane below. |
+| PR-safe browser | `e32ad351c9dd4ba4c6c66f041649289ab705b388`. Exact environment-clearing command and cwd were not retained. | Reported exit 0, 296 total = 251 passed, 0 failed, 45 skipped, 16.8 minutes. Skip-reason ledger unavailable. | No immutable stdout/stderr or trace inventory. |
+| Harness-focused browser | Reported at the same historical review point. `npx playwright test e2e/music-harness-contract.spec.ts --project=chromium-pr-safe`; cwd `explorers-earth`. | Reported 28 passed, 0 failed, 0 skipped; exact exit unavailable. | Logs unavailable. |
+| Five-timezone analytics/Home | Same reported SHA. Exact environment assignments and Vitest command unavailable; cwd reported as `explorers-earth`. | Reported 28/28 in each of `UTC`, `America/New_York`, `America/Los_Angeles`, `Asia/Kolkata`, and `Pacific/Kiritimati` (140 total); exact exits unavailable. | Per-timezone stdout/stderr unavailable. |
+| Guarded live A | Commit/command/cwd unavailable. | Reported nonzero; 31 passed, 0 failed, 17 skipped. | No retained lane artifacts. |
+| Guarded live B | `e32ad351c9dd4ba4c6c66f041649289ab705b388`; exact command/cwd/exit unavailable. | Preflight stop reported; exact totals unavailable. | The single 756-byte evidence file described above; no manifest or stream logs. |
 
-Current attempt artifact: `explorers-earth/.artifacts/music-public/20260829041053317/evidence.json`.
+## Current non-live repair evidence
 
-- Preflight failed before callback/business mutations; live UAT is **not proven**.
-- Initial snapshot restoration is proven: before and after `328835bdc95100d75ff52a873bfd697b5a03b1d2da1f9d5b842eeca75ec4efdd`.
-- Evidence result is `failed`, cleanup is `restored`, and the command exited nonzero.
-- Exact fixture-label inspection ended with `containersRemaining=0` and `volumesRemaining=0`; both private auth artifacts are absent and only sanitized `evidence.json` remains.
-- No real account or external Strapi was used. No test-created durable fixture remains.
+These lanes are not live UAT. Their committed reports are retained, but terminal stdout/stderr were not separately preserved under the new manifest format, so they do not retroactively satisfy that format.
 
-## Reviewer index
+| Lane | Exact SHA, command and cwd | Exit / totals | Retained report |
+| --- | --- | --- | --- |
+| Task 1 final focused | `e1e28a68630cfc065c091146ce14d4dd905e2505`; `npx playwright test e2e/music-harness-contract.spec.ts --project=chromium-pr-safe`; cwd `explorers-earth`. | Exit 0; 53 total = 53 passed, 0 failed, 0 skipped. | `.superpowers/sdd/2026-08-29-uat-evidence-repair/task-1-report.md`, 24,327 bytes, SHA-256 `311cff47570af239a988e09209136eef2e120168c078d0ea39b41c1ced5b199d`. |
+| Task 1 sanitized broad | Same SHA; the exact environment-clearing prefix was not retained, followed by the `chromium-pr-safe` Playwright lane; cwd `explorers-earth`. | Exit 0; 197 total = 180 passed, 0 failed, 17 skipped. Skip reason: the reviewed live mutation cases were intentionally gated. | Same Task 1 report; stdout/stderr unavailable. |
+| Task 2 critical coverage | `8e16a08c9167228bc0b9f77ff2c75c9a7ea68065`; `npm run test:music-critical-coverage`; cwd `explorers-earth`. | Exit 0; 16 files, 418 passed, 0 failed; 100% statements/branches/functions/lines. | `.superpowers/sdd/2026-08-29-uat-evidence-repair/task-2-report.md`, 9,828 bytes, SHA-256 `cee46b5d6acf98e9dfb51534a83462e65c77989dd5dee9c1c6c81b41f21366cb`. |
+| Task 2 unit | Same SHA; `npm run test:unit`; cwd `explorers-earth`. | Exit 0; 190 files, 1,965 passed, 0 failed. | Same Task 2 report; stdout/stderr unavailable. |
 
-| Requirement | Test/lane | CI job | Sanitized artifact | Result | Commit |
-|---|---|---|---|---|---|
-| documentation/contracts | OpenAPI focused | `docs-contracts` | terminal totals | pass | branch HEAD |
-| surface inventory | runtime inventory/critical | `static` | generated inventory | pass, 100% | branch HEAD |
-| analytics/unit | unit + five TZ runs | `unit-coverage` | terminal totals | pass | branch HEAD |
-| API contract | OpenAPI focused | `contracts` | terminal totals | pass | branch HEAD |
-| repository | destructive integration | `database` | refusal output | evidence gap | branch HEAD |
-| authority/privacy | security qualification | `security` | terminal totals | pass | branch HEAD |
-| UI/build | lint/build/unit | `frontend` | terminal totals | pass with baseline warnings | branch HEAD |
-| routing/a11y/visual | PR-safe Playwright | `browser` | snapshots/test-results | pass/read-only skips | branch HEAD |
-| load | load qualification focused | `load-chaos` | terminal totals | pass | branch HEAD |
-| rollout contract | build/image contracts | `image-deploy-contract` | build output | local build pass; no deploy | branch HEAD |
+## Visual, trace, and analytics truth
 
-## Remaining concerns
+Neither guarded attempt retained a live-attempt screenshot, video, or trace. “No live visual/trace retained” is the exact evidence state; the earlier broad statement that failed-run traces lived under `test-results` did not identify immutable attempt paths and is withdrawn.
 
-Release remains blocked on a guarded live run that crosses preflight and executes every required journey, the repository/database lane with explicit disposable DB authority, the Explorer critical coverage threshold, and baseline repository check/test failures. Push, PR review request, merge, deployment, and production mutation are deliberately deferred.
+Six tracked deterministic regression baselines exist, but they are not live-attempt evidence:
 
-The Explorer critical gap is specifically new `publicMusicClient.ts` behavior: playlist-envelope inconsistency (line 55), invalid recently-played song state (line 99), malformed/oversize/encoding request-response rejection and `PUBLIC_UNAVAILABLE` mapping (165–166), and descriptor parser rejection mapping (243). No code was edited after the safety-review round cap.
+| Relative path | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/320-long-nav-stress.png` | 22,758 | `afcf2e9cb843d72ddce34fbd87526ce29aeecb839a7c034653d7a4f5e584bdaa` |
+| `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/dark-banner-full-content.png` | 24,301 | `7499f90f0c40e595c1021eedc35ef88faf0543df03ade44ce1c9f154b4b97d2b` |
+| `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/desktop-full-content.png` | 5,851 | `d8ca05183efe7053013ef91e7f1dc64971713b46b275275bfdc9d10d1c0fa439` |
+| `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/failed-image-fallback.png` | 24,301 | `7499f90f0c40e595c1021eedc35ef88faf0543df03ade44ce1c9f154b4b97d2b` |
+| `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/minimal-light-solid.png` | 24,957 | `589569058fb18eaf5962b876a688618f6478bef7b4072d5bfe03a49a8018dae3` |
+| `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/mobile-reconnecting.png` | 74,606 | `060d352f73cc57a9959fee2dc9bd0449c7db6815c2e5cf1bb85b45afeea90874` |
 
-Final scan: `gitleaks` is unavailable locally. A fallback high-confidence diff scan found only deterministic test placeholders (`fixture-read-only-token` removals and `contract-fixture-token` addition), with no AWS/GitHub/Google/private-key material. The only reconciliation-named file is `music-reconciliation-workflow.test.ts`, whose diff changes an analytics fixture-token expectation only; no runtime user-sync or reconciliation implementation changed.
+No guarded attempt retained an observed analytics-event ledger. Read-only tests cover safe event fields, UTM propagation, retry, and exactly-once behavior, but those tests are not an observation of a guarded live delivery. Live analytics therefore remains an explicit evidence gap.
+
+For a future observed record, `analytics-events.jsonl` accepts only product-event enums, `utm_source|utm_medium|utm_campaign|utm_term|utm_content` with bounded non-secret values, SHA-256 occurrence and event identifiers, bounded attempt/duplicate counts, `distinctEventIds=1`, `committedEvents=1`, and `exactlyOnce=true`. A stopped or unobserved run stores one typed `unavailable` record with zero events; it never creates placeholder events.
+
+## Executable evidence contract for the next run
+
+From repository-relative cwd `explorers-earth`, each runner invocation allocates one new direct child of its fixed `.artifacts/music-public` parent with exclusive-create semantics. The runner accepts no parent from CLI or environment; the allocator rejects reuse, traversal, symlinks, or a parent outside an exact `.artifacts/music-public` hierarchy. The parent may be created separately; the run child is never recursively reopened.
+
+Every complete run contains these required relative paths:
+
+```text
+logs/stdout.log
+logs/stderr.log
+analytics-events.jsonl
+visual-trace-ledger.json
+docker-inspection.json
+skip-reasons.json
+restoration.json
+evidence.json
+manifest.json
+manifest.sha256
+```
+
+Any retained `visuals/*.(png|jpg|jpeg|webp)` or `traces/*.zip` named by `visual-trace-ledger.json` becomes an additional required manifest entry. If none exists, the ledger says `none-retained` with empty arrays.
+
+`manifest.json` is canonical JSON and lists every required artifact except itself and the sidecar as an exact `{role,path,bytes,sha256}` entry. `manifest.sha256` is the self-reference terminus: exactly one lowercase 64-hex SHA-256 plus newline, with no path or other data. The verifier rejects a missing file, an unlisted file/directory, an extra/duplicate/reordered role or path, unsafe path, sidecar mismatch, non-canonical manifest, byte mismatch, or artifact hash mismatch.
+
+The retained stdout/stderr logs are bounded, path-normalized, and secret-redacted. Raw Playwright JSON, output directories, auth files, bearer values, capability values, absolute workspace paths, and unbounded child output are private inputs and must be deleted before manifest creation.
+
+The next guarded run also records these exact cleanup inspections, executed from the repository root, with argv, exit code, and bounded matching output stored in `docker-inspection.json`:
+
+```text
+docker ps -aq --filter label=com.explorers.music.fixture=true --filter label=com.explorers.music.project=explorers-music-fixture
+docker volume ls -q --filter label=com.explorers.music.fixture=true --filter label=com.explorers.music.project=explorers-music-fixture
+```
+
+It separately records whether `owner-auth.json` and `profile-storage-state.json` are absent. Missing Docker output is `unavailable`; it is not replaced with an empty successful inspection.
+A nominally successful live lane is forced to a nonzero final exit when either inspection is unavailable, labeled resources remain, or either private auth artifact is not proven absent; the exact gap stays in `evidence.json`.
+
+Independent verification command after a runner finishes:
+
+```text
+node scripts/music-public-qualification-artifacts.mjs verify .artifacts/music-public/<runId>
+```
+
+## Reviewer index and release blockers
+
+| Requirement | Evidence | Result |
+| --- | --- | --- |
+| Guarded live chronology | Separate attempts A and B above | Reconciled; neither attempt qualifies UAT |
+| Terminal mutation evidence | 17 ordered journey hashes plus final restore required | Missing |
+| Analytics/UTM exactly once | Observed safe ledger required | Missing for live UAT |
+| Visual/trace inventory | Live ledger required | Historical attempts retained none |
+| Immutable streams and manifest | New executable contract | Non-live contract verification required before any live attempt; no historical bundle |
+| Docker/auth cleanup | Exact argv/exits/matches required | Historical output not retained |
+| Explorer critical coverage | Task 2 committed report | Pass, 418/418 and 100% coverage |
+| Live harness safety | Task 1 committed report | Non-live contracts pass; live path deliberately unexercised after repair |
+| Repository/database lane | Explicit disposable database authority | Still refused / missing |
+| Independent evidence review | Separate reviewer before live execution | Required; not replaced by this author review |
+
+Release remains blocked on independent review of the artifact contract, one newly authorized guarded run that crosses preflight and retains all 17 terminal journey hashes plus an observed analytics ledger, a clean manifest verification, and the explicitly authorized repository/database lane. Push, PR review request, merge, deployment, and production mutation remain outside this evidence repair.
