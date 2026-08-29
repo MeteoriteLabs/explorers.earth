@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { MUSIC_FIXTURE_DATA_DUMP_MAX_BYTES } from "./music-e2e-state-restore.mjs";
 
@@ -22,6 +23,10 @@ export const MUSIC_E2E_STATE_CAPTURE_CODES = Object.freeze([
 const stages = new Set(MUSIC_E2E_STATE_CAPTURE_STAGES);
 const codes = new Set(MUSIC_E2E_STATE_CAPTURE_CODES);
 const PRIVATE_PROFILE_MAX_BYTES = 64 * 1024;
+const IDENTITY_COUNT_OUTPUT_MAX_BYTES = 4 * 1024;
+const IDENTITY_COUNT_TIMEOUT_MS = 10_000;
+const dockerExecutable = process.platform === "win32" ? "docker.exe" : "docker";
+const repositoryRoot = new URL("../../", import.meta.url);
 
 class MusicFixtureCaptureFailure extends Error {
   constructor(stage, code) {
@@ -117,6 +122,80 @@ export function buildMusicFixtureIdentityCountPsqlQuery(authority) {
       value: authority[key],
     }))),
   });
+}
+
+function identityCountFailure(timeout = false) {
+  const error = new Error("fixture identity population inspection failed");
+  if (timeout) error.name = "TimeoutError";
+  throw error;
+}
+
+export function buildMusicFixtureIdentityCountPsqlOperation({ containerId, authority } = {}) {
+  if (typeof containerId !== "string" || !/^[a-f0-9]{64}$/.test(containerId)
+      || !exactAuthority(authority)) identityCountFailure();
+  const query = buildMusicFixtureIdentityCountPsqlQuery(authority);
+  return Object.freeze({
+    file: dockerExecutable,
+    args: Object.freeze([
+      "exec", "-i", containerId,
+      "psql", "-X", "-U", "music_migrator", "-d", "music_fixture",
+      "-v", "ON_ERROR_STOP=1",
+      ...query.variables.flatMap(({ name, value }) => ["-v", `${name}=${value}`]),
+      "-A", "-t", "-f", "-",
+    ]),
+    input: Buffer.from(`${query.text}\n`, "utf8"),
+  });
+}
+
+function exactContainerAttestation(attestContainer, containerId) {
+  let attested;
+  try { attested = attestContainer(); }
+  catch { identityCountFailure(); }
+  if (!attested || typeof attested !== "object" || Array.isArray(attested)
+      || Object.keys(attested).join("\0") !== "containerId"
+      || attested.containerId !== containerId) identityCountFailure();
+}
+
+function timeoutResult(error) {
+  return error && typeof error === "object" && error.code === "ETIMEDOUT";
+}
+
+export function runMusicFixtureIdentityCountPsql({
+  containerId,
+  authority,
+  attestContainer,
+  spawn = spawnSync,
+} = {}) {
+  if (typeof attestContainer !== "function" || typeof spawn !== "function") identityCountFailure();
+  let operation;
+  try { operation = buildMusicFixtureIdentityCountPsqlOperation({ containerId, authority }); }
+  catch { identityCountFailure(); }
+  exactContainerAttestation(attestContainer, containerId);
+
+  let result;
+  let spawnFailure;
+  try {
+    result = spawn(operation.file, operation.args, {
+      cwd: repositoryRoot,
+      input: operation.input,
+      encoding: "utf8",
+      windowsHide: true,
+      maxBuffer: IDENTITY_COUNT_OUTPUT_MAX_BYTES,
+      timeout: IDENTITY_COUNT_TIMEOUT_MS,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch (error) {
+    spawnFailure = error;
+  } finally {
+    exactContainerAttestation(attestContainer, containerId);
+  }
+
+  if (timeoutResult(spawnFailure) || timeoutResult(result?.error)) identityCountFailure(true);
+  if (spawnFailure || result?.status !== 0 || result?.signal !== null || result?.error
+      || typeof result?.stdout !== "string" || !/^[01](?:\r?\n)?$/.test(result.stdout)) {
+    identityCountFailure();
+  }
+  return Number(result.stdout[0]);
 }
 
 async function boundedResponseText(response) {

@@ -13,6 +13,31 @@ const profileHash = "c".repeat(64);
 const snapshotId = "00000000-0000-4000-8000-000000000012";
 const hostile = "postgresql://owner:do-not-retain@127.0.0.1:55432/private C:\\private\\capture.sql token=do-not-retain";
 
+type IdentityCountOperation = {
+  file: string;
+  args: readonly string[];
+  input: Buffer;
+};
+
+type IdentityCountResult = {
+  status: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+  error?: Error & { code?: string };
+};
+
+type IdentityCountRunner = (input: {
+  containerId: string;
+  authority: typeof authority;
+  attestContainer: () => { containerId: string };
+  spawn?: (
+    file: string,
+    args: readonly string[],
+    options: Record<string, unknown>,
+  ) => IdentityCountResult;
+}) => number;
+
 async function loadCaptureContract(): Promise<Record<string, unknown>> {
   try {
     const modulePath: string = "../../../scripts/music-e2e-state-capture.mjs";
@@ -202,5 +227,142 @@ describe("Music initial state capture", () => {
       authority,
     })).rejects.toThrow("fixture profile endpoint authority is invalid");
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes the exact psql identity query through bounded stdin so interpolation cannot be bypassed by -c", async () => {
+    const contract = await loadCaptureContract();
+    const buildOperation = contract.buildMusicFixtureIdentityCountPsqlOperation as undefined | ((input: {
+      containerId: string;
+      authority: typeof authority;
+    }) => IdentityCountOperation);
+    expect(buildOperation).toBeTypeOf("function");
+    if (!buildOperation) return;
+
+    const operation = buildOperation({ containerId, authority });
+    expect(operation).toEqual({
+      file: process.platform === "win32" ? "docker.exe" : "docker",
+      args: [
+        "exec", "-i", containerId,
+        "psql", "-X", "-U", "music_migrator", "-d", "music_fixture",
+        "-v", "ON_ERROR_STOP=1",
+        "-v", "fixture_user_document_id=e2e-public-music-capture-user",
+        "-v", "fixture_account_document_id=e2e-public-music-capture-account",
+        "-v", "fixture_username=e2e-public-music-capture-owner",
+        "-A", "-t", "-f", "-",
+      ],
+      input: Buffer.from(
+        "SELECT count(*) FROM users WHERE strapi_user_document_id = :'fixture_user_document_id' AND strapi_account_document_id = :'fixture_account_document_id' AND username = :'fixture_username' AND identity_status = 'active';\n",
+        "utf8",
+      ),
+    });
+    expect(operation.args).not.toContain("-c");
+    expect(operation.args).not.toContain("-Atc");
+    expect(operation.args.join("\0")).not.toContain("SELECT count");
+    expect(operation.args.join("\0")).not.toContain("do-not-retain");
+  });
+
+  it("accepts only an exact 0-or-1 result and reattests the immutable container before and after execution", async () => {
+    const contract = await loadCaptureContract();
+    const runIdentityCount = contract.runMusicFixtureIdentityCountPsql as undefined | IdentityCountRunner;
+    expect(runIdentityCount).toBeTypeOf("function");
+    if (!runIdentityCount) return;
+
+    const events: string[] = [];
+    let invocation: { file: string; args: readonly string[]; options: Record<string, unknown> } | undefined;
+    const result = runIdentityCount({
+      containerId,
+      authority,
+      attestContainer: () => { events.push("attest"); return { containerId }; },
+      spawn: (file, args, options) => {
+        events.push("spawn");
+        invocation = { file, args, options };
+        return { status: 0, signal: null, stdout: "1\r\n", stderr: "" };
+      },
+    });
+    expect(result).toBe(1);
+    expect(events).toEqual(["attest", "spawn", "attest"]);
+    expect(invocation).toMatchObject({
+      file: process.platform === "win32" ? "docker.exe" : "docker",
+      options: {
+        encoding: "utf8",
+        windowsHide: true,
+        maxBuffer: 4 * 1024,
+        timeout: 10_000,
+        stdio: ["pipe", "pipe", "pipe"],
+        input: expect.any(Buffer),
+      },
+    });
+
+    for (const stdout of ["", "2\n", "10\n", " 1\n", "1\n0\n", "1\n\n"]) {
+      expect(() => runIdentityCount({
+        containerId,
+        authority,
+        attestContainer: () => ({ containerId }),
+        spawn: () => ({ status: 0, signal: null, stdout, stderr: "" }),
+      }), stdout).toThrow("fixture identity population inspection failed");
+    }
+
+    let attestations = 0;
+    expect(() => runIdentityCount({
+      containerId,
+      authority,
+      attestContainer: () => ({ containerId: ++attestations === 1 ? containerId : "b".repeat(64) }),
+      spawn: () => ({ status: 0, signal: null, stdout: "1\n", stderr: "" }),
+    })).toThrow("fixture identity population inspection failed");
+    expect(attestations).toBe(2);
+  });
+
+  it("fails before execution on changed authority and exposes only fixed failure or timeout diagnostics", async () => {
+    const contract = await loadCaptureContract();
+    const runIdentityCount = contract.runMusicFixtureIdentityCountPsql as undefined | IdentityCountRunner;
+    expect(runIdentityCount).toBeTypeOf("function");
+    if (!runIdentityCount) return;
+
+    const neverSpawn = vi.fn((): IdentityCountResult => ({
+      status: 0, signal: null, stdout: "1\n", stderr: "",
+    }));
+    expect(() => runIdentityCount({
+      containerId,
+      authority,
+      attestContainer: () => ({ containerId: "b".repeat(64) }),
+      spawn: neverSpawn,
+    })).toThrow("fixture identity population inspection failed");
+    expect(neverSpawn).not.toHaveBeenCalled();
+
+    const events: string[] = [];
+    let failure: unknown;
+    try {
+      runIdentityCount({
+        containerId,
+        authority,
+        attestContainer: () => { events.push("attest"); return { containerId }; },
+        spawn: () => {
+          events.push("spawn");
+          return { status: 1, signal: null, stdout: "", stderr: hostile };
+        },
+      });
+    } catch (error) { failure = error; }
+    expect(events).toEqual(["attest", "spawn", "attest"]);
+    expect(failure).toMatchObject({
+      name: "Error",
+      message: "fixture identity population inspection failed",
+    });
+    expect(String(failure)).not.toContain("do-not-retain");
+    expect(String(failure)).not.toContain("C:\\private");
+
+    const timeoutCause = Object.assign(new Error(hostile), { code: "ETIMEDOUT" });
+    try {
+      runIdentityCount({
+        containerId,
+        authority,
+        attestContainer: () => ({ containerId }),
+        spawn: () => ({ status: null, signal: "SIGTERM", stdout: "", stderr: hostile, error: timeoutCause }),
+      });
+    } catch (error) { failure = error; }
+    expect(failure).toMatchObject({
+      name: "TimeoutError",
+      message: "fixture identity population inspection failed",
+    });
+    expect(String(failure)).not.toContain("do-not-retain");
   });
 });

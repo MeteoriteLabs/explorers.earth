@@ -5804,9 +5804,11 @@ test("canonical state snapshots require safe populated identity and profile fiel
 test("state service proves populated identity/profile metadata and returns exact profile restore equality", () => {
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
   const captureCore = readFileSync("../tunes/scripts/music-e2e-state-capture.mjs", "utf8");
-  expect(stateService).toContain("buildMusicFixtureIdentityCountPsqlQuery");
-  expect(stateService).toContain("query.variables.flatMap");
+  expect(stateService).toContain("runMusicFixtureIdentityCountPsql");
+  expect(stateService).not.toContain("buildMusicFixtureIdentityCountPsqlQuery");
+  expect(stateService).not.toContain('"-Atc"');
   expect(captureCore).toContain("buildMusicFixtureIdentityCountPgQuery");
+  expect(captureCore).toContain("buildMusicFixtureIdentityCountPsqlOperation");
   expect(captureCore).toContain("identityPredicates");
   expect(captureCore).toContain("identityRows");
   expect(captureCore).toContain("fieldCount");

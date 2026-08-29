@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
@@ -242,6 +242,7 @@ describe("owned Task-4 UAT database lane", () => {
     expect(runnerSource).toContain("readSecureMusicSecretFile");
     expect(runnerSource).toContain("cleanupFixtureMusicTokenSecret");
     expect(runnerSource).toContain('MUSIC_C12_INITIAL_CAPTURE_POSTGRES_TEST: "1"');
+    expect(runnerSource).toContain('MUSIC_C13_IDENTITY_COUNT_ADAPTER_POSTGRES_TEST: "1"');
     expect(runnerSource).not.toContain("writeFileSync(passwordFile");
     expect(MUSIC_UAT_DATABASE_TEST_FILES).toEqual([
       "server/test/migrations/music-migration.integration.test.ts",
@@ -256,6 +257,7 @@ describe("owned Task-4 UAT database lane", () => {
       "server/test/load/music-load-postgres.integration.test.ts",
       "server/test/music-e2e-state-restore.integration.test.ts",
       "server/test/music-e2e-initial-capture.integration.test.ts",
+      "server/test/music-e2e-identity-count-adapter.integration.test.ts",
     ]);
     const restoreIntegration = readFileSync(resolve(
       repositoryRoot, "tunes/server/test/music-e2e-state-restore.integration.test.ts",
@@ -271,6 +273,18 @@ describe("owned Task-4 UAT database lane", () => {
     expect(captureIntegration).toContain("requestMusicFixturePrivateProfileSnapshot");
     expect(captureIntegration).toMatch(/127\.0\.0\.1/);
     expect(captureIntegration).not.toMatch(/console\.(?:log|error)|process\.(?:stdout|stderr)\.write/);
+
+    const adapterIntegrationPath = resolve(
+      repositoryRoot, "tunes/server/test/music-e2e-identity-count-adapter.integration.test.ts",
+    );
+    expect(existsSync(adapterIntegrationPath)).toBe(true);
+    if (existsSync(adapterIntegrationPath)) {
+      const adapterIntegration = readFileSync(adapterIntegrationPath, "utf8");
+      expect(adapterIntegration).toContain("MUSIC_C13_IDENTITY_COUNT_ADAPTER_POSTGRES_TEST");
+      expect(adapterIntegration).toContain("runMusicFixtureIdentityCountPsql");
+      expect(adapterIntegration).toContain("attestUatDatabaseAuthority");
+      expect(adapterIntegration).not.toMatch(/console\.(?:log|error)|process\.(?:stdout|stderr)\.write/);
+    }
   });
 
   it("scopes the verified ten-second timeout to the exact owned database child command", () => {

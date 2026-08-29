@@ -2,10 +2,10 @@ import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { createMusicMutationGuard } from "./music-e2e-mutation-guard.mjs";
 import {
-  buildMusicFixtureIdentityCountPsqlQuery,
   captureMusicFixtureState,
   hashMusicFixtureDump,
   requestMusicFixturePrivateProfileSnapshot,
+  runMusicFixtureIdentityCountPsql,
   safeMusicFixtureCaptureFailure,
 } from "./music-e2e-state-capture.mjs";
 import {
@@ -85,20 +85,11 @@ function databaseDump(containerId, dataOnly = false) {
 }
 
 function databaseIdentityRows(containerId) {
-  const current = inspectDatabaseContainer();
-  if (current.containerId !== containerId) throw new Error("fixture restore target changed");
-  const query = buildMusicFixtureIdentityCountPsqlQuery(captureAuthority);
-  const result = spawnSync(dockerExecutable, [
-    "exec", "-i", containerId, "psql", "-X", "-U", "music_migrator", "-d", "music_fixture",
-    ...["-v", "ON_ERROR_STOP=1"],
-    ...query.variables.flatMap(({ name, value }) => ["-v", `${name}=${value}`]),
-    "-Atc", query.text,
-  ], {
-    cwd: repositoryRoot, encoding: "utf8", windowsHide: true, maxBuffer: 4 * 1024,
+  return runMusicFixtureIdentityCountPsql({
+    containerId,
+    authority: captureAuthority,
+    attestContainer: inspectDatabaseContainer,
   });
-  const value = String(result.stdout ?? "").trim();
-  if (result.status !== 0 || !/^[01]$/.test(value)) throw new Error("fixture identity population inspection failed");
-  return Number(value);
 }
 
 async function json(url, options = {}) {
