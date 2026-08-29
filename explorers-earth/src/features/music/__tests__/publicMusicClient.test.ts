@@ -5,6 +5,7 @@ import {
   parsePublicMusicDescriptor,
   parsePublicMusicResource,
   PUBLIC_MUSIC_RESOURCE_MAX_BYTES,
+  PublicMusicError,
   type PublicMusicResource,
 } from "../publicMusicClient";
 import {
@@ -89,10 +90,79 @@ function operationalRecorder() {
   return { events, observability: createPublicMusicObservability((event) => events.push(event)) };
 }
 
+type ExpectedPublicMusicError = {
+  code: PublicMusicError["code"];
+  requestId?: string;
+  retryAfterSeconds?: number;
+  hostileValues: string[];
+};
+
+function expectSafePublicMusicError(error: unknown, expected: ExpectedPublicMusicError) {
+  expect(error).toBeInstanceOf(PublicMusicError);
+  const publicError = error as PublicMusicError & { cause?: unknown };
+  const ownEnumerableFields = Object.fromEntries(Object.entries(publicError));
+  const jsonSafeProjection = JSON.parse(JSON.stringify(publicError)) as unknown;
+  const visibleSurfaces = {
+    name: publicError.name,
+    message: publicError.message,
+    code: publicError.code,
+    requestId: publicError.requestId,
+    retryAfterSeconds: publicError.retryAfterSeconds,
+    cause: publicError.cause,
+    ownEnumerableFields,
+    jsonSafeProjection,
+    stack: publicError.stack,
+  };
+
+  for (const hostileValue of expected.hostileValues) {
+    expect(JSON.stringify(visibleSurfaces)).not.toContain(hostileValue);
+  }
+  expect(publicError).toMatchObject({
+    name: "PublicMusicError",
+    message: expected.code,
+    code: expected.code,
+    requestId: expected.requestId,
+    retryAfterSeconds: expected.retryAfterSeconds,
+  });
+  expect(Object.keys(ownEnumerableFields).sort()).toEqual([
+    "code", "name", "requestId", "retryAfterSeconds",
+  ]);
+  expect(Object.prototype.hasOwnProperty.call(publicError, "cause")).toBe(false);
+  if (publicError.requestId !== undefined) {
+    expect(publicError.requestId).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/);
+  }
+  if (publicError.retryAfterSeconds !== undefined) {
+    expect(Number.isFinite(publicError.retryAfterSeconds)).toBe(true);
+    expect(publicError.retryAfterSeconds).toBeGreaterThanOrEqual(0);
+    expect(publicError.retryAfterSeconds).toBeLessThanOrEqual(300);
+  }
+}
+
+async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error) {
+    return error;
+  }
+  throw new Error("Expected the public Music operation to reject.");
+}
+
 describe("public Music client", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+  });
+
+  it("rejects an error surrogate that leaks hostile values through secondary surfaces", () => {
+    const secret = "secret-surrogate-token";
+    const leakingError = Object.assign(new PublicMusicError("PUBLIC_UNAVAILABLE"), {
+      cause: { responseBody: secret },
+      diagnostic: secret,
+    });
+
+    expect(() => expectSafePublicMusicError(leakingError, {
+      code: "PUBLIC_UNAVAILABLE", hostileValues: [secret],
+    })).toThrow();
   });
 
   it("uses capability-safe public request endpoints and strict canonical song input", async () => {
@@ -135,8 +205,12 @@ describe("public Music client", () => {
       status,
       headers: { "x-request-id": "request.http-1" },
     })));
-    await expect(createPublicMusicClient("https://music.example").search("public_slug-123", "valid"))
-      .rejects.toMatchObject({ code, requestId: "request.http-1" });
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example").search("public_slug-123", "valid"),
+    );
+    expectSafePublicMusicError(error, {
+      code, requestId: "request.http-1", hostileValues: ["secret-upstream-body"],
+    });
   });
 
   it.each([
@@ -149,8 +223,12 @@ describe("public Music client", () => {
       status: 429,
       headers: { "retry-after": retryAfter, "x-request-id": "request.retry-1" },
     })));
-    await expect(createPublicMusicClient("https://music.example").search("public_slug-123", "valid"))
-      .rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds, requestId: "request.retry-1" });
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example").search("public_slug-123", "valid"),
+    );
+    expectSafePublicMusicError(error, {
+      code: "RATE_LIMITED", retryAfterSeconds, requestId: "request.retry-1", hostileValues: [],
+    });
   });
 
   it("drops an unsafe request correlation ID instead of reflecting capability-shaped input", async () => {
@@ -159,9 +237,13 @@ describe("public Music client", () => {
       status: 503,
       headers: { "x-request-id": unsafeRequestId },
     })));
-    const promise = createPublicMusicClient("https://music.example").search("public_slug-123", "valid", "C".repeat(43));
-    await expect(promise).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: undefined });
-    await expect(promise).rejects.not.toHaveProperty("message", expect.stringContaining(unsafeRequestId));
+    const capability = "C".repeat(43);
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example").search("public_slug-123", "valid", capability),
+    );
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", requestId: undefined, hostileValues: [unsafeRequestId, capability],
+    });
   });
 
   it.each([
@@ -176,9 +258,12 @@ describe("public Music client", () => {
     const response = responseFactory();
     response.headers.set("x-request-id", "request.body-1");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
-    await expect(createPublicMusicClient("https://music.example", recorder.observability)
-      .search("public_slug-123", "valid", capability))
-      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: "request.body-1" });
+    const error = await captureRejection(createPublicMusicClient("https://music.example", recorder.observability)
+      .search("public_slug-123", "valid", capability));
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", requestId: "request.body-1",
+      hostileValues: [capability, "secret-response-token"],
+    });
     expect(recorder.events).toEqual([{
       version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "request", reason,
     }]);
@@ -216,26 +301,15 @@ describe("public Music client", () => {
       : operation === "video"
         ? client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", capability)
         : client.requestSong("public_slug-123", publicRequestSong, capability, "request-key-12345678");
-    await expect(promise).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: "request.schema-1" });
+    const error = await captureRejection(promise);
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", requestId: "request.schema-1",
+      hostileValues: [capability, "secret-response-token"],
+    });
     expect(recorder.events).toEqual([{
       version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "request", reason: "schema",
     }]);
     expect(JSON.stringify(recorder.events)).not.toMatch(/secret-response-token|CCCCCCCC/);
-  });
-
-  it.each([
-    ["search", success({ items: [publicVideo], nextPageToken: null })],
-    ["video", success(publicVideo)],
-  ] as const)("forwards an AbortSignal for %s without serializing it", async (operation, response) => {
-    // Break caught: caller cancellation is lost or serialized into a public request.
-    const fetcher = vi.fn().mockResolvedValue(response);
-    vi.stubGlobal("fetch", fetcher);
-    const controller = new AbortController();
-    const client = createPublicMusicClient("https://music.example");
-    if (operation === "search") await client.search("public_slug-123", "valid", undefined, controller.signal);
-    else await client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", undefined, controller.signal);
-    expect(fetcher.mock.calls[0][1]).toMatchObject({ signal: controller.signal });
-    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("AbortSignal");
   });
 
   it("strictly parses the stable public descriptor without accepting authority aliases", () => {
@@ -396,18 +470,56 @@ describe("public Music client", () => {
     expect(sessionGet).not.toHaveBeenCalled();
   });
 
-  it("discovers a public descriptor with the Account document ID and no username authority", async () => {
-    const fetcher = vi.fn().mockResolvedValue(success(publicDescriptor));
-    vi.stubGlobal("fetch", fetcher);
+  it.each([
+    ["discover", "supplied"],
+    ["discover", "omitted"],
+    ["search", "supplied"],
+    ["search", "omitted"],
+    ["videoFromUrl", "supplied"],
+    ["videoFromUrl", "omitted"],
+  ] as const)("builds %s fetch init with an %s AbortSignal", async (operation, signalMode) => {
+    // Break caught: a caller signal is lost, synthesized when omitted, or leaks into transport data.
+    const signalMarker = "secret-signal-data";
     const controller = new AbortController();
+    (controller.signal as AbortSignal & { marker: string }).marker = signalMarker;
+    const signal = signalMode === "supplied" ? controller.signal : undefined;
+    const response = operation === "discover"
+      ? success(publicDescriptor)
+      : operation === "search"
+        ? success({ items: [publicVideo], nextPageToken: null })
+        : success(publicVideo);
+    const fetcher = vi.fn().mockResolvedValue(response);
+    vi.stubGlobal("fetch", fetcher);
+    const client = createPublicMusicClient("https://music.example");
 
-    await expect(createPublicMusicClient("https://music.example").discover("account-document-id", controller.signal))
-      .resolves.toEqual(publicDescriptor);
-    expect(fetcher).toHaveBeenCalledWith(
-      "https://music.example/api/music/public-profile/account-document-id",
-      { headers: { Accept: "application/json" }, signal: controller.signal },
-    );
-    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("username");
+    if (operation === "discover") await client.discover("account-document-id", signal);
+    else if (operation === "search") await client.search("public_slug-123", " valid ", undefined, signal);
+    else await client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", undefined, signal);
+
+    const [url, init] = fetcher.mock.calls[0] as [string, RequestInit];
+    const expectedUrl = operation === "discover"
+      ? "https://music.example/api/music/public-profile/account-document-id"
+      : operation === "search"
+        ? "https://music.example/api/playlist/public_slug-123/youtube/search"
+        : "https://music.example/api/playlist/public_slug-123/youtube/video-from-url";
+    const expectedInit = operation === "discover"
+      ? { headers: { Accept: "application/json" } }
+      : {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: operation === "search"
+            ? JSON.stringify({ query: "valid" })
+            : JSON.stringify({ url: "https://youtu.be/abcdefghijk" }),
+        };
+    expect(url).toBe(expectedUrl);
+    expect(init).toEqual({ ...expectedInit, ...(signal ? { signal } : {}) });
+    if (signal) expect(init.signal).toBe(controller.signal);
+    else {
+      expect(init).not.toHaveProperty("signal");
+      expect(JSON.stringify(init)).not.toContain('"signal"');
+    }
+    expect(url).not.toContain(signalMarker);
+    expect(String(init.body ?? "")).not.toContain(signalMarker);
   });
 
   it.each(["", "account/document", "x".repeat(256)])(
@@ -433,8 +545,12 @@ describe("public Music client", () => {
       status,
       headers: { "x-request-id": "descriptor.request-1", "retry-after": "999" },
     })));
-    await expect(createPublicMusicClient("https://music.example").discover("account-document-id"))
-      .rejects.toMatchObject({ code, requestId: "descriptor.request-1", retryAfterSeconds });
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example").discover("account-document-id"),
+    );
+    expectSafePublicMusicError(error, {
+      code, requestId: "descriptor.request-1", retryAfterSeconds, hostileValues: [],
+    });
   });
 
   it("drops an unsafe descriptor request ID instead of reflecting it", async () => {
@@ -443,9 +559,12 @@ describe("public Music client", () => {
       status: 503,
       headers: { "x-request-id": unsafeRequestId },
     })));
-    const promise = createPublicMusicClient("https://music.example").discover("account-document-id");
-    await expect(promise).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: undefined });
-    await expect(promise).rejects.not.toHaveProperty("message", expect.stringContaining(unsafeRequestId));
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example").discover("account-document-id"),
+    );
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", requestId: undefined, hostileValues: [unsafeRequestId, "C".repeat(43)],
+    });
   });
 
   it.each([
@@ -455,8 +574,12 @@ describe("public Music client", () => {
     // Break caught: descriptor parser failures escape their public error boundary or log hostile response data.
     const recorder = operationalRecorder();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
-    await expect(createPublicMusicClient("https://music.example", recorder.observability).discover("account-document-id"))
-      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example", recorder.observability).discover("account-document-id"),
+    );
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", hostileValues: ["secret-capability-token"],
+    });
     expect(recorder.events).toEqual([{
       version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "descriptor", reason,
     }]);
@@ -607,8 +730,12 @@ describe("public Music client", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamed.response));
     const recorder = operationalRecorder();
 
-    await expect(createPublicMusicClient("https://music.example", recorder.observability).load("public_slug-123"))
-      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example", recorder.observability).load("public_slug-123"),
+    );
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", hostileValues: [],
+    });
     expect(streamed.wasCancelled()).toBe(true);
     expect(recorder.events).toEqual([{
       version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "resource", reason: "size",
@@ -641,8 +768,12 @@ describe("public Music client", () => {
       { status: 200 },
     )));
 
-    await expect(createPublicMusicClient("https://music.example", recorder.observability).load("public_slug-123"))
-      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    const error = await captureRejection(
+      createPublicMusicClient("https://music.example", recorder.observability).load("public_slug-123"),
+    );
+    expectSafePublicMusicError(error, {
+      code: "PUBLIC_UNAVAILABLE", hostileValues: [secret],
+    });
     expect(recorder.events).toEqual([{
       version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "resource", reason: "encoding",
     }]);

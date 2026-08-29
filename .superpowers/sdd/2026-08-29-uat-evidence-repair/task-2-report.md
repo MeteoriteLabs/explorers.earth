@@ -148,4 +148,50 @@ Build verification regenerated sitemap dates. The generated `public/sitemap.xml`
 
 ## Independent review
 
-Per the SDD controller, an independent reviewer will be dispatched against the committed Task 2 diff. The final disposition belongs to that post-commit review and is not pre-claimed here.
+Independent review of commit `5286b4a` returned two evidence-quality findings:
+
+1. Secret-leak assertions covered observability but did not exhaustively inspect every error-visible and serializable surface.
+2. Signal coverage did not behaviorally assert omitted-property absence and complete fetch init for discover, search, and video URL methods.
+
+Both findings are addressed in fix round 1 below. Final approval remains subject to scoped re-review of the separate fix commit.
+
+## Fix round 1: hostile error surfaces and fetch-init contracts
+
+### Intentional RED
+
+A test-only `PublicMusicError` surrogate preserved the expected `PUBLIC_UNAVAILABLE` code, name, and message while leaking `secret-surrogate-token` through `cause.responseBody` and an enumerable `diagnostic` field. The initial shallow helper checked only the primary fields, so this command failed as intended:
+
+```text
+npx vitest run src/features/music/__tests__/publicMusicClient.test.ts -t "rejects an error surrogate"
+```
+
+Result: exit 1, 1 failed and 102 skipped. Failure: `expected [Function] to throw an error`. This proved the pre-fix assertion could accept a leaking error shape.
+
+### GREEN
+
+The reusable test helper now captures actual rejections and checks:
+
+- `PublicMusicError` identity and exact `name`, `message`, `code`, `requestId`, and `retryAfterSeconds`.
+- Request-ID syntax and finite retry bounds from 0 through 300 seconds.
+- Absence of `cause` and an exact own-enumerable field allowlist.
+- Absence of every supplied hostile value across name, message, code, request ID, retry, cause, own enumerable fields, JSON-safe projection, and stack.
+
+Every secret-bearing request status/body/schema case, descriptor parser/unsafe-ID case, and resource invalid-UTF8 case captures the real rejection and uses this helper while preserving exact observability assertions.
+
+A six-row real-method table covers discover, search, and video URL fetch init with supplied and omitted signals. It asserts supplied signal identity, absence of the `signal` property when omitted, exact URL/headers/body, and absence of a signal marker from URL/body.
+
+### Fix-round verification
+
+| Command | Result |
+|---|---|
+| Targeted surrogate RED | Expected FAIL: shallow assertion accepted secondary-surface leak |
+| Targeted surrogate GREEN | PASS: 1 test, 102 skipped |
+| `npx vitest run src/features/music/__tests__/publicMusicClient.test.ts` | PASS: 1 file, 106 tests |
+| `npm run test:music-critical-coverage` | PASS: 16 files, 418 tests; 100% aggregate/per-file statements, branches, functions, and lines |
+| `npm run test:unit` | PASS: 190 files, 1,965 tests |
+| `npx eslint src/features/music/__tests__/publicMusicClient.test.ts` | PASS: no findings |
+| `npm run lint -- --quiet` | PASS: no errors |
+| `npm run build` | PASS: landing checks, static generation, TypeScript, Vite, and HTTPS-only Music transport check |
+| `git diff --check` | PASS |
+
+No production file changed, no live service was contacted, and build-generated sitemap date churn was inspected and restored. Scoped re-review is pending on the separate fix commit.
