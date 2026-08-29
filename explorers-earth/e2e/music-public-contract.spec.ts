@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
   musicLiveAuthorityFromEnvironment,
+  musicOwnerCredentialFromAuthState,
   buildPairwisePermissionMatrix,
   musicLiveWriteSkipReason,
   musicLiveTest,
@@ -12,6 +13,8 @@ import {
 } from "./setup/music";
 
 const liveTest = musicLiveTest;
+const fixtureStrapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN;
+if (!fixtureStrapiToken) throw new Error("MUSIC_E2E_STRAPI_TOKEN is required for the fixture callback");
 
 const fixtureOrigin = "http://localhost:55173";
 const liveSkipReason = musicLiveWriteSkipReason();
@@ -363,11 +366,11 @@ function publicationHeaders(credential: string): Record<string, string> {
 }
 
 async function authenticateOwner(page: Page): Promise<string> {
-  await page.goto("/google-auth/callback?access_token=fixture-read-only-token");
+  await page.goto(`/google-auth/callback?access_token=${encodeURIComponent(fixtureStrapiToken)}`);
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await page.goto("/recommendations/music");
   await expect(page.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute("aria-selected", "true");
-  const credential = ownerState(page).credential;
+  const credential = process.env.MUSIC_E2E_AUTH_STATE_PATH ? musicOwnerCredentialFromAuthState() : ownerState(page).credential;
   expect(credential, "the fixture must mint an owner Music credential after Explorer login").toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   return credential!;
 }
@@ -385,7 +388,7 @@ test.beforeEach(async ({ page }) => {
     const authorization = request.headers().authorization;
     if (url.origin === fixtureOrigin
       && authorization?.startsWith("Bearer ")
-      && authorization !== "Bearer fixture-read-only-token"
+      && authorization !== `Bearer ${fixtureStrapiToken}`
       && ["/api/music/dashboard", "/api/playlists", "/api/music/guest-controls"].includes(url.pathname)) {
       ownerState(page).credential = authorization;
     }

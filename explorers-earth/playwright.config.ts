@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+process.env.MUSIC_E2E_STRAPI_TOKEN ??= 'fixture-read-only-token';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
 const externalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;

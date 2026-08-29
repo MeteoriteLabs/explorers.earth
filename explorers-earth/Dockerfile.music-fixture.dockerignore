@@ -78,6 +78,7 @@ explorers-earth/src/features/LandingPage/*
 explorers-earth/src/features/Movies/*
 !explorers-earth/src/features/music/
 explorers-earth/src/features/music/*
+!explorers-earth/src/features/music/publicMusicAnalytics.ts
 !explorers-earth/src/features/People/
 explorers-earth/src/features/People/*
 !explorers-earth/src/features/Products/

@@ -459,7 +459,8 @@ async function resolveLifecycleProofToken(
       throw new Error("STRAPI_LIFECYCLE_PROOF_TOKEN must use the deterministic fixture credential");
     }
     const fixtureToken = environment.STRAPI_LIFECYCLE_PROOF_TOKEN ?? environment.STRAPI_ACCESS_TOKEN;
-    if (fixtureToken !== "fixture-read-only-token") {
+    const projectedFixtureToken = environment.MUSIC_E2E_STRAPI_TOKEN ?? "fixture-read-only-token";
+    if (fixtureToken !== projectedFixtureToken || projectedFixtureToken.length < 16) {
       throw new Error("STRAPI_LIFECYCLE_PROOF_TOKEN must equal the verified read-only fixture credential");
     }
     return fixtureToken;

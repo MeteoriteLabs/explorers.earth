@@ -9,6 +9,7 @@ const expectedRuntimeTables = [
   "api_tokens",
   "email_logs",
   "email_templates",
+  "explorers_analytics_receipts",
   "guest_interactions",
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import {
+  fixtureUsesAttestedAnalyticsSchema,
   startMusicServer,
   type MusicServerRuntime,
 } from "../config/music-startup";
@@ -28,6 +29,25 @@ function mkdtempSync(prefix: string): string {
 const repositoryRoot = resolve(import.meta.dirname, "../../..");
 const signingRoot = mkdtempSync(resolve(tmpdir(), "music-startup-key-"));
 const signingPath = resolve(signingRoot, "current");
+
+describe("fixture analytics schema authority", () => {
+  it("requires the exact fixture lane and admin-applied schema marker", () => {
+    expect(() => fixtureUsesAttestedAnalyticsSchema({
+      MUSIC_MODE: "live",
+      MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: "true",
+      MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: "explorers-analytics-receipts-v1",
+    })).toThrow(/live runtime cannot bypass/);
+    expect(() => fixtureUsesAttestedAnalyticsSchema({
+      MUSIC_MODE: "fixture",
+      MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: "true",
+    })).toThrow(/marker is missing or mismatched/);
+    expect(fixtureUsesAttestedAnalyticsSchema({
+      MUSIC_MODE: "fixture",
+      MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: "true",
+      MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: "explorers-analytics-receipts-v1",
+    })).toBe(true);
+  });
+});
 const runtimeDatabasePasswordPath = resolve(signingRoot, "database-runtime");
 const lifecycleProofPath = resolve(signingRoot, "lifecycle-proof");
 const publicationResponsePath = resolve(signingRoot, "publication-response");
@@ -166,7 +186,7 @@ describe("discriminated Music startup bootstrap", () => {
 
   it("validates the rendered live Compose environment exactly once before application import and listen", async () => {
     const environment = withSigningFile(renderedProductionEnvironment());
-    expect(environment.MUSIC_MIGRATION_MARKER).toBe("0020_public_snapshot_revision");
+    expect(environment.MUSIC_MIGRATION_MARKER).toBe("0021_explorers_analytics_receipts");
     for (const fixtureOnly of [
       "MUSIC_FIXTURE_VERSION", "STRAPI_FIXTURE_URL", "DATABASE_URL_TEST",
       "MUSIC_SIGNING_KEY_CURRENT_ID", "MUSIC_SIGNING_KEY_CURRENT_SECRET",

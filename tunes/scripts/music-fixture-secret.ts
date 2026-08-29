@@ -478,7 +478,12 @@ function listAggregateCleanupTargets(root: string, currentGenerationName?: strin
     assertOwnedDirectory(directory);
     for (const name of readdirSync(directory).sort()) {
       if (!matcher.test(name)) continue;
-      targets.push({ path: join(directory, name), targetId: name, phase });
+      const path = join(directory, name);
+      // Only regular files can be authenticated fixture authority. A stale or
+      // hostile directory using the filename pattern is never followed and
+      // must not prevent recovery of exact labeled disposable resources.
+      if (!lstatSync(path, { bigint: true }).isFile()) continue;
+      targets.push({ path, targetId: name, phase });
     }
   };
   addDirectory(join(root, FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH), fixtureTokenName, "credentials");
@@ -2122,7 +2127,6 @@ export async function withAllFixtureMusicSecretsCleanup<T>(
   action: () => Promise<T>,
   dependencies: FixtureAggregateCleanupDependencies = {},
 ): Promise<T> {
-  authenticateAggregateCleanupAuthority(resolve(repositoryRoot));
   let result: T | undefined;
   let actionError: unknown;
   try {

@@ -23,7 +23,7 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
   it("retains the append-only database-owned publication clock before durable reactivation and archive authority", () => {
-    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0020_public_snapshot_revision");
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0021_explorers_analytics_receipts");
     const migration = loadMusicMigrations().find(({ id }) => id === "0013_publication_operation_database_clock");
     expect(migration?.id).toBe("0013_publication_operation_database_clock");
     expect(migration?.sql).toMatch(/CREATE OR REPLACE FUNCTION enforce_music_publication_operation_immutability/i);
@@ -57,6 +57,7 @@ describe("Music migration authority contracts", () => {
       "0018_transactional_queue_replacement",
       "0019_queue_visibility_control",
       "0020_public_snapshot_revision",
+      "0021_explorers_analytics_receipts",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -76,7 +77,7 @@ describe("Music migration authority contracts", () => {
     // Break caught: the public snapshot counter is missing, mutable history was
     // edited, or the runtime receives broader user-table authority than needed.
     const migrations = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const migration = migrations.at(-1);
+    const migration = migrations.find(({ id }) => id === "0020_public_snapshot_revision");
     expect(migration).toMatchObject({
       id: "0020_public_snapshot_revision",
       checksum: "fcb3b932c7c5ea853bd14d8131bc100b898317bdd76c60e3f8386d4c8593ceee",
@@ -88,6 +89,17 @@ describe("Music migration authority contracts", () => {
       .toBe("f2afbacf1fea7edce6190620405d2b8ee7a50493f40eebdd00a8bee624b34461");
     expect(migrations.find(({ id }) => id === "0019_queue_visibility_control")?.checksum)
       .toBe("8f1889a1b5d9c2a292caded84cf64fd697629808b5eed07010b43f6d39eaa012");
+  });
+
+  it("moves the existing analytics receipt schema into one append-only admin migration", () => {
+    const migration = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations")).at(-1);
+    expect(migration).toMatchObject({
+      id: "0021_explorers_analytics_receipts",
+      checksum: "1affade4f5e897896bf1ba939f1975963b26d6c67ee131d5e83fef9af7bfb3ee",
+    });
+    expect(migration?.sql).toMatch(/CREATE TABLE explorers_analytics_receipts/i);
+    expect(migration?.sql).toMatch(/CHECK \(status IN \('pending', 'committed', 'failed'\)\)/i);
+    expect(migration?.sql).not.toMatch(/DROP TABLE|DROP COLUMN|ALTER TABLE/i);
   });
 
   it("uses canonical LF Git blobs as migration checksum authority on every checkout platform", () => {
@@ -165,8 +177,9 @@ describe("Music migration authority contracts", () => {
       "0018_transactional_queue_replacement",
       "0019_queue_visibility_control",
       "0020_public_snapshot_revision",
+      "0021_explorers_analytics_receipts",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
@@ -289,7 +302,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0021_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition("0022_unapproved", "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

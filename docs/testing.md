@@ -106,13 +106,12 @@ $env:MUSIC_E2E_LIVE_WRITE_CONFIRMATION='I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_F
 $env:MUSIC_E2E_FIXTURE_VERSION='music-public-e2e-fixture/v1'
 $env:MUSIC_E2E_ACCOUNT_USERNAME='e2e-public-music-local-owner'
 $env:MUSIC_E2E_ACCOUNT_DOCUMENT_ID='e2e-public-music-local-account'
-$env:MUSIC_E2E_OWNER_CREDENTIAL='Bearer <disposable-owner-token>'
 $env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:1337'
 $env:MUSIC_E2E_STRAPI_TOKEN='<account-scoped-local-test-token>'
 $env:MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION='RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE'
 $env:MUSIC_E2E_SERVICE_ORIGINS='tcp://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55000,http://localhost:55173,http://127.0.0.1:55174'
 $env:MUSIC_E2E_HEALTH_URLS='tcp://127.0.0.1:55432,http://127.0.0.1:51337/health,http://127.0.0.1:55000/api/music-fixture/readiness,http://localhost:55173/health,http://127.0.0.1:55174/health'
-npm run music:test:public-e2e
+npm run music:test:public-e2e # callback bootstraps the private owner authority; do not supply a bearer token
 ```
 
 The runner captures the complete disposable PostgreSQL database plus the original Strapi `public_music` value before each mutation journey, restores both in `finally`, re-reads them, and stops all later live tests on any hash mismatch. It never accepts a production or non-loopback origin.

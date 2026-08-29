@@ -763,7 +763,8 @@ describe("Music documentation publication contract", () => {
       "npm run music:down -- --mode fixture",
     ]) expect(guide).toContain(command);
     expect(guide).toContain("http://127.0.0.1:55173");
-    expect(guide).toContain("http://127.0.0.1:55173/google-auth/callback?access_token=fixture-read-only-token");
+    expect(guide).toContain("guarded runner generates the scoped callback token");
+    expect(guide).not.toContain("fixture-read-only-token");
     expect(guide).toContain("http://127.0.0.1:55173/recommendations/music");
     expect(guide).toContain("http://127.0.0.1:55000/api-docs");
     expect(guide).toContain("POST /api/music/identity/ensure");

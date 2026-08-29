@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createConnection } from "node:net";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const VERSION = "music-public-e2e-fixture/v1";
@@ -32,7 +32,7 @@ if (!mode) {
 
 const runId = (process.env.MUSIC_PUBLIC_RUN_ID ?? new Date().toISOString().replace(/\D/g, "")).replace(/[^a-zA-Z0-9_-]/g, "-");
 const evidencePath = `.artifacts/music-public/${runId}/evidence.json`;
-const externalUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL ?? "http://127.0.0.1:5173";
+const externalUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL ?? (mode.lane === "live" ? "http://localhost:55173" : "http://127.0.0.1:5173");
 const generatedNamespace = `e2e-public-music-${runId.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
 const username = process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? (mode.lane === "live" ? `${generatedNamespace}-owner` : "not-configured");
 const namespace = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/)?.[1];
@@ -42,7 +42,6 @@ const fixtureVersion = process.env.MUSIC_E2E_FIXTURE_VERSION ?? "not-configured"
 const configuredServiceOrigins = (process.env.MUSIC_E2E_SERVICE_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 const healthUrls = (process.env.MUSIC_E2E_HEALTH_URLS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 const namespaceResetConfirmation = process.env.MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION;
-const ownerCredential = process.env.MUSIC_E2E_OWNER_CREDENTIAL ?? "";
 const strapiUrl = process.env.MUSIC_E2E_STRAPI_URL ?? (mode.lane === "live" ? "http://127.0.0.1:51337" : "");
 const strapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN ?? (mode.lane === "live" ? randomBytes(32).toString("base64url") : "");
 const stateServiceUrl = "http://127.0.0.1:55174";
@@ -62,13 +61,13 @@ if (mode.lane === "live") {
   const namespaceMatch = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/);
   const validIdentity = namespaceMatch && accountDocumentId === `${namespaceMatch[1]}-account`;
   const fiveServices = configuredServiceOrigins.length === 5 && healthUrls.length === 5;
-  const fullSnapshotAuthority = ownerCredential.startsWith("Bearer ") && strapiToken.length > 0 && loopbackHttp(strapiUrl)
+  const fullSnapshotAuthority = strapiToken.length > 0 && loopbackHttp(strapiUrl)
     && namespaceResetConfirmation === "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE";
   const everyLoopback = [externalUrl, ...configuredServiceOrigins, ...healthUrls].every(loopbackHttp);
   if (process.env.MUSIC_E2E_LIVE_WRITE !== "true"
       || process.env.MUSIC_E2E_LIVE_WRITE_CONFIRMATION !== CONFIRMATION
       || fixtureVersion !== VERSION || !validIdentity || !fiveServices || !everyLoopback || !fullSnapshotAuthority) {
-    process.stderr.write("Live public Music E2E refused: require MUSIC_E2E_LIVE_WRITE=true, exact confirmation, fixture version, namespaced account/document ID, owner credential, loopback Strapi URL/token, five service loopback origins plus health URLs, and exact disposable namespace reset confirmation.\n");
+    process.stderr.write("Live public Music E2E refused: require MUSIC_E2E_LIVE_WRITE=true, exact confirmation, fixture version, namespaced account/document ID, loopback Strapi URL/token, five service loopback origins plus health URLs, and exact disposable namespace reset confirmation. Owner authority is minted only after callback bootstrap.\n");
     process.exit(3);
   }
 }
@@ -94,14 +93,18 @@ const npmExecutable = process.platform === "win32" ? "npm.cmd" : "npm";
 let fixtureStarted = false;
 let stateService;
 let stateToken;
+let authStatePath;
 function stopFixture() {
+  if (authStatePath && existsSync(authStatePath)) { unlinkSync(authStatePath); authStatePath = undefined; }
   if (stateService) { stateService.kill(); stateService = undefined; }
   if (!fixtureStarted) return 0;
   fixtureStarted = false;
   return spawnSync(npmExecutable, ["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1;
 }
 if (mode.lane === "live") {
-  const bootstrap = spawnSync(npmExecutable, ["run", "--silent", "music-cli", "--", "up"], { cwd: monorepoRoot, stdio: "inherit" });
+  const authorityBootstrap = spawnSync(npmExecutable, ["run", "--silent", "music-cli", "--", "bootstrap"], { cwd: monorepoRoot, stdio: "inherit", env: process.env });
+  if (authorityBootstrap.status !== 0) process.exit(4);
+  const bootstrap = spawnSync(npmExecutable, ["run", "--silent", "music-cli", "--", "up", "--detach", "--wait"], { cwd: monorepoRoot, stdio: "inherit" });
   if (bootstrap.status !== 0) process.exit(4);
   fixtureStarted = true;
   stateToken = randomBytes(32).toString("base64url");
@@ -163,6 +166,27 @@ if (mode.lane === "live") {
   }
   process.env.MUSIC_E2E_STATE_SERVICE_URL = stateServiceUrl;
   process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch({ headless: true });
+  let mintedCredential = "";
+  try {
+    const context = await browser.newContext(); const page = await context.newPage();
+    page.on("request", (request) => {
+      const authorization = request.headers().authorization;
+      if (request.url().startsWith("http://localhost:55173/api/") && authorization?.startsWith("Bearer ")
+          && authorization !== `Bearer ${strapiToken}`) mintedCredential = authorization;
+    });
+    await page.goto(`${externalUrl}/google-auth/callback?access_token=${encodeURIComponent(strapiToken)}`, { waitUntil: "domcontentloaded" });
+    await page.getByText("Login successful! Redirecting...").waitFor({ timeout: 30_000 });
+    await page.goto(`${externalUrl}/recommendations/music`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "Playlists", exact: true }).waitFor({ timeout: 30_000 });
+    if (!/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(mintedCredential)) throw new Error("callback did not mint owner Tunes authority");
+    authStatePath = path.resolve(`.artifacts/music-public/${runId}/owner-auth.json`);
+    mkdirSync(path.dirname(authStatePath), { recursive: true });
+    writeFileSync(authStatePath, `${JSON.stringify({ ownerCredential: mintedCredential })}\n`, { encoding: "utf8", mode: 0o600 });
+    chmodSync(authStatePath, 0o600);
+    process.env.MUSIC_E2E_AUTH_STATE_PATH = authStatePath;
+  } finally { await browser.close(); }
 }
 
 const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");

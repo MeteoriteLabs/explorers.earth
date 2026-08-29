@@ -266,14 +266,31 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(stateService).not.toContain("MUSIC_E2E_FULL_SNAPSHOT_URL");
 });
 
+test("live browser authority is callback-minted and legacy fixture credentials cannot bypass the runner", () => {
+  const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
+  const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
+  for (const file of ["e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts"]) {
+    const source = readFileSync(file, "utf8");
+    expect(source).not.toContain("fixture-read-only-token");
+    expect(source).toContain("MUSIC_E2E_STRAPI_TOKEN");
+  }
+  expect(runner).not.toContain("MUSIC_E2E_OWNER_CREDENTIAL");
+  expect(runner).toMatch(/music-cli[\s\S]+bootstrap[\s\S]+music-cli[\s\S]+up/);
+  expect(stateService).not.toContain("MUSIC_E2E_OWNER_CREDENTIAL");
+  expect(stateService).not.toContain("/api/music/dashboard");
+  expect(stateService).not.toContain("/api/playlists");
+  expect(runner).toContain("MUSIC_E2E_AUTH_STATE_PATH");
+  expect(runner).toContain("google-auth/callback?access_token=");
+});
+
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
   const complete = {
     version: "music-live-account-snapshot/v1",
     snapshotId: "snapshot-fixture",
-    publication: { mode: "unlisted", lifecycle: "active", publicSlug: "fixture_slug" },
-    guestControls: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: true, allowQueueVisibility: true },
-    queue: { revision: 7, songs: [{ id: 1, position: 0 }], currentlyPlaying: { id: 1 }, history: [{ id: 2 }] },
-    playlists: [{ id: 10, name: "Fixture", privacy: "shared", songs: [{ id: 3, position: 0 }] }],
+    publication: { coveredByDatabaseDump: true },
+    guestControls: { coveredByDatabaseDump: true },
+    queue: { coveredByDatabaseDump: true },
+    playlists: { coveredByDatabaseDump: true },
     requests: { coveredByDatabaseDump: true },
     profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, preferenceRevision: 4, preferenceHash: "b".repeat(64) },
     database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64) },

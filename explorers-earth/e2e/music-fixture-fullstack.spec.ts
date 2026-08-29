@@ -2,6 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
 import {
   musicLiveAuthorityFromEnvironment,
+  musicOwnerCredentialFromAuthState,
   musicLiveWriteSkipReason,
   musicLiveTest,
   runAuthorizedMusicMutation,
@@ -12,6 +13,8 @@ import {
 const test = musicLiveTest;
 
 const fixtureOrigin = "http://localhost:55173";
+const fixtureStrapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN;
+if (!fixtureStrapiToken) throw new Error("MUSIC_E2E_STRAPI_TOKEN is required for the fixture callback");
 const liveSkipReason = musicLiveWriteSkipReason();
 test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized live fixture");
 
@@ -162,7 +165,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
     if (path === "/api/users/me" || path === "/graphql") fixtureAuthRequests.push(path);
   });
 
-  await page.goto("/google-auth/callback?access_token=fixture-read-only-token");
+  await page.goto(`/google-auth/callback?access_token=${encodeURIComponent(fixtureStrapiToken)}`);
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await expect.poll(() => requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBe(1);
   await page.goto("/recommendations/music");
@@ -171,7 +174,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
   expect(fixtureAuthRequests).toEqual(expect.arrayContaining(["/api/users/me", "/graphql"]));
   await expect(page.getByRole("heading", { name: "Find music" })).toBeVisible();
-  const ownerCredential = fixtureMutationState(page).ownerCredential;
+  const ownerCredential = process.env.MUSIC_E2E_AUTH_STATE_PATH ? musicOwnerCredentialFromAuthState() : fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 
   await withFixtureRestore(page, async () => {
@@ -194,10 +197,10 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   });
 
   const ensure = requests.find(({ path }) => path === "/api/music/identity/ensure");
-  expect(ensure).toMatchObject({ authorization: "Bearer fixture-read-only-token", xUsername: undefined });
+  expect(ensure).toMatchObject({ authorization: `Bearer ${fixtureStrapiToken}`, xUsername: undefined });
   const owner = requests.find(({ path }) => path === "/api/playlists");
   expect(owner?.authorization).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-  expect(owner?.authorization).not.toContain("fixture-read-only-token");
+  expect(owner?.authorization).not.toBe(`Bearer ${fixtureStrapiToken}`);
   expect(owner?.xUsername).toBeUndefined();
 
   expect(requests.some(({ path, method }) => path === "/api/playlist/songs" && method === "POST")).toBe(true);
@@ -209,7 +212,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
 test("full owner workspace remains usable at a mobile viewport", async ({ page }, testInfo) => {
   const assertCleanJourney = monitorBrowserJourney(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/google-auth/callback?access_token=fixture-read-only-token");
+  await page.goto(`/google-auth/callback?access_token=${encodeURIComponent(fixtureStrapiToken)}`);
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await page.goto("/recommendations/music");
 
@@ -217,7 +220,7 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await expect(page.getByRole("region", { name: "Music workspace" })).toBeVisible();
   await expect(page.getByRole("searchbox", { name: "Search music or paste a URL" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
-  const ownerCredential = fixtureMutationState(page).ownerCredential;
+  const ownerCredential = process.env.MUSIC_E2E_AUTH_STATE_PATH ? musicOwnerCredentialFromAuthState() : fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   await withFixtureRestore(page, async () => {
   const longTitle = "A deliberately very long mobile queue title that must truncate without hiding play or actions";

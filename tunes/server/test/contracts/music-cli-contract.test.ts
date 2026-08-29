@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint, validateRetainedFixtureVolume } from "../../../scripts/music-cli.ts";
-import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, readFixtureMusicEnvironment, rotateFixtureMusicAuthority } from "../../../scripts/music-fixture-secret.ts";
+import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, readFixtureMusicEnvironment, rotateFixtureMusicAuthority, withAllFixtureMusicSecretsCleanup } from "../../../scripts/music-fixture-secret.ts";
 
 const tunesRoot = resolve(import.meta.dirname, "../../..");
 const repositoryRoot = resolve(tunesRoot, "..");
@@ -69,13 +69,16 @@ function runCli(args: string[], env?: NodeJS.ProcessEnv) {
 
 function snapshotAuthorityDirectory(path: string): Record<string, string> {
   if (!existsSync(path)) return {};
-  return Object.fromEntries(readdirSync(path).sort().map((name) => [name, readFileSync(join(path, name)).toString("base64")]));
+  return Object.fromEntries(readdirSync(path).sort().flatMap((name) => {
+    const entry = join(path, name);
+    return lstatSync(entry).isFile() ? [[name, readFileSync(entry).toString("base64")]] : [];
+  }));
 }
 
 function restoreAuthorityDirectory(path: string, snapshot: Record<string, string>): void {
   mkdirSync(path, { recursive: true });
   for (const name of readdirSync(path)) {
-    if (!(name in snapshot)) rmSync(join(path, name), { force: true });
+    if (!(name in snapshot)) rmSync(join(path, name), { recursive: true, force: true });
   }
   for (const [name, bytes] of Object.entries(snapshot)) {
     writeFileSync(join(path, name), Buffer.from(bytes, "base64"), { mode: 0o600 });
@@ -518,6 +521,22 @@ describe("music CLI output contract", () => {
       expect(envelope.status).toBe("failure");
       expect(envelope.error).toContain(targetId);
       expect(envelope.error).not.toContain(repositoryRoot);
+    } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it("runs interrupted-fixture recovery and ignores an unreferenced secret-name directory", async () => {
+    const targetId = `current-${"1".repeat(32)}`;
+    const target = join(repositoryRoot, ".artifacts", "music-token-secrets", targetId);
+    rmSync(target, { recursive: true, force: true });
+    mkdirSync(target);
+    let recovered = false;
+    try {
+      await expect(withAllFixtureMusicSecretsCleanup(repositoryRoot, async () => {
+        recovered = true;
+      })).resolves.toBeUndefined();
+      expect(recovered).toBe(true);
     } finally {
       rmSync(target, { recursive: true, force: true });
     }

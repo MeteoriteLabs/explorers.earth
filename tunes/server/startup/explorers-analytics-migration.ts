@@ -1,6 +1,8 @@
 interface MigrationExecutor {
-  query(sql: string): Promise<unknown>;
+  query(sql: string, values?: readonly unknown[]): Promise<unknown>;
 }
+
+export const EXPLORERS_ANALYTICS_SCHEMA_MARKER = "explorers-analytics-receipts-v1";
 
 const EXPLORERS_ANALYTICS_RECEIPTS_DDL = `
   CREATE TABLE IF NOT EXISTS explorers_analytics_receipts (
@@ -29,4 +31,25 @@ export async function ensureExplorersAnalyticsSchema(
   executor: MigrationExecutor,
 ): Promise<void> {
   await executor.query(EXPLORERS_ANALYTICS_RECEIPTS_DDL);
+}
+
+/** Read-only fixture-runtime proof that the admin migration completed first. */
+export async function verifyExplorersAnalyticsSchema(
+  executor: MigrationExecutor,
+  marker: string | undefined,
+): Promise<void> {
+  if (marker !== EXPLORERS_ANALYTICS_SCHEMA_MARKER) {
+    throw new Error("fixture analytics schema attestation marker is missing or mismatched");
+  }
+  const result = await executor.query(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'explorers_analytics_receipts'
+    ORDER BY column_name
+  `) as { rows?: Array<{ column_name?: string }> };
+  const columns = new Set((result.rows ?? []).map((row) => row.column_name));
+  for (const required of ["event_id", "payload_hash", "status", "strapi_document_id", "last_error", "lease_id", "created_at", "updated_at"]) {
+    if (!columns.has(required)) throw new Error("fixture analytics schema attestation failed");
+  }
 }

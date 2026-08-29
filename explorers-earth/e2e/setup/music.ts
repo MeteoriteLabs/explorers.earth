@@ -1,6 +1,6 @@
 import { test as base, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 export const MUSIC_PUBLIC_FIXTURE_VERSION = "music-public-e2e-fixture/v1" as const;
@@ -21,6 +21,16 @@ export const MUSIC_MUTATION_CALLSITES = [
   "player-update",
 ] as const;
 export type MusicMutationCallsite = typeof MUSIC_MUTATION_CALLSITES[number];
+
+export function musicOwnerCredentialFromAuthState(environment: Record<string, string | undefined> = process.env): string {
+  const authPath = environment.MUSIC_E2E_AUTH_STATE_PATH;
+  if (!authPath) throw new Error("MUSIC_E2E_AUTH_STATE_PATH is required after callback bootstrap");
+  const decoded = JSON.parse(readFileSync(authPath, "utf8")) as { ownerCredential?: unknown };
+  if (typeof decoded.ownerCredential !== "string" || !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(decoded.ownerCredential)) {
+    throw new Error("callback bootstrap auth state does not contain a valid opaque owner authority");
+  }
+  return decoded.ownerCredential;
+}
 
 export const MUSIC_PUBLIC_STATES = [
   "public",
@@ -212,10 +222,10 @@ export const MUSIC_LIVE_ACCOUNT_SNAPSHOT_VERSION = "music-live-account-snapshot/
 export interface CanonicalMusicAccountSnapshot {
   version: typeof MUSIC_LIVE_ACCOUNT_SNAPSHOT_VERSION;
   snapshotId: string;
-  publication: { mode: "private" | "unlisted" | "public"; lifecycle: string; publicSlug: string };
-  guestControls: Record<string, boolean>;
-  queue: { revision: number; songs: unknown[]; currentlyPlaying: unknown | null; history: unknown[] };
-  playlists: unknown[];
+  publication: { coveredByDatabaseDump: true };
+  guestControls: { coveredByDatabaseDump: true };
+  queue: { coveredByDatabaseDump: true };
+  playlists: { coveredByDatabaseDump: true };
   requests: { coveredByDatabaseDump: true };
   profile: { accountDocumentId: string; publicMusic: boolean; preferenceRevision: number; preferenceHash: string };
   database: { namespace: string; dumpHash: string };
@@ -233,17 +243,15 @@ export function assertCanonicalMusicAccountSnapshot(value: unknown): asserts val
   if (source.version !== MUSIC_LIVE_ACCOUNT_SNAPSHOT_VERSION) throw new Error("canonical Music snapshot version is invalid");
   if (typeof source.snapshotId !== "string" || !source.snapshotId) throw new Error("canonical Music snapshot requires a restore identifier");
   const publication = requiredRecord(source, "publication");
-  if (!["private", "unlisted", "public"].includes(String(publication.mode))
-      || typeof publication.lifecycle !== "string" || typeof publication.publicSlug !== "string") {
+  if (publication.coveredByDatabaseDump !== true) {
     throw new Error("canonical Music snapshot requires complete publication lifecycle state");
   }
-  requiredRecord(source, "guestControls");
+  if (requiredRecord(source, "guestControls").coveredByDatabaseDump !== true) throw new Error("canonical Music snapshot requires guest controls in the full database dump");
   const queue = requiredRecord(source, "queue");
-  if (!Number.isSafeInteger(queue.revision) || !Array.isArray(queue.songs)
-      || !("currentlyPlaying" in queue) || !Array.isArray(queue.history)) {
+  if (queue.coveredByDatabaseDump !== true) {
     throw new Error("canonical Music snapshot requires queue, player, and history state");
   }
-  if (!Array.isArray(source.playlists)) throw new Error("canonical Music snapshot requires playlists");
+  if (requiredRecord(source, "playlists").coveredByDatabaseDump !== true) throw new Error("canonical Music snapshot requires playlists in the full database dump");
   const requests = requiredRecord(source, "requests");
   if (requests.coveredByDatabaseDump !== true) {
     throw new Error("canonical Music snapshot requires requests, idempotency receipts, and rate state in the full database dump");

@@ -29,6 +29,18 @@ export interface MusicStartupDependencies extends MusicIdentityConfigDependencie
   port?: number;
 }
 
+export function fixtureUsesAttestedAnalyticsSchema(environment: Environment): boolean {
+  const requested = environment.MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL === "true";
+  if (requested && environment.MUSIC_MODE !== "fixture") {
+    throw new Error("live runtime cannot bypass analytics schema migration");
+  }
+  if (!requested) return false;
+  if (environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER !== "explorers-analytics-receipts-v1") {
+    throw new Error("fixture analytics schema attestation marker is missing or mismatched");
+  }
+  return true;
+}
+
 async function loadProductionRuntime(): Promise<MusicServerRuntime> {
   const [{ createApp }, { serveStatic }] = await Promise.all([
     import("../app"),
@@ -74,13 +86,16 @@ export async function startMusicServer(
   dependencies: MusicStartupDependencies = {},
 ): Promise<{ app: Express; server: Server; config: MusicIdentityRuntimeConfig }> {
   const config = await validateMusicStartupEnvironment(environment, dependencies);
+  const fixtureSkipsAnalyticsDdl = fixtureUsesAttestedAnalyticsSchema(environment);
   if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
   else {
-    const [{ pool }, { ensureExplorersAnalyticsSchema }] = await Promise.all([
+    const [{ pool }, { EXPLORERS_ANALYTICS_SCHEMA_MARKER, verifyExplorersAnalyticsSchema }] = await Promise.all([
       import("../db"),
       import("../startup/explorers-analytics-migration"),
     ]);
-    await ensureExplorersAnalyticsSchema(pool);
+    await verifyExplorersAnalyticsSchema(pool, fixtureSkipsAnalyticsDdl
+      ? environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER
+      : EXPLORERS_ANALYTICS_SCHEMA_MARKER);
   }
   const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
   const { app, server } = await runtime.createApp(config);

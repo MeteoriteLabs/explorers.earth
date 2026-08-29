@@ -32,8 +32,7 @@ Do not inspect, copy, or commit `.env.music.test` or generated credential files.
 - Live API documentation: `http://127.0.0.1:55000/api-docs`
 - Deterministic fixture Strapi: `http://127.0.0.1:51337`
 
-Open `http://127.0.0.1:55173/google-auth/callback?access_token=fixture-read-only-token`
-to complete the deterministic fixture Google callback, then navigate to
+Use `npm run music:test:public-e2e`; its guarded runner generates the scoped callback token and completes the deterministic fixture Google callback without printing owner authority. Then navigate to
 `http://127.0.0.1:55173/recommendations/music`. Explorer loads the fixture's
 authenticated identity and selected Account and forwards its proof only to the bodyless
 `POST /api/music/identity/ensure` boundary. Tunes projects the canonical identity
