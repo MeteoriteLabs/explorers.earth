@@ -2,13 +2,16 @@ import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { aroundAll, describe, expect, it } from "vitest";
 import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint, validateRetainedFixtureVolume } from "../../../scripts/music-cli.ts";
 import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, readFixtureMusicEnvironment, rotateFixtureMusicAuthority, withAllFixtureMusicSecretsCleanup } from "../../../scripts/music-fixture-secret.ts";
+import { withIsolatedMusicCliContractRepository } from "./helpers/music-cli-contract-isolation.ts";
 
-const tunesRoot = resolve(import.meta.dirname, "../../..");
-const repositoryRoot = resolve(tunesRoot, "..");
-const tsxCli = join(tunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
+const sourceTunesRoot = resolve(import.meta.dirname, "../../..");
+const sourceRepositoryRoot = resolve(sourceTunesRoot, "..");
+const tsxCli = join(sourceTunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
+let tunesRoot: string;
+let repositoryRoot: string;
 
 function ensureSupportedCliFixtureAuthority(): void {
   try {
@@ -43,7 +46,14 @@ function ensureSupportedCliFixtureAuthority(): void {
   }
 }
 
-beforeAll(ensureSupportedCliFixtureAuthority, 60_000);
+aroundAll(async (runSuite) => {
+  await withIsolatedMusicCliContractRepository(sourceRepositoryRoot, async (isolated) => {
+    repositoryRoot = isolated.repositoryRoot;
+    tunesRoot = isolated.tunesRoot;
+    ensureSupportedCliFixtureAuthority();
+    await runSuite();
+  });
+}, 120_000);
 
 function npmCliArgs(args: string[]): string[] {
   if (!process.env.npm_execpath) throw new Error("npm_execpath is required for the public command contract test");
@@ -440,7 +450,7 @@ describe("music CLI output contract", () => {
     writeFileSync(checkpoint, JSON.stringify({ ...currentCheckpoint, commit: "previous-commit" }));
     try {
       execFileSync(process.execPath, [tsxCli, "scripts/music-cli.ts", "bootstrap", "--resume", checkpoint, "--format", "json"], {
-        cwd: resolve(import.meta.dirname, "../../.."),
+        cwd: tunesRoot,
         encoding: "utf8",
         env: process.env,
         stdio: ["ignore", "pipe", "pipe"],
@@ -543,22 +553,18 @@ describe("music CLI output contract", () => {
 
   it("reaches the guarded cleanup action on a second down after authority is already retired", () => {
     cleanupAllFixtureMusicTokenSecrets(repositoryRoot);
-    try {
-      const result = runCli(["down", "--format", "json"]);
-      const lines = result.stdout.trim().split(/\r?\n/);
+    const result = runCli(["down", "--format", "json"]);
+    const lines = result.stdout.trim().split(/\r?\n/);
 
-      expect(result.exitCode).toBe(5);
-      expect(result.stderr).toBe("");
-      expect(lines).toHaveLength(1);
-      expect(JSON.parse(lines[0])).toMatchObject({
-        command: "down",
-        phase: "cleanup-safety",
-        status: "blocked",
-        error: "no owned fixture containers were found; cleanup refused",
-      });
-      expect(readFileSync(join(repositoryRoot, ".env.music.test"))).toHaveLength(0);
-    } finally {
-      ensureSupportedCliFixtureAuthority();
-    }
+    expect(result.exitCode).toBe(5);
+    expect(result.stderr).toBe("");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0])).toMatchObject({
+      command: "down",
+      phase: "cleanup-safety",
+      status: "blocked",
+      error: "no owned fixture containers were found; cleanup refused",
+    });
+    expect(readFileSync(join(repositoryRoot, ".env.music.test"))).toHaveLength(0);
   }, 60_000);
 });
