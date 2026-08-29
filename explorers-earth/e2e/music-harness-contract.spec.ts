@@ -2250,6 +2250,33 @@ test("fixture lifecycle commands retain only bounded sanitized typed output with
   }]);
 });
 
+test("fixture-down deletes volumes only for the exact reviewed fixture project", async () => {
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const calls: Array<{ command: string; args: string[] }> = [];
+  const captured = qualificationArtifacts.captureQualificationLifecycleCommand({
+    stage: "fixture-down",
+    processExecPath: "node-runtime",
+    npmExecPath: "npm-cli",
+    cwd: process.cwd(),
+    retainedCwd: "<repository>",
+    environment: { FIXTURE_TEST: "1" },
+    workspaceRoot: process.cwd(),
+    spawn: (command: string, args: string[]) => {
+      calls.push({ command, args });
+      return { status: 0, signal: null, stdout: "", stderr: "" };
+    },
+  });
+  const expected = [
+    "npm", "run", "--silent", "music-cli", "--", "down",
+    "--volumes", "--mode", "fixture", "--confirm-project", "explorers-music-fixture",
+  ];
+  expect(captured.record.command).toEqual(expected);
+  expect(calls).toEqual([{
+    command: "node-runtime",
+    args: ["npm-cli", ...expected.slice(1)],
+  }]);
+});
+
 test("authoritative per-source streams preserve later up down and state output after an early stream fills its cap", async () => {
   // Production break caught: the global 4 KiB aggregate could be filled by
   // bootstrap, silently dropping later up/down/state bytes while typed command

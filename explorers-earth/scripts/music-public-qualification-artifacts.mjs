@@ -27,7 +27,10 @@ const VISUAL_TRACE_LEDGER_VERSION = "explorers-public-visual-trace-ledger/v1";
 const LIFECYCLE_COMMANDS = Object.freeze({
   "fixture-bootstrap": Object.freeze(["npm", "run", "--silent", "music-cli", "--", "bootstrap"]),
   "fixture-up": Object.freeze(["npm", "run", "--silent", "music-cli", "--", "up", "--detach", "--wait"]),
-  "fixture-down": Object.freeze(["npm", "run", "--silent", "music-cli", "--", "down"]),
+  "fixture-down": Object.freeze([
+    "npm", "run", "--silent", "music-cli", "--", "down",
+    "--volumes", "--mode", "fixture", "--confirm-project", "explorers-music-fixture",
+  ]),
 });
 const SAFE_UTM_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]);
 const ANALYTICS_UNAVAILABLE_REASONS = new Set(["preflight-stopped", "execution-stopped", "not-observed"]);
