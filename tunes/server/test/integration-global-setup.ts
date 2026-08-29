@@ -5,15 +5,23 @@ import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
 } from "../../scripts/music-qualification-postgres";
+import {
+  attestUatDatabaseAuthority,
+  parseUatDatabaseAuthority,
+} from "../../scripts/music-uat-database";
 
 export function validateIntegrationDatabaseTarget(rawTarget: string, environment: NodeJS.ProcessEnv = process.env): URL {
   let target: URL;
   try { target = new URL(rawTarget); }
   catch { throw new Error("integration tests require the exact disposable PostgreSQL target"); }
   const standalone = parseC10StandalonePostgresAuthority(environment);
+  const uat = parseUatDatabaseAuthority(environment);
+  if (standalone && uat) throw new Error("integration tests require one disposable PostgreSQL authority");
+  const expectedPort = uat?.port ?? standalone?.port ?? 55_432;
+  const expectedDatabase = uat?.database ?? "music_fixture";
   if (target.protocol !== "postgresql:" || target.hostname !== "127.0.0.1"
-      || target.port !== String(standalone?.port ?? 55_432)
-      || target.pathname !== "/music_fixture" || target.username !== "music_migrator" || !target.password
+      || target.port !== String(expectedPort)
+      || target.pathname !== `/${expectedDatabase}` || target.username !== "music_migrator" || !target.password
       || target.search || target.hash) {
     throw new Error("integration tests require the exact disposable PostgreSQL target");
   }
@@ -35,7 +43,8 @@ export default async function setupIntegrationDatabase(): Promise<void> {
   } catch {
     throw new Error("integration tests require an exact source commit for PostgreSQL attestation");
   }
-  attestC10StandalonePostgresAuthority(process.env, sourceCommit);
+  if (parseUatDatabaseAuthority(process.env)) attestUatDatabaseAuthority(process.env, sourceCommit);
+  else attestC10StandalonePostgresAuthority(process.env, sourceCommit);
   const pool = new pg.Pool({ connectionString: rawTarget, max: 2 });
   try {
     const version = await pool.query<{ server_version_num: string }>("SHOW server_version_num");

@@ -21,6 +21,7 @@
     "music:test:fast": "npm run --silent music-cli -- test:fast",
     "music:test:pr": "npm run --silent music-cli -- test:pr",
     "music:test:nightly": "npm run --silent music-cli -- test:nightly",
+    "music:test:uat-database": "npm --prefix tunes run music:test:uat-database --",
     "music:test:public-fast": "npm --prefix explorers-earth run music:test:public-fast --",
     "music:test:public-pr": "npm --prefix explorers-earth run music:test:public-pr --",
     "music:test:public-e2e": "npm --prefix explorers-earth run music:test:public-e2e --",
