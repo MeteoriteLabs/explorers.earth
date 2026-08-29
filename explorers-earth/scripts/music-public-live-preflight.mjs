@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const LIVE_JOURNEY_MANIFEST_VERSION = "explorers-live-mutation-journeys/v1";
@@ -10,6 +10,9 @@ export const LIVE_MUTATION_TAG = "@explorers-live-mutation";
 export const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
 const LIVE_MUTATION_REPORT_TAG = LIVE_MUTATION_TAG.replace(/^@/, "");
 const LIVE_READ_ONLY_REPORT_TAG = LIVE_READ_ONLY_TAG.replace(/^@/, "");
+const MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES = 4 * 1024 * 1024;
+const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v1";
+const SAFE_EXECUTION_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
@@ -261,6 +264,56 @@ function manifestKey(entry) {
   return `${entry.source}\0${entry.title}`;
 }
 
+function canonicalCollectionIdentity(entry, allowlist, fallback) {
+  return allowlist.find((candidate) => manifestKey(candidate) === manifestKey(entry)) ?? fallback;
+}
+
+function sanitizedExecutionSpec(entry, classification) {
+  const mutation = classification === "mutation";
+  const readOnly = classification === "read-only";
+  const identity = mutation
+    ? canonicalCollectionIdentity(entry, LIVE_JOURNEY_MANIFEST, {
+      title: "unrecognized live mutation",
+      source: "e2e/unrecognized-live-mutation.spec.ts",
+    })
+    : readOnly
+      ? canonicalCollectionIdentity(entry, LIVE_READ_ONLY_COLLECTION, {
+        title: "unrecognized live read-only case",
+        source: "e2e/unrecognized-live-read-only.spec.ts",
+      })
+      : {
+        title: "unclassified live collection entry",
+        source: "e2e/unclassified-live-collection.spec.ts",
+      };
+  const status = SAFE_EXECUTION_STATUSES.has(entry.status) ? entry.status : (entry.status ? "unknown" : null);
+  return {
+    title: identity.title,
+    file: identity.source,
+    tags: mutation ? [LIVE_MUTATION_REPORT_TAG] : (readOnly ? [LIVE_READ_ONLY_REPORT_TAG] : []),
+    tests: [{
+      annotations: entry.skipReason ? [{ type: "skip", description: "skipped" }] : [],
+      expectedStatus: "passed",
+      results: status ? [{ status }] : [],
+    }],
+  };
+}
+
+function sanitizedLiveExecutionReport(rawReport) {
+  const collection = extractLiveCollection(rawReport);
+  const entryCount = collection.mutations.length + collection.readOnly.length + collection.unclassified.length;
+  const specs = entryCount > LIVE_JOURNEY_MANIFEST.length + LIVE_READ_ONLY_COLLECTION.length
+    ? [sanitizedExecutionSpec({ title: "", source: "", tags: [], skipReason: null, status: null }, "unclassified")]
+    : [
+      ...collection.mutations.map((entry) => sanitizedExecutionSpec(entry, "mutation")),
+      ...collection.readOnly.map((entry) => sanitizedExecutionSpec(entry, "read-only")),
+      ...collection.unclassified.map((entry) => sanitizedExecutionSpec(entry, "unclassified")),
+    ];
+  return {
+    version: SANITIZED_EXECUTION_REPORT_VERSION,
+    suites: [{ title: "sanitized-live-execution", specs }],
+  };
+}
+
 function journeyPresence(collected = []) {
   const present = new Set(collected.map(manifestKey));
   return LIVE_JOURNEY_MANIFEST.map((entry) => ({ id: entry.id, present: present.has(manifestKey(entry)) }));
@@ -444,25 +497,68 @@ export function runPlaywrightJourneyExecution({
   cwd,
   environment,
   reportPath,
+  outputDirectory,
+  privateArtifactIo,
 }) {
-  const childEnvironment = { ...environment, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath };
+  const exactReportPath = resolve(reportPath);
+  const exactOutputDirectory = resolve(outputDirectory);
+  if (dirname(exactReportPath) !== dirname(exactOutputDirectory) || exactReportPath === exactOutputDirectory) {
+    throw new Error("Private Playwright paths must be exclusive children of one run artifact directory");
+  }
+  const io = {
+    exists: existsSync,
+    size: (file) => statSync(file).size,
+    read: (file) => readFileSync(file, "utf8"),
+    unlink: unlinkSync,
+    removeDirectory: (directory) => rmSync(directory, { recursive: true, force: true }),
+    ...privateArtifactIo,
+  };
+  const childEnvironment = { ...environment, PLAYWRIGHT_JSON_OUTPUT_FILE: exactReportPath };
   delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_NAME;
   delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_DIR;
-  const execution = spawn(processExecPath, [
-    playwrightCli,
-    "test",
-    ...files,
-    `--project=${project}`,
-    "--reporter=json",
-  ], {
-    cwd,
-    stdio: "inherit",
-    env: childEnvironment,
-    windowsHide: true,
-  });
+  let execution;
   let executionReport;
-  try { executionReport = JSON.parse(readFileSync(reportPath, "utf8")); } catch { /* typed runner rejects missing or malformed terminal evidence */ }
-  return { status: execution.status ?? 1, executionReport };
+  let reportStatus = "missing";
+  let privateArtifactCleanup = "deleted";
+  try {
+    try {
+      execution = spawn(processExecPath, [
+        playwrightCli,
+        "test",
+        ...files,
+        `--project=${project}`,
+        "--reporter=json",
+        "--output",
+        exactOutputDirectory,
+      ], {
+        cwd,
+        stdio: "ignore",
+        env: childEnvironment,
+        windowsHide: true,
+      });
+    } catch { execution = undefined; }
+    try {
+      if (io.exists(exactReportPath)) {
+        const reportSize = io.size(exactReportPath);
+        if (!Number.isSafeInteger(reportSize) || reportSize < 0 || reportSize > MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES) {
+          reportStatus = "too-large";
+        } else {
+          const rawReport = JSON.parse(io.read(exactReportPath));
+          executionReport = sanitizedLiveExecutionReport(rawReport);
+          reportStatus = "accepted";
+        }
+      }
+    } catch {
+      executionReport = undefined;
+      reportStatus = "parse-failed";
+    }
+  } finally {
+    try { if (io.exists(exactReportPath)) io.unlink(exactReportPath); } catch { privateArtifactCleanup = "delete-failed"; }
+    try { if (io.exists(exactOutputDirectory)) io.removeDirectory(exactOutputDirectory); } catch { privateArtifactCleanup = "delete-failed"; }
+  }
+  const childStatus = execution?.status ?? 1;
+  const status = childStatus === 0 && reportStatus === "accepted" && privateArtifactCleanup === "deleted" ? 0 : (childStatus || 1);
+  return { status, reportStatus, privateArtifactCleanup, executionReport };
 }
 
 export function liveJourneyManifestEntry(id) {

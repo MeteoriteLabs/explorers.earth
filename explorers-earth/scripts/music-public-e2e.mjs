@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createConnection } from "node:net";
-import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { stopMusicFixture } from "./music-fixture-cleanup.mjs";
 import { runLivePreflight, runPlaywrightJourneyExecution } from "./music-public-live-preflight.mjs";
@@ -213,11 +213,13 @@ if (mode.lane === "live") {
     writeLiveReport({ ...baseReport, result: "failed", cleanup: teardownStatus === 0 ? "evidence-missing" : "teardown-failed", restoreHashes: [] });
     process.exit(4);
   }
-  authStatePath = path.resolve(`.artifacts/music-public/${runId}/owner-auth.json`);
-  profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
+  const runArtifactDirectory = path.resolve(`.artifacts/music-public/${runId}`);
+  authStatePath = path.join(runArtifactDirectory, "owner-auth.json");
+  profileStorageStatePath = path.join(runArtifactDirectory, "profile-storage-state.json");
   const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
-  const restoreEvidencePath = path.resolve(`.artifacts/music-public/${runId}/restore-evidence.jsonl`);
-  const journeyReportPath = path.resolve(`.artifacts/music-public/${runId}/playwright-journey-results.json`);
+  const restoreEvidencePath = path.join(runArtifactDirectory, "restore-evidence.jsonl");
+  const journeyReportPath = path.join(runArtifactDirectory, "playwright-journey-results.json");
+  const journeyOutputDirectory = path.join(runArtifactDirectory, "private-playwright-output");
   const liveOutcome = await runMusicFixtureOrchestration({
     snapshotExists: Boolean(initialSnapshot),
     baseReport,
@@ -303,13 +305,16 @@ if (mode.lane === "live") {
         cwd: process.cwd(),
         environment: childEnvironment,
         reportPath: journeyReportPath,
+        outputDirectory: journeyOutputDirectory,
       });
     },
     restore: restoreInitialSnapshot,
     teardown: {
-      artifactPaths: [authStatePath, profileStorageStatePath],
+      artifactPaths: [journeyReportPath, authStatePath, profileStorageStatePath],
+      artifactDirectories: [journeyOutputDirectory],
       exists: existsSync,
       unlink: unlinkSync,
+      removeDirectory: (directory) => rmSync(directory, { recursive: true, force: true }),
       stopStateService: () => { if (stateService) { stateService.kill(); stateService = undefined; } },
       down: () => {
         const shouldDown = fixtureStarted;

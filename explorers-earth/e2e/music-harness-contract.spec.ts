@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
@@ -191,13 +192,80 @@ function allJsonCollectionSpecs(report: { suites?: JsonCollectionSuite[] }) {
 function syntheticJourneySpecSource(
   mutations: ReadonlyArray<{ title: string }>,
   readOnly: ReadonlyArray<{ title: string }>,
+  hostileFailure?: {
+    title: string;
+    bearer: string;
+    accessToken: string;
+    capability: string;
+    credential: string;
+    absolutePath: string;
+  },
 ) {
+  const source = (title: string, tag: string) => {
+    if (title !== hostileFailure?.title) {
+      return `test(${JSON.stringify(title)}, { tag: ${JSON.stringify(tag)} }, async () => {});`;
+    }
+    const hostileValues = JSON.stringify([
+      `Bearer ${hostileFailure.bearer}`,
+      `access_token=${hostileFailure.accessToken}`,
+      `capability=${hostileFailure.capability}`,
+      `credential=${hostileFailure.credential}`,
+      hostileFailure.absolutePath,
+    ]);
+    return [
+      `test(${JSON.stringify(title)}, { tag: ${JSON.stringify(tag)} }, async ({}, testInfo) => {`,
+      `  const hostile = ${hostileValues}.join(" ");`,
+      '  const oversized = "hostile-output-".repeat(20000);',
+      '  console.log(`${hostile} ${oversized}`);',
+      '  console.error(`${hostile} ${oversized}`);',
+      '  await testInfo.attach("hostile-private-attachment", { body: Buffer.from(`${hostile} ${oversized}`), contentType: "text/plain" });',
+      '  throw new Error(`${hostile} ${oversized}`);',
+      "});",
+    ].join("\n");
+  };
   return [
     'import { test } from "@playwright/test";',
-    ...mutations.map(({ title }) => `test(${JSON.stringify(title)}, { tag: ${JSON.stringify(LIVE_MUTATION_TAG)} }, async () => {});`),
-    ...readOnly.map(({ title }) => `test(${JSON.stringify(title)}, { tag: ${JSON.stringify(LIVE_READ_ONLY_TAG)} }, async () => {});`),
+    ...mutations.map(({ title }) => source(title, LIVE_MUTATION_TAG)),
+    ...readOnly.map(({ title }) => source(title, LIVE_READ_ONLY_TAG)),
     "",
   ].join("\n");
+}
+
+async function runSyntheticTerminalOutcome(executionOutcome: unknown, runId: string) {
+  const finalHash = "9".repeat(64);
+  const retained: string[] = [];
+  const outcome = await runMusicFixtureOrchestration({
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId, lane: "live" },
+    artifacts: {
+      directory: `guarded/${runId}`,
+      authPath: "owner-auth.json",
+      storagePath: "profile-storage-state.json",
+      mkdir: () => undefined,
+      write: () => undefined,
+      chmod: () => undefined,
+    },
+    restoreEvidence: {
+      path: "restore-evidence.jsonl",
+      exists: () => true,
+      read: () => validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n"),
+    },
+    execute: async () => executionOutcome,
+    restore: async () => ({ ok: true, cleanup: "restored", beforeHash: finalHash, afterHash: finalHash }),
+    teardown: {
+      artifactPaths: [],
+      artifactDirectories: [],
+      exists: () => false,
+      unlink: () => undefined,
+      removeDirectory: () => undefined,
+      stopStateService: () => undefined,
+      down: () => 0,
+    },
+    writeReport: async (report: unknown) => { retained.push(JSON.stringify(report)); },
+    writeStdout: (text: string) => { retained.push(text); },
+    writeStderr: (text: string) => { retained.push(text); },
+  });
+  return { outcome, retained: retained.join("\n") };
 }
 
 test("live manifest binds exactly 17 collected mutation journeys", () => {
@@ -701,7 +769,8 @@ test("production journey execution command writes JSON that terminal evidence va
   const artifactRoot = resolve(".artifacts");
   mkdirSync(artifactRoot, { recursive: true });
   const syntheticRoot = mkdtempSync(join(artifactRoot, "journey-report-contract-"));
-  const reportPath = join(syntheticRoot, "journey-results.json");
+  const reportPath = join(syntheticRoot, "playwright-journey-results.json");
+  const outputDirectory = join(syntheticRoot, "private-playwright-output");
   try {
     const testDirectory = join(syntheticRoot, "e2e");
     mkdirSync(testDirectory, { recursive: true });
@@ -734,18 +803,366 @@ test("production journey execution command writes JSON that terminal evidence va
       cwd: syntheticRoot,
       environment: { ...process.env },
       reportPath,
+      outputDirectory,
     });
     expect(outcome.status).toBe(0);
-    expect(existsSync(reportPath)).toBe(true);
-    const persistedReport = JSON.parse(readFileSync(reportPath, "utf8"));
-    expect(outcome.executionReport).toEqual(persistedReport);
+    expect(outcome).toMatchObject({ reportStatus: "accepted", privateArtifactCleanup: "deleted" });
+    expect(existsSync(reportPath)).toBe(false);
+    expect(existsSync(outputDirectory)).toBe(false);
+    expect(JSON.stringify(outcome).length).toBeLessThan(48 * 1024);
     expect(validateLiveJourneyEvidence({
-      executionReport: persistedReport,
+      executionReport: outcome.executionReport,
       records: validJourneyEvidenceRecords(),
     })).toMatchObject({ ok: true });
   } finally {
     rmSync(syntheticRoot, { recursive: true, force: true });
   }
+});
+
+test("failing production child retains only bounded canonical evidence and deletes every private Playwright artifact", async () => {
+  const artifactRoot = resolve(".artifacts");
+  mkdirSync(artifactRoot, { recursive: true });
+  const syntheticRoot = mkdtempSync(join(artifactRoot, "hostile-journey-report-contract-"));
+  const reportPath = join(syntheticRoot, "playwright-journey-results.json");
+  const outputDirectory = join(syntheticRoot, "private-playwright-output");
+  const hostile = {
+    title: EXPECTED_LIVE_JOURNEYS[0].title,
+    bearer: "hostile.bearer.sentinel",
+    accessToken: "hostile-access-token-sentinel",
+    capability: "hostile-capability-sentinel",
+    credential: "hostile-credential-sentinel",
+    absolutePath: join(syntheticRoot, "private attachment", "hostile-secret.txt"),
+  };
+  try {
+    const testDirectory = join(syntheticRoot, "e2e");
+    mkdirSync(testDirectory, { recursive: true });
+    writeFileSync(join(syntheticRoot, "playwright.config.mjs"), [
+      'import { defineConfig } from "@playwright/test";',
+      `export default defineConfig({ testDir: "./e2e", reporter: "line", outputDir: ${JSON.stringify(outputDirectory)}, projects: [{ name: "synthetic-hostile-report" }] });`,
+      "",
+    ].join("\n"));
+    for (const source of [
+      "e2e/music-fixture-fullstack.spec.ts",
+      "e2e/music-public-contract.spec.ts",
+      "e2e/profile-theme.spec.ts",
+    ]) {
+      writeFileSync(join(syntheticRoot, source), syntheticJourneySpecSource(
+        EXPECTED_LIVE_JOURNEYS.filter((entry) => entry.source === source),
+        EXPECTED_LIVE_READ_ONLY.filter((entry) => entry.source === source),
+        hostile,
+      ));
+    }
+
+    const wrapperPath = join(syntheticRoot, "run-production-execution.mjs");
+    writeFileSync(wrapperPath, [
+      'import { spawnSync } from "node:child_process";',
+      `import { runPlaywrightJourneyExecution } from ${JSON.stringify(pathToFileURL(resolve("scripts/music-public-live-preflight.mjs")).href)};`,
+      "const outcome = runPlaywrightJourneyExecution({",
+      "  spawn: spawnSync,",
+      `  processExecPath: ${JSON.stringify(process.execPath)},`,
+      `  playwrightCli: ${JSON.stringify(resolve("node_modules/@playwright/test/cli.js"))},`,
+      `  files: ${JSON.stringify(["e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts", "e2e/profile-theme.spec.ts"])},`,
+      '  project: "synthetic-hostile-report",',
+      `  cwd: ${JSON.stringify(syntheticRoot)},`,
+      "  environment: { ...process.env },",
+      `  reportPath: ${JSON.stringify(reportPath)},`,
+      `  outputDirectory: ${JSON.stringify(outputDirectory)},`,
+      "});",
+      "process.stdout.write(JSON.stringify(outcome));",
+      "",
+    ].join("\n"));
+
+    const result = spawnSync(process.execPath, [wrapperPath], {
+      cwd: syntheticRoot,
+      encoding: "utf8",
+      env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    const outcome = JSON.parse(result.stdout) as {
+      status: number;
+      reportStatus?: string;
+      privateArtifactCleanup?: string;
+      executionReport?: unknown;
+    };
+    expect(outcome).toMatchObject({
+      status: expect.any(Number),
+      reportStatus: "accepted",
+      privateArtifactCleanup: "deleted",
+    });
+    expect(outcome.status).not.toBe(0);
+    expect(existsSync(reportPath)).toBe(false);
+    expect(existsSync(outputDirectory)).toBe(false);
+    expect(JSON.stringify(outcome).length).toBeLessThan(48 * 1024);
+    expect(validateLiveJourneyEvidence({
+      executionReport: outcome.executionReport,
+      records: validJourneyEvidenceRecords(),
+    })).toMatchObject({ ok: false, subcheck: "execution-status" });
+
+    const terminal = await runSyntheticTerminalOutcome(outcome, "hostile-private-report");
+    expect(terminal.outcome).toMatchObject({
+      exitCode: 5,
+      report: {
+        result: "failed",
+        cleanup: "evidence-missing",
+        journeyReportStatus: "accepted",
+        journeyArtifactCleanup: "deleted",
+        journeyDiagnostics: { subcheck: "execution-status" },
+      },
+    });
+    expect(JSON.stringify(terminal.outcome.report).length).toBeLessThan(16 * 1024);
+
+    const retained = `${result.stdout}\n${result.stderr}\n${JSON.stringify(outcome)}\n${terminal.retained}`;
+    for (const secret of [hostile.bearer, hostile.accessToken, hostile.capability, hostile.credential]) {
+      expect(retained).not.toContain(secret);
+    }
+    expect(retained).not.toContain(hostile.absolutePath);
+    expect(retained.replaceAll("\\", "/")).not.toContain(hostile.absolutePath.replaceAll("\\", "/"));
+    expect(retained).not.toContain("hostile-output-hostile-output-hostile-output");
+  } finally {
+    rmSync(syntheticRoot, { recursive: true, force: true });
+  }
+});
+
+test("unknown hostile mutation identity is replaced by fixed sentinels before manifest validation", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const execute = module.runPlaywrightJourneyExecution;
+  expect(typeof execute).toBe("function");
+  if (typeof execute !== "function") return;
+
+  const hostileTitle = "Bearer hostile.unknown.token access_token=unknown-access credential=unknown-credential";
+  const hostileSource = resolve("private hostile source", "capability=unknown-capability.spec.ts");
+  const entries = EXPECTED_LIVE_JOURNEYS.map((entry, index) => index === 0
+    ? { ...entry, title: hostileTitle, source: hostileSource }
+    : entry);
+  const reportPath = resolve("guarded/run-hostile-identity/playwright-journey-results.json");
+  const outputDirectory = resolve("guarded/run-hostile-identity/private-playwright-output");
+  const calls: string[] = [];
+  const outcome = (execute as (input: Record<string, unknown>) => {
+    status: number;
+    reportStatus?: string;
+    privateArtifactCleanup?: string;
+    executionReport?: unknown;
+  })({
+    spawn: () => ({ status: 0 }),
+    processExecPath: process.execPath,
+    playwrightCli: "playwright-cli.js",
+    files: ["e2e/profile-theme.spec.ts"],
+    project: "synthetic-private-report",
+    cwd: process.cwd(),
+    environment: { ...process.env },
+    reportPath,
+    outputDirectory,
+    privateArtifactIo: {
+      exists: (path: string) => { calls.push(`exists:${path}`); return true; },
+      size: (path: string) => { calls.push(`size:${path}`); return 4096; },
+      read: (path: string) => { calls.push(`read:${path}`); return JSON.stringify(playwrightJourneyReport(entries, { resultStatus: "passed" })); },
+      unlink: (path: string) => { calls.push(`unlink:${path}`); },
+      removeDirectory: (path: string) => { calls.push(`remove-directory:${path}`); },
+    },
+  });
+  expect(outcome).toMatchObject({ status: 0, reportStatus: "accepted", privateArtifactCleanup: "deleted" });
+  expect(validateLiveJourneyEvidence({
+    executionReport: outcome.executionReport,
+    records: validJourneyEvidenceRecords(),
+  })).toMatchObject({ ok: false, subcheck: "manifest-unknown" });
+  const terminal = await runSyntheticTerminalOutcome(outcome, "hostile-identity");
+  expect(terminal.outcome).toMatchObject({
+    exitCode: 5,
+    report: {
+      result: "failed",
+      cleanup: "evidence-missing",
+      journeyDiagnostics: { subcheck: "manifest-unknown" },
+    },
+  });
+  const retained = `${JSON.stringify(outcome)}\n${terminal.retained}`;
+  expect(retained).not.toContain(hostileTitle);
+  expect(retained).not.toContain(hostileSource);
+  expect(retained.replaceAll("\\", "/")).not.toContain(hostileSource.replaceAll("\\", "/"));
+  expect(retained).not.toMatch(/unknown-(?:access|credential|capability)/);
+  expect(JSON.stringify(terminal.outcome.report).length).toBeLessThan(16 * 1024);
+  expect(calls).toEqual([
+    `exists:${reportPath}`,
+    `size:${reportPath}`,
+    `read:${reportPath}`,
+    `exists:${reportPath}`,
+    `unlink:${reportPath}`,
+    `exists:${outputDirectory}`,
+    `remove-directory:${outputDirectory}`,
+  ]);
+});
+
+test("private raw report size and parse failures are rejected before retention and deleted in finally", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const execute = module.runPlaywrightJourneyExecution;
+  expect(typeof execute).toBe("function");
+  if (typeof execute !== "function") return;
+
+  for (const failure of ["too-large", "parse-failed"] as const) {
+    const calls: string[] = [];
+    let reads = 0;
+    const reportPath = resolve(`guarded/run-${failure}/playwright-journey-results.json`);
+    const outputDirectory = resolve(`guarded/run-${failure}/private-playwright-output`);
+    const outcome = (execute as (input: Record<string, unknown>) => {
+      status: number;
+      reportStatus?: string;
+      privateArtifactCleanup?: string;
+      executionReport?: unknown;
+    })({
+      spawn: () => ({ status: 0 }),
+      processExecPath: process.execPath,
+      playwrightCli: "playwright-cli.js",
+      files: ["e2e/profile-theme.spec.ts"],
+      project: "synthetic-private-report",
+      cwd: process.cwd(),
+      environment: { ...process.env },
+      reportPath,
+      outputDirectory,
+      privateArtifactIo: {
+        exists: (path: string) => { calls.push(`exists:${path}`); return true; },
+        size: (path: string) => { calls.push(`size:${path}`); return failure === "too-large" ? 64 * 1024 * 1024 : 12; },
+        read: (path: string) => { calls.push(`read:${path}`); reads += 1; return "{not-json"; },
+        unlink: (path: string) => { calls.push(`unlink:${path}`); },
+        removeDirectory: (path: string) => { calls.push(`remove-directory:${path}`); },
+      },
+    });
+    expect(outcome).toMatchObject({
+      status: expect.any(Number),
+      reportStatus: failure,
+      privateArtifactCleanup: "deleted",
+    });
+    expect(outcome.status, failure).not.toBe(0);
+    expect(outcome.executionReport, failure).toBeUndefined();
+    expect(reads, failure).toBe(failure === "too-large" ? 0 : 1);
+    expect(calls, failure).toEqual([
+      `exists:${reportPath}`,
+      `size:${reportPath}`,
+      ...(failure === "too-large" ? [] : [`read:${reportPath}`]),
+      `exists:${reportPath}`,
+      `unlink:${reportPath}`,
+      `exists:${outputDirectory}`,
+      `remove-directory:${outputDirectory}`,
+    ]);
+    const terminal = await runSyntheticTerminalOutcome(outcome, `private-report-${failure}`);
+    expect(terminal.outcome).toMatchObject({
+      exitCode: 5,
+      report: {
+        result: "failed",
+        cleanup: "evidence-missing",
+        journeyReportStatus: failure,
+        journeyArtifactCleanup: "deleted",
+        journeyDiagnostics: { subcheck: `execution-report-${failure}` },
+      },
+    });
+  }
+});
+
+test("first private report deletion failure is evidence-missing while restore and every teardown step still run", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const execute = module.runPlaywrightJourneyExecution;
+  expect(typeof execute).toBe("function");
+  if (typeof execute !== "function") return;
+
+  const reportPath = resolve("guarded/run-delete-failure/playwright-journey-results.json");
+  const outputDirectory = resolve("guarded/run-delete-failure/private-playwright-output");
+  const helperCalls: string[] = [];
+  const executionOutcome = (execute as (input: Record<string, unknown>) => {
+    status: number;
+    reportStatus?: string;
+    privateArtifactCleanup?: string;
+    executionReport?: unknown;
+  })({
+    spawn: () => ({ status: 0 }),
+    processExecPath: process.execPath,
+    playwrightCli: "playwright-cli.js",
+    files: ["e2e/profile-theme.spec.ts"],
+    project: "synthetic-private-report",
+    cwd: process.cwd(),
+    environment: { ...process.env },
+    reportPath,
+    outputDirectory,
+    privateArtifactIo: {
+      exists: (path: string) => { helperCalls.push(`exists:${path}`); return true; },
+      size: (path: string) => { helperCalls.push(`size:${path}`); return 1024; },
+      read: (path: string) => { helperCalls.push(`read:${path}`); return JSON.stringify(playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" })); },
+      unlink: (path: string) => { helperCalls.push(`unlink:${path}`); throw new Error("Bearer private-delete-secret"); },
+      removeDirectory: (path: string) => { helperCalls.push(`remove-directory:${path}`); },
+    },
+  });
+  expect(executionOutcome).toMatchObject({
+    status: expect.any(Number),
+    reportStatus: "accepted",
+    privateArtifactCleanup: "delete-failed",
+  });
+  expect(executionOutcome.status).not.toBe(0);
+  expect(helperCalls).toEqual([
+    `exists:${reportPath}`,
+    `size:${reportPath}`,
+    `read:${reportPath}`,
+    `exists:${reportPath}`,
+    `unlink:${reportPath}`,
+    `exists:${outputDirectory}`,
+    `remove-directory:${outputDirectory}`,
+  ]);
+
+  const finalHash = "e".repeat(64);
+  const teardownCalls: string[] = [];
+  const outcome = await runMusicFixtureOrchestration({
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: "private-delete-failure", lane: "live" },
+    artifacts: {
+      directory: "guarded/run-delete-failure",
+      authPath: "owner-auth.json",
+      storagePath: "profile-storage-state.json",
+      mkdir: () => undefined,
+      write: () => undefined,
+      chmod: () => undefined,
+    },
+    restoreEvidence: {
+      path: "restore-evidence.jsonl",
+      exists: () => true,
+      read: () => validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n"),
+    },
+    execute: async () => executionOutcome,
+    restore: async () => {
+      teardownCalls.push("initial-restore");
+      return { ok: true, cleanup: "restored", beforeHash: finalHash, afterHash: finalHash };
+    },
+    teardown: {
+      artifactPaths: [reportPath, "owner-auth.json", "profile-storage-state.json"],
+      artifactDirectories: [outputDirectory],
+      exists: (path: string) => { teardownCalls.push(`exists:${path}`); return true; },
+      unlink: (path: string) => { teardownCalls.push(`unlink:${path}`); },
+      removeDirectory: (path: string) => { teardownCalls.push(`remove-directory:${path}`); },
+      stopStateService: () => { teardownCalls.push("state-service-stop"); },
+      down: () => { teardownCalls.push("exact-fixture-down"); return 0; },
+    },
+    writeReport: async () => undefined,
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
+  });
+  expect(teardownCalls).toEqual([
+    "initial-restore",
+    `exists:${reportPath}`,
+    `unlink:${reportPath}`,
+    "exists:owner-auth.json",
+    "unlink:owner-auth.json",
+    "exists:profile-storage-state.json",
+    "unlink:profile-storage-state.json",
+    `exists:${outputDirectory}`,
+    `remove-directory:${outputDirectory}`,
+    "state-service-stop",
+    "exact-fixture-down",
+  ]);
+  expect(outcome).toMatchObject({
+    exitCode: 5,
+    teardownStatus: 0,
+    report: {
+      result: "failed",
+      cleanup: "evidence-missing",
+      journeyArtifactCleanup: "delete-failed",
+    },
+  });
 });
 
 test("clean PR-safe collection does not require live Music environment", () => {
@@ -1144,7 +1561,14 @@ test("runner orchestration contains setup, parse, and report faults with restore
   }
 });
 
-for (const teardownFault of ["first-artifact-unlink", "second-artifact-unlink", "state-service-stop", "exact-down"] as const) {
+for (const teardownFault of [
+  "raw-report-unlink",
+  "owner-auth-unlink",
+  "profile-storage-unlink",
+  "private-output-remove",
+  "state-service-stop",
+  "exact-down",
+] as const) {
   test(`runner orchestration preserves teardown after ${teardownFault} failure`, async () => {
     type RunnerReport = { result: string; cleanup: string; restoreHashes: Array<{ beforeHash: string; afterHash: string }> };
     const initialHash = "c".repeat(64);
@@ -1178,14 +1602,20 @@ for (const teardownFault of ["first-artifact-unlink", "second-artifact-unlink", 
         return { ok: true, cleanup: "restored", beforeHash: initialHash, afterHash: initialHash };
       },
       teardown: {
-        artifactPaths: ["owner-auth.json", "profile-storage-state.json"],
+        artifactPaths: ["playwright-journey-results.json", "owner-auth.json", "profile-storage-state.json"],
+        artifactDirectories: ["private-playwright-output"],
         exists: (file) => { calls.push(`exists:${file}`); return true; },
         unlink: (file) => {
           calls.push(`unlink:${file}`);
-          if ((teardownFault === "first-artifact-unlink" && file === "owner-auth.json")
-              || (teardownFault === "second-artifact-unlink" && file === "profile-storage-state.json")) {
+          if ((teardownFault === "raw-report-unlink" && file === "playwright-journey-results.json")
+              || (teardownFault === "owner-auth-unlink" && file === "owner-auth.json")
+              || (teardownFault === "profile-storage-unlink" && file === "profile-storage-state.json")) {
             throw new Error("Bearer teardown-token");
           }
+        },
+        removeDirectory: (directory) => {
+          calls.push(`remove-directory:${directory}`);
+          if (teardownFault === "private-output-remove") throw new Error("Bearer teardown-token");
         },
         stopStateService: () => {
           calls.push("state-service-stop");
@@ -1210,10 +1640,14 @@ for (const teardownFault of ["first-artifact-unlink", "second-artifact-unlink", 
       "initial-restore",
       "restore-evidence-exists:restore-evidence.jsonl",
       "parse-restore-evidence:restore-evidence.jsonl",
+      "exists:playwright-journey-results.json",
+      "unlink:playwright-journey-results.json",
       "exists:owner-auth.json",
       "unlink:owner-auth.json",
       "exists:profile-storage-state.json",
       "unlink:profile-storage-state.json",
+      "exists:private-playwright-output",
+      "remove-directory:private-playwright-output",
       "state-service-stop",
       "npm run --silent music-cli -- down",
       "write-final-report",
