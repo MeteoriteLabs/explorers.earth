@@ -20,6 +20,7 @@ import {
   withRestoredMusicFixture,
 } from "./setup/music";
 import { stopMusicFixture } from "../scripts/music-fixture-cleanup.mjs";
+import { runMusicFixtureOrchestration } from "../scripts/music-public-e2e-runner.mjs";
 import playwrightConfig from "../playwright.config";
 
 test("clean PR-safe collection does not require live Music environment", () => {
@@ -338,43 +339,7 @@ test("live browser authority is callback-minted and legacy fixture credentials c
 });
 
 test("runner orchestration contains setup, parse, and report faults with restored abort hashes", async () => {
-  type RestoreResult = { ok: boolean; cleanup: string; beforeHash?: string; afterHash?: string };
   type RunnerReport = { result: string; cleanup: string; restoreHashes: Array<{ beforeHash: string; afterHash: string }> };
-  type RunnerOutcome = { exitCode: number; report: RunnerReport };
-  type RunnerOptions = {
-    snapshotExists: boolean;
-    baseReport: Record<string, unknown>;
-    artifacts: {
-      directory: string;
-      authPath: string;
-      storagePath: string;
-      mkdir: (directory: string) => void;
-      write: (file: string, content: string) => void;
-      chmod: (file: string) => void;
-    };
-    restoreEvidence: {
-      path: string;
-      exists: (file: string) => boolean;
-      read: (file: string) => string;
-    };
-    execute: () => Promise<number>;
-    restore: () => Promise<RestoreResult>;
-    teardown: {
-      artifactPaths: string[];
-      exists: (file: string) => boolean;
-      unlink: (file: string) => void;
-      stopStateService: () => void;
-      down: () => number;
-    };
-    writeReport: (report: RunnerReport) => Promise<void>;
-    writeStdout: (text: string) => void;
-    writeStderr: (text: string) => void;
-  };
-  const runnerModule = await import("../scripts/music-public-e2e-runner.mjs") as unknown as {
-    runMusicFixtureOrchestration?: (options: RunnerOptions) => Promise<RunnerOutcome>;
-  };
-  expect(runnerModule.runMusicFixtureOrchestration, "the CLI must expose its real post-snapshot orchestration path").toBeDefined();
-  if (!runnerModule.runMusicFixtureOrchestration) return;
 
   const hash = "a".repeat(64);
   for (const fault of ["setup", "parse", "report"] as const) {
@@ -382,7 +347,7 @@ test("runner orchestration contains setup, parse, and report faults with restore
     const stdout: string[] = [];
     const stderr: string[] = [];
     const reports: RunnerReport[] = [];
-    const outcome = await runnerModule.runMusicFixtureOrchestration({
+    const outcome = await runMusicFixtureOrchestration({
       snapshotExists: true,
       baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: `fault-${fault}`, lane: "live" },
       artifacts: {
@@ -450,33 +415,119 @@ test("runner orchestration contains setup, parse, and report faults with restore
   }
 });
 
-test("teardown attempts every artifact, state service, and exact down after individual failures", () => {
-  for (const fault of ["first-exists", "first-unlink", "second-unlink", "state-stop", "down"] as const) {
+for (const teardownFault of ["first-artifact-unlink", "second-artifact-unlink", "state-service-stop", "exact-down"] as const) {
+  test(`runner orchestration preserves teardown after ${teardownFault} failure`, async () => {
+    type RunnerReport = { result: string; cleanup: string; restoreHashes: Array<{ beforeHash: string; afterHash: string }> };
+    const initialHash = "c".repeat(64);
+    const journeyHash = "d".repeat(64);
     const calls: string[] = [];
-    const status = stopMusicFixture({
-      artifactPaths: ["owner-auth", "profile-state"],
-      exists: (file) => {
-        calls.push(`exists:${file}`);
-        if (fault === "first-exists" && file === "owner-auth") throw new Error("denied");
-        return true;
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const reports: RunnerReport[] = [];
+    const outcome = await runMusicFixtureOrchestration({
+      snapshotExists: true,
+      baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: `teardown-${teardownFault}`, lane: "live" },
+      artifacts: {
+        directory: "fixture-artifacts",
+        authPath: "owner-auth.json",
+        storagePath: "profile-storage-state.json",
+        mkdir: (directory) => { calls.push(`mkdir:${directory}`); },
+        write: (file) => { calls.push(`write:${file}`); },
+        chmod: (file) => { calls.push(`chmod:${file}`); },
       },
-      unlink: (file) => {
-        calls.push(`unlink:${file}`);
-        if ((fault === "first-unlink" && file === "owner-auth") || (fault === "second-unlink" && file === "profile-state")) {
-          throw new Error("denied");
-        }
+      restoreEvidence: {
+        path: "restore-evidence.jsonl",
+        exists: (file) => { calls.push(`restore-evidence-exists:${file}`); return true; },
+        read: (file) => {
+          calls.push(`parse-restore-evidence:${file}`);
+          return `${JSON.stringify({ cleanup: "restored", beforeHash: journeyHash, afterHash: journeyHash })}\n`;
+        },
       },
-      stopStateService: () => {
-        calls.push("state-stop");
-        if (fault === "state-stop") throw new Error("already exited");
+      execute: async () => { calls.push("execute"); return 0; },
+      restore: async () => {
+        calls.push("initial-restore");
+        return { ok: true, cleanup: "restored", beforeHash: initialHash, afterHash: initialHash };
       },
-      down: () => { calls.push("npm run --silent music-cli -- down"); return fault === "down" ? 1 : 0; },
+      teardown: {
+        artifactPaths: ["owner-auth.json", "profile-storage-state.json"],
+        exists: (file) => { calls.push(`exists:${file}`); return true; },
+        unlink: (file) => {
+          calls.push(`unlink:${file}`);
+          if ((teardownFault === "first-artifact-unlink" && file === "owner-auth.json")
+              || (teardownFault === "second-artifact-unlink" && file === "profile-storage-state.json")) {
+            throw new Error("Bearer teardown-token");
+          }
+        },
+        stopStateService: () => {
+          calls.push("state-service-stop");
+          if (teardownFault === "state-service-stop") throw new Error("Bearer teardown-token");
+        },
+        down: () => {
+          calls.push("npm run --silent music-cli -- down");
+          if (teardownFault === "exact-down") throw new Error("Bearer teardown-token");
+          return 0;
+        },
+      },
+      writeReport: async (report: RunnerReport) => { calls.push("write-final-report"); reports.push(structuredClone(report)); },
+      writeStdout: (text) => { stdout.push(text); },
+      writeStderr: (text) => { stderr.push(text); },
     });
-    expect(calls, fault).toEqual(fault === "first-exists"
-      ? ["exists:owner-auth", "exists:profile-state", "unlink:profile-state", "state-stop", "npm run --silent music-cli -- down"]
-      : ["exists:owner-auth", "unlink:owner-auth", "exists:profile-state", "unlink:profile-state", "state-stop", "npm run --silent music-cli -- down"]);
-    expect(status, fault).toBe(1);
-  }
+
+    expect(calls, teardownFault).toEqual([
+      "mkdir:fixture-artifacts",
+      "write:profile-storage-state.json",
+      "chmod:profile-storage-state.json",
+      "execute",
+      "initial-restore",
+      "restore-evidence-exists:restore-evidence.jsonl",
+      "parse-restore-evidence:restore-evidence.jsonl",
+      "exists:owner-auth.json",
+      "unlink:owner-auth.json",
+      "exists:profile-storage-state.json",
+      "unlink:profile-storage-state.json",
+      "state-service-stop",
+      "npm run --silent music-cli -- down",
+      "write-final-report",
+    ]);
+    expect(calls.filter((call) => call === "initial-restore"), teardownFault).toHaveLength(1);
+    expect(outcome.teardownStatus, teardownFault).toBe(1);
+    expect(outcome.exitCode, teardownFault).toBe(5);
+    expect(outcome.report, teardownFault).toMatchObject({
+      result: "failed",
+      cleanup: "teardown-failed",
+      restoreHashes: [
+        { beforeHash: initialHash, afterHash: initialHash },
+        { beforeHash: journeyHash, afterHash: journeyHash },
+      ],
+    });
+    expect(outcome.report.restoreHashes.every(({ beforeHash, afterHash }) => beforeHash.length > 0 && beforeHash === afterHash), teardownFault).toBe(true);
+    expect(reports, teardownFault).toEqual([outcome.report]);
+    expect(JSON.parse(stdout.join("")), teardownFault).toEqual(outcome.report);
+    expect(`${stdout.join("")}\n${stderr.join("")}`, teardownFault).not.toMatch(/bearer|token/i);
+  });
+}
+
+test("teardown continues after an artifact existence check fails", () => {
+  const calls: string[] = [];
+  const status = stopMusicFixture({
+    artifactPaths: ["owner-auth", "profile-state"],
+    exists: (file) => {
+      calls.push(`exists:${file}`);
+      if (file === "owner-auth") throw new Error("denied");
+      return true;
+    },
+    unlink: (file) => { calls.push(`unlink:${file}`); },
+    stopStateService: () => { calls.push("state-stop"); },
+    down: () => { calls.push("npm run --silent music-cli -- down"); return 0; },
+  });
+  expect(calls).toEqual([
+    "exists:owner-auth",
+    "exists:profile-state",
+    "unlink:profile-state",
+    "state-stop",
+    "npm run --silent music-cli -- down",
+  ]);
+  expect(status).toBe(1);
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
