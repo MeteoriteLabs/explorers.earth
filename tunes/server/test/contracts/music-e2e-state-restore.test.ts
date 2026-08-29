@@ -257,6 +257,11 @@ describe("Music E2E transactional state restore", () => {
     expect(source).toContain("runMusicFixtureRestoreTransaction");
     expect(source).toContain("createMusicMutationGuard");
     expect(source).toContain('"/restore-final"');
+    expect(source).toContain('/__music-fixture/profile-state/snapshot');
+    expect(source).toContain('/__music-fixture/profile-state/restore');
+    expect(source).toContain('profileHash');
+    expect(source).toContain('profileRevision');
+    expect(source).not.toMatch(/method:\s*"PUT"[\s\S]{0,240}public_music/);
     expect(source).not.toContain("SELECT string_agg(format('%I.%I'");
     expect(source).not.toContain('"explorers-music-fixture-postgres-1", ...args');
   });

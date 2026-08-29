@@ -6,6 +6,17 @@ import { createMusicFixtureService, fixtureGraphqlResponse, fixtureReconciliatio
 
 afterEach(() => vi.unstubAllGlobals());
 
+const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+
+function checkedInGraphqlOperation(relativePath: string, operation: string): string {
+  const source = readFileSync(resolve(repositoryRoot, relativePath), "utf8");
+  const matches = [...source.matchAll(/gql`([\s\S]*?)`/g)]
+    .map((match) => match[1])
+    .filter((document) => new RegExp(`\\b(?:query|mutation)\\s+${operation}\\b`).test(document));
+  if (matches.length !== 1) throw new Error(`expected one checked-in ${operation} document`);
+  return matches[0]!;
+}
+
 describe("deterministic Music fixture services", () => {
   it("projects one configured namespaced identity and restores its allowlisted Account preference", () => {
     const service = createMusicFixtureService({
@@ -37,10 +48,175 @@ describe("deterministic Music fixture services", () => {
     ]) expect(service.response(denied).status).not.toBe(200);
   });
 
+  it("serves the exact checked-in profile documents with deterministic revisioned state and exact privileged restore", () => {
+    const namespace = "e2e-public-music-profile-contract";
+    const username = `${namespace}-owner`;
+    const accountDocumentId = `${namespace}-account`;
+    const userDocumentId = `${namespace}-user`;
+    const token = "profile-contract-fixture-token";
+    const authority = `Bearer ${token}`;
+    const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
+    const tuple = { namespace, username, accountDocumentId, userDocumentId };
+    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const settingsQuery = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UsersPermissionsUser");
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+    const visibilityMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
+    const publicProfileQuery = checkedInGraphqlOperation("explorers-earth/src/features/PublicHome/api/query.ts", "PublicProfileData");
+
+    const captured = service.response({
+      path: "/__music-fixture/profile-state/snapshot", method: "POST", authorization: authority, body: tuple,
+    });
+    expect(captured).toMatchObject({
+      status: 200,
+      body: {
+        version: "music-fixture-profile-state/v1",
+        revision: 0,
+        stateHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        snapshot: { version: "music-fixture-profile-snapshot/v1", revision: 0, account: {
+          documentId: accountDocumentId,
+          username,
+          social_media: { theme_settings: expect.any(Object) },
+          Feed_Data: [expect.objectContaining({ type: "image", url: "/images/tuneslogo.png" })],
+          updatedAt: expect.any(String),
+        } },
+      },
+    });
+    const capturedBody = captured.body as { snapshot: unknown; stateHash: string };
+
+    const before = service.graphql({ authorization: authority, method: "POST", query: profileQuery, variables: { documentId: userDocumentId } });
+    expect(before).toMatchObject({ status: 200, body: { data: { usersPermissionsUser: { accounts: [{ updatedAt: expect.any(String) }] } } } });
+    expect(service.graphql({ authorization: authority, method: "POST", query: settingsQuery, variables: { documentId: userDocumentId } }))
+      .toMatchObject({ status: 200, body: { data: { usersPermissionsUser: { documentId: userDocumentId, accounts: [{ documentId: accountDocumentId }] } } } });
+    const beforeUpdatedAt = (before.body as any).data.usersPermissionsUser.accounts[0].updatedAt;
+
+    const socialMedia = {
+      theme_settings: {
+        preset: "neon-cyber", accentColor: "#F43F5E", wallpaperMode: "ambient-gradient",
+        firstView: "books", visibleTabs: { recommendations: true, gallery: true, business: true },
+        recommendations: { layout: "featured", categoryOrder: ["books", "places", "movies"] },
+      },
+    };
+    const updated = service.graphql({
+      authorization: authority,
+      method: "POST",
+      query: updateMutation,
+      variables: {
+        documentId: accountDocumentId,
+        data: {
+          Bio: "Revision one",
+          Account_Name: "Profile Contract",
+          Addresss: { city: "Fixture City" },
+          Primary_Address: { address: "Fixture City" },
+          Public_Profile_Address: "Fixture City",
+          Feed_Data: [{ type: "fixture", value: "profile" }],
+          social_media: socialMedia,
+          Account_Type: "Personal",
+          mobile_number_visibility: false,
+        },
+      },
+    });
+    expect(updated).toMatchObject({ status: 200, body: { data: { updateAccount: {
+      documentId: accountDocumentId, Bio: "Revision one", social_media: socialMedia,
+    } } } });
+
+    const after = service.graphql({ authorization: authority, method: "POST", query: profileQuery, variables: { documentId: userDocumentId } });
+    const afterAccount = (after.body as any).data.usersPermissionsUser.accounts[0];
+    expect(Date.parse(afterAccount.updatedAt)).toBeGreaterThan(Date.parse(beforeUpdatedAt));
+    expect(afterAccount).toMatchObject({ Bio: "Revision one", social_media: socialMedia, Feed_Data: [{ type: "fixture", value: "profile" }] });
+
+    const visibility = service.graphql({
+      authorization: authority,
+      method: "POST",
+      query: visibilityMutation,
+      variables: { documentId: accountDocumentId, data: { public_music: "Yes" } },
+    });
+    expect(visibility).toMatchObject({ status: 200, body: { data: { updateAccount: {
+      documentId: accountDocumentId, public_music: "Yes",
+    } } } });
+
+    const publicView = service.graphql({
+      authorization: authority, method: "POST", query: publicProfileQuery,
+      variables: { filters: { username: { eq: username } } },
+    });
+    expect(publicView).toMatchObject({ status: 200, body: { data: { accounts: [{
+      documentId: accountDocumentId, Bio: "Revision one", social_media: socialMedia, public_music: "Yes",
+    }] } } });
+
+    const restored = service.response({
+      path: "/__music-fixture/profile-state/restore", method: "POST", authorization: authority,
+      body: { ...tuple, snapshot: capturedBody.snapshot },
+    });
+    expect(restored).toEqual({
+      status: 200,
+      body: { version: "music-fixture-profile-state/v1", restored: true, revision: 0, stateHash: capturedBody.stateHash },
+    });
+    const exact = service.graphql({ authorization: authority, method: "POST", query: profileQuery, variables: { documentId: userDocumentId } });
+    expect((exact.body as any).data.usersPermissionsUser.accounts[0].updatedAt).toBe(beforeUpdatedAt);
+    expect((exact.body as any).data.usersPermissionsUser.accounts[0].Bio).not.toBe("Revision one");
+    expect((exact.body as any).data.usersPermissionsUser.accounts[0].public_music).toBe("No");
+  });
+
+  it("fails closed for non-registry GraphQL shapes, hostile profile fields, and mismatched privileged tuples", () => {
+    const namespace = "e2e-public-music-profile-hostile";
+    const username = `${namespace}-owner`;
+    const accountDocumentId = `${namespace}-account`;
+    const userDocumentId = `${namespace}-user`;
+    const token = "hostile-contract-fixture-token";
+    const authority = `Bearer ${token}`;
+    const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
+    expect(() => createMusicFixtureService({
+      username: "fixture-explorer", accountDocumentId: "fixture-account-document-id",
+      userDocumentId: "fixture-user-document-id", token,
+    })).toThrow("complete namespaced authority tuple");
+    const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const tuple = { namespace, username, accountDocumentId, userDocumentId };
+
+    const denied = [
+      service.graphql({ authorization: authority, method: "POST", query: profileQuery.replace(/}\s*$/, "systemSettings { id } }"), variables: { documentId: userDocumentId } }),
+      service.graphql({ authorization: authority, method: "POST", query: profileQuery.replace("username", "alias: username"), variables: { documentId: userDocumentId } }),
+      service.graphql({ authorization: authority, method: "POST", query: updateMutation, variables: { documentId: accountDocumentId, data: { social_media: {}, administrator: true } } }),
+      service.graphql({ authorization: authority, method: "POST", query: updateMutation, variables: { documentId: "other-account", data: { social_media: {} } } }),
+      service.response({ path: "/__music-fixture/profile-state/snapshot", method: "POST", authorization: authority, body: { ...tuple, namespace: `${namespace}-other` } }),
+      service.response({ path: "/__music-fixture/profile-state/snapshot", method: "POST", authorization: "Bearer wrong", body: tuple }),
+      service.response({ path: "/__music-fixture/profile-state/snapshot", method: "GET", authorization: authority, body: tuple }),
+    ];
+    expect(denied.every(({ status }) => status !== 200)).toBe(true);
+    expect(JSON.stringify(denied)).not.toContain(token);
+
+    const nginx = readFileSync(resolve(repositoryRoot, "explorers-earth/nginx.music-fixture.conf"), "utf8");
+    expect(nginx).not.toMatch(/proxy_pass[^\n]*strapi[\s\S]{0,300}__music-fixture\/profile-state|location[^\n]*__music-fixture\/profile-state/);
+  });
+
+  it("projects deterministic content for every exact checked-in public profile category document", () => {
+    const namespace = "e2e-public-music-category-contract";
+    const accountDocumentId = `${namespace}-account`;
+    const service = createMusicFixtureService({
+      username: `${namespace}-owner`, accountDocumentId, userDocumentId: `${namespace}-user`, token: "category-contract-fixture-token",
+    });
+    const authority = "Bearer category-contract-fixture-token";
+    const operations = [
+      ["GetPlacesLists", "recommendationLists"], ["GetMoviesLists", "movieLists"],
+      ["GetBooksLists", "bookLists"], ["GetGamesLists", "gameLists"],
+      ["GetAppsLists", "appLists"], ["GetProductsLists", "productLists"],
+      ["GetPeopleLists", "personLists"], ["GetGuidesLists", "guides"],
+    ] as const;
+    for (const [operation, rootField] of operations) {
+      const response = service.graphql({
+        authorization: authority, method: "POST",
+        query: checkedInGraphqlOperation("explorers-earth/src/features/PublicHome/components/ProfileRecommendationsTab.tsx", operation),
+        variables: { accountDocumentId },
+      });
+      expect(response.status, operation).toBe(200);
+      expect((response.body as any).data[rootField], operation).toEqual([expect.objectContaining({ documentId: expect.any(String) })]);
+    }
+  });
+
   it("binds the runner tuple to the actual loopback fixture process and restores the preference", async () => {
     const port = 52_000 + Math.floor(Math.random() * 1_000);
     const origin = `http://127.0.0.1:${port}`;
     const token = "contract-process-fixture-token";
+    const eligibilityQuery = checkedInGraphqlOperation("explorers-earth/src/pages/Music.tsx", "MusicPageEligibility");
     const child = spawn(process.execPath, ["--experimental-strip-types", resolve(import.meta.dirname, "../../../scripts/music-fixture-server.ts"), "--port", String(port)], {
       env: { ...process.env, MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-process-owner",
         MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-process-account", MUSIC_E2E_USER_DOCUMENT_ID: "e2e-public-music-process-user",
@@ -57,7 +233,7 @@ describe("deterministic Music fixture services", () => {
       const identity = await (await fetch(`${origin}/api/users/me`, { headers })).json();
       expect(identity).toMatchObject({ username: "e2e-public-music-process-owner", accounts: [{ documentId: "e2e-public-music-process-account" }] });
       const callback = await (await fetch(`${origin}/graphql`, { method: "POST", headers, body: JSON.stringify({
-        query: "query MusicPageEligibility($documentId: ID!) { usersPermissionsUser(documentId: $documentId) { documentId accounts { documentId } } }",
+        query: eligibilityQuery,
         variables: { documentId: "e2e-public-music-process-user" },
       }) })).json();
       expect(callback.data.usersPermissionsUser).toMatchObject({ documentId: "e2e-public-music-process-user",
@@ -188,12 +364,7 @@ describe("deterministic Music fixture services", () => {
     const allowed = fixtureGraphqlResponse({
       authorization: "Bearer fixture-read-only-token",
       method: "POST",
-      query: `query MusicPageEligibility($documentId: ID!) {
-        usersPermissionsUser(documentId: $documentId) {
-          documentId provider confirmed blocked
-          accounts { documentId Account_Name Account_Type mobile_number }
-        }
-      }`,
+      query: checkedInGraphqlOperation("explorers-earth/src/pages/Music.tsx", "MusicPageEligibility"),
       variables: { documentId: "fixture-user-document-id" },
     });
     expect(allowed).toMatchObject({

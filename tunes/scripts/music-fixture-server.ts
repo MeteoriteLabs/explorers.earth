@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
+import { createFixtureProfileController } from "./music-fixture-profile.ts";
 
 const fixture = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../fixtures/strapi/music-identity/identity.fixture.json"), "utf8")) as {
   reconciliation: { schemaVersion: "strapi-music-reconciliation/v1"; sourceSnapshot: string; sourceChecksum: string };
@@ -40,13 +41,6 @@ const lifecycleAbsenceQuery = `query MusicIdentityAbsence($userDocumentId: ID!, 
   usersPermissionsUser(documentId: $userDocumentId) { documentId }
   account(documentId: $accountDocumentId) { documentId }
 }`;
-const browserIdentityOperations = new Set([
-  "MusicIdentityEligibility",
-  "MusicPageEligibility",
-  "CheckOnboardingStatus",
-  "SidebarAccount",
-  "user",
-]);
 const browserIdentity = {
   ...user,
   id: user.documentId,
@@ -74,25 +68,38 @@ type FixtureServiceInput = {
   body?: unknown;
 };
 
-export function createMusicFixtureService(config: {
+type MusicFixtureServiceConfig = {
   username: string;
   accountDocumentId: string;
   userDocumentId: string;
   token: string;
-}) {
-  if (!/^e2e-public-music-[a-z0-9-]+-owner$/.test(config.username)
+};
+
+function buildMusicFixtureService(config: MusicFixtureServiceConfig, allowStaticContractIdentity = false) {
+  const staticContractIdentity = config.username === user.username
+    && config.accountDocumentId === user.accounts[0]!.documentId
+    && config.userDocumentId === user.documentId;
+  if ((!allowStaticContractIdentity || !staticContractIdentity)
+      && (!/^e2e-public-music-[a-z0-9-]+-owner$/.test(config.username)
       || !/^e2e-public-music-[a-z0-9-]+-account$/.test(config.accountDocumentId)
-      || !/^e2e-public-music-[a-z0-9-]+-user$/.test(config.userDocumentId)
+      || !/^e2e-public-music-[a-z0-9-]+-user$/.test(config.userDocumentId))
       || config.token.length < 8) throw new Error("fixture identity must be a complete namespaced authority tuple");
-  let publicMusic: "Yes" | "No" = "No";
-  const account = () => ({ ...user.accounts[0], documentId: config.accountDocumentId, public_music: publicMusic });
-  const identity = () => ({ ...browserIdentity, id: config.userDocumentId, documentId: config.userDocumentId,
-    username: config.username, accounts: [account()] });
+  const profile = createFixtureProfileController({
+    username: config.username,
+    accountDocumentId: config.accountDocumentId,
+    userDocumentId: config.userDocumentId,
+    baseUser: browserIdentity,
+    baseAccount: user.accounts[0]!,
+  });
+  const account = profile.account;
+  const identity = profile.identity;
   return {
     response(input: FixtureServiceInput): { status: number; body: unknown } {
       if (input.path === "/health" && input.method === "GET") return { status: 200, body: { service: "strapi", status: "ready", fixtureVersion: "1",
         identity: { username: config.username, userDocumentId: config.userDocumentId, accountDocumentId: config.accountDocumentId } } };
       if (input.authorization !== `Bearer ${config.token}`) return { status: 403, body: { error: "fixture identity authority denied" } };
+      const privateProfile = profile.privateResponse(input.path, input.method, input.body);
+      if (privateProfile) return privateProfile;
       if (input.path === "/api/users/me") return input.method === "GET"
         ? { status: 200, body: identity() } : { status: 405, body: { error: "fixture identity operation denied" } };
       if (input.path === "/api/accounts") return input.method === "GET"
@@ -108,33 +115,32 @@ export function createMusicFixtureService(config: {
             || !("public_music" in data) || !["Yes", "No"].includes(String((data as { public_music?: unknown }).public_music))) {
           return { status: 400, body: { error: "fixture Account body invalid" } };
         }
-        publicMusic = (data as { public_music: "Yes" | "No" }).public_music;
-        return { status: 200, body: { data: account() } };
+        return { status: 200, body: { data: profile.setPublicMusic((data as { public_music: "Yes" | "No" }).public_music) } };
       }
       return { status: 404, body: { error: "fixture route not found" } };
     },
     graphql(input: { authorization: string | undefined; method: string | undefined; query: string; variables: Record<string, unknown> }) {
       if (input.authorization !== `Bearer ${config.token}`) return { status: 403, body: { error: "fixture lifecycle proof authority denied" } };
       if (input.method !== "POST") return { status: 405, body: { error: "fixture lifecycle proof operation denied" } };
-      const operation = /^query\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/.exec(normalizeGraphql(input.query))?.[1];
-      if (operation && browserIdentityOperations.has(operation)) return input.variables.documentId === config.userDocumentId
-        ? { status: 200, body: { data: { usersPermissionsUser: identity() } } }
-        : { status: 403, body: { error: "fixture browser identity subject denied" } };
-      if (normalizeGraphql(input.query) !== normalizeGraphql(lifecycleAbsenceQuery)) return { status: 403, body: { error: "fixture lifecycle proof operation denied" } };
-      return { status: 200, body: { data: {
+      if (normalizeGraphql(input.query) === normalizeGraphql(lifecycleAbsenceQuery)) return { status: 200, body: { data: {
         usersPermissionsUser: input.variables.userDocumentId === config.userDocumentId ? { documentId: config.userDocumentId } : null,
         account: input.variables.accountDocumentId === config.accountDocumentId ? { documentId: config.accountDocumentId } : null,
       } } };
+      return profile.graphql(input.query, input.variables);
     },
   };
 }
 
-const defaultService = createMusicFixtureService({
-  username: "e2e-public-music-fixture-owner",
-  accountDocumentId: "e2e-public-music-fixture-account",
-  userDocumentId: "e2e-public-music-fixture-user",
+export function createMusicFixtureService(config: MusicFixtureServiceConfig) {
+  return buildMusicFixtureService(config);
+}
+
+const defaultService = buildMusicFixtureService({
+  username: user.username,
+  accountDocumentId: user.accounts[0]!.documentId,
+  userDocumentId: user.documentId,
   token: "fixture-read-only-token",
-});
+}, true);
 
 function normalizeGraphql(source: string): string {
   return source.replace(/\s+/g, " ").trim();
@@ -145,14 +151,7 @@ export function fixtureResponse(input: {
   method: string | undefined;
   authorization: string | undefined;
 }): { status: number; body: unknown } {
-  if (input.path === "/health" && input.method === "GET") return { status: 200, body: { service: "strapi", status: "ready", fixtureVersion: "1" } };
-  if (input.path === "/api/users/me" || input.path === "/api/accounts") {
-    if (input.authorization !== "Bearer fixture-read-only-token") return { status: 403, body: { error: "fixture identity authority denied" } };
-    if (input.method !== "GET") return { status: 405, body: { error: "fixture identity operation denied" } };
-  }
-  if (input.path === "/api/users/me") return { status: 200, body: browserIdentity };
-  if (input.path === "/api/accounts") return { status: 200, body: { data: user.accounts, meta: { pagination: { page: 1, pageCount: 1, pageSize: 50, total: 1 } } } };
-  return { status: 404, body: { error: "fixture route not found" } };
+  return defaultService.response(input);
 }
 
 export function fixtureReconciliationResponse(input: {
@@ -199,28 +198,7 @@ export function fixtureGraphqlResponse(input: {
   query: string;
   variables: Record<string, unknown>;
 }): { status: number; body: unknown } {
-  if (input.authorization !== "Bearer fixture-read-only-token") {
-    return { status: 403, body: { error: "fixture lifecycle proof authority denied" } };
-  }
-  if (input.method !== "POST") return { status: 405, body: { error: "fixture lifecycle proof operation denied" } };
-  const browserOperation = /^query\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/.exec(normalizeGraphql(input.query))?.[1];
-  if (browserOperation && browserIdentityOperations.has(browserOperation)) {
-    if (input.variables.documentId !== user.documentId) {
-      return { status: 403, body: { error: "fixture browser identity subject denied" } };
-    }
-    return { status: 200, body: { data: { usersPermissionsUser: browserIdentity } } };
-  }
-  const exactRead = normalizeGraphql(input.query) === normalizeGraphql(lifecycleAbsenceQuery);
-  if (!exactRead) return { status: 403, body: { error: "fixture lifecycle proof operation denied" } };
-  const requestedUser = input.variables.userDocumentId;
-  const requestedAccount = input.variables.accountDocumentId;
-  if (typeof requestedUser !== "string" || typeof requestedAccount !== "string") {
-    return { status: 400, body: { error: "fixture lifecycle proof variables invalid" } };
-  }
-  return { status: 200, body: { data: {
-    usersPermissionsUser: requestedUser === user.documentId ? { documentId: user.documentId } : null,
-    account: requestedAccount === user.accounts[0].documentId ? { documentId: user.accounts[0].documentId } : null,
-  } } };
+  return defaultService.graphql(input);
 }
 
 function argument(name: string): string | undefined { const index = process.argv.indexOf(name); return index < 0 ? undefined : process.argv[index + 1]; }

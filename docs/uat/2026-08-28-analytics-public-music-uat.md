@@ -51,6 +51,8 @@ The following register covers every lane named by the original UAT document. Unl
 
 These lanes are not live UAT. Their committed reports are retained, but terminal stdout/stderr were not separately preserved under the new manifest format, so they do not retroactively satisfy that format.
 
+The current fixture-capability repair is also non-live and awaits independent review. It gives the loopback Strapi fixture an exact checked-in GraphQL document registry, deterministic full profile state, and token-plus-tuple private snapshot/restore that is not exposed by the Explorer proxy. Mutation journeys now enable Explorer `public_music`, seed playlist/queue/current/history prerequisites inside the canonical snapshot, publish Tunes, and consume the actual returned public slug; guest-device playback is asserted local-only. Profile baseline acquisition and all 72 pairwise rows now execute under the same transactional restore, fixed terminal, and durable guard ownership. These contracts do not constitute a guarded UI result, and the release verdict above remains unchanged.
+
 | Lane | Exact SHA, command and cwd | Exit / totals | Retained report |
 | --- | --- | --- | --- |
 | Task 1 final focused | `e1e28a68630cfc065c091146ce14d4dd905e2505`; `npx playwright test e2e/music-harness-contract.spec.ts --project=chromium-pr-safe`; cwd `explorers-earth`. | Exit 0; 53 total = 53 passed, 0 failed, 0 skipped. | `.superpowers/sdd/2026-08-29-uat-evidence-repair/task-1-report.md`, 24,327 bytes, SHA-256 `311cff47570af239a988e09209136eef2e120168c078d0ea39b41c1ced5b199d`. |

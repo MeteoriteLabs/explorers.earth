@@ -7,13 +7,11 @@ import {
   type Route,
 } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { withRestoredMusicFixture } from './setup/music';
 import {
   LIVE_MUTATION_TAG,
   LIVE_READ_ONLY_TAG,
-  appendLiveJourneyResult,
-  buildLiveJourneyTerminal,
   buildProfileCoveringRows as buildManifestProfileCoveringRows,
-  canonicalEvidenceHash,
 } from '../scripts/music-public-live-preflight.mjs';
 
 const FACTORS = {
@@ -311,7 +309,7 @@ const LIVE_BATCHES = batchCoveringRows(LIVE_MATRIX);
 const liveBatchTimeoutMs = (rows: readonly CoveringRow[]) =>
   (rows.length + 2) * 8_000 + 5 * 60_000;
 
-async function blockProfileMutationsAfterRestoreFailure() {
+async function blockProfileMutationsAfterBatchFailure() {
   const serviceUrl = process.env.MUSIC_E2E_STATE_SERVICE_URL;
   const token = process.env.MUSIC_E2E_STATE_TOKEN;
   if (!serviceUrl || !token) return;
@@ -319,7 +317,7 @@ async function blockProfileMutationsAfterRestoreFailure() {
     await fetch(`${serviceUrl}/block`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ reason: 'profile-restore-failed', stage: 'profile-restore' }),
+      body: JSON.stringify({ reason: 'profile-batch-failed', stage: 'body' }),
       signal: AbortSignal.timeout(5_000),
     });
   } catch { /* max-failures=1 still prevents another mutation in this run */ }
@@ -422,19 +420,6 @@ const assertAccountVersion = (
   const actual = accountVersion(account);
   if (actual !== expected) throw new ConcurrentProfileChangeError(expected, actual);
 };
-
-const restorableAccountSnapshot = (account: Record<string, any>) => ({
-  Account_Name: account.Account_Name,
-  Account_Type: account.Account_Type,
-  Bio: account.Bio,
-  Addresss: account.Addresss,
-  Primary_Address: account.Primary_Address,
-  Public_Profile_Address: account.Public_Profile_Address,
-  Feed_Data: account.Feed_Data,
-  social_media: account.social_media,
-  mobile_number: account.mobile_number,
-  mobile_number_visibility: account.mobile_number_visibility,
-});
 
 const accountFromProfileResponse = async (response: Response) => {
   const payload = await response.json();
@@ -737,61 +722,6 @@ async function verifyPublicRow(
   }
 }
 
-async function normalExactRestore(
-  page: Page,
-  baselinePresentation: Awaited<ReturnType<typeof readDashboardPresentation>>,
-  baselineMutationData: Record<string, unknown>,
-  expectedUpdatedAt: string,
-) {
-  const beforeRestore = await openDashboard(page);
-  assertAccountVersion(beforeRestore, expectedUpdatedAt);
-  await page
-    .getByRole('button', {
-      name: PRESET_LABELS[baselinePresentation.preset],
-      exact: false,
-    })
-    .click();
-  await page
-    .getByRole('button', {
-      name: ACCENT_LABELS[baselinePresentation.accent],
-      exact: true,
-    })
-    .click();
-  await page
-    .getByLabel('Wallpaper and cover style')
-    .selectOption(baselinePresentation.wallpaper);
-  await page.getByLabel('First view').selectOption(baselinePresentation.firstView);
-  await page
-    .getByRole('radio', {
-      name: LAYOUT_LABELS[baselinePresentation.layout],
-      exact: true,
-    })
-    .check();
-  await setDashboardOrder(page, baselinePresentation.order);
-
-  let restoreRequestSeen = false;
-  const handler = async (route: Route) => {
-    if (requestOperation(route.request()) !== 'UpdateAccount') {
-      return route.continue();
-    }
-    restoreRequestSeen = true;
-    const body = route.request().postDataJSON() as Record<string, any>;
-    body.variables.data = clone(baselineMutationData);
-    const response = await route.fetch({
-      headers: safeTemplateHeaders(route.request().headers()),
-      postData: JSON.stringify(body),
-    });
-    await route.fulfill({ response });
-  };
-  await page.route('**/graphql', handler);
-  try {
-    await publishDashboard(page);
-  } finally {
-    await page.unroute('**/graphql', handler);
-  }
-  if (!restoreRequestSeen) throw new Error('Normal restore publish was not sent');
-}
-
 test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => {
   test.describe.configure({ mode: 'serial' });
   test.use({
@@ -803,182 +733,97 @@ test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => 
   );
 
   for (const [batchIndex, liveRows] of LIVE_BATCHES.entries()) {
-  test(`publishes pairwise matrix batch ${batchIndex + 1}/${LIVE_BATCHES.length} and restores exact raw social_media`, async ({
+    test(`publishes pairwise matrix batch ${batchIndex + 1}/${LIVE_BATCHES.length} and restores exact raw social_media`, async ({
       page,
     }) => {
-    test.setTimeout(liveBatchTimeoutMs(liveRows));
-    const username = LIVE_USERNAME!;
-    const baselineAccount = await openDashboard(page);
-    const baselineSnapshot = restorableAccountSnapshot(baselineAccount);
-    const baselineUpdatedAt = accountVersion(baselineAccount);
-    const baselineSocialMedia = clone(
-      baselineAccount.social_media,
-    ) as Record<string, unknown>;
-    const baselinePresentation = await readDashboardPresentation(page);
-    const template = await captureAbortedMutationTemplate(
-      page,
-      baselinePresentation.accent,
-    );
-    const baselineMutationData = clone(
-      template.body.variables.data,
-    ) as Record<string, any>;
-    baselineMutationData.social_media = clone(baselineSocialMedia);
-
-    const afterAbort = await openDashboard(page);
-    expect(afterAbort.social_media).toEqual(baselineSocialMedia);
-    assertAccountVersion(afterAbort, baselineUpdatedAt);
-
-    const sentinelMutationData = clone(baselineMutationData) as Record<string, any>;
-    const sentinelSocialMedia = sentinelMutationData.social_media as Record<string, any>;
-    const sentinel = `profile-presentation-${Date.now()}`;
-    const theme = (sentinelSocialMedia.theme_settings ||= {});
-    const recommendations = (theme.recommendations ||= {});
-    recommendations.__e2eSentinel = sentinel;
-    let liveFailure: unknown;
-    let liveWriteStarted = false;
-    let baselineHasBusiness = false;
-    let expectedUpdatedAt = baselineUpdatedAt;
-    let restoredSnapshot: ReturnType<typeof restorableAccountSnapshot> | undefined;
-    let profileRestoreFailure: unknown;
-    try {
-      // From this point onward, every exit path is inside the exact-restore guard.
-      liveWriteStarted = true;
-      assertAccountVersion(afterAbort, expectedUpdatedAt);
-      await runTemplateMutation(page, template, sentinelMutationData);
-      const afterSentinel = await openDashboard(page);
-      expectedUpdatedAt = accountVersion(afterSentinel);
-      expect(
-        afterSentinel.social_media?.theme_settings?.recommendations
-          ?.__e2eSentinel,
-      ).toBe(sentinel);
-
-      await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
-      const recommendationsTab = page.getByRole('tab', {
-        name: 'Recommendations',
-      });
-      if ((await recommendationsTab.getAttribute('aria-selected')) !== 'true') {
-        await recommendationsTab.click();
-      }
-      const baselineLayout = normalizeLayout(
-        afterSentinel.social_media?.theme_settings?.recommendations?.layout ||
-          'shelves',
-      );
-      await expect(
-        page.getByTestId(LAYOUT_TEST_IDS[baselineLayout]),
-      ).toBeVisible();
-      const eligible = await publicCategoryIds(page, baselineLayout);
-      if (eligible.length < 2) {
-        throw new Error(
-          'Approved live account needs at least two content-bearing recommendation categories',
+      test.setTimeout(liveBatchTimeoutMs(liveRows));
+      const journeyId = `profile.owner.pairwise.batch-${String(batchIndex + 1).padStart(2, '0')}`;
+      await withRestoredMusicFixture({
+        journeyId,
+        journeyRows: liveRows,
+        snapshot: async () => {
+          throw new Error('Profile live batches require the canonical fixture state service');
+        },
+        cleanupNamespace: async () => {
+          throw new Error('Profile live batches require the canonical fixture state service');
+        },
+        restore: async () => {
+          throw new Error('Profile live batches require the canonical fixture state service');
+        },
+        onBodyFailureAfterRestore: blockProfileMutationsAfterBatchFailure,
+      }, async () => {
+        const username = LIVE_USERNAME!;
+        const baselineAccount = await openDashboard(page);
+        const baselineUpdatedAt = accountVersion(baselineAccount);
+        const baselineSocialMedia = clone(
+          baselineAccount.social_media,
+        ) as Record<string, unknown>;
+        const baselinePresentation = await readDashboardPresentation(page);
+        const template = await captureAbortedMutationTemplate(
+          page,
+          baselinePresentation.accent,
         );
-      }
-      baselineHasBusiness =
-        (await page.getByRole('tab', { name: 'Business Details' }).count()) > 0;
+        const baselineMutationData = clone(
+          template.body.variables.data,
+        ) as Record<string, any>;
+        baselineMutationData.social_media = clone(baselineSocialMedia);
 
-      for (const row of liveRows) {
-        const beforeRow = await openDashboard(page);
-        assertAccountVersion(beforeRow, expectedUpdatedAt);
-        await applyDashboardRow(page, row);
-        await publishDashboard(page);
-        const afterPublish = await openDashboard(page);
-        expectedUpdatedAt = accountVersion(afterPublish);
-        await verifyPublicRow(page, username, row, baselineHasBusiness);
-      }
-    } catch (error) {
-      liveFailure = error;
-    } finally {
-      if (liveWriteStarted) {
-        try { await restoreWithEmergency({
-          normalRestore: async () =>
-            normalExactRestore(
-              page,
-              baselinePresentation,
-              baselineMutationData,
-              expectedUpdatedAt,
-            ),
-          emergencyRestore: async () => {
-            const beforeEmergency = await openDashboard(page);
-            assertAccountVersion(beforeEmergency, expectedUpdatedAt);
-            await runTemplateMutation(page, template, baselineMutationData);
-          },
-          verify: async () => {
-            const restored = await openDashboard(page);
-            expect(restored.social_media).toEqual(baselineSocialMedia);
-            restoredSnapshot = restorableAccountSnapshot(restored);
-            expect(restoredSnapshot).toEqual(baselineSnapshot);
+        const afterAbort = await openDashboard(page);
+        expect(afterAbort.social_media).toEqual(baselineSocialMedia);
+        assertAccountVersion(afterAbort, baselineUpdatedAt);
 
-            await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
-            const expectedInitialTab =
-              baselinePresentation.firstView === 'gallery'
-                ? 'Gallery'
-                : baselinePresentation.firstView === 'business' &&
-                    baselineHasBusiness
-                  ? 'Business Details'
-                  : 'Recommendations';
-            await expect(
-              page.getByRole('tab', { name: expectedInitialTab }),
-            ).toHaveAttribute('aria-selected', 'true');
-            if (expectedInitialTab !== 'Recommendations') {
-              await page.getByRole('tab', { name: 'Recommendations' }).click();
-            }
-            const restoredLayout = normalizeLayout(baselinePresentation.layout);
-            await expect(
-              page.getByTestId(LAYOUT_TEST_IDS[restoredLayout]),
-            ).toBeVisible();
-            const restoredOrder = await publicCategoryIds(page, restoredLayout);
-            const preferredCategory = CATEGORY_IDS.includes(
-              baselinePresentation.firstView as (typeof CATEGORY_IDS)[number],
-            )
-              ? (baselinePresentation.firstView as (typeof CATEGORY_IDS)[number])
-              : undefined;
-            const expectedBaselineOrder = preferredCategory
-              ? [
-                  preferredCategory,
-                  ...baselinePresentation.order.filter(
-                    (category) => category !== preferredCategory,
-                  ),
-                ]
-              : baselinePresentation.order;
-            expect(restoredOrder).toEqual(
-              expectedBaselineOrder.filter((category) =>
-                restoredOrder.includes(category),
-              ),
-            );
-          },
-        }); } catch (error) { profileRestoreFailure = error; }
-      }
-    }
-    const evidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
-    if (!evidencePath) throw new Error('MUSIC_E2E_RESTORE_EVIDENCE_PATH is required for manifested profile journeys');
-    const journeyId = `profile.owner.pairwise.batch-${String(batchIndex + 1).padStart(2, '0')}`;
-    const beforeHash = canonicalEvidenceHash(baselineSnapshot);
-    const restoredHash = restoredSnapshot ? canonicalEvidenceHash(restoredSnapshot) : undefined;
-    if (profileRestoreFailure || !restoredSnapshot || restoredHash !== beforeHash) {
-      await blockProfileMutationsAfterRestoreFailure();
-    }
-    const terminalRecord = profileRestoreFailure || !restoredSnapshot
-      ? buildLiveJourneyTerminal({
-        id: journeyId, status: 'failed', reason: 'restore-failed', stage: 'restore', cleanup: 'failed',
-        beforeHash, rows: liveRows,
-      })
-      : restoredHash !== beforeHash
-        ? buildLiveJourneyTerminal({
-          id: journeyId, status: 'failed', reason: 'restore-mismatch', stage: 'verification', cleanup: 'failed',
-          beforeHash, afterHash: restoredHash, rows: liveRows,
-        })
-        : liveFailure
-          ? buildLiveJourneyTerminal({
-            id: journeyId, status: 'failed', reason: 'body-failed', stage: 'body', cleanup: 'restored',
-            beforeHash, afterHash: restoredHash, rows: liveRows,
-          })
-          : buildLiveJourneyTerminal({ id: journeyId, beforeHash, afterHash: restoredHash, rows: liveRows });
-    appendLiveJourneyResult(evidencePath, terminalRecord);
-    if (profileRestoreFailure) throw profileRestoreFailure;
-    if (!restoredSnapshot || restoredHash !== beforeHash) {
-      throw new Error('Profile journey restore did not produce canonical evidence');
-    }
-    if (liveFailure) throw liveFailure;
-  });
+        const sentinelMutationData = clone(baselineMutationData) as Record<string, any>;
+        const sentinelSocialMedia = sentinelMutationData.social_media as Record<string, any>;
+        const sentinel = `profile-presentation-${Date.now()}`;
+        const theme = (sentinelSocialMedia.theme_settings ||= {});
+        const recommendations = (theme.recommendations ||= {});
+        recommendations.__e2eSentinel = sentinel;
+        let baselineHasBusiness = false;
+        let expectedUpdatedAt = baselineUpdatedAt;
+
+        assertAccountVersion(afterAbort, expectedUpdatedAt);
+        await runTemplateMutation(page, template, sentinelMutationData);
+        const afterSentinel = await openDashboard(page);
+        expectedUpdatedAt = accountVersion(afterSentinel);
+        expect(
+          afterSentinel.social_media?.theme_settings?.recommendations
+            ?.__e2eSentinel,
+        ).toBe(sentinel);
+
+        await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
+        const recommendationsTab = page.getByRole('tab', {
+          name: 'Recommendations',
+        });
+        if ((await recommendationsTab.getAttribute('aria-selected')) !== 'true') {
+          await recommendationsTab.click();
+        }
+        const baselineLayout = normalizeLayout(
+          afterSentinel.social_media?.theme_settings?.recommendations?.layout ||
+            'shelves',
+        );
+        await expect(
+          page.getByTestId(LAYOUT_TEST_IDS[baselineLayout]),
+        ).toBeVisible();
+        const eligible = await publicCategoryIds(page, baselineLayout);
+        if (eligible.length < 2) {
+          throw new Error(
+            'Approved live account needs at least two content-bearing recommendation categories',
+          );
+        }
+        baselineHasBusiness =
+          (await page.getByRole('tab', { name: 'Business Details' }).count()) > 0;
+
+        for (const row of liveRows) {
+          const beforeRow = await openDashboard(page);
+          assertAccountVersion(beforeRow, expectedUpdatedAt);
+          await applyDashboardRow(page, row);
+          await publishDashboard(page);
+          const afterPublish = await openDashboard(page);
+          expectedUpdatedAt = accountVersion(afterPublish);
+          await verifyPublicRow(page, username, row, baselineHasBusiness);
+        }
+      });
+    });
   }
 });
 

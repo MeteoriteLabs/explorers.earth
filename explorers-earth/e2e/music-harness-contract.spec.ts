@@ -11,6 +11,7 @@ import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
   MUSIC_PUBLIC_STATES,
+  assertLivePublicSlug,
   assertLiveWriteAuthority,
   buildPermissionMatrix,
   buildPairwisePermissionMatrix,
@@ -18,6 +19,7 @@ import {
   createCanonicalMusicFixtureAdapter,
   fixtureNamespace,
   normalizedSnapshotHash,
+  prepareLivePublicMusicJourney,
   musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
   resetMusicRestoreBlockForContractTest,
@@ -828,7 +830,7 @@ test("live canonical restoration retains explicit journey identity for terminal 
     queue: { coveredByDatabaseDump: true },
     playlists: { coveredByDatabaseDump: true },
     requests: { coveredByDatabaseDump: true },
-    profile: { accountDocumentId: "e2e-public-music-evidence-account", publicMusic: true, preferenceRevision: 4, preferenceHash: "b".repeat(64) },
+    profile: { accountDocumentId: "e2e-public-music-evidence-account", publicMusic: true, profileRevision: 4, profileHash: "b".repeat(64) },
     database: { namespace: "e2e-public-music-evidence", dumpHash: "a".repeat(64) },
   };
   let current: unknown = structuredClone(baseline);
@@ -903,14 +905,16 @@ test("per-batch profile evidence hashes canonical state and refuses mismatch bef
   expect(mismatched).toEqual([]);
 });
 
-test("profile live batches write a fixed terminal before propagating body or restore failure", () => {
-  const source = readFileSync("e2e/profile-theme.spec.ts", "utf8");
-  expect(source).toContain("buildLiveJourneyTerminal");
-  expect(source).toContain("profileRestoreFailure");
-  expect(source.indexOf("appendLiveJourneyResult(evidencePath, terminalRecord)"))
-    .toBeLessThan(source.indexOf("if (profileRestoreFailure) throw profileRestoreFailure"));
-  expect(source.indexOf("appendLiveJourneyResult(evidencePath, terminalRecord)"))
-    .toBeLessThan(source.indexOf("if (liveFailure) throw liveFailure"));
+test("profile live batches delegate one fixed terminal and every failure path to the canonical restorer", () => {
+  const profileSource = readFileSync("e2e/profile-theme.spec.ts", "utf8");
+  const setupSource = readFileSync("e2e/setup/music.ts", "utf8");
+  expect(profileSource).toContain("withRestoredMusicFixture");
+  expect(profileSource).toContain("journeyRows: liveRows");
+  expect(profileSource).toContain("onBodyFailureAfterRestore: blockProfileMutationsAfterBatchFailure");
+  expect(profileSource).not.toContain("appendLiveJourneyResult");
+  expect(setupSource.indexOf("if (journeyFailure)"))
+    .toBeLessThan(setupSource.indexOf("throw journeyFailure"));
+  expect(setupSource).toContain("if (terminalWritten) throw new Error");
 });
 
 test("runner propagates typed preflight and terminal journey evidence without inventing an eighteenth journey", async () => {
@@ -3923,7 +3927,7 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(stateRestore).toContain('"psql"');
   expect(stateService).toContain("MUSIC_E2E_STRAPI_TOKEN");
   expect(stateService).toContain("fixture profile restoration failed");
-  expect(stateService).toContain("preferenceHash: profileHash");
+  expect(stateService).toContain("profileHash: profileState.stateHash");
   expect(stateService).not.toContain("domainHashes");
   expect(stateService).not.toContain("domainHash(");
   expect(stateService).not.toContain("MUSIC_E2E_FULL_SNAPSHOT_URL");
@@ -4724,7 +4728,7 @@ test("one canonical adapter refuses incomplete account state and restores every 
     queue: { coveredByDatabaseDump: true },
     playlists: { coveredByDatabaseDump: true },
     requests: { coveredByDatabaseDump: true },
-    profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, preferenceRevision: 4, preferenceHash: "b".repeat(64) },
+    profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, profileRevision: 4, profileHash: "b".repeat(64) },
     database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64) },
   } as const;
   let current: unknown = structuredClone(complete);
@@ -4758,6 +4762,162 @@ test("mutating browser journeys use the automatic live-authority fixture before 
   ]) {
     expect(publicSource).toMatch(new RegExp(`liveTest\\([^\\n]*${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
   }
+});
+
+test("live public preparation publishes a returned non-literal slug and seeds every guest prerequisite inside canonical scope", async () => {
+  const reads: string[] = [];
+  const mutations: Array<{ callsite: string; method: string; path: string; data?: unknown; idempotencyKey?: string }> = [];
+  let profileUpdates = 0;
+  let playlistSong = 80;
+  let playback = 1;
+  const result = await prepareLivePublicMusicJourney({
+    seedId: "a1b2c3d4",
+    publicationIdempotencyKey: "tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555",
+    controls: {
+      allowSongRequests: true,
+      allowGuestPlayOnDevice: true,
+      allowPlaylistSharing: true,
+      allowRecentlyPlayedVisibility: true,
+      allowQueueVisibility: true,
+    },
+    read: async (path) => {
+      reads.push(path);
+      if (path === "/api/music/dashboard") return {
+        status: 200,
+        body: { queueRevision: 0, playbackRevision: 0, publication: { mode: "private", publicSlug: "private-seed" } },
+      };
+      return {
+        status: 200,
+        body: {
+          version: "music-public-resource/v1",
+          publication: { mode: "public", publicSlug: "actual-public-123" },
+          permissions: {
+            allowSongRequests: true,
+            allowGuestPlayOnDevice: true,
+            allowPlaylistSharing: true,
+            allowRecentlyPlayedVisibility: true,
+            allowQueueVisibility: true,
+          },
+          queue: { items: [{ title: "Fixture queued song" }] },
+          recentlyPlayed: { items: [{ title: "Fixture history song" }] },
+          currentlyPlaying: { title: "Fixture playing song" },
+          playlists: { items: [{ name: "Fixture public a1b2c3d4" }] },
+        },
+      };
+    },
+    updatePublicProfile: async () => {
+      profileUpdates += 1;
+      return { status: 200, body: { data: { updateAccount: { public_music: "Yes" } } } };
+    },
+    mutate: async (callsite, request) => {
+      mutations.push({ callsite, ...request });
+      if (request.path === "/api/playlists") return { status: 201, body: { id: 71 } };
+      if (request.path.endsWith("/songs")) return { status: 201, body: { id: ++playlistSong } };
+      if (request.path.endsWith("/visibility")) return { status: 204, body: undefined };
+      if (request.path === "/api/music/queue/replace") return { status: 200, body: { revision: 1, songs: [] } };
+      if (request.path === "/api/playlist/currently-playing") return {
+        status: 200, body: { version: "music-playback/v1", revision: ++playback, playbackRevision: playback, song: {} },
+      };
+      if (request.path === "/api/music/guest-controls") return { status: 200, body: request.data };
+      if (request.path === "/api/music/publication") return {
+        status: 200,
+        body: { version: "music-publication/v1", publication: { mode: "public", publicSlug: "actual-public-123" } },
+      };
+      throw new Error(`unexpected mutation ${request.path}`);
+    },
+  });
+
+  expect(result).toMatchObject({
+    publicSlug: "actual-public-123",
+    playlistId: 71,
+    songs: { history: 81, playing: 82, queued: 83 },
+  });
+  expect(profileUpdates).toBe(1);
+  expect(reads).toEqual(["/api/music/dashboard", "/api/music/public-resource/v1/actual-public-123"]);
+  expect(mutations.map(({ callsite, path }) => [callsite, path])).toEqual([
+    ["playlist-create", "/api/playlists"],
+    ["playlist-song-add", "/api/playlists/71/songs"],
+    ["playlist-song-add", "/api/playlists/71/songs"],
+    ["playlist-song-add", "/api/playlists/71/songs"],
+    ["playlist-visibility", "/api/playlists/71/visibility"],
+    ["queue-replace", "/api/music/queue/replace"],
+    ["player-update", "/api/playlist/currently-playing"],
+    ["player-update", "/api/playlist/currently-playing"],
+    ["guest-controls", "/api/music/guest-controls"],
+    ["owner-publication", "/api/music/publication"],
+  ]);
+  expect(mutations.filter(({ path }) => path.endsWith("/currently-playing")).map(({ data }) => data)).toEqual([
+    { songId: 81, expectedRevision: 1, expectedPlaybackRevision: 0 },
+    { songId: 82, expectedRevision: 2, expectedPlaybackRevision: 2 },
+  ]);
+  expect(mutations.find(({ callsite }) => callsite === "owner-publication")?.idempotencyKey)
+    .toBe("tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555");
+  expect(() => assertLivePublicSlug("qualification-public")).toThrow(/returned public slug/i);
+  expect(() => assertLivePublicSlug("short")).toThrow(/returned public slug/i);
+});
+
+test("profile batch body failures restore first, emit one row-bearing terminal, and then block subsequent batches", async () => {
+  resetMusicRestoreBlockForContractTest();
+  const rows = buildProfileCoveringRows().slice(0, 12);
+  const events: string[] = [];
+  const terminals: any[] = [];
+  const state = { profile: { social_media: { theme_settings: { preset: "minimal-light" } } } };
+  await expect(withRestoredMusicFixture({
+    journeyId: "profile.owner.pairwise.batch-01",
+    journeyRows: rows,
+    snapshot: async () => { events.push("snapshot"); return structuredClone(state); },
+    cleanupNamespace: async () => { events.push("cleanup"); },
+    restore: async () => { events.push("restore"); },
+    onBodyFailureAfterRestore: async () => { events.push("block"); },
+    writeJourneyResult: async (record) => { events.push("terminal"); terminals.push(record); },
+  }, async () => {
+    events.push("body");
+    throw new Error("profile baseline failed");
+  })).rejects.toThrow("profile baseline failed");
+
+  expect(events).toEqual(["snapshot", "body", "cleanup", "restore", "snapshot", "block", "terminal"]);
+  expect(terminals).toEqual([expect.objectContaining({
+    id: "profile.owner.pairwise.batch-01",
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    rowCount: 12,
+    rows,
+  })]);
+});
+
+test("live Music journeys contain no mock-only slug or post-terminal mutation cleanup", () => {
+  const source = readFileSync("e2e/music-public-contract.spec.ts", "utf8");
+  const liveSource = source.slice(source.indexOf("const permissionJourneyIds"));
+  expect(liveSource).not.toContain("qualification-public");
+  expect(liveSource).toContain("prepareOwnerPublicJourney");
+  expect(source.slice(0, source.indexOf("const permissionJourneyIds"))).toContain("return prepareLivePublicMusicJourney({");
+  const afterEach = source.slice(source.indexOf("test.afterEach"), source.indexOf("const permissionJourneyIds"));
+  expect(afterEach).not.toMatch(/guardedMutation|request\.(?:post|patch|delete)/);
+});
+
+test("guest-device playback is local-only and leaves the owner queue exact while a second guest stays isolated", () => {
+  const source = readFileSync("e2e/music-public-contract.spec.ts", "utf8");
+  const journey = source.slice(
+    source.indexOf('liveTest("live guest playback'),
+    source.indexOf('liveTest("owner publication'),
+  );
+  expect(journey).toContain("Choose Fixture queued song to play on this device");
+  expect(journey).toContain("Play Fixture queued song on this device");
+  expect(journey).toContain("expect(afterBody).toEqual(beforeBody)");
+  expect(journey).toContain("second guest remains on the canonical owner selection");
+  expect(journey).not.toContain("toBeGreaterThan(beforeRevision)");
+  expect(journey).not.toContain("guest playback changes canonical player state");
+});
+
+test("profile batch baseline and every row execute inside canonical snapshot restoration and terminal ownership", () => {
+  const source = readFileSync("e2e/profile-theme.spec.ts", "utf8");
+  const liveBatch = source.slice(source.indexOf("test.describe('approved live profile writes'"), source.indexOf("test.describe('Public Profile Theme"));
+  expect(liveBatch).toMatch(/withRestoredMusicFixture\([\s\S]+journeyRows:\s*liveRows[\s\S]+async \(\) => \{[\s\S]+const baselineAccount = await openDashboard/);
+  expect(liveBatch.indexOf("withRestoredMusicFixture(")).toBeLessThan(liveBatch.indexOf("const baselineAccount = await openDashboard"));
+  expect(liveBatch).not.toContain("appendLiveJourneyResult");
+  expect(liveBatch).not.toContain("normalExactRestore");
 });
 
 test("static mutation guard rejects raw API writes and standard-test live bypasses", () => {

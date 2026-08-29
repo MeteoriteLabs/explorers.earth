@@ -14,7 +14,9 @@ const port = Number(process.env.MUSIC_E2E_STATE_PORT ?? "55174");
 const journeyToken = process.env.MUSIC_E2E_STATE_TOKEN ?? "";
 const orchestrationToken = process.env.MUSIC_E2E_ORCHESTRATION_STATE_TOKEN ?? "";
 const accountDocumentId = process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? "";
+const userDocumentId = process.env.MUSIC_E2E_USER_DOCUMENT_ID ?? "";
 const username = process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? "";
+const namespace = username.replace(/-owner$/, "");
 const strapiOrigin = process.env.MUSIC_E2E_STRAPI_URL ?? "";
 const strapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN ?? "";
 const guard = createMusicMutationGuard({
@@ -30,6 +32,7 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535
     || !/^[A-Za-z0-9_-]{43,128}$/.test(orchestrationToken) || journeyToken === orchestrationToken
     || !/^e2e-public-music-[a-z0-9-]+-account$/.test(accountDocumentId)
     || !/^e2e-public-music-[a-z0-9-]+-owner$/.test(username)
+    || userDocumentId !== `${namespace}-user` || accountDocumentId !== `${namespace}-account`
     || !strapiToken || !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/.test(strapiOrigin)) {
   throw new Error("state service requires complete exclusive loopback fixture authority");
 }
@@ -78,12 +81,19 @@ async function capture({ initial = false } = {}) {
   const dump = databaseDump(containerId);
   const dataDump = databaseDump(containerId, true);
   const databaseHash = dumpHash(dump);
-  const profile = await json(`${strapiOrigin}/api/accounts/${encodeURIComponent(accountDocumentId)}`, {
-    headers: { Authorization: `Bearer ${strapiToken}` },
+  const profileState = await json(`${strapiOrigin}/__music-fixture/profile-state/snapshot`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${strapiToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ namespace, username, accountDocumentId, userDocumentId }),
   });
+  if (profileState?.version !== "music-fixture-profile-state/v1"
+      || !Number.isSafeInteger(profileState.revision)
+      || !/^[a-f0-9]{64}$/.test(String(profileState.stateHash))
+      || !profileState.snapshot || typeof profileState.snapshot !== "object") {
+    throw new Error("fixture profile snapshot failed");
+  }
   const snapshotId = randomUUID();
-  const publicMusic = (profile.data?.attributes?.public_music ?? profile.data?.public_music ?? profile.public_music) === "Yes";
-  const profileHash = createHash("sha256").update(`${accountDocumentId}\0${publicMusic ? "Yes" : "No"}`).digest("hex");
+  const publicMusic = profileState.snapshot.account?.public_music === "Yes";
   const snapshot = {
     version: "music-live-account-snapshot/v1", snapshotId,
     publication: { coveredByDatabaseDump: true }, guestControls: { coveredByDatabaseDump: true },
@@ -91,12 +101,12 @@ async function capture({ initial = false } = {}) {
     requests: { coveredByDatabaseDump: true },
     profile: {
       accountDocumentId, publicMusic,
-      preferenceRevision: Number(profile.data?.attributes?.updatedAt ? Date.parse(profile.data.attributes.updatedAt) : 0),
-      preferenceHash: profileHash,
+      profileRevision: profileState.revision,
+      profileHash: profileState.stateHash,
     },
-    database: { namespace: username.replace(/-owner$/, ""), dumpHash: databaseHash },
+    database: { namespace, dumpHash: databaseHash },
   };
-  snapshots.set(snapshotId, { containerId, dataDump, snapshot });
+  snapshots.set(snapshotId, { containerId, dataDump, profileSnapshot: profileState.snapshot, snapshot });
   if (initial) {
     if (initialSnapshotId !== undefined) throw new Error("initial fixture snapshot already exists");
     initialSnapshotId = snapshotId;
@@ -131,16 +141,14 @@ async function restore(snapshot, { final = false } = {}) {
     throw new Error("fixture database restoration failed");
   }
   try {
-    await json(`${strapiOrigin}/api/accounts/${encodeURIComponent(accountDocumentId)}`, {
-      method: "PUT",
+    const profileRestored = await json(`${strapiOrigin}/__music-fixture/profile-state/restore`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${strapiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ data: { public_music: snapshot.profile.publicMusic ? "Yes" : "No" } }),
+      body: JSON.stringify({ namespace, username, accountDocumentId, userDocumentId, snapshot: stored.profileSnapshot }),
     });
-    const verified = await json(`${strapiOrigin}/api/accounts/${encodeURIComponent(accountDocumentId)}`, {
-      headers: { Authorization: `Bearer ${strapiToken}` },
-    });
-    const observed = verified.data?.attributes?.public_music ?? verified.data?.public_music ?? verified.public_music;
-    if (observed !== (snapshot.profile.publicMusic ? "Yes" : "No")) throw new Error("profile mismatch");
+    if (profileRestored?.version !== "music-fixture-profile-state/v1" || profileRestored?.restored !== true
+        || profileRestored?.revision !== snapshot.profile.profileRevision
+        || profileRestored?.stateHash !== snapshot.profile.profileHash) throw new Error("profile mismatch");
   } catch {
     block("profile-restore-failed", "profile-restore");
     throw new Error("fixture profile restoration failed");

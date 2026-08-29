@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { Kind, parse, print } from "graphql";
 import { LIVE_MUTATION_TAG, LIVE_READ_ONLY_TAG } from "../scripts/music-public-live-preflight.mjs";
 import { setupMockAuthentication } from "./setup/auth";
 import {
@@ -12,8 +15,11 @@ import {
   musicLiveWriteSkipReason,
   musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
+  prepareLivePublicMusicJourney,
   runAuthorizedMusicMutation,
   withRestoredMusicFixture,
+  type LivePublicJourneyControls,
+  type LivePublicJourneyResponse,
   type MusicMutationCallsite,
 } from "./setup/music";
 
@@ -407,11 +413,29 @@ type GuestControls = {
 
 type OwnerState = {
   credential?: string;
-  initialControls?: GuestControls;
-  initialPublicationMode?: "private" | "unlisted" | "public";
-  playlistId?: number;
-  queueRevision?: number;
 };
+
+function checkedInSettingsUpdateAccountDocument(): string {
+  const source = readFileSync(
+    resolve(import.meta.dirname, "../src/features/Settings/api/mutation.ts"),
+    "utf8",
+  );
+  const matches = [...source.matchAll(/gql`([\s\S]*?)`/g)]
+    .map((match) => parse(match[1]!, { noLocation: true }))
+    .filter((document) => {
+      if (document.definitions.length !== 1) return false;
+      const definition = document.definitions[0];
+      return definition.kind === Kind.OPERATION_DEFINITION
+        && definition.operation === "mutation"
+        && definition.name?.value === "UpdateAccount";
+    });
+  if (matches.length !== 1) {
+    throw new Error("Music live fixture requires one checked-in Settings UpdateAccount document");
+  }
+  return print(matches[0]);
+}
+
+const settingsUpdateAccountDocument = checkedInSettingsUpdateAccountDocument();
 
 const ownerStates = new WeakMap<Page, OwnerState>();
 
@@ -446,6 +470,61 @@ async function publicResource(page: Page, publicSlug: string, capability?: strin
   });
 }
 
+const disabledGuestControls = (): GuestControls => ({
+  allowSongRequests: false,
+  allowGuestPlayOnDevice: false,
+  allowPlaylistSharing: false,
+  allowRecentlyPlayedVisibility: false,
+  allowQueueVisibility: false,
+});
+
+const liveJourneyAdapters = (journeyId: string) => ({
+  journeyId,
+  snapshot: async () => ({}),
+  cleanupNamespace: async () => undefined,
+  restore: async () => undefined,
+});
+
+async function prepareOwnerPublicJourney(
+  page: Page,
+  credential: string,
+  controls: LivePublicJourneyControls,
+) {
+  const decode = async (response: Awaited<ReturnType<typeof page.request.fetch>>): Promise<LivePublicJourneyResponse> => ({
+    status: response.status(),
+    ...(response.status() === 204 ? {} : { body: await response.json() }),
+  });
+  return prepareLivePublicMusicJourney({
+    seedId: randomUUID().replace(/-/g, "").slice(0, 8),
+    publicationIdempotencyKey: `tunes-share-v1-${Date.now()}-${randomUUID()}`,
+    controls,
+    read: async (path) => decode(await page.request.get(`${fixtureOrigin}${path}`, {
+      headers: path === "/api/music/dashboard" ? { Authorization: credential } : undefined,
+    })),
+    updatePublicProfile: async () => guardedMutation("owner-publication", async () => decode(await page.request.post(
+      `${process.env.MUSIC_E2E_STRAPI_URL}/graphql`,
+      {
+        headers: { Authorization: `Bearer ${musicLiveStrapiTokenFromEnvironment()}` },
+        data: {
+          query: settingsUpdateAccountDocument,
+          variables: {
+            documentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID,
+            data: { public_music: "Yes" },
+          },
+        },
+      },
+    ))),
+    mutate: async (callsite, request) => guardedMutation(callsite, async () => decode(await page.request.fetch(
+      `${fixtureOrigin}${request.path}`,
+      {
+        method: request.method,
+        headers: mutationHeaders(credential, request.idempotencyKey),
+        data: request.data,
+      },
+    ))),
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   ownerStates.set(page, {});
   page.on("request", (request) => {
@@ -462,39 +541,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }, testInfo) => {
-  const state = ownerStates.get(page);
   try {
-    if (!state?.credential) return;
-    const credential = state.credential;
-    if (state.queueRevision !== undefined) {
-      const cleared = await guardedMutation("queue-replace", () => page.request.post(`${fixtureOrigin}/api/music/queue/replace`, {
-        headers: mutationHeaders(credential), data: { expectedRevision: state.queueRevision, songs: [] },
-      }));
-      expect(cleared.status(), "fixture queue cleanup").toBe(200);
-    }
-    if (state.playlistId) {
-      const deleted = await guardedMutation("playlist-delete", () => page.request.delete(`${fixtureOrigin}/api/playlists/${state.playlistId}`, {
-        headers: mutationHeaders(credential),
-      }));
-      expect(deleted.status(), "fixture contract playlist cleanup").toBe(204);
-    }
-    if (state.initialControls) {
-      const restored = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
-        headers: mutationHeaders(credential), data: state.initialControls,
-      }));
-      expect(restored.status(), "fixture guest-control cleanup").toBe(200);
-    }
-    if (state.initialPublicationMode) {
-      const restoredPublication = await guardedMutation("owner-publication", () => page.request.post(`${fixtureOrigin}/api/music/publication`, {
-        headers: publicationHeaders(credential), data: { mode: state.initialPublicationMode },
-      }));
-      expect(restoredPublication.status(), "fixture publication exact-state cleanup").toBe(200);
-    }
-  } finally {
-    ownerStates.delete(page);
     if (testInfo.status !== testInfo.expectedStatus) {
       await testInfo.attach("public-contract-fixture", { body: await page.screenshot(), contentType: "image/png" });
     }
+  } finally {
+    ownerStates.delete(page);
   }
 });
 
@@ -519,27 +571,13 @@ for (const control of [
       liveSkipReason ?? "authorized disposable Music live-write fixture",
     );
     const credential = await authenticateOwner(page);
-    const initialResponse = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } });
-    expect(initialResponse.status()).toBe(200);
-    const initial = await initialResponse.json() as GuestControls;
-    const toggled = { ...initial, [control]: !initial[control] };
     const guest = await browser.newContext();
     try {
-      await withRestoredMusicFixture({
-        journeyId: permissionJourneyIds[control],
-        snapshot: async () => (await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } })).json(),
-        cleanupNamespace: async () => undefined,
-        restore: async (snapshot) => {
-          const restored = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, { headers: mutationHeaders(credential), data: snapshot }));
-          expect(restored.status()).toBe(200);
-        },
-      }, async () => {
-        const changed = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, { headers: mutationHeaders(credential), data: toggled }));
-        expect(changed.status()).toBe(200);
-        const observed = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } });
-        expect(await observed.json()).toMatchObject({ [control]: toggled[control] });
+      await withRestoredMusicFixture(liveJourneyAdapters(permissionJourneyIds[control]), async () => {
+        const controls = { ...disabledGuestControls(), [control]: true };
+        const prepared = await prepareOwnerPublicJourney(page, credential, controls);
         const guestPage = await guest.newPage();
-        await guestPage.goto(`${fixtureOrigin}/music/share/qualification-public`);
+        await guestPage.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`);
         const guestEffect = control === "allowSongRequests"
           ? guestPage.getByRole("textbox", { name: /search for a song/i })
           : control === "allowGuestPlayOnDevice"
@@ -549,13 +587,10 @@ for (const control of [
               : control === "allowRecentlyPlayedVisibility"
                 ? guestPage.getByRole("heading", { name: /recently played/i })
                 : guestPage.getByRole("heading", { name: /queue/i });
-        if (toggled[control]) await expect(guestEffect.first(), `${control} exposes its guest control`).toBeVisible();
-        else await expect(guestEffect, `${control} hides its guest control`).toHaveCount(0);
+        await expect(guestEffect.first(), `${control} exposes its seeded guest control`).toBeVisible();
       });
     } finally {
       await guest.close();
-      const after = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } });
-      expect(await after.json()).toEqual(initial);
     }
   });
 }
@@ -568,13 +603,13 @@ liveTest("live guest reconnect refetches canonical state after transport interru
   const credential = await authenticateOwner(page);
   const guest = await browser.newContext();
   try {
-    await withRestoredMusicFixture({ journeyId: "music.owner-guest.reconnect", snapshot: async () => ({}), cleanupNamespace: async () => undefined, restore: async () => undefined }, async () => {
-      const initialControlsResponse = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } });
-      const initialControls = await initialControlsResponse.json() as GuestControls;
-      const beforeResponse = await publicResource(page, "qualification-public");
+    await withRestoredMusicFixture(liveJourneyAdapters("music.owner-guest.reconnect"), async () => {
+      const initialControls = disabledGuestControls();
+      const prepared = await prepareOwnerPublicJourney(page, credential, initialControls);
+      const beforeResponse = await publicResource(page, prepared.publicSlug);
       const beforeRevision = (await beforeResponse.json() as { revision: number }).revision;
       const guestPage = await guest.newPage();
-      await guestPage.goto(`${fixtureOrigin}/music/share/qualification-public`);
+      await guestPage.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`);
       await expect(guestPage.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
       await guest.setOffline(true);
       await expect(guestPage.getByRole("status").filter({ hasText: /reconnecting/i })).toHaveAttribute("aria-live", "polite");
@@ -585,7 +620,7 @@ liveTest("live guest reconnect refetches canonical state after transport interru
       await guest.setOffline(false);
       await expect(guestPage.getByText(/reconnecting/i)).toBeHidden();
       await expect.poll(async () => {
-        const canonical = await publicResource(page, "qualification-public");
+        const canonical = await publicResource(page, prepared.publicSlug);
         return (await canonical.json() as { revision: number }).revision;
       }).toBeGreaterThan(beforeRevision);
       const requestRegion = guestPage.getByRole("region", { name: "Request a song" });
@@ -600,64 +635,38 @@ liveTest("live guest reconnect refetches canonical state after transport interru
 liveTest("live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", { tag: LIVE_MUTATION_TAG }, async ({ page }) => {
   test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized guest request fixture");
   const credential = await authenticateOwner(page);
-  let originalSongIds = new Set<number>();
-  await withRestoredMusicFixture({
-    journeyId: "music.guest.request-lifecycle",
-    snapshot: async () => {
-      const [dashboard, controls] = await Promise.all([
-        page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } }),
-        page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } }),
-      ]);
-      const dashboardBody = await dashboard.json() as { songs: Array<{ id: number }>; publication: unknown };
-      originalSongIds = new Set(dashboardBody.songs.map(({ id }) => id));
-      return { publication: dashboardBody.publication, permissions: await controls.json(), queue: dashboardBody.songs, playlists: [], requests: [] };
-    },
-    cleanupNamespace: async () => {
-      const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } });
-      for (const song of (await dashboard.json() as { songs: Array<{ id: number }> }).songs.filter(({ id }) => !originalSongIds.has(id))) {
-        const removed = await guardedMutation("request-revoke", () => page.request.delete(`${fixtureOrigin}/api/playlist/songs/${song.id}`, { headers: mutationHeaders(credential) }));
-        expect(removed.status()).toBe(204);
-      }
-    },
-    restore: async (snapshot) => {
-      const before = snapshot as { publication: { mode: "private" | "unlisted" | "public" }; permissions: GuestControls };
-      const controls = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, { headers: mutationHeaders(credential), data: before.permissions }));
-      expect(controls.status()).toBe(200);
-      const publicationRestore = await guardedMutation("owner-publication", () => page.request.post(`${fixtureOrigin}/api/music/publication`, { headers: publicationHeaders(credential), data: { mode: before.publication.mode } }));
-      expect(publicationRestore.status()).toBe(200);
-    },
-  }, async () => {
-  const publication = await guardedMutation("owner-publication", () => page.request.post(`${fixtureOrigin}/api/music/publication`, {
-    headers: publicationHeaders(credential), data: { mode: "public" },
-  }));
-  const publicSlug = (await publication.json() as { publication: { publicSlug: string } }).publication.publicSlug;
-  const requestKey = `guest-request-${randomUUID()}`;
-  const song = { youtubeId: "abcdefghijk", title: "Requested fixture song", artist: "Fixture artist", thumbnailUrl: `${fixtureOrigin}/images/tuneslogo.png` };
-  const accepted = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
-    headers: { Origin: fixtureOrigin, "Idempotency-Key": requestKey }, data: song,
-  }));
-  expect(accepted.status()).toBe(201);
-  const replay = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
-    headers: { Origin: fixtureOrigin, "Idempotency-Key": requestKey }, data: song,
-  }));
-  expect(replay.status()).toBe(201);
-  const conflict = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
-    headers: { Origin: fixtureOrigin, "Idempotency-Key": requestKey }, data: { ...song, title: "Different payload" },
-  }));
-  expect(conflict.status()).toBe(409);
-  let rateLimited = false;
-  for (let index = 0; index < 70 && !rateLimited; index += 1) {
-    const response = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
-      headers: { Origin: fixtureOrigin, "Idempotency-Key": `rate-${index}-${randomUUID()}` }, data: song,
+  await withRestoredMusicFixture(liveJourneyAdapters("music.guest.request-lifecycle"), async () => {
+    const prepared = await prepareOwnerPublicJourney(page, credential, {
+      ...disabledGuestControls(), allowSongRequests: true,
+    });
+    const publicSlug = prepared.publicSlug;
+    const requestKey = `guest-request-${randomUUID()}`;
+    const song = { youtubeId: "abcdefghijk", title: "Requested fixture song", artist: "Fixture artist", thumbnailUrl: `${fixtureOrigin}/images/tuneslogo.png` };
+    const accepted = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
+      headers: { Origin: fixtureOrigin, "Idempotency-Key": requestKey }, data: song,
     }));
-    rateLimited = response.status() === 429;
-  }
-  expect(rateLimited).toBe(true);
-  const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } });
-  const requested = (await dashboard.json() as { songs: Array<{ id: number; title: string }> }).songs.find(({ title }) => title === song.title);
-  expect(requested).toBeDefined();
-  const revoked = await guardedMutation("request-revoke", () => page.request.delete(`${fixtureOrigin}/api/playlist/songs/${requested!.id}`, { headers: mutationHeaders(credential) }));
-  expect(revoked.status()).toBe(204);
+    expect(accepted.status()).toBe(201);
+    const replay = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
+      headers: { Origin: fixtureOrigin, "Idempotency-Key": requestKey }, data: song,
+    }));
+    expect(replay.status()).toBe(201);
+    const conflict = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
+      headers: { Origin: fixtureOrigin, "Idempotency-Key": requestKey }, data: { ...song, title: "Different payload" },
+    }));
+    expect(conflict.status()).toBe(409);
+    let rateLimited = false;
+    for (let index = 0; index < 70 && !rateLimited; index += 1) {
+      const response = await guardedMutation("song-request", () => page.request.post(`${fixtureOrigin}/api/playlist/${publicSlug}/requests`, {
+        headers: { Origin: fixtureOrigin, "Idempotency-Key": `rate-${index}-${randomUUID()}` }, data: song,
+      }));
+      rateLimited = response.status() === 429;
+    }
+    expect(rateLimited).toBe(true);
+    const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } });
+    const requested = (await dashboard.json() as { songs: Array<{ id: number; title: string }> }).songs.find(({ title }) => title === song.title);
+    expect(requested).toBeDefined();
+    const revoked = await guardedMutation("request-revoke", () => page.request.delete(`${fixtureOrigin}/api/playlist/songs/${requested!.id}`, { headers: mutationHeaders(credential) }));
+    expect(revoked.status()).toBe(204);
   });
 });
 
@@ -667,45 +676,36 @@ liveTest("live guest playback remains isolated while queue and player revisions 
   const guestA = await browser.newContext();
   const guestB = await browser.newContext();
   try {
-    await withRestoredMusicFixture({
-      journeyId: "music.guest.playback-second-guest",
-      snapshot: async () => {
-        const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
-        const body = await dashboard.json() as Record<string, unknown>;
-        return { publication: body.publication, permissions: body.guestControls, queue: body.songs, playlists: [], requests: [], currentlyPlaying: body.currentlyPlaying };
-      },
-      cleanupNamespace: async () => undefined,
-      restore: async (snapshot) => {
-        const before = snapshot as { currentlyPlaying: { id: number } | null };
-        const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
-        const current = await dashboard.json() as { queueRevision: number; playbackRevision?: number };
-        const restored = await guardedMutation("player-update", () => page.request.post(`${fixtureOrigin}/api/playlist/currently-playing`, {
-          headers: mutationHeaders(ownerCredential), data: { songId: before.currentlyPlaying?.id ?? null, expectedRevision: current.queueRevision, expectedPlaybackRevision: current.playbackRevision ?? 0 },
-        }));
-        expect([200, 204]).toContain(restored.status());
-      },
-    }, async () => {
-    const a = await guestA.newPage();
-    const b = await guestB.newPage();
-    await Promise.all([a.goto(`${fixtureOrigin}/music/share/qualification-public`), b.goto(`${fixtureOrigin}/music/share/qualification-public`)]);
-    const before = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
-    const beforeBody = await before.json() as { queueRevision: number; currentlyPlaying?: { id: number } | null };
-    const beforeRevision = beforeBody.queueRevision;
-    await runAuthorizedMusicMutation(musicLiveAuthorityFromEnvironment(), "guest-playback", async () => {
-      await a.getByRole("button", { name: /play .*device/i }).first().click();
-    });
-    await expect.poll(async () => {
-      const current = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
-      return (await current.json() as { queueRevision: number }).queueRevision;
-    }).toBeGreaterThan(beforeRevision);
-    const changedDashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
-    const changedBody = await changedDashboard.json() as { currentlyPlaying?: { id: number; title: string } | null; songs: Array<{ id: number }> };
-    expect(changedBody.currentlyPlaying?.id, "guest playback changes canonical player state").not.toBe(beforeBody.currentlyPlaying?.id);
-    expect(changedBody.songs.map(({ id }) => id), "queue remains canonical after playback transition").toContain(changedBody.currentlyPlaying!.id);
-    await b.reload();
-    await expect(b.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
-    await expect(b.getByText(changedBody.currentlyPlaying!.title).first(), "second guest canonically refetches changed player state").toBeVisible();
-    await expect(b.locator("body")).not.toContainText(/credential|authorization|bearer/i);
+    await withRestoredMusicFixture(liveJourneyAdapters("music.guest.playback-second-guest"), async () => {
+      const prepared = await prepareOwnerPublicJourney(page, ownerCredential, {
+        ...disabledGuestControls(), allowGuestPlayOnDevice: true, allowQueueVisibility: true,
+      });
+      const a = await guestA.newPage();
+      const b = await guestB.newPage();
+      await Promise.all([
+        a.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`),
+        b.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`),
+      ]);
+      const before = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, {
+        headers: { Authorization: ownerCredential },
+      });
+      const beforeBody = await before.json() as Record<string, unknown>;
+
+      await a.getByRole("button", { name: "Choose Fixture queued song to play on this device" }).click();
+      await expect(a.getByTestId("public-music-player")).toContainText("Fixture queued song");
+      await a.getByRole("button", { name: "Play Fixture queued song on this device" }).click();
+
+      const after = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, {
+        headers: { Authorization: ownerCredential },
+      });
+      const afterBody = await after.json() as Record<string, unknown>;
+      expect(afterBody).toEqual(beforeBody);
+      await expect(
+        b.getByTestId("public-music-player"),
+        "second guest remains on the canonical owner selection",
+      ).toContainText("Fixture playing song");
+      await expect(b.getByTestId("public-music-player")).not.toContainText("Fixture queued song");
+      await expect(b.locator("body")).not.toContainText(/credential|authorization|bearer/i);
     });
   } finally {
     await guestA.close();
@@ -719,112 +719,21 @@ liveTest("owner publication, playlist visibility, and playlist-sharing settings 
     liveSkipReason ?? "authorized disposable integrated Music fixture",
   );
   const credential = await authenticateOwner(page);
-  const initialDashboardResponse = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } });
-  expect(initialDashboardResponse.status()).toBe(200);
-  const initialDashboard = await initialDashboardResponse.json() as { publication: { mode: "private" | "unlisted" | "public" } };
-  ownerState(page).initialPublicationMode = initialDashboard.publication.mode;
-  const initialControlsResponse = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, {
-    headers: { Authorization: credential },
-  });
-  expect(initialControlsResponse.status()).toBe(200);
-  ownerState(page).initialControls = await initialControlsResponse.json() as GuestControls;
+  await withRestoredMusicFixture(liveJourneyAdapters("music.owner.publication-playlist-sharing"), async () => {
+    const sharingEnabled: GuestControls = { ...disabledGuestControls(), allowPlaylistSharing: true };
+    const prepared = await prepareOwnerPublicJourney(page, credential, sharingEnabled);
+    const name = prepared.playlistName;
+    const playlist = { id: prepared.playlistId };
+    const publicCommand = { publication: { mode: "public", publicSlug: prepared.publicSlug } };
 
-  await withRestoredMusicFixture({
-    journeyId: "music.owner.publication-playlist-sharing",
-    snapshot: async () => {
-      const [dashboardResponse, controlsResponse, playlistsResponse] = await Promise.all([
-        page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } }),
-        page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } }),
-        page.request.get(`${fixtureOrigin}/api/playlists`, { headers: { Authorization: credential } }),
-      ]);
-      const dashboardSnapshot = await dashboardResponse.json() as { publication: unknown; songs?: unknown[] };
-      return {
-        publication: dashboardSnapshot.publication,
-        permissions: await controlsResponse.json(),
-        queue: dashboardSnapshot.songs ?? [],
-        playlists: await playlistsResponse.json(),
-        requests: [],
-        profilePreference: "unchanged-by-this-journey",
-      };
-    },
-    cleanupNamespace: async () => {
-      const state = ownerState(page);
-      if (state.playlistId) {
-        const deleted = await guardedMutation("playlist-delete", () => page.request.delete(`${fixtureOrigin}/api/playlists/${state.playlistId}`, { headers: mutationHeaders(credential) }));
-        expect(deleted.status()).toBe(204);
-        state.playlistId = undefined;
-      }
-    },
-    restore: async (snapshot) => {
-      const before = snapshot as { publication: { mode: "private" | "unlisted" | "public" }; permissions: GuestControls; queue: unknown[] };
-      if (before.queue.length !== 0) throw new Error("Dedicated Music E2E account must start with an empty queue for exact restoration");
-      const currentDashboardResponse = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } });
-      const currentRevision = (await currentDashboardResponse.json() as { queueRevision: number }).queueRevision;
-      const queue = await guardedMutation("queue-replace", () => page.request.post(`${fixtureOrigin}/api/music/queue/replace`, { headers: mutationHeaders(credential), data: { expectedRevision: currentRevision, songs: [] } }));
-      expect(queue.status()).toBe(200);
-      const controls = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, { headers: mutationHeaders(credential), data: before.permissions }));
-      expect(controls.status()).toBe(200);
-      const publication = await guardedMutation("owner-publication", () => page.request.post(`${fixtureOrigin}/api/music/publication`, { headers: publicationHeaders(credential), data: { mode: before.publication.mode } }));
-      expect(publication.status()).toBe(200);
-      const state = ownerState(page);
-      state.queueRevision = undefined;
-      state.initialControls = undefined;
-      state.initialPublicationMode = undefined;
-    },
-  }, async () => {
-
-  const name = `Fixture public contract ${randomUUID().slice(0, 8)}`;
-  const created = await guardedMutation("playlist-create", () => page.request.post(`${fixtureOrigin}/api/playlists`, {
-    headers: mutationHeaders(credential), data: { name, description: "Real fixture exposure matrix" },
-  }));
-  expect(created.status()).toBe(201);
-  const playlist = await created.json() as { id: number };
-  ownerState(page).playlistId = playlist.id;
-
-  const addedSong = await guardedMutation("playlist-song-add", () => page.request.post(`${fixtureOrigin}/api/playlists/${playlist.id}/songs`, {
-    headers: mutationHeaders(credential),
-    data: { youtubeId: "abcdefghijk", title: "Fixture public song", artist: "Fixture artist", thumbnailUrl: `${fixtureOrigin}/images/tuneslogo.png` },
-  }));
-  expect(addedSong.status()).toBe(201);
-  const savedSong = await addedSong.json() as { id: number };
-
-  const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, {
-    headers: { Authorization: credential },
-  });
-  expect(dashboard.status()).toBe(200);
-  const dashboardRevision = (await dashboard.json() as { queueRevision: number }).queueRevision;
-  const queued = await guardedMutation("queue-replace", () => page.request.post(`${fixtureOrigin}/api/music/queue/replace`, {
-    headers: mutationHeaders(credential),
-    data: { expectedRevision: dashboardRevision, songs: [{ playlistId: playlist.id, songId: savedSong.id }] },
-  }));
-  expect(queued.status(), "queue an owner saved song for the public visibility contract").toBe(200);
-  ownerState(page).queueRevision = (await queued.json() as { revision: number }).revision;
-
-  const visible = await guardedMutation("playlist-visibility", () => page.request.patch(`${fixtureOrigin}/api/playlists/${playlist.id}/visibility`, {
-    headers: mutationHeaders(credential), data: { isVisibleToGuests: true },
-  }));
-  expect(visible.status()).toBe(204);
-  const sharingEnabled: GuestControls = { ...ownerState(page).initialControls!, allowPlaylistSharing: true };
-  const enabled = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
-    headers: mutationHeaders(credential), data: sharingEnabled,
-  }));
-  expect(enabled.status()).toBe(200);
-
-  const madePublic = await guardedMutation("owner-publication", () => page.request.post(`${fixtureOrigin}/api/music/publication`, {
-    headers: publicationHeaders(credential), data: { mode: "public" },
-  }));
-  expect(madePublic.status()).toBe(200);
-  const publicCommand = await madePublic.json() as { publication: { mode: string; publicSlug: string } };
-  expect(publicCommand.publication.mode).toBe("public");
-
-  const publicVisible = await publicResource(page, publicCommand.publication.publicSlug);
-  expect(publicVisible.status(), "public workspace exposes a visible playlist when sharing is enabled").toBe(200);
-  const publicVisibleBody = await publicVisible.json() as { playlists: Array<{ id: number; songs: Array<{ title: string }> }>; user: { allowPlaylistSharing: boolean } };
-  expect(publicVisibleBody.user.allowPlaylistSharing).toBe(true);
-  expect(publicVisibleBody.playlists).toEqual(expect.arrayContaining([
-    expect.objectContaining({ id: playlist.id, songs: [expect.objectContaining({ title: "Fixture public song" })] }),
-  ]));
-  expect(publicVisibleBody).toMatchObject({ songs: [], currentlyPlaying: null, allowQueueVisibility: false, user: { allowQueueVisibility: false } });
+    const publicVisible = await publicResource(page, publicCommand.publication.publicSlug);
+    expect(publicVisible.status(), "public workspace exposes a visible playlist when sharing is enabled").toBe(200);
+    const publicVisibleBody = await publicVisible.json() as { playlists: Array<{ id: number; songs: Array<{ title: string }> }>; user: { allowPlaylistSharing: boolean } };
+    expect(publicVisibleBody.user.allowPlaylistSharing).toBe(true);
+    expect(publicVisibleBody.playlists).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: playlist.id, songs: expect.arrayContaining([expect.objectContaining({ title: "Fixture playing song" })]) }),
+    ]));
+    expect(publicVisibleBody).toMatchObject({ songs: [], allowQueueVisibility: false, user: { allowQueueVisibility: false } });
 
   const queueEnabled: GuestControls = { ...sharingEnabled, allowQueueVisibility: true };
   const enabledQueue = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
@@ -834,7 +743,7 @@ liveTest("owner publication, playlist visibility, and playlist-sharing settings 
   const publicQueueEnabled = await publicResource(page, publicCommand.publication.publicSlug);
   expect(publicQueueEnabled.status()).toBe(200);
   expect(await publicQueueEnabled.json()).toMatchObject({
-    songs: [expect.objectContaining({ id: expect.any(Number), title: "Fixture public song" })],
+    songs: expect.arrayContaining([expect.objectContaining({ id: expect.any(Number), title: "Fixture queued song" })]),
     allowQueueVisibility: true,
     user: { allowQueueVisibility: true },
   });

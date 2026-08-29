@@ -15,9 +15,9 @@ import { basename, dirname, resolve } from "node:path";
 export const MUSIC_MUTATION_GUARD_VERSION = "music-e2e-mutation-guard/v1";
 export const MUSIC_MUTATION_RECOVERY_VERSION = "music-e2e-mutation-recovery/v1";
 const reasons = new Set([
-  "restore-failed", "restore-mismatch", "cleanup-failed", "profile-restore-failed", "guard-invalid",
+  "restore-failed", "restore-mismatch", "cleanup-failed", "profile-restore-failed", "profile-batch-failed", "guard-invalid",
 ]);
-const stages = new Set(["restore", "verification", "cleanup", "profile-restore", "preflight"]);
+const stages = new Set(["restore", "verification", "cleanup", "profile-restore", "body", "preflight"]);
 const clearRecord = Object.freeze({
   version: MUSIC_MUTATION_GUARD_VERSION,
   state: "clear",

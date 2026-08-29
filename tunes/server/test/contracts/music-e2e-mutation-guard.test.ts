@@ -121,6 +121,9 @@ describe("Music E2E durable mutation guard", () => {
       version: "music-e2e-mutation-guard/v1", state: "blocked", reason: "restore-failed", stage: "restore",
     })).toBe(true);
     expect(validate({
+      version: "music-e2e-mutation-guard/v1", state: "blocked", reason: "profile-batch-failed", stage: "body",
+    })).toBe(true);
+    expect(validate({
       version: "music-e2e-mutation-guard/v1", state: "blocked", reason: "password=hostile", stage: "restore",
     })).toBe(false);
     expect(validate({
