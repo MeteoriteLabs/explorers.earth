@@ -690,10 +690,17 @@ function validSkipLedger(value) {
 function validJourneyOutcomeTotals(skipLedger, journeyOutcomeLedger) {
   if (!validSkipLedger(skipLedger) || !validateSanitizedJourneyOutcomeLedger(journeyOutcomeLedger)) return false;
   const execution = journeyOutcomeLedger.counts.execution;
-  if (execution.notRun === execution.total) return skipLedger.totals.total === 0;
-  if (journeyOutcomeLedger.executionOutcomes.some(({ reason }) => (
-    reason.startsWith("report-") || reason === "result-missing"
-  ))) return skipLedger.execution !== "completed";
+  const stopped = journeyOutcomeLedger.executionOutcomes.some(({ reason }) => reason === "execution-stopped");
+  if (execution.notRun > 0) {
+    return (stopped ? skipLedger.execution === "execution-stopped" : skipLedger.execution !== "completed")
+      && skipLedger.totals.total === execution.total - execution.notRun
+      && skipLedger.totals.passed === execution.passed
+      && skipLedger.totals.failed === execution.failed
+      && skipLedger.totals.skipped === execution.skipped;
+  }
+  if (journeyOutcomeLedger.executionOutcomes.some(({ reason }) => reason.startsWith("report-"))) {
+    return skipLedger.execution !== "completed";
+  }
   return execution.notRun === 0 && skipLedger.execution === "completed"
     && skipLedger.totals.total === execution.total
     && skipLedger.totals.passed === execution.passed
@@ -711,18 +718,24 @@ function executionTotals(executionReport) {
   if (!executionReport || typeof executionReport !== "object" || !Array.isArray(executionReport.suites)) return undefined;
   executionReport.suites.forEach(visit);
   if (specs.length === 0 || specs.length > 256) return undefined;
-  const totals = { total: specs.length, passed: 0, failed: 0, skipped: 0 };
+  const totals = { total: 0, passed: 0, failed: 0, skipped: 0 };
+  let resultless = 0;
   for (const spec of specs) {
     const test = Array.isArray(spec?.tests) ? spec.tests[0] : undefined;
     const results = Array.isArray(test?.results) ? test.results : [];
-    const status = results.at(-1)?.status ?? test?.status;
+    const status = results.at(-1)?.status;
     const annotatedSkip = Array.isArray(test?.annotations)
       && test.annotations.some((annotation) => annotation?.type === "skip");
+    if (!status && !annotatedSkip) {
+      resultless += 1;
+      continue;
+    }
+    totals.total += 1;
     if (annotatedSkip || status === "skipped") totals.skipped += 1;
     else if (status === "passed") totals.passed += 1;
     else totals.failed += 1;
   }
-  return totals;
+  return { totals, resultless };
 }
 
 function preflightReason(subcheck) {
@@ -753,11 +766,13 @@ export function buildQualificationOutcomeRecords({ lane, executionOutcome, repor
     const reason = preflightReason(executionOutcome.preflightDiagnostics.subcheck);
     reasons = [{ scope: reasonScope(reason), reason }];
   } else {
-    const observedTotals = executionTotals(executionOutcome?.executionReport);
-    if (observedTotals) {
-      execution = "completed";
-      totals = observedTotals;
-      reasons = totals.skipped > 0 ? [{ scope: "journey", reason: "test-skipped" }] : [];
+    const observed = executionTotals(executionOutcome?.executionReport);
+    if (observed) {
+      totals = observed.totals;
+      execution = observed.resultless > 0 ? "execution-stopped" : "completed";
+      reasons = observed.resultless > 0
+        ? [{ scope: "lane", reason: "execution-stopped" }]
+        : (totals.skipped > 0 ? [{ scope: "journey", reason: "test-skipped" }] : []);
     }
   }
   const skipLedger = {

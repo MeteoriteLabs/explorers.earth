@@ -2,6 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { isKnownMusicFixtureProviderDiagnostic } from "../src/features/music/fixtureConsoleDiagnostics";
 import { LIVE_MUTATION_TAG } from "../scripts/music-public-live-preflight.mjs";
 import {
+  attachLiveFailureScreenshotBestEffort,
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
   musicLiveWriteSkipReason,
@@ -124,28 +125,10 @@ test.beforeEach(async ({ context, page }) => {
 });
 
 test.afterEach(async ({ page }, testInfo) => {
-  const state = fixtureMutations.get(page);
   try {
-    if (state?.ownerCredential) {
-      for (const songId of state.insertedQueueSongIds) {
-        const response = await guardedMutation("playlist-song-delete", () => page.request.delete(`${fixtureOrigin}/api/playlist/songs/${songId}`, {
-          headers: fixtureWriteHeaders(state.ownerCredential, `fixture-cleanup-song-${songId}`),
-        }));
-        expect(response.status(), `fixture queue cleanup for song ${songId}`).toBe(204);
-      }
-      if (state.guestControls) {
-        const response = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
-          headers: fixtureWriteHeaders(state.ownerCredential, "fixture-cleanup-guest-controls"),
-          data: state.guestControls,
-        }));
-        expect(response.status(), "fixture guest-controls cleanup").toBe(200);
-      }
-    }
+    await attachLiveFailureScreenshotBestEffort(page, testInfo, "sanitized-fixture-page");
   } finally {
     fixtureMutations.delete(page);
-    if (testInfo.status !== testInfo.expectedStatus) {
-      await testInfo.attach("sanitized-fixture-page", { body: await page.screenshot(), contentType: "image/png" });
-    }
   }
 });
 
@@ -196,7 +179,6 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   expect(inserted.id).toEqual(expect.any(Number));
   fixtureMutationState(page).insertedQueueSongIds.push(inserted.id as number);
   await expect(page.getByRole("region", { name: "Music workspace" })).toContainText("UAT First song");
-  });
 
   const ensure = requests.find(({ path }) => path === "/api/music/identity/ensure");
   expect(ensure).toMatchObject({ authorization: `Bearer ${fixtureStrapiToken}`, xUsername: undefined });
@@ -209,6 +191,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   const browserStorage = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(browserStorage).not.toMatch(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
   assertCleanJourney();
+  });
 });
 
 test("full owner workspace remains usable at a mobile viewport", { tag: LIVE_MUTATION_TAG }, async ({ page }, testInfo) => {
@@ -270,6 +253,6 @@ test("full owner workspace remains usable at a mobile viewport", { tag: LIVE_MUT
   await expect(page.getByRole("heading", { name: "Recently played" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await testInfo.attach("mobile-owner-workspace", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
-  });
   assertCleanJourney();
+  });
 });

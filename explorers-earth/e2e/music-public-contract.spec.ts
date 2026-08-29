@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Kind, parse, print } from "graphql";
 import { LIVE_MUTATION_TAG, LIVE_READ_ONLY_TAG } from "../scripts/music-public-live-preflight.mjs";
 import { setupMockAuthentication } from "./setup/auth";
 import {
+  attachLiveFailureScreenshotBestEffort,
   completeMusicAccount,
   installMusicQualificationMocks,
   musicLiveAuthorityFromEnvironment,
@@ -542,9 +543,7 @@ test.beforeEach(async ({ page }) => {
 
 test.afterEach(async ({ page }, testInfo) => {
   try {
-    if (testInfo.status !== testInfo.expectedStatus) {
-      await testInfo.attach("public-contract-fixture", { body: await page.screenshot(), contentType: "image/png" });
-    }
+    await attachLiveFailureScreenshotBestEffort(page, testInfo, "public-contract-fixture");
   } finally {
     ownerStates.delete(page);
   }
@@ -571,9 +570,9 @@ for (const control of [
       liveSkipReason ?? "authorized disposable Music live-write fixture",
     );
     const credential = await authenticateOwner(page);
-    const guest = await browser.newContext();
-    try {
-      await withRestoredMusicFixture(liveJourneyAdapters(permissionJourneyIds[control]), async () => {
+    await withRestoredMusicFixture(liveJourneyAdapters(permissionJourneyIds[control]), async () => {
+      const guest = await browser.newContext();
+      try {
         const controls = { ...disabledGuestControls(), [control]: true };
         const prepared = await prepareOwnerPublicJourney(page, credential, controls);
         const guestPage = await guest.newPage();
@@ -588,10 +587,10 @@ for (const control of [
                 ? guestPage.getByRole("heading", { name: /recently played/i })
                 : guestPage.getByRole("heading", { name: /queue/i });
         await expect(guestEffect.first(), `${control} exposes its seeded guest control`).toBeVisible();
-      });
-    } finally {
-      await guest.close();
-    }
+      } finally {
+        await guest.close();
+      }
+    });
   });
 }
 
@@ -601,9 +600,9 @@ liveTest("live guest reconnect refetches canonical state after transport interru
     liveSkipReason ?? "authorized disposable Music fixture socket",
   );
   const credential = await authenticateOwner(page);
-  const guest = await browser.newContext();
-  try {
-    await withRestoredMusicFixture(liveJourneyAdapters("music.owner-guest.reconnect"), async () => {
+  await withRestoredMusicFixture(liveJourneyAdapters("music.owner-guest.reconnect"), async () => {
+    const guest = await browser.newContext();
+    try {
       const initialControls = disabledGuestControls();
       const prepared = await prepareOwnerPublicJourney(page, credential, initialControls);
       const beforeResponse = await publicResource(page, prepared.publicSlug);
@@ -626,10 +625,10 @@ liveTest("live guest reconnect refetches canonical state after transport interru
       const requestRegion = guestPage.getByRole("region", { name: "Request a song" });
       if (initialControls.allowSongRequests) await expect(requestRegion).toHaveCount(0);
       else await expect(requestRegion).toBeVisible();
-    });
-  } finally {
-    await guest.close();
-  }
+    } finally {
+      await guest.close();
+    }
+  });
 });
 
 liveTest("live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", { tag: LIVE_MUTATION_TAG }, async ({ page }) => {
@@ -673,10 +672,12 @@ liveTest("live guest request accepts once, replays, conflicts, rate-limits, and 
 liveTest("live guest playback remains isolated while queue and player revisions refetch", { tag: LIVE_MUTATION_TAG }, async ({ page, browser }) => {
   test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized guest playback fixture");
   const ownerCredential = await authenticateOwner(page);
-  const guestA = await browser.newContext();
-  const guestB = await browser.newContext();
-  try {
-    await withRestoredMusicFixture(liveJourneyAdapters("music.guest.playback-second-guest"), async () => {
+  await withRestoredMusicFixture(liveJourneyAdapters("music.guest.playback-second-guest"), async () => {
+    const guests: BrowserContext[] = [];
+    try {
+      guests.push(await browser.newContext());
+      guests.push(await browser.newContext());
+      const [guestA, guestB] = guests;
       const prepared = await prepareOwnerPublicJourney(page, ownerCredential, {
         ...disabledGuestControls(), allowGuestPlayOnDevice: true, allowQueueVisibility: true,
       });
@@ -706,11 +707,10 @@ liveTest("live guest playback remains isolated while queue and player revisions 
       ).toContainText("Fixture playing song");
       await expect(b.getByTestId("public-music-player")).not.toContainText("Fixture queued song");
       await expect(b.locator("body")).not.toContainText(/credential|authorization|bearer/i);
-    });
-  } finally {
-    await guestA.close();
-    await guestB.close();
-  }
+    } finally {
+      await Promise.allSettled(guests.map((guest) => guest.close()));
+    }
+  });
 });
 
 liveTest("owner publication, playlist visibility, and playlist-sharing settings persist and control fixture public access", { tag: LIVE_MUTATION_TAG }, async ({ page }) => {

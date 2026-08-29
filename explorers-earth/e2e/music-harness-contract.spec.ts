@@ -7,12 +7,14 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { pathToFileURL } from "node:url";
+import * as ts from "typescript";
 import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
   MUSIC_PUBLIC_STATES,
   assertLivePublicSlug,
   assertLiveWriteAuthority,
+  attachLiveFailureScreenshotBestEffort,
   buildPermissionMatrix,
   buildPairwisePermissionMatrix,
   buildSanitizedFixtureEvidence,
@@ -185,7 +187,7 @@ const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
 
 function notRunJourneyOutcomeLedger() {
   return {
-    schemaVersion: "explorers-public-journey-outcomes/v1",
+    schemaVersion: "explorers-public-journey-outcomes/v2",
     integrity: "not-run",
     counts: {
       execution: { total: 49, passed: 0, failed: 0, skipped: 0, notRun: 49 },
@@ -1366,7 +1368,7 @@ test("sanitized journey outcome ledger retains exact 32/12/5 execution and all m
   };
 
   expect(ledger).toMatchObject({
-    schemaVersion: "explorers-public-journey-outcomes/v1",
+    schemaVersion: "explorers-public-journey-outcomes/v2",
     integrity: "accepted",
     counts: {
       execution: { total: 49, passed: 32, failed: 12, skipped: 5, notRun: 0 },
@@ -1422,6 +1424,120 @@ test("terminal reconciliation records skipped and unstarted mutations without in
   expect(notRun.mutationTerminals.every((record) => (
     record.status === "not-run" && record.reason === "terminal-not-run" && record.stage === "preflight"
   ))).toBe(true);
+});
+
+test("fail-fast partial reports retain stopped journeys and reject a passed terminal after execution failure", async () => {
+  const livePreflight = await import("../scripts/music-public-live-preflight.mjs");
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const failedId = EXPECTED_LIVE_JOURNEYS[0]!.id;
+  const executionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+    statusById: { [failedId]: "failed" },
+  });
+  const ledger = livePreflight.buildSanitizedJourneyOutcomeLedger({
+    executionReport,
+    reportStatus: "accepted",
+    terminalRecords: [{ id: failedId, status: "passed" }],
+    terminalStatus: "accepted",
+  });
+
+  expect(ledger).toMatchObject({
+    schemaVersion: "explorers-public-journey-outcomes/v2",
+    integrity: "invalid",
+    counts: {
+      execution: { total: 49, passed: 0, failed: 1, skipped: 0, notRun: 48 },
+      terminal: { total: 17, passed: 0, failed: 0, missing: 0, invalid: 1, notRun: 16 },
+    },
+  });
+  expect(ledger.executionOutcomes[0]).toEqual({
+    id: failedId, status: "failed", reason: "test-failed", stage: "execution",
+  });
+  expect(ledger.executionOutcomes.slice(1).every((entry) => (
+    entry.status === "not-run" && entry.reason === "execution-stopped" && entry.stage === "execution"
+  ))).toBe(true);
+  expect(ledger.mutationTerminals[0]).toEqual({
+    id: failedId,
+    status: "invalid",
+    reason: "terminal-execution-mismatch",
+    stage: "post-terminal",
+  });
+  expect(ledger.mutationTerminals.slice(1).every((entry) => (
+    entry.status === "not-run" && entry.reason === "execution-stopped" && entry.stage === "execution"
+  ))).toBe(true);
+  expect(livePreflight.validateSanitizedJourneyOutcomeLedger(ledger)).toBe(true);
+  const hostileMismatch = structuredClone(ledger);
+  hostileMismatch.mutationTerminals[0] = {
+    id: failedId, status: "invalid", reason: "terminal-execution-mismatch", stage: "terminal-evidence",
+  };
+  expect(livePreflight.validateSanitizedJourneyOutcomeLedger(hostileMismatch)).toBe(false);
+  const staleMissingResult = structuredClone(ledger);
+  staleMissingResult.executionOutcomes[1] = {
+    id: EXPECTED_LIVE_JOURNEYS[1]!.id, status: "failed", reason: "result-missing", stage: "execution",
+  };
+  expect(livePreflight.validateSanitizedJourneyOutcomeLedger(staleMissingResult)).toBe(false);
+
+  const runDirectory = resolve("guarded/run21df-shaped-ledger");
+  const reportPath = join(runDirectory, "playwright-journey-results.json");
+  const outputDirectory = join(runDirectory, "private-playwright-output");
+  const terminalEvidencePath = join(runDirectory, "restore-evidence.jsonl");
+  const outcomeLedgerPath = join(runDirectory, "journey-outcomes.json");
+  let persistedLedger: unknown;
+  const executionOutcome = livePreflight.runPlaywrightJourneyExecution({
+    spawn: () => ({ status: 1 }),
+    processExecPath: process.execPath,
+    playwrightCli: "playwright-cli.js",
+    files: ["e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts", "e2e/profile-theme.spec.ts"],
+    project: "synthetic-run21df",
+    cwd: process.cwd(),
+    environment: { ...process.env },
+    reportPath,
+    outputDirectory,
+    terminalEvidencePath,
+    outcomeLedgerPath,
+    persistOutcomeLedger: ({ ledger: value }: { ledger: unknown }) => { persistedLedger = value; },
+    privateArtifactIo: {
+      exists: (path: string) => path === reportPath || path === terminalEvidencePath,
+      size: (path: string) => Buffer.byteLength(path === reportPath
+        ? JSON.stringify(executionReport)
+        : JSON.stringify({ id: failedId, status: "passed" })),
+      read: (path: string) => path === reportPath
+        ? JSON.stringify(executionReport)
+        : JSON.stringify({ id: failedId, status: "passed" }),
+      unlink: () => undefined,
+      removeDirectory: () => undefined,
+    },
+  });
+  expect(executionOutcome).toMatchObject({
+    status: expect.any(Number),
+    reportStatus: "accepted",
+    outcomeLedgerStatus: "persisted",
+    privateArtifactCleanup: "deleted",
+    journeyOutcomeLedger: ledger,
+  });
+  expect(executionOutcome.status).not.toBe(0);
+  expect(persistedLedger).toEqual(ledger);
+
+  const finalHash = "e".repeat(64);
+  const records = qualificationArtifacts.buildQualificationOutcomeRecords({
+    lane: "live",
+    executionOutcome,
+    report: {
+      cleanup: "restored",
+      finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+    },
+  });
+  expect(records.skipLedger).toEqual({
+    schemaVersion: "explorers-public-skip-ledger/v1",
+    lane: "live",
+    execution: "execution-stopped",
+    totals: { total: 1, passed: 0, failed: 1, skipped: 0 },
+    reasons: [{ scope: "lane", reason: "execution-stopped" }],
+  });
+  expect(records.restorationRecord).toEqual({
+    schemaVersion: "explorers-public-restoration/v1",
+    status: "initial-restored",
+    finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+    journeys: [],
+  });
 });
 
 test("missing malformed and hostile journey reports retain only fixed safe diagnostics", async () => {
@@ -1581,7 +1697,7 @@ test("journey evidence validation accumulates execution and terminal defects whi
     exitCode: 5,
     report: {
       result: "failed",
-      cleanup: "evidence-missing",
+      cleanup: "restored",
       finalRestore: { beforeHash: finalHash, afterHash: finalHash },
       journeyDiagnostics: { subchecks: ["execution-status", "records-missing"] },
     },
@@ -1693,7 +1809,7 @@ test("failing production child retains only bounded canonical evidence and delet
       exitCode: 5,
       report: {
         result: "failed",
-        cleanup: "evidence-missing",
+        cleanup: "restored",
         journeyReportStatus: "accepted",
         journeyArtifactCleanup: "deleted",
         journeyDiagnostics: { subcheck: "execution-status" },
@@ -1769,7 +1885,7 @@ test("unknown hostile mutation identity is replaced by fixed sentinels before ma
     exitCode: 5,
     report: {
       result: "failed",
-      cleanup: "evidence-missing",
+      cleanup: "restored",
       journeyDiagnostics: { subcheck: "manifest-unknown" },
     },
   });
@@ -1866,7 +1982,7 @@ test("private raw report size and parse failures are rejected before retention a
       exitCode: 5,
       report: {
         result: "failed",
-        cleanup: "evidence-missing",
+        cleanup: "restored",
         journeyReportStatus: failure,
         journeyArtifactCleanup: "deleted",
         journeyDiagnostics: { subcheck: `execution-report-${failure}` },
@@ -3791,6 +3907,79 @@ test("preflight-stopped qualification finalization writes every safe artifact an
     expect(JSON.parse(readFileSync(join(persistedRunDirectory, "manifest.json"), "utf8")).artifacts)
       .toEqual(expect.arrayContaining([expect.objectContaining({ role: "journey-outcomes", path: "journey-outcomes.json" })]));
 
+    const partialRunId = "run21df-shaped-finalization";
+    const partialRunDirectory = join(sandbox, ".artifacts", "music-public", partialRunId);
+    mkdirSync(partialRunDirectory);
+    const failedId = EXPECTED_LIVE_JOURNEYS[0]!.id;
+    const partialExecutionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+      statusById: { [failedId]: "failed" },
+    });
+    const partialLedger = livePreflight.buildSanitizedJourneyOutcomeLedger({
+      executionReport: partialExecutionReport,
+      reportStatus: "accepted",
+      terminalRecords: [{ id: failedId, status: "passed" }],
+      terminalStatus: "accepted",
+    });
+    livePreflight.persistSanitizedJourneyOutcomeLedger({
+      path: join(partialRunDirectory, "journey-outcomes.json"),
+      ledger: partialLedger,
+    });
+    const partialRecords = qualificationArtifacts.buildQualificationOutcomeRecords({
+      lane: "live",
+      executionOutcome: {
+        status: 1,
+        executionReport: partialExecutionReport,
+        reportStatus: "accepted",
+        outcomeLedgerStatus: "persisted",
+        journeyOutcomeLedger: partialLedger,
+      },
+      report: {
+        cleanup: "restored",
+        finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+      },
+    });
+    const partialFinalized = qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: partialRunDirectory,
+      skipLedger: partialRecords.skipLedger,
+      restorationRecord: partialRecords.restorationRecord,
+      journeyOutcomeLedger: partialLedger,
+      journeyOutcomeLedgerPersisted: true,
+      evidence: { ...input.evidence, runId: partialRunId, result: "failed", cleanup: "restored" },
+    });
+    expect(partialFinalized).toMatchObject({ files: 17, verified: true });
+    expect(JSON.parse(readFileSync(join(partialRunDirectory, "journey-outcomes.json"), "utf8"))).toMatchObject({
+      integrity: "invalid",
+      counts: {
+        execution: { total: 49, failed: 1, notRun: 48 },
+        terminal: { total: 17, invalid: 1, notRun: 16 },
+      },
+      mutationTerminals: [
+        { id: failedId, status: "invalid", reason: "terminal-execution-mismatch", stage: "post-terminal" },
+        ...EXPECTED_LIVE_JOURNEYS.slice(1).map(({ id }) => ({
+          id, status: "not-run", reason: "execution-stopped", stage: "execution",
+        })),
+      ],
+    });
+    expect(JSON.parse(readFileSync(join(partialRunDirectory, "restoration.json"), "utf8"))).toEqual({
+      schemaVersion: "explorers-public-restoration/v1",
+      status: "initial-restored",
+      finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+      journeys: [],
+    });
+    expect(JSON.parse(readFileSync(join(partialRunDirectory, "evidence.json"), "utf8"))).toMatchObject({
+      result: "failed", cleanup: "restored",
+    });
+    const partialManifest = JSON.parse(readFileSync(join(partialRunDirectory, "manifest.json"), "utf8"));
+    expect(partialManifest.artifacts).toHaveLength(17);
+    const partialVerify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", partialRunDirectory,
+    ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
+    expect(partialVerify.status, `${partialVerify.stdout}\n${partialVerify.stderr}`).toBe(0);
+    expect(JSON.parse(partialVerify.stdout)).toMatchObject({
+      files: 17, manifestSha256: partialFinalized.manifestSha256,
+    });
+
     const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
     mkdirSync(unsafeRunDirectory);
     expect(() => qualificationArtifacts.finalizeQualificationRunArtifacts({
@@ -5066,14 +5255,100 @@ test("profile batch body failures restore first, emit one row-bearing terminal, 
   })]);
 });
 
-test("live Music journeys contain no mock-only slug or post-terminal mutation cleanup", () => {
+test("live Music afterEach hooks are read-only and every mutation journey owns its complete postcondition lifecycle", () => {
+  const liveFiles = [
+    { path: "e2e/music-fixture-fullstack.spec.ts", expectedWrappers: 2 },
+    { path: "e2e/music-public-contract.spec.ts", expectedWrappers: 5 },
+    { path: "e2e/profile-theme.spec.ts", expectedWrappers: 1 },
+  ] as const;
+  const wrapperNames = new Set(["withFixtureRestore", "withRestoredMusicFixture"]);
+
+  for (const file of liveFiles) {
+    const source = readFileSync(file.path, "utf8");
+    const ast = ts.createSourceFile(file.path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let wrapperCount = 0;
+    const visit = (node: ts.Node) => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && wrapperNames.has(node.expression.text)) {
+        let testBody: ts.Block | undefined;
+        for (let ancestor: ts.Node | undefined = node.parent; ancestor; ancestor = ancestor.parent) {
+          if (!ts.isArrowFunction(ancestor) || !ts.isBlock(ancestor.body) || !ts.isCallExpression(ancestor.parent)) continue;
+          const callee = ancestor.parent.expression;
+          if (ts.isIdentifier(callee) && (callee.text === "test" || callee.text === "liveTest")) {
+            testBody = ancestor.body;
+            break;
+          }
+        }
+        if (testBody) {
+          wrapperCount += 1;
+          const statement = node.parent.parent;
+          expect(ts.isExpressionStatement(statement), `${file.path} wrapper must be awaited as a statement`).toBe(true);
+          expect(statement.parent, `${file.path} wrapper must be directly owned by the test body`).toBe(testBody);
+          expect(testBody.statements.at(-1), `${file.path} wrapper must be the final test-body statement`).toBe(statement);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+    expect(wrapperCount, `${file.path} reviewed wrapper count`).toBe(file.expectedWrappers);
+
+    const afterEachHooks: string[] = [];
+    const collectAfterEach = (node: ts.Node) => {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+          && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "test"
+          && node.expression.name.text === "afterEach") {
+        afterEachHooks.push(node.getText(ast));
+      }
+      ts.forEachChild(node, collectAfterEach);
+    };
+    collectAfterEach(ast);
+    for (const hook of afterEachHooks) {
+      expect(hook, `${file.path} afterEach may not mutate fixture business state`)
+        .not.toMatch(/guardedMutation|runAuthorizedMusicMutation|\.request\.(?:post|put|patch|delete)\s*\(/);
+    }
+  }
+
   const source = readFileSync("e2e/music-public-contract.spec.ts", "utf8");
   const liveSource = source.slice(source.indexOf("const permissionJourneyIds"));
   expect(liveSource).not.toContain("qualification-public");
   expect(liveSource).toContain("prepareOwnerPublicJourney");
   expect(source.slice(0, source.indexOf("const permissionJourneyIds"))).toContain("return prepareLivePublicMusicJourney({");
-  const afterEach = source.slice(source.indexOf("test.afterEach"), source.indexOf("const permissionJourneyIds"));
-  expect(afterEach).not.toMatch(/guardedMutation|request\.(?:post|patch|delete)/);
+});
+
+test("live failure screenshots are best-effort local diagnostics", async () => {
+  const events: string[] = [];
+  const failingPage = {
+    isClosed: () => false,
+    screenshot: async () => { events.push("screenshot"); throw new Error("local screenshot unavailable"); },
+  };
+  const failingInfo = {
+    status: "failed",
+    expectedStatus: "passed",
+    attach: async () => { events.push("attach"); },
+  };
+  await expect(attachLiveFailureScreenshotBestEffort(
+    failingPage as never,
+    failingInfo as never,
+    "fixture-failure",
+  )).resolves.toBeUndefined();
+  expect(events).toEqual(["screenshot"]);
+
+  const attachmentInfo = {
+    ...failingInfo,
+    attach: async () => { events.push("attach"); throw new Error("local attachment unavailable"); },
+  };
+  await expect(attachLiveFailureScreenshotBestEffort(
+    { isClosed: () => false, screenshot: async () => Buffer.from("local-image") } as never,
+    attachmentInfo as never,
+    "fixture-failure",
+  )).resolves.toBeUndefined();
+  expect(events).toEqual(["screenshot", "attach"]);
+
+  await attachLiveFailureScreenshotBestEffort(
+    { isClosed: () => true, screenshot: async () => { events.push("closed-screenshot"); return Buffer.alloc(0); } } as never,
+    failingInfo as never,
+    "fixture-failure",
+  );
+  expect(events).not.toContain("closed-screenshot");
 });
 
 test("guest-device playback is local-only and leaves the owner queue exact while a second guest stays isolated", () => {

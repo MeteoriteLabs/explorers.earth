@@ -252,7 +252,10 @@ export async function runMusicFixtureOrchestration({
       : (executionOutcome
         ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed && !outcomeLedgerFailed
         : legacyEvidenceVerified)));
-  let cleanup = initialHash && evidenceVerified && !evidenceParseFailed
+  if ((!evidenceVerified || evidenceParseFailed) && snapshotExists) {
+    executionStatus = Math.max(executionStatus, 5);
+  }
+  let cleanup = initialHash && !evidenceParseFailed && !privateArtifactCleanupFailed && !outcomeLedgerFailed
     ? "restored"
     : (initialHash ? "evidence-missing" : "restore-failed");
   let teardownStatus = 1;

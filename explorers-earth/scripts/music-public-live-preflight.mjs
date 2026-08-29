@@ -24,7 +24,7 @@ const MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_PRIVATE_TERMINAL_EVIDENCE_BYTES = 4 * 1024 * 1024;
 const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v2";
 const SAFE_EXECUTION_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
-export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v1";
+export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v2";
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
@@ -329,22 +329,23 @@ function sanitizedLiveExecutionReport(rawReport) {
 
 const EXECUTION_OUTCOME_STATUSES = new Set(["passed", "failed", "skipped", "not-run"]);
 const EXECUTION_OUTCOME_REASONS = new Set([
-  "none", "test-failed", "test-timed-out", "test-interrupted", "test-skipped", "result-missing",
+  "none", "test-failed", "test-timed-out", "test-interrupted", "test-skipped", "execution-stopped",
   "report-missing", "report-malformed", "report-too-large", "report-invalid", "execution-not-run",
 ]);
 const EXECUTION_OUTCOME_STAGES = new Set(["execution", "execution-report", "preflight"]);
 const TERMINAL_OUTCOME_STATUSES = new Set(["passed", "failed", "skipped", "missing", "invalid", "not-run"]);
 const TERMINAL_OUTCOME_REASONS = new Set([
   "none", "terminal-failed", "terminal-missing", "terminal-invalid", "terminal-not-run", "test-skipped",
+  "execution-stopped", "terminal-execution-mismatch",
 ]);
-const TERMINAL_OUTCOME_STAGES = new Set(["terminal-evidence", "execution", "preflight"]);
+const TERMINAL_OUTCOME_STAGES = new Set(["terminal-evidence", "execution", "post-terminal", "preflight"]);
 const LEDGER_INTEGRITY_STATES = new Set(["accepted", "incomplete", "invalid", "not-run"]);
 const EXECUTION_OUTCOME_TUPLES = new Set([
   "passed\0none\0execution",
   "failed\0test-failed\0execution",
   "failed\0test-timed-out\0execution",
   "failed\0test-interrupted\0execution",
-  "failed\0result-missing\0execution",
+  "not-run\0execution-stopped\0execution",
   "failed\0report-missing\0execution-report",
   "failed\0report-malformed\0execution-report",
   "failed\0report-too-large\0execution-report",
@@ -358,6 +359,8 @@ const TERMINAL_OUTCOME_TUPLES = new Set([
   "skipped\0test-skipped\0execution",
   "missing\0terminal-missing\0terminal-evidence",
   "invalid\0terminal-invalid\0terminal-evidence",
+  "invalid\0terminal-execution-mismatch\0post-terminal",
+  "not-run\0execution-stopped\0execution",
   "not-run\0terminal-not-run\0preflight",
 ]);
 const EXPECTED_EXECUTION_OUTCOMES = Object.freeze([...LIVE_JOURNEY_MANIFEST, ...LIVE_READ_ONLY_COLLECTION]);
@@ -381,7 +384,7 @@ function executionStatusRecord(entry, id) {
   if (entry.status === "failed") return { id, status: "failed", reason: "test-failed", stage: "execution" };
   if (entry.status === "timedOut") return { id, status: "failed", reason: "test-timed-out", stage: "execution" };
   if (entry.status === "interrupted") return { id, status: "failed", reason: "test-interrupted", stage: "execution" };
-  return { id, status: "failed", reason: "result-missing", stage: "execution" };
+  return { id, status: "not-run", reason: "execution-stopped", stage: "execution" };
 }
 
 function sanitizedExecutionOutcomes(executionReport, reportStatus) {
@@ -418,7 +421,7 @@ function sanitizedExecutionOutcomes(executionReport, reportStatus) {
       expected.id,
     ));
     return {
-      integrity: outcomes.some(({ reason }) => reason === "result-missing") ? "invalid" : "accepted",
+      integrity: outcomes.some(({ status }) => status === "not-run") ? "incomplete" : "accepted",
       outcomes,
     };
   } catch {
@@ -478,18 +481,26 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
         return { id, status: "skipped", reason: "test-skipped", stage: "execution" };
       }
       if (executionById.get(id)?.status === "not-run") {
-        return { id, status: "not-run", reason: "terminal-not-run", stage: "preflight" };
+        return executionById.get(id)?.reason === "execution-stopped"
+          ? { id, status: "not-run", reason: "execution-stopped", stage: "execution" }
+          : { id, status: "not-run", reason: "terminal-not-run", stage: "preflight" };
       }
       return { id, status: "missing", reason: "terminal-missing", stage: "terminal-evidence" };
     }
     if (records.length !== 1) return { id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence" };
-    if (records[0].status === "passed") return { id, status: "passed", reason: "none", stage: "terminal-evidence" };
-    if (records[0].status === "failed") return { id, status: "failed", reason: "terminal-failed", stage: "terminal-evidence" };
+    if (records[0].status === "passed") {
+      return executionById.get(id)?.status === "passed"
+        ? { id, status: "passed", reason: "none", stage: "terminal-evidence" }
+        : { id, status: "invalid", reason: "terminal-execution-mismatch", stage: "post-terminal" };
+    }
+    if (records[0].status === "failed") {
+      return { id, status: "failed", reason: "terminal-failed", stage: "terminal-evidence" };
+    }
     return { id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence" };
   });
   const integrity = hostileRecord || outcomes.some(({ status }) => status === "invalid")
     ? "invalid"
-    : (outcomes.some(({ status }) => status === "missing" || status === "skipped") ? "incomplete" : "accepted");
+    : (outcomes.some(({ status }) => ["missing", "skipped", "not-run"].includes(status)) ? "incomplete" : "accepted");
   return { integrity, outcomes };
 }
 
@@ -578,14 +589,16 @@ export function validateSanitizedJourneyOutcomeLedger(ledger) {
   delete normalizedTerminalCounts.notRun;
   if (JSON.stringify(normalizedExecutionCounts) !== JSON.stringify(expectedExecutionCounts)
       || JSON.stringify(normalizedTerminalCounts) !== JSON.stringify(expectedTerminalCounts)) return false;
-  const executionIntegrity = ledger.executionOutcomes.every(({ status }) => status === "not-run")
+  const executionIntegrity = ledger.executionOutcomes.every(({ reason }) => reason === "execution-not-run")
     ? "not-run"
-    : (ledger.executionOutcomes.some(({ reason }) => reason.startsWith("report-") || reason === "result-missing") ? "invalid" : "accepted");
-  const terminalIntegrity = ledger.mutationTerminals.every(({ status }) => status === "not-run")
+    : (ledger.executionOutcomes.some(({ reason }) => reason.startsWith("report-"))
+      ? "invalid"
+      : (ledger.executionOutcomes.some(({ status }) => status === "not-run") ? "incomplete" : "accepted"));
+  const terminalIntegrity = ledger.mutationTerminals.every(({ reason }) => reason === "terminal-not-run")
     ? "not-run"
     : (ledger.mutationTerminals.some(({ status }) => status === "invalid")
       ? "invalid"
-      : (ledger.mutationTerminals.some(({ status }) => status === "missing" || status === "skipped") ? "incomplete" : "accepted"));
+      : (ledger.mutationTerminals.some(({ status }) => ["missing", "skipped", "not-run"].includes(status)) ? "incomplete" : "accepted"));
   return ledger.integrity === derivedLedgerIntegrity({ integrity: executionIntegrity }, { integrity: terminalIntegrity });
 }
 

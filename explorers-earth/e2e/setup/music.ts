@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { test as base, type Page, type TestInfo } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -22,6 +22,20 @@ export const MUSIC_MUTATION_CALLSITES = [
   "player-update",
 ] as const;
 export type MusicMutationCallsite = typeof MUSIC_MUTATION_CALLSITES[number];
+
+export async function attachLiveFailureScreenshotBestEffort(
+  page: Pick<Page, "isClosed" | "screenshot">,
+  testInfo: Pick<TestInfo, "status" | "expectedStatus" | "attach">,
+  name: string,
+): Promise<void> {
+  if (testInfo.status === testInfo.expectedStatus || page.isClosed()) return;
+  try {
+    const body = await page.screenshot();
+    await testInfo.attach(name, { body, contentType: "image/png" });
+  } catch {
+    // A diagnostic must never change the terminal outcome of the journey it observes.
+  }
+}
 
 export function musicOwnerCredentialFromAuthState(environment: Record<string, string | undefined> = process.env): string {
   const authPath = environment.MUSIC_E2E_AUTH_STATE_PATH;
