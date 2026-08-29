@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createConnection } from "node:net";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { stopMusicFixture, stopMusicFixtureStateService } from "./music-fixture-cleanup.mjs";
+import { createMusicFixtureStateServiceGuard, stopMusicFixture } from "./music-fixture-cleanup.mjs";
 import { runLivePreflight, runPlaywrightJourneyExecution } from "./music-public-live-preflight.mjs";
 import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs";
 import {
@@ -11,6 +11,7 @@ import {
   buildQualificationOutcomeRecords,
   captureQualificationLifecycleCommand,
   createExclusiveQualificationRunDirectory,
+  createUnavailableQualificationStreamArtifacts,
   finalizeQualificationRunArtifacts,
   inspectQualificationDockerCleanup,
   LIVE_QUALIFICATION_REQUIRED_ARTIFACTS,
@@ -128,6 +129,12 @@ if (dryRun) {
     traces: [],
     gaps: ["qualification-not-run", "analytics-not-observed", "docker-inspection-not-run"],
     lifecycleCommands: [],
+    stateServiceLifecycle: {
+      schemaVersion: "explorers-public-state-service-lifecycle/v1",
+      error: { status: "unavailable" },
+      exit: { status: "unavailable" },
+      close: { status: "unavailable" },
+    },
   };
   const stdoutLine = `${JSON.stringify(report)}\n`;
   const dockerCommands = {
@@ -147,8 +154,7 @@ if (dryRun) {
       runDirectory: runArtifactDirectory,
       workspaceRoot: process.cwd(),
       knownSecrets: [strapiToken],
-      stdoutChunks: [stdoutLine],
-      stderrChunks: [],
+      streamArtifacts: createUnavailableQualificationStreamArtifacts(),
       analyticsLedger: {
         schemaVersion: "explorers-public-analytics-ledger/v1",
         status: "unavailable",
@@ -206,18 +212,22 @@ if (dryRun) {
 
 const monorepoRoot = path.resolve("..");
 const npmExecPath = process.env.npm_execpath;
-const retainedStdoutChunks = [];
-const retainedStderrChunks = [];
 const lifecycleCommandRecords = [];
-const stateServicePrivateOutput = { stdout: [], stderr: [], stdoutBytes: 0, stderrBytes: 0, flushed: false };
-const PRIVATE_SERVICE_OUTPUT_LIMIT = 64 * 1024;
+const qualificationStreamArtifacts = createUnavailableQualificationStreamArtifacts();
 function writePublicStdout(text) {
-  retainedStdoutChunks.push(String(text ?? ""));
   process.stdout.write(text);
 }
 function writePublicStderr(text) {
-  retainedStderrChunks.push(String(text ?? ""));
   process.stderr.write(text);
+}
+function retainQualificationStreams(streams) {
+  for (const stream of streams) {
+    const index = qualificationStreamArtifacts.findIndex((candidate) => (
+      candidate.source === stream.source && candidate.stream === stream.stream
+    ));
+    if (index < 0) throw new Error("qualification stream source is not declared");
+    qualificationStreamArtifacts[index] = stream;
+  }
 }
 function runLifecycleCommand(stage) {
   const captured = captureQualificationLifecycleCommand({
@@ -232,30 +242,17 @@ function runLifecycleCommand(stage) {
     spawn: spawnSync,
   });
   lifecycleCommandRecords.push(captured.record);
-  retainedStdoutChunks.push(`[${stage}]\n${captured.stdout}`);
-  retainedStderrChunks.push(`[${stage}]\n${captured.stderr}`);
+  retainQualificationStreams(captured.streamArtifacts);
   return captured.status;
 }
-function capturePrivateStateServiceOutput(stream, chunk) {
-  if (stateServicePrivateOutput.flushed || !["stdout", "stderr"].includes(stream)) return;
-  const bytesKey = `${stream}Bytes`;
-  const remaining = PRIVATE_SERVICE_OUTPUT_LIMIT - stateServicePrivateOutput[bytesKey];
-  if (remaining <= 0) return;
-  const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk ?? ""));
-  const retained = value.subarray(0, remaining);
-  stateServicePrivateOutput[stream].push(retained);
-  stateServicePrivateOutput[bytesKey] += retained.length;
-}
 function flushPrivateStateServiceOutput() {
-  if (stateServicePrivateOutput.flushed) return;
-  stateServicePrivateOutput.flushed = true;
-  retainedStdoutChunks.push(`[state-service]\n${Buffer.concat(stateServicePrivateOutput.stdout).toString("utf8")}`);
-  retainedStderrChunks.push(`[state-service]\n${Buffer.concat(stateServicePrivateOutput.stderr).toString("utf8")}`);
-  stateServicePrivateOutput.stdout.length = 0;
-  stateServicePrivateOutput.stderr.length = 0;
+  if (!stateServiceGuard || stateServiceOutputFlushed) return;
+  stateServiceOutputFlushed = true;
+  retainQualificationStreams(stateServiceGuard.streamInputs());
 }
 let fixtureLifecycleAttempted = false;
-let stateService;
+let stateServiceGuard;
+let stateServiceOutputFlushed = false;
 let stateToken;
 let initialSnapshot;
 let initialRestorePromise;
@@ -266,10 +263,8 @@ function fixtureTeardownContract() {
     exists: existsSync,
     unlink: unlinkSync,
     removeDirectory: (directory) => rmSync(directory, { recursive: true, force: true }),
-    stopStateService: () => {
-      const service = stateService;
-      stateService = undefined;
-      try { stopMusicFixtureStateService(service); }
+    stopStateService: async () => {
+      try { if (stateServiceGuard) await stateServiceGuard.stop(); }
       finally { flushPrivateStateServiceOutput(); }
     },
     down: () => {
@@ -279,7 +274,7 @@ function fixtureTeardownContract() {
     },
   };
 }
-function stopFixture() {
+async function stopFixture() {
   return stopMusicFixture(fixtureTeardownContract());
 }
 async function restoreInitialSnapshot() {
@@ -355,13 +350,18 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
     traces: [],
     gaps,
     lifecycleCommands: lifecycleCommandRecords,
+    stateServiceLifecycle: stateServiceGuard?.snapshot().lifecycle ?? {
+      schemaVersion: "explorers-public-state-service-lifecycle/v1",
+      error: { status: "unavailable" },
+      exit: { status: "unavailable" },
+      close: { status: "unavailable" },
+    },
   };
   const finalized = finalizeQualificationRunArtifacts({
     runDirectory: runArtifactDirectory,
     workspaceRoot: monorepoRoot,
     knownSecrets: [strapiToken, stateToken].filter(Boolean),
-    stdoutChunks: retainedStdoutChunks,
-    stderrChunks: retainedStderrChunks,
+    streamArtifacts: qualificationStreamArtifacts,
     analyticsLedger: {
       schemaVersion: "explorers-public-analytics-ledger/v1",
       status: "unavailable",
@@ -382,29 +382,35 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
   });
   return { ...finalized, exitCode: qualificationExitCode };
 }
-function finishQualificationFailure({
+let failureFinalizationPromise;
+async function finishQualificationFailure({
   message,
   exitCode = 4,
   stage,
   cleanupWhenTeardownSucceeds = "not-required-safe",
   executionOutcome,
 }) {
-  const teardownStatus = stopFixture();
-  const cleanup = teardownStatus === 0 ? cleanupWhenTeardownSucceeds : "teardown-failed";
-  writePublicStderr(message);
-  const report = { ...baseReport, result: "failed", cleanup };
-  writePublicStdout(`${JSON.stringify(report)}\n`);
-  let finalized;
-  try {
-    finalized = finalizeCurrentQualification({ report, executionOutcome, exitCode, stage });
-  } catch {
-    process.stderr.write("Live public Music E2E artifact finalization failed; details redacted.\n");
-    process.exit(5);
+  if (!failureFinalizationPromise) {
+    failureFinalizationPromise = (async () => {
+      const teardownStatus = await stopFixture();
+      const cleanup = teardownStatus === 0 ? cleanupWhenTeardownSucceeds : "teardown-failed";
+      writePublicStderr(message);
+      const report = { ...baseReport, result: "failed", cleanup };
+      writePublicStdout(`${JSON.stringify(report)}\n`);
+      let finalized;
+      try {
+        finalized = finalizeCurrentQualification({ report, executionOutcome, exitCode, stage });
+      } catch {
+        process.stderr.write("Live public Music E2E artifact finalization failed; details redacted.\n");
+        process.exit(5);
+      }
+      process.exit(finalized.exitCode);
+    })();
   }
-  process.exit(finalized.exitCode);
+  return failureFinalizationPromise;
 }
 if (!npmExecPath) {
-  finishQualificationFailure({
+  await finishQualificationFailure({
     message: "Live public Music E2E requires invocation through the documented npm script.\n",
     stage: "invocation-refused",
   });
@@ -412,23 +418,38 @@ if (!npmExecPath) {
 if (mode.lane === "live") {
   fixtureLifecycleAttempted = true;
   const authorityBootstrapStatus = runLifecycleCommand("fixture-bootstrap");
-  if (authorityBootstrapStatus !== 0) finishQualificationFailure({
+  if (authorityBootstrapStatus !== 0) await finishQualificationFailure({
     message: "Live public Music E2E fixture authority bootstrap failed; details redacted.\n",
     stage: "fixture-bootstrap-failed",
   });
   const fixtureUpStatus = runLifecycleCommand("fixture-up");
-  if (fixtureUpStatus !== 0) finishQualificationFailure({
+  if (fixtureUpStatus !== 0) await finishQualificationFailure({
     message: "Live public Music E2E fixture startup failed; details redacted.\n",
     stage: "fixture-startup-failed",
   });
   stateToken = randomBytes(32).toString("base64url");
-  stateService = spawn(process.execPath, ["tunes/scripts/music-e2e-state-service.mjs"], {
-    cwd: monorepoRoot,
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, MUSIC_E2E_STATE_TOKEN: stateToken },
-  });
-  stateService.stdout.on("data", (chunk) => capturePrivateStateServiceOutput("stdout", chunk));
-  stateService.stderr.on("data", (chunk) => capturePrivateStateServiceOutput("stderr", chunk));
+  try {
+    const stateService = spawn(process.execPath, ["tunes/scripts/music-e2e-state-service.mjs"], {
+      cwd: monorepoRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, MUSIC_E2E_STATE_TOKEN: stateToken },
+      windowsHide: true,
+    });
+    stateServiceGuard = createMusicFixtureStateServiceGuard({
+      child: stateService,
+      onFailure: ({ reason }) => finishQualificationFailure({
+        message: "Live public Music E2E state service terminated unexpectedly; details redacted.\n",
+        exitCode: 5,
+        stage: reason === "state-service-error" ? "state-service-error" : "state-service-exit",
+      }),
+    });
+  } catch {
+    await finishQualificationFailure({
+      message: "Live public Music E2E state service failed to spawn; details redacted.\n",
+      exitCode: 5,
+      stage: "state-service-error",
+    });
+  }
   for (const healthUrl of healthUrls) {
     if (healthUrl.startsWith(stateServiceUrl)) continue; // polled below with bounded startup retries
     let response;
@@ -444,13 +465,13 @@ if (mode.lane === "live") {
       }
       response = await fetch(healthUrl, { headers: healthUrl.startsWith(stateServiceUrl) ? { Authorization: `Bearer ${stateToken}` } : {}, signal: AbortSignal.timeout(5_000) });
     } catch (error) {
-      finishQualificationFailure({
+      await finishQualificationFailure({
         message: `Live public Music E2E health check failed for ${new URL(healthUrl).origin}: ${error instanceof Error ? error.message : "unavailable"}\n`,
         stage: "service-health-failed",
       });
     }
     if (!response.ok) {
-      finishQualificationFailure({
+      await finishQualificationFailure({
         message: `Live public Music E2E health check returned ${response.status} for ${new URL(healthUrl).origin}.\n`,
         stage: "service-health-failed",
       });
@@ -465,7 +486,7 @@ if (mode.lane === "live") {
     } catch { /* service is still starting */ }
   }
   if (!stateReady) {
-    finishQualificationFailure({
+    await finishQualificationFailure({
       message: "Live public Music E2E state service failed its loopback health check.\n",
       stage: "state-service-health-failed",
     });
@@ -480,7 +501,7 @@ if (mode.lane === "live") {
         || identity.username !== username || identity.documentId !== userDocumentId
         || identity.accounts?.[0]?.documentId !== accountDocumentId) throw new Error("fixture projected a different identity");
   } catch (error) {
-    finishQualificationFailure({
+    await finishQualificationFailure({
       message: `Live public Music E2E identity readiness failed: ${error instanceof Error ? error.message : "unavailable"}\n`,
       stage: "identity-readiness-failed",
     });
@@ -492,7 +513,7 @@ if (mode.lane === "live") {
     if (!snapshotResponse.ok) throw new Error("snapshot response was not successful");
     initialSnapshot = await snapshotResponse.json();
   } catch {
-    finishQualificationFailure({
+    await finishQualificationFailure({
       message: "Live public Music E2E preflight refused: initial full-state snapshot failed.\n",
       stage: "snapshot-preflight-stopped",
       cleanupWhenTeardownSucceeds: "evidence-missing",
@@ -598,6 +619,7 @@ if (mode.lane === "live") {
     writeStdout: writePublicStdout,
     writeStderr: writePublicStderr,
   });
+  if (failureFinalizationPromise) await failureFinalizationPromise;
   let finalized;
   try {
     finalized = finalizeCurrentQualification({

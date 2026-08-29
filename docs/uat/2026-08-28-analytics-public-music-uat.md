@@ -84,8 +84,14 @@ From repository-relative cwd `explorers-earth`, each runner invocation allocates
 Every complete run contains these required relative paths:
 
 ```text
-logs/stdout.log
-logs/stderr.log
+logs/fixture-bootstrap.stdout.log
+logs/fixture-bootstrap.stderr.log
+logs/fixture-up.stdout.log
+logs/fixture-up.stderr.log
+logs/fixture-down.stdout.log
+logs/fixture-down.stderr.log
+logs/state-service.stdout.log
+logs/state-service.stderr.log
 analytics-events.jsonl
 visual-trace-ledger.json
 docker-inspection.json
@@ -100,9 +106,9 @@ Any retained `visuals/*.(png|jpg|jpeg|webp)` or `traces/*.zip` named by `visual-
 
 `manifest.json` is canonical JSON and lists every required artifact except itself and the sidecar as an exact `{role,path,bytes,sha256}` entry. `manifest.sha256` is the self-reference terminus: exactly one lowercase 64-hex SHA-256 plus newline, with no path or other data. The verifier rejects a missing file, an unlisted file/directory, an extra/duplicate/reordered role or path, unsafe path, sidecar mismatch, non-canonical manifest, byte mismatch, or artifact hash mismatch.
 
-The retained stdout/stderr logs are bounded, path-normalized, and secret-redacted. Raw Playwright JSON, output directories, auth files, bearer values, capability values, absolute workspace paths, and unbounded child output are private inputs and must be deleted before manifest creation.
+The eight per-source stdout/stderr files are the authoritative stream evidence. Each file is independently bounded, path-normalized, and secret-redacted; no lossy aggregate log is used to claim completeness. `evidence.json` carries one exact typed record for every declared source/stream with its status, raw observed byte count, retained byte count, and truncation state. The verifier rejects a missing, extra, reordered, duplicated, or metadata-mismatched stream record even if an attacker rebuilds the manifest and sidecar. Raw Playwright JSON, output directories, auth files, bearer values, capability values, absolute workspace paths, and unbounded child output are private inputs and must be deleted before manifest creation.
 
-Live fixture `bootstrap`, `up --detach --wait`, and exact `down` never inherit child streams. Each command captures a bounded private input, retains only sanitized stdout/stderr, and adds a typed lifecycle record with its fixed logical argv, normalized cwd, exit status, termination class, retained byte counts, and truncation or unavailable state. The loopback state-service streams are likewise piped into bounded private capture before the common log sanitizer; raw child output is never sent directly to the invoking terminal.
+Live fixture `bootstrap`, `up --detach --wait`, and exact `down` never inherit child streams. Each command captures bounded private stdout/stderr, writes the two corresponding independently bounded sanitized stream artifacts, and adds a typed lifecycle record with its fixed logical argv, normalized cwd, exit status, termination class, observed and retained byte counts, and truncation or unavailable state. The loopback state service installs `error`, `exit`, and `close` listeners immediately after spawn and captures its two streams the same way. Spawn error and unexpected terminal-event races route through one idempotent failure finalizer. Shutdown is successful only after an attested terminal `close`: code 0 without a signal, or code `null` with the expected `SIGKILL`; signal acceptance alone is insufficient. A bounded condition/event wait records timeout, nonzero, inconsistent, or unknown termination as cleanup failure while later exact down, Docker inspection, and artifact finalization still run. Raw child output is never sent directly to the invoking terminal.
 
 Once live bootstrap is attempted, every exit path attempts the exact fixture `down` independently of private artifact deletion and state-service shutdown. Each private file/directory removal continues after another removal fails. A live exit is forced to code 5 unless cleanup is both classified `restored` or `not-required-safe` and the exact Docker/auth inspection below verifies no labeled containers, labeled volumes, or private auth artifacts. A down failure, unavailable Docker inspection, residue, private-artifact presence, or any other unverified cleanup classification remains explicit evidence and cannot preserve an ordinary execution exit.
 

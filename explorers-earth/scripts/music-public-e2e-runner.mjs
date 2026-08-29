@@ -84,7 +84,7 @@ export async function runMusicFixtureOrchestration({
     : (executionOutcome ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed : legacyEvidenceVerified);
   let cleanup = initialHash && evidenceVerified && !evidenceParseFailed ? "restored" : (initialHash ? "evidence-missing" : "restore-failed");
   let teardownStatus = 1;
-  try { teardownStatus = stopMusicFixture(teardown); } catch { teardownStatus = 1; }
+  try { teardownStatus = await stopMusicFixture(teardown); } catch { teardownStatus = 1; }
   if (teardownStatus !== 0) cleanup = "teardown-failed";
 
   const restoreHashes = [initialHash, ...parsedEvidence.map(evidenceHash)]

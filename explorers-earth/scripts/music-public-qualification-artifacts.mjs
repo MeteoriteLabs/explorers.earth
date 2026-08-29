@@ -44,9 +44,19 @@ const DOCKER_INSPECTION_COMMANDS = Object.freeze({
   ]),
 });
 
+export const LIVE_QUALIFICATION_STREAM_ARTIFACTS = Object.freeze([
+  Object.freeze({ role: "fixture-bootstrap-stdout", path: "logs/fixture-bootstrap.stdout.log", source: "fixture-bootstrap", stream: "stdout" }),
+  Object.freeze({ role: "fixture-bootstrap-stderr", path: "logs/fixture-bootstrap.stderr.log", source: "fixture-bootstrap", stream: "stderr" }),
+  Object.freeze({ role: "fixture-up-stdout", path: "logs/fixture-up.stdout.log", source: "fixture-up", stream: "stdout" }),
+  Object.freeze({ role: "fixture-up-stderr", path: "logs/fixture-up.stderr.log", source: "fixture-up", stream: "stderr" }),
+  Object.freeze({ role: "fixture-down-stdout", path: "logs/fixture-down.stdout.log", source: "fixture-down", stream: "stdout" }),
+  Object.freeze({ role: "fixture-down-stderr", path: "logs/fixture-down.stderr.log", source: "fixture-down", stream: "stderr" }),
+  Object.freeze({ role: "state-service-stdout", path: "logs/state-service.stdout.log", source: "state-service", stream: "stdout" }),
+  Object.freeze({ role: "state-service-stderr", path: "logs/state-service.stderr.log", source: "state-service", stream: "stderr" }),
+]);
+
 export const LIVE_QUALIFICATION_REQUIRED_ARTIFACTS = Object.freeze([
-  Object.freeze({ role: "stdout", path: "logs/stdout.log" }),
-  Object.freeze({ role: "stderr", path: "logs/stderr.log" }),
+  ...LIVE_QUALIFICATION_STREAM_ARTIFACTS.map(({ role, path: relativePath }) => Object.freeze({ role, path: relativePath })),
   Object.freeze({ role: "analytics-ledger", path: "analytics-events.jsonl" }),
   Object.freeze({ role: "visual-trace-ledger", path: "visual-trace-ledger.json" }),
   Object.freeze({ role: "docker-inspection", path: "docker-inspection.json" }),
@@ -54,6 +64,17 @@ export const LIVE_QUALIFICATION_REQUIRED_ARTIFACTS = Object.freeze([
   Object.freeze({ role: "restoration-record", path: "restoration.json" }),
   Object.freeze({ role: "evidence", path: "evidence.json" }),
 ]);
+
+export function createUnavailableQualificationStreamArtifacts() {
+  return LIVE_QUALIFICATION_STREAM_ARTIFACTS.map(({ source, stream }) => ({
+    source,
+    stream,
+    status: "unavailable",
+    observedBytes: 0,
+    chunks: [],
+    truncated: false,
+  }));
+}
 
 function fail(message) {
   throw new Error(message);
@@ -156,6 +177,8 @@ export function captureQualificationLifecycleCommand({
   } catch { result = { status: null, signal: null, stdout: undefined, stderr: undefined, error: true }; }
   const termination = Number.isSafeInteger(result?.status) ? "exited"
     : (typeof result?.signal === "string" && result.signal.length > 0 ? "signaled" : "spawn-error");
+  const observedStream = (value) => value !== undefined && value !== null;
+  const observedBytes = (value) => observedStream(value) ? Buffer.byteLength(String(value)) : 0;
   const forceTruncated = Boolean(result?.error);
   const stdout = boundedSanitizedQualificationOutput(result?.stdout, {
     workspaceRoot, knownSecrets, forceTruncated,
@@ -164,17 +187,38 @@ export function captureQualificationLifecycleCommand({
     workspaceRoot, knownSecrets, forceTruncated,
   });
   const streamRecord = (observed, bounded) => ({
-    status: observed === undefined || observed === null ? "unavailable" : "captured",
-    retainedBytes: bounded.retainedBytes,
-    truncated: bounded.truncated,
+    status: observedStream(observed) ? "captured" : "unavailable",
+    observedBytes: observedBytes(observed),
+    retainedBytes: observedStream(observed) ? bounded.retainedBytes : 0,
+    truncated: observedStream(observed) ? bounded.truncated : false,
   });
   const exitCode = Number.isSafeInteger(result?.status) && result.status >= 0 && result.status <= 255
     ? result.status
     : null;
+  const stdoutRecord = streamRecord(result?.stdout, stdout);
+  const stderrRecord = streamRecord(result?.stderr, stderr);
   return {
     status: exitCode ?? 1,
-    stdout: stdout.text,
-    stderr: stderr.text,
+    stdout: stdoutRecord.status === "captured" ? stdout.text : "",
+    stderr: stderrRecord.status === "captured" ? stderr.text : "",
+    streamArtifacts: [
+      {
+        source: stage,
+        stream: "stdout",
+        status: stdoutRecord.status,
+        observedBytes: stdoutRecord.observedBytes,
+        chunks: stdoutRecord.status === "captured" ? [stdout.text] : [],
+        truncated: stdoutRecord.truncated,
+      },
+      {
+        source: stage,
+        stream: "stderr",
+        status: stderrRecord.status,
+        observedBytes: stderrRecord.observedBytes,
+        chunks: stderrRecord.status === "captured" ? [stderr.text] : [],
+        truncated: stderrRecord.truncated,
+      },
+    ],
     record: {
       schemaVersion: "explorers-public-lifecycle-command/v1",
       stage,
@@ -182,8 +226,8 @@ export function captureQualificationLifecycleCommand({
       cwd: retainedCwd,
       exitCode,
       termination,
-      stdout: streamRecord(result?.stdout, stdout),
-      stderr: streamRecord(result?.stderr, stderr),
+      stdout: stdoutRecord,
+      stderr: stderrRecord,
     },
   };
 }
@@ -195,9 +239,11 @@ export function writeSanitizedQualificationLog({
   workspaceRoot,
   knownSecrets = [],
   maximumBytes = 4_096,
+  forceTruncated = false,
 } = {}) {
   const runDirectory = requireGuardedRunDirectory(runDirectoryInput);
-  if (!Array.isArray(chunks) || !Number.isSafeInteger(maximumBytes) || maximumBytes < 64 || maximumBytes > 64 * 1024) {
+  if (!Array.isArray(chunks) || typeof forceTruncated !== "boolean"
+      || !Number.isSafeInteger(maximumBytes) || maximumBytes < 64 || maximumBytes > 64 * 1024) {
     fail("qualification log contract is invalid");
   }
   const joined = chunks.map((chunk) => String(chunk ?? "")).join("");
@@ -207,7 +253,7 @@ export function writeSanitizedQualificationLog({
     ? utf8Prefix(joined, MAX_SANITIZER_INPUT_BYTES - 256)
     : joined;
   const bounded = boundedSanitizedQualificationOutput(boundedInput, {
-    workspaceRoot, knownSecrets, maximumBytes, forceTruncated: inputTruncated,
+    workspaceRoot, knownSecrets, maximumBytes, forceTruncated: forceTruncated || inputTruncated,
   });
   const retained = bounded.text;
   const artifactPath = safeArtifactPath(runDirectory, relativePath);
@@ -661,12 +707,72 @@ function writeCanonicalStructuredArtifact({ runDirectory, relativePath, value, k
   catch { fail("qualification artifact already exists"); }
 }
 
+function validStateServiceTerminalRecord(value) {
+  if (isExactKeySet(value, ["status"])) return value.status === "unavailable";
+  return isExactKeySet(value, ["status", "code", "signal"])
+    && value.status === "observed"
+    && (value.code === null || (Number.isSafeInteger(value.code) && value.code >= 0 && value.code <= 255))
+    && (value.signal === null || (typeof value.signal === "string" && /^[A-Z][A-Z0-9]{0,31}$/.test(value.signal)));
+}
+
+function validStateServiceLifecycle(value) {
+  return isExactKeySet(value, ["schemaVersion", "error", "exit", "close"])
+    && value.schemaVersion === "explorers-public-state-service-lifecycle/v1"
+    && (isExactKeySet(value.error, ["status"])
+      && ["observed", "unavailable"].includes(value.error.status))
+    && validStateServiceTerminalRecord(value.exit)
+    && validStateServiceTerminalRecord(value.close);
+}
+
+function normalizedQualificationStreamInputs(streamArtifacts) {
+  if (!Array.isArray(streamArtifacts) || streamArtifacts.length !== LIVE_QUALIFICATION_STREAM_ARTIFACTS.length) {
+    fail("qualification stream artifact contract is invalid");
+  }
+  return LIVE_QUALIFICATION_STREAM_ARTIFACTS.map((definition, index) => {
+    const input = streamArtifacts[index];
+    if (!isExactKeySet(input, ["source", "stream", "status", "observedBytes", "chunks", "truncated"])
+        || input.source !== definition.source || input.stream !== definition.stream
+        || !["captured", "unavailable"].includes(input.status)
+        || !Number.isSafeInteger(input.observedBytes) || input.observedBytes < 0
+        || !Array.isArray(input.chunks)
+        || input.chunks.some((chunk) => typeof chunk !== "string" && !Buffer.isBuffer(chunk))
+        || typeof input.truncated !== "boolean") {
+      fail("qualification stream artifact contract is invalid");
+    }
+    const bufferedBytes = input.chunks.reduce((total, chunk) => total + Buffer.byteLength(chunk), 0);
+    if (bufferedBytes > MAX_SANITIZER_INPUT_BYTES || input.observedBytes < bufferedBytes
+        || (input.status === "unavailable"
+          && (input.observedBytes !== 0 || input.chunks.length !== 0 || input.truncated))) {
+      fail("qualification stream artifact contract is invalid");
+    }
+    return { definition, input };
+  });
+}
+
+function validQualificationStreamRecords(records) {
+  if (!Array.isArray(records) || records.length !== LIVE_QUALIFICATION_STREAM_ARTIFACTS.length) return false;
+  return records.every((record, index) => {
+    const definition = LIVE_QUALIFICATION_STREAM_ARTIFACTS[index];
+    return isExactKeySet(record, [
+      "schemaVersion", "role", "path", "source", "stream", "status", "observedBytes", "bytes", "truncated",
+    ])
+      && record.schemaVersion === "explorers-public-stream-artifact/v1"
+      && record.role === definition.role && record.path === definition.path
+      && record.source === definition.source && record.stream === definition.stream
+      && ["captured", "unavailable"].includes(record.status)
+      && Number.isSafeInteger(record.observedBytes) && record.observedBytes >= 0
+      && Number.isSafeInteger(record.bytes) && record.bytes >= 0 && record.bytes <= 4_096
+      && typeof record.truncated === "boolean"
+      && (record.status !== "unavailable"
+        || (record.observedBytes === 0 && record.bytes === 0 && record.truncated === false));
+  });
+}
+
 export function finalizeQualificationRunArtifacts({
   runDirectory: runDirectoryInput,
   workspaceRoot,
   knownSecrets = [],
-  stdoutChunks = [],
-  stderrChunks = [],
+  streamArtifacts,
   analyticsLedger,
   visualTraceLedger,
   dockerInspection,
@@ -677,9 +783,11 @@ export function finalizeQualificationRunArtifacts({
   const runDirectory = requireGuardedRunDirectory(runDirectoryInput);
   if (typeof workspaceRoot !== "string" || !path.isAbsolute(workspaceRoot)
       || !Array.isArray(knownSecrets) || knownSecrets.some((secret) => typeof secret !== "string")
-      || !Array.isArray(stdoutChunks) || !Array.isArray(stderrChunks)) {
+      || !evidence || typeof evidence !== "object" || Array.isArray(evidence)
+      || Object.hasOwn(evidence, "streams") || !validStateServiceLifecycle(evidence.stateServiceLifecycle)) {
     fail("qualification finalization contract is invalid");
   }
+  const normalizedStreams = normalizedQualificationStreamInputs(streamArtifacts);
   validateVisualTraceLedgerObject(runDirectory, visualTraceLedger);
   if ((!validObservedAnalyticsLedger(analyticsLedger) && !validUnavailableAnalyticsLedger(analyticsLedger))
       || !validDockerInspection(dockerInspection) || !validSkipLedger(skipLedger)
@@ -687,12 +795,32 @@ export function finalizeQualificationRunArtifacts({
   for (const value of [
     analyticsLedger, visualTraceLedger, dockerInspection, skipLedger, restorationRecord, evidence,
   ]) assertSafeStructuredArtifact(value, { knownSecrets, workspaceRoot });
-  writeSanitizedQualificationLog({
-    runDirectory, relativePath: "logs/stdout.log", chunks: stdoutChunks, workspaceRoot, knownSecrets,
+  const streamRecords = normalizedStreams.map(({ definition, input }) => {
+    const written = writeSanitizedQualificationLog({
+      runDirectory,
+      relativePath: definition.path,
+      chunks: input.chunks,
+      workspaceRoot,
+      knownSecrets,
+      forceTruncated: input.truncated || input.observedBytes > input.chunks.reduce(
+        (total, chunk) => total + Buffer.byteLength(chunk), 0,
+      ),
+    });
+    return {
+      schemaVersion: "explorers-public-stream-artifact/v1",
+      role: definition.role,
+      path: definition.path,
+      source: definition.source,
+      stream: definition.stream,
+      status: input.status,
+      observedBytes: input.observedBytes,
+      bytes: written.bytes,
+      truncated: input.status === "captured" ? written.truncated : false,
+    };
   });
-  writeSanitizedQualificationLog({
-    runDirectory, relativePath: "logs/stderr.log", chunks: stderrChunks, workspaceRoot, knownSecrets,
-  });
+  if (!validQualificationStreamRecords(streamRecords)) fail("qualification stream artifact contract is invalid");
+  const retainedEvidence = { ...evidence, streams: streamRecords };
+  assertSafeStructuredArtifact(retainedEvidence, { knownSecrets, workspaceRoot });
   writeQualificationAnalyticsLedger({ runDirectory, ledger: analyticsLedger });
   writeCanonicalStructuredArtifact({
     runDirectory, relativePath: "visual-trace-ledger.json", value: visualTraceLedger,
@@ -702,7 +830,7 @@ export function finalizeQualificationRunArtifacts({
     ["docker-inspection.json", dockerInspection],
     ["skip-reasons.json", skipLedger],
     ["restoration.json", restorationRecord],
-    ["evidence.json", evidence],
+    ["evidence.json", retainedEvidence],
   ]) writeCanonicalStructuredArtifact({ runDirectory, relativePath, value, knownSecrets, workspaceRoot });
   const created = createQualificationArtifactManifest({ runDirectory });
   const verified = verifyQualificationArtifactManifest({ runDirectory });
@@ -885,6 +1013,28 @@ function assertQualificationFileSet(runDirectory, requiredArtifacts) {
   }
 }
 
+function verifyQualificationStreamEvidence(runDirectory, manifestArtifacts) {
+  let evidence;
+  try {
+    const bytes = readBoundedRegularFile(safeArtifactPath(runDirectory, "evidence.json"), MAX_LEDGER_BYTES);
+    evidence = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail("qualification stream metadata contract is invalid");
+  }
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)
+      || !validStateServiceLifecycle(evidence.stateServiceLifecycle)
+      || !validQualificationStreamRecords(evidence.streams)) {
+    fail("qualification stream metadata contract is invalid");
+  }
+  const manifestByRole = new Map(manifestArtifacts.map((artifact) => [artifact.role, artifact]));
+  for (const record of evidence.streams) {
+    const artifact = manifestByRole.get(record.role);
+    if (!artifact || artifact.path !== record.path || artifact.bytes !== record.bytes) {
+      fail("qualification stream metadata contract is invalid");
+    }
+  }
+}
+
 export function verifyQualificationArtifactManifest({
   runDirectory: runDirectoryInput,
   requiredArtifacts,
@@ -940,6 +1090,7 @@ export function verifyQualificationArtifactManifest({
     if (current.sha256 !== artifact.sha256) fail("qualification artifact SHA-256 mismatch");
   }
   assertQualificationFileSet(runDirectory, exactRequiredArtifacts);
+  verifyQualificationStreamEvidence(runDirectory, manifest.artifacts);
   return { schemaVersion: SCHEMA_VERSION, files: manifest.artifacts.length, manifestSha256: observedHash };
 }
 

@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
+import { PassThrough } from "node:stream";
 import { pathToFileURL } from "node:url";
 import {
   MUSIC_MUTATION_CALLSITES,
@@ -94,9 +96,18 @@ const EXPECTED_LIVE_READ_ONLY = [
 const LIVE_MUTATION_TAG = "@explorers-live-mutation";
 const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
 
+const AUTHORITATIVE_QUALIFICATION_STREAMS = [
+  { role: "fixture-bootstrap-stdout", path: "logs/fixture-bootstrap.stdout.log", source: "fixture-bootstrap", stream: "stdout" },
+  { role: "fixture-bootstrap-stderr", path: "logs/fixture-bootstrap.stderr.log", source: "fixture-bootstrap", stream: "stderr" },
+  { role: "fixture-up-stdout", path: "logs/fixture-up.stdout.log", source: "fixture-up", stream: "stdout" },
+  { role: "fixture-up-stderr", path: "logs/fixture-up.stderr.log", source: "fixture-up", stream: "stderr" },
+  { role: "fixture-down-stdout", path: "logs/fixture-down.stdout.log", source: "fixture-down", stream: "stdout" },
+  { role: "fixture-down-stderr", path: "logs/fixture-down.stderr.log", source: "fixture-down", stream: "stderr" },
+  { role: "state-service-stdout", path: "logs/state-service.stdout.log", source: "state-service", stream: "stdout" },
+  { role: "state-service-stderr", path: "logs/state-service.stderr.log", source: "state-service", stream: "stderr" },
+] as const;
 const REQUIRED_QUALIFICATION_ARTIFACTS = [
-  { role: "stdout", path: "logs/stdout.log" },
-  { role: "stderr", path: "logs/stderr.log" },
+  ...AUTHORITATIVE_QUALIFICATION_STREAMS.map(({ role, path }) => ({ role, path })),
   { role: "analytics-ledger", path: "analytics-events.jsonl" },
   { role: "visual-trace-ledger", path: "visual-trace-ledger.json" },
   { role: "docker-inspection", path: "docker-inspection.json" },
@@ -111,11 +122,36 @@ const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
   traces: [],
 })}\n`;
 
+function seededQualificationEvidence() {
+  return `${JSON.stringify({
+    stateServiceLifecycle: {
+      schemaVersion: "explorers-public-state-service-lifecycle/v1",
+      error: { status: "unavailable" },
+      exit: { status: "unavailable" },
+      close: { status: "unavailable" },
+    },
+    streams: AUTHORITATIVE_QUALIFICATION_STREAMS.map((definition) => ({
+      schemaVersion: "explorers-public-stream-artifact/v1",
+      ...definition,
+      status: "captured",
+      observedBytes: 3,
+      bytes: 3,
+      truncated: false,
+    })),
+  }, null, 2)}\n`;
+}
+
+function seededQualificationArtifactContent(role: string) {
+  if (role === "visual-trace-ledger") return NONE_RETAINED_VISUAL_LEDGER;
+  if (role === "evidence") return seededQualificationEvidence();
+  return "abc";
+}
+
 function seedQualificationArtifacts(runDirectory: string) {
   for (const artifact of REQUIRED_QUALIFICATION_ARTIFACTS) {
     const artifactPath = join(runDirectory, ...artifact.path.split("/"));
     mkdirSync(resolve(artifactPath, ".."), { recursive: true });
-    writeFileSync(artifactPath, artifact.role === "visual-trace-ledger" ? NONE_RETAINED_VISUAL_LEDGER : "abc");
+    writeFileSync(artifactPath, seededQualificationArtifactContent(artifact.role));
   }
 }
 
@@ -1580,7 +1616,7 @@ test("developer fixture command prints a sanitized, versioned dry-run contract",
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
     ], { cwd: sandbox, encoding: "utf8", windowsHide: true });
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
-    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 8, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 14, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
     expect(JSON.parse(readFileSync(join(runDirectory, "analytics-events.jsonl"), "utf8"))).toEqual({
       schemaVersion: "explorers-public-analytics-ledger/v1",
       status: "unavailable",
@@ -1769,13 +1805,19 @@ for (const lifecycleCase of [
       expect(evidence.lifecycleCommands.every((record: Record<string, unknown>) => (
         JSON.stringify(record).includes(privateValue) === false
       ))).toBe(true);
-      const retainedStreams = `${readFileSync(join(runDirectory, "logs", "stdout.log"), "utf8")}\n${readFileSync(join(runDirectory, "logs", "stderr.log"), "utf8")}`;
+      const retainedStreamFiles = AUTHORITATIVE_QUALIFICATION_STREAMS.map((definition) => (
+        readFileSync(join(runDirectory, ...definition.path.split("/")), "utf8")
+      ));
+      const retainedStreams = retainedStreamFiles.join("\n");
       expect(retainedStreams).toContain("<redacted>");
       expect(retainedStreams).toContain("<path>");
       expect(retainedStreams).not.toContain(privateValue);
       expect(retainedStreams).not.toContain(sandbox);
-      expect(Buffer.byteLength(readFileSync(join(runDirectory, "logs", "stdout.log")))).toBeLessThanOrEqual(4_096);
-      expect(Buffer.byteLength(readFileSync(join(runDirectory, "logs", "stderr.log")))).toBeLessThanOrEqual(4_096);
+      expect(retainedStreamFiles.every((stream) => Buffer.byteLength(stream) <= 4_096)).toBe(true);
+      expect(evidence.streams).toHaveLength(8);
+      expect(evidence.streams.filter(({ status }: { status: string }) => status === "captured")
+        .map(({ source, stream }: { source: string; stream: string }) => `${source}:${stream}`))
+        .toEqual(lifecycleCase.expectedStages.flatMap((stage) => [`${stage}:stdout`, `${stage}:stderr`]));
 
       const verified = spawnSync(process.execPath, [
         resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
@@ -1786,6 +1828,60 @@ for (const lifecycleCase of [
     }
   });
 }
+
+test("fresh runner routes asynchronous state-service exit through one exact cleanup and finalizer", () => {
+  // Production break caught: an asynchronously failed state-service child had no
+  // terminal listener, so another readiness branch could finalize first and call
+  // an already-exited process safe without recording why it died.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-state-exit-contract-"));
+  try {
+    const runId = "state-service-exit-contract";
+    const { fakeNpmPath, fakeDockerHookPath, binDirectory } = writeLifecycleContractShims(sandbox);
+    const privateValue = "state-service-exit-private-value";
+    const environment = lifecycleFreshProcessEnvironment({
+      sandbox,
+      runId,
+      fakeNpmPath,
+      fakeDockerHookPath,
+      binDirectory,
+      scenario: "state-service-exit",
+      dockerMode: "clean",
+      privateValue,
+    });
+    environment.MUSIC_E2E_HEALTH_URLS = Array.from({ length: 5 }, () => "http://127.0.0.1:55174/health").join(",");
+    const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+      cwd: sandbox,
+      env: environment,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 10_000,
+    });
+    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
+    const lifecycleActions = readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/);
+
+    expect(result.status, `${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).toBe(5);
+    expect(lifecycleActions).toEqual(["bootstrap", "up", "down"]);
+    expect(lifecycleActions.filter((action) => action === "down")).toHaveLength(1);
+    expect(evidence).toMatchObject({
+      stage: "state-service-exit",
+      result: "failed",
+      cleanup: "teardown-failed",
+      exitCode: 5,
+      stateServiceLifecycle: {
+        schemaVersion: "explorers-public-state-service-lifecycle/v1",
+        error: { status: "unavailable" },
+        exit: { status: "observed", code: 1, signal: null },
+        close: { status: "observed", code: 1, signal: null },
+      },
+    });
+    expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).not.toContain(privateValue);
+    expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).not.toContain(sandbox);
+    expect(result.stderr).not.toMatch(/Unhandled 'error' event|ERR_UNHANDLED_ERROR/);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
 
 test("qualification run allocation refuses a caller-selected parent outside the exact guarded path", async () => {
   // Production break caught: an environment-controlled or mistaken parent can
@@ -1826,7 +1922,7 @@ test("qualification artifact CLI creates and verifies one canonical manifest wit
     expect(manifest).toEqual({
       schemaVersion: "explorers-public-qualification-artifacts/v1",
       artifacts: REQUIRED_QUALIFICATION_ARTIFACTS.map((artifact) => {
-        const content = artifact.role === "visual-trace-ledger" ? NONE_RETAINED_VISUAL_LEDGER : "abc";
+        const content = seededQualificationArtifactContent(artifact.role);
         return {
           ...artifact,
           bytes: Buffer.byteLength(content),
@@ -1838,7 +1934,7 @@ test("qualification artifact CLI creates and verifies one canonical manifest wit
     expect(readFileSync(join(runDirectory, "manifest.sha256"), "utf8")).toBe(`${expectedManifestHash}\n`);
     expect(JSON.parse(created.stdout)).toEqual({
       schemaVersion: "explorers-public-qualification-artifacts/v1",
-      files: 8,
+      files: 14,
       manifestSha256: expectedManifestHash,
     });
 
@@ -1898,7 +1994,7 @@ test("qualification visual/trace ledger makes every retained relative file manif
       cwd: process.cwd(), encoding: "utf8", windowsHide: true,
     });
     expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 10 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 16 });
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -1927,12 +2023,12 @@ const qualificationManifestTamperCases: Array<{
   {
     name: "a required artifact byte-count mismatch",
     expected: "qualification artifact byte count mismatch",
-    mutate: (runDirectory) => writeFileSync(join(runDirectory, "evidence.json"), "abcd"),
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "logs", "state-service.stderr.log"), "abcd"),
   },
   {
     name: "a same-size required artifact hash mismatch",
     expected: "qualification artifact SHA-256 mismatch",
-    mutate: (runDirectory) => writeFileSync(join(runDirectory, "evidence.json"), "abd"),
+    mutate: (runDirectory) => writeFileSync(join(runDirectory, "logs", "state-service.stderr.log"), "abd"),
   },
   {
     name: "an unmanifested private artifact",
@@ -2122,11 +2218,13 @@ test("fixture lifecycle commands retain only bounded sanitized typed output with
     termination: "exited",
     stdout: {
       status: "captured",
+      observedBytes: Buffer.byteLength(`workspace=${process.cwd()}\nBearer ${privateValue}\n${"bounded-stdout".repeat(600)}`),
       retainedBytes: Buffer.byteLength(captured.stdout),
       truncated: true,
     },
     stderr: {
       status: "captured",
+      observedBytes: Buffer.byteLength(`credential=${privateValue}\npath=${absoluteOutsidePath}\n`),
       retainedBytes: Buffer.byteLength(captured.stderr),
       truncated: false,
     },
@@ -2149,6 +2247,159 @@ test("fixture lifecycle commands retain only bounded sanitized typed output with
       windowsHide: true,
     },
   }]);
+});
+
+test("authoritative per-source streams preserve later up down and state output after an early stream fills its cap", async () => {
+  // Production break caught: the global 4 KiB aggregate could be filled by
+  // bootstrap, silently dropping later up/down/state bytes while typed command
+  // records still claimed those streams were captured.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-per-stream-"));
+  try {
+    const runId = "per-stream-finalization-run";
+    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    mkdirSync(runDirectory, { recursive: true });
+    const privateValue = "per-stream-private-token";
+    const values: Record<string, string> = {
+      "fixture-bootstrap:stdout": `bootstrap-start\n${"B".repeat(12_000)}\nbootstrap-end\n`,
+      "fixture-bootstrap:stderr": `Bearer ${privateValue}\n`,
+      "fixture-up:stdout": "late-up-stdout\n",
+      "fixture-up:stderr": "late-up-stderr\n",
+      "fixture-down:stdout": "late-down-stdout\n",
+      "fixture-down:stderr": "late-down-stderr\n",
+      "state-service:stdout": `late-state-stdout\n${"S".repeat(5_000)}\n`,
+      "state-service:stderr": "late-state-stderr path=/private/state/service.log\n",
+    };
+    const streamArtifacts = AUTHORITATIVE_QUALIFICATION_STREAMS.map(({ source, stream }) => {
+      const value = values[`${source}:${stream}`];
+      return {
+        source,
+        stream,
+        status: "captured",
+        observedBytes: Buffer.byteLength(value),
+        chunks: [value],
+        truncated: false,
+      };
+    });
+    const evidence = {
+      version: MUSIC_PUBLIC_FIXTURE_VERSION,
+      runId,
+      lane: "live",
+      result: "failed",
+      cleanup: "not-required-safe",
+      stateServiceLifecycle: {
+        schemaVersion: "explorers-public-state-service-lifecycle/v1",
+        error: { status: "unavailable" },
+        exit: { status: "observed", code: null, signal: "SIGKILL" },
+        close: { status: "observed", code: null, signal: "SIGKILL" },
+      },
+    };
+    const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+    const finalized = qualificationArtifacts.finalizeQualificationRunArtifacts({
+      runDirectory,
+      workspaceRoot: process.cwd(),
+      knownSecrets: [privateValue],
+      streamArtifacts,
+      analyticsLedger: {
+        schemaVersion: "explorers-public-analytics-ledger/v1",
+        status: "unavailable",
+        reason: "execution-stopped",
+        events: [],
+      },
+      visualTraceLedger: {
+        schemaVersion: "explorers-public-visual-trace-ledger/v1",
+        status: "none-retained",
+        visuals: [],
+        traces: [],
+      },
+      dockerInspection: {
+        schemaVersion: "explorers-public-docker-inspection/v1",
+        status: "observed",
+        cwd: "<repository>",
+        labels: {
+          "com.explorers.music.fixture": "true",
+          "com.explorers.music.project": "explorers-music-fixture",
+        },
+        commands: {
+          containers: [
+            "docker", "ps", "-aq",
+            "--filter", "label=com.explorers.music.fixture=true",
+            "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+          ],
+          volumes: [
+            "docker", "volume", "ls", "-q",
+            "--filter", "label=com.explorers.music.fixture=true",
+            "--filter", "label=com.explorers.music.project=explorers-music-fixture",
+          ],
+        },
+        exitCodes: { containers: 0, volumes: 0 },
+        containerMatches: [],
+        volumeMatches: [],
+        containersRemaining: 0,
+        volumesRemaining: 0,
+        authArtifacts: [
+          { path: "owner-auth.json", state: "absent" },
+          { path: "profile-storage-state.json", state: "absent" },
+        ],
+      },
+      skipLedger: {
+        schemaVersion: "explorers-public-skip-ledger/v1",
+        lane: "live",
+        execution: "execution-stopped",
+        totals: { total: 0, passed: 0, failed: 0, skipped: 0 },
+        reasons: [{ scope: "lane", reason: "execution-stopped" }],
+      },
+      restorationRecord: {
+        schemaVersion: "explorers-public-restoration/v1",
+        status: "unavailable",
+        finalRestore: null,
+        journeys: [],
+      },
+      evidence,
+    });
+
+    expect(finalized).toMatchObject({ files: 14, verified: true });
+    const retainedEvidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
+    expect(retainedEvidence.streams).toHaveLength(8);
+    for (const definition of AUTHORITATIVE_QUALIFICATION_STREAMS) {
+      const retained = readFileSync(join(runDirectory, ...definition.path.split("/")), "utf8");
+      const record = retainedEvidence.streams.find(({ role }: { role: string }) => role === definition.role);
+      expect(record).toMatchObject({
+        schemaVersion: "explorers-public-stream-artifact/v1",
+        ...definition,
+        status: "captured",
+        bytes: Buffer.byteLength(retained),
+        observedBytes: Buffer.byteLength(values[`${definition.source}:${definition.stream}`]),
+        truncated: Buffer.byteLength(values[`${definition.source}:${definition.stream}`]) > 4_096,
+      });
+      expect(Buffer.byteLength(retained)).toBeLessThanOrEqual(4_096);
+      expect(retained).not.toContain(privateValue);
+      expect(retained).not.toContain(sandbox);
+    }
+    expect(readFileSync(join(runDirectory, "logs", "fixture-up.stdout.log"), "utf8")).toContain("late-up-stdout");
+    expect(readFileSync(join(runDirectory, "logs", "fixture-down.stdout.log"), "utf8")).toContain("late-down-stdout");
+    expect(readFileSync(join(runDirectory, "logs", "state-service.stdout.log"), "utf8")).toContain("late-state-stdout");
+    expect(readFileSync(join(runDirectory, "logs", "state-service.stderr.log"), "utf8")).toContain("<path>");
+    expect(existsSync(join(runDirectory, "logs", "stdout.log"))).toBe(false);
+    expect(existsSync(join(runDirectory, "logs", "stderr.log"))).toBe(false);
+
+    retainedEvidence.streams.pop();
+    const tamperedEvidenceBytes = Buffer.from(`${JSON.stringify(retainedEvidence, null, 2)}\n`, "utf8");
+    writeFileSync(join(runDirectory, "evidence.json"), tamperedEvidenceBytes);
+    rewriteQualificationManifest(runDirectory, (manifest) => {
+      const evidenceArtifact = manifest.artifacts.find((artifact) => artifact.role === "evidence");
+      Object.assign(evidenceArtifact!, {
+        bytes: tamperedEvidenceBytes.length,
+        sha256: createHash("sha256").update(tamperedEvidenceBytes).digest("hex"),
+      });
+    });
+    const tamperedVerify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
+    ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
+    expect(tamperedVerify.status).toBe(1);
+    expect(tamperedVerify.stderr).toBe("qualification artifact error: qualification stream metadata contract is invalid\n");
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test("qualification analytics ledger retains only safe UTM and exactly-once observations", async () => {
@@ -2425,8 +2676,16 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       runDirectory,
       workspaceRoot: process.cwd(),
       knownSecrets: ["finalization-private-token"],
-      stdoutChunks: ["guarded run stopped before mutation callback\n"],
-      stderrChunks: ["access_token=finalization-private-token\n"],
+      streamArtifacts: AUTHORITATIVE_QUALIFICATION_STREAMS.map(({ source, stream }) => {
+        const value = source === "fixture-bootstrap" && stream === "stdout"
+          ? "guarded run stopped before mutation callback\n"
+          : (source === "fixture-bootstrap" && stream === "stderr"
+            ? "access_token=finalization-private-token\n"
+            : undefined);
+        return value === undefined
+          ? { source, stream, status: "unavailable", observedBytes: 0, chunks: [], truncated: false }
+          : { source, stream, status: "captured", observedBytes: Buffer.byteLength(value), chunks: [value], truncated: false };
+      }),
       analyticsLedger: {
         schemaVersion: "explorers-public-analytics-ledger/v1",
         status: "unavailable",
@@ -2491,16 +2750,23 @@ test("preflight-stopped qualification finalization writes every safe artifact an
         commit: "c".repeat(40),
         command: "npm run music:test:public-e2e",
         cwd: "explorers-earth",
+        stateServiceLifecycle: {
+          schemaVersion: "explorers-public-state-service-lifecycle/v1",
+          error: { status: "unavailable" },
+          exit: { status: "unavailable" },
+          close: { status: "unavailable" },
+        },
       },
     };
     const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
     let finalized: { files: number; manifestSha256: string; verified: boolean } | undefined;
     expect(() => { finalized = qualificationArtifacts.finalizeQualificationRunArtifacts(input); }).not.toThrow();
-    expect(finalized).toEqual({ files: 8, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
-    expect(readFileSync(join(runDirectory, "logs", "stdout.log"), "utf8"))
+    expect(finalized).toEqual({ files: 14, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
+    expect(readFileSync(join(runDirectory, "logs", "fixture-bootstrap.stdout.log"), "utf8"))
       .toBe("guarded run stopped before mutation callback\n");
-    expect(readFileSync(join(runDirectory, "logs", "stderr.log"), "utf8"))
+    expect(readFileSync(join(runDirectory, "logs", "fixture-bootstrap.stderr.log"), "utf8"))
       .toBe("access_token=<redacted>\n");
+    expect(readFileSync(join(runDirectory, "logs", "state-service.stdout.log"), "utf8")).toBe("");
     expect(JSON.parse(readFileSync(join(runDirectory, "docker-inspection.json"), "utf8")))
       .toEqual(input.dockerInspection);
     expect(JSON.parse(readFileSync(join(runDirectory, "skip-reasons.json"), "utf8")))
@@ -2514,7 +2780,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
     ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
-    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 8, manifestSha256: finalized!.manifestSha256 });
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 14, manifestSha256: finalized!.manifestSha256 });
 
     const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
     mkdirSync(unsafeRunDirectory);
@@ -2523,7 +2789,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       runDirectory: unsafeRunDirectory,
       evidence: { ...input.evidence, observedPath: "/private/build/output.log" },
     })).toThrow("qualification structured artifact is invalid");
-    expect(existsSync(join(unsafeRunDirectory, "logs", "stdout.log"))).toBe(false);
+    expect(existsSync(join(unsafeRunDirectory, "logs", "fixture-bootstrap.stdout.log"))).toBe(false);
     expect(existsSync(join(unsafeRunDirectory, "analytics-events.jsonl"))).toBe(false);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -2809,9 +3075,9 @@ for (const teardownFault of [
   });
 }
 
-test("teardown continues after an artifact existence check fails", () => {
+test("teardown continues after an artifact existence check fails", async () => {
   const calls: string[] = [];
-  const status = stopMusicFixture({
+  const status = await stopMusicFixture({
     artifactPaths: ["owner-auth", "profile-state"],
     exists: (file) => {
       calls.push(`exists:${file}`);
@@ -2832,38 +3098,188 @@ test("teardown continues after an artifact existence check fails", () => {
   expect(status).toBe(1);
 });
 
-test("state-service teardown proves an already stopped child or a successful force-stop signal", async () => {
-  // Production break caught: the runner ignored child.kill() returning false,
-  // so an OS-level stop refusal could still be classified as safe cleanup.
+type InjectedStateServiceChild = EventEmitter & {
+  stdout: PassThrough;
+  stderr: PassThrough;
+  exitCode: number | null;
+  signalCode: string | null;
+  kill: (signal: string) => boolean;
+};
+
+function injectedStateServiceChild(kill: (signal: string) => boolean): InjectedStateServiceChild {
+  return Object.assign(new EventEmitter(), {
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    exitCode: null as number | null,
+    signalCode: null as string | null,
+    kill,
+  });
+}
+
+test("state-service stop rejects signal acceptance without an attested terminal event", async () => {
+  // Production break caught: child.kill(true) proves only signal acceptance; the
+  // child can remain alive while cleanup is reported as verified.
   const cleanup = await import("../scripts/music-fixture-cleanup.mjs") as typeof import("../scripts/music-fixture-cleanup.mjs") & {
-    stopMusicFixtureStateService: (child?: {
-      exitCode: number | null;
-      signalCode: string | null;
-      kill: (signal: string) => boolean;
-    }) => void;
+    createMusicFixtureStateServiceGuard: (input: Record<string, unknown>) => {
+      stop: () => Promise<unknown>;
+      snapshot: () => Record<string, unknown>;
+    };
   };
-  expect(typeof cleanup.stopMusicFixtureStateService).toBe("function");
+  const signals: string[] = [];
+  const child = injectedStateServiceChild((signal) => { signals.push(signal); return true; });
+  const guard = cleanup.createMusicFixtureStateServiceGuard({
+    child,
+    stopTimeoutMs: 25,
+    onFailure: async () => undefined,
+  });
 
-  const stoppedSignals: string[] = [];
-  expect(() => cleanup.stopMusicFixtureStateService({
-    exitCode: 0,
-    signalCode: null,
-    kill: (signal) => { stoppedSignals.push(signal); return false; },
-  })).not.toThrow();
-  expect(stoppedSignals).toEqual([]);
+  await expect(guard.stop()).rejects.toThrow("state service stop was not attested before timeout");
+  expect(signals).toEqual(["SIGKILL"]);
+  expect(guard.snapshot()).toMatchObject({
+    lifecycle: {
+      schemaVersion: "explorers-public-state-service-lifecycle/v1",
+      error: { status: "unavailable" },
+      exit: { status: "unavailable" },
+      close: { status: "unavailable" },
+    },
+  });
+});
 
-  expect(() => cleanup.stopMusicFixtureStateService({
-    exitCode: null,
-    signalCode: null,
-    kill: (signal) => { stoppedSignals.push(signal); return true; },
-  })).not.toThrow();
-  expect(stoppedSignals).toEqual(["SIGKILL"]);
+test("state-service stop awaits a delayed expected SIGKILL exit and close", async () => {
+  const cleanup = await import("../scripts/music-fixture-cleanup.mjs") as typeof import("../scripts/music-fixture-cleanup.mjs") & {
+    createMusicFixtureStateServiceGuard: (input: Record<string, unknown>) => {
+      stop: () => Promise<unknown>;
+      snapshot: () => Record<string, unknown>;
+    };
+  };
+  const child: InjectedStateServiceChild = injectedStateServiceChild((signal) => {
+    queueMicrotask(() => {
+      child.signalCode = signal;
+      child.emit("exit", null, signal);
+      child.emit("close", null, signal);
+    });
+    return true;
+  });
+  const guard = cleanup.createMusicFixtureStateServiceGuard({
+    child,
+    stopTimeoutMs: 100,
+    onFailure: async () => { throw new Error("intentional stop must not finalize failure"); },
+  });
 
-  expect(() => cleanup.stopMusicFixtureStateService({
-    exitCode: null,
-    signalCode: null,
-    kill: () => false,
-  })).toThrow("state service did not accept the stop signal");
+  await expect(guard.stop()).resolves.toMatchObject({ status: "stopped" });
+  expect(guard.snapshot()).toMatchObject({
+    lifecycle: {
+      error: { status: "unavailable" },
+      exit: { status: "observed", code: null, signal: "SIGKILL" },
+      close: { status: "observed", code: null, signal: "SIGKILL" },
+    },
+  });
+});
+
+test("unexpected normal state-service exit is attested and routed through failure once", async () => {
+  const cleanup = await import("../scripts/music-fixture-cleanup.mjs") as typeof import("../scripts/music-fixture-cleanup.mjs") & {
+    createMusicFixtureStateServiceGuard: (input: Record<string, unknown>) => {
+      failure: Promise<unknown>;
+      stop: () => Promise<unknown>;
+      snapshot: () => Record<string, unknown>;
+    };
+  };
+  let failures = 0;
+  const child = injectedStateServiceChild(() => { throw new Error("already exited child must not be signaled"); });
+  const guard = cleanup.createMusicFixtureStateServiceGuard({
+    child,
+    stopTimeoutMs: 100,
+    onFailure: async () => { failures += 1; },
+  });
+  child.exitCode = 0;
+  child.emit("exit", 0, null);
+  child.emit("close", 0, null);
+
+  await guard.failure;
+  await expect(guard.stop()).resolves.toMatchObject({ status: "already-stopped" });
+  expect(failures).toBe(1);
+  expect(guard.snapshot()).toMatchObject({
+    lifecycle: {
+      exit: { status: "observed", code: 0, signal: null },
+      close: { status: "observed", code: 0, signal: null },
+    },
+  });
+});
+
+test("state-service error and close races invoke one failure finalizer without an unhandled error", async () => {
+  const cleanup = await import("../scripts/music-fixture-cleanup.mjs") as typeof import("../scripts/music-fixture-cleanup.mjs") & {
+    createMusicFixtureStateServiceGuard: (input: Record<string, unknown>) => {
+      failure: Promise<unknown>;
+      stop: () => Promise<unknown>;
+      snapshot: () => Record<string, unknown>;
+    };
+  };
+  const calls: string[] = [];
+  const child = injectedStateServiceChild(() => false);
+  const guard = cleanup.createMusicFixtureStateServiceGuard({
+    child,
+    stopTimeoutMs: 100,
+    onFailure: async () => {
+      calls.push("private-artifacts", "state-stop", "exact-down", "docker-inspection", "artifact-finalization");
+    },
+  });
+
+  child.emit("error", new Error("Bearer race-private-token"));
+  child.emit("close", 1, null);
+  child.emit("exit", 1, null);
+  await guard.failure;
+
+  expect(calls).toEqual(["private-artifacts", "state-stop", "exact-down", "docker-inspection", "artifact-finalization"]);
+  expect(guard.snapshot()).toMatchObject({
+    lifecycle: {
+      error: { status: "observed" },
+      exit: { status: "observed", code: 1, signal: null },
+      close: { status: "observed", code: 1, signal: null },
+    },
+  });
+  await expect(guard.stop()).rejects.toThrow(/state service .*failure|state service exited/i);
+  expect(JSON.stringify(guard.snapshot())).not.toContain("race-private-token");
+});
+
+test("fresh-process state-service spawn error is handled and finalizes cleanup once", () => {
+  const helperUrl = pathToFileURL(resolve("scripts/music-fixture-cleanup.mjs")).href;
+  const script = [
+    'import { spawn } from "node:child_process";',
+    `import { createMusicFixtureStateServiceGuard } from ${JSON.stringify(helperUrl)};`,
+    'const calls = [];',
+    'const child = spawn("missing-state-service-private-command-92841", [], { stdio: ["ignore", "pipe", "pipe"] });',
+    'let guard;',
+    'guard = createMusicFixtureStateServiceGuard({ child, stopTimeoutMs: 1000, onFailure: async () => {',
+    '  calls.push("private-artifacts", "state-stop");',
+    '  try { await guard.stop(); } catch { calls.push("state-stop-unverified"); }',
+    '  calls.push("exact-down", "docker-inspection", "artifact-finalization");',
+    '} });',
+    'await guard.failure;',
+    'process.stdout.write(JSON.stringify({ calls, snapshot: guard.snapshot() }));',
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    windowsHide: true,
+    timeout: 5_000,
+  });
+
+  expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  expect(result.stderr).toBe("");
+  const outcome = JSON.parse(result.stdout);
+  expect(outcome.calls).toEqual([
+    "private-artifacts",
+    "state-stop",
+    "state-stop-unverified",
+    "exact-down",
+    "docker-inspection",
+    "artifact-finalization",
+  ]);
+  expect(outcome.snapshot.lifecycle).toMatchObject({
+    error: { status: "observed" },
+    close: { status: "observed" },
+  });
+  expect(result.stdout).not.toContain("missing-state-service-private-command-92841");
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
