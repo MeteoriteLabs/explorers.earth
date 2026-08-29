@@ -2845,11 +2845,15 @@ test("live runner refuses before Playwright when any authority or five-service h
 test("the documented root public E2E command is the hard-gated live orchestration path", () => {
   const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
   const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
+  const testingGuide = readFileSync("../docs/testing.md", "utf8");
   expect(rootPackage.scripts["music:test:public-e2e"]).toContain("music:test:public-e2e");
   expect(clientPackage.scripts["music:test:public-e2e"]).toContain("music-public-e2e.mjs live");
   expect(clientPackage.scripts["music:test:public-fast"]).toContain("music-public-e2e.mjs fast");
   expect(clientPackage.scripts["music:test:public-pr"]).toContain("music-public-e2e.mjs pr");
   expect(clientPackage.scripts["music:fixture:public:verify"]).toContain("music-public-e2e.mjs verify");
+  expect(testingGuide).toContain("$env:MUSIC_E2E_USER_DOCUMENT_ID='e2e-public-music-local-user'");
+  expect(testingGuide).toContain("$env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:51337'");
+  expect(testingGuide).not.toContain("$env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:1337'");
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
   expect(runner).toContain("process.env.npm_execpath");
   expect(runner).not.toContain('process.platform === "win32" ? "npm.cmd"');
