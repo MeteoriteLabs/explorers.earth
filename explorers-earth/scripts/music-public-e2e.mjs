@@ -20,6 +20,12 @@ import {
   unavailableMusicPrebrowserQualification,
 } from "./music-public-prebrowser-qualification.mjs";
 import {
+  decodeMusicInitialSnapshotResponse,
+  musicInitialSnapshotRequestFailure,
+  readMusicInitialSnapshotHttpResponse,
+  unavailableMusicInitialSnapshotQualification,
+} from "./music-public-initial-snapshot.mjs";
+import {
   MUSIC_PUBLIC_LIVE_AUTHORITY_ARGS,
   MUSIC_PUBLIC_LIVE_ACKNOWLEDGEMENT,
   MUSIC_PUBLIC_LIVE_FIXTURE_VERSION,
@@ -153,6 +159,7 @@ const journeyOutcomeLedgerPath = path.join(runArtifactDirectory, "journey-outcom
 const mutationGuardPath = path.join(runArtifactDirectory, "mutation-guard.json");
 const mutationRecoveryPath = path.join(runArtifactDirectory, "mutation-recovery.private.jsonl");
 let fixtureAuthorityRecord = createUnavailableQualificationFixtureAuthority();
+let initialSnapshotQualificationRecord = unavailableMusicInitialSnapshotQualification();
 let prebrowserQualificationRecord = unavailableMusicPrebrowserQualification();
 let qualifierJwtFingerprint;
 
@@ -175,6 +182,7 @@ if (dryRun) {
     traces: [],
     gaps: ["qualification-not-run", "analytics-not-observed", "docker-inspection-not-run"],
     lifecycleCommands: [],
+    initialSnapshotQualification: initialSnapshotQualificationRecord,
     prebrowserQualification: prebrowserQualificationRecord,
     stateServiceLifecycle: {
       schemaVersion: "explorers-public-state-service-lifecycle/v1",
@@ -422,6 +430,7 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
     traces: [],
     gaps,
     lifecycleCommands: lifecycleCommandRecords,
+    initialSnapshotQualification: report.initialSnapshotQualification ?? initialSnapshotQualificationRecord,
     prebrowserQualification: report.prebrowserQualification ?? prebrowserQualificationRecord,
     stateServiceLifecycle: stateServiceGuard?.snapshot().lifecycle ?? {
       schemaVersion: "explorers-public-state-service-lifecycle/v1",
@@ -649,16 +658,19 @@ async function runLiveQualification() {
   process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
   try {
     const snapshotResponse = await fetch(`${stateServiceUrl}/snapshot`, { method: "POST", headers: { Authorization: `Bearer ${orchestrationStateToken}` }, signal: AbortSignal.timeout(60_000) });
-    if (!snapshotResponse.ok) throw new Error("snapshot response was not successful");
-    const snapshot = await snapshotResponse.json();
-    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)
-        || !snapshot.database || typeof snapshot.database !== "object" || Array.isArray(snapshot.database)
-        || typeof snapshot.database.dumpHash !== "string" || !/^[a-f0-9]{64}$/i.test(snapshot.database.dumpHash)) {
-      throw new Error("snapshot evidence was invalid");
-    }
-    initialSnapshot = snapshot;
+    const snapshotPayload = await readMusicInitialSnapshotHttpResponse(snapshotResponse);
+    const decoded = decodeMusicInitialSnapshotResponse({
+      status: snapshotPayload.status,
+      body: snapshotPayload.body,
+    });
+    initialSnapshotQualificationRecord = decoded.record;
+    if (!decoded.ok) throw new Error("initial snapshot qualification failed");
+    initialSnapshot = decoded.snapshot;
     qualificationCoordinator.markSnapshotReady();
-  } catch {
+  } catch (error) {
+    if (initialSnapshotQualificationRecord.status === "unavailable") {
+      initialSnapshotQualificationRecord = musicInitialSnapshotRequestFailure(error);
+    }
     const stateSnapshotFailureExitCode = await settleIfQualificationFailed();
     if (stateSnapshotFailureExitCode !== undefined) return stateSnapshotFailureExitCode;
     return finishQualificationFailure({

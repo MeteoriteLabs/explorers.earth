@@ -21,6 +21,7 @@ import {
   validateSanitizedJourneyOutcomeLedger,
 } from "./music-public-live-preflight.mjs";
 import { validateMusicPrebrowserQualificationRecord } from "./music-public-prebrowser-qualification.mjs";
+import { validateMusicInitialSnapshotQualificationRecord } from "./music-public-initial-snapshot.mjs";
 import { validateMusicMutationGuardRecord } from "../../tunes/scripts/music-e2e-mutation-guard.mjs";
 
 const SAFE_RUN_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -1023,6 +1024,7 @@ export function finalizeQualificationRunArtifacts({
       || !Array.isArray(knownSecrets) || knownSecrets.some((secret) => typeof secret !== "string")
       || !evidence || typeof evidence !== "object" || Array.isArray(evidence)
       || Object.hasOwn(evidence, "streams") || Object.hasOwn(evidence, "journeyOutcomes")
+      || !validateMusicInitialSnapshotQualificationRecord(evidence.initialSnapshotQualification)
       || !validateMusicPrebrowserQualificationRecord(evidence.prebrowserQualification)
       || !validStateServiceLifecycle(evidence.stateServiceLifecycle)) {
     fail("qualification finalization contract is invalid");
@@ -1286,6 +1288,7 @@ function verifyQualificationStreamEvidence(runDirectory, manifestArtifacts) {
   }
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)
       || !validStateServiceLifecycle(evidence.stateServiceLifecycle)
+      || !validateMusicInitialSnapshotQualificationRecord(evidence.initialSnapshotQualification)
       || !validateMusicPrebrowserQualificationRecord(evidence.prebrowserQualification)
       || !validQualificationStreamRecords(evidence.streams)) {
     fail("qualification stream metadata contract is invalid");

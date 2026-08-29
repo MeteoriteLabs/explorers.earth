@@ -31,6 +31,7 @@ export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
   "server/test/reconciliationRepository.integration.test.ts",
   "server/test/load/music-load-postgres.integration.test.ts",
   "server/test/music-e2e-state-restore.integration.test.ts",
+  "server/test/music-e2e-initial-capture.integration.test.ts",
 ] as const);
 
 const FIXTURE_PROJECT = "explorers-music-fixture";
@@ -455,6 +456,7 @@ function uatDatabaseEnvironment(
     MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1",
     MUSIC_C10_POSTGRES_TEST: "1",
     MUSIC_C11_STATE_RESTORE_POSTGRES_TEST: "1",
+    MUSIC_C12_INITIAL_CAPTURE_POSTGRES_TEST: "1",
   };
 }
 

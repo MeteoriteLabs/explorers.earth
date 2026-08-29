@@ -228,6 +228,32 @@ export function fixtureGraphqlResponse(input: {
   return defaultService.graphql(input);
 }
 
+export function createMusicFixtureRestRequestHandler(service: ReturnType<typeof createMusicFixtureService>) {
+  return (request: import("node:http").IncomingMessage, response: import("node:http").ServerResponse): boolean => {
+    const path = new URL(request.url ?? "/", "http://fixture").pathname;
+    if (path === "/graphql" || path === "/api/music-identities") return false;
+    let restBody = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
+      restBody += chunk;
+      if (Buffer.byteLength(restBody) > 64 * 1024) request.destroy();
+    });
+    request.on("end", () => {
+      let decoded: unknown;
+      if (restBody) { try { decoded = JSON.parse(restBody); } catch { decoded = undefined; } }
+      const result = service.response({
+        path,
+        method: request.method,
+        authorization: request.headers.authorization,
+        body: decoded,
+      });
+      response.writeHead(result.status, { "content-type": "application/json" });
+      response.end(JSON.stringify(result.body));
+    });
+    return true;
+  };
+}
+
 function argument(name: string): string | undefined { const index = process.argv.indexOf(name); return index < 0 ? undefined : process.argv[index + 1]; }
 
 if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server.ts")) {
@@ -239,6 +265,7 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server
     userDocumentId: process.env.MUSIC_E2E_USER_DOCUMENT_ID ?? "e2e-public-music-fixture-user",
     token: process.env.MUSIC_E2E_STRAPI_TOKEN ?? "fixture-read-only-token",
   });
+  const handleRestRequest = createMusicFixtureRestRequestHandler(runtimeService);
   createServer((request, response) => {
     const path = new URL(request.url ?? "/", "http://fixture").pathname;
     if (path === "/api/music-identities") {
@@ -251,19 +278,7 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server
       response.end(JSON.stringify(result.body));
       return;
     }
-    if (path !== "/graphql") {
-      let restBody = "";
-      request.setEncoding("utf8");
-      request.on("data", (chunk) => { restBody += chunk; if (restBody.length > 64 * 1024) request.destroy(); });
-      request.on("end", () => {
-        let decoded: unknown;
-        if (restBody) { try { decoded = JSON.parse(restBody); } catch { decoded = undefined; } }
-        const result = runtimeService.response({ path, method: request.method, authorization: request.headers.authorization, body: decoded });
-        response.writeHead(result.status, { "content-type": "application/json" });
-        response.end(JSON.stringify(result.body));
-      });
-      return;
-    }
+    if (handleRestRequest(request, response)) return;
     let body = "";
     request.setEncoding("utf8");
     request.on("data", (chunk) => {

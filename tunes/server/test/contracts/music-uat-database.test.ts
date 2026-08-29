@@ -241,6 +241,7 @@ describe("owned Task-4 UAT database lane", () => {
     expect(runnerSource).toContain("prepareFixtureMusicTokenSecret");
     expect(runnerSource).toContain("readSecureMusicSecretFile");
     expect(runnerSource).toContain("cleanupFixtureMusicTokenSecret");
+    expect(runnerSource).toContain('MUSIC_C12_INITIAL_CAPTURE_POSTGRES_TEST: "1"');
     expect(runnerSource).not.toContain("writeFileSync(passwordFile");
     expect(MUSIC_UAT_DATABASE_TEST_FILES).toEqual([
       "server/test/migrations/music-migration.integration.test.ts",
@@ -254,6 +255,7 @@ describe("owned Task-4 UAT database lane", () => {
       "server/test/reconciliationRepository.integration.test.ts",
       "server/test/load/music-load-postgres.integration.test.ts",
       "server/test/music-e2e-state-restore.integration.test.ts",
+      "server/test/music-e2e-initial-capture.integration.test.ts",
     ]);
     const restoreIntegration = readFileSync(resolve(
       repositoryRoot, "tunes/server/test/music-e2e-state-restore.integration.test.ts",
@@ -261,6 +263,14 @@ describe("owned Task-4 UAT database lane", () => {
     expect(restoreIntegration).toContain("MUSIC_C11_STATE_RESTORE_POSTGRES_TEST");
     expect(restoreIntegration).toContain("runMusicFixtureRestoreTransaction");
     expect(restoreIntegration).toContain("replay-failed-rolled-back");
+    const captureIntegration = readFileSync(resolve(
+      repositoryRoot, "tunes/server/test/music-e2e-initial-capture.integration.test.ts",
+    ), "utf8");
+    expect(captureIntegration).toContain("MUSIC_C12_INITIAL_CAPTURE_POSTGRES_TEST");
+    expect(captureIntegration).toContain("captureMusicFixtureState");
+    expect(captureIntegration).toContain("requestMusicFixturePrivateProfileSnapshot");
+    expect(captureIntegration).toMatch(/127\.0\.0\.1/);
+    expect(captureIntegration).not.toMatch(/console\.(?:log|error)|process\.(?:stdout|stderr)\.write/);
   });
 
   it("scopes the verified ten-second timeout to the exact owned database child command", () => {

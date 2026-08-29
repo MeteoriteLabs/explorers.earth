@@ -221,8 +221,41 @@ function failedPrebrowserQualification() {
   };
 }
 
+function unavailableInitialSnapshotQualification() {
+  return {
+    schemaVersion: "explorers-public-initial-snapshot/v1",
+    status: "unavailable",
+    stage: "not-run",
+    code: "not-run",
+    metadata: {
+      databaseHash: null,
+      profileHash: null,
+      identityRows: null,
+      profileRevision: null,
+      profileFieldCount: null,
+    },
+  };
+}
+
+function passedInitialSnapshotQualification() {
+  return {
+    schemaVersion: "explorers-public-initial-snapshot/v1",
+    status: "passed",
+    stage: "snapshot-store",
+    code: "none",
+    metadata: {
+      databaseHash: "a".repeat(64),
+      profileHash: "b".repeat(64),
+      identityRows: 0,
+      profileRevision: 0,
+      profileFieldCount: 2,
+    },
+  };
+}
+
 function seededQualificationEvidence() {
   return `${JSON.stringify({
+    initialSnapshotQualification: unavailableInitialSnapshotQualification(),
     prebrowserQualification: unavailablePrebrowserQualification(),
     journeyOutcomes: notRunJourneyOutcomeLedger(),
     mutationGuard: {
@@ -3127,6 +3160,7 @@ test("authoritative per-source streams preserve later up down and state output a
       lane: "live",
       result: "failed",
       cleanup: "not-required-safe",
+      initialSnapshotQualification: unavailableInitialSnapshotQualification(),
       prebrowserQualification: unavailablePrebrowserQualification(),
       stateServiceLifecycle: {
         schemaVersion: "explorers-public-state-service-lifecycle/v1",
@@ -3596,6 +3630,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
         commit: "c".repeat(40),
         command: "npm run music:test:public-e2e",
         cwd: "explorers-earth",
+        initialSnapshotQualification: unavailableInitialSnapshotQualification(),
         prebrowserQualification: unavailablePrebrowserQualification(),
         stateServiceLifecycle: {
           schemaVersion: "explorers-public-state-service-lifecycle/v1",
@@ -3977,13 +4012,14 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(runner).toMatch(/const finalized = await qualificationCoordinator\.runFinalization[\s\S]+return finalized\.exitCode/);
   expect(runner).toContain("process.exit(await runLiveQualification())");
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
+  const stateCapture = readFileSync("../tunes/scripts/music-e2e-state-capture.mjs", "utf8");
   const stateRestore = readFileSync("../tunes/scripts/music-e2e-state-restore.mjs", "utf8");
   expect(runner).toContain("music-e2e-state-service.mjs");
   expect(stateService).toContain('"pg_dump"');
   expect(stateRestore).toContain('"psql"');
   expect(stateService).toContain("MUSIC_E2E_STRAPI_TOKEN");
   expect(stateService).toContain("fixture profile restoration failed");
-  expect(stateService).toContain("profileHash: profileState.stateHash");
+  expect(stateCapture).toContain("profileHash: profileState.stateHash");
   expect(stateService).not.toContain("domainHashes");
   expect(stateService).not.toContain("domainHash(");
   expect(stateService).not.toContain("MUSIC_E2E_FULL_SNAPSHOT_URL");
@@ -4720,7 +4756,11 @@ test("fresh live runner lets verified restoration finish before a state-service 
       'let terminalEmitted = false;',
       'global.fetch = async (input) => {',
       '  const url = String(input);',
-      '  if (url.endsWith("/snapshot")) return { ok: true, status: 200, async json() { append("snapshot-complete"); return { database: { dumpHash: "b".repeat(64) } }; } };',
+      '  if (url.endsWith("/snapshot")) {',
+      '    const namespace = process.env.MUSIC_E2E_ACCOUNT_USERNAME.replace(/-owner$/, "");',
+      '    const snapshot = { version: "music-live-account-snapshot/v1", snapshotId: "phase-owner-snapshot", publication: { coveredByDatabaseDump: true }, guestControls: { coveredByDatabaseDump: true }, queue: { coveredByDatabaseDump: true }, playlists: { coveredByDatabaseDump: true }, requests: { coveredByDatabaseDump: true }, profile: { accountDocumentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID, publicMusic: false, profileRevision: 0, profileHash: "c".repeat(64), fieldCount: 2 }, database: { namespace, dumpHash: "b".repeat(64), identityRows: 0 } };',
+      '    return { ok: true, status: 200, headers: { get() { return null; } }, async text() { append("snapshot-complete"); return JSON.stringify(snapshot); } };',
+      '  }',
       '  if (url.endsWith("/restore-final")) {',
       '    append("restore-start");',
       '    if (!terminalEmitted) { terminalEmitted = true; child.exitCode = 1; child.emit("error", new Error("Bearer fresh-phase-private")); child.emit("exit", 1, null); child.stdout.end(); child.stderr.end(); child.emit("close", 1, null); }',
@@ -4760,12 +4800,15 @@ test("fresh live runner lets verified restoration finish before a state-service 
     const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
 
     expect(result.status, `${result.stdout}\n${result.stderr}\n${JSON.stringify({ phaseEntries, evidence })}`).toBe(1);
-    expect(phaseEntries.filter((entry) => entry === "restore-start")).toHaveLength(1);
+    // The qualifier completes its baseline restore; outer recovery still
+    // attempts the unconditional final restore after the injected service
+    // failure, even though teardown can close that second response.
+    expect(phaseEntries.filter((entry) => entry === "restore-start")).toHaveLength(2);
     expect(phaseEntries.filter((entry) => entry === "restore-complete")).toHaveLength(1);
     expect(phaseEntries.filter((entry) => entry === "down")).toHaveLength(1);
     expect(phaseEntries.filter((entry) => entry.startsWith("exit:"))).toEqual(["exit:5"]);
     expect(phaseEntries.indexOf("snapshot-complete")).toBeLessThan(phaseEntries.indexOf("restore-start"));
-    expect(phaseEntries.indexOf("restore-complete")).toBeLessThan(phaseEntries.indexOf("down"));
+    expect(phaseEntries.lastIndexOf("restore-complete")).toBeLessThan(phaseEntries.indexOf("down"));
     expect(result.stdout.trim().split(/\r?\n/)).toHaveLength(1);
     expect(evidence).toMatchObject({ result: "failed", cleanup: "teardown-failed", exitCode: 5 });
     expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).not.toContain("fresh-phase-private");
@@ -5760,14 +5803,15 @@ test("canonical state snapshots require safe populated identity and profile fiel
 
 test("state service proves populated identity/profile metadata and returns exact profile restore equality", () => {
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
-  expect(stateService).toContain("MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL");
-  expect(stateService).toMatch(/\["-v",\s*`fixture_user_document_id=/);
-  expect(stateService).toMatch(/\["-v",\s*`fixture_account_document_id=/);
-  expect(stateService).toMatch(/\["-v",\s*`fixture_username=/);
-  expect(stateService).toContain("identityRows");
-  expect(stateService).toContain("fieldCount");
+  const captureCore = readFileSync("../tunes/scripts/music-e2e-state-capture.mjs", "utf8");
+  expect(stateService).toContain("buildMusicFixtureIdentityCountPsqlQuery");
+  expect(stateService).toContain("query.variables.flatMap");
+  expect(captureCore).toContain("buildMusicFixtureIdentityCountPgQuery");
+  expect(captureCore).toContain("identityPredicates");
+  expect(captureCore).toContain("identityRows");
+  expect(captureCore).toContain("fieldCount");
   expect(stateService).toMatch(/return \{[\s\S]{0,320}beforeHash: restored\.beforeHash,[\s\S]{0,160}afterHash: restored\.afterHash,[\s\S]{0,160}profileHash:[\s\S]{0,160}profileRevision:/);
-  expect(stateService).not.toMatch(/MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL\s*=\s*`[^`]*\$\{/);
+  expect(captureCore).not.toMatch(/SELECT[^`]*\$\{(?:authority|namespace|username)/);
 });
 
 test("live runner binds qualification before collection and callback without persisting qualifier authority", () => {
@@ -5791,4 +5835,90 @@ test("artifact finalization requires a validated safe pre-browser qualification 
   const artifacts = readFileSync("scripts/music-public-qualification-artifacts.mjs", "utf8");
   expect(artifacts).toContain("validateMusicPrebrowserQualificationRecord");
   expect(artifacts).toMatch(/!validateMusicPrebrowserQualificationRecord\(evidence\.prebrowserQualification\)/);
+});
+
+test("initial snapshot decoding retains only exact fixed stage/code and bounded success metadata", async () => {
+  const contract = await import("../scripts/music-public-initial-snapshot.mjs").catch(() => null) as null | {
+    decodeMusicInitialSnapshotResponse(input: { status: number; body: unknown }): {
+      ok: boolean;
+      snapshot?: unknown;
+      record: ReturnType<typeof unavailableInitialSnapshotQualification>;
+    };
+    musicInitialSnapshotRequestFailure(error: unknown): ReturnType<typeof unavailableInitialSnapshotQualification>;
+    validateMusicInitialSnapshotQualificationRecord(value: unknown): boolean;
+  };
+  expect(contract).not.toBeNull();
+  if (!contract) return;
+  const snapshot = {
+    version: "music-live-account-snapshot/v1",
+    snapshotId: "initial-safe-snapshot",
+    publication: { coveredByDatabaseDump: true },
+    guestControls: { coveredByDatabaseDump: true },
+    queue: { coveredByDatabaseDump: true },
+    playlists: { coveredByDatabaseDump: true },
+    requests: { coveredByDatabaseDump: true },
+    profile: {
+      accountDocumentId: "e2e-public-music-state-account", publicMusic: false,
+      profileRevision: 0, profileHash: "b".repeat(64), fieldCount: 2,
+    },
+    database: { namespace: "e2e-public-music-state", dumpHash: "a".repeat(64), identityRows: 0 },
+  };
+  expect(contract.decodeMusicInitialSnapshotResponse({ status: 200, body: snapshot })).toEqual({
+    ok: true,
+    snapshot,
+    record: passedInitialSnapshotQualification(),
+  });
+
+  const serviceFailure = {
+    schemaVersion: "music-e2e-state-capture-failure/v1",
+    state: "failed",
+    stage: "identity-count-query",
+    code: "operation-failed",
+  };
+  expect(contract.decodeMusicInitialSnapshotResponse({ status: 500, body: serviceFailure })).toEqual({
+    ok: false,
+    record: {
+      ...unavailableInitialSnapshotQualification(),
+      status: "failed",
+      stage: "identity-count-query",
+      code: "operation-failed",
+    },
+  });
+  const hostileValue = "token=never-retain C:\\private\\capture.sql postgresql://owner:secret@127.0.0.1/db";
+  const malformed = contract.decodeMusicInitialSnapshotResponse({
+    status: 500,
+    body: { ...serviceFailure, debug: hostileValue },
+  });
+  expect(malformed).toEqual({
+    ok: false,
+    record: {
+      ...unavailableInitialSnapshotQualification(),
+      status: "failed",
+      stage: "snapshot-store",
+      code: "contract-invalid",
+    },
+  });
+  expect(JSON.stringify(malformed)).not.toContain("never-retain");
+  expect(contract.musicInitialSnapshotRequestFailure(Object.assign(new Error(hostileValue), { name: "TimeoutError" })))
+    .toEqual({
+      ...unavailableInitialSnapshotQualification(),
+      status: "failed",
+      stage: "snapshot-store",
+      code: "operation-timeout",
+    });
+  expect(contract.validateMusicInitialSnapshotQualificationRecord(malformed.record)).toBe(true);
+  expect(contract.validateMusicInitialSnapshotQualificationRecord({ ...malformed.record, path: hostileValue })).toBe(false);
+});
+
+test("live runner preserves safe initial-snapshot failure before qualifier and artifact validation", () => {
+  const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
+  const decode = runner.indexOf("decodeMusicInitialSnapshotResponse({");
+  const qualification = runner.indexOf("runMusicPrebrowserQualification({");
+  expect(decode).toBeGreaterThan(-1);
+  expect(qualification).toBeGreaterThan(decode);
+  expect(runner).toContain("initialSnapshotQualificationRecord");
+  expect(runner).toMatch(/initialSnapshotQualification:\s*(?:report\.initialSnapshotQualification \?\? )?initialSnapshotQualificationRecord/);
+  const artifacts = readFileSync("scripts/music-public-qualification-artifacts.mjs", "utf8");
+  expect(artifacts).toContain("validateMusicInitialSnapshotQualificationRecord");
+  expect(artifacts).toMatch(/!validateMusicInitialSnapshotQualificationRecord\(evidence\.initialSnapshotQualification\)/);
 });

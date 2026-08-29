@@ -1,10 +1,17 @@
 import { spawnSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createMusicMutationGuard } from "./music-e2e-mutation-guard.mjs";
 import {
+  buildMusicFixtureIdentityCountPsqlQuery,
+  captureMusicFixtureState,
+  hashMusicFixtureDump,
+  requestMusicFixturePrivateProfileSnapshot,
+  safeMusicFixtureCaptureFailure,
+} from "./music-e2e-state-capture.mjs";
+import {
   MUSIC_FIXTURE_DATA_DUMP_MAX_BYTES,
   attestMusicFixtureRestoreContainer,
+  buildMusicFixtureSchemaInventoryOperation,
   runMusicFixtureRestoreTransaction,
 } from "./music-e2e-state-restore.mjs";
 
@@ -26,13 +33,7 @@ const guard = createMusicMutationGuard({
 });
 const snapshots = new Map();
 let initialSnapshotId;
-const MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL = [
-  "SELECT count(*) FROM users",
-  "WHERE strapi_user_document_id = :'fixture_user_document_id'",
-  "AND strapi_account_document_id = :'fixture_account_document_id'",
-  "AND username = :'fixture_username'",
-  "AND identity_status = 'active';",
-].join(" ");
+const captureAuthority = Object.freeze({ namespace, username, accountDocumentId, userDocumentId });
 
 if (!Number.isInteger(port) || port < 1024 || port > 65535
     || !/^[A-Za-z0-9_-]{43,128}$/.test(journeyToken)
@@ -40,14 +41,10 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535
     || !/^e2e-public-music-[a-z0-9-]+-account$/.test(accountDocumentId)
     || !/^e2e-public-music-[a-z0-9-]+-owner$/.test(username)
     || userDocumentId !== `${namespace}-user` || accountDocumentId !== `${namespace}-account`
-    || !strapiToken || !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/.test(strapiOrigin)) {
+    || !/^[A-Za-z0-9_-]{43,128}$/.test(strapiToken)
+    || strapiOrigin !== "http://127.0.0.1:51337") {
   throw new Error("state service requires complete exclusive loopback fixture authority");
 }
-
-const normalizeDump = (dump) => dump.toString("utf8").split(/\r?\n/)
-  .filter((line) => !line.startsWith("--") && !line.startsWith("\\restrict") && !line.startsWith("\\unrestrict"))
-  .join("\n");
-const dumpHash = (dump) => createHash("sha256").update(normalizeDump(dump)).digest("hex");
 
 function inspectDatabaseContainer() {
   const result = spawnSync(dockerExecutable, ["inspect", "explorers-music-fixture-postgres-1"], {
@@ -58,6 +55,16 @@ function inspectDatabaseContainer() {
   try { parsed = JSON.parse(result.stdout); } catch { throw new Error("fixture restore target attestation failed"); }
   if (!Array.isArray(parsed) || parsed.length !== 1) throw new Error("fixture restore target attestation failed");
   return attestMusicFixtureRestoreContainer(parsed[0]);
+}
+
+function schemaInventory(containerId) {
+  const current = inspectDatabaseContainer();
+  if (current.containerId !== containerId) throw new Error("fixture restore target changed");
+  const operation = buildMusicFixtureSchemaInventoryOperation({ containerId });
+  const result = spawnSync(operation.file, operation.args, {
+    cwd: repositoryRoot, input: operation.input, windowsHide: true, maxBuffer: 64 * 1024,
+  });
+  if (result.status !== 0) throw new Error("fixture schema inventory inspection failed");
 }
 
 function databaseDump(containerId, dataOnly = false) {
@@ -80,13 +87,12 @@ function databaseDump(containerId, dataOnly = false) {
 function databaseIdentityRows(containerId) {
   const current = inspectDatabaseContainer();
   if (current.containerId !== containerId) throw new Error("fixture restore target changed");
+  const query = buildMusicFixtureIdentityCountPsqlQuery(captureAuthority);
   const result = spawnSync(dockerExecutable, [
     "exec", "-i", containerId, "psql", "-X", "-U", "music_migrator", "-d", "music_fixture",
     ...["-v", "ON_ERROR_STOP=1"],
-    ...["-v", `fixture_user_document_id=${userDocumentId}`],
-    ...["-v", `fixture_account_document_id=${accountDocumentId}`],
-    ...["-v", `fixture_username=${username}`],
-    "-Atc", MUSIC_QUALIFICATION_IDENTITY_ROWS_SQL,
+    ...query.variables.flatMap(({ name, value }) => ["-v", `${name}=${value}`]),
+    "-Atc", query.text,
   ], {
     cwd: repositoryRoot, encoding: "utf8", windowsHide: true, maxBuffer: 4 * 1024,
   });
@@ -102,50 +108,26 @@ async function json(url, options = {}) {
 }
 
 async function capture({ initial = false } = {}) {
-  const { containerId } = inspectDatabaseContainer();
-  const dump = databaseDump(containerId);
-  const dataDump = databaseDump(containerId, true);
-  const databaseHash = dumpHash(dump);
-  const identityRows = databaseIdentityRows(containerId);
-  const profileState = await json(`${strapiOrigin}/__music-fixture/profile-state/snapshot`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${strapiToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ namespace, username, accountDocumentId, userDocumentId }),
-  });
-  if (profileState?.version !== "music-fixture-profile-state/v1"
-      || !Number.isSafeInteger(profileState.revision)
-      || !/^[a-f0-9]{64}$/.test(String(profileState.stateHash))
-      || !profileState.snapshot || typeof profileState.snapshot !== "object") {
-    throw new Error("fixture profile snapshot failed");
-  }
-  const snapshotId = randomUUID();
-  const publicMusic = profileState.snapshot.account?.public_music === "Yes";
-  const fieldCount = profileState.snapshot.account && typeof profileState.snapshot.account === "object"
-    && !Array.isArray(profileState.snapshot.account)
-    ? Object.keys(profileState.snapshot.account).length
-    : 0;
-  if (!Number.isSafeInteger(fieldCount) || fieldCount < 1 || fieldCount > 128) {
-    throw new Error("fixture profile snapshot failed");
-  }
-  const snapshot = {
-    version: "music-live-account-snapshot/v1", snapshotId,
-    publication: { coveredByDatabaseDump: true }, guestControls: { coveredByDatabaseDump: true },
-    queue: { coveredByDatabaseDump: true }, playlists: { coveredByDatabaseDump: true },
-    requests: { coveredByDatabaseDump: true },
-    profile: {
-      accountDocumentId, publicMusic,
-      profileRevision: profileState.revision,
-      profileHash: profileState.stateHash,
-      fieldCount,
+  return await captureMusicFixtureState({
+    authority: captureAuthority,
+    initial,
+    adapters: {
+      containerAuthority: () => inspectDatabaseContainer(),
+      schemaInventory: ({ containerId }) => schemaInventory(containerId),
+      pgDump: ({ containerId, dataOnly }) => databaseDump(containerId, dataOnly),
+      identityCountQuery: ({ containerId }) => databaseIdentityRows(containerId),
+      profilePrivateFetch: () => requestMusicFixturePrivateProfileSnapshot({
+        origin: strapiOrigin,
+        token: strapiToken,
+        authority: captureAuthority,
+      }),
+      snapshotStore: ({ containerId, dataDump, profileSnapshot, snapshot, initial: storeInitial }) => {
+        if (storeInitial && initialSnapshotId !== undefined) throw new Error("initial fixture snapshot already exists");
+        snapshots.set(snapshot.snapshotId, { containerId, dataDump, profileSnapshot, snapshot });
+        if (storeInitial) initialSnapshotId = snapshot.snapshotId;
+      },
     },
-    database: { namespace, dumpHash: databaseHash, identityRows },
-  };
-  snapshots.set(snapshotId, { containerId, dataDump, profileSnapshot: profileState.snapshot, snapshot });
-  if (initial) {
-    if (initialSnapshotId !== undefined) throw new Error("initial fixture snapshot already exists");
-    initialSnapshotId = snapshotId;
-  }
-  return snapshot;
+  });
 }
 
 function block(reason, stage) {
@@ -164,7 +146,7 @@ async function restore(snapshot, { final = false } = {}) {
     containerId: current.containerId,
     dataDump: stored.dataDump,
     snapshotHash: stored.snapshot.database.dumpHash,
-    captureHash: () => dumpHash(databaseDump(current.containerId)),
+    captureHash: () => hashMusicFixtureDump(databaseDump(current.containerId)),
     execute: (operation) => spawnSync(operation.file, operation.args, {
       cwd: repositoryRoot, input: operation.input, windowsHide: true, maxBuffer: 4 * 1024 * 1024,
     }),
@@ -243,7 +225,9 @@ createServer(async (request, response) => {
       return respond(response, 200, block(payload?.reason, payload?.stage));
     }
     return respond(response, 404, { state: "refused", code: "route-invalid" });
-  } catch {
+  } catch (error) {
+    const captureFailure = safeMusicFixtureCaptureFailure(error);
+    if (captureFailure) return respond(response, 500, captureFailure);
     return respond(response, 500, { state: "failed", stage: "state-service", code: "operation-failed" });
   }
 }).listen(port, "127.0.0.1", () => process.stdout.write(`music-e2e-state ready http://127.0.0.1:${port}\n`));

@@ -253,11 +253,13 @@ describe("Music E2E transactional state restore", () => {
     // Production break caught: the state service retained the old dynamic
     // two-process TRUNCATE+replay even after the safe helper existed.
     const source = readFileSync(resolve("scripts/music-e2e-state-service.mjs"), "utf8");
+    const captureSource = readFileSync(resolve("scripts/music-e2e-state-capture.mjs"), "utf8");
     expect(source).toContain("attestMusicFixtureRestoreContainer");
     expect(source).toContain("runMusicFixtureRestoreTransaction");
     expect(source).toContain("createMusicMutationGuard");
     expect(source).toContain('"/restore-final"');
-    expect(source).toContain('/__music-fixture/profile-state/snapshot');
+    expect(source).toContain("requestMusicFixturePrivateProfileSnapshot");
+    expect(captureSource).toContain('/__music-fixture/profile-state/snapshot');
     expect(source).toContain('/__music-fixture/profile-state/restore');
     expect(source).toContain('profileHash');
     expect(source).toContain('profileRevision');

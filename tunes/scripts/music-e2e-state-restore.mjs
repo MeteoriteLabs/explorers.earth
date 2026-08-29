@@ -137,6 +137,20 @@ BEGIN
 END
 $music_restore_authority$;`;
 
+export function buildMusicFixtureSchemaInventoryOperation({ containerId } = {}) {
+  if (typeof containerId !== "string" || !/^[a-f0-9]{64}$/.test(containerId)) {
+    throw new Error("fixture schema inventory authority is invalid");
+  }
+  return Object.freeze({
+    file: dockerExecutable,
+    args: Object.freeze([
+      "exec", "-i", containerId,
+      "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "music_migrator", "-d", "music_fixture",
+    ]),
+    input: Buffer.from(`${authoritySql}\n`, "utf8"),
+  });
+}
+
 const disableReplayTriggersSql = replayTriggers.map(
   ({ table, name }) => `ALTER TABLE public.${quotedIdentifier(table)} DISABLE TRIGGER ${exactIdentifier(name)};`,
 ).join("\n");
