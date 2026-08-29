@@ -588,7 +588,7 @@ for (const control of [
                 ? guestPage.getByRole("heading", { name: /playlists/i })
                 : control === "allowRecentlyPlayedVisibility"
                   ? guestPage.getByRole("heading", { name: /recently played/i })
-                  : guestPage.getByRole("heading", { name: /queue/i });
+                  : guestPage.getByRole("region", { name: "Up next", exact: true });
           await expect(guestEffect.first(), `${control} exposes its seeded guest control`).toBeVisible();
         });
       } finally {

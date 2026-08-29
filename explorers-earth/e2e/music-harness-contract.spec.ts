@@ -5609,6 +5609,14 @@ test("live Music afterEach hooks are read-only and every mutation journey owns i
   expect(source.slice(0, source.indexOf("const permissionJourneyIds"))).toContain("return prepareLivePublicMusicJourney({");
 });
 
+test("live queue visibility targets the canonical public Up next region", () => {
+  const source = readFileSync("e2e/music-public-contract.spec.ts", "utf8");
+  const liveSource = source.slice(source.indexOf("const permissionJourneyIds"));
+
+  expect(liveSource).toContain('guestPage.getByRole("region", { name: "Up next", exact: true })');
+  expect(liveSource).not.toContain('guestPage.getByRole("heading", { name: /queue/i })');
+});
+
 test("live failure screenshots are best-effort local diagnostics", async () => {
   const events: string[] = [];
   const failingPage = {
