@@ -287,6 +287,8 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(clientPackage.scripts["music:test:public-pr"]).toContain("music-public-e2e.mjs pr");
   expect(clientPackage.scripts["music:fixture:public:verify"]).toContain("music-public-e2e.mjs verify");
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
+  expect(runner).toContain("process.env.npm_execpath");
+  expect(runner).not.toContain('process.platform === "win32" ? "npm.cmd"');
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
   expect(runner).toContain("music-e2e-state-service.mjs");
   expect(stateService).toContain('"pg_dump"');
@@ -316,6 +318,14 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(stateService).not.toContain("/api/playlists");
   expect(runner).toContain("MUSIC_E2E_AUTH_STATE_PATH");
   expect(runner).toContain("google-auth/callback?access_token=");
+  expect(runner).toContain("PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl");
+  expect(runner).toContain("E2E_PROFILE_LIVE_WRITES: \"1\"");
+  expect(runner).toContain("E2E_PROFILE_STORAGE_STATE: profileStorageStatePath");
+  expect(runner).toContain("E2E_PROFILE_USERNAME: username");
+  expect(runner).toContain('"--list"');
+  expect(runner).toContain("Live public Music E2E preflight refused");
+  expect(runner).toContain('fetch(`${stateServiceUrl}/snapshot`');
+  expect(runner).toContain('globalRestoreOk ? "evidence-missing" : "restore-failed"');
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
