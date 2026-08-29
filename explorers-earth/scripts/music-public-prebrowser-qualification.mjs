@@ -116,6 +116,7 @@ export function validateMusicPrebrowserQualificationRecord(value) {
         || (Number.isSafeInteger(value.profileRevisions[key]) && value.profileRevisions[key] >= 0))) {
     return false;
   }
+  if ((value.code === "public-flow-failed") !== (value.publicFlowFailure.stage !== "none")) return false;
   if (value.status === "unavailable") {
     return value.code === "not-run" && CHECK_KEYS.every((key) => value.checks[key] === false)
       && value.snapshotFailure.phase === "none"

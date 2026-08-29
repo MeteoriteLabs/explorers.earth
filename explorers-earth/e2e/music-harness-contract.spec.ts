@@ -6404,6 +6404,65 @@ test("pre-browser qualification records have one exact fixed safe schema and rej
   expect(validate({ ...failedPrebrowserQualification(), publicFlowSubstage: "hostile-private-value" })).toBe(false);
 });
 
+test("pre-browser qualification top codes exclusively own public-flow failure metadata", async () => {
+  // Production break caught: a non-public lifecycle failure can otherwise carry
+  // a syntactically valid owner substage and misattribute its fixed safe cause.
+  const contract = await loadPrebrowserQualificationContract();
+  const validate = contract.validateMusicPrebrowserQualificationRecord as undefined | ((value: unknown) => boolean);
+  expect(typeof validate).toBe("function");
+  if (!validate) return;
+
+  const nonPublicFailures = [
+    { name: "unexpected", code: "unexpected-failure" },
+    { name: "identity-ensure", code: "identity-ensure-failed" },
+    {
+      name: "populated-capture",
+      code: "populated-snapshot-failed",
+      snapshotFailure: { phase: "populated", stage: "identity-count-query", code: "operation-failed" },
+    },
+    { name: "populated-cardinality", code: "populated-identity-cardinality" },
+    { name: "rollback-profile", code: "rollback-probe-failed" },
+    { name: "phase-restore", code: "phase-restore-failed" },
+    {
+      name: "public-capture",
+      code: "populated-snapshot-failed",
+      snapshotFailure: { phase: "public", stage: "profile-private-fetch", code: "operation-failed" },
+    },
+    { name: "baseline-restore", code: "baseline-restore-failed" },
+    { name: "owner-retirement", code: "ephemeral-owner-not-retired" },
+    { name: "guard", code: "guard-not-clear" },
+  ] as const;
+
+  for (const scenario of nonPublicFailures) {
+    const safeRecord = {
+      ...failedPrebrowserQualification(),
+      code: scenario.code,
+      snapshotFailure: "snapshotFailure" in scenario
+        ? scenario.snapshotFailure
+        : { phase: "none", stage: "none", code: "none" },
+      publicFlowFailure: { stage: "none", code: "none" },
+      publicFlowSubstage: "none",
+    };
+    expect(validate(safeRecord), `${scenario.name}: safe fixed cause`).toBe(true);
+    for (const publicFlowSubstage of ["transition-response", "dashboard-response"] as const) {
+      expect(validate({
+        ...safeRecord,
+        publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+        publicFlowSubstage,
+      }), `${scenario.name}: hostile ${publicFlowSubstage}`).toBe(false);
+    }
+  }
+
+  expect(validate(failedPrebrowserQualification())).toBe(true);
+  for (const publicFlowSubstage of ["transition-response", "dashboard-response"] as const) {
+    expect(validate({
+      ...failedPrebrowserQualification(),
+      publicFlowFailure: { stage: "owner", code: "contract-invalid" },
+      publicFlowSubstage,
+    }), `valid owner ${publicFlowSubstage}`).toBe(true);
+  }
+});
+
 test("public qualification accepts only the exact profile, all counts, and every namespaced category fixture", async () => {
   const contract = await loadPrebrowserQualificationContract();
   const validate = contract.validateMusicQualificationPublicGraphql as undefined | ((input: {
