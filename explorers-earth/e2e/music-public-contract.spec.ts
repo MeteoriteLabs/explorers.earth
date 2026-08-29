@@ -6,6 +6,7 @@ import {
   musicOwnerCredentialFromAuthState,
   buildPairwisePermissionMatrix,
   musicLiveWriteSkipReason,
+  musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
   runAuthorizedMusicMutation,
   withRestoredMusicFixture,
@@ -13,8 +14,6 @@ import {
 } from "./setup/music";
 
 const liveTest = musicLiveTest;
-const fixtureStrapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN;
-if (!fixtureStrapiToken) throw new Error("MUSIC_E2E_STRAPI_TOKEN is required for the fixture callback");
 
 const fixtureOrigin = "http://localhost:55173";
 const liveSkipReason = musicLiveWriteSkipReason();
@@ -366,6 +365,7 @@ function publicationHeaders(credential: string): Record<string, string> {
 }
 
 async function authenticateOwner(page: Page): Promise<string> {
+  const fixtureStrapiToken = musicLiveStrapiTokenFromEnvironment();
   await page.goto(`/google-auth/callback?access_token=${encodeURIComponent(fixtureStrapiToken)}`);
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await page.goto("/recommendations/music");
@@ -386,6 +386,7 @@ test.beforeEach(async ({ page }) => {
   page.on("request", (request) => {
     const url = new URL(request.url());
     const authorization = request.headers().authorization;
+    const fixtureStrapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN;
     if (url.origin === fixtureOrigin
       && authorization?.startsWith("Bearer ")
       && authorization !== `Bearer ${fixtureStrapiToken}`

@@ -12,6 +12,7 @@ import {
   createCanonicalMusicFixtureAdapter,
   fixtureNamespace,
   normalizedSnapshotHash,
+  musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
   resetMusicRestoreBlockForContractTest,
   runAuthorizedMusicMutation,
@@ -19,6 +20,38 @@ import {
   withRestoredMusicFixture,
 } from "./setup/music";
 import playwrightConfig from "../playwright.config";
+
+test("clean PR-safe collection does not require live Music environment", () => {
+  const env = { ...process.env, PLAYWRIGHT_PR_SAFE: "true" };
+  for (const key of Object.keys(env)) if (key.startsWith("MUSIC_E2E_")) delete env[key];
+  const result = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--list", "--project=chromium-music-fixture", "e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts"], {
+    cwd: process.cwd(), encoding: "utf8", env,
+  });
+  expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  expect(result.stdout).toContain("Total:");
+});
+
+test("live callback token is required only after the complete authority tuple", () => {
+  const authority = {
+    PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
+    MUSIC_E2E_LIVE_WRITE: "true",
+    MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+    MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
+    MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-contract-owner",
+    MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-contract-account",
+    MUSIC_E2E_SERVICE_ORIGINS: "http://127.0.0.1:55173,http://127.0.0.1:55000",
+  };
+  expect(() => musicLiveStrapiTokenFromEnvironment(authority)).toThrow(/MUSIC_E2E_STRAPI_TOKEN/);
+  expect(musicLiveStrapiTokenFromEnvironment({ ...authority, MUSIC_E2E_STRAPI_TOKEN: "contract-token-0123456789" })).toBe("contract-token-0123456789");
+});
+
+test("Playwright and CI configuration do not inject or require a live callback token", () => {
+  const config = readFileSync("playwright.config.ts", "utf8");
+  const workflow = readFileSync("../.github/workflows/tunes.yml", "utf8");
+  expect(config).not.toContain("fixture-read-only-token");
+  expect(config).not.toContain("MUSIC_E2E_STRAPI_TOKEN ??=");
+  expect(workflow).not.toMatch(/MUSIC_E2E_STRAPI_TOKEN:\s*\$\{\{/);
+});
 
 test("PR-safe execution cannot acquire live-write authority", () => {
   expect(resolveMusicTestLane({ PLAYWRIGHT_PR_SAFE: "true", MUSIC_E2E_LIVE_WRITE: "true" })).toBe("pr-safe");
@@ -272,8 +305,10 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   for (const file of ["e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts"]) {
     const source = readFileSync(file, "utf8");
     expect(source).not.toContain("fixture-read-only-token");
-    expect(source).toContain("MUSIC_E2E_STRAPI_TOKEN");
+    expect(source).toContain("musicLiveStrapiTokenFromEnvironment");
   }
+  const liveFixture = readFileSync("e2e/setup/music.ts", "utf8");
+  expect(liveFixture).toContain("MUSIC_E2E_STRAPI_TOKEN");
   expect(runner).not.toContain("MUSIC_E2E_OWNER_CREDENTIAL");
   expect(runner).toMatch(/music-cli[\s\S]+bootstrap[\s\S]+music-cli[\s\S]+up/);
   expect(stateService).not.toContain("MUSIC_E2E_OWNER_CREDENTIAL");

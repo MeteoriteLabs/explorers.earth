@@ -4,6 +4,7 @@ import {
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
   musicLiveWriteSkipReason,
+  musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
   runAuthorizedMusicMutation,
   withRestoredMusicFixture,
@@ -13,8 +14,6 @@ import {
 const test = musicLiveTest;
 
 const fixtureOrigin = "http://localhost:55173";
-const fixtureStrapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN;
-if (!fixtureStrapiToken) throw new Error("MUSIC_E2E_STRAPI_TOKEN is required for the fixture callback");
 const liveSkipReason = musicLiveWriteSkipReason();
 test.skip(Boolean(liveSkipReason), liveSkipReason ?? "authorized live fixture");
 
@@ -165,6 +164,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
     if (path === "/api/users/me" || path === "/graphql") fixtureAuthRequests.push(path);
   });
 
+  const fixtureStrapiToken = musicLiveStrapiTokenFromEnvironment();
   await page.goto(`/google-auth/callback?access_token=${encodeURIComponent(fixtureStrapiToken)}`);
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await expect.poll(() => requests.filter(({ path }) => path === "/api/music/identity/ensure").length).toBe(1);
@@ -212,6 +212,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
 test("full owner workspace remains usable at a mobile viewport", async ({ page }, testInfo) => {
   const assertCleanJourney = monitorBrowserJourney(page);
   await page.setViewportSize({ width: 390, height: 844 });
+  const fixtureStrapiToken = musicLiveStrapiTokenFromEnvironment();
   await page.goto(`/google-auth/callback?access_token=${encodeURIComponent(fixtureStrapiToken)}`);
   await expect(page.getByText("Login successful! Redirecting...")).toBeVisible();
   await page.goto("/recommendations/music");

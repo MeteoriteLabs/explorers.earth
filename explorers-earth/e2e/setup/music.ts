@@ -146,10 +146,24 @@ export function musicLiveAuthorityFromEnvironment(
 export function musicLiveWriteSkipReason(environment: Record<string, string | undefined> = process.env): string | null {
   try {
     assertLiveWriteAuthority(musicLiveAuthorityFromEnvironment(environment));
+    musicLiveStrapiTokenFromEnvironment(environment);
     return null;
   } catch (error) {
     return `live mutation skipped: ${error instanceof Error ? error.message : "authority unavailable"}`;
   }
+}
+
+export function musicLiveStrapiTokenFromEnvironment(
+  environment: Record<string, string | undefined> = process.env,
+): string {
+  // Validate the complete disposable live tuple before reading callback
+  // authority. PR-safe collection therefore never needs or fabricates it.
+  assertLiveWriteAuthority(musicLiveAuthorityFromEnvironment(environment));
+  const token = environment.MUSIC_E2E_STRAPI_TOKEN;
+  if (typeof token !== "string" || token.length < 16 || /\s/.test(token)) {
+    throw new Error("MUSIC_E2E_STRAPI_TOKEN is required after complete disposable live authority");
+  }
+  return token;
 }
 
 export const musicLiveTest = base.extend<{
