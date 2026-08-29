@@ -111,6 +111,21 @@ const EXACT_PUBLIC_LIVE_AUTHORITY_ARGS = [
   "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
 ] as const;
 
+const EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES = [
+  "visibility", "owner", "playlist", "saved-song-1", "saved-song-2", "saved-song-3",
+  "playlist-visible", "queue", "playback-1", "playback-2", "controls", "publication",
+  "direct-public-profile-data", "direct-public-category-list-counts", "direct-get-places-lists",
+  "direct-get-movies-lists", "direct-get-books-lists", "direct-get-games-lists", "direct-get-apps-lists",
+  "direct-get-products-lists", "direct-get-people-lists", "direct-get-guides-lists",
+  "proxy-public-profile-data", "proxy-public-category-list-counts", "proxy-get-places-lists",
+  "proxy-get-movies-lists", "proxy-get-books-lists", "proxy-get-games-lists", "proxy-get-apps-lists",
+  "proxy-get-products-lists", "proxy-get-people-lists", "proxy-get-guides-lists",
+  "direct-public-music", "proxy-public-music",
+] as const;
+const EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES = [
+  "operation-failed", "operation-timeout", "http-failed", "contract-invalid",
+] as const;
+
 const AUTHORITATIVE_QUALIFICATION_STREAMS = [
   { role: "fixture-bootstrap-stdout", path: "logs/fixture-bootstrap.stdout.log", source: "fixture-bootstrap", stream: "stdout" },
   { role: "fixture-bootstrap-stderr", path: "logs/fixture-bootstrap.stderr.log", source: "fixture-bootstrap", stream: "stderr" },
@@ -173,10 +188,11 @@ function notRunJourneyOutcomeLedger() {
 
 function unavailablePrebrowserQualification() {
   return {
-    schemaVersion: "explorers-public-prebrowser-qualification/v2",
+    schemaVersion: "explorers-public-prebrowser-qualification/v3",
     status: "unavailable",
     code: "not-run",
     snapshotFailure: { phase: "none", stage: "none", code: "none" },
+    publicFlowFailure: { stage: "none", code: "none" },
     checks: {
       populatedRollback: false, profileCapability: false, privateAuthority: false,
       staleRejected: false, publicProjection: false, musicPrerequisites: false,
@@ -194,10 +210,11 @@ function unavailablePrebrowserQualification() {
 
 function passedPrebrowserQualification() {
   return {
-    schemaVersion: "explorers-public-prebrowser-qualification/v2",
+    schemaVersion: "explorers-public-prebrowser-qualification/v3",
     status: "passed",
     code: "none",
     snapshotFailure: { phase: "none", stage: "none", code: "none" },
+    publicFlowFailure: { stage: "none", code: "none" },
     checks: {
       populatedRollback: true, profileCapability: true, privateAuthority: true,
       staleRejected: true, publicProjection: true, musicPrerequisites: true,
@@ -219,7 +236,8 @@ function failedPrebrowserQualification() {
   return {
     ...unavailablePrebrowserQualification(),
     status: "failed",
-    code: "public-capability-failed",
+    code: "public-flow-failed",
+    publicFlowFailure: { stage: "queue", code: "http-failed" },
   };
 }
 
@@ -3670,6 +3688,47 @@ test("preflight-stopped qualification finalization writes every safe artifact an
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
     expect(JSON.parse(verify.stdout)).toMatchObject({ files: 17, manifestSha256: finalized!.manifestSha256 });
 
+    const failedQualifierRunId = "failed-qualifier-finalization-run";
+    const failedQualifierRunDirectory = join(sandbox, ".artifacts", "music-public", failedQualifierRunId);
+    mkdirSync(failedQualifierRunDirectory);
+    const failedQualifierFinalized = qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: failedQualifierRunDirectory,
+      evidence: {
+        ...input.evidence,
+        runId: failedQualifierRunId,
+        prebrowserQualification: failedPrebrowserQualification(),
+      },
+    });
+    expect(failedQualifierFinalized).toEqual({
+      files: 17,
+      manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      verified: true,
+    });
+    const failedEvidence = JSON.parse(readFileSync(join(failedQualifierRunDirectory, "evidence.json"), "utf8"));
+    expect(failedEvidence.prebrowserQualification).toEqual(failedPrebrowserQualification());
+    expect(failedEvidence.journeyOutcomes.counts).toEqual({
+      execution: { total: 49, passed: 0, failed: 0, skipped: 0, notRun: 49 },
+      terminal: { total: 17, passed: 0, failed: 0, missing: 0, invalid: 0, notRun: 17 },
+    });
+    const failedManifest = JSON.parse(readFileSync(join(failedQualifierRunDirectory, "manifest.json"), "utf8"));
+    expect(failedManifest.artifacts).toHaveLength(17);
+    expect(failedManifest.artifacts).toEqual(expect.arrayContaining(
+      REQUIRED_QUALIFICATION_ARTIFACTS.map(({ role, path: artifactPath }) => (
+        expect.objectContaining({ role, path: artifactPath })
+      )),
+    ));
+    const failedVerify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", failedQualifierRunDirectory,
+    ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
+    expect(failedVerify.status, `${failedVerify.stdout}\n${failedVerify.stderr}`).toBe(0);
+    expect(JSON.parse(failedVerify.stdout)).toMatchObject({
+      files: 17,
+      manifestSha256: failedQualifierFinalized.manifestSha256,
+    });
+    expect(readFileSync(join(failedQualifierRunDirectory, "evidence.json"), "utf8"))
+      .not.toMatch(/Bearer|C:\\Users|https?:\/\/|credential|access[_-]?token/i);
+
     const persistedRunId = "persisted-failure-ledger-run";
     const persistedRunDirectory = join(sandbox, ".artifacts", "music-public", persistedRunId);
     mkdirSync(persistedRunDirectory);
@@ -5313,8 +5372,9 @@ test("pre-browser qualifier proves populated rollback, public/category/music cap
     ok: true,
     qualifierJwtFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     record: {
-      schemaVersion: "explorers-public-prebrowser-qualification/v2",
+      schemaVersion: "explorers-public-prebrowser-qualification/v3",
       snapshotFailure: { phase: "none", stage: "none", code: "none" },
+      publicFlowFailure: { stage: "none", code: "none" },
       status: "passed",
       code: "none",
       checks: {
@@ -5373,10 +5433,11 @@ test("pre-browser qualifier distinguishes a valid populated snapshot with zero e
   expect(result).toMatchObject({
     ok: false,
     record: {
-      schemaVersion: "explorers-public-prebrowser-qualification/v2",
+      schemaVersion: "explorers-public-prebrowser-qualification/v3",
       status: "failed",
       code: "populated-identity-cardinality",
       snapshotFailure: { phase: "none", stage: "none", code: "none" },
+      publicFlowFailure: { stage: "none", code: "none" },
       counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
     },
   });
@@ -5393,9 +5454,15 @@ test("loopback qualifier retains only fixed state-capture stage codes and reject
     initialSnapshot: QualificationSnapshot;
     adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
   }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+  const runLoopback = contract.runLoopbackMusicPrebrowserQualification as undefined | ((input: {
+    authority: Record<string, unknown>;
+    initialSnapshot: QualificationSnapshot;
+    fetchImpl: typeof fetch;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
   expect(typeof createAdapter).toBe("function");
   expect(typeof run).toBe("function");
-  if (!createAdapter || !run) return;
+  expect(typeof runLoopback).toBe("function");
+  if (!createAdapter || !run || !runLoopback) return;
 
   const initial = qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0);
   const authority = {
@@ -5459,10 +5526,11 @@ test("loopback qualifier retains only fixed state-capture stage codes and reject
     expect(result).toMatchObject({
       ok: false,
       record: {
-        schemaVersion: "explorers-public-prebrowser-qualification/v2",
+        schemaVersion: "explorers-public-prebrowser-qualification/v3",
         status: "failed",
         code: "populated-snapshot-failed",
         snapshotFailure: scenario.failure,
+        publicFlowFailure: { stage: "none", code: "none" },
       },
     });
     expect(JSON.stringify(result.record)).not.toMatch(/hostile|Bearer|C:\\Users|detail|path|token|authorization/i);
@@ -5480,9 +5548,15 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     initialSnapshot: QualificationSnapshot;
     adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
   }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+  const runLoopback = contract.runLoopbackMusicPrebrowserQualification as undefined | ((input: {
+    authority: Record<string, unknown>;
+    initialSnapshot: QualificationSnapshot;
+    fetchImpl: typeof fetch;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
   expect(typeof createAdapter).toBe("function");
   expect(typeof run).toBe("function");
-  if (!createAdapter || !run) return;
+  expect(typeof runLoopback).toBe("function");
+  if (!createAdapter || !run || !runLoopback) return;
 
   const initial = qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0);
   const populated = qualificationSnapshot("populated-snapshot", "b".repeat(64), "c".repeat(64), 3, 1);
@@ -5496,8 +5570,26 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   let playlistId = 40;
   let songId = 100;
   let playbackCalls = 0;
+  const playbackSongIds: number[] = [];
   let baselineRestored = false;
   let directRevisionWrites = 0;
+  let injectedPublicFailureStage: string | undefined;
+  let injectedPublicFailureCode: "http-failed" | "contract-invalid" | "operation-failed" | "operation-timeout" = "http-failed";
+  let publicFlowStarted = false;
+  let savedPublicCalls = 0;
+  let playbackPublicCalls = 0;
+  const graphqlStageSuffix: Record<string, string> = {
+    PublicProfileData: "public-profile-data",
+    PublicCategoryListCounts: "public-category-list-counts",
+    GetPlacesLists: "get-places-lists",
+    GetMoviesLists: "get-movies-lists",
+    GetBooksLists: "get-books-lists",
+    GetGamesLists: "get-games-lists",
+    GetAppsLists: "get-apps-lists",
+    GetProductsLists: "get-products-lists",
+    GetPeopleLists: "get-people-lists",
+    GetGuidesLists: "get-guides-lists",
+  };
   const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
     status, headers: { "content-type": "application/json" },
   });
@@ -5515,6 +5607,38 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       expectedRevision: headers.get("x-music-fixture-expected-revision") ?? undefined,
       idempotencyKey: headers.get("idempotency-key") ?? undefined,
     });
+
+    let publicStage: string | undefined;
+    if (operation === "UpdateAccount" && decoded.variables?.data?.public_profile === "Yes") {
+      publicFlowStarted = true;
+      publicStage = "visibility";
+    } else if (publicFlowStarted) {
+      if (url.pathname === "/api/music/dashboard") publicStage = "owner";
+      else if (url.pathname === "/api/playlists" && method === "POST") publicStage = "playlist";
+      else if (/^\/api\/playlists\/\d+\/songs$/.test(url.pathname)) publicStage = `saved-song-${++savedPublicCalls}`;
+      else if (/^\/api\/playlists\/\d+\/visibility$/.test(url.pathname)) publicStage = "playlist-visible";
+      else if (url.pathname === "/api/music/queue/replace") publicStage = "queue";
+      else if (url.pathname === "/api/playlist/currently-playing") publicStage = `playback-${++playbackPublicCalls}`;
+      else if (url.pathname === "/api/music/guest-controls") publicStage = "controls";
+      else if (url.pathname === "/api/music/publication") publicStage = "publication";
+      else if (url.pathname === "/graphql" && operation && graphqlStageSuffix[operation]) {
+        publicStage = `${url.origin === "http://127.0.0.1:51337" ? "direct" : "proxy"}-${graphqlStageSuffix[operation]}`;
+      } else if (url.pathname.startsWith("/api/music/public-resource/v1/")) {
+        publicStage = url.origin === "http://127.0.0.1:55000" ? "direct-public-music" : "proxy-public-music";
+      }
+    }
+    if (injectedPublicFailureStage !== undefined && publicStage === injectedPublicFailureStage) {
+      if (injectedPublicFailureCode === "contract-invalid") return json({ revision: 1 }, 200);
+      if (injectedPublicFailureCode === "operation-failed") {
+        throw new Error("Bearer hostile.public.failure from C:\\Users\\private\\response.json");
+      }
+      if (injectedPublicFailureCode === "operation-timeout") {
+        const timeout = new Error("Bearer hostile.public.timeout from C:\\Users\\private\\response.json");
+        timeout.name = "TimeoutError";
+        throw timeout;
+      }
+      return json({ error: "Bearer hostile.public.failure from C:\\Users\\private\\response.json" }, 503);
+    }
 
     if (url.origin === "http://127.0.0.1:55174" && url.pathname === "/snapshot") {
       return json(snapshotCount++ === 0 ? populated : publicPhase);
@@ -5606,9 +5730,29 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     if (/^\/api\/playlists\/\d+\/songs$/.test(url.pathname)) return json({ id: ++songId }, 201);
     if (/^\/api\/playlists\/\d+\/visibility$/.test(url.pathname)) return new Response(null, { status: 204 });
     if (url.pathname === "/api/music/dashboard") return json({ queueRevision: 0, playbackRevision: 0, publication: { mode: "private" } });
-    if (url.pathname === "/api/music/queue/replace") return json({ revision: 1 });
-    if (url.pathname === "/api/playlist/currently-playing") return json({ revision: 2 + playbackCalls, playbackRevision: ++playbackCalls });
-    if (url.pathname === "/api/music/guest-controls") return json({ updated: true });
+    if (url.pathname === "/api/music/queue/replace") return json({
+      version: "music-queue/v1",
+      revision: 1,
+      songs: [
+        { id: 901, userId: 501, youtubeId: "abcdefghijk", title: "Fixture history song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 0, status: "queued", playedAt: null },
+        { id: 902, userId: 501, youtubeId: "lmnopqrstuv", title: "Fixture playing song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 1, status: "queued", playedAt: null },
+        { id: 903, userId: 501, youtubeId: "wxyzABC1234", title: "Fixture queued song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 2, status: "queued", playedAt: null },
+      ],
+    });
+    if (url.pathname === "/api/playlist/currently-playing") {
+      const queueSongId = decoded.songId;
+      if (![901, 902].includes(queueSongId)) return json({ error: "queue song not found" }, 404);
+      playbackSongIds.push(queueSongId);
+      const queueSong = [
+        { id: 901, userId: 501, youtubeId: "abcdefghijk", title: "Fixture history song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 0, status: "queued", playedAt: null },
+        { id: 902, userId: 501, youtubeId: "lmnopqrstuv", title: "Fixture playing song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 1, status: "queued", playedAt: null },
+      ].find(({ id }) => id === queueSongId);
+      return json({ version: "music-playback/v1", revision: 2 + playbackCalls, playbackRevision: ++playbackCalls, song: queueSong });
+    }
+    if (url.pathname === "/api/music/guest-controls") return json({
+      allowSongRequests: true, allowGuestPlayOnDevice: true, allowPlaylistSharing: true,
+      allowRecentlyPlayedVisibility: true, allowQueueVisibility: true,
+    });
     if (url.pathname === "/api/music/publication") return json({ version: "music-publication/v1",
       publication: { mode: "public", publicSlug: "actual-qualified-public-slug" } });
     if (url.pathname === "/api/music/public-resource/v1/actual-qualified-public-slug") return json({
@@ -5638,8 +5782,8 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     accountDocumentId: "e2e-public-music-qualification-account",
     userDocumentId: "e2e-public-music-qualification-user",
   };
-  const result = await run({ initialSnapshot: initial, adapter: createAdapter({ authority, initialSnapshot: initial, fetchImpl }) });
-  expect(result).toMatchObject({ ok: true, record: { status: "passed", counts: { categoryQueries: 20, musicPrerequisites: 9 } } });
+  const result = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
+  expect(result, JSON.stringify(result.record)).toMatchObject({ ok: true, record: { status: "passed", counts: { categoryQueries: 20, musicPrerequisites: 9 } } });
   expect(calls.filter(({ operation }) => operation === "UsersPermissionsUser")).toHaveLength(2);
   expect(calls.filter(({ operation }) => operation && [
     "PublicProfileData", "PublicCategoryListCounts", "GetPlacesLists", "GetMoviesLists", "GetBooksLists",
@@ -5657,7 +5801,212 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       expect.objectContaining({ origin: "http://127.0.0.1:55000" }),
       expect.objectContaining({ origin: "http://localhost:55173" }),
     ]));
+  expect(playbackSongIds).toEqual([901, 902]);
+  expect(playbackSongIds).not.toEqual([101, 102]);
   expect(JSON.stringify(result.record)).not.toContain(ownerJwt);
+
+  for (const stage of EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES) {
+    snapshotCount = 0;
+    playlistId = 40;
+    songId = 100;
+    playbackCalls = 0;
+    playbackSongIds.length = 0;
+    baselineRestored = false;
+    directRevisionWrites = 0;
+    publicFlowStarted = false;
+    savedPublicCalls = 0;
+    playbackPublicCalls = 0;
+    injectedPublicFailureStage = stage;
+    injectedPublicFailureCode = "http-failed";
+    const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
+    expect(failed).toMatchObject({
+      ok: false,
+      record: {
+        status: "failed",
+        code: "public-flow-failed",
+        publicFlowFailure: { stage, code: "http-failed" },
+      },
+    });
+    expect(JSON.stringify(failed.record)).not.toMatch(/hostile|Bearer|C:\\Users|response\.json|https?:\/\//i);
+  }
+  injectedPublicFailureStage = undefined;
+
+  for (const code of ["contract-invalid", "operation-failed", "operation-timeout"] as const) {
+    snapshotCount = 0;
+    playlistId = 40;
+    songId = 100;
+    playbackCalls = 0;
+    playbackSongIds.length = 0;
+    baselineRestored = false;
+    directRevisionWrites = 0;
+    publicFlowStarted = false;
+    savedPublicCalls = 0;
+    playbackPublicCalls = 0;
+    injectedPublicFailureStage = "queue";
+    injectedPublicFailureCode = code;
+    const failed = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
+    expect(failed).toMatchObject({
+      ok: false,
+      record: { code: "public-flow-failed", publicFlowFailure: { stage: "queue", code } },
+    });
+    expect(JSON.stringify(failed.record)).not.toMatch(/hostile|Bearer|C:\\Users|response\.json|https?:\/\//i);
+  }
+  injectedPublicFailureStage = undefined;
+
+  snapshotCount = 0;
+  playlistId = 40;
+  songId = 100;
+  playbackCalls = 0;
+  playbackSongIds.length = 0;
+  baselineRestored = false;
+  directRevisionWrites = 0;
+  publicFlowStarted = false;
+  savedPublicCalls = 0;
+  playbackPublicCalls = 0;
+  injectedPublicFailureCode = "http-failed";
+  const c14 = await import("../scripts/music-public-prebrowser-c14.mjs");
+  const c14Outcome = await c14.runMusicPrebrowserC14Integration({
+    ack: c14.MUSIC_PREBROWSER_C14_ACK,
+    authority,
+    initialSnapshot: initial,
+    fetchImpl,
+  });
+  expect(c14Outcome).toMatchObject({
+    schemaVersion: "explorers-public-prebrowser-c14/v1",
+    status: "passed",
+    counts: { graphqlOperations: 20, publicMusicResources: 2, queueSongs: 3 },
+    qualification: {
+      status: "passed",
+      checks: { baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true },
+    },
+  });
+});
+
+test("pre-browser public failures retain one exact boundary and fixed safe code for all 34 operations", async () => {
+  // Production break caught: a public preflight failure collapses to one coarse
+  // code, names a wrong request boundary, or retains raw response/error detail.
+  const contract = await loadPrebrowserQualificationContract();
+  const run = contract.runMusicPrebrowserQualification as undefined | ((input: {
+    initialSnapshot: QualificationSnapshot;
+    adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+  const createFailure = contract.createMusicPrebrowserPublicFlowFailure as undefined | ((
+    stage: string, code: string,
+  ) => Error);
+  expect(contract.MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES).toEqual(EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES);
+  expect(contract.MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES)
+    .toEqual(EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES);
+  expect(typeof run).toBe("function");
+  expect(typeof createFailure).toBe("function");
+  if (!run || !createFailure) return;
+
+  for (const stage of EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES) {
+    const events: string[] = [];
+    const adapter = passingPrebrowserQualificationAdapter(events);
+    adapter.verifyPublicProfileAndMusic = async () => {
+      throw createFailure(stage, "operation-failed");
+    };
+    const result = await run({
+      initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
+      adapter,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      record: {
+        schemaVersion: "explorers-public-prebrowser-qualification/v3",
+        status: "failed",
+        code: "public-flow-failed",
+        publicFlowFailure: { stage, code: "operation-failed" },
+      },
+    });
+    expect(JSON.stringify(result.record)).not.toMatch(/Bearer|C:\\Users|https?:\/\/|detail|body|statusText/i);
+  }
+
+  for (const [index, code] of EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES.entries()) {
+    const adapter = passingPrebrowserQualificationAdapter([]);
+    adapter.verifyPublicProfileAndMusic = async () => {
+      throw createFailure(EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES[index], code);
+    };
+    const result = await run({
+      initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
+      adapter,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      record: { code: "public-flow-failed", publicFlowFailure: { code } },
+    });
+  }
+});
+
+test("pre-browser queue qualification accepts only three ordered queue-domain rows", async () => {
+  // Production break caught: queue qualification accepts only a revision,
+  // reuses saved-song IDs, or loses the returned queue order/identity domain.
+  const contract = await loadPrebrowserQualificationContract();
+  const validate = contract.validateMusicQualificationQueueResponse as undefined | ((
+    value: unknown, songInputs: readonly Record<string, unknown>[], priorRevision: number,
+  ) => undefined | { revision: number; queueSongIds: number[] });
+  expect(typeof validate).toBe("function");
+  if (!validate) return;
+
+  const songInputs = [
+    { youtubeId: "abcdefghijk", title: "Fixture history song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png" },
+    { youtubeId: "lmnopqrstuv", title: "Fixture playing song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png" },
+    { youtubeId: "wxyzABC1234", title: "Fixture queued song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png" },
+  ];
+  const queueSongs = songInputs.map((song, index) => ({
+    id: 901 + index,
+    userId: 501,
+    ...song,
+    position: index,
+    status: "queued",
+    playedAt: null,
+  }));
+  const valid = { version: "music-queue/v1", revision: 8, songs: queueSongs };
+  expect(validate(valid, songInputs, 7)).toEqual({ revision: 8, queueSongIds: [901, 902, 903] });
+  expect(validate(valid, songInputs, 7)?.queueSongIds).not.toEqual([101, 102, 103]);
+  expect(validate(valid, songInputs.slice(0, 2), 7)).toBeUndefined();
+
+  for (const hostile of [
+    { revision: 8 },
+    { ...valid, songs: queueSongs.slice(0, 2) },
+    { ...valid, songs: [queueSongs[1], queueSongs[0], queueSongs[2]] },
+    { ...valid, songs: [{ ...queueSongs[0] }, { ...queueSongs[1], id: 901 }, queueSongs[2]] },
+    { ...valid, songs: [{ ...queueSongs[0], position: 2 }, queueSongs[1], queueSongs[2]] },
+    { ...valid, songs: [{ ...queueSongs[0], status: "playing" }, queueSongs[1], queueSongs[2]] },
+    { ...valid, songs: [{ ...queueSongs[0], raw: "must-not-be-accepted" }, queueSongs[1], queueSongs[2]] },
+  ]) expect(validate(hostile, songInputs, 7)).toBeUndefined();
+});
+
+test("C14 full-fixture entrypoint is inert until exact authority is supplied", async () => {
+  // Production break caught: merely importing/collecting C14 reaches a service,
+  // or a caller can begin the full-fixture phase with missing/extra authority.
+  let fetchCalls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    fetchCalls += 1;
+    throw new Error("network must remain inert");
+  };
+  const c14 = await import("../scripts/music-public-prebrowser-c14.mjs");
+  const exactAuthority = {
+    stateOrigin: "http://127.0.0.1:55174",
+    tunesOrigin: "http://127.0.0.1:55000",
+    explorerOrigin: "http://localhost:55173",
+    strapiOrigin: "http://127.0.0.1:51337",
+    stateToken: "S".repeat(43), orchestrationToken: "O".repeat(43), fixtureToken: "F".repeat(43),
+    namespace: "e2e-public-music-qualification",
+    username: "e2e-public-music-qualification-owner",
+    accountDocumentId: "e2e-public-music-qualification-account",
+    userDocumentId: "e2e-public-music-qualification-user",
+  };
+  await expect(c14.runMusicPrebrowserC14AgainstFullFixture({
+    authority: exactAuthority,
+    fetchImpl,
+  })).rejects.toThrow("C14 full-fixture qualification refused");
+  await expect(c14.runMusicPrebrowserC14AgainstFullFixture({
+    ack: c14.MUSIC_PREBROWSER_C14_ACK,
+    authority: { ...exactAuthority, unexpected: "ambient-override" },
+    fetchImpl,
+  })).rejects.toThrow("C14 full-fixture qualification refused");
+  expect(fetchCalls).toBe(0);
 });
 
 for (const [method, expectedCode] of [
@@ -5665,7 +6014,7 @@ for (const [method, expectedCode] of [
   ["capture", "populated-snapshot-failed"],
   ["verifyRollbackProbe", "rollback-probe-failed"],
   ["restore", "phase-restore-failed"],
-  ["verifyPublicProfileAndMusic", "public-capability-failed"],
+  ["verifyPublicProfileAndMusic", "unexpected-failure"],
   ["restoreBaseline", "baseline-restore-failed"],
   ["verifyEphemeralOwnerRetired", "ephemeral-owner-not-retired"],
   ["readGuard", "guard-not-clear"],
@@ -5816,6 +6165,12 @@ test("pre-browser qualification records have one exact fixed safe schema and rej
   expect(validate({ ...result.record, code: "C:\\Users\\private\\raw.txt" })).toBe(false);
   expect(validate({ ...result.record, counts: { identityRows: 1, categoryQueries: 19, musicPrerequisites: 9 } })).toBe(false);
   expect(validate({ ...result.record, hashes: { ...(result.record.hashes as object), publicSlug: "actual-private-slug" } })).toBe(false);
+  expect(validate({ ...failedPrebrowserQualification(), publicFlowFailure: {
+    stage: "queue", code: "http-failed", detail: "Bearer hostile.private.detail",
+  } })).toBe(false);
+  expect(validate({ ...failedPrebrowserQualification(), publicFlowFailure: {
+    stage: "https://private.example/path", code: "http-failed",
+  } })).toBe(false);
 });
 
 test("public qualification accepts only the exact profile, all counts, and every namespaced category fixture", async () => {
@@ -5944,7 +6299,7 @@ test("state service proves populated identity/profile metadata and returns exact
 test("live runner binds qualification before collection and callback without persisting qualifier authority", () => {
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
   const snapshot = runner.indexOf('fetch(`${stateServiceUrl}/snapshot`');
-  const qualification = runner.indexOf("runMusicPrebrowserQualification({");
+  const qualification = runner.indexOf("runLoopbackMusicPrebrowserQualification({");
   const collection = runner.indexOf("runLivePreflight({");
   const callback = runner.indexOf("google-auth/callback?access_token=");
   const authWrite = runner.indexOf("writeFileSync(authStatePath");
@@ -6040,7 +6395,7 @@ test("initial snapshot decoding retains only exact fixed stage/code and bounded 
 test("live runner preserves safe initial-snapshot failure before qualifier and artifact validation", () => {
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
   const decode = runner.indexOf("decodeMusicInitialSnapshotResponse({");
-  const qualification = runner.indexOf("runMusicPrebrowserQualification({");
+  const qualification = runner.indexOf("runLoopbackMusicPrebrowserQualification({");
   expect(decode).toBeGreaterThan(-1);
   expect(qualification).toBeGreaterThan(decode);
   expect(runner).toContain("initialSnapshotQualificationRecord");

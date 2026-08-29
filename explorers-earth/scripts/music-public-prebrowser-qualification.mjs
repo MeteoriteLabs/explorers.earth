@@ -7,14 +7,30 @@ import {
   MUSIC_E2E_STATE_CAPTURE_STAGES,
 } from "../../tunes/scripts/music-e2e-state-capture.mjs";
 
-export const PREBROWSER_QUALIFICATION_VERSION = "explorers-public-prebrowser-qualification/v2";
+export const PREBROWSER_QUALIFICATION_VERSION = "explorers-public-prebrowser-qualification/v3";
 
 const QUALIFICATION_CODES = new Set([
   "none", "not-run", "unexpected-failure", "identity-ensure-failed", "populated-snapshot-failed",
   "populated-identity-cardinality",
-  "rollback-probe-failed", "phase-restore-failed", "public-capability-failed", "baseline-restore-failed",
+  "rollback-probe-failed", "phase-restore-failed", "public-flow-failed", "baseline-restore-failed",
   "ephemeral-owner-not-retired", "guard-not-clear",
 ]);
+export const MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES = Object.freeze([
+  "visibility", "owner", "playlist", "saved-song-1", "saved-song-2", "saved-song-3",
+  "playlist-visible", "queue", "playback-1", "playback-2", "controls", "publication",
+  "direct-public-profile-data", "direct-public-category-list-counts", "direct-get-places-lists",
+  "direct-get-movies-lists", "direct-get-books-lists", "direct-get-games-lists", "direct-get-apps-lists",
+  "direct-get-products-lists", "direct-get-people-lists", "direct-get-guides-lists",
+  "proxy-public-profile-data", "proxy-public-category-list-counts", "proxy-get-places-lists",
+  "proxy-get-movies-lists", "proxy-get-books-lists", "proxy-get-games-lists", "proxy-get-apps-lists",
+  "proxy-get-products-lists", "proxy-get-people-lists", "proxy-get-guides-lists",
+  "direct-public-music", "proxy-public-music",
+]);
+export const MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES = Object.freeze([
+  "operation-failed", "operation-timeout", "http-failed", "contract-invalid",
+]);
+const PUBLIC_FLOW_STAGES = new Set(MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES);
+const PUBLIC_FLOW_FAILURE_CODES = new Set(MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES);
 const CAPTURE_FAILURE_PHASES = new Set(["none", "populated", "public"]);
 const CAPTURE_FAILURE_STAGES = new Set(["none", ...MUSIC_E2E_STATE_CAPTURE_STAGES]);
 const CAPTURE_FAILURE_CODES = new Set(["none", ...MUSIC_E2E_STATE_CAPTURE_CODES]);
@@ -43,6 +59,18 @@ function clearSnapshotFailure() {
   return { phase: "none", stage: "none", code: "none" };
 }
 
+function clearPublicFlowFailure() {
+  return { stage: "none", code: "none" };
+}
+
+function validPublicFlowFailure(value) {
+  if (!exactKeys(value, ["stage", "code"])) return false;
+  if (value.stage === "none" || value.code === "none") {
+    return value.stage === "none" && value.code === "none";
+  }
+  return PUBLIC_FLOW_STAGES.has(value.stage) && PUBLIC_FLOW_FAILURE_CODES.has(value.code);
+}
+
 function validSnapshotFailure(value) {
   if (!exactKeys(value, ["phase", "stage", "code"])
       || !CAPTURE_FAILURE_PHASES.has(value.phase)
@@ -55,12 +83,13 @@ function validSnapshotFailure(value) {
 
 export function validateMusicPrebrowserQualificationRecord(value) {
   if (!exactKeys(value, [
-    "schemaVersion", "status", "code", "snapshotFailure", "checks", "counts", "hashes", "profileRevisions",
+    "schemaVersion", "status", "code", "snapshotFailure", "publicFlowFailure", "checks", "counts", "hashes", "profileRevisions",
   ])
       || value.schemaVersion !== PREBROWSER_QUALIFICATION_VERSION
       || !["unavailable", "failed", "passed"].includes(value.status)
       || !QUALIFICATION_CODES.has(value.code)
       || !validSnapshotFailure(value.snapshotFailure)
+      || !validPublicFlowFailure(value.publicFlowFailure)
       || !exactKeys(value.checks, CHECK_KEYS)
       || !CHECK_KEYS.every((key) => typeof value.checks[key] === "boolean")
       || !exactKeys(value.counts, ["identityRows", "categoryQueries", "musicPrerequisites"])
@@ -77,6 +106,7 @@ export function validateMusicPrebrowserQualificationRecord(value) {
   if (value.status === "unavailable") {
     return value.code === "not-run" && CHECK_KEYS.every((key) => value.checks[key] === false)
       && value.snapshotFailure.phase === "none"
+      && value.publicFlowFailure.stage === "none"
       && value.counts.identityRows === 0 && value.counts.categoryQueries === 0
       && value.counts.musicPrerequisites === 0 && HASH_KEYS.every((key) => value.hashes[key] === null)
       && REVISION_KEYS.every((key) => value.profileRevisions[key] === null);
@@ -84,6 +114,7 @@ export function validateMusicPrebrowserQualificationRecord(value) {
   if (value.status === "passed") {
     return value.code === "none" && CHECK_KEYS.every((key) => value.checks[key] === true)
       && value.snapshotFailure.phase === "none"
+      && value.publicFlowFailure.stage === "none"
       && value.counts.identityRows === 1 && value.counts.categoryQueries === 20
       && value.counts.musicPrerequisites > 0 && HASH_KEYS.every((key) => value.hashes[key] !== null)
       && REVISION_KEYS.every((key) => value.profileRevisions[key] !== null)
@@ -95,8 +126,10 @@ export function validateMusicPrebrowserQualificationRecord(value) {
       && value.profileRevisions.baseline === value.profileRevisions.restoredBaseline;
   }
   if (value.code === "populated-identity-cardinality") {
-    return value.snapshotFailure.phase === "none" && value.counts.identityRows === 0;
+    return value.snapshotFailure.phase === "none" && value.publicFlowFailure.stage === "none"
+      && value.counts.identityRows === 0;
   }
+  if (value.code === "public-flow-failed") return value.publicFlowFailure.stage !== "none";
   return value.code !== "none" && value.code !== "not-run";
 }
 
@@ -149,6 +182,18 @@ const documents = Object.freeze({
     document: checkedInDocument("src/features/PublicHome/components/ProfileRecommendationsTab.tsx", contract.operation),
   }))),
 });
+const publicGraphqlStageSuffix = Object.freeze({
+  PublicProfileData: "public-profile-data",
+  PublicCategoryListCounts: "public-category-list-counts",
+  GetPlacesLists: "get-places-lists",
+  GetMoviesLists: "get-movies-lists",
+  GetBooksLists: "get-books-lists",
+  GetGamesLists: "get-games-lists",
+  GetAppsLists: "get-apps-lists",
+  GetProductsLists: "get-products-lists",
+  GetPeopleLists: "get-people-lists",
+  GetGuidesLists: "get-guides-lists",
+});
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -183,12 +228,13 @@ function clearGuard(value) {
     && value.state === "clear" && value.reason === "none" && value.stage === "preflight";
 }
 
-function safeRecord({ status, code, snapshotFailure, checks, counts, hashes, profileRevisions }) {
+function safeRecord({ status, code, snapshotFailure, publicFlowFailure: retainedPublicFlowFailure, checks, counts, hashes, profileRevisions }) {
   return {
     schemaVersion: PREBROWSER_QUALIFICATION_VERSION,
     status,
     code,
     snapshotFailure,
+    publicFlowFailure: retainedPublicFlowFailure,
     checks,
     counts,
     hashes,
@@ -201,6 +247,7 @@ export function unavailableMusicPrebrowserQualification() {
     status: "unavailable",
     code: "not-run",
     snapshotFailure: clearSnapshotFailure(),
+    publicFlowFailure: clearPublicFlowFailure(),
     checks: clearChecks(),
     counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
     hashes: {
@@ -214,8 +261,13 @@ export function unavailableMusicPrebrowserQualification() {
   });
 }
 
-function exactAuthority(value) {
+export function validateMusicPrebrowserLoopbackAuthority(value) {
   return value && typeof value === "object" && !Array.isArray(value)
+    && exactKeys(value, [
+      "stateOrigin", "tunesOrigin", "explorerOrigin", "strapiOrigin",
+      "stateToken", "orchestrationToken", "fixtureToken", "namespace", "username",
+      "accountDocumentId", "userDocumentId",
+    ])
     && value.stateOrigin === "http://127.0.0.1:55174"
     && value.tunesOrigin === "http://127.0.0.1:55000"
     && value.explorerOrigin === "http://localhost:55173"
@@ -237,6 +289,57 @@ class MusicPrebrowserSnapshotFailure extends Error {
     this.stage = stage;
     this.code = code;
   }
+}
+
+class MusicPrebrowserPublicFlowFailure extends Error {
+  constructor(stage, code) {
+    super("pre-browser public flow failed");
+    this.name = "MusicPrebrowserPublicFlowFailure";
+    this.stage = stage;
+    this.code = code;
+  }
+}
+
+class MusicPrebrowserResponseContractFailure extends Error {
+  constructor() {
+    super("pre-browser response contract failed");
+    this.name = "MusicPrebrowserResponseContractFailure";
+  }
+}
+
+export function createMusicPrebrowserPublicFlowFailure(stage, code) {
+  if (!PUBLIC_FLOW_STAGES.has(stage) || !PUBLIC_FLOW_FAILURE_CODES.has(code)) {
+    throw new Error("pre-browser public failure contract is invalid");
+  }
+  return new MusicPrebrowserPublicFlowFailure(stage, code);
+}
+
+function publicFlowFailure(stage, code) {
+  throw createMusicPrebrowserPublicFlowFailure(stage, code);
+}
+
+async function atPublicFlowBoundary(stage, operation) {
+  if (!PUBLIC_FLOW_STAGES.has(stage) || typeof operation !== "function") {
+    throw new Error("pre-browser public boundary contract is invalid");
+  }
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof MusicPrebrowserPublicFlowFailure) throw error;
+    const code = error instanceof MusicPrebrowserResponseContractFailure
+      ? "contract-invalid"
+      : (timeoutFailure(error) ? "operation-timeout" : "operation-failed");
+    throw createMusicPrebrowserPublicFlowFailure(stage, code);
+  }
+}
+
+function requirePublicHttp(stage, response, expectedStatus) {
+  if (response?.status !== expectedStatus) publicFlowFailure(stage, "http-failed");
+  return response;
+}
+
+function requirePublicContract(stage, valid) {
+  if (!valid) publicFlowFailure(stage, "contract-invalid");
 }
 
 function exactCaptureFailure(value) {
@@ -288,9 +391,9 @@ async function boundedResponse(fetchImpl, url, options = {}) {
   let body;
   if (response.status !== 204) {
     const text = await response.text();
-    if (Buffer.byteLength(text) > 64 * 1024) throw new Error("pre-browser response exceeded its private bound");
+    if (Buffer.byteLength(text) > 64 * 1024) throw new MusicPrebrowserResponseContractFailure();
     try { body = text ? JSON.parse(text) : undefined; }
-    catch { throw new Error("pre-browser response was malformed"); }
+    catch { throw new MusicPrebrowserResponseContractFailure(); }
   }
   return { status: response.status, body };
 }
@@ -345,8 +448,34 @@ export function validateMusicQualificationPublicGraphql({
     && exactObject(content[0])?.documentId === `${expectedDocumentId}-item`;
 }
 
+export function validateMusicQualificationQueueResponse(value, songInputs, priorRevision) {
+  if (!exactKeys(value, ["version", "revision", "songs"])
+      || value.version !== "music-queue/v1"
+      || !Array.isArray(songInputs) || songInputs.length !== 3
+      || !Number.isSafeInteger(priorRevision) || priorRevision < 0
+      || value.revision !== priorRevision + 1
+      || !Array.isArray(value.songs) || value.songs.length !== songInputs.length) return undefined;
+  const queueIds = [];
+  let ownerId;
+  for (const [index, expectedSong] of songInputs.entries()) {
+    const song = exactObject(value.songs[index]);
+    if (!exactKeys(song, [
+      "id", "userId", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt",
+    ])
+        || !Number.isSafeInteger(song.id) || song.id < 1 || queueIds.includes(song.id)
+        || !Number.isSafeInteger(song.userId) || song.userId < 1
+        || (ownerId !== undefined && song.userId !== ownerId)
+        || song.youtubeId !== expectedSong.youtubeId || song.title !== expectedSong.title
+        || song.artist !== expectedSong.artist || song.thumbnailUrl !== expectedSong.thumbnailUrl
+        || song.position !== index || song.status !== "queued" || song.playedAt !== null) return undefined;
+    ownerId ??= song.userId;
+    queueIds.push(song.id);
+  }
+  return { revision: value.revision, queueSongIds: queueIds };
+}
+
 export function createLoopbackPrebrowserQualificationAdapter({ authority, initialSnapshot, fetchImpl = fetch } = {}) {
-  if (!exactAuthority(authority) || !exactSnapshot(initialSnapshot) || typeof fetchImpl !== "function"
+  if (!validateMusicPrebrowserLoopbackAuthority(authority) || !exactSnapshot(initialSnapshot) || typeof fetchImpl !== "function"
       || initialSnapshot.database.namespace !== authority.namespace
       || initialSnapshot.profile.accountDocumentId !== authority.accountDocumentId) {
     throw new Error("loopback pre-browser qualification authority is invalid");
@@ -481,34 +610,35 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
         documentId: authority.accountDocumentId,
         data: { public_profile: "Yes", public_recommendations: "Yes", public_music: "Yes" },
       };
-      const visible = await graphql(
+      const visible = await atPublicFlowBoundary("visibility", () => graphql(
         authority.strapiOrigin, documents.updateAccount, visibilityVariables,
         qualificationHeaders(authority, profileRevision),
-      );
-      if (!validateMusicQualificationUpdateResponse({
+      ));
+      requirePublicHttp("visibility", visible, 200);
+      requirePublicContract("visibility", validateMusicQualificationUpdateResponse({
         status: visible.status,
         body: visible.body,
         accountDocumentId: authority.accountDocumentId,
         expected: visibilityVariables.data,
-      })) {
-        throw new Error("public profile visibility capability failed");
-      }
+      }));
 
-      const dashboard = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/dashboard`, {
+      const dashboard = await atPublicFlowBoundary("owner", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/dashboard`, {
         headers: ownerHeaders(qualifierJwt),
-      });
+      }));
+      requirePublicHttp("owner", dashboard, 200);
       const dashboardBody = exactObject(dashboard.body);
-      if (dashboard.status !== 200 || !Number.isSafeInteger(dashboardBody?.queueRevision)
-          || !Number.isSafeInteger(dashboardBody?.playbackRevision)
-          || exactObject(dashboardBody?.publication)?.mode !== "private") {
-        throw new Error("owner dashboard capability failed");
-      }
-      const playlist = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists`, {
+      requirePublicContract("owner", Number.isSafeInteger(dashboardBody?.queueRevision)
+          && dashboardBody.queueRevision >= 0
+          && Number.isSafeInteger(dashboardBody?.playbackRevision)
+          && dashboardBody.playbackRevision >= 0
+          && exactObject(dashboardBody?.publication)?.mode === "private");
+      const playlist = await atPublicFlowBoundary("playlist", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists`, {
         method: "POST", headers: ownerHeaders(qualifierJwt, "prebrowser-public-playlist"),
         body: JSON.stringify({ name: "Pre-browser public fixture", description: "Disposable public capability" }),
-      });
+      }));
+      requirePublicHttp("playlist", playlist, 201);
       const playlistId = exactObject(playlist.body)?.id;
-      if (playlist.status !== 201 || !Number.isSafeInteger(playlistId)) throw new Error("public playlist capability failed");
+      requirePublicContract("playlist", Number.isSafeInteger(playlistId) && playlistId > 0);
       const songInputs = [
         { youtubeId: "abcdefghijk", title: "Fixture history song", artist: "Fixture artist", thumbnailUrl: `${authority.explorerOrigin}/images/tuneslogo.png` },
         { youtubeId: "lmnopqrstuv", title: "Fixture playing song", artist: "Fixture artist", thumbnailUrl: `${authority.explorerOrigin}/images/tuneslogo.png` },
@@ -516,38 +646,45 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
       ];
       const songIds = [];
       for (const [index, song] of songInputs.entries()) {
-        const saved = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists/${playlistId}/songs`, {
+        const stage = `saved-song-${index + 1}`;
+        const saved = await atPublicFlowBoundary(stage, () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists/${playlistId}/songs`, {
           method: "POST", headers: ownerHeaders(qualifierJwt, `prebrowser-public-song-${index + 1}`),
           body: JSON.stringify(song),
-        });
+        }));
+        requirePublicHttp(stage, saved, 201);
         const id = exactObject(saved.body)?.id;
-        if (saved.status !== 201 || !Number.isSafeInteger(id) || songIds.includes(id)) {
-          throw new Error("public song capability failed");
-        }
+        requirePublicContract(stage, Number.isSafeInteger(id) && id > 0 && !songIds.includes(id));
         songIds.push(id);
       }
-      const visibility = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists/${playlistId}/visibility`, {
+      const visibility = await atPublicFlowBoundary("playlist-visible", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists/${playlistId}/visibility`, {
         method: "PATCH", headers: ownerHeaders(qualifierJwt, "prebrowser-public-visibility"),
         body: JSON.stringify({ isVisibleToGuests: true }),
-      });
-      if (visibility.status !== 204) throw new Error("public playlist visibility capability failed");
-      const queue = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/queue/replace`, {
+      }));
+      requirePublicHttp("playlist-visible", visibility, 204);
+      const queue = await atPublicFlowBoundary("queue", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/queue/replace`, {
         method: "POST", headers: ownerHeaders(qualifierJwt, "prebrowser-public-queue"),
         body: JSON.stringify({ expectedRevision: dashboardBody.queueRevision,
           songs: songIds.map((songId) => ({ playlistId, songId })) }),
-      });
-      const queueRevision = exactObject(queue.body)?.revision;
-      if (queue.status !== 200 || !Number.isSafeInteger(queueRevision)) throw new Error("public queue capability failed");
+      }));
+      requirePublicHttp("queue", queue, 200);
+      const queueState = validateMusicQualificationQueueResponse(queue.body, songInputs, dashboardBody.queueRevision);
+      requirePublicContract("queue", Boolean(queueState));
+      const queueRevision = queueState.revision;
       let playbackRevision = dashboardBody.playbackRevision;
       let revision = queueRevision;
-      for (const [index, songId] of songIds.slice(0, 2).entries()) {
-        const playback = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlist/currently-playing`, {
+      for (const [index, queueSongId] of queueState.queueSongIds.slice(0, 2).entries()) {
+        const stage = `playback-${index + 1}`;
+        const playback = await atPublicFlowBoundary(stage, () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlist/currently-playing`, {
           method: "POST", headers: ownerHeaders(qualifierJwt, `prebrowser-public-playback-${index + 1}`),
-          body: JSON.stringify({ songId, expectedRevision: revision, expectedPlaybackRevision: playbackRevision }),
-        });
+          body: JSON.stringify({ songId: queueSongId, expectedRevision: revision, expectedPlaybackRevision: playbackRevision }),
+        }));
+        requirePublicHttp(stage, playback, 200);
         const playbackBody = exactObject(playback.body);
-        if (playback.status !== 200 || !Number.isSafeInteger(playbackBody?.revision)
-            || !Number.isSafeInteger(playbackBody?.playbackRevision)) throw new Error("public playback capability failed");
+        requirePublicContract(stage, exactKeys(playbackBody, ["version", "revision", "playbackRevision", "song"])
+          && playbackBody.version === "music-playback/v1"
+          && Number.isSafeInteger(playbackBody.revision) && playbackBody.revision > revision
+          && Number.isSafeInteger(playbackBody.playbackRevision) && playbackBody.playbackRevision > playbackRevision
+          && exactObject(playbackBody.song)?.id === queueSongId);
         revision = playbackBody.revision;
         playbackRevision = playbackBody.playbackRevision;
       }
@@ -555,22 +692,24 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
         allowSongRequests: true, allowGuestPlayOnDevice: true, allowPlaylistSharing: true,
         allowRecentlyPlayedVisibility: true, allowQueueVisibility: true,
       };
-      const controlResponse = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/guest-controls`, {
+      const controlResponse = await atPublicFlowBoundary("controls", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/guest-controls`, {
         method: "PATCH", headers: ownerHeaders(qualifierJwt, "prebrowser-public-controls"), body: JSON.stringify(controls),
-      });
-      if (controlResponse.status !== 200) throw new Error("public controls capability failed");
-      const publication = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/publication`, {
+      }));
+      requirePublicHttp("controls", controlResponse, 200);
+      const controlBody = exactObject(controlResponse.body);
+      requirePublicContract("controls", exactKeys(controlBody, Object.keys(controls))
+        && Object.entries(controls).every(([key, enabled]) => controlBody[key] === enabled));
+      const publication = await atPublicFlowBoundary("publication", () => boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/music/publication`, {
         method: "POST", headers: ownerHeaders(qualifierJwt, `tunes-share-v1-${Date.now()}-${publicationUuid}`),
         body: JSON.stringify({ mode: "public" }),
-      });
+      }));
+      requirePublicHttp("publication", publication, 200);
       const publicationBody = exactObject(publication.body);
       const publicationState = exactObject(publicationBody?.publication);
       const publicSlug = publicationState?.publicSlug;
-      if (publication.status !== 200 || publicationBody?.version !== "music-publication/v1"
-          || publicationState?.mode !== "public" || typeof publicSlug !== "string"
-          || !/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug) || publicSlug === "qualification-public") {
-        throw new Error("public publication capability failed");
-      }
+      requirePublicContract("publication", publicationBody?.version === "music-publication/v1"
+          && publicationState?.mode === "public" && typeof publicSlug === "string"
+          && /^[A-Za-z0-9_-]{8,128}$/.test(publicSlug) && publicSlug !== "qualification-public");
 
       const publicDocuments = [
         { operation: "PublicProfileData", document: documents.publicProfile,
@@ -582,32 +721,39 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
         })),
       ];
       let categoryQueries = 0;
-      for (const origin of [authority.strapiOrigin, authority.explorerOrigin]) {
+      for (const [scope, origin] of [
+        ["direct", authority.strapiOrigin],
+        ["proxy", authority.explorerOrigin],
+      ]) {
         for (const entry of publicDocuments) {
-          const response = await graphql(origin, entry.document, entry.variables);
-          if (response.status !== 200 || !validateMusicQualificationPublicGraphql({
+          const stage = `${scope}-${publicGraphqlStageSuffix[entry.operation]}`;
+          const response = await atPublicFlowBoundary(stage, () => graphql(origin, entry.document, entry.variables));
+          requirePublicHttp(stage, response, 200);
+          requirePublicContract(stage, validateMusicQualificationPublicGraphql({
             operation: entry.operation,
             root: entry.root,
             body: response.body,
             namespace: authority.namespace,
             accountDocumentId: authority.accountDocumentId,
-          })) {
-            throw new Error("public profile category capability failed");
-          }
+          }));
           categoryQueries += 1;
         }
       }
-      for (const origin of [authority.tunesOrigin, authority.explorerOrigin]) {
-        const resource = await boundedResponse(fetchImpl, `${origin}/api/music/public-resource/v1/${encodeURIComponent(publicSlug)}`);
+      for (const [stage, origin] of [
+        ["direct-public-music", authority.tunesOrigin],
+        ["proxy-public-music", authority.explorerOrigin],
+      ]) {
+        const resource = await atPublicFlowBoundary(stage, () => boundedResponse(
+          fetchImpl, `${origin}/api/music/public-resource/v1/${encodeURIComponent(publicSlug)}`,
+        ));
+        requirePublicHttp(stage, resource, 200);
         const body = exactObject(resource.body);
-        if (resource.status !== 200 || body?.version !== "music-public-resource/v1"
-            || exactObject(body?.currentlyPlaying)?.title !== "Fixture playing song"
-            || !exactObject(body?.queue)?.items?.some((song) => song?.title === "Fixture queued song")
-            || !exactObject(body?.recentlyPlayed)?.items?.some((song) => song?.title === "Fixture history song")
-            || !exactObject(body?.playlists)?.items?.some((entry) => entry?.name === "Pre-browser public fixture")
-            || Object.entries(controls).some(([key, enabled]) => exactObject(body?.permissions)?.[key] !== enabled)) {
-          throw new Error("public Music projection capability failed");
-        }
+        requirePublicContract(stage, body?.version === "music-public-resource/v1"
+            && exactObject(body?.currentlyPlaying)?.title === "Fixture playing song"
+            && exactObject(body?.queue)?.items?.some((song) => song?.title === "Fixture queued song")
+            && exactObject(body?.recentlyPlayed)?.items?.some((song) => song?.title === "Fixture history song")
+            && exactObject(body?.playlists)?.items?.some((entry) => entry?.name === "Pre-browser public fixture")
+            && Object.entries(controls).every(([key, enabled]) => exactObject(body?.permissions)?.[key] === enabled));
       }
       return { publicSlug, categoryQueries, musicPrerequisites: 9 };
     },
@@ -628,6 +774,15 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
       return exactObject(response.body)?.mutationGuard;
     },
   };
+}
+
+export async function runLoopbackMusicPrebrowserQualification({
+  authority, initialSnapshot, fetchImpl = fetch,
+} = {}) {
+  return runMusicPrebrowserQualification({
+    initialSnapshot,
+    adapter: createLoopbackPrebrowserQualificationAdapter({ authority, initialSnapshot, fetchImpl }),
+  });
 }
 
 export async function runMusicPrebrowserQualification({ initialSnapshot, adapter } = {}) {
@@ -659,6 +814,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
   };
   let code = "unexpected-failure";
   let snapshotFailure = clearSnapshotFailure();
+  let retainedPublicFlowFailure = clearPublicFlowFailure();
   let qualifierJwt = "";
   let qualifierJwtFingerprint;
   let corePassed = false;
@@ -728,18 +884,29 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
       throw new Error("invalid public qualification identity cardinality");
     }
 
-    code = "public-capability-failed";
-    const publicCapability = await adapter.verifyPublicProfileAndMusic({
-      qualifierJwt,
-      profileRevision: publicSnapshot.profile.profileRevision,
-    });
-    if (typeof publicCapability?.publicSlug !== "string"
-        || !/^[A-Za-z0-9_-]{8,128}$/.test(publicCapability.publicSlug)
-        || publicCapability.publicSlug === "qualification-public"
-        || publicCapability.categoryQueries !== 20
-        || !Number.isSafeInteger(publicCapability.musicPrerequisites)
-        || publicCapability.musicPrerequisites < 1) {
-      throw new Error("public capability was incomplete");
+    code = "public-flow-failed";
+    let publicCapability;
+    try {
+      publicCapability = await adapter.verifyPublicProfileAndMusic({
+        qualifierJwt,
+        profileRevision: publicSnapshot.profile.profileRevision,
+      });
+      if (typeof publicCapability?.publicSlug !== "string"
+          || !/^[A-Za-z0-9_-]{8,128}$/.test(publicCapability.publicSlug)
+          || publicCapability.publicSlug === "qualification-public"
+          || publicCapability.categoryQueries !== 20
+          || !Number.isSafeInteger(publicCapability.musicPrerequisites)
+          || publicCapability.musicPrerequisites < 1) {
+        retainedPublicFlowFailure = { stage: "proxy-public-music", code: "contract-invalid" };
+        throw createMusicPrebrowserPublicFlowFailure("proxy-public-music", "contract-invalid");
+      }
+    } catch (error) {
+      if (error instanceof MusicPrebrowserPublicFlowFailure) {
+        retainedPublicFlowFailure = { stage: error.stage, code: error.code };
+      } else {
+        code = "unexpected-failure";
+      }
+      throw error;
     }
     counts.categoryQueries = publicCapability.categoryQueries;
     counts.musicPrerequisites = publicCapability.musicPrerequisites;
@@ -796,6 +963,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
     status: ok ? "passed" : "failed",
     code: ok ? "none" : code,
     snapshotFailure,
+    publicFlowFailure: retainedPublicFlowFailure,
     checks,
     counts,
     hashes,

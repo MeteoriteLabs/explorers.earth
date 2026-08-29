@@ -14,9 +14,8 @@ import {
   runMusicFixtureOrchestration,
 } from "./music-public-e2e-runner.mjs";
 import {
-  createLoopbackPrebrowserQualificationAdapter,
   isDistinctMusicCallbackCredential,
-  runMusicPrebrowserQualification,
+  runLoopbackMusicPrebrowserQualification,
   unavailableMusicPrebrowserQualification,
 } from "./music-public-prebrowser-qualification.mjs";
 import {
@@ -700,24 +699,21 @@ async function runLiveQualification() {
       read: (file) => readFileSync(file, "utf8"),
     },
     qualify: async () => {
-      const result = await runMusicPrebrowserQualification({
+      const result = await runLoopbackMusicPrebrowserQualification({
+        authority: {
+          stateOrigin: stateServiceUrl,
+          tunesOrigin: "http://127.0.0.1:55000",
+          explorerOrigin: new URL(externalUrl).origin,
+          strapiOrigin: strapiUrl,
+          stateToken,
+          orchestrationToken: orchestrationStateToken,
+          fixtureToken: strapiToken,
+          namespace,
+          username,
+          accountDocumentId,
+          userDocumentId,
+        },
         initialSnapshot,
-        adapter: createLoopbackPrebrowserQualificationAdapter({
-          authority: {
-            stateOrigin: stateServiceUrl,
-            tunesOrigin: "http://127.0.0.1:55000",
-            explorerOrigin: new URL(externalUrl).origin,
-            strapiOrigin: strapiUrl,
-            stateToken,
-            orchestrationToken: orchestrationStateToken,
-            fixtureToken: strapiToken,
-            namespace,
-            username,
-            accountDocumentId,
-            userDocumentId,
-          },
-          initialSnapshot,
-        }),
       });
       prebrowserQualificationRecord = result.record;
       qualifierJwtFingerprint = result.qualifierJwtFingerprint;
