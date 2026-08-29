@@ -252,12 +252,15 @@ describe("owned Task-4 UAT database lane", () => {
       "server/test/reconciliationRepository.integration.test.ts",
       "server/test/load/music-load-postgres.integration.test.ts",
     ]);
+  });
+
+  it("scopes the verified ten-second timeout to the exact owned database child command", () => {
     expect(buildUatDatabaseTestCommand("C:\\node\\npm-cli.js")).toEqual({
       file: process.execPath,
       args: [
         "C:\\node\\npm-cli.js", "run", "test:integration", "--",
         ...MUSIC_UAT_DATABASE_TEST_FILES,
-        "--maxWorkers=1", "--fileParallelism=false",
+        "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=10000",
       ],
     });
   });

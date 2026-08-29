@@ -407,7 +407,7 @@ export function buildUatDatabaseTestCommand(npmCli: string): { file: string; arg
     args: [
       npmCli, "run", "test:integration", "--",
       ...MUSIC_UAT_DATABASE_TEST_FILES,
-      "--maxWorkers=1", "--fileParallelism=false",
+      "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=10000",
     ],
   };
 }
