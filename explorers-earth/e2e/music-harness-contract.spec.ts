@@ -11,7 +11,10 @@ import * as ts from "typescript";
 import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
+  LIVE_PUBLIC_JOURNEY_FAILURE_STAGES,
   MUSIC_PUBLIC_STATES,
+  LivePublicJourneyFailure,
+  assertLivePermissionGuestControlVisible,
   assertLivePublicSlug,
   assertLiveWriteAuthority,
   attachLiveFailureScreenshotBestEffort,
@@ -35,6 +38,7 @@ import {
   LIVE_JOURNEY_MANIFEST,
   LIVE_JOURNEY_MANIFEST_VERSION,
   LIVE_JOURNEY_RESULT_VERSION,
+  buildLiveJourneyTerminal,
   buildProfileCoveringRows,
   canonicalEvidenceHash,
   classifyLivePreflight,
@@ -187,7 +191,7 @@ const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
 
 function notRunJourneyOutcomeLedger() {
   return {
-    schemaVersion: "explorers-public-journey-outcomes/v2",
+    schemaVersion: "explorers-public-journey-outcomes/v3",
     integrity: "not-run",
     counts: {
       execution: { total: 49, passed: 0, failed: 0, skipped: 0, notRun: 49 },
@@ -700,7 +704,7 @@ async function runSyntheticTerminalOutcome(executionOutcome: unknown, runId: str
 
 test("live manifest binds exactly 17 collected mutation journeys", () => {
   expect(LIVE_JOURNEY_MANIFEST_VERSION).toBe("explorers-live-mutation-journeys/v1");
-  expect(LIVE_JOURNEY_RESULT_VERSION).toBe("explorers-live-mutation-journey-result/v1");
+  expect(LIVE_JOURNEY_RESULT_VERSION).toBe("explorers-live-mutation-journey-result/v2");
   expect(LIVE_JOURNEY_MANIFEST).toEqual(EXPECTED_LIVE_JOURNEYS);
 
   const outcome = classifyLivePreflight({
@@ -1368,7 +1372,7 @@ test("sanitized journey outcome ledger retains exact 32/12/5 execution and all m
   };
 
   expect(ledger).toMatchObject({
-    schemaVersion: "explorers-public-journey-outcomes/v2",
+    schemaVersion: "explorers-public-journey-outcomes/v3",
     integrity: "accepted",
     counts: {
       execution: { total: 49, passed: 32, failed: 12, skipped: 5, notRun: 0 },
@@ -1426,6 +1430,116 @@ test("terminal reconciliation records skipped and unstarted mutations without in
   ))).toBe(true);
 });
 
+test("permission failure metadata is fixed, sanitized, and valid only on failed permission terminals", async () => {
+  const permissionId = "music.owner-guest.permission.allow-song-requests";
+  const hash = "a".repeat(64);
+  const permissionFailure = { stage: "queue", code: "contract-invalid" } as const;
+  const terminal = buildLiveJourneyTerminal({
+    id: permissionId,
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    beforeHash: hash,
+    afterHash: hash,
+    permissionFailure,
+  });
+  expect(terminal.permissionFailure).toEqual(permissionFailure);
+
+  const preflight = await import("../scripts/music-public-live-preflight.mjs");
+  const ledger = preflight.buildSanitizedJourneyOutcomeLedger({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+      statusById: { [permissionId]: "failed" },
+    }),
+    reportStatus: "accepted",
+    terminalRecords: [terminal],
+    terminalStatus: "accepted",
+  });
+  expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v3");
+  expect(ledger.mutationTerminals.find(({ id }) => id === permissionId)).toEqual({
+    id: permissionId,
+    status: "failed",
+    reason: "terminal-failed",
+    stage: "terminal-evidence",
+    permissionFailure,
+  });
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(ledger)).toBe(true);
+  expect(JSON.stringify(ledger)).not.toMatch(/Bearer|https?:|[A-Z]:\\|qualification-public/i);
+
+  expect(() => buildLiveJourneyTerminal({
+    id: permissionId,
+    beforeHash: hash,
+    afterHash: hash,
+    permissionFailure,
+  })).toThrow(/permission failure/i);
+  expect(() => buildLiveJourneyTerminal({
+    id: "music.owner-guest.reconnect",
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    beforeHash: hash,
+    afterHash: hash,
+    permissionFailure,
+  })).toThrow(/permission failure/i);
+  expect(() => buildLiveJourneyTerminal({
+    id: permissionId,
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    beforeHash: hash,
+    afterHash: hash,
+    permissionFailure: { stage: "C:\\private\\hostile", code: "Bearer hostile" },
+  })).toThrow(/permission failure/i);
+
+  const hostilePass = structuredClone(ledger);
+  const passIndex = hostilePass.mutationTerminals.findIndex(({ status }) => status === "not-run");
+  hostilePass.mutationTerminals[passIndex] = {
+    ...hostilePass.mutationTerminals[passIndex],
+    status: "passed",
+    reason: "none",
+    stage: "terminal-evidence",
+    permissionFailure,
+  };
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(hostilePass)).toBe(false);
+  const hostileExecution = structuredClone(ledger);
+  hostileExecution.executionOutcomes[0].permissionFailure = permissionFailure;
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(hostileExecution)).toBe(false);
+
+  const hostilePassedEvidence = validJourneyEvidenceRecords();
+  hostilePassedEvidence[2]!.permissionFailure = permissionFailure;
+  expect(validateLiveJourneyEvidence({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" }),
+    records: hostilePassedEvidence,
+  })).toMatchObject({ ok: false, subchecks: expect.arrayContaining(["record-contract"]) });
+});
+
+test("restored permission failures write one safe substage terminal after exact restoration", async () => {
+  const events: string[] = [];
+  const terminals: Array<Record<string, unknown>> = [];
+  const state = { revision: 0 };
+  await expect(withRestoredMusicFixture({
+    journeyId: "music.owner-guest.permission.allow-song-requests",
+    snapshot: async () => { events.push("snapshot"); return structuredClone(state); },
+    cleanupNamespace: async () => { events.push("cleanup"); },
+    restore: async () => { events.push("restore"); },
+    writeJourneyResult: async (record) => { events.push("terminal"); terminals.push(record as Record<string, unknown>); },
+  }, async () => {
+    events.push("body");
+    throw new LivePublicJourneyFailure("private-dashboard", "contract-invalid");
+  })).rejects.toMatchObject({ stage: "private-dashboard", code: "contract-invalid" });
+  expect(events).toEqual(["snapshot", "body", "cleanup", "restore", "snapshot", "terminal"]);
+  expect(terminals).toEqual([expect.objectContaining({
+    id: "music.owner-guest.permission.allow-song-requests",
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    permissionFailure: { stage: "private-dashboard", code: "contract-invalid" },
+  })]);
+});
+
 test("fail-fast partial reports retain stopped journeys and reject a passed terminal after execution failure", async () => {
   const livePreflight = await import("../scripts/music-public-live-preflight.mjs");
   const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
@@ -1441,7 +1555,7 @@ test("fail-fast partial reports retain stopped journeys and reject a passed term
   });
 
   expect(ledger).toMatchObject({
-    schemaVersion: "explorers-public-journey-outcomes/v2",
+    schemaVersion: "explorers-public-journey-outcomes/v3",
     integrity: "invalid",
     counts: {
       execution: { total: 49, passed: 0, failed: 1, skipped: 0, notRun: 48 },
@@ -5137,9 +5251,10 @@ test("live public preparation publishes a returned non-literal slug and seeds ev
   const mutations: Array<{ callsite: string; method: string; path: string; data?: unknown; idempotencyKey?: string }> = [];
   let profileUpdates = 0;
   let playlistSong = 80;
-  let playback = 1;
+  let dashboardReads = 0;
   const result = await prepareLivePublicMusicJourney({
     seedId: "a1b2c3d4",
+    privatePublicationIdempotencyKey: "tunes-share-v1-1777000000000-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
     publicationIdempotencyKey: "tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555",
     controls: {
       allowSongRequests: true,
@@ -5150,10 +5265,27 @@ test("live public preparation publishes a returned non-literal slug and seeds ev
     },
     read: async (path) => {
       reads.push(path);
-      if (path === "/api/music/dashboard") return {
-        status: 200,
-        body: { queueRevision: 0, playbackRevision: 0, publication: { mode: "private", publicSlug: "private-seed" } },
-      };
+      if (path === "/api/music/dashboard") {
+        dashboardReads += 1;
+        return {
+          status: 200,
+          body: {
+            queueRevision: 0,
+            playbackRevision: 0,
+            songs: [],
+            currentlyPlaying: null,
+            playedSongs: [],
+            publication: { mode: dashboardReads === 1 ? "unlisted" : "private", publicSlug: "actual-public-123" },
+            guestControls: {
+              allowSongRequests: true,
+              allowGuestPlayOnDevice: true,
+              allowPlaylistSharing: false,
+              allowRecentlyPlayedVisibility: true,
+              allowQueueVisibility: false,
+            },
+          },
+        };
+      }
       return {
         status: 200,
         body: {
@@ -5182,14 +5314,34 @@ test("live public preparation publishes a returned non-literal slug and seeds ev
       if (request.path === "/api/playlists") return { status: 201, body: { id: 71 } };
       if (request.path.endsWith("/songs")) return { status: 201, body: { id: ++playlistSong } };
       if (request.path.endsWith("/visibility")) return { status: 204, body: undefined };
-      if (request.path === "/api/music/queue/replace") return { status: 200, body: { revision: 1, songs: [] } };
+      if (request.path === "/api/music/queue/replace") return {
+        status: 200,
+        body: {
+          version: "music-queue/v1",
+          revision: 1,
+          songs: [
+            { id: 901, userId: 501, youtubeId: "abcdefghijk", title: "Fixture history song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 0, status: "queued", playedAt: null },
+            { id: 902, userId: 501, youtubeId: "lmnopqrstuv", title: "Fixture playing song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 1, status: "queued", playedAt: null },
+            { id: 903, userId: 501, youtubeId: "wxyzABC1234", title: "Fixture queued song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png", position: 2, status: "queued", playedAt: null },
+          ],
+        },
+      };
       if (request.path === "/api/playlist/currently-playing") return {
-        status: 200, body: { version: "music-playback/v1", revision: ++playback, playbackRevision: playback, song: {} },
+        status: 200,
+        body: request.data && (request.data as { songId?: number }).songId === 901
+          ? { version: "music-playback/v1", revision: 2, playbackRevision: 1, song: { id: 901 } }
+          : { version: "music-playback/v1", revision: 3, playbackRevision: 2, song: { id: 902 } },
       };
       if (request.path === "/api/music/guest-controls") return { status: 200, body: request.data };
       if (request.path === "/api/music/publication") return {
         status: 200,
-        body: { version: "music-publication/v1", publication: { mode: "public", publicSlug: "actual-public-123" } },
+        body: {
+          version: "music-publication/v1",
+          publication: {
+            mode: (request.data as { mode: string }).mode,
+            publicSlug: "actual-public-123",
+          },
+        },
       };
       throw new Error(`unexpected mutation ${request.path}`);
     },
@@ -5198,11 +5350,12 @@ test("live public preparation publishes a returned non-literal slug and seeds ev
   expect(result).toMatchObject({
     publicSlug: "actual-public-123",
     playlistId: 71,
-    songs: { history: 81, playing: 82, queued: 83 },
+    songs: { history: 901, playing: 902, queued: 903 },
   });
   expect(profileUpdates).toBe(1);
-  expect(reads).toEqual(["/api/music/dashboard", "/api/music/public-resource/v1/actual-public-123"]);
+  expect(reads).toEqual(["/api/music/dashboard", "/api/music/dashboard", "/api/music/public-resource/v1/actual-public-123"]);
   expect(mutations.map(({ callsite, path }) => [callsite, path])).toEqual([
+    ["owner-publication", "/api/music/publication"],
     ["playlist-create", "/api/playlists"],
     ["playlist-song-add", "/api/playlists/71/songs"],
     ["playlist-song-add", "/api/playlists/71/songs"],
@@ -5215,13 +5368,155 @@ test("live public preparation publishes a returned non-literal slug and seeds ev
     ["owner-publication", "/api/music/publication"],
   ]);
   expect(mutations.filter(({ path }) => path.endsWith("/currently-playing")).map(({ data }) => data)).toEqual([
-    { songId: 81, expectedRevision: 1, expectedPlaybackRevision: 0 },
-    { songId: 82, expectedRevision: 2, expectedPlaybackRevision: 2 },
+    { songId: 901, expectedRevision: 1, expectedPlaybackRevision: 0 },
+    { songId: 902, expectedRevision: 2, expectedPlaybackRevision: 1 },
   ]);
-  expect(mutations.find(({ callsite }) => callsite === "owner-publication")?.idempotencyKey)
+  expect(mutations.filter(({ callsite }) => callsite === "owner-publication").map(({ idempotencyKey }) => idempotencyKey)).toEqual([
+    "tunes-share-v1-1777000000000-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    "tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555",
+  ]);
+  expect(mutations.at(-1)?.idempotencyKey)
     .toBe("tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555");
   expect(() => assertLivePublicSlug("qualification-public")).toThrow(/returned public slug/i);
   expect(() => assertLivePublicSlug("short")).toThrow(/returned public slug/i);
+});
+
+test("live public preparation rejects a non-production queue contract before playback or later publication work", async () => {
+  const events: string[] = [];
+  let dashboardReads = 0;
+  let savedId = 80;
+  await expect(prepareLivePublicMusicJourney({
+    seedId: "a1b2c3d4",
+    privatePublicationIdempotencyKey: "tunes-share-v1-1777000000000-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    publicationIdempotencyKey: "tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555",
+    controls: {
+      allowSongRequests: true,
+      allowGuestPlayOnDevice: false,
+      allowPlaylistSharing: false,
+      allowRecentlyPlayedVisibility: false,
+      allowQueueVisibility: false,
+    },
+    read: async (path) => {
+      events.push(`read:${path}`);
+      dashboardReads += 1;
+      return {
+        status: 200,
+        body: {
+          queueRevision: 0,
+          playbackRevision: 0,
+          songs: [], currentlyPlaying: null, playedSongs: [],
+          publication: { mode: dashboardReads === 1 ? "unlisted" : "private", publicSlug: "actual-public-123" },
+          guestControls: {
+            allowSongRequests: true, allowGuestPlayOnDevice: true, allowPlaylistSharing: false,
+            allowRecentlyPlayedVisibility: true, allowQueueVisibility: false,
+          },
+        },
+      };
+    },
+    updatePublicProfile: async () => { events.push("profile"); return { status: 200, body: {} }; },
+    mutate: async (callsite, request) => {
+      events.push(callsite);
+      if (request.path === "/api/music/publication") return {
+        status: 200,
+        body: { version: "music-publication/v1", publication: { mode: "private", publicSlug: "actual-public-123" } },
+      };
+      if (request.path === "/api/playlists") return { status: 201, body: { id: 71 } };
+      if (request.path.endsWith("/songs")) return { status: 201, body: { id: ++savedId } };
+      if (request.path.endsWith("/visibility")) return { status: 204 };
+      if (request.path === "/api/music/queue/replace") return { status: 200, body: { version: "music-queue/v1", revision: 1, songs: [] } };
+      throw new Error("later operation must not run");
+    },
+  })).rejects.toMatchObject({
+    name: "LivePublicJourneyFailure",
+    stage: "queue",
+    code: "contract-invalid",
+  } satisfies Partial<LivePublicJourneyFailure>);
+  expect(events).not.toContain("player-update");
+  expect(events).not.toContain("guest-controls");
+  expect(events).not.toContain("profile");
+  expect(events.filter((entry) => entry === "owner-publication")).toHaveLength(1);
+});
+
+test("permission preparation exposes only fixed safe substages and stops at hostile owner boundaries", async () => {
+  const expectedStages = [
+    "owner-dashboard", "private-transition", "private-dashboard", "playlist",
+    "saved-song-1", "saved-song-2", "saved-song-3", "visibility", "queue",
+    "playback-1", "playback-2", "controls", "profile", "publication",
+    "public-resource", "guest-control-visible",
+  ];
+  expect(LIVE_PUBLIC_JOURNEY_FAILURE_STAGES).toEqual(expectedStages);
+  const preflight = await import("../scripts/music-public-live-preflight.mjs");
+  expect(preflight.LIVE_PERMISSION_FAILURE_STAGES).toEqual(expectedStages);
+
+  const laterCalls: string[] = [];
+  const input = {
+    seedId: "a1b2c3d4",
+    privatePublicationIdempotencyKey: "tunes-share-v1-1777000000000-aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    publicationIdempotencyKey: "tunes-share-v1-1777000000000-11111111-2222-4333-8444-555555555555",
+    controls: {
+      allowSongRequests: true,
+      allowGuestPlayOnDevice: false,
+      allowPlaylistSharing: false,
+      allowRecentlyPlayedVisibility: false,
+      allowQueueVisibility: false,
+    },
+    updatePublicProfile: async () => { laterCalls.push("profile"); return { status: 200, body: {} }; },
+    mutate: async (callsite: string) => {
+      laterCalls.push(callsite);
+      return { status: 500, body: { token: "Bearer must-not-survive" } };
+    },
+  };
+  await expect(prepareLivePublicMusicJourney({
+    ...input,
+    read: async () => ({
+      status: 200,
+      body: {
+        queueRevision: 0, playbackRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [],
+        publication: { mode: "unlisted", publicSlug: "actual-public-123" },
+        guestControls: {
+          allowSongRequests: false,
+          allowGuestPlayOnDevice: true,
+          allowPlaylistSharing: false,
+          allowRecentlyPlayedVisibility: true,
+          allowQueueVisibility: false,
+        },
+      },
+    }),
+  })).rejects.toMatchObject({ stage: "owner-dashboard", code: "contract-invalid" });
+  expect(laterCalls).toEqual([]);
+
+  let reads = 0;
+  await expect(prepareLivePublicMusicJourney({
+    ...input,
+    read: async () => {
+      reads += 1;
+      return {
+        status: 200,
+        body: {
+          queueRevision: 0, playbackRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [],
+          publication: { mode: "unlisted", publicSlug: "actual-public-123" },
+          guestControls: {
+            allowSongRequests: true,
+            allowGuestPlayOnDevice: true,
+            allowPlaylistSharing: false,
+            allowRecentlyPlayedVisibility: true,
+            allowQueueVisibility: false,
+          },
+        },
+      };
+    },
+  })).rejects.toMatchObject({ stage: "private-transition", code: "http-failed" });
+  expect(reads).toBe(1);
+  expect(laterCalls).toEqual(["owner-publication"]);
+
+  const hostile = "Bearer hostile C:\\private\\authority";
+  const visibilityFailure = await assertLivePermissionGuestControlVisible(async () => { throw new Error(hostile); })
+    .then(() => undefined, (error: unknown) => error);
+  expect(visibilityFailure).toMatchObject({
+    name: "LivePublicJourneyFailure", stage: "guest-control-visible", code: "assertion-failed",
+  });
+  expect(String(visibilityFailure)).not.toContain(hostile);
+  await expect(assertLivePermissionGuestControlVisible(async () => undefined)).resolves.toBeUndefined();
 });
 
 test("profile batch body failures restore first, emit one row-bearing terminal, and then block subsequent batches", async () => {

@@ -2,7 +2,11 @@ import { test as base, type Page, type TestInfo } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { buildLiveJourneyResult, buildLiveJourneyTerminal } from "../../scripts/music-public-live-preflight.mjs";
+import {
+  LIVE_PERMISSION_JOURNEY_IDS,
+  buildLiveJourneyResult,
+  buildLiveJourneyTerminal,
+} from "../../scripts/music-public-live-preflight.mjs";
 
 export const MUSIC_PUBLIC_FIXTURE_VERSION = "music-public-e2e-fixture/v1" as const;
 export const MUSIC_LIVE_WRITE_CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE" as const;
@@ -425,21 +429,145 @@ export type LivePublicJourneyControls = {
 
 export type LivePublicJourneyResponse = { status: number; body?: unknown };
 
+export const LIVE_PUBLIC_JOURNEY_FAILURE_STAGES = [
+  "owner-dashboard",
+  "private-transition",
+  "private-dashboard",
+  "playlist",
+  "saved-song-1",
+  "saved-song-2",
+  "saved-song-3",
+  "visibility",
+  "queue",
+  "playback-1",
+  "playback-2",
+  "controls",
+  "profile",
+  "publication",
+  "public-resource",
+  "guest-control-visible",
+] as const;
+
+export type LivePublicJourneyFailureStage = typeof LIVE_PUBLIC_JOURNEY_FAILURE_STAGES[number];
+export type LivePublicJourneyFailureCode = "operation-failed" | "http-failed" | "contract-invalid" | "assertion-failed";
+
+export class LivePublicJourneyFailure extends Error {
+  readonly stage: LivePublicJourneyFailureStage;
+  readonly code: LivePublicJourneyFailureCode;
+
+  constructor(stage: LivePublicJourneyFailureStage, code: LivePublicJourneyFailureCode) {
+    super("Live public permission journey failed");
+    this.name = "LivePublicJourneyFailure";
+    this.stage = stage;
+    this.code = code;
+  }
+}
+
+const LIVE_PERMISSION_JOURNEY_ID_SET = new Set<string>(LIVE_PERMISSION_JOURNEY_IDS);
+
+export async function assertLivePermissionGuestControlVisible(assertion: () => Promise<void>): Promise<void> {
+  try {
+    await assertion();
+  } catch {
+    throw new LivePublicJourneyFailure("guest-control-visible", "assertion-failed");
+  }
+}
+
 export function assertLivePublicSlug(value: unknown): asserts value is string {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(value) || value === "qualification-public") {
     throw new Error("Fixture publication did not return a valid live returned public slug");
   }
 }
 
-function responseRecord(response: LivePublicJourneyResponse, status: number, operation: string): Record<string, any> {
-  if (response.status !== status || !response.body || typeof response.body !== "object" || Array.isArray(response.body)) {
-    throw new Error(`Live fixture ${operation} was not confirmed`);
+function exactRecord(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
+    && Object.keys(value as Record<string, unknown>).sort().join("\0") === [...keys].sort().join("\0");
+}
+
+async function stageResponse(
+  stage: LivePublicJourneyFailureStage,
+  status: number,
+  operation: () => Promise<LivePublicJourneyResponse>,
+): Promise<LivePublicJourneyResponse> {
+  let response: LivePublicJourneyResponse;
+  try {
+    response = await operation();
+  } catch {
+    throw new LivePublicJourneyFailure(stage, "operation-failed");
   }
-  return response.body as Record<string, any>;
+  if (!response || typeof response !== "object" || response.status !== status) {
+    throw new LivePublicJourneyFailure(stage, "http-failed");
+  }
+  return response;
+}
+
+async function stageRecord(
+  stage: LivePublicJourneyFailureStage,
+  status: number,
+  operation: () => Promise<LivePublicJourneyResponse>,
+): Promise<Record<string, unknown>> {
+  const response = await stageResponse(stage, status, operation);
+  if (!response.body || typeof response.body !== "object" || Array.isArray(response.body)) {
+    throw new LivePublicJourneyFailure(stage, "contract-invalid");
+  }
+  return response.body as Record<string, unknown>;
+}
+
+function contract(stage: LivePublicJourneyFailureStage, condition: unknown): asserts condition {
+  if (!condition) throw new LivePublicJourneyFailure(stage, "contract-invalid");
+}
+
+const FRESH_GUEST_CONTROLS: LivePublicJourneyControls = {
+  allowSongRequests: true,
+  allowGuestPlayOnDevice: true,
+  allowPlaylistSharing: false,
+  allowRecentlyPlayedVisibility: true,
+  allowQueueVisibility: false,
+};
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function itemsContainValue(value: unknown, key: string, expected: string): boolean {
+  const record = recordValue(value);
+  return Array.isArray(record?.items)
+    && record.items.some((item) => recordValue(item)?.[key] === expected);
+}
+
+function freshDashboard(
+  stage: "owner-dashboard" | "private-dashboard",
+  dashboard: Record<string, unknown>,
+  mode: "unlisted" | "private",
+  expectedSlug?: string,
+): string {
+  contract(stage, exactRecord(dashboard, [
+    "queueRevision", "playbackRevision", "songs", "currentlyPlaying", "playedSongs", "publication", "guestControls",
+  ]));
+  const publication = dashboard.publication;
+  const guestControls = dashboard.guestControls;
+  contract(stage, exactRecord(publication, ["mode", "publicSlug"]));
+  contract(stage, exactRecord(guestControls, Object.keys(FRESH_GUEST_CONTROLS)));
+  contract(stage, dashboard.queueRevision === 0 && dashboard.playbackRevision === 0
+    && Array.isArray(dashboard.songs) && dashboard.songs.length === 0
+    && dashboard.currentlyPlaying === null
+    && Array.isArray(dashboard.playedSongs) && dashboard.playedSongs.length === 0
+    && publication.mode === mode
+    && Object.entries(FRESH_GUEST_CONTROLS).every(([key, value]) => guestControls[key] === value));
+  try {
+    assertLivePublicSlug(publication.publicSlug);
+  } catch {
+    throw new LivePublicJourneyFailure(stage, "contract-invalid");
+  }
+  contract(stage, expectedSlug === undefined || publication.publicSlug === expectedSlug);
+  return publication.publicSlug;
 }
 
 export async function prepareLivePublicMusicJourney(input: {
   seedId: string;
+  privatePublicationIdempotencyKey: string;
   publicationIdempotencyKey: string;
   controls: LivePublicJourneyControls;
   read: (path: string) => Promise<LivePublicJourneyResponse>;
@@ -457,7 +585,9 @@ export async function prepareLivePublicMusicJourney(input: {
   songs: { history: number; playing: number; queued: number };
 }> {
   if (!/^[a-z0-9]{8}$/.test(input.seedId)
+      || !/^tunes-share-v1-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.privatePublicationIdempotencyKey)
       || !/^tunes-share-v1-\d{13}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.publicationIdempotencyKey)
+      || input.privatePublicationIdempotencyKey === input.publicationIdempotencyKey
       || Object.keys(input.controls).sort().join("\0") !== [
         "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowQueueVisibility",
         "allowRecentlyPlayedVisibility", "allowSongRequests",
@@ -465,20 +595,29 @@ export async function prepareLivePublicMusicJourney(input: {
       || Object.values(input.controls).some((value) => typeof value !== "boolean")) {
     throw new Error("Live fixture preparation input is invalid");
   }
-  const dashboard = responseRecord(await input.read("/api/music/dashboard"), 200, "dashboard read");
-  if (!Number.isSafeInteger(dashboard.queueRevision) || !Number.isSafeInteger(dashboard.playbackRevision ?? 0)
-      || dashboard.publication?.mode !== "private") {
-    throw new Error("Live fixture must begin from the canonical private publication baseline");
-  }
+  const ownerDashboard = await stageRecord("owner-dashboard", 200, () => input.read("/api/music/dashboard"));
+  const publicSlug = freshDashboard("owner-dashboard", ownerDashboard, "unlisted");
+  const privatePublication = await stageRecord("private-transition", 200, () => input.mutate("owner-publication", {
+    method: "POST", path: "/api/music/publication", data: { mode: "private" },
+    idempotencyKey: input.privatePublicationIdempotencyKey,
+  }));
+  const privatePublicationState = privatePublication.publication;
+  contract("private-transition", exactRecord(privatePublication, ["version", "publication"])
+    && privatePublication.version === "music-publication/v1"
+    && exactRecord(privatePublicationState, ["mode", "publicSlug"])
+    && privatePublicationState.mode === "private"
+    && privatePublicationState.publicSlug === publicSlug);
+  const dashboard = await stageRecord("private-dashboard", 200, () => input.read("/api/music/dashboard"));
+  freshDashboard("private-dashboard", dashboard, "private", publicSlug);
 
   const playlistName = `Fixture public ${input.seedId}`;
-  const playlist = responseRecord(await input.mutate("playlist-create", {
+  const playlist = await stageRecord("playlist", 201, () => input.mutate("playlist-create", {
     method: "POST",
     path: "/api/playlists",
     data: { name: playlistName, description: "Canonical guest journey prerequisites" },
     idempotencyKey: `fixture-playlist-${input.seedId}`,
-  }), 201, "playlist creation");
-  if (!Number.isSafeInteger(playlist.id) || playlist.id <= 0) throw new Error("Live fixture playlist identity is invalid");
+  }));
+  contract("playlist", typeof playlist.id === "number" && Number.isSafeInteger(playlist.id) && playlist.id > 0);
 
   const songInputs = [
     { youtubeId: "abcdefghijk", title: "Fixture history song", artist: "Fixture artist", thumbnailUrl: "http://localhost:55173/images/tuneslogo.png" },
@@ -487,84 +626,102 @@ export async function prepareLivePublicMusicJourney(input: {
   ];
   const songIds: number[] = [];
   for (const [index, song] of songInputs.entries()) {
-    const saved = responseRecord(await input.mutate("playlist-song-add", {
+    const stage = `saved-song-${index + 1}` as "saved-song-1" | "saved-song-2" | "saved-song-3";
+    const saved = await stageRecord(stage, 201, () => input.mutate("playlist-song-add", {
       method: "POST",
       path: `/api/playlists/${playlist.id}/songs`,
       data: song,
       idempotencyKey: `fixture-song-${input.seedId}-${index + 1}`,
-    }), 201, "playlist song creation");
-    if (!Number.isSafeInteger(saved.id) || saved.id <= 0 || songIds.includes(saved.id)) {
-      throw new Error("Live fixture song identity is invalid");
-    }
+    }));
+    contract(stage, typeof saved.id === "number" && Number.isSafeInteger(saved.id) && saved.id > 0 && !songIds.includes(saved.id));
     songIds.push(saved.id);
   }
 
-  const visibility = await input.mutate("playlist-visibility", {
+  await stageResponse("visibility", 204, () => input.mutate("playlist-visibility", {
     method: "PATCH", path: `/api/playlists/${playlist.id}/visibility`, data: { isVisibleToGuests: true },
     idempotencyKey: `fixture-visibility-${input.seedId}`,
-  });
-  if (visibility.status !== 204) throw new Error("Live fixture playlist visibility was not confirmed");
+  }));
 
-  const queued = responseRecord(await input.mutate("queue-replace", {
+  const queued = await stageRecord("queue", 200, () => input.mutate("queue-replace", {
     method: "POST",
     path: "/api/music/queue/replace",
     data: { expectedRevision: dashboard.queueRevision, songs: songIds.map((songId) => ({ playlistId: playlist.id, songId })) },
     idempotencyKey: `fixture-queue-${input.seedId}`,
-  }), 200, "queue seed");
-  if (!Number.isSafeInteger(queued.revision)) throw new Error("Live fixture queue revision is invalid");
+  }));
+  const queuedSongs = queued.songs;
+  contract("queue", exactRecord(queued, ["version", "revision", "songs"])
+    && queued.version === "music-queue/v1" && queued.revision === 1
+    && Array.isArray(queuedSongs) && queuedSongs.length === 3);
+  const queueSongIds: number[] = [];
+  let queueUserId: number | undefined;
+  for (const [index, queueSong] of queuedSongs.entries()) {
+    contract("queue", exactRecord(queueSong, [
+      "id", "userId", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt",
+    ]) && typeof queueSong.id === "number" && Number.isSafeInteger(queueSong.id) && queueSong.id > 0 && !queueSongIds.includes(queueSong.id)
+      && typeof queueSong.userId === "number" && Number.isSafeInteger(queueSong.userId) && queueSong.userId > 0
+      && (queueUserId === undefined || queueSong.userId === queueUserId)
+      && queueSong.youtubeId === songInputs[index]!.youtubeId
+      && queueSong.title === songInputs[index]!.title
+      && queueSong.artist === songInputs[index]!.artist
+      && queueSong.thumbnailUrl === songInputs[index]!.thumbnailUrl
+      && queueSong.position === index && queueSong.status === "queued" && queueSong.playedAt === null);
+    queueUserId ??= queueSong.userId as number;
+    queueSongIds.push(queueSong.id as number);
+  }
 
-  const firstPlayback = responseRecord(await input.mutate("player-update", {
+  const firstPlayback = await stageRecord("playback-1", 200, () => input.mutate("player-update", {
     method: "POST",
     path: "/api/playlist/currently-playing",
-    data: { songId: songIds[0], expectedRevision: queued.revision, expectedPlaybackRevision: dashboard.playbackRevision ?? 0 },
+    data: { songId: queueSongIds[0], expectedRevision: queued.revision, expectedPlaybackRevision: dashboard.playbackRevision },
     idempotencyKey: `fixture-playback-${input.seedId}-1`,
-  }), 200, "initial playback seed");
-  if (!Number.isSafeInteger(firstPlayback.revision) || !Number.isSafeInteger(firstPlayback.playbackRevision)) {
-    throw new Error("Live fixture playback revision is invalid");
-  }
-  const secondPlayback = responseRecord(await input.mutate("player-update", {
+  }));
+  contract("playback-1", firstPlayback.version === "music-playback/v1"
+    && typeof firstPlayback.revision === "number" && Number.isSafeInteger(firstPlayback.revision)
+    && typeof firstPlayback.playbackRevision === "number" && Number.isSafeInteger(firstPlayback.playbackRevision)
+    && recordValue(firstPlayback.song)?.id === queueSongIds[0]);
+  const secondPlayback = await stageRecord("playback-2", 200, () => input.mutate("player-update", {
     method: "POST",
     path: "/api/playlist/currently-playing",
-    data: { songId: songIds[1], expectedRevision: firstPlayback.revision, expectedPlaybackRevision: firstPlayback.playbackRevision },
+    data: { songId: queueSongIds[1], expectedRevision: firstPlayback.revision, expectedPlaybackRevision: firstPlayback.playbackRevision },
     idempotencyKey: `fixture-playback-${input.seedId}-2`,
-  }), 200, "canonical playback seed");
-  if (!Number.isSafeInteger(secondPlayback.revision) || !Number.isSafeInteger(secondPlayback.playbackRevision)) {
-    throw new Error("Live fixture playback revision is invalid");
-  }
+  }));
+  contract("playback-2", secondPlayback.version === "music-playback/v1"
+    && typeof secondPlayback.revision === "number" && Number.isSafeInteger(secondPlayback.revision)
+    && typeof secondPlayback.playbackRevision === "number" && Number.isSafeInteger(secondPlayback.playbackRevision)
+    && recordValue(secondPlayback.song)?.id === queueSongIds[1]);
 
-  responseRecord(await input.mutate("guest-controls", {
+  const controls = await stageRecord("controls", 200, () => input.mutate("guest-controls", {
     method: "PATCH", path: "/api/music/guest-controls", data: input.controls,
     idempotencyKey: `fixture-controls-${input.seedId}`,
-  }), 200, "guest controls");
-  const profileUpdate = responseRecord(await input.updatePublicProfile(), 200, "public profile visibility update");
-  if (profileUpdate.data?.updateAccount?.public_music !== "Yes") {
-    throw new Error("Live fixture public profile visibility was not confirmed");
-  }
-  const publication = responseRecord(await input.mutate("owner-publication", {
+  }));
+  contract("controls", exactRecord(controls, Object.keys(input.controls))
+    && Object.entries(input.controls).every(([key, value]) => controls[key] === value));
+  const profileUpdate = await stageRecord("profile", 200, input.updatePublicProfile);
+  contract("profile", recordValue(recordValue(profileUpdate.data)?.updateAccount)?.public_music === "Yes");
+  const publication = await stageRecord("publication", 200, () => input.mutate("owner-publication", {
     method: "POST", path: "/api/music/publication", data: { mode: "public" },
     idempotencyKey: input.publicationIdempotencyKey,
-  }), 200, "public publication");
-  if (publication.version !== "music-publication/v1" || publication.publication?.mode !== "public") {
-    throw new Error("Live fixture public publication response is invalid");
-  }
-  const publicSlug = publication.publication.publicSlug;
-  assertLivePublicSlug(publicSlug);
+  }));
+  const publicationState = publication.publication;
+  contract("publication", exactRecord(publication, ["version", "publication"])
+    && publication.version === "music-publication/v1"
+    && exactRecord(publicationState, ["mode", "publicSlug"])
+    && publicationState.mode === "public" && publicationState.publicSlug === publicSlug);
 
-  const publicResource = responseRecord(
-    await input.read(`/api/music/public-resource/v1/${encodeURIComponent(publicSlug)}`), 200, "public resource verification",
-  );
-  if (publicResource.version !== "music-public-resource/v1"
-      || (input.controls.allowGuestPlayOnDevice && publicResource.currentlyPlaying?.title !== songInputs[1].title)
-      || (input.controls.allowQueueVisibility
-        && !publicResource.queue?.items?.some((song: { title?: unknown }) => song.title === songInputs[2].title))
-      || (input.controls.allowRecentlyPlayedVisibility
-        && !publicResource.recentlyPlayed?.items?.some((song: { title?: unknown }) => song.title === songInputs[0].title))
-      || (input.controls.allowPlaylistSharing
-        && !publicResource.playlists?.items?.some((entry: { name?: unknown }) => entry.name === playlistName))
-      || Object.entries(input.controls).some(([key, enabled]) => publicResource.permissions?.[key] !== enabled)) {
-    throw new Error("Live fixture public prerequisites were not projected exactly");
-  }
-  return { publicSlug, playlistId: playlist.id, playlistName, songs: { history: songIds[0]!, playing: songIds[1]!, queued: songIds[2]! } };
+  const publicResource = await stageRecord("public-resource", 200,
+    () => input.read(`/api/music/public-resource/v1/${encodeURIComponent(publicSlug)}`));
+  const permissions = recordValue(publicResource.permissions);
+  contract("public-resource", publicResource.version === "music-public-resource/v1"
+      && !(input.controls.allowGuestPlayOnDevice && recordValue(publicResource.currentlyPlaying)?.title !== songInputs[1].title)
+      && !(input.controls.allowQueueVisibility
+        && !itemsContainValue(publicResource.queue, "title", songInputs[2].title))
+      && !(input.controls.allowRecentlyPlayedVisibility
+        && !itemsContainValue(publicResource.recentlyPlayed, "title", songInputs[0].title))
+      && !(input.controls.allowPlaylistSharing
+        && !itemsContainValue(publicResource.playlists, "name", playlistName))
+      && permissions !== undefined
+      && !Object.entries(input.controls).some(([key, enabled]) => permissions[key] !== enabled));
+  return { publicSlug, playlistId: playlist.id, playlistName, songs: { history: queueSongIds[0]!, playing: queueSongIds[1]!, queued: queueSongIds[2]! } };
 }
 
 export async function withRestoredMusicFixture<T>(adapters: {
@@ -682,9 +839,13 @@ export async function withRestoredMusicFixture<T>(adapters: {
   }
   if (journeyFailure) {
     if (adapters.onBodyFailureAfterRestore) await adapters.onBodyFailureAfterRestore();
+    const permissionFailure = journeyFailure instanceof LivePublicJourneyFailure
+      && adapters.journeyId && LIVE_PERMISSION_JOURNEY_ID_SET.has(adapters.journeyId)
+      ? { stage: journeyFailure.stage, code: journeyFailure.code }
+      : undefined;
     if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
       id: adapters.journeyId, status: "failed", reason: "body-failed", stage: "body",
-      cleanup: "restored", beforeHash, afterHash, rows: adapters.journeyRows,
+      cleanup: "restored", beforeHash, afterHash, rows: adapters.journeyRows, permissionFailure,
     }));
     throw journeyFailure;
   }

@@ -15,7 +15,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const LIVE_JOURNEY_MANIFEST_VERSION = "explorers-live-mutation-journeys/v1";
-export const LIVE_JOURNEY_RESULT_VERSION = "explorers-live-mutation-journey-result/v1";
+export const LIVE_JOURNEY_RESULT_VERSION = "explorers-live-mutation-journey-result/v2";
 export const LIVE_MUTATION_TAG = "@explorers-live-mutation";
 export const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
 const LIVE_MUTATION_REPORT_TAG = LIVE_MUTATION_TAG.replace(/^@/, "");
@@ -24,7 +24,7 @@ const MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_PRIVATE_TERMINAL_EVIDENCE_BYTES = 4 * 1024 * 1024;
 const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v2";
 const SAFE_EXECUTION_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
-export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v2";
+export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v3";
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
@@ -45,6 +45,26 @@ export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "profile.owner.pairwise.batch-05", title: "publishes pairwise matrix batch 5/6 and restores exact raw social_media", source: "e2e/profile-theme.spec.ts" },
   { id: "profile.owner.pairwise.batch-06", title: "publishes pairwise matrix batch 6/6 and restores exact raw social_media", source: "e2e/profile-theme.spec.ts" },
 ]);
+
+export const LIVE_PERMISSION_JOURNEY_IDS = Object.freeze([
+  "music.owner-guest.permission.allow-song-requests",
+  "music.owner-guest.permission.allow-guest-play-on-device",
+  "music.owner-guest.permission.allow-playlist-sharing",
+  "music.owner-guest.permission.allow-recently-played-visibility",
+  "music.owner-guest.permission.allow-queue-visibility",
+]);
+export const LIVE_PERMISSION_FAILURE_STAGES = Object.freeze([
+  "owner-dashboard", "private-transition", "private-dashboard", "playlist",
+  "saved-song-1", "saved-song-2", "saved-song-3", "visibility", "queue",
+  "playback-1", "playback-2", "controls", "profile", "publication",
+  "public-resource", "guest-control-visible",
+]);
+export const LIVE_PERMISSION_FAILURE_CODES = Object.freeze([
+  "operation-failed", "http-failed", "contract-invalid", "assertion-failed",
+]);
+const LIVE_PERMISSION_JOURNEY_ID_SET = new Set(LIVE_PERMISSION_JOURNEY_IDS);
+const LIVE_PERMISSION_FAILURE_STAGE_SET = new Set(LIVE_PERMISSION_FAILURE_STAGES);
+const LIVE_PERMISSION_FAILURE_CODE_SET = new Set(LIVE_PERMISSION_FAILURE_CODES);
 
 export const LIVE_READ_ONLY_COLLECTION = Object.freeze([
   { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
@@ -432,6 +452,22 @@ function sanitizedExecutionOutcomes(executionReport, reportStatus) {
   }
 }
 
+function validPermissionFailure(value) {
+  return exactKeySet(value, ["stage", "code"])
+    && LIVE_PERMISSION_FAILURE_STAGE_SET.has(value.stage)
+    && LIVE_PERMISSION_FAILURE_CODE_SET.has(value.code);
+}
+
+function terminalPermissionFailureValid(record) {
+  if (!Object.prototype.hasOwnProperty.call(record, "permissionFailure")) return true;
+  return LIVE_PERMISSION_JOURNEY_ID_SET.has(record.id)
+    && record.status === "failed"
+    && record.reason === "body-failed"
+    && record.stage === "body"
+    && record.cleanup === "restored"
+    && validPermissionFailure(record.permissionFailure);
+}
+
 function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOutcomes = []) {
   if (terminalStatus === "not-run") {
     return {
@@ -466,7 +502,8 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
   const executionById = new Map(executionOutcomes.map((record) => [record.id, record]));
   let hostileRecord = false;
   for (const record of terminalRecords) {
-    if (!record || typeof record !== "object" || Array.isArray(record) || !knownIds.has(record.id)) {
+    if (!record || typeof record !== "object" || Array.isArray(record) || !knownIds.has(record.id)
+        || !terminalPermissionFailureValid(record)) {
       hostileRecord = true;
       continue;
     }
@@ -494,7 +531,16 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
         : { id, status: "invalid", reason: "terminal-execution-mismatch", stage: "post-terminal" };
     }
     if (records[0].status === "failed") {
-      return { id, status: "failed", reason: "terminal-failed", stage: "terminal-evidence" };
+      return {
+        id,
+        status: "failed",
+        reason: "terminal-failed",
+        stage: "terminal-evidence",
+        ...(records[0].permissionFailure ? { permissionFailure: {
+          stage: records[0].permissionFailure.stage,
+          code: records[0].permissionFailure.code,
+        } } : {}),
+      };
     }
     return { id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence" };
   });
@@ -545,10 +591,15 @@ export function buildSanitizedJourneyOutcomeLedger({
   return ledger;
 }
 
-function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tuples }) {
-  return exactKeySet(record, ["id", "status", "reason", "stage"])
+function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tuples, permissionTerminal = false }) {
+  const hasPermissionFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure");
+  return exactKeySet(record, hasPermissionFailure ? ["id", "status", "reason", "stage", "permissionFailure"] : ["id", "status", "reason", "stage"])
     && record.id === expectedId && statuses.has(record.status) && reasons.has(record.reason) && stages.has(record.stage)
-    && tuples.has(`${record.status}\0${record.reason}\0${record.stage}`);
+    && tuples.has(`${record.status}\0${record.reason}\0${record.stage}`)
+    && (!hasPermissionFailure || (permissionTerminal
+      && LIVE_PERMISSION_JOURNEY_ID_SET.has(expectedId)
+      && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
+      && validPermissionFailure(record.permissionFailure)));
 }
 
 export function validateSanitizedJourneyOutcomeLedger(ledger) {
@@ -565,7 +616,7 @@ export function validateSanitizedJourneyOutcomeLedger(ledger) {
     tuples: EXECUTION_OUTCOME_TUPLES,
   })) || !ledger.mutationTerminals.every((record, index) => outcomeRecordValid(record, LIVE_JOURNEY_MANIFEST[index].id, {
     statuses: TERMINAL_OUTCOME_STATUSES, reasons: TERMINAL_OUTCOME_REASONS, stages: TERMINAL_OUTCOME_STAGES,
-    tuples: TERMINAL_OUTCOME_TUPLES,
+    tuples: TERMINAL_OUTCOME_TUPLES, permissionTerminal: true,
   }))) return false;
   const expectedExecutionCounts = {
     total: EXPECTED_EXECUTION_OUTCOMES.length,
@@ -952,7 +1003,7 @@ const LIVE_TERMINAL_TUPLES = new Set([
 
 export function buildLiveJourneyTerminal({
   id, status = "passed", reason = "none", stage = "verification", cleanup = "restored",
-  beforeHash, afterHash, rows,
+  beforeHash, afterHash, rows, permissionFailure,
 }) {
   const entry = liveJourneyManifestEntry(id);
   if (!entry) throw new Error("Unknown live journey ID");
@@ -962,6 +1013,11 @@ export function buildLiveJourneyTerminal({
   }
   if (profile && status === "passed" && (!Array.isArray(rows) || rows.length !== 12)) throw new Error("Profile journey evidence requires exactly 12 rows");
   if (!profile && rows !== undefined) throw new Error("Music journey evidence cannot contain profile rows");
+  if (permissionFailure !== undefined && (!LIVE_PERMISSION_JOURNEY_ID_SET.has(id)
+      || status !== "failed" || reason !== "body-failed" || stage !== "body" || cleanup !== "restored"
+      || !validPermissionFailure(permissionFailure))) {
+    throw new Error("Live journey permission failure metadata is invalid");
+  }
   const requiresEqualHashes = cleanup === "restored";
   if (typeof beforeHash !== "string" || !/^[a-f0-9]{64}$/.test(beforeHash)
       || (requiresEqualHashes && (afterHash !== beforeHash || !/^[a-f0-9]{64}$/.test(afterHash)))) {
@@ -978,6 +1034,10 @@ export function buildLiveJourneyTerminal({
     stage,
     beforeHash,
     ...(typeof afterHash === "string" ? { afterHash } : {}),
+    ...(permissionFailure ? { permissionFailure: {
+      stage: permissionFailure.stage,
+      code: permissionFailure.code,
+    } } : {}),
     ...(profile && Array.isArray(rows) ? { rowCount: rows.length, rows } : {}),
   };
 }
@@ -1045,6 +1105,7 @@ export function validateLiveJourneyEvidence({ executionReport, records }) {
         if (record?.version !== LIVE_JOURNEY_RESULT_VERSION || record?.manifestVersion !== LIVE_JOURNEY_MANIFEST_VERSION
             || record?.title !== expected.title || record?.source !== expected.source
             || record?.status !== "passed" || record?.skipReason !== null || record?.cleanup !== "restored"
+            || Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure")
             || !validHashPair(record ?? {})) invalidContract = true;
       }
       if (reordered) subchecks.push("records-reordered");

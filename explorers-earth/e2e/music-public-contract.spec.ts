@@ -7,6 +7,7 @@ import { Kind, parse, print } from "graphql";
 import { LIVE_MUTATION_TAG, LIVE_READ_ONLY_TAG } from "../scripts/music-public-live-preflight.mjs";
 import { setupMockAuthentication } from "./setup/auth";
 import {
+  assertLivePermissionGuestControlVisible,
   attachLiveFailureScreenshotBestEffort,
   completeMusicAccount,
   installMusicQualificationMocks,
@@ -497,6 +498,7 @@ async function prepareOwnerPublicJourney(
   });
   return prepareLivePublicMusicJourney({
     seedId: randomUUID().replace(/-/g, "").slice(0, 8),
+    privatePublicationIdempotencyKey: `tunes-share-v1-${Date.now()}-${randomUUID()}`,
     publicationIdempotencyKey: `tunes-share-v1-${Date.now()}-${randomUUID()}`,
     controls,
     read: async (path) => decode(await page.request.get(`${fixtureOrigin}${path}`, {
@@ -576,17 +578,19 @@ for (const control of [
         const controls = { ...disabledGuestControls(), [control]: true };
         const prepared = await prepareOwnerPublicJourney(page, credential, controls);
         const guestPage = await guest.newPage();
-        await guestPage.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`);
-        const guestEffect = control === "allowSongRequests"
-          ? guestPage.getByRole("textbox", { name: /search for a song/i })
-          : control === "allowGuestPlayOnDevice"
-            ? guestPage.getByRole("button", { name: /play .*device/i })
-            : control === "allowPlaylistSharing"
-              ? guestPage.getByRole("heading", { name: /playlists/i })
-              : control === "allowRecentlyPlayedVisibility"
-                ? guestPage.getByRole("heading", { name: /recently played/i })
-                : guestPage.getByRole("heading", { name: /queue/i });
-        await expect(guestEffect.first(), `${control} exposes its seeded guest control`).toBeVisible();
+        await assertLivePermissionGuestControlVisible(async () => {
+          await guestPage.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`);
+          const guestEffect = control === "allowSongRequests"
+            ? guestPage.getByRole("textbox", { name: /search for a song/i })
+            : control === "allowGuestPlayOnDevice"
+              ? guestPage.getByRole("button", { name: /play .*device/i })
+              : control === "allowPlaylistSharing"
+                ? guestPage.getByRole("heading", { name: /playlists/i })
+                : control === "allowRecentlyPlayedVisibility"
+                  ? guestPage.getByRole("heading", { name: /recently played/i })
+                  : guestPage.getByRole("heading", { name: /queue/i });
+          await expect(guestEffect.first(), `${control} exposes its seeded guest control`).toBeVisible();
+        });
       } finally {
         await guest.close();
       }
