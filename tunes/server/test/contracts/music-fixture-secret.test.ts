@@ -1024,13 +1024,10 @@ STRAPI_ACCESS_TOKEN=dedicated-fixture-access
       scripts: Record<string, string>;
     };
     const source = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-fixture-authority-attest.ts"), "utf8");
-    const musicCliSource = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-cli.ts"), "utf8");
     expect(rootPackage.scripts["music:fixture:authority:attest"])
       .toBe("tsx tunes/scripts/music-fixture-authority-attest.ts");
     expect(source).toContain('repositoryRoot: path.resolve(import.meta.dirname, "../..")');
     expect(source).toContain("arguments: process.argv.slice(2)");
-    expect(musicCliSource).toMatch(/parsed\.command === "db:reset" && retiredFixtureAuthority[\s\S]+withRetiredFixtureMusicAuthority\(root,[\s\S]+removeRetainedFixtureVolumes\(id\)/);
-    expect(musicCliSource).toMatch(/const withFixtureRetirement = parsed\.command === "db:reset"[\s\S]+\? withRetiredFixtureMusicAuthority[\s\S]+: withAllFixtureMusicSecretsCleanup/);
   });
 
   it.each(["missing", "tombstone"] as const)(

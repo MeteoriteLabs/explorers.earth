@@ -15,13 +15,14 @@ import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, ty
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
 import {
+  attestRetiredFixtureMusicAuthority,
+  cleanupAllFixtureMusicTokenSecrets,
   FixtureSecretCleanupError,
   FixtureUnsupportedLegacyEnvironmentError,
   inspectFixtureEnvironmentAuthority,
   readFixtureMusicEnvironment,
   rotateFixtureMusicAuthority,
   withAllFixtureMusicSecretsCleanup,
-  withRetiredFixtureMusicAuthority,
 } from "./music-fixture-secret.ts";
 import {
   readSecureMusicSecretFile,
@@ -163,6 +164,28 @@ export interface RetainedFixtureVolumeInspection {
   Labels?: Record<string, string>;
 }
 
+export interface VolumeOnlyFixtureResetDependencies {
+  listContainerIds: () => Promise<readonly string[]>;
+  listLabeledVolumeNames: () => Promise<readonly string[]>;
+  inspectVolume: (name: string) => Promise<readonly RetainedFixtureVolumeInspection[]>;
+  removeVolumes: (names: readonly string[]) => Promise<string>;
+}
+
+export interface VolumeOnlyFixtureDockerCommandResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  artifact?: string;
+}
+
+interface VolumeOnlyFixtureResetSnapshot {
+  volumes: Array<{
+    logicalName: typeof retainedFixtureVolumes[number];
+    name: string;
+    fingerprint: string;
+  }>;
+}
+
 export function validateRetainedFixtureVolume(
   inspection: RetainedFixtureVolumeInspection,
   logicalName: typeof retainedFixtureVolumes[number],
@@ -180,14 +203,121 @@ export function validateRetainedFixtureVolume(
   }
 }
 
-function sameRetainedFixtureVolume(
-  left: RetainedFixtureVolumeInspection,
-  right: RetainedFixtureVolumeInspection,
+function retainedFixtureVolumeName(logicalName: typeof retainedFixtureVolumes[number]): string {
+  return `${MUSIC_COMPOSE_PROJECT}_${logicalName}`;
+}
+
+function retainedFixtureVolumeFingerprint(inspection: RetainedFixtureVolumeInspection): string {
+  return JSON.stringify({
+    Name: inspection.Name,
+    CreatedAt: inspection.CreatedAt,
+    Mountpoint: inspection.Mountpoint,
+    Labels: Object.fromEntries(Object.entries(inspection.Labels ?? {}).sort(([left], [right]) => left.localeCompare(right))),
+  });
+}
+
+function sameVolumeOnlyFixtureResetSnapshot(
+  left: VolumeOnlyFixtureResetSnapshot,
+  right: VolumeOnlyFixtureResetSnapshot,
 ): boolean {
-  return left.Name === right.Name
-    && left.CreatedAt === right.CreatedAt
-    && left.Mountpoint === right.Mountpoint
-    && JSON.stringify(left.Labels ?? {}) === JSON.stringify(right.Labels ?? {});
+  return left.volumes.length === right.volumes.length
+    && left.volumes.every((volume, index) => {
+      const other = right.volumes[index];
+      return other?.logicalName === volume.logicalName
+        && other.name === volume.name
+        && other.fingerprint === volume.fingerprint;
+    });
+}
+
+async function captureVolumeOnlyFixtureResetSnapshot(
+  dependencies: VolumeOnlyFixtureResetDependencies,
+): Promise<VolumeOnlyFixtureResetSnapshot> {
+  const containers = Array.from(await dependencies.listContainerIds());
+  if (containers.some((value) => typeof value !== "string" || !value.trim())) {
+    throw new SafetyError("volume-only fixture container inventory is malformed", "cleanup-safety");
+  }
+  if (containers.length) throw new SafetyError("volume-only fixture reset requires zero owned fixture containers", "cleanup-safety");
+
+  const names = Array.from(await dependencies.listLabeledVolumeNames());
+  if (names.some((value) => typeof value !== "string" || !value.trim()) || new Set(names).size !== names.length) {
+    throw new SafetyError("labeled fixture volume inventory is malformed or ambiguous", "cleanup-safety");
+  }
+  const allowedNames = new Set(retainedFixtureVolumes.map(retainedFixtureVolumeName));
+  if (names.some((name) => !allowedNames.has(name))) {
+    throw new SafetyError("labeled fixture volume inventory contains an unallowlisted target", "cleanup-safety");
+  }
+  if (!names.includes(retainedFixtureVolumeName("music-fixture-postgres"))) {
+    throw new SafetyError("no retained fixture database volume was found; reset refused", "cleanup-safety");
+  }
+
+  const listedNames = new Set(names);
+  const volumes: VolumeOnlyFixtureResetSnapshot["volumes"] = [];
+  for (const logicalName of retainedFixtureVolumes) {
+    const expectedName = retainedFixtureVolumeName(logicalName);
+    const inspections = Array.from(await dependencies.inspectVolume(expectedName));
+    if (inspections.length > 1) {
+      throw new SafetyError(`retained fixture volume ${expectedName} inspection was ambiguous`, "cleanup-safety");
+    }
+    if (!listedNames.has(expectedName)) {
+      if (inspections.length) {
+        validateRetainedFixtureVolume(inspections[0]!, logicalName);
+        throw new SafetyError(`retained fixture volume ${expectedName} escaped the exact labeled inventory`, "cleanup-safety");
+      }
+      continue;
+    }
+    if (inspections.length !== 1) {
+      throw new SafetyError(`retained fixture volume ${expectedName} changed during authorization`, "cleanup-safety");
+    }
+    validateRetainedFixtureVolume(inspections[0]!, logicalName);
+    volumes.push({
+      logicalName,
+      name: expectedName,
+      fingerprint: retainedFixtureVolumeFingerprint(inspections[0]!),
+    });
+  }
+  if (volumes.length !== names.length) {
+    throw new SafetyError("labeled fixture volume inventory is incomplete or ambiguous", "cleanup-safety");
+  }
+  return { volumes };
+}
+
+async function proveVolumeOnlyFixtureResetAbsent(
+  dependencies: VolumeOnlyFixtureResetDependencies,
+): Promise<void> {
+  const containers = Array.from(await dependencies.listContainerIds());
+  const names = Array.from(await dependencies.listLabeledVolumeNames());
+  const inspections = await Promise.all(retainedFixtureVolumes.map(async (logicalName) =>
+    Array.from(await dependencies.inspectVolume(retainedFixtureVolumeName(logicalName)))));
+  if (containers.length || names.length || inspections.some((entries) => entries.length)) {
+    throw new SafetyError("volume-only fixture reset absence proof failed; owned resources remain", "cleanup-safety");
+  }
+}
+
+export async function resetVolumeOnlyFixtureVolumes(
+  repositoryRoot: string,
+  dependencies: VolumeOnlyFixtureResetDependencies,
+): Promise<{
+  removalArtifact: string;
+  attestation: ReturnType<typeof attestRetiredFixtureMusicAuthority>;
+}> {
+  const first = await captureVolumeOnlyFixtureResetSnapshot(dependencies);
+  const authorized = await captureVolumeOnlyFixtureResetSnapshot(dependencies);
+  if (!sameVolumeOnlyFixtureResetSnapshot(first, authorized)) {
+    throw new SafetyError("retained fixture volume authority changed during preauthorization", "cleanup-safety");
+  }
+
+  cleanupAllFixtureMusicTokenSecrets(repositoryRoot);
+  attestRetiredFixtureMusicAuthority(repositoryRoot);
+
+  const contained = await captureVolumeOnlyFixtureResetSnapshot(dependencies);
+  if (!sameVolumeOnlyFixtureResetSnapshot(authorized, contained)) {
+    throw new SafetyError("retained fixture volume authority changed after authority containment", "cleanup-safety");
+  }
+
+  const removalArtifact = await dependencies.removeVolumes(contained.volumes.map(({ name }) => name));
+  await proveVolumeOnlyFixtureResetAbsent(dependencies);
+  const attestation = attestRetiredFixtureMusicAuthority(repositoryRoot);
+  return { removalArtifact, attestation };
 }
 const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS = [
   "MUSIC_C10_STANDALONE_POSTGRES_ACK",
@@ -1048,38 +1178,104 @@ async function portAvailable(port: number): Promise<boolean> {
   return await new Promise((resolvePort) => { const server = createServer(); server.unref(); server.once("error", () => resolvePort(false)); server.listen({ host: "127.0.0.1", port }, () => server.close(() => resolvePort(true))); });
 }
 
+function assertRetainedFixtureVolumeName(name: string): void {
+  if (!retainedFixtureVolumes.map(retainedFixtureVolumeName).includes(name)) {
+    throw new SafetyError("retained fixture volume inspection target is outside the exact allowlist", "cleanup-safety");
+  }
+}
+
+function parseRetainedFixtureVolumeInspection(
+  name: string,
+  result: VolumeOnlyFixtureDockerCommandResult,
+): RetainedFixtureVolumeInspection[] {
+  assertRetainedFixtureVolumeName(name);
+  if (result.exitCode !== 0) {
+    if (/no such volume/i.test(`${result.stdout}\n${result.stderr}`)) return [];
+    throw new MusicCommandError(`docker volume inspection failed for ${name}`, "cleanup-safety", EXIT.dependency);
+  }
+  let parsed: unknown;
+  try { parsed = JSON.parse(result.stdout); }
+  catch { throw new SafetyError(`retained fixture volume ${name} inspection was malformed`, "cleanup-safety"); }
+  if (!Array.isArray(parsed) || parsed.some((entry) => !entry || typeof entry !== "object" || Array.isArray(entry))) {
+    throw new SafetyError(`retained fixture volume ${name} inspection was malformed`, "cleanup-safety");
+  }
+  return parsed as RetainedFixtureVolumeInspection[];
+}
+
+async function inspectRetainedFixtureVolumeByName(
+  name: string,
+): Promise<RetainedFixtureVolumeInspection[]> {
+  assertRetainedFixtureVolumeName(name);
+  const resolved = executable("docker");
+  const result = await runner.run(resolved.file, [...resolved.args, "volume", "inspect", name], { cwd: root, env: process.env });
+  return parseRetainedFixtureVolumeInspection(name, result);
+}
+
 async function inspectRetainedFixtureVolume(
   logicalName: typeof retainedFixtureVolumes[number],
 ): Promise<RetainedFixtureVolumeInspection | undefined> {
-  const resolved = executable("docker");
-  const name = `${MUSIC_COMPOSE_PROJECT}_${logicalName}`;
-  const result = await runner.run(resolved.file, [...resolved.args, "volume", "inspect", name], { cwd: root, env: process.env });
-  if (result.exitCode !== 0) {
-    if (/no such volume/i.test(`${result.stdout}\n${result.stderr}`)) return undefined;
-    throw new MusicCommandError(`docker volume inspection failed for ${name}`, "cleanup-safety", EXIT.dependency);
-  }
-  const parsed = JSON.parse(result.stdout) as RetainedFixtureVolumeInspection[];
+  const name = retainedFixtureVolumeName(logicalName);
+  const parsed = await inspectRetainedFixtureVolumeByName(name);
+  if (!parsed.length) return undefined;
   if (parsed.length !== 1) throw new SafetyError(`retained fixture volume ${name} inspection was ambiguous`, "cleanup-safety");
-  validateRetainedFixtureVolume(parsed[0], logicalName);
-  return parsed[0];
+  validateRetainedFixtureVolume(parsed[0]!, logicalName);
+  return parsed[0]!;
+}
+
+export function createVolumeOnlyFixtureResetDockerAdapter(input: {
+  required: (
+    args: readonly string[],
+    phase: string,
+  ) => Promise<VolumeOnlyFixtureDockerCommandResult & { artifact: string }>;
+  observed: (args: readonly string[]) => Promise<VolumeOnlyFixtureDockerCommandResult>;
+}): { dependencies: VolumeOnlyFixtureResetDependencies; artifacts: string[] } {
+  const artifacts: string[] = [];
+  const required = async (args: readonly string[], phase: string) => {
+    const result = await input.required(args, phase);
+    if (result.exitCode !== 0 || !result.artifact) {
+      throw new MusicCommandError(`docker ${args.join(" ")} failed with exit ${result.exitCode}`, phase, EXIT.dependency);
+    }
+    artifacts.push(result.artifact);
+    return result;
+  };
+  const lines = (output: string) => output.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  return {
+    dependencies: {
+      listContainerIds: async () => lines((await required(
+        [...composeArguments, "ps", "-a", "-q"],
+        "db-reset-volume-only-containers",
+      )).stdout),
+      listLabeledVolumeNames: async () => lines((await required([
+        "volume", "ls", "-q",
+        "--filter", "label=com.explorers.music.fixture=true",
+        "--filter", `label=com.explorers.music.project=${MUSIC_COMPOSE_PROJECT}`,
+      ], "db-reset-volume-only-volumes")).stdout),
+      inspectVolume: async (name) => parseRetainedFixtureVolumeInspection(
+        name,
+        await input.observed(["volume", "inspect", name]),
+      ),
+      removeVolumes: async (names) => (await required(
+        ["volume", "rm", ...names],
+        "db-reset-retained-volumes",
+      )).artifact,
+    },
+    artifacts,
+  };
 }
 
 async function removeRetainedFixtureVolumes(id: string): Promise<string[]> {
-  const inspected = new Map<typeof retainedFixtureVolumes[number], RetainedFixtureVolumeInspection>();
-  for (const logicalName of retainedFixtureVolumes) {
-    const volume = await inspectRetainedFixtureVolume(logicalName);
-    if (volume) inspected.set(logicalName, volume);
-  }
-  if (!inspected.has("music-fixture-postgres")) throw new SafetyError("no retained fixture database volume was found; reset refused", "cleanup-safety");
-  for (const [logicalName, before] of Array.from(inspected.entries())) {
-    const immediatelyBeforeDelete = await inspectRetainedFixtureVolume(logicalName);
-    if (!immediatelyBeforeDelete || !sameRetainedFixtureVolume(before, immediatelyBeforeDelete)) {
-      throw new SafetyError(`retained fixture volume changed before deletion; reset refused`, "cleanup-safety");
-    }
-  }
-  const names = Array.from(inspected.values()).map(({ Name }) => Name!);
-  const removed = await runChild(id, "docker", ["volume", "rm", ...names], "db-reset-retained-volumes", EXIT.dependency);
-  return [removed.artifact];
+  const adapter = createVolumeOnlyFixtureResetDockerAdapter({
+    required: async (args, phase) => ({
+      exitCode: 0,
+      ...await runChild(id, "docker", [...args], phase, EXIT.dependency),
+    }),
+    observed: async (args) => {
+      const resolved = executable("docker");
+      return await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: process.env });
+    },
+  });
+  await resetVolumeOnlyFixtureVolumes(root, adapter.dependencies);
+  return adapter.artifacts;
 }
 
 async function allocateStandalonePostgresPort(): Promise<number> {
@@ -1398,42 +1594,30 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
       summary: `${lane} lane ${report.status}; wall=${report.timing.wallClockMs}ms budget=${report.timing.budgetMs}ms p50=${report.timing.taskP50Ms}ms p95=${report.timing.taskP95Ms}ms`,
     };
   }
-  if (parsed.command === "down" || parsed.command === "db:reset") {
-    const retiredFixtureAuthority = inspectFixtureEnvironmentAuthority(root) === "tombstone";
-    if (parsed.command === "db:reset" && retiredFixtureAuthority) {
-      if (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT) {
-        throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
-      }
-      const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
-      if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
-      validateDisposableDatabaseTarget({
-        databaseUrlTest: activeFixtureEnvironment.DATABASE_URL_TEST,
-        databaseUrl: process.env.DATABASE_URL,
-        composeProject: parsed.confirmProject,
-        confirmation: parsed.confirmReset,
-      });
-      return await withRetiredFixtureMusicAuthority(root, async () => {
-        const artifacts = await removeRetainedFixtureVolumes(id);
-        return { status: "success", phase: "db-reset", exitCode: EXIT.success, artifacts };
-      });
+  if (parsed.command === "db:reset") {
+    if (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT) {
+      throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
     }
-    const withFixtureRetirement = parsed.command === "db:reset"
-      ? withRetiredFixtureMusicAuthority
-      : withAllFixtureMusicSecretsCleanup;
-    return await withFixtureRetirement(root, async () => {
-      const destructive = parsed.command === "db:reset" || parsed.volumes;
+    if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
+    const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
+    validateDisposableDatabaseTarget({
+      databaseUrlTest: activeFixtureEnvironment.DATABASE_URL_TEST,
+      databaseUrl: process.env.DATABASE_URL,
+      composeProject: parsed.confirmProject,
+      confirmation: parsed.confirmReset,
+    });
+    const compose = await renderComposeModel(id);
+    const artifacts = [...compose.artifacts, ...(await removeRetainedFixtureVolumes(id))];
+    return { status: "success", phase: "db-reset", exitCode: EXIT.success, artifacts };
+  }
+  if (parsed.command === "down") {
+    return await withAllFixtureMusicSecretsCleanup(root, async () => {
+      const destructive = parsed.volumes;
       if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
-      if (parsed.command === "db:reset") {
-        const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
-        if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
-        const environment = readActiveFixtureEnvironment();
-        validateDisposableDatabaseTarget({ databaseUrlTest: environment.DATABASE_URL_TEST, databaseUrl: process.env.DATABASE_URL,
-          composeProject: parsed.confirmProject, confirmation: parsed.confirmReset });
-      }
       const compose = await renderComposeModel(id);
       const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
-      const result = await runChild(id, "docker", [...composeArguments, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
-      return { status: "success", phase: parsed.command === "db:reset" ? "db-reset" : "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
+      const result = await runChild(id, "docker", [...composeArguments, "down", ...(destructive ? ["--volumes"] : [])], "down", EXIT.dependency);
+      return { status: "success", phase: "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
     });
   }
   throw new MusicCommandError(`unhandled command ${parsed.command}`, "arguments", EXIT.usage);

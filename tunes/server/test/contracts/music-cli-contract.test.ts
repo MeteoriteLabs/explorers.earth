@@ -118,7 +118,6 @@ describe("music CLI output contract", () => {
     expect(rotation).toBeGreaterThan(preflight);
     expect(source.slice(preflight, rotation)).toContain("music:db:reset");
     expect(source).toContain("removeRetainedFixtureVolumes(id)");
-    expect(source).toContain("sameRetainedFixtureVolume(before, immediatelyBeforeDelete)");
   });
 
   it("rotates fixture authority without erasing the prior bundle before pointer commit", () => {
