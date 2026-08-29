@@ -12,6 +12,39 @@ async function loadRestoreContract(): Promise<Record<string, unknown>> {
   }
 }
 
+async function loadC11CopyCorruptionContract(): Promise<Record<string, unknown>> {
+  try {
+    const modulePath: string = "../music-e2e-state-restore-test-helper";
+    return await import(modulePath);
+  } catch {
+    return {};
+  }
+}
+
+const c11MigrationCopyHeader = "COPY public.music_schema_migrations (id, checksum, schema_checksum, applied_at) FROM stdin;";
+const c11PlaylistCopyHeader = "COPY public.playlists (id, user_id, name, description, is_visible_to_guests, created_at, updated_at) FROM stdin;";
+const c11MigrationRowOne = `0001_runtime_baseline\t${"a".repeat(64)}\t${"b".repeat(64)}\t2026-08-29 01:00:00+00`;
+const c11MigrationRowTwo = `0002_identity_lifecycle\t${"c".repeat(64)}\t${"d".repeat(64)}\t2026-08-29 01:00:01+00`;
+const c11PlaylistRow = "123\t7\tRestore qualification\t\\N\tt\t2026-08-29 01:00:02\t2026-08-29 01:00:02";
+
+function c11CopyDumpFixture(): Buffer {
+  return Buffer.from([
+    "-- PostgreSQL database dump",
+    c11MigrationCopyHeader,
+    c11MigrationRowOne,
+    c11MigrationRowTwo,
+    "\\.",
+    "COPY public.users (id, username) FROM stdin;",
+    "7\te2e-public-music-restore-owner",
+    "\\.",
+    c11PlaylistCopyHeader,
+    c11PlaylistRow,
+    "\\.",
+    "-- PostgreSQL database dump complete",
+    "",
+  ].join("\n"), "utf8");
+}
+
 describe("Music E2E transactional state restore", () => {
   it("derives an immutable restore target only from the exact fixture container fingerprint", async () => {
     // Production break caught: label-only inspection followed by execution by
@@ -226,5 +259,73 @@ describe("Music E2E transactional state restore", () => {
     expect(source).toContain('"/restore-final"');
     expect(source).not.toContain("SELECT string_agg(format('%I.%I'");
     expect(source).not.toContain('"explorers-music-fixture-postgres-1", ...args');
+  });
+
+  it("corrupts only a populated playlist row after a completed populated migration COPY block", async () => {
+    // Break caught: appending arbitrary SQL after the complete dump does not
+    // prove a later COPY failure rolls back rows accepted from an earlier COPY.
+    const contract = await loadC11CopyCorruptionContract();
+    const corrupt = contract.corruptC11LaterCopyRow as undefined | ((
+      dataDump: Buffer,
+      options: { maximumBytes: number },
+    ) => { dataDump: Buffer; earlierRows: number; targetRows: number; corruptedRow: number });
+    expect(corrupt).toBeTypeOf("function");
+    if (!corrupt) return;
+
+    const source = c11CopyDumpFixture();
+    const sourceBefore = Buffer.from(source);
+    const targetRowOffset = source.indexOf(Buffer.from(`${c11PlaylistCopyHeader}\n${c11PlaylistRow}`, "utf8"))
+      + Buffer.byteLength(`${c11PlaylistCopyHeader}\n`, "utf8");
+    const earlierTerminatorOffset = source.indexOf(Buffer.from(`${c11MigrationRowTwo}\n\\.\n`, "utf8"))
+      + Buffer.byteLength(`${c11MigrationRowTwo}\n\\.\n`, "utf8");
+    const result = corrupt(source, { maximumBytes: source.length });
+
+    expect(result.earlierRows).toBe(2);
+    expect(result.targetRows).toBe(1);
+    expect(result.corruptedRow).toBe(1);
+    expect(source.equals(sourceBefore)).toBe(true);
+    expect(result.dataDump.length).toBe(source.length);
+    expect(targetRowOffset).toBeGreaterThan(earlierTerminatorOffset);
+    expect(result.dataDump.subarray(0, targetRowOffset).equals(source.subarray(0, targetRowOffset))).toBe(true);
+    expect(result.dataDump.subarray(targetRowOffset, targetRowOffset + 3).toString("utf8")).toBe("x00");
+    expect(result.dataDump.subarray(targetRowOffset + 3).equals(source.subarray(targetRowOffset + 3))).toBe(true);
+  });
+
+  it("refuses ambiguous, malformed, reordered, empty, or over-bound COPY inputs with one safe code", async () => {
+    // Break caught: a permissive test mutator can target an unintended row or
+    // append uncontrolled SQL when the frozen dump structure drifts.
+    const contract = await loadC11CopyCorruptionContract();
+    const corrupt = contract.corruptC11LaterCopyRow as undefined | ((
+      dataDump: Buffer,
+      options: { maximumBytes: number } | undefined,
+    ) => unknown);
+    expect(corrupt).toBeTypeOf("function");
+    if (!corrupt) return;
+
+    const exact = c11CopyDumpFixture();
+    const text = exact.toString("utf8");
+    const migrationBlock = [c11MigrationCopyHeader, c11MigrationRowOne, c11MigrationRowTwo, "\\."].join("\n");
+    const playlistBlock = [c11PlaylistCopyHeader, c11PlaylistRow, "\\."].join("\n");
+    const exactBound = { maximumBytes: exact.length };
+    const hostileCases: Array<[string, Buffer, { maximumBytes: number } | undefined]> = [
+      ["missing bound", exact, undefined],
+      ["missing earlier block", Buffer.from(text.replace(`${migrationBlock}\n`, "")), exactBound],
+      ["empty earlier block", Buffer.from(text.replace(migrationBlock, `${c11MigrationCopyHeader}\n\\.`)), exactBound],
+      ["missing later block", Buffer.from(text.replace(`${playlistBlock}\n`, "")), exactBound],
+      ["empty later block", Buffer.from(text.replace(playlistBlock, `${c11PlaylistCopyHeader}\n\\.`)), exactBound],
+      ["later block precedes earlier", Buffer.from(
+        text.replace(`${migrationBlock}\n`, "").replace(`${playlistBlock}\n`, `${playlistBlock}\n${migrationBlock}\n`),
+      ), exactBound],
+      ["duplicate later block", Buffer.from(text.replace("-- PostgreSQL database dump complete", `${playlistBlock}\n-- PostgreSQL database dump complete`)), exactBound],
+      ["malformed target identifier", Buffer.from(text.replace(c11PlaylistRow, c11PlaylistRow.replace(/^123/, "abc"))), exactBound],
+      ["carriage return", Buffer.from(text.replace(/\n/g, "\r\n")), exactBound],
+      ["nul byte", Buffer.concat([exact.subarray(0, -1), Buffer.from([0]), exact.subarray(-1)]), exactBound],
+      ["invalid utf8", Buffer.concat([exact.subarray(0, -1), Buffer.from([0xff]), exact.subarray(-1)]), exactBound],
+      ["over caller bound", exact, { maximumBytes: exact.length - 1 }],
+    ];
+
+    for (const [name, hostile, options] of hostileCases) {
+      expect(() => corrupt(hostile, options), name).toThrow("C11_COPY_CORRUPTION_REFUSED");
+    }
   });
 });

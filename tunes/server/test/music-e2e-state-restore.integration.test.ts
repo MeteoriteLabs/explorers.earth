@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
+import { EXPECTED_MUSIC_MIGRATION_CHAIN } from "../../shared/music-migration-contract";
 import {
   attestUatDatabaseAuthority,
   MUSIC_UAT_DATABASE_ACK,
@@ -12,6 +13,7 @@ import {
   MUSIC_FIXTURE_DATA_DUMP_MAX_BYTES,
   runMusicFixtureRestoreTransaction,
 } from "../../scripts/music-e2e-state-restore.mjs";
+import { corruptC11LaterCopyRow } from "./music-e2e-state-restore-test-helper";
 
 const enabled = process.env.MUSIC_C11_STATE_RESTORE_POSTGRES_TEST === "1"
   && process.env.MUSIC_UAT_DATABASE_ACK === MUSIC_UAT_DATABASE_ACK;
@@ -108,12 +110,14 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
       "Pre-attempt mutation", "e2e-public-music-restore-owner",
     ]);
     const preAttemptHash = hash();
-    const hostileReplay = Buffer.concat([
-      baselineData,
-      Buffer.from("\nSELECT * FROM public.__deliberate_restore_failure__;\n"),
-    ]);
+    const hostileReplay = corruptC11LaterCopyRow(baselineData, {
+      maximumBytes: MUSIC_FIXTURE_DATA_DUMP_MAX_BYTES,
+    });
+    expect(hostileReplay.earlierRows).toBe(EXPECTED_MUSIC_MIGRATION_CHAIN.length);
+    expect(hostileReplay.targetRows).toBe(1);
+    expect(hostileReplay.corruptedRow).toBe(1);
     const result = runMusicFixtureRestoreTransaction({
-      containerId, dataDump: hostileReplay, snapshotHash: "b".repeat(64), captureHash: hash,
+      containerId, dataDump: hostileReplay.dataDump, snapshotHash: "b".repeat(64), captureHash: hash,
       execute: (operation) => spawnSync(operation.file, operation.args, {
         input: operation.input, windowsHide: true, maxBuffer: 4 * 1024 * 1024,
       }),
