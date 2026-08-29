@@ -2836,7 +2836,8 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(runner).toMatch(/privatePlaywrightOutputDirectory[\s\S]+--output=/);
   expect(runner).toMatch(/rmSync\(privatePlaywrightOutputDirectory, \{ recursive: true, force: true \}\)/);
   expect(runner).toMatch(/const result = spawnSync[\s\S]+finalizeCurrentQualification\(\{[\s\S]+stage: "execution-finished"/);
-  expect(runner).toMatch(/finalized = finalizeCurrentQualification[\s\S]+process\.exit\(finalized\.exitCode\)/);
+  expect(runner).toMatch(/const finalized = await qualificationCoordinator\.runFinalization[\s\S]+return finalized\.exitCode/);
+  expect(runner).toContain("process.exit(await runLiveQualification())");
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
   expect(runner).toContain("music-e2e-state-service.mjs");
   expect(stateService).toContain('"pg_dump"');
@@ -2875,7 +2876,7 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(livePreflight).toContain('"--list"');
   expect(runner).toContain("Live public Music E2E preflight refused");
   expect(runner).toContain('fetch(`${stateServiceUrl}/snapshot`');
-  expect(runner).toContain('import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs"');
+  expect(runner).toMatch(/import \{[\s\S]*createMusicQualificationFailureCoordinator,[\s\S]*runMusicFixtureOrchestration,[\s\S]*\} from "\.\/music-public-e2e-runner\.mjs"/);
   expect(runner).toContain("runLivePreflight({");
   expect(runner).not.toContain('path.resolve("node_modules/tsx/dist/cli.mjs")');
   expect(runner).toContain("const liveOutcome = await runMusicFixtureOrchestration({");
@@ -3280,6 +3281,349 @@ test("fresh-process state-service spawn error is handled and finalizes cleanup o
     close: { status: "observed" },
   });
   expect(result.stdout).not.toContain("missing-state-service-private-command-92841");
+});
+
+type QualificationFailureCoordinator = {
+  signal: AbortSignal;
+  markSnapshotReady: () => void;
+  recordFailure: (failure: {
+    stage: string;
+    exitCode: number;
+    cleanupWhenTeardownSucceeds?: string;
+    executionOutcome?: Record<string, unknown>;
+  }) => void;
+  runRestoration: <T>(operation: () => Promise<T> | T) => Promise<T>;
+  runFinalization: <T>(operation: () => Promise<T> | T) => Promise<T>;
+  snapshot: () => {
+    phase: string;
+    snapshotReady: boolean;
+    failure: { stage: string; exitCode: number } | null;
+    ledger: string[];
+  };
+};
+
+type QualificationCoordinatorModule = {
+  createMusicQualificationFailureCoordinator: (options?: {
+    onPhase?: (phase: string) => void;
+  }) => QualificationFailureCoordinator;
+  runMusicFixtureOrchestration: (input: Record<string, unknown>) => Promise<{
+    exitCode: number;
+    report: Record<string, unknown>;
+    restoration: Record<string, unknown>;
+    teardownStatus: number;
+  }>;
+};
+
+type QualificationFailureTiming =
+  | "before-snapshot"
+  | "immediately-after-snapshot"
+  | "simultaneous-with-restoration"
+  | "during-execution"
+  | "during-restoration"
+  | "after-restoration-before-teardown"
+  | "duplicate-terminal-events";
+
+async function runInjectedQualificationFailureTiming(timing: QualificationFailureTiming) {
+  const runner = await import("../scripts/music-public-e2e-runner.mjs") as unknown as QualificationCoordinatorModule;
+  const calls: string[] = [];
+  const reports: Array<Record<string, unknown>> = [];
+  const equalHash = "7".repeat(64);
+  const hasSnapshot = timing !== "before-snapshot";
+  const coordinatorHolder: QualificationFailureCoordinator[] = [];
+  const recordStateFailure = (stage = "state-service-exit") => {
+    calls.push(`failure:${stage}`);
+    coordinatorHolder[0].recordFailure({ stage, exitCode: 4 });
+  };
+  const coordinator = runner.createMusicQualificationFailureCoordinator({
+    onPhase: (phase) => {
+      if (timing === "simultaneous-with-restoration" && phase === "restoration") {
+        recordStateFailure();
+      }
+      if (timing === "after-restoration-before-teardown" && phase === "restoration-complete") {
+        recordStateFailure();
+      }
+    },
+  });
+  coordinatorHolder.push(coordinator);
+  if (hasSnapshot) coordinator.markSnapshotReady();
+  if (timing === "before-snapshot" || timing === "immediately-after-snapshot") recordStateFailure();
+
+  const outcome = await runner.runMusicFixtureOrchestration({
+    snapshotExists: hasSnapshot,
+    coordinator,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: `phase-${timing}`, lane: "live" },
+    artifacts: {
+      directory: "guarded/phase-contract",
+      authPath: "owner-auth.json",
+      storagePath: "profile-storage-state.json",
+      mkdir: () => undefined,
+      write: () => undefined,
+      chmod: () => undefined,
+    },
+    restoreEvidence: {
+      path: "restore-evidence.jsonl",
+      exists: () => false,
+      read: () => "",
+    },
+    execute: async () => {
+      calls.push("execution");
+      if (timing === "during-execution") recordStateFailure();
+      if (timing === "duplicate-terminal-events") {
+        recordStateFailure("state-service-error");
+        recordStateFailure("state-service-exit");
+        recordStateFailure("state-service-close");
+      }
+      return { status: 0 };
+    },
+    restore: async () => {
+      calls.push("restore");
+      if (timing === "during-restoration") recordStateFailure();
+      return timing === "during-restoration"
+        ? { ok: false, cleanup: "restore-failed", beforeHash: equalHash, afterHash: "8".repeat(64) }
+        : { ok: true, cleanup: "restored", beforeHash: equalHash, afterHash: equalHash };
+    },
+    teardown: {
+      artifactPaths: ["restore-evidence.jsonl", "owner-auth.json", "profile-storage-state.json", "playwright-journey-results.json"],
+      artifactDirectories: ["private-playwright-output"],
+      exists: (artifact: string) => { calls.push(`exists:${artifact}`); return true; },
+      unlink: (artifact: string) => { calls.push(`unlink:${artifact}`); },
+      removeDirectory: (directory: string) => { calls.push(`remove:${directory}`); },
+      stopStateService: async () => { calls.push("state-stop"); },
+      down: async () => {
+        calls.push("exact-down");
+        return timing === "duplicate-terminal-events" ? 1 : 0;
+      },
+    },
+    writeReport: async () => undefined,
+    writeStdout: (text: string) => { reports.push(JSON.parse(text)); },
+    writeStderr: () => undefined,
+  });
+  const finalized = await coordinator.runFinalization(async () => {
+    calls.push("docker-inspection", "artifact-finalization");
+    return { exitCode: outcome.exitCode };
+  });
+  calls.push("exit");
+  return { calls, coordinator: coordinator.snapshot(), finalized, outcome, reports };
+}
+
+for (const phaseCase of [
+  {
+    timing: "before-snapshot",
+    cleanup: "not-required-safe",
+    exitCode: 4,
+    restoreCalls: 0,
+    ledger: [
+      "failure:pre-snapshot", "orchestration", "execution-skipped", "teardown", "teardown-complete",
+      "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+  {
+    timing: "immediately-after-snapshot",
+    cleanup: "restored",
+    exitCode: 4,
+    restoreCalls: 1,
+    ledger: [
+      "snapshot-ready", "failure:snapshot-ready", "orchestration", "execution-skipped", "restoration",
+      "restoration-complete", "teardown", "teardown-complete", "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+  {
+    timing: "during-execution",
+    cleanup: "restored",
+    exitCode: 4,
+    restoreCalls: 1,
+    ledger: [
+      "snapshot-ready", "orchestration", "execution", "failure:execution", "execution-complete", "restoration",
+      "restoration-complete", "teardown", "teardown-complete", "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+  {
+    timing: "simultaneous-with-restoration",
+    cleanup: "restored",
+    exitCode: 4,
+    restoreCalls: 1,
+    ledger: [
+      "snapshot-ready", "orchestration", "execution", "execution-complete", "restoration", "failure:restoration",
+      "restoration-complete", "teardown", "teardown-complete", "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+  {
+    timing: "during-restoration",
+    cleanup: "restore-failed",
+    exitCode: 5,
+    restoreCalls: 1,
+    ledger: [
+      "snapshot-ready", "orchestration", "execution", "execution-complete", "restoration", "failure:restoration",
+      "restoration-complete", "teardown", "teardown-complete", "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+  {
+    timing: "after-restoration-before-teardown",
+    cleanup: "restored",
+    exitCode: 4,
+    restoreCalls: 1,
+    ledger: [
+      "snapshot-ready", "orchestration", "execution", "execution-complete", "restoration", "restoration-complete",
+      "failure:restoration-complete", "teardown", "teardown-complete", "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+  {
+    timing: "duplicate-terminal-events",
+    cleanup: "teardown-failed",
+    exitCode: 5,
+    restoreCalls: 1,
+    ledger: [
+      "snapshot-ready", "orchestration", "execution", "failure:execution", "execution-complete", "restoration",
+      "restoration-complete", "teardown", "teardown-complete", "ready-to-finalize", "finalization", "settled",
+    ],
+  },
+] as const) {
+  test(`phase-aware failure coordinator restores and finalizes once for ${phaseCase.timing}`, async () => {
+    // Production break caught: a state-service callback could independently exit
+    // over the active orchestration, skipping or racing the required restore.
+    const result = await runInjectedQualificationFailureTiming(phaseCase.timing);
+
+    expect(result.calls.filter((call) => call === "restore")).toHaveLength(phaseCase.restoreCalls);
+    expect(result.calls.filter((call) => call === "state-stop")).toHaveLength(1);
+    expect(result.calls.filter((call) => call === "exact-down")).toHaveLength(1);
+    expect(result.calls.filter((call) => call === "artifact-finalization")).toHaveLength(1);
+    expect(result.calls.filter((call) => call === "exit")).toHaveLength(1);
+    expect(result.reports).toHaveLength(1);
+    expect(result.outcome.report.cleanup).toBe(phaseCase.cleanup);
+    expect(result.outcome.exitCode).toBe(phaseCase.exitCode);
+    expect(result.finalized).toEqual({ exitCode: phaseCase.exitCode });
+    expect(result.coordinator.ledger).toEqual(phaseCase.ledger);
+    expect(result.coordinator.failure).toMatchObject({ exitCode: 4 });
+    if (phaseCase.restoreCalls === 0) {
+      expect(result.calls.indexOf("restore")).toBe(-1);
+    } else {
+      expect(result.calls.indexOf("restore")).toBeGreaterThanOrEqual(0);
+      expect(result.calls.indexOf("restore")).toBeLessThan(result.calls.indexOf("state-stop"));
+    }
+    expect(result.calls.indexOf("state-stop")).toBeLessThan(result.calls.indexOf("exact-down"));
+    expect(result.calls.indexOf("exact-down")).toBeLessThan(result.calls.indexOf("docker-inspection"));
+    expect(result.calls.indexOf("docker-inspection")).toBeLessThan(result.calls.indexOf("artifact-finalization"));
+    expect(result.calls.indexOf("artifact-finalization")).toBeLessThan(result.calls.indexOf("exit"));
+  });
+}
+
+test("fresh process preserves post-snapshot restoration ownership across duplicate terminal failures", () => {
+  const runnerUrl = pathToFileURL(resolve("scripts/music-public-e2e-runner.mjs")).href;
+  const script = [
+    `import { createMusicQualificationFailureCoordinator, runMusicFixtureOrchestration } from ${JSON.stringify(runnerUrl)};`,
+    'const calls = []; const reports = []; const hash = "a".repeat(64);',
+    'const coordinator = createMusicQualificationFailureCoordinator();',
+    'coordinator.markSnapshotReady();',
+    'const outcome = await runMusicFixtureOrchestration({',
+    '  snapshotExists: true, coordinator, baseReport: { version: "v1", runId: "fresh-phase", lane: "live" },',
+    '  artifacts: { directory: "guarded", authPath: "owner-auth.json", storagePath: "profile-storage.json", mkdir() {}, write() {}, chmod() {} },',
+    '  restoreEvidence: { path: "restore.jsonl", exists() { return false; }, read() { return ""; } },',
+    '  execute: async () => { coordinator.recordFailure({ stage: "state-service-error", exitCode: 4 }); coordinator.recordFailure({ stage: "state-service-exit", exitCode: 4 }); coordinator.recordFailure({ stage: "state-service-close", exitCode: 4 }); return { status: 0 }; },',
+    '  restore: async () => { calls.push("restore"); return { ok: true, cleanup: "restored", beforeHash: hash, afterHash: hash }; },',
+    '  teardown: { artifactPaths: [], artifactDirectories: [], exists() { return false; }, unlink() {}, removeDirectory() {}, async stopStateService() { calls.push("state-stop"); }, async down() { calls.push("exact-down"); return 0; } },',
+    '  async writeReport() {}, writeStdout(text) { reports.push(JSON.parse(text)); }, writeStderr() {},',
+    '});',
+    'await coordinator.runFinalization(async () => { calls.push("artifact-finalization"); return outcome.exitCode; });',
+    'calls.push("exit");',
+    'process.stdout.write(JSON.stringify({ calls, reports, outcome, coordinator: coordinator.snapshot() }));',
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    windowsHide: true,
+    timeout: 5_000,
+  });
+
+  expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  expect(result.stderr).toBe("");
+  const observed = JSON.parse(result.stdout);
+  expect(observed.calls).toEqual(["restore", "state-stop", "exact-down", "artifact-finalization", "exit"]);
+  expect(observed.reports).toHaveLength(1);
+  expect(observed.outcome).toMatchObject({ exitCode: 4, report: { cleanup: "restored", result: "failed" } });
+  expect(observed.coordinator.ledger.filter((entry: string) => entry.startsWith("failure:"))).toEqual(["failure:execution"]);
+  expect(result.stdout).not.toMatch(/Unhandled 'error' event|ERR_UNHANDLED_ERROR/);
+});
+
+test("fresh live runner lets verified restoration finish before a state-service failure finalizes", () => {
+  // Production break caught: the guard callback called process.exit from a
+  // microtask while restoreInitialSnapshot was awaiting its response.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-phase-owner-"));
+  try {
+    const preloader = join(sandbox, "phase-owner-preload.cjs");
+    const phaseLog = join(sandbox, "phase-owner.log");
+    writeFileSync(preloader, [
+      'const childProcess = require("node:child_process");',
+      'const { EventEmitter } = require("node:events");',
+      'const { appendFileSync } = require("node:fs");',
+      'const { PassThrough } = require("node:stream");',
+      'const { syncBuiltinESMExports } = require("node:module");',
+      'const append = (entry) => appendFileSync(process.env.FAKE_PHASE_LOG, `${entry}\n`);',
+      'const child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), exitCode: null, signalCode: null, kill(signal) { this.signalCode = signal; queueMicrotask(() => { this.stdout.end(); this.stderr.end(); this.emit("exit", null, signal); this.emit("close", null, signal); }); return true; } });',
+      'childProcess.spawn = () => child;',
+      'childProcess.spawnSync = (file, args = []) => {',
+      '  const joined = args.join(" ");',
+      '  const action = ["bootstrap", "up", "down"].find((candidate) => joined.includes(`music-cli -- ${candidate}`));',
+      '  if (action) { append(action); return { status: 0, stdout: "", stderr: "", signal: null, error: undefined }; }',
+      '  if (String(file) === "git") return { status: 0, stdout: `${"a".repeat(40)}\n`, stderr: "", signal: null, error: undefined };',
+      '  if (String(file).toLowerCase().includes("docker")) return { status: 0, stdout: "", stderr: "", signal: null, error: undefined };',
+      '  return { status: 1, stdout: "", stderr: "preflight stopped", signal: null, error: undefined };',
+      '};',
+      'syncBuiltinESMExports();',
+      'let terminalEmitted = false;',
+      'global.fetch = async (input) => {',
+      '  const url = String(input);',
+      '  if (url.endsWith("/snapshot")) return { ok: true, status: 200, async json() { append("snapshot-complete"); return { database: { dumpHash: "b".repeat(64) } }; } };',
+      '  if (url.endsWith("/restore")) {',
+      '    append("restore-start");',
+      '    if (!terminalEmitted) { terminalEmitted = true; child.exitCode = 1; child.emit("error", new Error("Bearer fresh-phase-private")); child.emit("exit", 1, null); child.stdout.end(); child.stderr.end(); child.emit("close", 1, null); }',
+      '    return { ok: true, status: 200, async json() { append("restore-complete"); return { beforeHash: "b".repeat(64), afterHash: "b".repeat(64) }; } };',
+      '  }',
+      '  if (url.includes("/api/accounts/")) return { ok: true, status: 200, async json() { return { data: { documentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID } }; } };',
+      '  if (url.endsWith("/api/users/me")) return { ok: true, status: 200, async json() { return { username: process.env.MUSIC_E2E_ACCOUNT_USERNAME, documentId: process.env.MUSIC_E2E_USER_DOCUMENT_ID, accounts: [{ documentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID }] }; } };',
+      '  return { ok: true, status: 200, async json() { return {}; } };',
+      '};',
+      'process.exit = (code) => { append(`exit:${code}`); process.exitCode = 1; };',
+      '',
+    ].join("\n"));
+    const runId = "post-snapshot-owner-contract";
+    const environment = lifecycleFreshProcessEnvironment({
+      sandbox,
+      runId,
+      fakeNpmPath: "phase-owner-fake-npm.mjs",
+      fakeDockerHookPath: preloader,
+      binDirectory: sandbox,
+      scenario: "phase-owner",
+      dockerMode: "clean",
+      privateValue: "fresh-phase-private",
+    });
+    environment.NODE_OPTIONS = `--require=${preloader}`;
+    environment.FAKE_PHASE_LOG = phaseLog;
+    environment.MUSIC_E2E_HEALTH_URLS = Array.from({ length: 5 }, () => "http://127.0.0.1:55174/health").join(",");
+    const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+      cwd: sandbox,
+      env: environment,
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 10_000,
+    });
+    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    const phaseEntries = readFileSync(phaseLog, "utf8").trim().split(/\r?\n/);
+    const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
+
+    expect(result.status, `${result.stdout}\n${result.stderr}\n${JSON.stringify({ phaseEntries, evidence })}`).toBe(1);
+    expect(phaseEntries.filter((entry) => entry === "restore-start")).toHaveLength(1);
+    expect(phaseEntries.filter((entry) => entry === "restore-complete")).toHaveLength(1);
+    expect(phaseEntries.filter((entry) => entry === "down")).toHaveLength(1);
+    expect(phaseEntries.filter((entry) => entry.startsWith("exit:"))).toEqual(["exit:5"]);
+    expect(phaseEntries.indexOf("snapshot-complete")).toBeLessThan(phaseEntries.indexOf("restore-start"));
+    expect(phaseEntries.indexOf("restore-complete")).toBeLessThan(phaseEntries.indexOf("down"));
+    expect(result.stdout.trim().split(/\r?\n/)).toHaveLength(1);
+    expect(evidence).toMatchObject({ result: "failed", cleanup: "teardown-failed", exitCode: 5 });
+    expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).not.toContain("fresh-phase-private");
+    expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).not.toContain(sandbox);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {

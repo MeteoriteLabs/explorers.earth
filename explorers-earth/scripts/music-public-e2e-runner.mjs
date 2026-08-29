@@ -13,8 +13,127 @@ function evidenceHash(evidence) {
   return { beforeHash: evidence.beforeHash, afterHash: evidence.afterHash };
 }
 
+export function createMusicQualificationFailureCoordinator({ onPhase = () => undefined } = {}) {
+  if (typeof onPhase !== "function") throw new Error("qualification failure coordinator contract is invalid");
+  const controller = new AbortController();
+  const ledger = [];
+  let phase = "pre-snapshot";
+  let snapshotReady = false;
+  let failure = null;
+  let restorationPromise;
+  let teardownPromise;
+  let finalizationPromise;
+
+  const transition = (nextPhase) => {
+    phase = nextPhase;
+    ledger.push(nextPhase);
+    onPhase(nextPhase);
+  };
+  const recordFailure = (candidate) => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)
+        || typeof candidate.stage !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(candidate.stage)
+        || ![4, 5].includes(candidate.exitCode)
+        || (candidate.cleanupWhenTeardownSucceeds !== undefined
+          && !["not-required-safe", "evidence-missing", "restore-failed"].includes(candidate.cleanupWhenTeardownSucceeds))
+        || (candidate.executionOutcome !== undefined
+          && (!candidate.executionOutcome || typeof candidate.executionOutcome !== "object"
+            || Array.isArray(candidate.executionOutcome)))) {
+      throw new Error("qualification failure record is invalid");
+    }
+    if (!failure) {
+      failure = {
+        stage: candidate.stage,
+        exitCode: candidate.exitCode,
+        cleanupWhenTeardownSucceeds: candidate.cleanupWhenTeardownSucceeds ?? "not-required-safe",
+        ...(candidate.executionOutcome ? { executionOutcome: candidate.executionOutcome } : {}),
+      };
+      ledger.push(`failure:${phase}`);
+    } else if (candidate.exitCode > failure.exitCode) {
+      failure = { ...failure, exitCode: candidate.exitCode };
+    }
+    if (!controller.signal.aborted) controller.abort();
+  };
+  const markSnapshotReady = () => {
+    if (snapshotReady) return;
+    if (restorationPromise || teardownPromise || finalizationPromise) {
+      throw new Error("qualification snapshot cannot become ready after cleanup starts");
+    }
+    snapshotReady = true;
+    transition("snapshot-ready");
+  };
+  const beginOrchestration = () => transition("orchestration");
+  const beginExecution = () => {
+    if (controller.signal.aborted) {
+      transition("execution-skipped");
+      return false;
+    }
+    transition("execution");
+    return true;
+  };
+  const completeExecution = () => transition("execution-complete");
+  const runRestoration = (operation) => {
+    if (!snapshotReady || typeof operation !== "function") {
+      return Promise.reject(new Error("qualification restoration contract is invalid"));
+    }
+    if (!restorationPromise) {
+      transition("restoration");
+      restorationPromise = Promise.resolve()
+        .then(operation)
+        .finally(() => transition("restoration-complete"));
+    }
+    return restorationPromise;
+  };
+  const runTeardown = (operation) => {
+    if (typeof operation !== "function") {
+      return Promise.reject(new Error("qualification teardown contract is invalid"));
+    }
+    if (!teardownPromise) {
+      transition("teardown");
+      teardownPromise = Promise.resolve()
+        .then(operation)
+        .finally(() => transition("teardown-complete"));
+    }
+    return teardownPromise;
+  };
+  const markReadyToFinalize = () => {
+    if (phase !== "ready-to-finalize") transition("ready-to-finalize");
+  };
+  const runFinalization = (operation) => {
+    if (typeof operation !== "function") {
+      return Promise.reject(new Error("qualification finalization contract is invalid"));
+    }
+    if (!finalizationPromise) {
+      transition("finalization");
+      finalizationPromise = Promise.resolve()
+        .then(operation)
+        .finally(() => transition("settled"));
+    }
+    return finalizationPromise;
+  };
+  const snapshot = () => ({
+    phase,
+    snapshotReady,
+    failure: failure ? structuredClone(failure) : null,
+    ledger: [...ledger],
+  });
+  return {
+    signal: controller.signal,
+    markSnapshotReady,
+    recordFailure,
+    runRestoration,
+    runFinalization,
+    snapshot,
+    beginOrchestration,
+    beginExecution,
+    completeExecution,
+    runTeardown,
+    markReadyToFinalize,
+  };
+}
+
 export async function runMusicFixtureOrchestration({
   snapshotExists,
+  coordinator: providedCoordinator,
   baseReport,
   artifacts,
   restoreEvidence,
@@ -25,21 +144,28 @@ export async function runMusicFixtureOrchestration({
   writeStdout,
   writeStderr,
 }) {
+  const coordinator = providedCoordinator ?? createMusicQualificationFailureCoordinator();
+  if (snapshotExists && !coordinator.snapshot().snapshotReady) coordinator.markSnapshotReady();
+  coordinator.beginOrchestration();
   let setupOk = false;
   let executionStatus = 4;
   let executionOutcome;
   try {
     prepareMusicFixtureArtifacts(artifacts);
     setupOk = true;
-    try {
-      const result = await execute();
-      if (Number.isInteger(result)) executionStatus = result;
-      else if (result && typeof result === "object" && Number.isInteger(result.status)) {
-        executionOutcome = result;
-        executionStatus = result.status;
-      } else executionStatus = 1;
-    } catch {
-      writeStderr("Live public Music E2E execution failed; details redacted.\n");
+    if (coordinator.beginExecution()) {
+      try {
+        const result = await execute();
+        if (Number.isInteger(result)) executionStatus = result;
+        else if (result && typeof result === "object" && Number.isInteger(result.status)) {
+          executionOutcome = result;
+          executionStatus = result.status;
+        } else executionStatus = 1;
+      } catch {
+        writeStderr("Live public Music E2E execution failed; details redacted.\n");
+      } finally {
+        coordinator.completeExecution();
+      }
     }
   } catch {
     writeStderr("Live public Music E2E setup failed; details redacted.\n");
@@ -47,7 +173,8 @@ export async function runMusicFixtureOrchestration({
 
   let restoration = { ok: false, cleanup: "restore-failed" };
   if (snapshotExists) {
-    try { restoration = await restore(); } catch { restoration = { ok: false, cleanup: "restore-failed" }; }
+    try { restoration = await coordinator.runRestoration(restore); }
+    catch { restoration = { ok: false, cleanup: "restore-failed" }; }
   }
   const initialHash = restorationHash(restoration);
 
@@ -79,12 +206,25 @@ export async function runMusicFixtureOrchestration({
     ? validateLiveJourneyEvidence({ executionReport: executionOutcome.executionReport, records: parsedEvidence })
     : undefined);
   const privateArtifactCleanupFailed = executionOutcome?.privateArtifactCleanup === "delete-failed";
-  const evidenceVerified = preflightRefusal
-    ? parsedEvidence.length === 0
-    : (executionOutcome ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed : legacyEvidenceVerified);
-  let cleanup = initialHash && evidenceVerified && !evidenceParseFailed ? "restored" : (initialHash ? "evidence-missing" : "restore-failed");
+  const coordinatedFailure = coordinator.snapshot().failure;
+  if (coordinatedFailure) {
+    executionStatus = Math.max(executionStatus, coordinatedFailure.exitCode);
+    executionOutcome ??= coordinatedFailure.executionOutcome;
+  }
+  const evidenceVerified = coordinatedFailure
+    ? legacyEvidenceVerified && !privateArtifactCleanupFailed
+    : (preflightRefusal
+      ? parsedEvidence.length === 0
+      : (executionOutcome ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed : legacyEvidenceVerified));
+  let cleanup = initialHash && evidenceVerified && !evidenceParseFailed
+    ? "restored"
+    : (initialHash ? "evidence-missing" : "restore-failed");
   let teardownStatus = 1;
-  try { teardownStatus = await stopMusicFixture(teardown); } catch { teardownStatus = 1; }
+  try { teardownStatus = await coordinator.runTeardown(() => stopMusicFixture(teardown)); }
+  catch { teardownStatus = 1; }
+  if (!snapshotExists && coordinatedFailure && teardownStatus === 0) {
+    cleanup = coordinatedFailure.cleanupWhenTeardownSucceeds;
+  }
   if (teardownStatus !== 0) cleanup = "teardown-failed";
 
   const restoreHashes = [initialHash, ...parsedEvidence.map(evidenceHash)]
@@ -110,7 +250,8 @@ export async function runMusicFixtureOrchestration({
     writeStderr("Live public Music E2E evidence report writing failed; details redacted.\n");
   }
 
-  const exitCode = cleanup === "restored" ? executionStatus : 5;
+  const exitCode = ["restored", "not-required-safe"].includes(cleanup) ? executionStatus : 5;
   writeStdout(`${JSON.stringify(report)}\n`);
+  coordinator.markReadyToFinalize();
   return { exitCode, report, restoration, teardownStatus };
 }
