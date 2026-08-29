@@ -7,6 +7,10 @@ import {
   PUBLIC_MUSIC_RESOURCE_MAX_BYTES,
   type PublicMusicResource,
 } from "../publicMusicClient";
+import {
+  createPublicMusicObservability,
+  type PublicMusicBrowserOperationalEvent,
+} from "../publicMusicObservability";
 
 const publicSong = {
   id: "S".repeat(43), youtubeId: "abcdefghijk", title: "Song", artist: "Artist",
@@ -39,6 +43,23 @@ const publicResource = {
   },
 };
 
+const publicDescriptor = {
+  version: "music-public-descriptor/v1" as const,
+  publication: { mode: "public" as const, publicSlug: "public_slug-123", revision: 7 },
+};
+
+const publicVideo = {
+  id: { videoId: "abcdefghijk" },
+  snippet: {
+    title: "Song", channelTitle: "Artist",
+    thumbnails: { default: { url: "https://img.example/song.jpg" } },
+  },
+};
+
+const publicRequestSong = {
+  youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img.example/song.jpg",
+};
+
 function success(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
 }
@@ -63,22 +84,28 @@ function streamedSuccess(chunks: string[], contentLength?: string) {
   return { response, wasCancelled: () => cancelled };
 }
 
+function operationalRecorder() {
+  const events: PublicMusicBrowserOperationalEvent[] = [];
+  return { events, observability: createPublicMusicObservability((event) => events.push(event)) };
+}
+
 describe("public Music client", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   it("uses capability-safe public request endpoints and strict canonical song input", async () => {
-    const video = { id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } };
     const fetcher = vi.fn()
-      .mockResolvedValueOnce(success({ items: [video], nextPageToken: null }))
-      .mockResolvedValueOnce(success(video))
+      .mockResolvedValueOnce(success({ items: [publicVideo], nextPageToken: null }))
+      .mockResolvedValueOnce(success(publicVideo))
       .mockResolvedValueOnce(new Response(JSON.stringify({ accepted: true }), { status: 201 }));
     vi.stubGlobal("fetch", fetcher);
     const client = createPublicMusicClient("https://music.example");
-    await expect(client.search("public_slug-123", " Song ", "a".repeat(43))).resolves.toMatchObject({ items: [video] });
-    await expect(client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", "a".repeat(43))).resolves.toEqual(video);
-    await expect(client.requestSong("public_slug-123", {
-      youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img.example/song.jpg",
-    }, "a".repeat(43), "request-key-12345678")).resolves.toMatchObject({ accepted: true });
+    await expect(client.search("public_slug-123", " Song ", "a".repeat(43))).resolves.toMatchObject({ items: [publicVideo] });
+    await expect(client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", "a".repeat(43))).resolves.toEqual(publicVideo);
+    await expect(client.requestSong("public_slug-123", publicRequestSong, "a".repeat(43), "request-key-12345678"))
+      .resolves.toMatchObject({ accepted: true });
     expect(fetcher.mock.calls[0][1]).toMatchObject({ body: JSON.stringify({ query: "Song" }) });
     expect(fetcher.mock.calls[2][1]).toMatchObject({ headers: expect.objectContaining({ "Idempotency-Key": "request-key-12345678" }) });
     expect(JSON.stringify(fetcher.mock.calls)).not.toMatch(/username|ownerId|Authorization|rawQuery/);
@@ -95,15 +122,127 @@ describe("public Music client", () => {
     await expect(client.search("public_slug-123", "valid")).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 12 });
   });
 
+  it.each([
+    [403, "REQUEST_FORBIDDEN"],
+    [404, "REQUEST_FORBIDDEN"],
+    [409, "REQUEST_INVALID"],
+    [413, "QUEUE_FULL"],
+    [400, "REQUEST_INVALID"],
+    [503, "PUBLIC_UNAVAILABLE"],
+  ] as const)("maps request HTTP %i to %s with a sanitized request ID", async (status, code) => {
+    // Break caught: request endpoints expose unstable upstream error bodies or drop a safe correlation ID.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("secret-upstream-body", {
+      status,
+      headers: { "x-request-id": "request.http-1" },
+    })));
+    await expect(createPublicMusicClient("https://music.example").search("public_slug-123", "valid"))
+      .rejects.toMatchObject({ code, requestId: "request.http-1" });
+  });
+
+  it.each([
+    ["999", 300],
+    ["-1", 60],
+    ["Infinity", 60],
+  ])("bounds request Retry-After %j to %i seconds", async (retryAfter, retryAfterSeconds) => {
+    // Break caught: a hostile Retry-After value schedules an unbounded or negative retry.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, {
+      status: 429,
+      headers: { "retry-after": retryAfter, "x-request-id": "request.retry-1" },
+    })));
+    await expect(createPublicMusicClient("https://music.example").search("public_slug-123", "valid"))
+      .rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds, requestId: "request.retry-1" });
+  });
+
+  it("drops an unsafe request correlation ID instead of reflecting capability-shaped input", async () => {
+    const unsafeRequestId = `secret/${"C".repeat(43)}`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, {
+      status: 503,
+      headers: { "x-request-id": unsafeRequestId },
+    })));
+    const promise = createPublicMusicClient("https://music.example").search("public_slug-123", "valid", "C".repeat(43));
+    await expect(promise).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: undefined });
+    await expect(promise).rejects.not.toHaveProperty("message", expect.stringContaining(unsafeRequestId));
+  });
+
+  it.each([
+    ["oversized", () => new Response("x".repeat(64 * 1_024 + 1), { status: 200 }), "size"],
+    ["invalid UTF-8", () => new Response(new Uint8Array([0xc3, 0x28]), { status: 200 }), "encoding"],
+    ["malformed JSON", () => new Response("{secret-response-token", { status: 200 }), "json"],
+    ["missing", () => new Response(null, { status: 200 }), "json"],
+  ] as const)("contains a %s request body with safe parser observability", async (_label, responseFactory, reason) => {
+    // Break caught: body failures leak transport/parser details or hostile content beyond the public boundary.
+    const capability = "C".repeat(43);
+    const recorder = operationalRecorder();
+    const response = responseFactory();
+    response.headers.set("x-request-id", "request.body-1");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    await expect(createPublicMusicClient("https://music.example", recorder.observability)
+      .search("public_slug-123", "valid", capability))
+      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: "request.body-1" });
+    expect(recorder.events).toEqual([{
+      version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "request", reason,
+    }]);
+    expect(JSON.stringify(recorder.events)).not.toMatch(/secret-response-token|CCCCCCCC/);
+  });
+
+  it.each([
+    ["search slug", async (client: ReturnType<typeof createPublicMusicClient>) => client.search("short", "valid"), "PUBLIC_NOT_FOUND"],
+    ["video slug", async (client: ReturnType<typeof createPublicMusicClient>) => client.videoFromUrl("short", "https://youtu.be/abcdefghijk"), "PUBLIC_NOT_FOUND"],
+    ["video host", async (client: ReturnType<typeof createPublicMusicClient>) => client.videoFromUrl("public_slug-123", "https://video.example/abcdefghijk"), "REQUEST_INVALID"],
+    ["song slug", async (client: ReturnType<typeof createPublicMusicClient>) => client.requestSong("short", publicRequestSong, undefined, "request-key-12345678"), "REQUEST_INVALID"],
+    ["idempotency key", async (client: ReturnType<typeof createPublicMusicClient>) => client.requestSong("public_slug-123", publicRequestSong, undefined, "short"), "REQUEST_INVALID"],
+    ["canonical song", async (client: ReturnType<typeof createPublicMusicClient>) => client.requestSong("public_slug-123", { ...publicRequestSong, title: "" }, undefined, "request-key-12345678"), "REQUEST_INVALID"],
+  ] as const)("rejects invalid request %s before network access", async (_label, invoke, code) => {
+    // Break caught: invalid public request input crosses the trust boundary.
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(invoke(createPublicMusicClient("https://music.example"))).rejects.toMatchObject({ code });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["search", success({ items: [], nextPageToken: null, authorityToken: "secret-response-token" })],
+    ["video", success({ ...publicVideo, ownerId: "secret-response-token" })],
+    ["song request", success({ accepted: false, token: "secret-response-token" })],
+  ] as const)("contains an invalid %s response schema with safe observability", async (operation, response) => {
+    // Break caught: strict response schemas loosen or log rejected authority-bearing fields.
+    const capability = "C".repeat(43);
+    const recorder = operationalRecorder();
+    response.headers.set("x-request-id", "request.schema-1");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    const client = createPublicMusicClient("https://music.example", recorder.observability);
+    const promise = operation === "search"
+      ? client.search("public_slug-123", "valid", capability)
+      : operation === "video"
+        ? client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", capability)
+        : client.requestSong("public_slug-123", publicRequestSong, capability, "request-key-12345678");
+    await expect(promise).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: "request.schema-1" });
+    expect(recorder.events).toEqual([{
+      version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "request", reason: "schema",
+    }]);
+    expect(JSON.stringify(recorder.events)).not.toMatch(/secret-response-token|CCCCCCCC/);
+  });
+
+  it.each([
+    ["search", success({ items: [publicVideo], nextPageToken: null })],
+    ["video", success(publicVideo)],
+  ] as const)("forwards an AbortSignal for %s without serializing it", async (operation, response) => {
+    // Break caught: caller cancellation is lost or serialized into a public request.
+    const fetcher = vi.fn().mockResolvedValue(response);
+    vi.stubGlobal("fetch", fetcher);
+    const controller = new AbortController();
+    const client = createPublicMusicClient("https://music.example");
+    if (operation === "search") await client.search("public_slug-123", "valid", undefined, controller.signal);
+    else await client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", undefined, controller.signal);
+    expect(fetcher.mock.calls[0][1]).toMatchObject({ signal: controller.signal });
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("AbortSignal");
+  });
+
   it("strictly parses the stable public descriptor without accepting authority aliases", () => {
-    const descriptor = {
-      version: "music-public-descriptor/v1",
-      publication: { mode: "public", publicSlug: "public_slug-123", revision: 7 },
-    };
-    expect(parsePublicMusicDescriptor(descriptor)).toEqual(descriptor);
-    expect(() => parsePublicMusicDescriptor({ ...descriptor, publication: { ...descriptor.publication, publicSlug: "short" } })).toThrow();
-    expect(() => parsePublicMusicDescriptor({ ...descriptor, publication: { ...descriptor.publication, revision: -1 } })).toThrow();
-    expect(() => parsePublicMusicDescriptor({ ...descriptor, publication: { ...descriptor.publication, userId: 9 } })).toThrow();
+    expect(parsePublicMusicDescriptor(publicDescriptor)).toEqual(publicDescriptor);
+    expect(() => parsePublicMusicDescriptor({ ...publicDescriptor, publication: { ...publicDescriptor.publication, publicSlug: "short" } })).toThrow();
+    expect(() => parsePublicMusicDescriptor({ ...publicDescriptor, publication: { ...publicDescriptor.publication, revision: -1 } })).toThrow();
+    expect(() => parsePublicMusicDescriptor({ ...publicDescriptor, publication: { ...publicDescriptor.publication, userId: 9 } })).toThrow();
   });
 
   it.each([
@@ -258,21 +397,70 @@ describe("public Music client", () => {
   });
 
   it("discovers a public descriptor with the Account document ID and no username authority", async () => {
-    const descriptor = {
-      version: "music-public-descriptor/v1" as const,
-      publication: { mode: "public" as const, publicSlug: "public_slug-123", revision: 7 },
-    };
-    const fetcher = vi.fn().mockResolvedValue(success(descriptor));
+    const fetcher = vi.fn().mockResolvedValue(success(publicDescriptor));
     vi.stubGlobal("fetch", fetcher);
     const controller = new AbortController();
 
     await expect(createPublicMusicClient("https://music.example").discover("account-document-id", controller.signal))
-      .resolves.toEqual(descriptor);
+      .resolves.toEqual(publicDescriptor);
     expect(fetcher).toHaveBeenCalledWith(
       "https://music.example/api/music/public-profile/account-document-id",
       { headers: { Accept: "application/json" }, signal: controller.signal },
     );
     expect(JSON.stringify(fetcher.mock.calls)).not.toContain("username");
+  });
+
+  it.each(["", "account/document", "x".repeat(256)])(
+    "rejects invalid descriptor account ID %j before network access",
+    async (accountDocumentId) => {
+      // Break caught: authority-bearing or oversized account identifiers reach the public endpoint.
+      const fetcher = vi.fn();
+      vi.stubGlobal("fetch", fetcher);
+      await expect(createPublicMusicClient("https://music.example").discover(accountDocumentId))
+        .rejects.toMatchObject({ code: "PUBLIC_NOT_FOUND" });
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [403, "PUBLIC_NOT_FOUND", undefined],
+    [404, "PUBLIC_NOT_FOUND", undefined],
+    [429, "RATE_LIMITED", 300],
+    [503, "PUBLIC_UNAVAILABLE", undefined],
+  ] as const)("maps descriptor HTTP %i to %s with a sanitized request ID", async (status, code, retryAfterSeconds) => {
+    // Break caught: public discovery exposes upstream status details or trusts an unbounded retry value.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, {
+      status,
+      headers: { "x-request-id": "descriptor.request-1", "retry-after": "999" },
+    })));
+    await expect(createPublicMusicClient("https://music.example").discover("account-document-id"))
+      .rejects.toMatchObject({ code, requestId: "descriptor.request-1", retryAfterSeconds });
+  });
+
+  it("drops an unsafe descriptor request ID instead of reflecting it", async () => {
+    const unsafeRequestId = `secret/${"C".repeat(43)}`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, {
+      status: 503,
+      headers: { "x-request-id": unsafeRequestId },
+    })));
+    const promise = createPublicMusicClient("https://music.example").discover("account-document-id");
+    await expect(promise).rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE", requestId: undefined });
+    await expect(promise).rejects.not.toHaveProperty("message", expect.stringContaining(unsafeRequestId));
+  });
+
+  it.each([
+    ["malformed JSON", new Response("{secret-capability-token", { status: 200 }), "json"],
+    ["invalid schema", success({ ...publicDescriptor, publication: { ...publicDescriptor.publication, mode: "private" }, ownerToken: "secret-capability-token" }), "schema"],
+  ] as const)("contains descriptor %s with safe parser observability", async (_label, response, reason) => {
+    // Break caught: descriptor parser failures escape their public error boundary or log hostile response data.
+    const recorder = operationalRecorder();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    await expect(createPublicMusicClient("https://music.example", recorder.observability).discover("account-document-id"))
+      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    expect(recorder.events).toEqual([{
+      version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "descriptor", reason,
+    }]);
+    expect(JSON.stringify(recorder.events)).not.toContain("secret-capability-token");
   });
 
   it("keeps an unlisted capability out of the URL and sends no owner credential", async () => {
@@ -355,6 +543,40 @@ describe("public Music client", () => {
     ]) expect(() => parsePublicMusicResource(malformed)).toThrow();
   });
 
+  it.each([
+    ["fewer playlist rows than advertised", { ...publicResource.playlists, total: 2 }],
+    ["more playlist rows than advertised", { ...publicResource.playlists, total: 0 }],
+  ])("rejects %s", (_label, playlists) => {
+    // Break caught: a playlist envelope can lie about pagination state.
+    expect(() => parsePublicMusicResource({ ...publicResource, playlists })).toThrow();
+  });
+
+  it.each([
+    ["non-played history status", { ...publicResource.recentlyPlayed.items[0], status: "queued" }],
+    ["missing history timestamp", { ...publicResource.recentlyPlayed.items[0], playedAt: null }],
+  ])("rejects %s", (_label, historySong) => {
+    // Break caught: history accepts a song that was not verifiably played.
+    expect(() => parsePublicMusicResource({
+      ...publicResource,
+      recentlyPlayed: { items: [historySong], total: 1, truncated: false },
+    })).toThrow();
+  });
+
+  it.each([
+    ["queue", { currentlyPlaying: null, queue: { items: [], total: 0, truncated: false } }],
+    ["history", { recentlyPlayed: { items: [], total: 0, truncated: false } }],
+    ["playlists", { playlists: { items: [], total: 0, truncated: false } }],
+  ])("accepts an empty protected %s envelope", (permission, resourcePatch) => {
+    // Break caught: a disabled permission rejects the canonical empty representation.
+    const permissions = {
+      ...publicResource.permissions,
+      ...(permission === "queue" ? { allowQueueVisibility: false } : {}),
+      ...(permission === "history" ? { allowRecentlyPlayedVisibility: false } : {}),
+      ...(permission === "playlists" ? { allowPlaylistSharing: false } : {}),
+    };
+    expect(() => parsePublicMusicResource({ ...publicResource, ...resourcePatch, permissions })).not.toThrow();
+  });
+
   it("rejects protected data when its permission is false", () => {
     expect(() => parsePublicMusicResource({
       ...publicResource,
@@ -383,10 +605,14 @@ describe("public Music client", () => {
   it("rejects oversized Content-Length before reading the response stream", async () => {
     const streamed = streamedSuccess([JSON.stringify(publicResource)], String(PUBLIC_MUSIC_RESOURCE_MAX_BYTES + 1));
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamed.response));
+    const recorder = operationalRecorder();
 
-    await expect(createPublicMusicClient("https://music.example").load("public_slug-123"))
+    await expect(createPublicMusicClient("https://music.example", recorder.observability).load("public_slug-123"))
       .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
     expect(streamed.wasCancelled()).toBe(true);
+    expect(recorder.events).toEqual([{
+      version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "resource", reason: "size",
+    }]);
   });
 
   it("cancels a chunked response as soon as a lying small Content-Length crosses the byte limit", async () => {
@@ -405,6 +631,22 @@ describe("public Music client", () => {
     await expect(createPublicMusicClient("https://music.example").load("public_slug-123"))
       .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
     expect(streamed.wasCancelled()).toBe(true);
+  });
+
+  it("classifies invalid UTF-8 without leaking response content into observability", async () => {
+    const secret = "secret-capability-token";
+    const recorder = operationalRecorder();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      new Uint8Array([0xc3, 0x28, ...new TextEncoder().encode(secret)]),
+      { status: 200 },
+    )));
+
+    await expect(createPublicMusicClient("https://music.example", recorder.observability).load("public_slug-123"))
+      .rejects.toMatchObject({ code: "PUBLIC_UNAVAILABLE" });
+    expect(recorder.events).toEqual([{
+      version: "music-public-browser-ops/v1", event: "parser_rejected", parser: "resource", reason: "encoding",
+    }]);
+    expect(JSON.stringify(recorder.events)).not.toContain(secret);
   });
 
   it("contains rate limits with parsed or default retry durations", async () => {
@@ -434,5 +676,24 @@ describe("public Music client", () => {
     expect(fetcher).toHaveBeenCalledWith("https://music.example/api/music/public-resource/v1/public_slug-123", {
       headers: { Accept: "application/json", "X-Music-Guest-Capability": "a".repeat(43) }, signal: controller.signal,
     });
+  });
+
+  it.each([
+    ["configured", "https://configured-music.example/", "https://configured-music.example"],
+    ["packaged default", "", "https://localtunes.earth"],
+  ])("uses the %s module base without leaking it into resource data", async (_label, configuredBase, expectedBase) => {
+    // Break caught: the singleton ignores deployment configuration or loses its safe packaged fallback.
+    vi.stubEnv("VITE_LOCAL_TUNES_API_URL", configuredBase);
+    vi.resetModules();
+    const fetcher = vi.fn().mockResolvedValue(success(publicResource));
+    vi.stubGlobal("fetch", fetcher);
+    const { publicMusicClient: moduleClient } = await import("../publicMusicClient");
+
+    const resource = await moduleClient.load("public_slug-123");
+    expect(resource).toEqual(publicResource);
+    expect(fetcher).toHaveBeenCalledWith(`${expectedBase}/api/music/public-resource/v1/public_slug-123`, {
+      headers: { Accept: "application/json" },
+    });
+    expect(JSON.stringify(resource)).not.toContain(expectedBase);
   });
 });
