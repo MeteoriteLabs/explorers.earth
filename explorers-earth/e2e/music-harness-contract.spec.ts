@@ -173,9 +173,10 @@ function notRunJourneyOutcomeLedger() {
 
 function unavailablePrebrowserQualification() {
   return {
-    schemaVersion: "explorers-public-prebrowser-qualification/v1",
+    schemaVersion: "explorers-public-prebrowser-qualification/v2",
     status: "unavailable",
     code: "not-run",
+    snapshotFailure: { phase: "none", stage: "none", code: "none" },
     checks: {
       populatedRollback: false, profileCapability: false, privateAuthority: false,
       staleRejected: false, publicProjection: false, musicPrerequisites: false,
@@ -193,9 +194,10 @@ function unavailablePrebrowserQualification() {
 
 function passedPrebrowserQualification() {
   return {
-    schemaVersion: "explorers-public-prebrowser-qualification/v1",
+    schemaVersion: "explorers-public-prebrowser-qualification/v2",
     status: "passed",
     code: "none",
+    snapshotFailure: { phase: "none", stage: "none", code: "none" },
     checks: {
       populatedRollback: true, profileCapability: true, privateAuthority: true,
       staleRejected: true, publicProjection: true, musicPrerequisites: true,
@@ -5311,7 +5313,8 @@ test("pre-browser qualifier proves populated rollback, public/category/music cap
     ok: true,
     qualifierJwtFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     record: {
-      schemaVersion: "explorers-public-prebrowser-qualification/v1",
+      schemaVersion: "explorers-public-prebrowser-qualification/v2",
+      snapshotFailure: { phase: "none", stage: "none", code: "none" },
       status: "passed",
       code: "none",
       checks: {
@@ -5342,6 +5345,128 @@ test("pre-browser qualifier proves populated rollback, public/category/music cap
   });
   const retained = JSON.stringify(result.record);
   expect(retained).not.toMatch(/header\.payload|actual-fixture-public-slug|jwt|credential|authorization|token|snapshotId|path/i);
+});
+
+test("pre-browser qualifier distinguishes a valid populated snapshot with zero exact identity rows", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const run = contract.runMusicPrebrowserQualification as undefined | ((input: {
+    initialSnapshot: QualificationSnapshot;
+    adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+  expect(typeof run).toBe("function");
+  if (!run) return;
+
+  const events: string[] = [];
+  const adapter = passingPrebrowserQualificationAdapter(events);
+  adapter.capture = async () => {
+    events.push("snapshot:populated");
+    return qualificationSnapshot("populated-zero", "b".repeat(64), "c".repeat(64), 0, 0);
+  };
+  const result = await run({
+    initialSnapshot: qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0),
+    adapter,
+  });
+
+  expect(events).toEqual([
+    "identity-ensure", "snapshot:populated", "restore:initial-baseline", "qualifier-jwt-retired", "guard-clear",
+  ]);
+  expect(result).toMatchObject({
+    ok: false,
+    record: {
+      schemaVersion: "explorers-public-prebrowser-qualification/v2",
+      status: "failed",
+      code: "populated-identity-cardinality",
+      snapshotFailure: { phase: "none", stage: "none", code: "none" },
+      counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
+    },
+  });
+});
+
+test("loopback qualifier retains only fixed state-capture stage codes and rejects hostile response detail", async () => {
+  const contract = await loadPrebrowserQualificationContract();
+  const createAdapter = contract.createLoopbackPrebrowserQualificationAdapter as undefined | ((input: {
+    authority: Record<string, unknown>;
+    initialSnapshot: QualificationSnapshot;
+    fetchImpl: typeof fetch;
+  }) => ReturnType<typeof passingPrebrowserQualificationAdapter>);
+  const run = contract.runMusicPrebrowserQualification as undefined | ((input: {
+    initialSnapshot: QualificationSnapshot;
+    adapter: ReturnType<typeof passingPrebrowserQualificationAdapter>;
+  }) => Promise<{ ok: boolean; record: Record<string, unknown> }>);
+  expect(typeof createAdapter).toBe("function");
+  expect(typeof run).toBe("function");
+  if (!createAdapter || !run) return;
+
+  const initial = qualificationSnapshot("initial-snapshot", "a".repeat(64), "f".repeat(64), 0, 0);
+  const authority = {
+    stateOrigin: "http://127.0.0.1:55174",
+    tunesOrigin: "http://127.0.0.1:55000",
+    explorerOrigin: "http://localhost:55173",
+    strapiOrigin: "http://127.0.0.1:51337",
+    stateToken: "S".repeat(43), orchestrationToken: "O".repeat(43), fixtureToken: "F".repeat(43),
+    namespace: "e2e-public-music-qualification",
+    username: "e2e-public-music-qualification-owner",
+    accountDocumentId: "e2e-public-music-qualification-account",
+    userDocumentId: "e2e-public-music-qualification-user",
+  };
+  const hostile = "Bearer hostile.capture.value from C:\\Users\\private\\capture.json";
+  const cases = [
+    {
+      status: 500,
+      body: {
+        schemaVersion: "music-e2e-state-capture-failure/v1",
+        state: "failed", stage: "identity-count-query", code: "operation-failed",
+      },
+      failure: { phase: "populated", stage: "identity-count-query", code: "operation-failed" },
+    },
+    {
+      status: 500,
+      body: {
+        schemaVersion: "music-e2e-state-capture-failure/v1",
+        state: "failed", stage: "identity-count-query", code: "operation-failed", detail: hostile,
+      },
+      failure: { phase: "populated", stage: "snapshot-store", code: "contract-invalid" },
+    },
+    {
+      status: 503,
+      body: { error: hostile },
+      failure: { phase: "populated", stage: "snapshot-store", code: "operation-failed" },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
+      status, headers: { "content-type": "application/json" },
+    });
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+      if (url.pathname === "/api/music/identity/ensure") {
+        return json({ identity: { status: "active" }, credential: { token: "header.payload.qualifier-signature" } });
+      }
+      if (url.pathname === "/snapshot") return json(scenario.body, scenario.status);
+      if (url.pathname === "/restore-final") return json({
+        restored: true, beforeHash: initial.database.dumpHash, afterHash: initial.database.dumpHash,
+        profileHash: initial.profile.profileHash, profileRevision: initial.profile.profileRevision,
+      });
+      if (url.pathname === "/api/playlists") return json({ error: "retired" }, 401);
+      if (url.pathname === "/health") return json({
+        status: "ready", service: "music-e2e-state",
+        mutationGuard: { version: "music-e2e-mutation-guard/v1", state: "clear", reason: "none", stage: "preflight" },
+      });
+      throw new Error(hostile);
+    };
+    const result = await run({ initialSnapshot: initial, adapter: createAdapter({ authority, initialSnapshot: initial, fetchImpl }) });
+    expect(result).toMatchObject({
+      ok: false,
+      record: {
+        schemaVersion: "explorers-public-prebrowser-qualification/v2",
+        status: "failed",
+        code: "populated-snapshot-failed",
+        snapshotFailure: scenario.failure,
+      },
+    });
+    expect(JSON.stringify(result.record)).not.toMatch(/hostile|Bearer|C:\\Users|detail|path|token|authorization/i);
+  }
 });
 
 test("loopback qualifier adapter exercises exact fixture profile, stale, public category, and seeded Music protocols without persisting owner authority", async () => {

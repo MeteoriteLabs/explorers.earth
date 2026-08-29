@@ -23,6 +23,8 @@ import {
   createMusicFixtureRestRequestHandler,
   createMusicFixtureService,
 } from "../../scripts/music-fixture-server";
+import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
+import { MusicProjectionService } from "../services/musicProjectionService";
 
 const enabled = process.env.MUSIC_C12_INITIAL_CAPTURE_POSTGRES_TEST === "1"
   && process.env.MUSIC_UAT_DATABASE_ACK === MUSIC_UAT_DATABASE_ACK;
@@ -70,6 +72,22 @@ async function closeProfileServer() {
   await new Promise<void>((resolveClose, rejectClose) => retained.close((error) => (
     error ? rejectClose(new Error("owned initial capture profile cleanup failed")) : resolveClose()
   )));
+}
+
+async function ensureProductionIdentity(pool: pg.Pool) {
+  const projection = new MusicProjectionService({
+    resolve: async () => ({
+      userDocumentId: captureAuthority.userDocumentId,
+      accountDocumentId: captureAuthority.accountDocumentId,
+      username: captureAuthority.username,
+      email: "capture@example.invalid",
+      provider: "local" as const,
+      accountName: "Capture fixture",
+      accountType: "Personal",
+      accountMobile: "+15555550123",
+    }),
+  }, new MusicIdentityRepository(pool), 1);
+  return projection.ensure("c12-fixture-proof", "c12-production-ensure");
 }
 
 describePg("owned PostgreSQL initial Music E2E capture", () => {
@@ -183,14 +201,19 @@ describePg("owned PostgreSQL initial Music E2E capture", () => {
       },
     });
 
-    await fixture!.query(`INSERT INTO users(
-      username,password,email,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
-      lifecycle_operation_id,guest_capability_hash
-    ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [
-      captureAuthority.username, "not-a-login-secret", "capture@example.invalid",
-      namespace, "Capture fixture", captureAuthority.userDocumentId,
-      captureAuthority.accountDocumentId, "capture-provision", "a".repeat(64),
-    ]);
+    await ensureProductionIdentity(fixture!);
+    const productionRow = (await fixture!.query<{
+      username: string; strapi_username_snapshot: string;
+      strapi_user_document_id: string; strapi_account_document_id: string;
+    }>(`SELECT username,strapi_username_snapshot,strapi_user_document_id,strapi_account_document_id
+          FROM users WHERE strapi_user_document_id=$1`, [captureAuthority.userDocumentId])).rows[0];
+    expect(productionRow).toEqual({
+      username: expect.stringMatching(/^explorer-[a-f0-9]{24}$/),
+      strapi_username_snapshot: captureAuthority.username,
+      strapi_user_document_id: captureAuthority.userDocumentId,
+      strapi_account_document_id: captureAuthority.accountDocumentId,
+    });
+    expect(productionRow?.username).not.toBe(captureAuthority.username);
     const populated = await captureMusicFixtureState({ authority: captureAuthority, adapters });
     expect(populated.database.identityRows).toBe(1);
     expect(populated.database.dumpHash).not.toBe(empty.database.dumpHash);

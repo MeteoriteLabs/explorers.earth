@@ -98,7 +98,7 @@ export function safeMusicFixtureCaptureFailure(error) {
 const identityPredicates = Object.freeze([
   Object.freeze({ column: "strapi_user_document_id", key: "userDocumentId" }),
   Object.freeze({ column: "strapi_account_document_id", key: "accountDocumentId" }),
-  Object.freeze({ column: "username", key: "username" }),
+  Object.freeze({ column: "strapi_username_snapshot", key: "username" }),
 ]);
 
 export function buildMusicFixtureIdentityCountPgQuery(authority) {

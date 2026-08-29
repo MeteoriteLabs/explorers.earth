@@ -198,7 +198,7 @@ describe("Music initial state capture", () => {
     expect(requestProfile).toBeTypeOf("function");
     if (!buildQuery || !requestProfile) return;
     expect(buildQuery(authority)).toEqual({
-      text: "SELECT count(*)::int AS count FROM users WHERE strapi_user_document_id = $1 AND strapi_account_document_id = $2 AND username = $3 AND identity_status = 'active';",
+      text: "SELECT count(*)::int AS count FROM users WHERE strapi_user_document_id = $1 AND strapi_account_document_id = $2 AND strapi_username_snapshot = $3 AND identity_status = 'active';",
       values: [authority.userDocumentId, authority.accountDocumentId, authority.username],
     });
 
@@ -251,7 +251,7 @@ describe("Music initial state capture", () => {
         "-A", "-t", "-f", "-",
       ],
       input: Buffer.from(
-        "SELECT count(*) FROM users WHERE strapi_user_document_id = :'fixture_user_document_id' AND strapi_account_document_id = :'fixture_account_document_id' AND username = :'fixture_username' AND identity_status = 'active';\n",
+        "SELECT count(*) FROM users WHERE strapi_user_document_id = :'fixture_user_document_id' AND strapi_account_document_id = :'fixture_account_document_id' AND strapi_username_snapshot = :'fixture_username' AND identity_status = 'active';\n",
         "utf8",
       ),
     });

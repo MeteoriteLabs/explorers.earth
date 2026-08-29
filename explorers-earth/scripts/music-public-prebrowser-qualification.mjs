@@ -1,14 +1,23 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  MUSIC_E2E_STATE_CAPTURE_CODES,
+  MUSIC_E2E_STATE_CAPTURE_FAILURE_VERSION,
+  MUSIC_E2E_STATE_CAPTURE_STAGES,
+} from "../../tunes/scripts/music-e2e-state-capture.mjs";
 
-export const PREBROWSER_QUALIFICATION_VERSION = "explorers-public-prebrowser-qualification/v1";
+export const PREBROWSER_QUALIFICATION_VERSION = "explorers-public-prebrowser-qualification/v2";
 
 const QUALIFICATION_CODES = new Set([
   "none", "not-run", "unexpected-failure", "identity-ensure-failed", "populated-snapshot-failed",
+  "populated-identity-cardinality",
   "rollback-probe-failed", "phase-restore-failed", "public-capability-failed", "baseline-restore-failed",
   "ephemeral-owner-not-retired", "guard-not-clear",
 ]);
+const CAPTURE_FAILURE_PHASES = new Set(["none", "populated", "public"]);
+const CAPTURE_FAILURE_STAGES = new Set(["none", ...MUSIC_E2E_STATE_CAPTURE_STAGES]);
+const CAPTURE_FAILURE_CODES = new Set(["none", ...MUSIC_E2E_STATE_CAPTURE_CODES]);
 const CHECK_KEYS = Object.freeze([
   "populatedRollback", "profileCapability", "privateAuthority", "staleRejected", "publicProjection",
   "musicPrerequisites", "baselineRestored", "ephemeralOwnerRetired", "guardClear",
@@ -30,11 +39,28 @@ function safeHash(value) {
   return value === null || (typeof value === "string" && /^[a-f0-9]{64}$/.test(value));
 }
 
+function clearSnapshotFailure() {
+  return { phase: "none", stage: "none", code: "none" };
+}
+
+function validSnapshotFailure(value) {
+  if (!exactKeys(value, ["phase", "stage", "code"])
+      || !CAPTURE_FAILURE_PHASES.has(value.phase)
+      || !CAPTURE_FAILURE_STAGES.has(value.stage)
+      || !CAPTURE_FAILURE_CODES.has(value.code)) return false;
+  return value.phase === "none"
+    ? value.stage === "none" && value.code === "none"
+    : value.stage !== "none" && value.code !== "none";
+}
+
 export function validateMusicPrebrowserQualificationRecord(value) {
-  if (!exactKeys(value, ["schemaVersion", "status", "code", "checks", "counts", "hashes", "profileRevisions"])
+  if (!exactKeys(value, [
+    "schemaVersion", "status", "code", "snapshotFailure", "checks", "counts", "hashes", "profileRevisions",
+  ])
       || value.schemaVersion !== PREBROWSER_QUALIFICATION_VERSION
       || !["unavailable", "failed", "passed"].includes(value.status)
       || !QUALIFICATION_CODES.has(value.code)
+      || !validSnapshotFailure(value.snapshotFailure)
       || !exactKeys(value.checks, CHECK_KEYS)
       || !CHECK_KEYS.every((key) => typeof value.checks[key] === "boolean")
       || !exactKeys(value.counts, ["identityRows", "categoryQueries", "musicPrerequisites"])
@@ -50,12 +76,14 @@ export function validateMusicPrebrowserQualificationRecord(value) {
   }
   if (value.status === "unavailable") {
     return value.code === "not-run" && CHECK_KEYS.every((key) => value.checks[key] === false)
+      && value.snapshotFailure.phase === "none"
       && value.counts.identityRows === 0 && value.counts.categoryQueries === 0
       && value.counts.musicPrerequisites === 0 && HASH_KEYS.every((key) => value.hashes[key] === null)
       && REVISION_KEYS.every((key) => value.profileRevisions[key] === null);
   }
   if (value.status === "passed") {
     return value.code === "none" && CHECK_KEYS.every((key) => value.checks[key] === true)
+      && value.snapshotFailure.phase === "none"
       && value.counts.identityRows === 1 && value.counts.categoryQueries === 20
       && value.counts.musicPrerequisites > 0 && HASH_KEYS.every((key) => value.hashes[key] !== null)
       && REVISION_KEYS.every((key) => value.profileRevisions[key] !== null)
@@ -65,6 +93,9 @@ export function validateMusicPrebrowserQualificationRecord(value) {
       && value.hashes.baselineProfile === value.hashes.restoredBaselineProfile
       && value.profileRevisions.populated === value.profileRevisions.rollback
       && value.profileRevisions.baseline === value.profileRevisions.restoredBaseline;
+  }
+  if (value.code === "populated-identity-cardinality") {
+    return value.snapshotFailure.phase === "none" && value.counts.identityRows === 0;
   }
   return value.code !== "none" && value.code !== "not-run";
 }
@@ -152,11 +183,12 @@ function clearGuard(value) {
     && value.state === "clear" && value.reason === "none" && value.stage === "preflight";
 }
 
-function safeRecord({ status, code, checks, counts, hashes, profileRevisions }) {
+function safeRecord({ status, code, snapshotFailure, checks, counts, hashes, profileRevisions }) {
   return {
     schemaVersion: PREBROWSER_QUALIFICATION_VERSION,
     status,
     code,
+    snapshotFailure,
     checks,
     counts,
     hashes,
@@ -168,6 +200,7 @@ export function unavailableMusicPrebrowserQualification() {
   return safeRecord({
     status: "unavailable",
     code: "not-run",
+    snapshotFailure: clearSnapshotFailure(),
     checks: clearChecks(),
     counts: { identityRows: 0, categoryQueries: 0, musicPrerequisites: 0 },
     hashes: {
@@ -195,6 +228,47 @@ function exactAuthority(value) {
     && value.username === `${value.namespace}-owner`
     && value.accountDocumentId === `${value.namespace}-account`
     && value.userDocumentId === `${value.namespace}-user`;
+}
+
+class MusicPrebrowserSnapshotFailure extends Error {
+  constructor(stage, code) {
+    super("pre-browser snapshot failed");
+    this.name = "MusicPrebrowserSnapshotFailure";
+    this.stage = stage;
+    this.code = code;
+  }
+}
+
+function exactCaptureFailure(value) {
+  return exactKeys(value, ["schemaVersion", "state", "stage", "code"])
+    && value.schemaVersion === MUSIC_E2E_STATE_CAPTURE_FAILURE_VERSION
+    && value.state === "failed"
+    && CAPTURE_FAILURE_STAGES.has(value.stage) && value.stage !== "none"
+    && CAPTURE_FAILURE_CODES.has(value.code) && value.code !== "none";
+}
+
+function timeoutFailure(error) {
+  return error && typeof error === "object"
+    && ["AbortError", "TimeoutError"].includes(String(error.name));
+}
+
+function normalizedSnapshotFailure(error) {
+  if (error instanceof MusicPrebrowserSnapshotFailure) {
+    return { stage: error.stage, code: error.code };
+  }
+  return { stage: "snapshot-store", code: timeoutFailure(error) ? "operation-timeout" : "operation-failed" };
+}
+
+function decodedSnapshotResponse(response) {
+  if (response.status === 200) return { ok: true, snapshot: response.body };
+  if (response.status === 500 && exactCaptureFailure(response.body)) {
+    return { ok: false, failure: { stage: response.body.stage, code: response.body.code } };
+  }
+  if (Number.isSafeInteger(response.status) && response.status >= 400 && response.status <= 599
+      && response.status !== 500) {
+    return { ok: false, failure: { stage: "snapshot-store", code: "operation-failed" } };
+  }
+  return { ok: false, failure: { stage: "snapshot-store", code: "contract-invalid" } };
 }
 
 function qualificationHeaders(authority, expectedRevision) {
@@ -323,9 +397,15 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
       return credential.token;
     },
     async capture() {
-      const response = await stateRequest("/snapshot", authority.stateToken);
-      if (response.status !== 200) throw new Error("qualification snapshot failed");
-      return response.body;
+      let response;
+      try { response = await stateRequest("/snapshot", authority.stateToken); }
+      catch (error) {
+        const failure = normalizedSnapshotFailure(error);
+        throw new MusicPrebrowserSnapshotFailure(failure.stage, failure.code);
+      }
+      const decoded = decodedSnapshotResponse(response);
+      if (!decoded.ok) throw new MusicPrebrowserSnapshotFailure(decoded.failure.stage, decoded.failure.code);
+      return decoded.snapshot;
     },
     async verifyRollbackProbe({ qualifierJwt, profileRevision }) {
       const playlist = await boundedResponse(fetchImpl, `${authority.tunesOrigin}/api/playlists`, {
@@ -578,6 +658,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
     restoredBaseline: null,
   };
   let code = "unexpected-failure";
+  let snapshotFailure = clearSnapshotFailure();
   let qualifierJwt = "";
   let qualifierJwtFingerprint;
   let corePassed = false;
@@ -590,13 +671,22 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
     qualifierJwtFingerprint = sha256(qualifierJwt);
 
     code = "populated-snapshot-failed";
-    const populated = await adapter.capture();
-    if (!exactSnapshot(populated) || populated.database.identityRows !== 1
-        || populated.database.namespace !== initialSnapshot.database.namespace
+    let populated;
+    try { populated = await adapter.capture(); }
+    catch (error) {
+      snapshotFailure = { phase: "populated", ...normalizedSnapshotFailure(error) };
+      throw error;
+    }
+    if (!exactSnapshot(populated) || populated.database.namespace !== initialSnapshot.database.namespace
         || populated.profile.accountDocumentId !== initialSnapshot.profile.accountDocumentId) {
+      snapshotFailure = { phase: "populated", stage: "snapshot-store", code: "contract-invalid" };
       throw new Error("invalid populated qualification snapshot");
     }
     counts.identityRows = populated.database.identityRows;
+    if (populated.database.identityRows !== 1) {
+      code = "populated-identity-cardinality";
+      throw new Error("invalid populated qualification identity cardinality");
+    }
     hashes.populatedDatabase = populated.database.dumpHash;
     hashes.populatedProfile = populated.profile.profileHash;
     profileRevisions.populated = populated.profile.profileRevision;
@@ -621,11 +711,21 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
     checks.populatedRollback = true;
 
     code = "populated-snapshot-failed";
-    const publicSnapshot = await adapter.capture();
-    if (!exactSnapshot(publicSnapshot) || publicSnapshot.database.identityRows !== 1
-        || publicSnapshot.database.namespace !== initialSnapshot.database.namespace
+    let publicSnapshot;
+    try { publicSnapshot = await adapter.capture(); }
+    catch (error) {
+      snapshotFailure = { phase: "public", ...normalizedSnapshotFailure(error) };
+      throw error;
+    }
+    if (!exactSnapshot(publicSnapshot) || publicSnapshot.database.namespace !== initialSnapshot.database.namespace
         || publicSnapshot.profile.accountDocumentId !== initialSnapshot.profile.accountDocumentId) {
+      snapshotFailure = { phase: "public", stage: "snapshot-store", code: "contract-invalid" };
       throw new Error("invalid public qualification snapshot");
+    }
+    counts.identityRows = publicSnapshot.database.identityRows;
+    if (publicSnapshot.database.identityRows !== 1) {
+      code = "populated-identity-cardinality";
+      throw new Error("invalid public qualification identity cardinality");
     }
 
     code = "public-capability-failed";
@@ -695,6 +795,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
   const record = safeRecord({
     status: ok ? "passed" : "failed",
     code: ok ? "none" : code,
+    snapshotFailure,
     checks,
     counts,
     hashes,
