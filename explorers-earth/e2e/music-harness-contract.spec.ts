@@ -260,6 +260,9 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(stateService).toContain('"psql"');
   expect(stateService).toContain("MUSIC_E2E_STRAPI_TOKEN");
   expect(stateService).toContain("Strapi public_music restore verification mismatch");
+  expect(stateService).toContain("preferenceHash: profileHash");
+  expect(stateService).not.toContain("domainHashes");
+  expect(stateService).not.toContain("domainHash(");
   expect(stateService).not.toContain("MUSIC_E2E_FULL_SNAPSHOT_URL");
 });
 
@@ -271,9 +274,9 @@ test("one canonical adapter refuses incomplete account state and restores every 
     guestControls: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: true, allowQueueVisibility: true },
     queue: { revision: 7, songs: [{ id: 1, position: 0 }], currentlyPlaying: { id: 1 }, history: [{ id: 2 }] },
     playlists: [{ id: 10, name: "Fixture", privacy: "shared", songs: [{ id: 3, position: 0 }] }],
-    requests: { pending: [{ id: "request-1", status: "pending" }], idempotencyReceipts: [{ id: "receipt-1" }], rateState: [{ key: "fixture", count: 1 }] },
-    profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, preferenceRevision: 4 },
-    database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64), domainHashes: Object.fromEntries(["publication", "controls", "queue", "history", "playlists", "requests", "receipts", "rate", "revisions", "strapiPublicMusic"].map((domain) => [domain, "b".repeat(64)])) },
+    requests: { coveredByDatabaseDump: true },
+    profile: { accountDocumentId: "e2e-public-music-run-account", publicMusic: true, preferenceRevision: 4, preferenceHash: "b".repeat(64) },
+    database: { namespace: "e2e-public-music-run", dumpHash: "a".repeat(64) },
   } as const;
   let current: unknown = structuredClone(complete);
   let resetValue: unknown;

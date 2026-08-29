@@ -1,11 +1,75 @@
 import { readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fixtureGraphqlResponse, fixtureReconciliationResponse, fixtureResponse } from "../../../scripts/music-fixture-server.ts";
+import { createMusicFixtureService, fixtureGraphqlResponse, fixtureReconciliationResponse, fixtureResponse } from "../../../scripts/music-fixture-server.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("deterministic Music fixture services", () => {
+  it("projects one configured namespaced identity and restores its allowlisted Account preference", () => {
+    const service = createMusicFixtureService({
+      username: "e2e-public-music-contract-owner",
+      accountDocumentId: "e2e-public-music-contract-account",
+      userDocumentId: "e2e-public-music-contract-user",
+      token: "contract-fixture-token",
+    });
+    const authority = "Bearer contract-fixture-token";
+
+    expect(service.response({ path: "/api/users/me", method: "GET", authorization: authority })).toMatchObject({
+      status: 200,
+      body: { username: "e2e-public-music-contract-owner", documentId: "e2e-public-music-contract-user",
+        accounts: [{ documentId: "e2e-public-music-contract-account", public_music: "No" }] },
+    });
+    expect(service.response({ path: "/api/accounts/e2e-public-music-contract-account", method: "PUT", authorization: authority,
+      body: { data: { public_music: "Yes" } } })).toMatchObject({ status: 200, body: { data: { public_music: "Yes" } } });
+    expect(service.response({ path: "/api/accounts/e2e-public-music-contract-account", method: "GET", authorization: authority }))
+      .toMatchObject({ status: 200, body: { data: { documentId: "e2e-public-music-contract-account", public_music: "Yes" } } });
+    expect(service.response({ path: "/api/accounts/e2e-public-music-contract-account", method: "PUT", authorization: authority,
+      body: { data: { public_music: "No" } } })).toMatchObject({ status: 200, body: { data: { public_music: "No" } } });
+
+    for (const denied of [
+      { path: "/api/accounts/wrong-account", method: "GET", authorization: authority },
+      { path: "/api/accounts/e2e-public-music-contract-account", method: "GET", authorization: "Bearer wrong" },
+      { path: "/api/accounts/e2e-public-music-contract-account", method: "PATCH", authorization: authority },
+      { path: "/api/accounts/e2e-public-music-contract-account", method: "PUT", authorization: authority, body: { data: { public_music: "Maybe" } } },
+      { path: "/api/accounts/e2e-public-music-contract-account", method: "PUT", authorization: authority, body: { data: { public_music: "Yes", Account_Name: "changed" } } },
+    ]) expect(service.response(denied).status).not.toBe(200);
+  });
+
+  it("binds the runner tuple to the actual loopback fixture process and restores the preference", async () => {
+    const port = 52_000 + Math.floor(Math.random() * 1_000);
+    const origin = `http://127.0.0.1:${port}`;
+    const token = "contract-process-fixture-token";
+    const child = spawn(process.execPath, ["--experimental-strip-types", resolve(import.meta.dirname, "../../../scripts/music-fixture-server.ts"), "--port", String(port)], {
+      env: { ...process.env, MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-process-owner",
+        MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-process-account", MUSIC_E2E_USER_DOCUMENT_ID: "e2e-public-music-process-user",
+        MUSIC_E2E_STRAPI_TOKEN: token }, stdio: "ignore",
+    });
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    try {
+      let ready = false;
+      for (let attempt = 0; attempt < 30 && !ready; attempt += 1) {
+        await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+        try { ready = (await fetch(`${origin}/health`)).ok; } catch { /* starting */ }
+      }
+      expect(ready).toBe(true);
+      const identity = await (await fetch(`${origin}/api/users/me`, { headers })).json();
+      expect(identity).toMatchObject({ username: "e2e-public-music-process-owner", accounts: [{ documentId: "e2e-public-music-process-account" }] });
+      const callback = await (await fetch(`${origin}/graphql`, { method: "POST", headers, body: JSON.stringify({
+        query: "query MusicPageEligibility($documentId: ID!) { usersPermissionsUser(documentId: $documentId) { documentId accounts { documentId } } }",
+        variables: { documentId: "e2e-public-music-process-user" },
+      }) })).json();
+      expect(callback.data.usersPermissionsUser).toMatchObject({ documentId: "e2e-public-music-process-user",
+        accounts: [{ documentId: "e2e-public-music-process-account" }] });
+      const before = await (await fetch(`${origin}/api/accounts/e2e-public-music-process-account`, { headers })).json();
+      expect(before.data.public_music).toBe("No");
+      await fetch(`${origin}/api/accounts/e2e-public-music-process-account`, { method: "PUT", headers, body: JSON.stringify({ data: { public_music: "Yes" } }) });
+      await fetch(`${origin}/api/accounts/e2e-public-music-process-account`, { method: "PUT", headers, body: JSON.stringify({ data: { public_music: before.data.public_music } }) });
+      const restored = await (await fetch(`${origin}/api/accounts/e2e-public-music-process-account`, { headers })).json();
+      expect(restored.data.public_music).toBe("No");
+    } finally { child.kill(); }
+  });
   it("routes authenticated browser mutations to the isolated fixture origin rather than a synthetic or production host", () => {
     // A real browser must reach the fixture Tunes gateway through its own
     // origin.  A Playwright-only route interception can make a broken bundle

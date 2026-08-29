@@ -45,7 +45,6 @@ async function capture() {
     json(`${strapiOrigin}/api/accounts/${encodeURIComponent(accountDocumentId)}`, { headers: { Authorization: `Bearer ${strapiToken}` } }),
   ]);
   const snapshotId = randomUUID();
-  const domainHash = (domain) => createHash("sha256").update(`${domain}\0${databaseHash}`).digest("hex");
   const publicMusic = (profile.data?.attributes?.public_music ?? profile.data?.public_music ?? profile.public_music) === "Yes";
   const profileHash = createHash("sha256").update(`${accountDocumentId}\0${publicMusic ? "Yes" : "No"}`).digest("hex");
   const snapshot = {
@@ -54,13 +53,9 @@ async function capture() {
     guestControls: controls,
     queue: { revision: dashboard.queueRevision, songs: dashboard.songs ?? [], currentlyPlaying: dashboard.currentlyPlaying ?? null, history: dashboard.recentlyPlayed ?? [] },
     playlists: Array.isArray(playlists) ? playlists : playlists.data ?? playlists.items ?? [],
-    requests: {
-      pending: [{ stateHash: domainHash("pending-requests") }],
-      idempotencyReceipts: [{ stateHash: domainHash("idempotency-receipts") }],
-      rateState: [{ stateHash: domainHash("rate-state") }],
-    },
-    profile: { accountDocumentId, publicMusic, preferenceRevision: Number(profile.data?.attributes?.updatedAt ? Date.parse(profile.data.attributes.updatedAt) : 0) },
-    database: { namespace: username.replace(/-owner$/, ""), dumpHash: databaseHash, domainHashes: { ...Object.fromEntries(["publication", "controls", "queue", "history", "playlists", "requests", "receipts", "rate", "revisions"].map((name) => [name, domainHash(name)])), strapiPublicMusic: profileHash } },
+    requests: { coveredByDatabaseDump: true },
+    profile: { accountDocumentId, publicMusic, preferenceRevision: Number(profile.data?.attributes?.updatedAt ? Date.parse(profile.data.attributes.updatedAt) : 0), preferenceHash: profileHash },
+    database: { namespace: username.replace(/-owner$/, ""), dumpHash: databaseHash },
   };
   snapshots.set(snapshotId, { dump, snapshot });
   return snapshot;

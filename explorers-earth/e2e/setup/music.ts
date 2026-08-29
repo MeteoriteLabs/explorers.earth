@@ -216,9 +216,9 @@ export interface CanonicalMusicAccountSnapshot {
   guestControls: Record<string, boolean>;
   queue: { revision: number; songs: unknown[]; currentlyPlaying: unknown | null; history: unknown[] };
   playlists: unknown[];
-  requests: { pending: unknown[]; idempotencyReceipts: unknown[]; rateState: unknown[] };
-  profile: { accountDocumentId: string; publicMusic: boolean; preferenceRevision: number };
-  database: { namespace: string; dumpHash: string; domainHashes: Record<string, string> };
+  requests: { coveredByDatabaseDump: true };
+  profile: { accountDocumentId: string; publicMusic: boolean; preferenceRevision: number; preferenceHash: string };
+  database: { namespace: string; dumpHash: string };
 }
 
 function requiredRecord(source: Record<string, unknown>, key: string): Record<string, unknown> {
@@ -245,19 +245,17 @@ export function assertCanonicalMusicAccountSnapshot(value: unknown): asserts val
   }
   if (!Array.isArray(source.playlists)) throw new Error("canonical Music snapshot requires playlists");
   const requests = requiredRecord(source, "requests");
-  if (!Array.isArray(requests.pending) || !Array.isArray(requests.idempotencyReceipts) || !Array.isArray(requests.rateState)) {
-    throw new Error("canonical Music snapshot requires requests, idempotency receipts, and rate state");
+  if (requests.coveredByDatabaseDump !== true) {
+    throw new Error("canonical Music snapshot requires requests, idempotency receipts, and rate state in the full database dump");
   }
   const profile = requiredRecord(source, "profile");
   if (typeof profile.accountDocumentId !== "string" || typeof profile.publicMusic !== "boolean"
-      || !Number.isSafeInteger(profile.preferenceRevision)) {
+      || !Number.isSafeInteger(profile.preferenceRevision) || !/^[a-f0-9]{64}$/.test(String(profile.preferenceHash))) {
     throw new Error("canonical Music snapshot requires Strapi public_music profile preference state");
   }
   const database = requiredRecord(source, "database");
-  const domainHashes = database.domainHashes as Record<string, unknown> | undefined;
   if (typeof database.namespace !== "string" || !/^e2e-public-music-[a-z0-9-]+$/.test(database.namespace)
-      || !/^[a-f0-9]{64}$/.test(String(database.dumpHash)) || !domainHashes
-      || ["publication", "controls", "queue", "history", "playlists", "requests", "receipts", "rate", "revisions", "strapiPublicMusic"].some((domain) => !/^[a-f0-9]{64}$/.test(String(domainHashes[domain])))) {
+      || !/^[a-f0-9]{64}$/.test(String(database.dumpHash))) {
     throw new Error("canonical Music snapshot requires the complete disposable database namespace");
   }
 }

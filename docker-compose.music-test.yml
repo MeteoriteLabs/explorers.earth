@@ -30,6 +30,11 @@ services:
     image: node:22.12-alpine
     working_dir: /workspace
     command: ["node", "--experimental-strip-types", "tunes/scripts/music-fixture-server.ts", "--port", "1337"]
+    environment:
+      MUSIC_E2E_ACCOUNT_USERNAME: ${MUSIC_E2E_ACCOUNT_USERNAME:-e2e-public-music-fixture-owner}
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: ${MUSIC_E2E_ACCOUNT_DOCUMENT_ID:-e2e-public-music-fixture-account}
+      MUSIC_E2E_USER_DOCUMENT_ID: ${MUSIC_E2E_USER_DOCUMENT_ID:-e2e-public-music-fixture-user}
+      MUSIC_E2E_STRAPI_TOKEN: ${MUSIC_E2E_STRAPI_TOKEN:-fixture-read-only-token}
     ports: ["127.0.0.1:${MUSIC_STRAPI_HOST_PORT:-51337}:1337"]
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:1337/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -88,7 +93,9 @@ services:
       STRAPI_URL: http://strapi:1337
       MUSIC_FIXTURE_STRAPI_ORIGIN: http://strapi:1337
       TRUST_PROXY_HOPS: "0"
-      STRAPI_ACCESS_TOKEN: fixture-read-only-token
+      STRAPI_ACCESS_TOKEN: ${MUSIC_E2E_STRAPI_TOKEN:-fixture-read-only-token}
+      MUSIC_E2E_ACCOUNT_USERNAME: ${MUSIC_E2E_ACCOUNT_USERNAME:-e2e-public-music-fixture-owner}
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: ${MUSIC_E2E_ACCOUNT_DOCUMENT_ID:-e2e-public-music-fixture-account}
       STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters
       STRAPI_FIXTURE_URL: http://127.0.0.1:51337
       ALLOWED_ORIGINS: http://localhost:55173

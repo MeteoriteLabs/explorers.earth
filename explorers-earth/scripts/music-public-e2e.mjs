@@ -33,15 +33,18 @@ if (!mode) {
 const runId = (process.env.MUSIC_PUBLIC_RUN_ID ?? new Date().toISOString().replace(/\D/g, "")).replace(/[^a-zA-Z0-9_-]/g, "-");
 const evidencePath = `.artifacts/music-public/${runId}/evidence.json`;
 const externalUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL ?? "http://127.0.0.1:5173";
-const accountDocumentId = process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? "not-configured";
-const username = process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? "not-configured";
+const generatedNamespace = `e2e-public-music-${runId.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
+const username = process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? (mode.lane === "live" ? `${generatedNamespace}-owner` : "not-configured");
+const namespace = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/)?.[1];
+const accountDocumentId = process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? (namespace ? `${namespace}-account` : "not-configured");
+const userDocumentId = process.env.MUSIC_E2E_USER_DOCUMENT_ID ?? (namespace ? `${namespace}-user` : "not-configured");
 const fixtureVersion = process.env.MUSIC_E2E_FIXTURE_VERSION ?? "not-configured";
 const configuredServiceOrigins = (process.env.MUSIC_E2E_SERVICE_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 const healthUrls = (process.env.MUSIC_E2E_HEALTH_URLS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 const namespaceResetConfirmation = process.env.MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION;
 const ownerCredential = process.env.MUSIC_E2E_OWNER_CREDENTIAL ?? "";
-const strapiUrl = process.env.MUSIC_E2E_STRAPI_URL ?? "";
-const strapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN ?? "";
+const strapiUrl = process.env.MUSIC_E2E_STRAPI_URL ?? (mode.lane === "live" ? "http://127.0.0.1:51337" : "");
+const strapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN ?? (mode.lane === "live" ? randomBytes(32).toString("base64url") : "");
 const stateServiceUrl = "http://127.0.0.1:55174";
 
 function loopbackHttp(raw) {
@@ -54,6 +57,8 @@ function loopbackHttp(raw) {
 }
 
 if (mode.lane === "live") {
+  Object.assign(process.env, { MUSIC_E2E_ACCOUNT_USERNAME: username, MUSIC_E2E_ACCOUNT_DOCUMENT_ID: accountDocumentId,
+    MUSIC_E2E_USER_DOCUMENT_ID: userDocumentId, MUSIC_E2E_STRAPI_URL: strapiUrl, MUSIC_E2E_STRAPI_TOKEN: strapiToken });
   const namespaceMatch = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/);
   const validIdentity = namespaceMatch && accountDocumentId === `${namespaceMatch[1]}-account`;
   const fiveServices = configuredServiceOrigins.length === 5 && healthUrls.length === 5;
@@ -142,6 +147,19 @@ if (mode.lane === "live") {
     process.stderr.write("Live public Music E2E state service failed its loopback health check.\n");
     stopFixture();
     process.exit(4);
+  }
+  try {
+    const [accountResponse, identityResponse] = await Promise.all([
+      fetch(`${strapiUrl}/api/accounts/${encodeURIComponent(accountDocumentId)}`, { headers: { Authorization: `Bearer ${strapiToken}` }, signal: AbortSignal.timeout(5_000) }),
+      fetch(`${strapiUrl}/api/users/me`, { headers: { Authorization: `Bearer ${strapiToken}` }, signal: AbortSignal.timeout(5_000) }),
+    ]);
+    const account = await accountResponse.json(); const identity = await identityResponse.json();
+    if (!accountResponse.ok || !identityResponse.ok || account.data?.documentId !== accountDocumentId
+        || identity.username !== username || identity.documentId !== userDocumentId
+        || identity.accounts?.[0]?.documentId !== accountDocumentId) throw new Error("fixture projected a different identity");
+  } catch (error) {
+    process.stderr.write(`Live public Music E2E identity readiness failed: ${error instanceof Error ? error.message : "unavailable"}\n`);
+    stopFixture(); process.exit(4);
   }
   process.env.MUSIC_E2E_STATE_SERVICE_URL = stateServiceUrl;
   process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
