@@ -3,7 +3,9 @@ import {
   closeSync,
   existsSync,
   fstatSync,
+  fsyncSync,
   lstatSync,
+  linkSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -18,6 +20,7 @@ import {
   buildSanitizedJourneyOutcomeLedger,
   validateSanitizedJourneyOutcomeLedger,
 } from "./music-public-live-preflight.mjs";
+import { validateMusicMutationGuardRecord } from "../../tunes/scripts/music-e2e-mutation-guard.mjs";
 
 const SAFE_RUN_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SCHEMA_VERSION = "explorers-public-qualification-artifacts/v1";
@@ -74,6 +77,7 @@ export const LIVE_QUALIFICATION_REQUIRED_ARTIFACTS = Object.freeze([
   Object.freeze({ role: "skip-ledger", path: "skip-reasons.json" }),
   Object.freeze({ role: "restoration-record", path: "restoration.json" }),
   Object.freeze({ role: "journey-outcomes", path: "journey-outcomes.json" }),
+  Object.freeze({ role: "mutation-guard", path: "mutation-guard.json" }),
   Object.freeze({ role: "evidence", path: "evidence.json" }),
 ]);
 
@@ -884,6 +888,58 @@ function retainJourneyOutcomeLedger({
   });
 }
 
+const clearMutationGuardRecord = Object.freeze({
+  version: "music-e2e-mutation-guard/v1", state: "clear", reason: "none", stage: "preflight",
+});
+
+function resolvedMutationGuard(runDirectory, supplied) {
+  if (supplied !== undefined) return supplied;
+  const guardPath = safeArtifactPath(runDirectory, "mutation-guard.json");
+  if (!existsSync(guardPath)) return clearMutationGuardRecord;
+  try { return JSON.parse(readBoundedRegularFile(guardPath, 1024).toString("utf8")); }
+  catch { fail("qualification mutation guard contract is invalid"); }
+}
+
+function retainMutationGuard({ runDirectory, record, knownSecrets, workspaceRoot }) {
+  if (!validateMusicMutationGuardRecord(record)) fail("qualification mutation guard contract is invalid");
+  assertSafeStructuredArtifact(record, { knownSecrets, workspaceRoot });
+  const guardPath = safeArtifactPath(runDirectory, "mutation-guard.json");
+  const expected = Buffer.from(`${JSON.stringify(record)}\n`, "utf8");
+  if (existsSync(guardPath)) {
+    let retained;
+    try {
+      const observed = lstatSync(guardPath);
+      if (!observed.isFile() || observed.isSymbolicLink() || observed.nlink !== 1) {
+        fail("qualification mutation guard contract is invalid");
+      }
+      retained = readBoundedRegularFile(guardPath, 1024);
+    } catch { fail("qualification mutation guard contract is invalid"); }
+    if (!retained.equals(expected)) fail("qualification mutation guard changed after cleanup");
+    return;
+  }
+  const temporaryPath = `${guardPath}.private-tmp`;
+  let descriptor;
+  let published = false;
+  try {
+    descriptor = openSync(temporaryPath, "wx", 0o600);
+    writeFileSync(descriptor, expected);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    linkSync(temporaryPath, guardPath);
+    published = true;
+  } catch {
+    fail("qualification mutation guard persistence failed");
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+    try { if (existsSync(temporaryPath)) unlinkSync(temporaryPath); }
+    catch {
+      if (published) { try { unlinkSync(guardPath); } catch { /* fail closed below */ } }
+      fail("qualification mutation guard persistence failed");
+    }
+  }
+}
+
 function validStateServiceTerminalRecord(value) {
   if (isExactKeySet(value, ["status"])) return value.status === "unavailable";
   return isExactKeySet(value, ["status", "code", "signal"])
@@ -958,6 +1014,7 @@ export function finalizeQualificationRunArtifacts({
   restorationRecord,
   journeyOutcomeLedger,
   journeyOutcomeLedgerPersisted = false,
+  mutationGuard,
   evidence,
 } = {}) {
   const runDirectory = requireGuardedRunDirectory(runDirectoryInput);
@@ -976,9 +1033,11 @@ export function finalizeQualificationRunArtifacts({
       || !validRestorationRecord(restorationRecord)
       || !validJourneyOutcomeTotals(skipLedger, journeyOutcomeLedger)
       || typeof journeyOutcomeLedgerPersisted !== "boolean") fail("qualification structured artifact contract is invalid");
+  const retainedMutationGuard = resolvedMutationGuard(runDirectory, mutationGuard);
+  if (!validateMusicMutationGuardRecord(retainedMutationGuard)) fail("qualification mutation guard contract is invalid");
   for (const value of [
     fixtureAuthority, analyticsLedger, visualTraceLedger, dockerInspection, skipLedger, restorationRecord,
-    journeyOutcomeLedger, evidence,
+    journeyOutcomeLedger, retainedMutationGuard, evidence,
   ]) assertSafeStructuredArtifact(value, { knownSecrets, workspaceRoot });
   const streamRecords = normalizedStreams.map(({ definition, input }) => {
     const written = writeSanitizedQualificationLog({
@@ -1004,7 +1063,9 @@ export function finalizeQualificationRunArtifacts({
     };
   });
   if (!validQualificationStreamRecords(streamRecords)) fail("qualification stream artifact contract is invalid");
-  const retainedEvidence = { ...evidence, journeyOutcomes: journeyOutcomeLedger, streams: streamRecords };
+  const retainedEvidence = {
+    ...evidence, journeyOutcomes: journeyOutcomeLedger, mutationGuard: retainedMutationGuard, streams: streamRecords,
+  };
   assertSafeStructuredArtifact(retainedEvidence, { knownSecrets, workspaceRoot });
   retainJourneyOutcomeLedger({
     runDirectory,
@@ -1012,6 +1073,9 @@ export function finalizeQualificationRunArtifacts({
     alreadyPersisted: journeyOutcomeLedgerPersisted,
     knownSecrets,
     workspaceRoot,
+  });
+  retainMutationGuard({
+    runDirectory, record: retainedMutationGuard, knownSecrets, workspaceRoot,
   });
   writeCanonicalStructuredArtifact({
     runDirectory, relativePath: "fixture-authority.json", value: fixtureAuthority,
@@ -1155,7 +1219,8 @@ export function createQualificationArtifactManifest({
 function readBoundedRegularFile(file, maximumBytes) {
   try {
     const observed = lstatSync(file);
-    if (!observed.isFile() || observed.isSymbolicLink() || observed.size > maximumBytes) {
+    if (!observed.isFile() || observed.isSymbolicLink() || observed.nlink !== 1
+        || observed.size > maximumBytes) {
       fail("manifest files are missing or unreadable");
     }
     return readFileSync(file);
@@ -1272,6 +1337,26 @@ function verifyJourneyOutcomeEvidence(runDirectory, manifestArtifacts) {
   }
 }
 
+function verifyMutationGuardEvidence(runDirectory, manifestArtifacts) {
+  let record;
+  let bytes;
+  let evidence;
+  try {
+    bytes = readBoundedRegularFile(safeArtifactPath(runDirectory, "mutation-guard.json"), 1024);
+    record = JSON.parse(bytes.toString("utf8"));
+    evidence = JSON.parse(readBoundedRegularFile(safeArtifactPath(runDirectory, "evidence.json"), MAX_LEDGER_BYTES).toString("utf8"));
+  } catch { fail("qualification mutation guard evidence contract is invalid"); }
+  if (!validateMusicMutationGuardRecord(record)
+      || !bytes.equals(Buffer.from(`${JSON.stringify(record)}\n`, "utf8"))
+      || JSON.stringify(evidence?.mutationGuard) !== JSON.stringify(record)) {
+    fail("qualification mutation guard evidence contract is invalid");
+  }
+  const artifact = manifestArtifacts.find(({ role }) => role === "mutation-guard");
+  if (!artifact || artifact.path !== "mutation-guard.json" || artifact.bytes !== bytes.length) {
+    fail("qualification mutation guard evidence contract is invalid");
+  }
+}
+
 export function verifyQualificationArtifactManifest({
   runDirectory: runDirectoryInput,
   requiredArtifacts,
@@ -1330,6 +1415,7 @@ export function verifyQualificationArtifactManifest({
   verifyQualificationStreamEvidence(runDirectory, manifest.artifacts);
   verifyFixtureAuthorityEvidence(runDirectory, manifest.artifacts);
   verifyJourneyOutcomeEvidence(runDirectory, manifest.artifacts);
+  verifyMutationGuardEvidence(runDirectory, manifest.artifacts);
   return { schemaVersion: SCHEMA_VERSION, files: manifest.artifacts.length, manifestSha256: observedHash };
 }
 

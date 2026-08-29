@@ -333,11 +333,11 @@ const EXECUTION_OUTCOME_REASONS = new Set([
   "report-missing", "report-malformed", "report-too-large", "report-invalid", "execution-not-run",
 ]);
 const EXECUTION_OUTCOME_STAGES = new Set(["execution", "execution-report", "preflight"]);
-const TERMINAL_OUTCOME_STATUSES = new Set(["passed", "failed", "missing", "invalid", "not-run"]);
+const TERMINAL_OUTCOME_STATUSES = new Set(["passed", "failed", "skipped", "missing", "invalid", "not-run"]);
 const TERMINAL_OUTCOME_REASONS = new Set([
-  "none", "terminal-failed", "terminal-missing", "terminal-invalid", "terminal-not-run",
+  "none", "terminal-failed", "terminal-missing", "terminal-invalid", "terminal-not-run", "test-skipped",
 ]);
-const TERMINAL_OUTCOME_STAGES = new Set(["terminal-evidence", "preflight"]);
+const TERMINAL_OUTCOME_STAGES = new Set(["terminal-evidence", "execution", "preflight"]);
 const LEDGER_INTEGRITY_STATES = new Set(["accepted", "incomplete", "invalid", "not-run"]);
 const EXECUTION_OUTCOME_TUPLES = new Set([
   "passed\0none\0execution",
@@ -355,6 +355,7 @@ const EXECUTION_OUTCOME_TUPLES = new Set([
 const TERMINAL_OUTCOME_TUPLES = new Set([
   "passed\0none\0terminal-evidence",
   "failed\0terminal-failed\0terminal-evidence",
+  "skipped\0test-skipped\0execution",
   "missing\0terminal-missing\0terminal-evidence",
   "invalid\0terminal-invalid\0terminal-evidence",
   "not-run\0terminal-not-run\0preflight",
@@ -409,7 +410,7 @@ function sanitizedExecutionOutcomes(executionReport, reportStatus) {
   }
   try {
     const { collection, failure } = parsedLiveCollection(executionReport);
-    if (failure) throw new Error("invalid classified collection");
+    if (failure && failure.subcheck !== "manifest-skipped") throw new Error("invalid classified collection");
     const byIdentity = new Map([...collection.mutations, ...collection.readOnly]
       .map((entry) => [manifestKey(entry), entry]));
     const outcomes = EXPECTED_EXECUTION_OUTCOMES.map((expected) => executionStatusRecord(
@@ -428,7 +429,7 @@ function sanitizedExecutionOutcomes(executionReport, reportStatus) {
   }
 }
 
-function sanitizedTerminalOutcomes(terminalRecords, terminalStatus) {
+function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOutcomes = []) {
   if (terminalStatus === "not-run") {
     return {
       integrity: "not-run",
@@ -459,6 +460,7 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus) {
   }
   const knownIds = new Set(LIVE_JOURNEY_MANIFEST.map(({ id }) => id));
   const recordsById = new Map();
+  const executionById = new Map(executionOutcomes.map((record) => [record.id, record]));
   let hostileRecord = false;
   for (const record of terminalRecords) {
     if (!record || typeof record !== "object" || Array.isArray(record) || !knownIds.has(record.id)) {
@@ -471,7 +473,15 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus) {
   }
   const outcomes = LIVE_JOURNEY_MANIFEST.map(({ id }) => {
     const records = recordsById.get(id) ?? [];
-    if (records.length === 0) return { id, status: "missing", reason: "terminal-missing", stage: "terminal-evidence" };
+    if (records.length === 0) {
+      if (executionById.get(id)?.status === "skipped") {
+        return { id, status: "skipped", reason: "test-skipped", stage: "execution" };
+      }
+      if (executionById.get(id)?.status === "not-run") {
+        return { id, status: "not-run", reason: "terminal-not-run", stage: "preflight" };
+      }
+      return { id, status: "missing", reason: "terminal-missing", stage: "terminal-evidence" };
+    }
     if (records.length !== 1) return { id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence" };
     if (records[0].status === "passed") return { id, status: "passed", reason: "none", stage: "terminal-evidence" };
     if (records[0].status === "failed") return { id, status: "failed", reason: "terminal-failed", stage: "terminal-evidence" };
@@ -479,7 +489,7 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus) {
   });
   const integrity = hostileRecord || outcomes.some(({ status }) => status === "invalid")
     ? "invalid"
-    : (outcomes.some(({ status }) => status === "missing") ? "incomplete" : "accepted");
+    : (outcomes.some(({ status }) => status === "missing" || status === "skipped") ? "incomplete" : "accepted");
   return { integrity, outcomes };
 }
 
@@ -501,7 +511,7 @@ export function buildSanitizedJourneyOutcomeLedger({
   terminalStatus = Array.isArray(terminalRecords) ? "accepted" : "missing",
 } = {}) {
   const execution = sanitizedExecutionOutcomes(executionReport, reportStatus);
-  const terminal = sanitizedTerminalOutcomes(terminalRecords, terminalStatus);
+  const terminal = sanitizedTerminalOutcomes(terminalRecords, terminalStatus, execution.outcomes);
   const ledger = {
     schemaVersion: JOURNEY_OUTCOME_LEDGER_VERSION,
     integrity: derivedLedgerIntegrity(execution, terminal),
@@ -575,7 +585,7 @@ export function validateSanitizedJourneyOutcomeLedger(ledger) {
     ? "not-run"
     : (ledger.mutationTerminals.some(({ status }) => status === "invalid")
       ? "invalid"
-      : (ledger.mutationTerminals.some(({ status }) => status === "missing") ? "incomplete" : "accepted"));
+      : (ledger.mutationTerminals.some(({ status }) => status === "missing" || status === "skipped") ? "incomplete" : "accepted"));
   return ledger.integrity === derivedLedgerIntegrity({ integrity: executionIntegrity }, { integrity: terminalIntegrity });
 }
 
@@ -831,6 +841,8 @@ export function runPlaywrightJourneyExecution({
         "test",
         ...files,
         `--project=${project}`,
+        "--max-failures=1",
+        "--retries=0",
         "--reporter=json",
         "--output",
         exactOutputDirectory,
@@ -915,23 +927,50 @@ export function liveJourneyManifestEntry(id) {
   return LIVE_JOURNEY_MANIFEST.find((entry) => entry.id === id);
 }
 
-export function buildLiveJourneyResult({ id, beforeHash, afterHash, rows }) {
+const LIVE_TERMINAL_TUPLES = new Set([
+  "passed\0none\0verification\0restored",
+  "failed\0body-failed\0body\0restored",
+  "failed\0restore-failed\0restore\0failed",
+  "failed\0restore-mismatch\0verification\0failed",
+  "failed\0cleanup-failed\0cleanup\0failed",
+  "skipped\0test-skipped\0execution\0not-required",
+  "not-run\0execution-not-run\0preflight\0not-required",
+]);
+
+export function buildLiveJourneyTerminal({
+  id, status = "passed", reason = "none", stage = "verification", cleanup = "restored",
+  beforeHash, afterHash, rows,
+}) {
   const entry = liveJourneyManifestEntry(id);
   if (!entry) throw new Error("Unknown live journey ID");
   const profile = id.startsWith("profile.owner.pairwise.batch-");
-  if (profile && (!Array.isArray(rows) || rows.length !== 12)) throw new Error("Profile journey evidence requires exactly 12 rows");
+  if (!LIVE_TERMINAL_TUPLES.has(`${status}\0${reason}\0${stage}\0${cleanup}`)) {
+    throw new Error("Live journey terminal state is invalid");
+  }
+  if (profile && status === "passed" && (!Array.isArray(rows) || rows.length !== 12)) throw new Error("Profile journey evidence requires exactly 12 rows");
   if (!profile && rows !== undefined) throw new Error("Music journey evidence cannot contain profile rows");
+  const requiresEqualHashes = cleanup === "restored";
+  if (typeof beforeHash !== "string" || !/^[a-f0-9]{64}$/.test(beforeHash)
+      || (requiresEqualHashes && (afterHash !== beforeHash || !/^[a-f0-9]{64}$/.test(afterHash)))) {
+    throw new Error("Live journey terminal hashes are invalid");
+  }
   return {
     version: LIVE_JOURNEY_RESULT_VERSION,
     manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
     ...entry,
-    status: "passed",
+    status,
     skipReason: null,
-    cleanup: "restored",
+    cleanup,
+    reason,
+    stage,
     beforeHash,
-    afterHash,
-    ...(profile ? { rowCount: rows.length, rows } : {}),
+    ...(typeof afterHash === "string" ? { afterHash } : {}),
+    ...(profile && Array.isArray(rows) ? { rowCount: rows.length, rows } : {}),
   };
+}
+
+export function buildLiveJourneyResult({ id, beforeHash, afterHash, rows }) {
+  return buildLiveJourneyTerminal({ id, beforeHash, afterHash, rows });
 }
 
 export async function recordRestoredProfileJourney({ id, before, after, rows, write }) {

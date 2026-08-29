@@ -11,8 +11,9 @@ import {
   LIVE_MUTATION_TAG,
   LIVE_READ_ONLY_TAG,
   appendLiveJourneyResult,
+  buildLiveJourneyTerminal,
   buildProfileCoveringRows as buildManifestProfileCoveringRows,
-  recordRestoredProfileJourney,
+  canonicalEvidenceHash,
 } from '../scripts/music-public-live-preflight.mjs';
 
 const FACTORS = {
@@ -309,6 +310,20 @@ const LIVE_MATRIX = buildManifestProfileCoveringRows() as CoveringRow[];
 const LIVE_BATCHES = batchCoveringRows(LIVE_MATRIX);
 const liveBatchTimeoutMs = (rows: readonly CoveringRow[]) =>
   (rows.length + 2) * 8_000 + 5 * 60_000;
+
+async function blockProfileMutationsAfterRestoreFailure() {
+  const serviceUrl = process.env.MUSIC_E2E_STATE_SERVICE_URL;
+  const token = process.env.MUSIC_E2E_STATE_TOKEN;
+  if (!serviceUrl || !token) return;
+  try {
+    await fetch(`${serviceUrl}/block`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'profile-restore-failed', stage: 'profile-restore' }),
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch { /* max-failures=1 still prevents another mutation in this run */ }
+}
 
 const PRESET_LABELS: Record<string, string> = {
   'cinematic-dark': 'Cinematic Dark',
@@ -824,6 +839,7 @@ test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => 
     let baselineHasBusiness = false;
     let expectedUpdatedAt = baselineUpdatedAt;
     let restoredSnapshot: ReturnType<typeof restorableAccountSnapshot> | undefined;
+    let profileRestoreFailure: unknown;
     try {
       // From this point onward, every exit path is inside the exact-restore guard.
       liveWriteStarted = true;
@@ -872,7 +888,7 @@ test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => 
       liveFailure = error;
     } finally {
       if (liveWriteStarted) {
-        await restoreWithEmergency({
+        try { await restoreWithEmergency({
           normalRestore: async () =>
             normalExactRestore(
               page,
@@ -929,21 +945,39 @@ test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => 
               ),
             );
           },
-        });
+        }); } catch (error) { profileRestoreFailure = error; }
       }
     }
-
-    if (liveFailure) throw liveFailure;
-    if (!restoredSnapshot) throw new Error('Profile journey restore did not produce canonical evidence');
     const evidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
     if (!evidencePath) throw new Error('MUSIC_E2E_RESTORE_EVIDENCE_PATH is required for manifested profile journeys');
-    await recordRestoredProfileJourney({
-      id: `profile.owner.pairwise.batch-${String(batchIndex + 1).padStart(2, '0')}`,
-      before: baselineSnapshot,
-      after: restoredSnapshot,
-      rows: liveRows,
-      write: async (record) => appendLiveJourneyResult(evidencePath, record),
-    });
+    const journeyId = `profile.owner.pairwise.batch-${String(batchIndex + 1).padStart(2, '0')}`;
+    const beforeHash = canonicalEvidenceHash(baselineSnapshot);
+    const restoredHash = restoredSnapshot ? canonicalEvidenceHash(restoredSnapshot) : undefined;
+    if (profileRestoreFailure || !restoredSnapshot || restoredHash !== beforeHash) {
+      await blockProfileMutationsAfterRestoreFailure();
+    }
+    const terminalRecord = profileRestoreFailure || !restoredSnapshot
+      ? buildLiveJourneyTerminal({
+        id: journeyId, status: 'failed', reason: 'restore-failed', stage: 'restore', cleanup: 'failed',
+        beforeHash, rows: liveRows,
+      })
+      : restoredHash !== beforeHash
+        ? buildLiveJourneyTerminal({
+          id: journeyId, status: 'failed', reason: 'restore-mismatch', stage: 'verification', cleanup: 'failed',
+          beforeHash, afterHash: restoredHash, rows: liveRows,
+        })
+        : liveFailure
+          ? buildLiveJourneyTerminal({
+            id: journeyId, status: 'failed', reason: 'body-failed', stage: 'body', cleanup: 'restored',
+            beforeHash, afterHash: restoredHash, rows: liveRows,
+          })
+          : buildLiveJourneyTerminal({ id: journeyId, beforeHash, afterHash: restoredHash, rows: liveRows });
+    appendLiveJourneyResult(evidencePath, terminalRecord);
+    if (profileRestoreFailure) throw profileRestoreFailure;
+    if (!restoredSnapshot || restoredHash !== beforeHash) {
+      throw new Error('Profile journey restore did not produce canonical evidence');
+    }
+    if (liveFailure) throw liveFailure;
   });
   }
 });

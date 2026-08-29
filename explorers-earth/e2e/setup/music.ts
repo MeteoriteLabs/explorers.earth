@@ -2,7 +2,7 @@ import { test as base, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { buildLiveJourneyResult } from "../../scripts/music-public-live-preflight.mjs";
+import { buildLiveJourneyResult, buildLiveJourneyTerminal } from "../../scripts/music-public-live-preflight.mjs";
 
 export const MUSIC_PUBLIC_FIXTURE_VERSION = "music-public-e2e-fixture/v1" as const;
 export const MUSIC_LIVE_WRITE_CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE" as const;
@@ -108,6 +108,48 @@ export function assertLiveWriteAuthority(input: {
 
 let liveMutationBlockedReason: string | null = null;
 
+function exactDurableGuard(value: unknown): "clear" | "blocked" | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).sort().join("\0") !== ["reason", "stage", "state", "version"].join("\0")
+      || record.version !== "music-e2e-mutation-guard/v1") return undefined;
+  if (record.state === "clear" && record.reason === "none" && record.stage === "preflight") return "clear";
+  if (record.state === "blocked"
+      && ["restore-failed", "restore-mismatch", "cleanup-failed", "profile-restore-failed", "guard-invalid"].includes(String(record.reason))
+      && ["restore", "verification", "cleanup", "profile-restore", "preflight"].includes(String(record.stage))) return "blocked";
+  return undefined;
+}
+
+async function durableMusicMutationState(environment: Record<string, string | undefined> = process.env): Promise<"clear" | "blocked"> {
+  if (environment.MUSIC_E2E_LIVE_WRITE !== "true") return "clear";
+  const serviceUrl = environment.MUSIC_E2E_STATE_SERVICE_URL;
+  const token = environment.MUSIC_E2E_STATE_TOKEN;
+  if (!serviceUrl || !token || !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/.test(serviceUrl)) return "blocked";
+  try {
+    const response = await fetch(`${serviceUrl}/health`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) return "blocked";
+    const payload = await response.json() as Record<string, unknown>;
+    if (payload.status !== "ready" || payload.service !== "music-e2e-state") return "blocked";
+    return exactDurableGuard(payload.mutationGuard) ?? "blocked";
+  } catch { return "blocked"; }
+}
+
+async function blockDurableMusicMutations(reason: string, stage: string): Promise<void> {
+  if (process.env.MUSIC_E2E_LIVE_WRITE !== "true") return;
+  const serviceUrl = process.env.MUSIC_E2E_STATE_SERVICE_URL;
+  const token = process.env.MUSIC_E2E_STATE_TOKEN;
+  if (!serviceUrl || !token) return;
+  try {
+    await fetch(`${serviceUrl}/block`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ reason, stage }), signal: AbortSignal.timeout(5_000),
+    });
+  } catch { /* a local fixed latch still fails this worker closed */ }
+}
+
 export function resetMusicRestoreBlockForContractTest(): void {
   liveMutationBlockedReason = null;
 }
@@ -122,6 +164,7 @@ export async function runAuthorizedMusicMutation<T>(
   }
   const authority = assertLiveWriteAuthority(authorityInput);
   if (!authority.callsites.includes(callsite)) throw new Error(`Unknown Music mutation callsite: ${callsite}`);
+  if (await durableMusicMutationState() !== "clear") throw new Error("MUSIC_MUTATION_BLOCKED");
   return mutation();
 }
 
@@ -369,7 +412,8 @@ export async function withRestoredMusicFixture<T>(adapters: {
   beforeHash: string;
   afterHash: string;
 }> {
-  if (process.env.MUSIC_E2E_LIVE_WRITE === "true") {
+  const live = process.env.MUSIC_E2E_LIVE_WRITE === "true";
+  if (live) {
     const { journeyId, writeJourneyResult } = adapters;
     adapters = { ...canonicalMusicFixtureAdapterFromEnvironment(), journeyId, writeJourneyResult };
   }
@@ -377,6 +421,12 @@ export async function withRestoredMusicFixture<T>(adapters: {
   const beforeHash = normalizedSnapshotHash(before);
   const writeRecoveryArtifact = async (artifact: { reason: string; beforeHash: string; afterHash?: string }) => {
     if (adapters.writeRecoveryArtifact) return adapters.writeRecoveryArtifact(artifact);
+    if (live) {
+      const stage = artifact.reason === "restore-mismatch" ? "verification"
+        : (artifact.reason === "cleanup-failed" ? "cleanup" : "restore");
+      await blockDurableMusicMutations(artifact.reason, stage);
+      return;
+    }
     const recoveryPath = process.env.MUSIC_E2E_RECOVERY_ARTIFACT_PATH
       ?? `.artifacts/music-public/recovery-${process.pid}.json`;
     mkdirSync(dirname(recoveryPath), { recursive: true });
@@ -388,6 +438,19 @@ export async function withRestoredMusicFixture<T>(adapters: {
   let value!: T;
   let journeyFailure: unknown;
   let restorationFailure: unknown;
+  let terminalWritten = false;
+  const writeTerminal = async (record: unknown) => {
+    if (terminalWritten) throw new Error("Live journey terminal already written");
+    terminalWritten = true;
+    const restoreEvidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
+    if (adapters.writeJourneyResult) await adapters.writeJourneyResult(record);
+    else if (restoreEvidencePath) {
+      mkdirSync(dirname(restoreEvidencePath), { recursive: true });
+      appendFileSync(restoreEvidencePath, `${JSON.stringify(record)}\n`, { encoding: "utf8", mode: 0o600 });
+    } else if (live && adapters.journeyId) {
+      throw new Error("MUSIC_E2E_RESTORE_EVIDENCE_PATH is required for manifested live journeys");
+    }
+  };
   try {
     value = await journey();
   } catch (error) {
@@ -402,34 +465,58 @@ export async function withRestoredMusicFixture<T>(adapters: {
     try {
       await adapters.restore(before);
     } catch (restoreError) {
-      liveMutationBlockedReason = restoreError instanceof Error ? restoreError.message : "restore failed";
+      liveMutationBlockedReason = "restore-failed";
       await writeRecoveryArtifact({ reason: "restore-failed", beforeHash });
       restorationFailure = restoreError;
     }
     if (!restorationFailure && cleanupFailure) {
-      liveMutationBlockedReason = cleanupFailure instanceof Error ? cleanupFailure.message : "namespace cleanup failed";
+      liveMutationBlockedReason = "cleanup-failed";
       await writeRecoveryArtifact({ reason: "cleanup-failed", beforeHash });
       restorationFailure = cleanupFailure;
     }
   }
-  if (restorationFailure) throw restorationFailure;
-  const afterHash = normalizedSnapshotHash(await adapters.snapshot());
+  if (restorationFailure) {
+    if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
+      id: adapters.journeyId,
+      status: "failed",
+      reason: liveMutationBlockedReason === "cleanup-failed" ? "cleanup-failed" : "restore-failed",
+      stage: liveMutationBlockedReason === "cleanup-failed" ? "cleanup" : "restore",
+      cleanup: "failed",
+      beforeHash,
+    }));
+    throw restorationFailure;
+  }
+  let afterHash: string;
+  try {
+    afterHash = normalizedSnapshotHash(await adapters.snapshot());
+  } catch (verificationError) {
+    liveMutationBlockedReason = "restore-failed";
+    await writeRecoveryArtifact({ reason: "restore-failed", beforeHash });
+    if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
+      id: adapters.journeyId, status: "failed", reason: "restore-failed", stage: "restore",
+      cleanup: "failed", beforeHash,
+    }));
+    throw verificationError;
+  }
   if (afterHash !== beforeHash) {
-    liveMutationBlockedReason = `before=${beforeHash} after=${afterHash}`;
+    liveMutationBlockedReason = "restore-mismatch";
     await writeRecoveryArtifact({ reason: "restore-mismatch", beforeHash, afterHash });
+    if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
+      id: adapters.journeyId, status: "failed", reason: "restore-mismatch", stage: "verification",
+      cleanup: "failed", beforeHash, afterHash,
+    }));
     throw new Error(`Public Music fixture restoration mismatch: before=${beforeHash} after=${afterHash}`);
   }
-  if (journeyFailure) throw journeyFailure;
-  const restoreEvidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
+  if (journeyFailure) {
+    if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
+      id: adapters.journeyId, status: "failed", reason: "body-failed", stage: "body",
+      cleanup: "restored", beforeHash, afterHash,
+    }));
+    throw journeyFailure;
+  }
   if (adapters.journeyId) {
     const record = buildLiveJourneyResult({ id: adapters.journeyId, beforeHash, afterHash });
-    if (adapters.writeJourneyResult) await adapters.writeJourneyResult(record);
-    else if (restoreEvidencePath) {
-      mkdirSync(dirname(restoreEvidencePath), { recursive: true });
-      appendFileSync(restoreEvidencePath, `${JSON.stringify(record)}\n`, { encoding: "utf8", mode: 0o600 });
-    } else if (process.env.MUSIC_E2E_LIVE_WRITE === "true") {
-      throw new Error("MUSIC_E2E_RESTORE_EVIDENCE_PATH is required for manifested live journeys");
-    }
+    await writeTerminal(record);
   }
   return { value, cleanup: "restored", beforeHash, afterHash };
 }

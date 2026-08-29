@@ -253,7 +253,14 @@ describe("owned Task-4 UAT database lane", () => {
       "server/test/musicReconciler.integration.test.ts",
       "server/test/reconciliationRepository.integration.test.ts",
       "server/test/load/music-load-postgres.integration.test.ts",
+      "server/test/music-e2e-state-restore.integration.test.ts",
     ]);
+    const restoreIntegration = readFileSync(resolve(
+      repositoryRoot, "tunes/server/test/music-e2e-state-restore.integration.test.ts",
+    ), "utf8");
+    expect(restoreIntegration).toContain("MUSIC_C11_STATE_RESTORE_POSTGRES_TEST");
+    expect(restoreIntegration).toContain("runMusicFixtureRestoreTransaction");
+    expect(restoreIntegration).toContain("replay-failed-rolled-back");
   });
 
   it("scopes the verified ten-second timeout to the exact owned database child command", () => {

@@ -144,6 +144,8 @@ const restoreEvidencePath = path.join(runArtifactDirectory, "restore-evidence.js
 const journeyReportPath = path.join(runArtifactDirectory, "playwright-journey-results.json");
 const privatePlaywrightOutputDirectory = path.join(runArtifactDirectory, "private-playwright-output");
 const journeyOutcomeLedgerPath = path.join(runArtifactDirectory, "journey-outcomes.json");
+const mutationGuardPath = path.join(runArtifactDirectory, "mutation-guard.json");
+const mutationRecoveryPath = path.join(runArtifactDirectory, "mutation-recovery.private.jsonl");
 let fixtureAuthorityRecord = createUnavailableQualificationFixtureAuthority();
 
 if (dryRun) {
@@ -279,7 +281,7 @@ function runLifecycleCommand(stage) {
     retainedCwd: "<repository>",
     environment: process.env,
     workspaceRoot: monorepoRoot,
-    knownSecrets: [strapiToken, stateToken].filter(Boolean),
+    knownSecrets: [strapiToken, stateToken, orchestrationStateToken].filter(Boolean),
     spawn: spawnSync,
   });
   lifecycleCommandRecords.push(captured.record);
@@ -296,6 +298,7 @@ let journeyOutcomeCleanupRequired = false;
 let stateServiceGuard;
 let stateServiceOutputFlushed = false;
 let stateToken;
+let orchestrationStateToken;
 let initialSnapshot;
 let initialRestorePromise;
 const qualificationCoordinator = createMusicQualificationFailureCoordinator();
@@ -308,6 +311,8 @@ function fixtureTeardownContract() {
       authStatePath,
       profileStorageStatePath,
       journeyReportPath,
+      mutationRecoveryPath,
+      `${mutationRecoveryPath}.private-tmp`,
       ...(journeyOutcomeCleanupRequired
         ? [journeyOutcomeLedgerPath, `${journeyOutcomeLedgerPath}.private-tmp`]
         : []),
@@ -333,14 +338,14 @@ async function stopFixture() {
 async function restoreInitialSnapshot() {
   if (initialRestorePromise) return initialRestorePromise;
   initialRestorePromise = (async () => {
-    if (!initialSnapshot || !stateToken) return { ok: false, cleanup: "evidence-missing" };
+    if (!initialSnapshot || !orchestrationStateToken) return { ok: false, cleanup: "evidence-missing" };
     try {
-    const response = await fetch(`${stateServiceUrl}/restore`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) });
-    if (!response.ok) return { ok: false, cleanup: "restore-failed" };
-    const result = await response.json();
-    const expected = initialSnapshot?.database?.dumpHash;
-    const ok = typeof expected === "string" && result.beforeHash === expected && result.afterHash === expected;
-    return { ok, cleanup: ok ? "restored" : "restore-failed", beforeHash: result.beforeHash, afterHash: result.afterHash };
+      const response = await fetch(`${stateServiceUrl}/restore-final`, { method: "POST", headers: { Authorization: `Bearer ${orchestrationStateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) });
+      if (!response.ok) return { ok: false, cleanup: "restore-failed" };
+      const result = await response.json();
+      const expected = initialSnapshot?.database?.dumpHash;
+      const ok = typeof expected === "string" && result.beforeHash === expected && result.afterHash === expected;
+      return { ok, cleanup: ok ? "restored" : "restore-failed", beforeHash: result.beforeHash, afterHash: result.afterHash };
     } catch { return { ok: false, cleanup: "restore-failed" }; }
   })();
   return initialRestorePromise;
@@ -418,7 +423,7 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
   const finalized = finalizeQualificationRunArtifacts({
     runDirectory: runArtifactDirectory,
     workspaceRoot: monorepoRoot,
-    knownSecrets: [strapiToken, stateToken].filter(Boolean),
+    knownSecrets: [strapiToken, stateToken, orchestrationStateToken].filter(Boolean),
     streamArtifacts: qualificationStreamArtifacts,
     fixtureAuthority: fixtureAuthorityRecord,
     analyticsLedger: {
@@ -527,11 +532,19 @@ async function runLiveQualification() {
     stage: "fixture-startup-failed",
   });
   stateToken = randomBytes(32).toString("base64url");
+  orchestrationStateToken = randomBytes(32).toString("base64url");
   try {
     const stateService = spawn(process.execPath, ["tunes/scripts/music-e2e-state-service.mjs"], {
       cwd: monorepoRoot,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, MUSIC_E2E_STATE_TOKEN: stateToken },
+      env: {
+        ...process.env,
+        MUSIC_E2E_STATE_TOKEN: stateToken,
+        MUSIC_E2E_ORCHESTRATION_STATE_TOKEN: orchestrationStateToken,
+        MUSIC_E2E_RUN_DIRECTORY: runArtifactDirectory,
+        MUSIC_E2E_MUTATION_GUARD_PATH: mutationGuardPath,
+        MUSIC_E2E_RECOVERY_ARTIFACT_PATH: mutationRecoveryPath,
+      },
       windowsHide: true,
     });
     stateServiceGuard = createMusicFixtureStateServiceGuard({
@@ -625,7 +638,7 @@ async function runLiveQualification() {
   process.env.MUSIC_E2E_STATE_SERVICE_URL = stateServiceUrl;
   process.env.MUSIC_E2E_STATE_TOKEN = stateToken;
   try {
-    const snapshotResponse = await fetch(`${stateServiceUrl}/snapshot`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}` }, signal: AbortSignal.timeout(60_000) });
+    const snapshotResponse = await fetch(`${stateServiceUrl}/snapshot`, { method: "POST", headers: { Authorization: `Bearer ${orchestrationStateToken}` }, signal: AbortSignal.timeout(60_000) });
     if (!snapshotResponse.ok) throw new Error("snapshot response was not successful");
     const snapshot = await snapshotResponse.json();
     if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)
@@ -675,7 +688,7 @@ async function runLiveQualification() {
         cwd: process.cwd(),
         environment: preflightEnvironment,
         workspaceRoot: monorepoRoot,
-        knownSecrets: [strapiToken, stateToken],
+        knownSecrets: [strapiToken, stateToken, orchestrationStateToken],
       });
       if (qualificationCoordinator.signal.aborted) {
         liveExecutionOutcome = { status: qualificationCoordinator.snapshot().failure?.exitCode ?? 4 };
@@ -730,6 +743,7 @@ async function runLiveQualification() {
         PLAYWRIGHT_PR_SAFE: "false",
         MUSIC_E2E_LIVE_WRITE: "true",
         MUSIC_E2E_RESTORE_EVIDENCE_PATH: restoreEvidencePath,
+        MUSIC_E2E_RECOVERY_ARTIFACT_PATH: mutationRecoveryPath,
         E2E_PROFILE_LIVE_WRITES: "1",
         E2E_PROFILE_STORAGE_STATE: profileStorageStatePath,
         E2E_PROFILE_USERNAME: username,
