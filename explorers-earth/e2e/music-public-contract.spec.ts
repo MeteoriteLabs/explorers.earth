@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { LIVE_MUTATION_TAG, LIVE_READ_ONLY_TAG } from "../scripts/music-public-live-preflight.mjs";
+import { setupMockAuthentication } from "./setup/auth";
 import {
+  completeMusicAccount,
+  installMusicQualificationMocks,
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
   buildPairwisePermissionMatrix,
@@ -82,6 +85,67 @@ async function installFriendlyMusicFixture(page: Page, options: {
 }
 
 test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG }, () => {
+  test("owner View as guest link opens public Music in a separate logged-out browser context", async ({ browser, context, page }) => {
+    await setupMockAuthentication(context);
+    await installMusicQualificationMocks(page, {
+      accounts: [{ ...completeMusicAccount, public_music: "Yes" }],
+      ownerWorkspace: true,
+    });
+    await page.route("**/api/music/dashboard", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        queueRevision: 0,
+        songs: [],
+        currentlyPlaying: null,
+        playedSongs: [],
+        publication: { mode: "public", publicSlug: "qualification-public" },
+        guestControls: {
+          allowSongRequests: true,
+          allowGuestPlayOnDevice: false,
+          allowPlaylistSharing: true,
+          allowRecentlyPlayedVisibility: true,
+          allowQueueVisibility: true,
+        },
+      }),
+    }));
+
+    await page.goto("/recommendations/music");
+    const viewAsGuest = page.getByRole("link", { name: "View as guest" });
+    await expect(viewAsGuest).toBeVisible();
+    const guestUrl = await viewAsGuest.evaluate((link: HTMLAnchorElement) => link.href);
+    expect(new URL(guestUrl).pathname).toBe("/music/share/qualification-public");
+
+    const guestContext = await browser.newContext();
+    const guestAuthorizationHeaders: string[] = [];
+    try {
+      expect(await guestContext.storageState()).toEqual({ cookies: [], origins: [] });
+      await guestContext.route("**/api/music/public-resource/v1/qualification-public", async (route) => {
+        const authorization = route.request().headers().authorization;
+        if (authorization) guestAuthorizationHeaders.push(authorization);
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(publicResourceFixture),
+        });
+      });
+      await guestContext.route("**/socket.io/**", (route) => route.abort());
+      const guestPage = await guestContext.newPage();
+      await guestPage.goto(guestUrl);
+      await expect(guestPage.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
+      await expect(guestPage.getByText("Queued song")).toBeVisible();
+      expect(await guestPage.evaluate(() => ({
+        auth: localStorage.getItem("auth-storage"),
+        user: localStorage.getItem("user"),
+        session: localStorage.getItem("auth_session"),
+      }))).toEqual({ auth: null, user: null, session: null });
+      expect((await guestContext.cookies()).some(({ name }) => name === "token")).toBe(false);
+      expect(guestAuthorizationHeaders).toEqual([]);
+    } finally {
+      await guestContext.close();
+    }
+  });
+
   test("pairwise permission matrix changes each concrete guest surface", async ({ page }) => {
     await page.route("**/socket.io/**", (route) => route.abort());
     for (const row of buildPairwisePermissionMatrix()) {

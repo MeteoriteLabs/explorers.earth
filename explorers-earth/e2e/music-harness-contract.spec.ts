@@ -60,6 +60,7 @@ const EXPECTED_LIVE_JOURNEYS = [
 ] as const;
 
 const EXPECTED_LIVE_READ_ONLY = [
+  { title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
   { title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
   { title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
   { title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
@@ -928,7 +929,7 @@ test("live preflight runner invokes package-resolved authority before exact JSON
   expect(calls[1].options.env).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_FILE");
 });
 
-test("real inert live-project JSON collection classifies exactly 17 mutations and 31 read-only cases", () => {
+test("real inert live-project JSON collection classifies exactly 17 mutations and 32 read-only cases", () => {
   const result = spawnSync(process.execPath, [
     "node_modules/@playwright/test/cli.js",
     "test",
@@ -948,9 +949,9 @@ test("real inert live-project JSON collection classifies exactly 17 mutations an
   const readOnlyTag = LIVE_READ_ONLY_TAG.replace(/^@/, "");
   const mutationSpecs = specs.filter(({ tags }) => tags.includes(mutationTag));
   const readOnlySpecs = specs.filter(({ tags }) => tags.includes(readOnlyTag));
-  expect(specs).toHaveLength(48);
+  expect(specs).toHaveLength(49);
   expect(mutationSpecs).toHaveLength(17);
-  expect(readOnlySpecs).toHaveLength(31);
+  expect(readOnlySpecs).toHaveLength(32);
   expect(specs.every(({ tags }) => Number(tags.includes(mutationTag)) + Number(tags.includes(readOnlyTag)) === 1)).toBe(true);
   expect(classifyLivePreflight({
     authorityResult: preflightChild(0, JSON.stringify({ skipReason: null })),
@@ -2626,7 +2627,7 @@ test("qualification outcome projection derives exact totals, skip gaps, and rest
     schemaVersion: "explorers-public-skip-ledger/v1",
     lane: "live",
     execution: "completed",
-    totals: { total: 48, passed: 48, failed: 0, skipped: 0 },
+    totals: { total: 49, passed: 49, failed: 0, skipped: 0 },
     reasons: [],
   });
   expect(completed.restorationRecord).toEqual({

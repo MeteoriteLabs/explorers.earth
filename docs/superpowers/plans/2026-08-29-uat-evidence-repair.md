@@ -67,7 +67,7 @@ Finish analytics and public Music with reproducible, truthful owner/guest UAT. P
 
 1. Run one guarded local attempt only after Tasks 1–3 reviews are clean.
 2. Require exact versioned-manifest equality and null skip reasons before callback, then execute every manifest journey. Required behavior includes exhaustive pairwise profile batches and five toggles, logged-out View-as-guest, owner readiness combinations, public/private/invalid/outage transitions, playlist visibility, player/play-on-device, queue, request accept/replay/conflict/rate-limit/revocation, offline mutation/reconnect/fallback, second-guest isolation, all themes/heroes/viewports, and dashboard-to-public live changes.
-   - Expected Playwright outcome is 48 passed, 0 skipped, 0 failed: 31 read-only cases plus all 17 manifested write-authorized cases.
+   - Expected Playwright outcome is 49 passed, 0 skipped, 0 failed: 32 read-only cases plus all 17 manifested write-authorized cases.
    - Do not overclaim actor contexts: the request-lifecycle case uses unauthenticated guest HTTP, the publication case observes public routes in the owner page context, and only playback isolation has a second guest browser. Run and retain a separate logged-out browser-context `View as guest` UI journey for the two-context UAT requirement.
 3. Run repository database integration only against the fixture-owned disposable PostgreSQL database with explicit ownership/allowlist checks; never reuse a real/shared database.
 4. Record per-journey before/after hashes, analytics events/UTM, screenshots/traces, exact logs, and final full snapshot hash.

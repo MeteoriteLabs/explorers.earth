@@ -11,7 +11,7 @@ export const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
 const LIVE_MUTATION_REPORT_TAG = LIVE_MUTATION_TAG.replace(/^@/, "");
 const LIVE_READ_ONLY_REPORT_TAG = LIVE_READ_ONLY_TAG.replace(/^@/, "");
 const MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES = 4 * 1024 * 1024;
-const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v1";
+const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v2";
 const SAFE_EXECUTION_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
@@ -35,6 +35,7 @@ export const LIVE_JOURNEY_MANIFEST = Object.freeze([
 ]);
 
 const LIVE_READ_ONLY_COLLECTION = Object.freeze([
+  { title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
   { title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
   { title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
   { title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
