@@ -8,10 +8,17 @@ import {
   cleanupFixtureMusicTokenSecret,
   prepareFixtureMusicTokenSecret,
 } from "./music-fixture-secret";
+import {
+  musicSensitiveEnvironmentValues,
+  sanitizeMusicCliText,
+} from "./music-output-redaction";
 import { readSecureMusicSecretFile } from "../server/config/secure-music-secret-file";
 
 export const MUSIC_UAT_DATABASE_ACK = "TASK4_FIXTURE_OWNED_DISPOSABLE_PG15";
 export const MUSIC_UAT_DATABASE_REPORT_VERSION = "explorers-music-uat-database/v1";
+// Each child stream is retained independently and is emitted only after the
+// complete process exit. Overflow discards the entire raw stream.
+export const MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES = 8 * 1024 * 1024;
 export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
   "server/test/migrations/music-migration.integration.test.ts",
   "server/test/music-credential.integration.test.ts",
@@ -483,24 +490,107 @@ async function dropDatabase(authority: OwnedUatDatabaseAuthority, password: stri
   }
 }
 
-function runIntegrationChild(
+export interface UatDatabaseTestChildResult {
+  exitCode: number;
+  signal: NodeJS.Signals | null;
+}
+
+interface UatDatabaseTestChildOptions {
+  setChild: (child: ChildProcess | undefined) => void;
+  exactSensitiveValues?: readonly string[];
+  writeStdout?: (value: string) => void;
+  writeStderr?: (value: string) => void;
+}
+
+interface CapturedChildStream {
+  chunks: Buffer[];
+  bytes: number;
+  overflow: boolean;
+}
+
+function captureChildOutput(stream: CapturedChildStream, chunk: Buffer | string): void {
+  if (stream.overflow) return;
+  const value = Buffer.isBuffer(chunk) ? Buffer.from(chunk) : Buffer.from(chunk, "utf8");
+  if (stream.bytes + value.byteLength > MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES) {
+    stream.chunks = [];
+    stream.bytes = 0;
+    stream.overflow = true;
+    return;
+  }
+  stream.chunks.push(value);
+  stream.bytes += value.byteLength;
+}
+
+function childOutputSensitiveValues(
+  environment: NodeJS.ProcessEnv,
+  exactSensitiveValues: readonly string[],
+): string[] {
+  const values = [
+    ...exactSensitiveValues,
+    ...musicSensitiveEnvironmentValues(
+      Object.fromEntries(Object.entries(environment).filter((entry): entry is [string, string] => typeof entry[1] === "string")),
+    ),
+  ];
+  const databaseUrl = environment.DATABASE_URL_TEST;
+  if (databaseUrl) {
+    values.push(databaseUrl);
+    try {
+      const parsed = new URL(databaseUrl);
+      if (parsed.password) {
+        values.push(parsed.password);
+        try { values.push(decodeURIComponent(parsed.password)); }
+        catch { /* exact URL and encoded password remain protected */ }
+      }
+    } catch { /* the exact configured value remains protected */ }
+  }
+  return values;
+}
+
+function retainedChildOutput(
+  stream: CapturedChildStream,
+  streamName: "stdout" | "stderr",
+  sensitiveValues: readonly string[],
+): string {
+  if (stream.overflow) {
+    return `[Task-4 UAT database ${streamName} discarded: exceeded ${MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES} bytes]\n`;
+  }
+  return sanitizeMusicCliText(Buffer.concat(stream.chunks, stream.bytes).toString("utf8"), sensitiveValues);
+}
+
+export function runUatDatabaseTestChild(
   command: { file: string; args: string[] },
   environment: NodeJS.ProcessEnv,
-  setChild: (child: ChildProcess | undefined) => void,
-): Promise<number> {
+  options: UatDatabaseTestChildOptions,
+): Promise<UatDatabaseTestChildResult> {
   return new Promise((resolveExit, rejectExit) => {
     const child = spawn(command.file, command.args, {
       cwd: resolve(import.meta.dirname, ".."),
       env: environment,
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
-    setChild(child);
-    child.once("error", rejectExit);
+    const stdout: CapturedChildStream = { chunks: [], bytes: 0, overflow: false };
+    const stderr: CapturedChildStream = { chunks: [], bytes: 0, overflow: false };
+    const sensitiveValues = childOutputSensitiveValues(environment, options.exactSensitiveValues ?? []);
+    let spawnFailure: unknown;
+    options.setChild(child);
+    child.stdout?.on("data", (chunk: Buffer | string) => { captureChildOutput(stdout, chunk); });
+    child.stderr?.on("data", (chunk: Buffer | string) => { captureChildOutput(stderr, chunk); });
+    child.once("error", (error) => { spawnFailure = error; });
     child.once("close", (code, signal) => {
-      setChild(undefined);
-      if (signal) resolveExit(130);
-      else resolveExit(Number.isInteger(code) ? code! : 1);
+      options.setChild(undefined);
+      const writeStdout = options.writeStdout ?? ((value: string) => { process.stdout.write(value); });
+      const writeStderr = options.writeStderr ?? ((value: string) => { process.stderr.write(value); });
+      writeStdout(retainedChildOutput(stdout, "stdout", sensitiveValues));
+      writeStderr(retainedChildOutput(stderr, "stderr", sensitiveValues));
+      if (spawnFailure) {
+        rejectExit(authorityError("repository test child failed to start"));
+        return;
+      }
+      resolveExit({
+        exitCode: signal ? 130 : (Number.isInteger(code) ? code! : 1),
+        signal,
+      });
     });
   });
 }
@@ -559,10 +649,13 @@ export async function runUatDatabaseCli(
     try {
       const result = await withOwnedUatDatabase({
         acquire: async () => await startOwnedUatDatabase({ runId, database, commit, port, passwordFile }),
-        run: async (authority) => await runIntegrationChild(
+        run: async (authority) => await runUatDatabaseTestChild(
           buildUatDatabaseTestCommand(npmCli),
           uatDatabaseEnvironment(environment, authority, password),
-          (child) => { activeChild = child; },
+          {
+            setChild: (child) => { activeChild = child; },
+            exactSensitiveValues: [password],
+          },
         ),
         release: async (authority) => await stopOwnedUatDatabase(authority, {
           dropDatabase: async (owned) => await dropDatabase(owned, password),
@@ -573,11 +666,12 @@ export async function runUatDatabaseCli(
         runId,
         database,
         commit,
-        result: result === 0 && !interrupted ? "passed" : "failed",
-        exitCode: interrupted ? 130 : result,
+        result: result.exitCode === 0 && !interrupted ? "passed" : "failed",
+        exitCode: interrupted ? 130 : result.exitCode,
+        childSignal: result.signal,
         cleanup: "database-dropped-container-removed",
       })}\n`);
-      return interrupted ? 130 : result;
+      return interrupted ? 130 : result.exitCode;
     } finally {
       process.removeListener("SIGINT", onSigint);
       process.removeListener("SIGTERM", onSigterm);

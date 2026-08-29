@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
 import {
   MUSIC_UAT_DATABASE_ACK,
+  MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES,
   MUSIC_UAT_DATABASE_TEST_FILES,
   buildUatDatabaseTestCommand,
   parseUatDatabaseAuthority,
+  runUatDatabaseTestChild,
   startOwnedUatDatabase,
   stopOwnedUatDatabase,
   validateUatDatabaseInspect,
@@ -263,6 +265,72 @@ describe("owned Task-4 UAT database lane", () => {
         "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=10000",
       ],
     });
+  });
+
+  it("redacts hostile database and configured secrets before child output reaches writers", async () => {
+    const hostilePassword = "hostile:/@output-password%9f1d";
+    const configuredSecret = "configured-session-secret-4e2a";
+    const target = new URL(`postgresql://music_migrator@127.0.0.1:58543/${database}`);
+    target.password = hostilePassword;
+    const databaseUrl = target.toString();
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const source = [
+      `process.stdout.write(${JSON.stringify("useful stdout before ")});`,
+      `process.stdout.write(${JSON.stringify(hostilePassword.slice(0, 11))});`,
+      `process.stdout.write(${JSON.stringify(`${hostilePassword.slice(11)} useful stdout after\n`)});`,
+      `process.stderr.write(${JSON.stringify(`assertion mismatch DATABASE_URL_TEST=${databaseUrl}\n`)});`,
+      `process.stderr.write(${JSON.stringify(`SESSION_SECRET=${configuredSecret}\n`)});`,
+      "process.exitCode = 1;",
+    ].join("");
+
+    const result = await runUatDatabaseTestChild(
+      { file: process.execPath, args: ["-e", source] },
+      { DATABASE_URL_TEST: databaseUrl, SESSION_SECRET: configuredSecret },
+      {
+        setChild: () => undefined,
+        exactSensitiveValues: [hostilePassword],
+        writeStdout: (value) => { stdout.push(value); },
+        writeStderr: (value) => { stderr.push(value); },
+      },
+    );
+
+    const retained = [...stdout, ...stderr].join("");
+    expect(result).toEqual({ exitCode: 1, signal: null });
+    expect(retained).toContain("useful stdout before");
+    expect(retained).toContain("useful stdout after");
+    expect(retained).toContain("assertion mismatch");
+    expect(retained).not.toContain(hostilePassword);
+    expect(retained).not.toContain(encodeURIComponent(hostilePassword));
+    expect(retained).not.toContain(databaseUrl);
+    expect(retained).not.toContain(configuredSecret);
+  });
+
+  it("discards an independently overflowing child stream without emitting its raw prefix", async () => {
+    const hostilePrefix = "overflow-secret-prefix-18d2";
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const source = [
+      `process.stdout.write(${JSON.stringify(hostilePrefix)});`,
+      `process.stdout.write("x".repeat(${MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES}));`,
+      `process.stderr.write(${JSON.stringify("useful bounded stderr\n")});`,
+    ].join("");
+
+    const result = await runUatDatabaseTestChild(
+      { file: process.execPath, args: ["-e", source] },
+      { HOSTILE_SECRET: hostilePrefix },
+      {
+        setChild: () => undefined,
+        writeStdout: (value) => { stdout.push(value); },
+        writeStderr: (value) => { stderr.push(value); },
+      },
+    );
+
+    expect(result).toEqual({ exitCode: 0, signal: null });
+    expect(stdout.join("")).toContain("stdout discarded");
+    expect(stdout.join("")).not.toContain(hostilePrefix);
+    expect(stdout.join("")).not.toContain("xxxxx");
+    expect(stderr.join("")).toBe("useful bounded stderr\n");
   });
 
   it("binds the migration suite admin lifecycle to the validated owned target and tolerates setup refusal", () => {

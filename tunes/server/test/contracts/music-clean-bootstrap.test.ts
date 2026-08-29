@@ -53,6 +53,7 @@ describe("clean Music bootstrap", () => {
         "tunes/scripts/windows-write-through.ps1",
         "tunes/scripts/music-compose-safety.ts",
         "tunes/scripts/music-process-runner.ts",
+        "tunes/scripts/music-output-redaction.ts",
         "tunes/server/config/music-environment.ts",
         "tunes/server/config/secure-music-secret-file.ts",
         "tunes/shared/music-migration-contract.ts",
