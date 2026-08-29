@@ -102,6 +102,10 @@ Any retained `visuals/*.(png|jpg|jpeg|webp)` or `traces/*.zip` named by `visual-
 
 The retained stdout/stderr logs are bounded, path-normalized, and secret-redacted. Raw Playwright JSON, output directories, auth files, bearer values, capability values, absolute workspace paths, and unbounded child output are private inputs and must be deleted before manifest creation.
 
+Live fixture `bootstrap`, `up --detach --wait`, and exact `down` never inherit child streams. Each command captures a bounded private input, retains only sanitized stdout/stderr, and adds a typed lifecycle record with its fixed logical argv, normalized cwd, exit status, termination class, retained byte counts, and truncation or unavailable state. The loopback state-service streams are likewise piped into bounded private capture before the common log sanitizer; raw child output is never sent directly to the invoking terminal.
+
+Once live bootstrap is attempted, every exit path attempts the exact fixture `down` independently of private artifact deletion and state-service shutdown. Each private file/directory removal continues after another removal fails. A live exit is forced to code 5 unless cleanup is both classified `restored` or `not-required-safe` and the exact Docker/auth inspection below verifies no labeled containers, labeled volumes, or private auth artifacts. A down failure, unavailable Docker inspection, residue, private-artifact presence, or any other unverified cleanup classification remains explicit evidence and cannot preserve an ordinary execution exit.
+
 The next guarded run also records these exact cleanup inspections, executed from the repository root, with argv, exit code, and bounded matching output stored in `docker-inspection.json`:
 
 ```text
@@ -110,7 +114,7 @@ docker volume ls -q --filter label=com.explorers.music.fixture=true --filter lab
 ```
 
 It separately records whether `owner-auth.json` and `profile-storage-state.json` are absent. Missing Docker output is `unavailable`; it is not replaced with an empty successful inspection.
-A nominally successful live lane is forced to a nonzero final exit when either inspection is unavailable, labeled resources remain, or either private auth artifact is not proven absent; the exact gap stays in `evidence.json`.
+A live lane is forced to exit 5 when either inspection is unavailable, labeled resources remain, either private auth artifact is not proven absent, exact teardown fails, or restoration is otherwise unverified; the exact gap stays in `evidence.json`.
 
 Independent verification command after a runner finishes:
 

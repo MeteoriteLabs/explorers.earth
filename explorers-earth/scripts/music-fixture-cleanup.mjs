@@ -5,6 +5,13 @@ export function prepareMusicFixtureArtifacts({ directory, authPath, storagePath,
   return { authPath, storagePath };
 }
 
+export function stopMusicFixtureStateService(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (typeof child.kill !== "function" || child.kill("SIGKILL") !== true) {
+    throw new Error("state service did not accept the stop signal");
+  }
+}
+
 export function stopMusicFixture({ artifactPaths, artifactDirectories = [], exists, unlink, removeDirectory, stopStateService, down }) {
   let status = 0;
   for (const artifact of artifactPaths) {

@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   MUSIC_MUTATION_CALLSITES,
@@ -236,6 +236,109 @@ function inertLiveCollectionEnvironment() {
     E2E_PROFILE_LIVE_WRITES: "1",
     E2E_PROFILE_STORAGE_STATE: resolve(".artifacts/inert-profile-storage-state.json"),
     E2E_PROFILE_USERNAME: "e2e-profile-sentinel",
+  };
+}
+
+function writeLifecycleContractShims(sandbox: string) {
+  const fakeNpmPath = join(sandbox, "fake-npm.mjs");
+  const fakeDockerPath = join(sandbox, "fake-docker.mjs");
+  const fakeDockerHookPath = join(sandbox, "fake-docker-hook.cjs");
+  const binDirectory = join(sandbox, "bin");
+  mkdirSync(binDirectory);
+  writeFileSync(fakeNpmPath, [
+    'import { appendFileSync, existsSync, rmSync, writeFileSync } from "node:fs";',
+    'const action = ["bootstrap", "up", "down"].find((candidate) => process.argv.includes(candidate));',
+    'appendFileSync(process.env.FAKE_LIFECYCLE_LOG, `${action}\n`);',
+    'process.stdout.write(`workspace=${process.cwd()} Bearer ${process.env.FAKE_PRIVATE_VALUE}\n${"bounded-child-output".repeat(600)}`);',
+    'process.stderr.write(`credential=${process.env.FAKE_PRIVATE_VALUE} path=/private/fixture/lifecycle.log\n`);',
+    'const scenario = process.env.FAKE_LIFECYCLE_SCENARIO;',
+    'if (action === "bootstrap") {',
+    '  if (scenario === "bootstrap-partial") writeFileSync(process.env.FAKE_RESOURCE_MARKER, "partial");',
+    '  if (scenario.startsWith("bootstrap-")) process.exit(1);',
+    '}',
+    'if (action === "up") {',
+    '  if (scenario === "up-partial") { writeFileSync(process.env.FAKE_RESOURCE_MARKER, "partial"); process.exit(1); }',
+    '}',
+    'if (action === "down") {',
+    '  if (existsSync(process.env.FAKE_RESOURCE_MARKER)) rmSync(process.env.FAKE_RESOURCE_MARKER);',
+    '  if (scenario.endsWith("down-failure")) process.exit(1);',
+    '}',
+    '',
+  ].join("\n"));
+  writeFileSync(fakeDockerPath, [
+    'const mode = process.env.FAKE_DOCKER_MODE;',
+    'if (mode === "unavailable") process.exit(2);',
+    'if (mode === "residue") process.stdout.write(process.argv.includes("ps") ? `${"a".repeat(12)}\\n` : "explorers_music_fixture_residue\\n");',
+    '',
+  ].join("\n"));
+  writeFileSync(fakeDockerHookPath, [
+    'const { basename } = require("node:path");',
+    'if ([basename(process.execPath), basename(process.argv0)].some((name) => name.toLowerCase() === "docker.exe")) {',
+    '  const mode = process.env.FAKE_DOCKER_MODE;',
+    '  if (mode === "unavailable") process.exit(2);',
+    '  if (mode === "residue") process.stdout.write(process.argv.includes("ps") ? `${"a".repeat(12)}\\n` : "explorers_music_fixture_residue\\n");',
+    '  process.exit(0);',
+    '}',
+    '',
+  ].join("\n"));
+  if (process.platform === "win32") {
+    copyFileSync(process.execPath, join(binDirectory, "docker.exe"));
+  } else {
+    const posixDocker = join(binDirectory, "docker");
+    writeFileSync(posixDocker, `#!/usr/bin/env node\nawait import(${JSON.stringify(pathToFileURL(fakeDockerPath).href)});\n`);
+    chmodSync(posixDocker, 0o755);
+  }
+  return { fakeNpmPath, fakeDockerHookPath, binDirectory };
+}
+
+function lifecycleFreshProcessEnvironment({
+  sandbox,
+  runId,
+  fakeNpmPath,
+  fakeDockerHookPath,
+  binDirectory,
+  scenario,
+  dockerMode,
+  privateValue,
+}: {
+  sandbox: string;
+  runId: string;
+  fakeNpmPath: string;
+  fakeDockerHookPath: string;
+  binDirectory: string;
+  scenario: string;
+  dockerMode: string;
+  privateValue: string;
+}) {
+  return {
+    ...process.env,
+    PATH: `${binDirectory}${delimiter}${process.env.PATH ?? ""}`,
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${fakeDockerHookPath}`.trim(),
+    npm_execpath: fakeNpmPath,
+    MUSIC_PUBLIC_RUN_ID: runId,
+    PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
+    MUSIC_E2E_LIVE_WRITE: "true",
+    MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+    MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
+    MUSIC_E2E_ACCOUNT_USERNAME: `e2e-public-music-${runId}-owner`,
+    MUSIC_E2E_ACCOUNT_DOCUMENT_ID: `e2e-public-music-${runId}-account`,
+    MUSIC_E2E_USER_DOCUMENT_ID: `e2e-public-music-${runId}-user`,
+    MUSIC_E2E_STRAPI_URL: "http://127.0.0.1:51337",
+    MUSIC_E2E_STRAPI_TOKEN: privateValue,
+    MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION: "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
+    MUSIC_E2E_SERVICE_ORIGINS: [
+      "http://127.0.0.1:55173", "http://127.0.0.1:55000", "tcp://127.0.0.1:55432",
+      "http://127.0.0.1:51337", "http://127.0.0.1:55174",
+    ].join(","),
+    MUSIC_E2E_HEALTH_URLS: [
+      "http://127.0.0.1:55173/health", "http://127.0.0.1:55000/health", "tcp://127.0.0.1:55432",
+      "http://127.0.0.1:51337/health", "http://127.0.0.1:55174/health",
+    ].join(","),
+    FAKE_LIFECYCLE_SCENARIO: scenario,
+    FAKE_DOCKER_MODE: dockerMode,
+    FAKE_LIFECYCLE_LOG: join(sandbox, `${runId}-lifecycle.log`),
+    FAKE_RESOURCE_MARKER: join(sandbox, `${runId}-resource.marker`),
+    FAKE_PRIVATE_VALUE: privateValue,
   };
 }
 
@@ -1565,6 +1668,125 @@ test("qualification run allocation refuses a reused run ID before any fixture ac
   }
 });
 
+for (const lifecycleCase of [
+  {
+    name: "bootstrap partial creation",
+    runId: "bootstrap-partial-contract",
+    scenario: "bootstrap-partial",
+    dockerMode: "clean",
+    expectedExit: 4,
+    expectedCleanup: "not-required-safe",
+    expectedStages: ["fixture-bootstrap", "fixture-down"],
+  },
+  {
+    name: "up partial creation",
+    runId: "up-partial-contract",
+    scenario: "up-partial",
+    dockerMode: "clean",
+    expectedExit: 4,
+    expectedCleanup: "not-required-safe",
+    expectedStages: ["fixture-bootstrap", "fixture-up", "fixture-down"],
+  },
+  {
+    name: "exact down failure",
+    runId: "down-failure-contract",
+    scenario: "bootstrap-down-failure",
+    dockerMode: "clean",
+    expectedExit: 5,
+    expectedCleanup: "teardown-failed",
+    expectedStages: ["fixture-bootstrap", "fixture-down"],
+  },
+  {
+    name: "Docker inspection unavailable",
+    runId: "docker-unavailable-contract",
+    scenario: "bootstrap-no-resource",
+    dockerMode: "unavailable",
+    expectedExit: 5,
+    expectedCleanup: "cleanup-inspection-failed",
+    expectedStages: ["fixture-bootstrap", "fixture-down"],
+  },
+  {
+    name: "Docker residue",
+    runId: "docker-residue-contract",
+    scenario: "bootstrap-no-resource",
+    dockerMode: "residue",
+    expectedExit: 5,
+    expectedCleanup: "cleanup-inspection-failed",
+    expectedStages: ["fixture-bootstrap", "fixture-down"],
+  },
+  {
+    name: "verified no-resource cleanup",
+    runId: "no-resource-contract",
+    scenario: "bootstrap-no-resource",
+    dockerMode: "clean",
+    expectedExit: 4,
+    expectedCleanup: "not-required-safe",
+    expectedStages: ["fixture-bootstrap", "fixture-down"],
+  },
+] as const) {
+  test(`early fixture failure finalizes exact cleanup evidence for ${lifecycleCase.name}`, () => {
+    // Production break caught: a failed bootstrap/up could leave partial resources,
+    // skip exact down, inherit raw child output, and still preserve exit 4 without cleanup proof.
+    const sandbox = mkdtempSync(join(tmpdir(), "music-public-lifecycle-contract-"));
+    try {
+      const { fakeNpmPath, fakeDockerHookPath, binDirectory } = writeLifecycleContractShims(sandbox);
+      const privateValue = `private-${lifecycleCase.runId}-value`;
+      const environment = lifecycleFreshProcessEnvironment({
+        sandbox,
+        runId: lifecycleCase.runId,
+        fakeNpmPath,
+        fakeDockerHookPath,
+        binDirectory,
+        scenario: lifecycleCase.scenario,
+        dockerMode: lifecycleCase.dockerMode,
+        privateValue,
+      });
+      const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+        cwd: sandbox,
+        env: environment,
+        encoding: "utf8",
+        windowsHide: true,
+      });
+      const runDirectory = join(sandbox, ".artifacts", "music-public", lifecycleCase.runId);
+      expect(existsSync(join(runDirectory, "evidence.json")), `${result.stdout}\n${result.stderr}`).toBe(true);
+      const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
+      const dockerInspection = JSON.parse(readFileSync(join(runDirectory, "docker-inspection.json"), "utf8"));
+      expect(result.status, `${result.stdout}\n${result.stderr}\n${JSON.stringify({ evidence, dockerInspection })}`)
+        .toBe(lifecycleCase.expectedExit);
+      expect(`${result.stdout}\n${result.stderr}`).not.toContain(privateValue);
+      expect(`${result.stdout}\n${result.stderr}`).not.toContain(sandbox);
+      expect(readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/))
+        .toEqual(lifecycleCase.expectedStages.map((stage) => stage.replace("fixture-", "")));
+      expect(existsSync(environment.FAKE_RESOURCE_MARKER)).toBe(false);
+
+      expect(evidence).toMatchObject({
+        result: "failed",
+        cleanup: lifecycleCase.expectedCleanup,
+        exitCode: lifecycleCase.expectedExit,
+      });
+      expect(evidence.lifecycleCommands.map(({ stage }: { stage: string }) => stage))
+        .toEqual(lifecycleCase.expectedStages);
+      expect(evidence.lifecycleCommands.every((record: Record<string, unknown>) => (
+        JSON.stringify(record).includes(privateValue) === false
+      ))).toBe(true);
+      const retainedStreams = `${readFileSync(join(runDirectory, "logs", "stdout.log"), "utf8")}\n${readFileSync(join(runDirectory, "logs", "stderr.log"), "utf8")}`;
+      expect(retainedStreams).toContain("<redacted>");
+      expect(retainedStreams).toContain("<path>");
+      expect(retainedStreams).not.toContain(privateValue);
+      expect(retainedStreams).not.toContain(sandbox);
+      expect(Buffer.byteLength(readFileSync(join(runDirectory, "logs", "stdout.log")))).toBeLessThanOrEqual(4_096);
+      expect(Buffer.byteLength(readFileSync(join(runDirectory, "logs", "stderr.log")))).toBeLessThanOrEqual(4_096);
+
+      const verified = spawnSync(process.execPath, [
+        resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
+      ], { cwd: sandbox, encoding: "utf8", windowsHide: true });
+      expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+}
+
 test("qualification run allocation refuses a caller-selected parent outside the exact guarded path", async () => {
   // Production break caught: an environment-controlled or mistaken parent can
   // move retained evidence outside the reviewed .artifacts/music-public boundary.
@@ -1862,6 +2084,73 @@ test("qualification logs are exclusively written after bounded path and secret s
   }
 });
 
+test("fixture lifecycle commands retain only bounded sanitized typed output without inheriting child streams", async () => {
+  // Production break caught: bootstrap/up/down used stdio=inherit, so their raw,
+  // unbounded output bypassed the qualification logs and could disclose paths or credentials.
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const privateValue = "lifecycle-private-value-0123456789";
+  const absoluteOutsidePath = process.platform === "win32"
+    ? "C:\\private\\fixture\\bootstrap.log"
+    : "/private/fixture/bootstrap.log";
+  const calls: Array<{ command: string; args: string[]; options: Record<string, unknown> }> = [];
+  const captured = qualificationArtifacts.captureQualificationLifecycleCommand({
+    stage: "fixture-bootstrap",
+    processExecPath: "node-runtime",
+    npmExecPath: "npm-cli",
+    cwd: process.cwd(),
+    retainedCwd: "<repository>",
+    environment: { FIXTURE_TEST: "1" },
+    workspaceRoot: process.cwd(),
+    knownSecrets: [privateValue],
+    spawn: (command: string, args: string[], options: Record<string, unknown>) => {
+      calls.push({ command, args, options });
+      return {
+        status: 7,
+        signal: null,
+        stdout: `workspace=${process.cwd()}\nBearer ${privateValue}\n${"bounded-stdout".repeat(600)}`,
+        stderr: `credential=${privateValue}\npath=${absoluteOutsidePath}\n`,
+      };
+    },
+  });
+
+  expect(captured.record).toEqual({
+    schemaVersion: "explorers-public-lifecycle-command/v1",
+    stage: "fixture-bootstrap",
+    command: ["npm", "run", "--silent", "music-cli", "--", "bootstrap"],
+    cwd: "<repository>",
+    exitCode: 7,
+    termination: "exited",
+    stdout: {
+      status: "captured",
+      retainedBytes: Buffer.byteLength(captured.stdout),
+      truncated: true,
+    },
+    stderr: {
+      status: "captured",
+      retainedBytes: Buffer.byteLength(captured.stderr),
+      truncated: false,
+    },
+  });
+  expect(captured.status).toBe(7);
+  expect(`${captured.stdout}\n${captured.stderr}`).toContain("<redacted>");
+  expect(`${captured.stdout}\n${captured.stderr}`).toContain("<path>");
+  expect(`${captured.stdout}\n${captured.stderr}`).not.toContain(privateValue);
+  expect(`${captured.stdout}\n${captured.stderr}`).not.toContain(process.cwd());
+  expect(`${captured.stdout}\n${captured.stderr}`).not.toContain(absoluteOutsidePath);
+  expect(Buffer.byteLength(captured.stdout)).toBeLessThanOrEqual(4_096);
+  expect(calls).toEqual([{
+    command: "node-runtime",
+    args: ["npm-cli", "run", "--silent", "music-cli", "--", "bootstrap"],
+    options: {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { FIXTURE_TEST: "1" },
+      maxBuffer: 64 * 1024,
+      windowsHide: true,
+    },
+  }]);
+});
+
 test("qualification analytics ledger retains only safe UTM and exactly-once observations", async () => {
   // Production break caught: analytics evidence stores raw event/authority IDs,
   // accepts arbitrary event fields, or claims exactly-once without observed counts.
@@ -2037,7 +2326,9 @@ test("qualification Docker inspection retains exact bounded label-filter matches
       && options.maxBuffer === 8 * 1024)).toBe(true);
     expect(JSON.stringify(inspection)).not.toContain("must not be retained");
     expect(JSON.stringify(inspection)).not.toContain(sandbox);
-    expect(qualificationArtifacts.assessQualificationCleanup({ lane: "live", dockerInspection: inspection })).toEqual({
+    expect(qualificationArtifacts.assessQualificationCleanup({
+      lane: "live", cleanup: "not-required-safe", dockerInspection: inspection,
+    })).toEqual({
       verified: false,
       gaps: [
         "docker-containers-remain",
@@ -2047,6 +2338,7 @@ test("qualification Docker inspection retains exact bounded label-filter matches
     });
     expect(qualificationArtifacts.assessQualificationCleanup({
       lane: "live",
+      cleanup: "not-required-safe",
       dockerInspection: {
         ...inspection,
         containerMatches: [],
@@ -2303,7 +2595,8 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   const liveFixture = readFileSync("e2e/setup/music.ts", "utf8");
   expect(liveFixture).toContain("MUSIC_E2E_STRAPI_TOKEN");
   expect(runner).not.toContain("MUSIC_E2E_OWNER_CREDENTIAL");
-  expect(runner).toMatch(/music-cli[\s\S]+bootstrap[\s\S]+music-cli[\s\S]+up/);
+  expect(runner).toMatch(/runLifecycleCommand\("fixture-bootstrap"\)[\s\S]+runLifecycleCommand\("fixture-up"\)/);
+  expect(runner).not.toContain('"inherit"');
   expect(stateService).not.toContain("MUSIC_E2E_OWNER_CREDENTIAL");
   expect(stateService).not.toContain("/api/music/dashboard");
   expect(stateService).not.toContain("/api/playlists");
@@ -2327,7 +2620,7 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain("callback bootstrap failed; details redacted");
   expect(runner).not.toContain("callbackBootstrapError.message");
   expect(runner).toContain("result.beforeHash === expected && result.afterHash === expected");
-  expect(runner).toContain('runNpm(["run", "--silent", "music-cli", "--", "down"]');
+  expect(runner).toContain('runLifecycleCommand("fixture-down")');
 });
 
 test("runner orchestration contains setup, parse, and report faults with restored abort hashes", async () => {
@@ -2537,6 +2830,40 @@ test("teardown continues after an artifact existence check fails", () => {
     "npm run --silent music-cli -- down",
   ]);
   expect(status).toBe(1);
+});
+
+test("state-service teardown proves an already stopped child or a successful force-stop signal", async () => {
+  // Production break caught: the runner ignored child.kill() returning false,
+  // so an OS-level stop refusal could still be classified as safe cleanup.
+  const cleanup = await import("../scripts/music-fixture-cleanup.mjs") as typeof import("../scripts/music-fixture-cleanup.mjs") & {
+    stopMusicFixtureStateService: (child?: {
+      exitCode: number | null;
+      signalCode: string | null;
+      kill: (signal: string) => boolean;
+    }) => void;
+  };
+  expect(typeof cleanup.stopMusicFixtureStateService).toBe("function");
+
+  const stoppedSignals: string[] = [];
+  expect(() => cleanup.stopMusicFixtureStateService({
+    exitCode: 0,
+    signalCode: null,
+    kill: (signal) => { stoppedSignals.push(signal); return false; },
+  })).not.toThrow();
+  expect(stoppedSignals).toEqual([]);
+
+  expect(() => cleanup.stopMusicFixtureStateService({
+    exitCode: null,
+    signalCode: null,
+    kill: (signal) => { stoppedSignals.push(signal); return true; },
+  })).not.toThrow();
+  expect(stoppedSignals).toEqual(["SIGKILL"]);
+
+  expect(() => cleanup.stopMusicFixtureStateService({
+    exitCode: null,
+    signalCode: null,
+    kill: () => false,
+  })).toThrow("state service did not accept the stop signal");
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {

@@ -24,6 +24,11 @@ const MAX_SANITIZER_INPUT_BYTES = 256 * 1024;
 const MAX_LEDGER_BYTES = 64 * 1024;
 const ANALYTICS_LEDGER_VERSION = "explorers-public-analytics-ledger/v1";
 const VISUAL_TRACE_LEDGER_VERSION = "explorers-public-visual-trace-ledger/v1";
+const LIFECYCLE_COMMANDS = Object.freeze({
+  "fixture-bootstrap": Object.freeze(["npm", "run", "--silent", "music-cli", "--", "bootstrap"]),
+  "fixture-up": Object.freeze(["npm", "run", "--silent", "music-cli", "--", "up", "--detach", "--wait"]),
+  "fixture-down": Object.freeze(["npm", "run", "--silent", "music-cli", "--", "down"]),
+});
 const SAFE_UTM_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]);
 const ANALYTICS_UNAVAILABLE_REASONS = new Set(["preflight-stopped", "execution-stopped", "not-observed"]);
 const DOCKER_INSPECTION_COMMANDS = Object.freeze({
@@ -101,6 +106,88 @@ function sanitizeQualificationText(value, { workspaceRoot, knownSecrets }) {
   return sanitized;
 }
 
+function boundedSanitizedQualificationOutput(value, {
+  workspaceRoot,
+  knownSecrets,
+  maximumBytes = 4_096,
+  forceTruncated = false,
+}) {
+  const raw = String(value ?? "");
+  const sanitized = sanitizeQualificationText(raw, { workspaceRoot, knownSecrets });
+  const marker = "[truncated]\n";
+  const truncated = forceTruncated || Buffer.byteLength(sanitized) > maximumBytes;
+  const text = truncated
+    ? `${utf8Prefix(sanitized, maximumBytes - Buffer.byteLength(marker))}${marker}`
+    : sanitized;
+  return { text, retainedBytes: Buffer.byteLength(text), truncated };
+}
+
+export function captureQualificationLifecycleCommand({
+  stage,
+  processExecPath,
+  npmExecPath,
+  cwd,
+  retainedCwd,
+  environment,
+  workspaceRoot,
+  knownSecrets = [],
+  spawn,
+} = {}) {
+  const logicalCommand = LIFECYCLE_COMMANDS[stage];
+  if (!logicalCommand || typeof processExecPath !== "string" || processExecPath.length === 0
+      || typeof npmExecPath !== "string" || npmExecPath.length === 0
+      || typeof cwd !== "string" || cwd.length === 0 || !["<workspace>", "<repository>"].includes(retainedCwd)
+      || !environment || typeof environment !== "object" || Array.isArray(environment)
+      || typeof workspaceRoot !== "string" || !path.isAbsolute(workspaceRoot)
+      || !Array.isArray(knownSecrets) || knownSecrets.some((secret) => typeof secret !== "string")
+      || typeof spawn !== "function") {
+    fail("qualification lifecycle command contract is invalid");
+  }
+  const [, ...npmArguments] = logicalCommand;
+  let result;
+  try {
+    result = spawn(processExecPath, [npmExecPath, ...npmArguments], {
+      cwd,
+      encoding: "utf8",
+      env: environment,
+      maxBuffer: 64 * 1024,
+      windowsHide: true,
+    });
+  } catch { result = { status: null, signal: null, stdout: undefined, stderr: undefined, error: true }; }
+  const termination = Number.isSafeInteger(result?.status) ? "exited"
+    : (typeof result?.signal === "string" && result.signal.length > 0 ? "signaled" : "spawn-error");
+  const forceTruncated = Boolean(result?.error);
+  const stdout = boundedSanitizedQualificationOutput(result?.stdout, {
+    workspaceRoot, knownSecrets, forceTruncated,
+  });
+  const stderr = boundedSanitizedQualificationOutput(result?.stderr, {
+    workspaceRoot, knownSecrets, forceTruncated,
+  });
+  const streamRecord = (observed, bounded) => ({
+    status: observed === undefined || observed === null ? "unavailable" : "captured",
+    retainedBytes: bounded.retainedBytes,
+    truncated: bounded.truncated,
+  });
+  const exitCode = Number.isSafeInteger(result?.status) && result.status >= 0 && result.status <= 255
+    ? result.status
+    : null;
+  return {
+    status: exitCode ?? 1,
+    stdout: stdout.text,
+    stderr: stderr.text,
+    record: {
+      schemaVersion: "explorers-public-lifecycle-command/v1",
+      stage,
+      command: [...logicalCommand],
+      cwd: retainedCwd,
+      exitCode,
+      termination,
+      stdout: streamRecord(result?.stdout, stdout),
+      stderr: streamRecord(result?.stderr, stderr),
+    },
+  };
+}
+
 export function writeSanitizedQualificationLog({
   runDirectory: runDirectoryInput,
   relativePath,
@@ -119,12 +206,10 @@ export function writeSanitizedQualificationLog({
   const boundedInput = inputTruncated
     ? utf8Prefix(joined, MAX_SANITIZER_INPUT_BYTES - 256)
     : joined;
-  const sanitized = sanitizeQualificationText(boundedInput, { workspaceRoot, knownSecrets });
-  const marker = "[truncated]\n";
-  const needsOutputTruncation = inputTruncated || Buffer.byteLength(sanitized) > maximumBytes;
-  const retained = needsOutputTruncation
-    ? `${utf8Prefix(sanitized, maximumBytes - Buffer.byteLength(marker))}${marker}`
-    : sanitized;
+  const bounded = boundedSanitizedQualificationOutput(boundedInput, {
+    workspaceRoot, knownSecrets, maximumBytes, forceTruncated: inputTruncated,
+  });
+  const retained = bounded.text;
   const artifactPath = safeArtifactPath(runDirectory, relativePath);
   mkdirSync(path.dirname(artifactPath), { recursive: true, mode: 0o700 });
   try {
@@ -132,7 +217,7 @@ export function writeSanitizedQualificationLog({
   } catch {
     fail("qualification artifact already exists");
   }
-  return { bytes: Buffer.byteLength(retained), truncated: needsOutputTruncation };
+  return { bytes: Buffer.byteLength(retained), truncated: bounded.truncated };
 }
 
 function validAnalyticsProductEvent(event) {
@@ -399,11 +484,18 @@ export function inspectQualificationDockerCleanup({
   };
 }
 
-export function assessQualificationCleanup({ lane, dockerInspection } = {}) {
-  if (!["live", "fixture", "pr-safe"].includes(lane) || !validDockerInspection(dockerInspection)) {
+export function assessQualificationCleanup({ lane, cleanup, dockerInspection } = {}) {
+  const validCleanup = [
+    "restored", "not-required-safe", "evidence-missing", "restore-failed", "teardown-failed",
+    "evidence-delete-failed", "not-required",
+  ].includes(cleanup);
+  if (!["live", "fixture", "pr-safe"].includes(lane) || !validCleanup || !validDockerInspection(dockerInspection)) {
     fail("qualification cleanup assessment contract is invalid");
   }
   const gaps = [];
+  if (lane === "live" && !["restored", "not-required-safe"].includes(cleanup)) {
+    gaps.push(`cleanup-unverified:${cleanup}`);
+  }
   if (dockerInspection.status !== "observed") gaps.push("docker-inspection-unavailable");
   if (dockerInspection.containersRemaining > 0) gaps.push("docker-containers-remain");
   if (dockerInspection.volumesRemaining > 0) gaps.push("docker-volumes-remain");
