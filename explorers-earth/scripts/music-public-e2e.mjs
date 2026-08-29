@@ -12,8 +12,10 @@ import {
 import {
   assessQualificationCleanup,
   buildQualificationOutcomeRecords,
+  captureQualificationFixtureAuthority,
   captureQualificationLifecycleCommand,
   createExclusiveQualificationRunDirectory,
+  createUnavailableQualificationFixtureAuthority,
   createUnavailableQualificationStreamArtifacts,
   finalizeQualificationRunArtifacts,
   inspectQualificationDockerCleanup,
@@ -112,6 +114,7 @@ const profileStorageStatePath = path.join(runArtifactDirectory, "profile-storage
 const restoreEvidencePath = path.join(runArtifactDirectory, "restore-evidence.jsonl");
 const journeyReportPath = path.join(runArtifactDirectory, "playwright-journey-results.json");
 const privatePlaywrightOutputDirectory = path.join(runArtifactDirectory, "private-playwright-output");
+let fixtureAuthorityRecord = createUnavailableQualificationFixtureAuthority();
 
 if (dryRun) {
   const report = {
@@ -158,6 +161,7 @@ if (dryRun) {
       workspaceRoot: process.cwd(),
       knownSecrets: [strapiToken],
       streamArtifacts: createUnavailableQualificationStreamArtifacts(),
+      fixtureAuthority: fixtureAuthorityRecord,
       analyticsLedger: {
         schemaVersion: "explorers-public-analytics-ledger/v1",
         status: "unavailable",
@@ -368,6 +372,7 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
     workspaceRoot: monorepoRoot,
     knownSecrets: [strapiToken, stateToken].filter(Boolean),
     streamArtifacts: qualificationStreamArtifacts,
+    fixtureAuthority: fixtureAuthorityRecord,
     analyticsLedger: {
       schemaVersion: "explorers-public-analytics-ledger/v1",
       status: "unavailable",
@@ -447,6 +452,19 @@ async function runLiveQualification() {
       stage: "invocation-refused",
     });
   }
+  const fixtureAuthority = captureQualificationFixtureAuthority({
+    processExecPath: process.execPath,
+    npmExecPath,
+    cwd: monorepoRoot,
+    retainedCwd: "<repository>",
+    environment: process.env,
+    spawn: spawnSync,
+  });
+  fixtureAuthorityRecord = fixtureAuthority.record;
+  if (fixtureAuthority.status !== 0) return finishQualificationFailure({
+    message: "Live public Music E2E fixture authority gate failed; details redacted.\n",
+    stage: "fixture-authority-gate-failed",
+  });
   fixtureLifecycleAttempted = true;
   const authorityBootstrapStatus = runLifecycleCommand("fixture-bootstrap");
   if (authorityBootstrapStatus !== 0) return finishQualificationFailure({

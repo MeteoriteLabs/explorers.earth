@@ -98,7 +98,18 @@ npm run music:test:public-e2e        # authorized live-write lane; hard-gated an
 npm run music:fixture:public:verify  # fixture/harness contract verification
 ```
 
-`music:test:public-fast`, `music:test:public-pr`, and `music:fixture:public:verify` never write. The live command starts the owned five-service `explorers-music-fixture`, plus its loopback PostgreSQL/Strapi snapshot helper, and refuses before Playwright unless every value below is supplied. Origins and health URLs must all be loopback; the username/document ID must share the same `e2e-public-music-<run>` namespace. Use a dedicated local Strapi test token that can GET and PUT only that Account's `public_music` field.
+`music:test:public-fast`, `music:test:public-pr`, and `music:fixture:public:verify` never write. The live command first runs the fixed repository fixture-authority attestation and starts the owned five-service `explorers-music-fixture` only after that gate accepts. It also refuses before Playwright unless every value below is supplied. Origins and health URLs must all be loopback; the username/document ID must share the same `e2e-public-music-<run>` namespace. Use a dedicated local Strapi test token that can GET and PUT only that Account's `public_music` field.
+
+When retained fixture volumes require reset, the reviewed order is exact and must not be shortened: reset, prove zero exact-label volumes, prove the five fixture ports are free, attest retired fixture authority, then invoke the live runner (which repeats and manifests the attestation immediately before bootstrap).
+
+```powershell
+npm run music:db:reset -- --mode fixture --target test --confirm-project explorers-music-fixture --confirm-reset "RESET explorers-music-fixture/music_fixture"
+docker volume ls -q --filter "label=com.explorers.music.fixture=true" --filter "label=com.explorers.music.project=explorers-music-fixture" # require zero lines
+Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 55432,51337,55000,55173,55174 } # require zero rows
+npm run --silent music:fixture:authority:attest # require exit 0 and one strict absent/tombstone JSON record
+```
+
+The accepted record has exactly `schemaVersion`, `state`, `safeToBootstrap`, and `usableRecords`: version `music-fixture-authority-attestation/v1`, state `absent` or `tombstone`, boolean `true`, and count `0`. A reference, raw/nonempty, malformed, unsupported, unreadable, symlinked, ambiguous, or credential-bearing state refuses. `music:db:reset` retires only authenticated fixture-authority leaves and repeats this oracle before it can report success. A failed live-runner attestation occurs before the lifecycle-attempt flag and bootstrap; with the preceding volume/port proofs, no fixture `down` is required or attempted.
 
 ```powershell
 $env:MUSIC_E2E_LIVE_WRITE='true'

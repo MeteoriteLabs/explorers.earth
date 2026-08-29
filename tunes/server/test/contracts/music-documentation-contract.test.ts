@@ -25,7 +25,7 @@ const requiredDocuments = [
 ] as const;
 
 const publicCommands = [
-  "music:bootstrap", "music:doctor", "music:up", "music:test:smoke", "music:test:all",
+  "music:bootstrap", "music:doctor", "music:up", "music:fixture:authority:attest", "music:test:smoke", "music:test:all",
   "music:test:fast", "music:test:pr", "music:test:nightly", "music:down", "music:db:status",
   "music:db:migrate", "music:db:verify", "music:db:reset", "music:fixtures:capture",
   "music:reconcile", "music:types:scoped", "music:types:baseline",

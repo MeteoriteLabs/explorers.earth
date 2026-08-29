@@ -32,6 +32,9 @@ const LIFECYCLE_COMMANDS = Object.freeze({
     "--volumes", "--mode", "fixture", "--confirm-project", "explorers-music-fixture",
   ]),
 });
+const FIXTURE_AUTHORITY_COMMAND = Object.freeze([
+  "npm", "run", "--silent", "music:fixture:authority:attest",
+]);
 const SAFE_UTM_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]);
 const ANALYTICS_UNAVAILABLE_REASONS = new Set(["preflight-stopped", "execution-stopped", "not-observed"]);
 const DOCKER_INSPECTION_COMMANDS = Object.freeze({
@@ -60,6 +63,7 @@ export const LIVE_QUALIFICATION_STREAM_ARTIFACTS = Object.freeze([
 
 export const LIVE_QUALIFICATION_REQUIRED_ARTIFACTS = Object.freeze([
   ...LIVE_QUALIFICATION_STREAM_ARTIFACTS.map(({ role, path: relativePath }) => Object.freeze({ role, path: relativePath })),
+  Object.freeze({ role: "fixture-authority", path: "fixture-authority.json" }),
   Object.freeze({ role: "analytics-ledger", path: "analytics-events.jsonl" }),
   Object.freeze({ role: "visual-trace-ledger", path: "visual-trace-ledger.json" }),
   Object.freeze({ role: "docker-inspection", path: "docker-inspection.json" }),
@@ -77,6 +81,18 @@ export function createUnavailableQualificationStreamArtifacts() {
     chunks: [],
     truncated: false,
   }));
+}
+
+export function createUnavailableQualificationFixtureAuthority() {
+  return {
+    schemaVersion: "explorers-public-fixture-authority/v1",
+    status: "unavailable",
+    command: [...FIXTURE_AUTHORITY_COMMAND],
+    cwd: "<repository>",
+    exitCode: null,
+    termination: "not-run",
+    attestation: null,
+  };
 }
 
 function fail(message) {
@@ -233,6 +249,93 @@ export function captureQualificationLifecycleCommand({
       stderr: stderrRecord,
     },
   };
+}
+
+function validSafeFixtureAuthorityAttestation(value) {
+  return isExactKeySet(value, ["schemaVersion", "state", "safeToBootstrap", "usableRecords"])
+    && value.schemaVersion === "music-fixture-authority-attestation/v1"
+    && ["absent", "tombstone"].includes(value.state)
+    && value.safeToBootstrap === true
+    && value.usableRecords === 0;
+}
+
+function validFixtureAuthorityRecord(value) {
+  if (!isExactKeySet(value, [
+    "schemaVersion", "status", "command", "cwd", "exitCode", "termination", "attestation",
+  ]) || value.schemaVersion !== "explorers-public-fixture-authority/v1"
+      || JSON.stringify(value.command) !== JSON.stringify(FIXTURE_AUTHORITY_COMMAND)
+      || value.cwd !== "<repository>"
+      || !["accepted", "rejected", "unavailable"].includes(value.status)) return false;
+  if (value.status === "accepted") {
+    return value.exitCode === 0 && value.termination === "exited"
+      && validSafeFixtureAuthorityAttestation(value.attestation);
+  }
+  if (value.status === "unavailable") {
+    return value.exitCode === null && value.termination === "not-run" && value.attestation === null;
+  }
+  const validExit = value.exitCode === null
+    || (Number.isSafeInteger(value.exitCode) && value.exitCode >= 0 && value.exitCode <= 255);
+  return validExit && value.attestation === null
+    && ((value.termination === "exited" && value.exitCode !== null)
+      || (["signaled", "spawn-error"].includes(value.termination) && value.exitCode === null));
+}
+
+export function captureQualificationFixtureAuthority({
+  processExecPath,
+  npmExecPath,
+  cwd,
+  retainedCwd,
+  environment,
+  spawn,
+} = {}) {
+  if (typeof processExecPath !== "string" || processExecPath.length === 0
+      || typeof npmExecPath !== "string" || npmExecPath.length === 0
+      || typeof cwd !== "string" || cwd.length === 0 || retainedCwd !== "<repository>"
+      || !environment || typeof environment !== "object" || Array.isArray(environment)
+      || typeof spawn !== "function") fail("fixture authority command contract is invalid");
+  let result;
+  try {
+    result = spawn(processExecPath, [npmExecPath, ...FIXTURE_AUTHORITY_COMMAND.slice(1)], {
+      cwd,
+      encoding: "utf8",
+      env: environment,
+      maxBuffer: 8 * 1024,
+      windowsHide: true,
+    });
+  } catch {
+    result = { status: null, signal: null, error: true };
+  }
+  const exitCode = Number.isSafeInteger(result?.status) && result.status >= 0 && result.status <= 255
+    ? result.status
+    : null;
+  const termination = exitCode !== null ? "exited"
+    : (typeof result?.signal === "string" && result.signal.length > 0 ? "signaled" : "spawn-error");
+  let attestation = null;
+  if (exitCode === 0 && !result?.error && String(result?.stderr ?? "") === "") {
+    const stdout = String(result?.stdout ?? "");
+    if (Buffer.byteLength(stdout) <= 1_024) {
+      try {
+        const candidate = JSON.parse(stdout);
+        if (stdout === `${JSON.stringify(candidate)}\n` && validSafeFixtureAuthorityAttestation(candidate)) {
+          attestation = candidate;
+        }
+      } catch {
+        // Raw output is never retained; malformed authority is a typed rejection.
+      }
+    }
+  }
+  const accepted = attestation !== null;
+  const record = {
+    schemaVersion: "explorers-public-fixture-authority/v1",
+    status: accepted ? "accepted" : "rejected",
+    command: [...FIXTURE_AUTHORITY_COMMAND],
+    cwd: retainedCwd,
+    exitCode,
+    termination,
+    attestation,
+  };
+  if (!validFixtureAuthorityRecord(record)) fail("fixture authority command result is invalid");
+  return { status: accepted ? 0 : 1, record };
 }
 
 export function writeSanitizedQualificationLog({
@@ -776,6 +879,7 @@ export function finalizeQualificationRunArtifacts({
   workspaceRoot,
   knownSecrets = [],
   streamArtifacts,
+  fixtureAuthority,
   analyticsLedger,
   visualTraceLedger,
   dockerInspection,
@@ -792,11 +896,12 @@ export function finalizeQualificationRunArtifacts({
   }
   const normalizedStreams = normalizedQualificationStreamInputs(streamArtifacts);
   validateVisualTraceLedgerObject(runDirectory, visualTraceLedger);
-  if ((!validObservedAnalyticsLedger(analyticsLedger) && !validUnavailableAnalyticsLedger(analyticsLedger))
+  if (!validFixtureAuthorityRecord(fixtureAuthority)
+      || (!validObservedAnalyticsLedger(analyticsLedger) && !validUnavailableAnalyticsLedger(analyticsLedger))
       || !validDockerInspection(dockerInspection) || !validSkipLedger(skipLedger)
       || !validRestorationRecord(restorationRecord)) fail("qualification structured artifact contract is invalid");
   for (const value of [
-    analyticsLedger, visualTraceLedger, dockerInspection, skipLedger, restorationRecord, evidence,
+    fixtureAuthority, analyticsLedger, visualTraceLedger, dockerInspection, skipLedger, restorationRecord, evidence,
   ]) assertSafeStructuredArtifact(value, { knownSecrets, workspaceRoot });
   const streamRecords = normalizedStreams.map(({ definition, input }) => {
     const written = writeSanitizedQualificationLog({
@@ -824,6 +929,10 @@ export function finalizeQualificationRunArtifacts({
   if (!validQualificationStreamRecords(streamRecords)) fail("qualification stream artifact contract is invalid");
   const retainedEvidence = { ...evidence, streams: streamRecords };
   assertSafeStructuredArtifact(retainedEvidence, { knownSecrets, workspaceRoot });
+  writeCanonicalStructuredArtifact({
+    runDirectory, relativePath: "fixture-authority.json", value: fixtureAuthority,
+    knownSecrets, workspaceRoot,
+  });
   writeQualificationAnalyticsLedger({ runDirectory, ledger: analyticsLedger });
   writeCanonicalStructuredArtifact({
     runDirectory, relativePath: "visual-trace-ledger.json", value: visualTraceLedger,
@@ -1038,6 +1147,25 @@ function verifyQualificationStreamEvidence(runDirectory, manifestArtifacts) {
   }
 }
 
+function verifyFixtureAuthorityEvidence(runDirectory, manifestArtifacts) {
+  let value;
+  let bytes;
+  try {
+    bytes = readBoundedRegularFile(safeArtifactPath(runDirectory, "fixture-authority.json"), MAX_LEDGER_BYTES);
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail("fixture authority evidence contract is invalid");
+  }
+  if (!validFixtureAuthorityRecord(value)
+      || !bytes.equals(Buffer.from(`${JSON.stringify(value, null, 2)}\n`, "utf8"))) {
+    fail("fixture authority evidence contract is invalid");
+  }
+  const artifact = manifestArtifacts.find(({ role }) => role === "fixture-authority");
+  if (!artifact || artifact.path !== "fixture-authority.json" || artifact.bytes !== bytes.length) {
+    fail("fixture authority evidence contract is invalid");
+  }
+}
+
 export function verifyQualificationArtifactManifest({
   runDirectory: runDirectoryInput,
   requiredArtifacts,
@@ -1094,6 +1222,7 @@ export function verifyQualificationArtifactManifest({
   }
   assertQualificationFileSet(runDirectory, exactRequiredArtifacts);
   verifyQualificationStreamEvidence(runDirectory, manifest.artifacts);
+  verifyFixtureAuthorityEvidence(runDirectory, manifest.artifacts);
   return { schemaVersion: SCHEMA_VERSION, files: manifest.artifacts.length, manifestSha256: observedHash };
 }
 

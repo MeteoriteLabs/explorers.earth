@@ -21,6 +21,7 @@ import {
   readFixtureMusicEnvironment,
   rotateFixtureMusicAuthority,
   withAllFixtureMusicSecretsCleanup,
+  withRetiredFixtureMusicAuthority,
 } from "./music-fixture-secret.ts";
 import {
   readSecureMusicSecretFile,
@@ -1411,10 +1412,15 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
         composeProject: parsed.confirmProject,
         confirmation: parsed.confirmReset,
       });
-      const artifacts = await removeRetainedFixtureVolumes(id);
-      return { status: "success", phase: "db-reset", exitCode: EXIT.success, artifacts };
+      return await withRetiredFixtureMusicAuthority(root, async () => {
+        const artifacts = await removeRetainedFixtureVolumes(id);
+        return { status: "success", phase: "db-reset", exitCode: EXIT.success, artifacts };
+      });
     }
-    return await withAllFixtureMusicSecretsCleanup(root, async () => {
+    const withFixtureRetirement = parsed.command === "db:reset"
+      ? withRetiredFixtureMusicAuthority
+      : withAllFixtureMusicSecretsCleanup;
+    return await withFixtureRetirement(root, async () => {
       const destructive = parsed.command === "db:reset" || parsed.volumes;
       if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
       if (parsed.command === "db:reset") {

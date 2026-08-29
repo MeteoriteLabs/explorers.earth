@@ -13,6 +13,7 @@
     "music:bootstrap",
     "music:doctor",
     "music:up",
+    "music:fixture:authority:attest",
     "music:test:smoke",
     "music:test:all",
     "music:test:fast",

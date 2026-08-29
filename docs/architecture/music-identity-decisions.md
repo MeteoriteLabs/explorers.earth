@@ -168,6 +168,16 @@ to operator policy, then externally discard and recreate the disposable
 worktree from a clean checkout; never copy ignored fixture authority into the
 replacement checkout.
 
+Bootstrap safety uses a narrower read-only retired-authority oracle. It accepts
+only a missing pointer or owned zero-byte pointer tombstone while the complete
+recognized inventory is absent/zero, and rejects references, raw or malformed
+bytes, populated/mixed inventories, unreadable entries, and symlinks. Its
+versioned result contains only the allowlisted state, boolean, and zero-count
+fields. `db:reset` re-attests this condition after fixture-only retirement and
+volume removal. The public live runner invokes the exact fixed-root command
+again before marking lifecycle attempted or calling bootstrap, and retains the
+typed command/cwd/exit/schema result without raw child output.
+
 ## Revisit when
 
 - Music should be created only on first use instead of after onboarding.

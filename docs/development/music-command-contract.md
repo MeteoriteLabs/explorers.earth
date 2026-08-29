@@ -25,7 +25,8 @@ bare `node`.
 Root commands: `music:bootstrap`, `music:doctor`, `music:up`,
 `music:test:smoke`, `music:test:all`, `music:down`, `music:db:status`,
 `music:db:migrate`, `music:db:verify`, `music:db:reset`, and
-`music:fixtures:capture`.
+`music:fixtures:capture`. The read-only root command
+`music:fixture:authority:attest` accepts no arguments or caller-selected path.
 
 `music:bootstrap` creates only disposable secrets in ignored `.env.music.test`;
 it never requests payment or production API credentials. A raw pre-generation
@@ -68,6 +69,15 @@ policy, then externally discard and recreate the disposable worktree from a
 clean checkout; never copy ignored fixture authority into the replacement
 checkout. Do not manually delete or reinterpret an authority leaf.
 
+The retired-authority oracle accepts only pointer absence or an owned zero-byte
+pointer tombstone after proving every recognized credential, generation,
+journal, temporary, and pointer leaf is absent or zero bytes. It rejects a
+supported reference, raw/nonempty or malformed pointer, populated or ambiguous
+inventory, unreadable entry, and any symlink at a recognized authority path.
+Success emits only `music-fixture-authority-attestation/v1` with the exact fields
+`schemaVersion`, `state`, `safeToBootstrap`, and `usableRecords`; it contains no
+path, filename, raw error, or authority material.
+
 `music:down` retains volumes. Volume deletion requires `--volumes --confirm-project
 explorers-music-fixture`; reset additionally requires `--mode fixture` and the
 same confirmation. Before cleanup, the CLI renders the Compose model, resolves
@@ -94,6 +104,9 @@ Reset additionally requires `--mode fixture --target test --confirm-project
 explorers-music-fixture --confirm-reset "RESET
 explorers-music-fixture/music_fixture"`. It verifies the labeled Compose
 resources before removing only that project's disposable volumes.
+Both the already-retired and supported-authority `db:reset` paths retire only
+the authenticated fixture bundle, then run the same retired-authority oracle
+before returning success. Removing volumes alone is never reset success.
 
 `music:fixtures:capture --mode live --format json` requires both
 `LIVE_STRAPI_URL` and `LIVE_STRAPI_READ_ONLY_CREDENTIAL`, then remains blocked

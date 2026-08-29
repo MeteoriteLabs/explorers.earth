@@ -109,6 +109,7 @@ const AUTHORITATIVE_QUALIFICATION_STREAMS = [
 ] as const;
 const REQUIRED_QUALIFICATION_ARTIFACTS = [
   ...AUTHORITATIVE_QUALIFICATION_STREAMS.map(({ role, path }) => ({ role, path })),
+  { role: "fixture-authority", path: "fixture-authority.json" },
   { role: "analytics-ledger", path: "analytics-events.jsonl" },
   { role: "visual-trace-ledger", path: "visual-trace-ledger.json" },
   { role: "docker-inspection", path: "docker-inspection.json" },
@@ -116,6 +117,20 @@ const REQUIRED_QUALIFICATION_ARTIFACTS = [
   { role: "restoration-record", path: "restoration.json" },
   { role: "evidence", path: "evidence.json" },
 ] as const;
+const SAFE_FIXTURE_AUTHORITY_GATE = Object.freeze({
+  schemaVersion: "explorers-public-fixture-authority/v1",
+  status: "accepted",
+  command: ["npm", "run", "--silent", "music:fixture:authority:attest"],
+  cwd: "<repository>",
+  exitCode: 0,
+  termination: "exited",
+  attestation: {
+    schemaVersion: "music-fixture-authority-attestation/v1",
+    state: "tombstone",
+    safeToBootstrap: true,
+    usableRecords: 0,
+  },
+});
 const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
   schemaVersion: "explorers-public-visual-trace-ledger/v1",
   status: "none-retained",
@@ -144,6 +159,7 @@ function seededQualificationEvidence() {
 
 function seededQualificationArtifactContent(role: string) {
   if (role === "visual-trace-ledger") return NONE_RETAINED_VISUAL_LEDGER;
+  if (role === "fixture-authority") return `${JSON.stringify(SAFE_FIXTURE_AUTHORITY_GATE, null, 2)}\n`;
   if (role === "evidence") return seededQualificationEvidence();
   return "abc";
 }
@@ -284,11 +300,22 @@ function writeLifecycleContractShims(sandbox: string) {
   mkdirSync(binDirectory);
   writeFileSync(fakeNpmPath, [
     'import { appendFileSync, existsSync, rmSync, writeFileSync } from "node:fs";',
+    'const authority = process.argv.includes("music:fixture:authority:attest");',
+    'const scenario = process.env.FAKE_LIFECYCLE_SCENARIO;',
+    'if (authority) {',
+    '  appendFileSync(process.env.FAKE_LIFECYCLE_LOG, "authority\\n");',
+    '  if (scenario === "authority-credential") {',
+    '    process.stdout.write(JSON.stringify({ schemaVersion: "music-fixture-authority-attestation/v1", state: "tombstone", safeToBootstrap: true, usableRecords: 0, password: process.env.FAKE_PRIVATE_VALUE }) + "\\n");',
+    '    process.stderr.write(`path=/private/${process.env.FAKE_PRIVATE_VALUE}/authority.log\\n`);',
+    '  } else {',
+    '    process.stdout.write(JSON.stringify({ schemaVersion: "music-fixture-authority-attestation/v1", state: "tombstone", safeToBootstrap: true, usableRecords: 0 }) + "\\n");',
+    '  }',
+    '  process.exit(0);',
+    '}',
     'const action = ["bootstrap", "up", "down"].find((candidate) => process.argv.includes(candidate));',
     'appendFileSync(process.env.FAKE_LIFECYCLE_LOG, `${action}\n`);',
     'process.stdout.write(`workspace=${process.cwd()} Bearer ${process.env.FAKE_PRIVATE_VALUE}\n${"bounded-child-output".repeat(600)}`);',
     'process.stderr.write(`credential=${process.env.FAKE_PRIVATE_VALUE} path=/private/fixture/lifecycle.log\n`);',
-    'const scenario = process.env.FAKE_LIFECYCLE_SCENARIO;',
     'if (action === "bootstrap") {',
     '  if (scenario === "bootstrap-partial") writeFileSync(process.env.FAKE_RESOURCE_MARKER, "partial");',
     '  if (scenario.startsWith("bootstrap-")) process.exit(1);',
@@ -1617,7 +1644,7 @@ test("developer fixture command prints a sanitized, versioned dry-run contract",
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
     ], { cwd: sandbox, encoding: "utf8", windowsHide: true });
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
-    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 14, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 15, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
     expect(JSON.parse(readFileSync(join(runDirectory, "analytics-events.jsonl"), "utf8"))).toEqual({
       schemaVersion: "explorers-public-analytics-ledger/v1",
       status: "unavailable",
@@ -1700,6 +1727,69 @@ test("qualification run allocation refuses a reused run ID before any fixture ac
     expect(second.stderr).toBe("Live public Music E2E artifact initialization failed; details redacted.\n");
     expect(`${second.stdout}\n${second.stderr}`).not.toContain(sandbox);
     expect(`${second.stdout}\n${second.stderr}`).not.toContain("exclusive-contract-private-token");
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("fresh live runner rejects hostile fixture authority before bootstrap without attempting lifecycle teardown", () => {
+  // The operator has separately proved the reset removed the reviewed volumes
+  // and freed all five ports. A failed final authority gate is therefore a
+  // pre-bootstrap refusal: no fixture command, service, or down is authorized.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-authority-gate-contract-"));
+  try {
+    const runId = "authority-gate-rejection-contract";
+    const { fakeNpmPath, fakeDockerHookPath, binDirectory } = writeLifecycleContractShims(sandbox);
+    const privateValue = "authority-gate-private-value";
+    const environment = lifecycleFreshProcessEnvironment({
+      sandbox,
+      runId,
+      fakeNpmPath,
+      fakeDockerHookPath,
+      binDirectory,
+      scenario: "authority-credential",
+      dockerMode: "clean",
+      privateValue,
+    });
+    const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+      cwd: sandbox,
+      env: environment,
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
+    const retainedAuthority = JSON.parse(readFileSync(join(runDirectory, "fixture-authority.json"), "utf8"));
+
+    expect(result.status, `${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).toBe(4);
+    expect(readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/)).toEqual(["authority"]);
+    expect(existsSync(environment.FAKE_RESOURCE_MARKER)).toBe(false);
+    expect(evidence).toMatchObject({
+      stage: "fixture-authority-gate-failed",
+      result: "failed",
+      cleanup: "not-required-safe",
+      exitCode: 4,
+      lifecycleCommands: [],
+    });
+    expect(retainedAuthority).toEqual({
+      schemaVersion: "explorers-public-fixture-authority/v1",
+      status: "rejected",
+      command: ["npm", "run", "--silent", "music:fixture:authority:attest"],
+      cwd: "<repository>",
+      exitCode: 0,
+      termination: "exited",
+      attestation: null,
+    });
+    expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}\n${JSON.stringify(retainedAuthority)}`)
+      .not.toContain(privateValue);
+    expect(`${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}\n${JSON.stringify(retainedAuthority)}`)
+      .not.toContain("/private/");
+    expect(evidence.streams.every(({ status }: { status: string }) => status === "unavailable")).toBe(true);
+
+    const verified = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
+    ], { cwd: sandbox, encoding: "utf8", windowsHide: true });
+    expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -1793,7 +1883,7 @@ for (const lifecycleCase of [
       expect(`${result.stdout}\n${result.stderr}`).not.toContain(privateValue);
       expect(`${result.stdout}\n${result.stderr}`).not.toContain(sandbox);
       expect(readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/))
-        .toEqual(lifecycleCase.expectedStages.map((stage) => stage.replace("fixture-", "")));
+        .toEqual(["authority", ...lifecycleCase.expectedStages.map((stage) => stage.replace("fixture-", ""))]);
       expect(existsSync(environment.FAKE_RESOURCE_MARKER)).toBe(false);
 
       expect(evidence).toMatchObject({
@@ -1862,7 +1952,7 @@ test("fresh runner routes asynchronous state-service exit through one exact clea
     const lifecycleActions = readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/);
 
     expect(result.status, `${result.stdout}\n${result.stderr}\n${JSON.stringify(evidence)}`).toBe(5);
-    expect(lifecycleActions).toEqual(["bootstrap", "up", "down"]);
+    expect(lifecycleActions).toEqual(["authority", "bootstrap", "up", "down"]);
     expect(lifecycleActions.filter((action) => action === "down")).toHaveLength(1);
     expect(evidence).toMatchObject({
       stage: "state-service-exit",
@@ -1935,7 +2025,7 @@ test("qualification artifact CLI creates and verifies one canonical manifest wit
     expect(readFileSync(join(runDirectory, "manifest.sha256"), "utf8")).toBe(`${expectedManifestHash}\n`);
     expect(JSON.parse(created.stdout)).toEqual({
       schemaVersion: "explorers-public-qualification-artifacts/v1",
-      files: 14,
+      files: 15,
       manifestSha256: expectedManifestHash,
     });
 
@@ -1995,7 +2085,7 @@ test("qualification visual/trace ledger makes every retained relative file manif
       cwd: process.cwd(), encoding: "utf8", windowsHide: true,
     });
     expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 16 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 17 });
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -2099,6 +2189,23 @@ const qualificationManifestTamperCases: Array<{
       [manifest.artifacts[0], manifest.artifacts[1]] = [manifest.artifacts[1], manifest.artifacts[0]];
     }),
   },
+  {
+    name: "a rehashed reference-state fixture authority record",
+    expected: "fixture authority evidence contract is invalid",
+    mutate: (runDirectory) => {
+      const value = {
+        ...SAFE_FIXTURE_AUTHORITY_GATE,
+        attestation: { ...SAFE_FIXTURE_AUTHORITY_GATE.attestation, state: "reference" },
+      };
+      const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`, "utf8");
+      writeFileSync(join(runDirectory, "fixture-authority.json"), bytes);
+      rewriteQualificationManifest(runDirectory, (manifest) => {
+        const artifact = manifest.artifacts.find(({ role }) => role === "fixture-authority")!;
+        artifact.bytes = bytes.length;
+        artifact.sha256 = createHash("sha256").update(bytes).digest("hex");
+      });
+    },
+  },
 ];
 
 for (const contract of qualificationManifestTamperCases) {
@@ -2178,6 +2285,153 @@ test("qualification logs are exclusively written after bounded path and secret s
     })).toThrow("qualification artifact already exists");
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("fixture authority gate invokes the exact fixed-root command and accepts only the strict safe attestation schema", async () => {
+  // Production break caught: the live runner bootstraps immediately after the
+  // operator reset, without a typed post-reset fixture-authority attestation.
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const calls: Array<{ command: string; args: string[]; options: Record<string, unknown> }> = [];
+  const stdout = `${JSON.stringify({
+    schemaVersion: "music-fixture-authority-attestation/v1",
+    state: "absent",
+    safeToBootstrap: true,
+    usableRecords: 0,
+  })}\n`;
+  const captured = qualificationArtifacts.captureQualificationFixtureAuthority({
+    processExecPath: "node-runtime",
+    npmExecPath: "npm-cli",
+    cwd: process.cwd(),
+    retainedCwd: "<repository>",
+    environment: { FIXTURE_TEST: "1" },
+    spawn: (command: string, args: string[], options: Record<string, unknown>) => {
+      calls.push({ command, args, options });
+      return { status: 0, signal: null, stdout, stderr: "" };
+    },
+  });
+
+  expect(captured).toEqual({
+    status: 0,
+    record: {
+      schemaVersion: "explorers-public-fixture-authority/v1",
+      status: "accepted",
+      command: ["npm", "run", "--silent", "music:fixture:authority:attest"],
+      cwd: "<repository>",
+      exitCode: 0,
+      termination: "exited",
+      attestation: {
+        schemaVersion: "music-fixture-authority-attestation/v1",
+        state: "absent",
+        safeToBootstrap: true,
+        usableRecords: 0,
+      },
+    },
+  });
+  expect(calls).toEqual([{
+    command: "node-runtime",
+    args: ["npm-cli", "run", "--silent", "music:fixture:authority:attest"],
+    options: {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { FIXTURE_TEST: "1" },
+      maxBuffer: 8 * 1024,
+      windowsHide: true,
+    },
+  }]);
+});
+
+test("fixture authority gate rejects and redacts hostile credential-bearing malformed or ambiguous output", async () => {
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const privateValue = "authority-private-value-must-not-survive";
+  const hostileOutputs = [
+    `${JSON.stringify({
+      schemaVersion: "music-fixture-authority-attestation/v1",
+      state: "tombstone",
+      safeToBootstrap: true,
+      usableRecords: 0,
+      password: privateValue,
+    })}\n`,
+    `${JSON.stringify({
+      schemaVersion: "music-fixture-authority-attestation/v1",
+      state: "reference",
+      safeToBootstrap: true,
+      usableRecords: 0,
+    })}\n`,
+    "not-json\n",
+    `${JSON.stringify({
+      schemaVersion: "music-fixture-authority-attestation/v1",
+      state: "tombstone",
+      safeToBootstrap: true,
+      usableRecords: 0,
+    })}\n${JSON.stringify({ path: `/private/${privateValue}` })}\n`,
+  ];
+
+  for (const stdout of hostileOutputs) {
+    const captured = qualificationArtifacts.captureQualificationFixtureAuthority({
+      processExecPath: "node-runtime",
+      npmExecPath: "npm-cli",
+      cwd: process.cwd(),
+      retainedCwd: "<repository>",
+      environment: { FIXTURE_TEST: "1" },
+      spawn: () => ({
+        status: 0,
+        signal: null,
+        stdout,
+        stderr: `credential=${privateValue} path=/private/${privateValue}/authority.log`,
+      }),
+    });
+    expect(captured).toEqual({
+      status: 1,
+      record: {
+        schemaVersion: "explorers-public-fixture-authority/v1",
+        status: "rejected",
+        command: ["npm", "run", "--silent", "music:fixture:authority:attest"],
+        cwd: "<repository>",
+        exitCode: 0,
+        termination: "exited",
+        attestation: null,
+      },
+    });
+    expect(JSON.stringify(captured)).not.toContain(privateValue);
+    expect(JSON.stringify(captured)).not.toContain("/private/");
+  }
+});
+
+test("fixture authority gate blocks nonzero signal and spawn-error terminal states without raw diagnostics", async () => {
+  const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
+  const privateValue = "terminal-authority-private-value";
+  const cases = [
+    { name: "nonzero", result: { status: 5, signal: null, stdout: privateValue, stderr: privateValue }, exitCode: 5, termination: "exited" },
+    { name: "signal", result: { status: null, signal: "SIGTERM", stdout: privateValue, stderr: privateValue }, exitCode: null, termination: "signaled" },
+    { name: "spawn-error", result: undefined, exitCode: null, termination: "spawn-error" },
+  ] as const;
+
+  for (const contract of cases) {
+    const captured = qualificationArtifacts.captureQualificationFixtureAuthority({
+      processExecPath: "node-runtime",
+      npmExecPath: "npm-cli",
+      cwd: process.cwd(),
+      retainedCwd: "<repository>",
+      environment: { FIXTURE_TEST: "1" },
+      spawn: () => {
+        if (contract.result === undefined) throw new Error(privateValue);
+        return contract.result;
+      },
+    });
+    expect(captured).toEqual({
+      status: 1,
+      record: {
+        schemaVersion: "explorers-public-fixture-authority/v1",
+        status: "rejected",
+        command: ["npm", "run", "--silent", "music:fixture:authority:attest"],
+        cwd: "<repository>",
+        exitCode: contract.exitCode,
+        termination: contract.termination,
+        attestation: null,
+      },
+    });
+    expect(JSON.stringify(captured), contract.name).not.toContain(privateValue);
   }
 });
 
@@ -2327,6 +2581,7 @@ test("authoritative per-source streams preserve later up down and state output a
       workspaceRoot: process.cwd(),
       knownSecrets: [privateValue],
       streamArtifacts,
+      fixtureAuthority: SAFE_FIXTURE_AUTHORITY_GATE,
       analyticsLedger: {
         schemaVersion: "explorers-public-analytics-ledger/v1",
         status: "unavailable",
@@ -2385,7 +2640,7 @@ test("authoritative per-source streams preserve later up down and state output a
       evidence,
     });
 
-    expect(finalized).toMatchObject({ files: 14, verified: true });
+    expect(finalized).toMatchObject({ files: 15, verified: true });
     const retainedEvidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
     expect(retainedEvidence.streams).toHaveLength(8);
     for (const definition of AUTHORITATIVE_QUALIFICATION_STREAMS) {
@@ -2714,6 +2969,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
           ? { source, stream, status: "unavailable", observedBytes: 0, chunks: [], truncated: false }
           : { source, stream, status: "captured", observedBytes: Buffer.byteLength(value), chunks: [value], truncated: false };
       }),
+      fixtureAuthority: SAFE_FIXTURE_AUTHORITY_GATE,
       analyticsLedger: {
         schemaVersion: "explorers-public-analytics-ledger/v1",
         status: "unavailable",
@@ -2789,7 +3045,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
     const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
     let finalized: { files: number; manifestSha256: string; verified: boolean } | undefined;
     expect(() => { finalized = qualificationArtifacts.finalizeQualificationRunArtifacts(input); }).not.toThrow();
-    expect(finalized).toEqual({ files: 14, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
+    expect(finalized).toEqual({ files: 15, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
     expect(readFileSync(join(runDirectory, "logs", "fixture-bootstrap.stdout.log"), "utf8"))
       .toBe("guarded run stopped before mutation callback\n");
     expect(readFileSync(join(runDirectory, "logs", "fixture-bootstrap.stderr.log"), "utf8"))
@@ -2808,7 +3064,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
     ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
-    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 14, manifestSha256: finalized!.manifestSha256 });
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 15, manifestSha256: finalized!.manifestSha256 });
 
     const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
     mkdirSync(unsafeRunDirectory);
@@ -2846,6 +3102,8 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
   const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
   const testingGuide = readFileSync("../docs/testing.md", "utf8");
+  expect(rootPackage.scripts["music:fixture:authority:attest"])
+    .toBe("tsx tunes/scripts/music-fixture-authority-attest.ts");
   expect(rootPackage.scripts["music:test:public-e2e"]).toContain("music:test:public-e2e");
   expect(clientPackage.scripts["music:test:public-e2e"]).toContain("music-public-e2e.mjs live");
   expect(clientPackage.scripts["music:test:public-fast"]).toContain("music-public-e2e.mjs fast");
@@ -2861,6 +3119,10 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(runner).toContain("assessQualificationCleanup");
   expect(runner).toContain("buildQualificationOutcomeRecords");
   expect(runner).toContain("finalizeQualificationRunArtifacts");
+  expect(runner.indexOf("captureQualificationFixtureAuthority({"))
+    .toBeLessThan(runner.indexOf("fixtureLifecycleAttempted = true"));
+  expect(runner.indexOf("captureQualificationFixtureAuthority({"))
+    .toBeLessThan(runner.indexOf('runLifecycleCommand("fixture-bootstrap")'));
   expect(runner).toMatch(/artifactPaths:\s*\[[^\]]*restoreEvidencePath[^\]]*authStatePath[^\]]*profileStorageStatePath[^\]]*\]/s);
   expect(runner).toContain("writeReport: async () => undefined");
   expect(runner).not.toContain("function writeLiveReport");
@@ -3594,6 +3856,7 @@ test("fresh live runner lets verified restoration finish before a state-service 
       'childProcess.spawn = () => child;',
       'childProcess.spawnSync = (file, args = []) => {',
       '  const joined = args.join(" ");',
+      '  if (joined.includes("music:fixture:authority:attest")) { append("authority"); return { status: 0, stdout: `${JSON.stringify({ schemaVersion: "music-fixture-authority-attestation/v1", state: "tombstone", safeToBootstrap: true, usableRecords: 0 })}\n`, stderr: "", signal: null, error: undefined }; }',
       '  const action = ["bootstrap", "up", "down"].find((candidate) => joined.includes(`music-cli -- ${candidate}`));',
       '  if (action) { append(action); return { status: 0, stdout: "", stderr: "", signal: null, error: undefined }; }',
       '  if (String(file) === "git") return { status: 0, stdout: `${"a".repeat(40)}\n`, stderr: "", signal: null, error: undefined };',
