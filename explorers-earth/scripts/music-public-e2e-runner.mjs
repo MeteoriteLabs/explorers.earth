@@ -1,4 +1,5 @@
 import { prepareMusicFixtureArtifacts, stopMusicFixture } from "./music-fixture-cleanup.mjs";
+import { LIVE_JOURNEY_MANIFEST_VERSION, validateLiveJourneyEvidence } from "./music-public-live-preflight.mjs";
 
 function restorationHash(restoration) {
   if (!restoration?.ok || typeof restoration.beforeHash !== "string" || restoration.beforeHash.length === 0
@@ -26,12 +27,17 @@ export async function runMusicFixtureOrchestration({
 }) {
   let setupOk = false;
   let executionStatus = 4;
+  let executionOutcome;
   try {
     prepareMusicFixtureArtifacts(artifacts);
     setupOk = true;
     try {
-      const status = await execute();
-      executionStatus = Number.isInteger(status) ? status : 1;
+      const result = await execute();
+      if (Number.isInteger(result)) executionStatus = result;
+      else if (result && typeof result === "object" && Number.isInteger(result.status)) {
+        executionOutcome = result;
+        executionStatus = result.status;
+      } else executionStatus = 1;
     } catch {
       writeStderr("Live public Music E2E execution failed; details redacted.\n");
     }
@@ -58,9 +64,16 @@ export async function runMusicFixtureOrchestration({
     }
   }
 
-  const allEvidenceVerified = parsedEvidence.every((entry) => entry?.cleanup === "restored"
+  const legacyEvidenceVerified = parsedEvidence.every((entry) => entry?.cleanup === "restored"
     && typeof entry.beforeHash === "string" && entry.beforeHash.length > 0 && entry.beforeHash === entry.afterHash);
-  let cleanup = initialHash && allEvidenceVerified && !evidenceParseFailed ? "restored" : (initialHash ? "evidence-missing" : "restore-failed");
+  const preflightRefusal = executionOutcome?.status === 4 && executionOutcome.preflightDiagnostics;
+  const journeyEvidence = executionOutcome?.executionReport
+    ? validateLiveJourneyEvidence({ executionReport: executionOutcome.executionReport, records: parsedEvidence })
+    : undefined;
+  const evidenceVerified = preflightRefusal
+    ? parsedEvidence.length === 0
+    : (executionOutcome ? Boolean(journeyEvidence?.ok) : legacyEvidenceVerified);
+  let cleanup = initialHash && evidenceVerified && !evidenceParseFailed ? "restored" : (initialHash ? "evidence-missing" : "restore-failed");
   let teardownStatus = 1;
   try { teardownStatus = stopMusicFixture(teardown); } catch { teardownStatus = 1; }
   if (teardownStatus !== 0) cleanup = "teardown-failed";
@@ -72,7 +85,11 @@ export async function runMusicFixtureOrchestration({
     ...baseReport,
     result: executionStatus === 0 && cleanup === "restored" ? "passed" : "failed",
     cleanup,
-    restoreHashes,
+    ...(executionOutcome ? {} : { restoreHashes }),
+    finalRestore: initialHash,
+    ...(journeyEvidence?.ok ? { manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION, journeys: journeyEvidence.journeyResults } : {}),
+    ...(journeyEvidence && !journeyEvidence.ok ? { journeyDiagnostics: journeyEvidence } : {}),
+    ...(preflightRefusal ? { preflightDiagnostics: executionOutcome.preflightDiagnostics } : {}),
   };
   try {
     await writeReport(report);

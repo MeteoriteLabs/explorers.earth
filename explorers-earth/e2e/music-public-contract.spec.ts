@@ -433,6 +433,14 @@ test.afterEach(async ({ page }, testInfo) => {
   }
 });
 
+const permissionJourneyIds = {
+  allowSongRequests: "music.owner-guest.permission.allow-song-requests",
+  allowGuestPlayOnDevice: "music.owner-guest.permission.allow-guest-play-on-device",
+  allowPlaylistSharing: "music.owner-guest.permission.allow-playlist-sharing",
+  allowRecentlyPlayedVisibility: "music.owner-guest.permission.allow-recently-played-visibility",
+  allowQueueVisibility: "music.owner-guest.permission.allow-queue-visibility",
+} as const;
+
 for (const control of [
   "allowSongRequests",
   "allowGuestPlayOnDevice",
@@ -453,6 +461,7 @@ for (const control of [
     const guest = await browser.newContext();
     try {
       await withRestoredMusicFixture({
+        journeyId: permissionJourneyIds[control],
         snapshot: async () => (await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } })).json(),
         cleanupNamespace: async () => undefined,
         restore: async (snapshot) => {
@@ -494,7 +503,7 @@ liveTest("live guest reconnect refetches canonical state after transport interru
   const credential = await authenticateOwner(page);
   const guest = await browser.newContext();
   try {
-    await withRestoredMusicFixture({ snapshot: async () => ({}), cleanupNamespace: async () => undefined, restore: async () => undefined }, async () => {
+    await withRestoredMusicFixture({ journeyId: "music.owner-guest.reconnect", snapshot: async () => ({}), cleanupNamespace: async () => undefined, restore: async () => undefined }, async () => {
       const initialControlsResponse = await page.request.get(`${fixtureOrigin}/api/music/guest-controls`, { headers: { Authorization: credential } });
       const initialControls = await initialControlsResponse.json() as GuestControls;
       const beforeResponse = await publicResource(page, "qualification-public");
@@ -528,6 +537,7 @@ liveTest("live guest request accepts once, replays, conflicts, rate-limits, and 
   const credential = await authenticateOwner(page);
   let originalSongIds = new Set<number>();
   await withRestoredMusicFixture({
+    journeyId: "music.guest.request-lifecycle",
     snapshot: async () => {
       const [dashboard, controls] = await Promise.all([
         page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } }),
@@ -593,6 +603,7 @@ liveTest("live guest playback remains isolated while queue and player revisions 
   const guestB = await browser.newContext();
   try {
     await withRestoredMusicFixture({
+      journeyId: "music.guest.playback-second-guest",
       snapshot: async () => {
         const dashboard = await page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: ownerCredential } });
         const body = await dashboard.json() as Record<string, unknown>;
@@ -654,6 +665,7 @@ liveTest("owner publication, playlist visibility, and playlist-sharing settings 
   ownerState(page).initialControls = await initialControlsResponse.json() as GuestControls;
 
   await withRestoredMusicFixture({
+    journeyId: "music.owner.publication-playlist-sharing",
     snapshot: async () => {
       const [dashboardResponse, controlsResponse, playlistsResponse] = await Promise.all([
         page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } }),

@@ -21,7 +21,536 @@ import {
 } from "./setup/music";
 import { stopMusicFixture } from "../scripts/music-fixture-cleanup.mjs";
 import { runMusicFixtureOrchestration } from "../scripts/music-public-e2e-runner.mjs";
+import {
+  LIVE_JOURNEY_MANIFEST,
+  LIVE_JOURNEY_MANIFEST_VERSION,
+  LIVE_JOURNEY_RESULT_VERSION,
+  buildProfileCoveringRows,
+  canonicalEvidenceHash,
+  classifyLivePreflight,
+  profileFactorPairs,
+  resolveDeclaredTsxCli,
+  validateLiveJourneyEvidence,
+} from "../scripts/music-public-live-preflight.mjs";
 import playwrightConfig from "../playwright.config";
+
+const EXPECTED_LIVE_JOURNEYS = [
+  { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
+  { id: "music.owner.mobile-workspace", title: "full owner workspace remains usable at a mobile viewport", source: "e2e/music-fixture-fullstack.spec.ts" },
+  { id: "music.owner-guest.permission.allow-song-requests", title: "live owner/guest toggle allowSongRequests restores the exact permission snapshot", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.owner-guest.permission.allow-guest-play-on-device", title: "live owner/guest toggle allowGuestPlayOnDevice restores the exact permission snapshot", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.owner-guest.permission.allow-playlist-sharing", title: "live owner/guest toggle allowPlaylistSharing restores the exact permission snapshot", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.owner-guest.permission.allow-recently-played-visibility", title: "live owner/guest toggle allowRecentlyPlayedVisibility restores the exact permission snapshot", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.owner-guest.permission.allow-queue-visibility", title: "live owner/guest toggle allowQueueVisibility restores the exact permission snapshot", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.owner-guest.reconnect", title: "live guest reconnect refetches canonical state after transport interruption", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.guest.request-lifecycle", title: "live guest request accepts once, replays, conflicts, rate-limits, and owner revokes it", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.guest.playback-second-guest", title: "live guest playback remains isolated while queue and player revisions refetch", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.owner.publication-playlist-sharing", title: "owner publication, playlist visibility, and playlist-sharing settings persist and control fixture public access", source: "e2e/music-public-contract.spec.ts" },
+  ...Array.from({ length: 6 }, (_, index) => ({
+    id: `profile.owner.pairwise.batch-${String(index + 1).padStart(2, "0")}`,
+    title: `publishes pairwise matrix batch ${index + 1}/6 and restores exact raw social_media`,
+    source: "e2e/profile-theme.spec.ts",
+  })),
+] as const;
+
+function playwrightJourneyReport(
+  entries: ReadonlyArray<{ id: string; title: string; source: string }> = EXPECTED_LIVE_JOURNEYS,
+  options: { skippedId?: string; resultStatus?: string } = {},
+) {
+  const spec = (entry: { id: string; title: string; source: string }) => ({
+    title: entry.title,
+    file: entry.source.replace(/^e2e\//, ""),
+    tests: [{
+      annotations: entry.id === options.skippedId ? [{ type: "skip", description: "Bearer should-not-survive" }] : [],
+      expectedStatus: "passed",
+      results: options.resultStatus ? [{ status: options.resultStatus }] : [],
+      status: options.resultStatus ?? "skipped",
+    }],
+  });
+  const fixture = entries.filter(({ source }) => source.endsWith("music-fixture-fullstack.spec.ts"));
+  const music = entries.filter(({ source }) => source.endsWith("music-public-contract.spec.ts"));
+  const profile = entries.filter(({ source }) => source.endsWith("profile-theme.spec.ts"));
+  return {
+    suites: [
+      { title: "music-fixture-fullstack.spec.ts", file: "music-fixture-fullstack.spec.ts", specs: fixture.map(spec) },
+      { title: "music-public-contract.spec.ts", file: "music-public-contract.spec.ts", specs: music.map(spec) },
+      {
+        title: "profile-theme.spec.ts",
+        file: "profile-theme.spec.ts",
+        suites: [{ title: "approved live profile writes", specs: profile.map(spec) }],
+      },
+    ],
+  };
+}
+
+function preflightChild(status: number, stdout = "", stderr = "") {
+  return { status, stdout, stderr, signal: null, error: undefined };
+}
+
+function validJourneyEvidenceRecords() {
+  const profileRows = buildProfileCoveringRows();
+  const profileHash = canonicalEvidenceHash({ profile: "restored", order: ["music", "places"] });
+  return EXPECTED_LIVE_JOURNEYS.map((entry, index) => ({
+    version: LIVE_JOURNEY_RESULT_VERSION,
+    manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
+    ...entry,
+    status: "passed",
+    skipReason: null,
+    cleanup: "restored",
+    beforeHash: index < 11 ? String(index + 1).padStart(64, "a") : profileHash,
+    afterHash: index < 11 ? String(index + 1).padStart(64, "a") : profileHash,
+    ...(index < 11 ? {} : { rowCount: 12, rows: profileRows.slice((index - 11) * 12, (index - 10) * 12) }),
+  }));
+}
+
+test("live manifest binds exactly 17 collected mutation journeys", () => {
+  expect(LIVE_JOURNEY_MANIFEST_VERSION).toBe("explorers-live-mutation-journeys/v1");
+  expect(LIVE_JOURNEY_RESULT_VERSION).toBe("explorers-live-mutation-journey-result/v1");
+  expect(LIVE_JOURNEY_MANIFEST).toEqual(EXPECTED_LIVE_JOURNEYS);
+
+  const outcome = classifyLivePreflight({
+    authorityResult: preflightChild(0, JSON.stringify({ skipReason: null })),
+    collectionResult: preflightChild(0, JSON.stringify(playwrightJourneyReport())),
+    workspaceRoot: process.cwd(),
+    knownSecrets: [],
+  });
+  expect(outcome).toMatchObject({
+    ok: true,
+    exitCode: 0,
+    manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
+    journeyIds: EXPECTED_LIVE_JOURNEYS.map(({ id }) => id),
+  });
+});
+
+test("live preflight classifier distinguishes authority process, semantic, and collection failures", () => {
+  const goodAuthority = preflightChild(0, JSON.stringify({ skipReason: null }));
+  const goodCollection = preflightChild(0, JSON.stringify(playwrightJourneyReport()));
+  const cases = [
+    {
+      name: "authority process",
+      authorityResult: { ...preflightChild(1, "", "authority child failed"), error: { code: "ENOENT" } },
+      collectionResult: goodCollection,
+      subcheck: "authority-process",
+    },
+    {
+      name: "authority semantic refusal",
+      authorityResult: preflightChild(0, JSON.stringify({ skipReason: "live mutation skipped: incomplete authority" })),
+      collectionResult: goodCollection,
+      subcheck: "authority-semantic",
+    },
+    {
+      name: "collection process",
+      authorityResult: goodAuthority,
+      collectionResult: preflightChild(1, "", "collection child failed"),
+      subcheck: "collection-process",
+    },
+  ] as const;
+
+  for (const entry of cases) {
+    const outcome = classifyLivePreflight({ ...entry, workspaceRoot: process.cwd(), knownSecrets: [] });
+    expect(outcome, entry.name).toMatchObject({
+      ok: false,
+      exitCode: 4,
+      diagnostics: { failureStage: "preflight", subcheck: entry.subcheck },
+    });
+  }
+});
+
+test("live preflight rejects each missing journey plus duplicate, unknown, renamed, reordered, and skipped entries", () => {
+  const classify = (entries: ReadonlyArray<{ id: string; title: string; source: string }>, skippedId?: string) => classifyLivePreflight({
+    authorityResult: preflightChild(0, JSON.stringify({ skipReason: null })),
+    collectionResult: preflightChild(0, JSON.stringify(playwrightJourneyReport(entries, { skippedId }))),
+    workspaceRoot: process.cwd(),
+    knownSecrets: [],
+  });
+
+  for (const missing of EXPECTED_LIVE_JOURNEYS) {
+    const outcome = classify(EXPECTED_LIVE_JOURNEYS.filter(({ id }) => id !== missing.id));
+    expect(outcome, missing.id).toMatchObject({
+      ok: false,
+      exitCode: 4,
+      diagnostics: {
+        failureStage: "preflight",
+        subcheck: "manifest-missing",
+        missingJourneyIds: [missing.id],
+      },
+    });
+  }
+
+  const duplicate = [...EXPECTED_LIVE_JOURNEYS];
+  duplicate.splice(3, 0, EXPECTED_LIVE_JOURNEYS[3]);
+  expect(classify(duplicate)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-duplicate" } });
+
+  const unknown = [...EXPECTED_LIVE_JOURNEYS, {
+    id: "unknown-not-trusted",
+    title: "live unexpected mutation journey",
+    source: "e2e/music-public-contract.spec.ts",
+  }];
+  expect(classify(unknown)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-unknown" } });
+
+  const renamed = EXPECTED_LIVE_JOURNEYS.map((entry, index) => index === 8 ? { ...entry, title: `${entry.title} renamed` } : entry);
+  expect(classify(renamed)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-unknown" } });
+
+  const reordered = [...EXPECTED_LIVE_JOURNEYS];
+  [reordered[3], reordered[4]] = [reordered[4], reordered[3]];
+  expect(classify(reordered)).toMatchObject({ ok: false, diagnostics: { subcheck: "manifest-reordered" } });
+
+  expect(classify(EXPECTED_LIVE_JOURNEYS, EXPECTED_LIVE_JOURNEYS[5].id)).toMatchObject({
+    ok: false,
+    diagnostics: { subcheck: "manifest-skipped", skippedJourneyIds: [EXPECTED_LIVE_JOURNEYS[5].id] },
+  });
+});
+
+test("live preflight diagnostics are bounded, redacted, path-normalized, and allowlisted", () => {
+  const workspaceRoot = process.cwd();
+  const secret = "known-secret-value";
+  const noisy = `${workspaceRoot} Bearer abc.def.ghi access_token=query-secret capability=cap-secret credential: cred-secret access-token="quoted-access-secret" capability='quoted-cap-secret' credential="quoted-cred-secret" ${secret} ${"x".repeat(10_000)}`;
+  const outcome = classifyLivePreflight({
+    authorityResult: preflightChild(1, noisy, noisy),
+    collectionResult: preflightChild(0, ""),
+    workspaceRoot,
+    knownSecrets: [secret],
+  });
+  expect(outcome.ok).toBe(false);
+  if (outcome.ok) return;
+  const diagnostics = outcome.diagnostics;
+  expect(Object.keys(diagnostics).sort()).toEqual([
+    "child",
+    "failureStage",
+    "journeyPresence",
+    "subcheck",
+  ]);
+  expect(Object.keys(diagnostics.child).sort()).toEqual([
+    "errorCode",
+    "signal",
+    "status",
+    "stderr",
+    "stderrBytes",
+    "stderrTruncated",
+    "stdout",
+    "stdoutBytes",
+    "stdoutTruncated",
+  ]);
+  expect(Buffer.byteLength(diagnostics.child.stdout)).toBeLessThanOrEqual(4 * 1024);
+  expect(Buffer.byteLength(diagnostics.child.stderr)).toBeLessThanOrEqual(4 * 1024);
+  expect(diagnostics.child.stdoutBytes).toBeGreaterThan(4 * 1024);
+  expect(diagnostics.child.stderrBytes).toBeGreaterThan(4 * 1024);
+  expect(diagnostics.child.stdoutTruncated).toBe(true);
+  expect(diagnostics.child.stderrTruncated).toBe(true);
+  expect(`${diagnostics.child.stdout}\n${diagnostics.child.stderr}`).toContain("<workspace>");
+  expect(`${diagnostics.child.stdout}\n${diagnostics.child.stderr}`).not.toMatch(/abc\.def\.ghi|query-secret|cap-secret|cred-secret|quoted-access-secret|quoted-cap-secret|quoted-cred-secret|known-secret-value/i);
+  expect(diagnostics.journeyPresence).toEqual(EXPECTED_LIVE_JOURNEYS.map(({ id }) => ({ id, present: false })));
+});
+
+test("live journey evidence requires explicit ordered IDs and exact 72-row 484-pair profile coverage", () => {
+  const profileRows = buildProfileCoveringRows();
+  expect(profileRows).toHaveLength(72);
+  expect(new Set(profileRows.map((row) => JSON.stringify(row))).size).toBe(72);
+  expect(profileFactorPairs(profileRows).size).toBe(484);
+  const hash = canonicalEvidenceHash({ profile: "restored", order: ["music", "places"] });
+  expect(hash).toMatch(/^[a-f0-9]{64}$/);
+
+  const records = validJourneyEvidenceRecords();
+  const executionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" });
+  expect(validateLiveJourneyEvidence({ executionReport, records })).toMatchObject({
+    ok: true,
+    journeyResults: records,
+  });
+
+  const invalidCases = [
+    records.slice(1),
+    [records[0], ...records],
+    [...records.slice(0, 4), records[5], records[4], ...records.slice(6)],
+    [...records.slice(0, 8), { ...records[8], id: "unknown-not-trusted" }, ...records.slice(9)],
+    records.map((record, index) => index === 11 ? { ...record, rows: [profileRows[0], ...profileRows.slice(0, 11)] } : record),
+  ];
+  for (const invalid of invalidCases) expect(validateLiveJourneyEvidence({ executionReport, records: invalid }).ok).toBe(false);
+  expect(validateLiveJourneyEvidence({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { skippedId: EXPECTED_LIVE_JOURNEYS[12].id, resultStatus: "passed" }),
+    records,
+  }).ok).toBe(false);
+});
+
+test("music restoration emits one explicit ID-bound terminal result only after exact restore", async () => {
+  resetMusicRestoreBlockForContractTest();
+  const records: unknown[] = [];
+  let state: unknown = { publication: { mode: "private" }, queue: [] };
+  const result = await withRestoredMusicFixture({
+    journeyId: "music.owner.queue-add",
+    snapshot: async () => structuredClone(state),
+    cleanupNamespace: async () => undefined,
+    restore: async (snapshot) => { state = structuredClone(snapshot); },
+    writeJourneyResult: async (record) => { records.push(record); },
+  }, async () => {
+    state = { publication: { mode: "public" }, queue: ["fixture-song"] };
+    return "journey-value";
+  });
+  expect(result.value).toBe("journey-value");
+  expect(records).toEqual([expect.objectContaining({
+    version: LIVE_JOURNEY_RESULT_VERSION,
+    manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
+    id: "music.owner.queue-add",
+    title: EXPECTED_LIVE_JOURNEYS[0].title,
+    source: EXPECTED_LIVE_JOURNEYS[0].source,
+    status: "passed",
+    skipReason: null,
+    cleanup: "restored",
+    beforeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    afterHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+  })]);
+  expect((records[0] as { beforeHash: string; afterHash: string }).beforeHash)
+    .toBe((records[0] as { beforeHash: string; afterHash: string }).afterHash);
+
+  const failedRecords: unknown[] = [];
+  await expect(withRestoredMusicFixture({
+    journeyId: "music.owner.queue-add",
+    snapshot: async () => ({ publication: { mode: "private" } }),
+    cleanupNamespace: async () => undefined,
+    restore: async () => undefined,
+    writeJourneyResult: async (record) => { failedRecords.push(record); },
+  }, async () => { throw new Error("journey failed"); })).rejects.toThrow("journey failed");
+  expect(failedRecords).toEqual([]);
+});
+
+test("live canonical restoration retains explicit journey identity for terminal evidence", async () => {
+  resetMusicRestoreBlockForContractTest();
+  const environmentKeys = ["MUSIC_E2E_LIVE_WRITE", "MUSIC_E2E_STATE_SERVICE_URL", "MUSIC_E2E_STATE_TOKEN"] as const;
+  const originalEnvironment = Object.fromEntries(environmentKeys.map((key) => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  const baseline = {
+    version: "music-live-account-snapshot/v1",
+    snapshotId: "snapshot-terminal-evidence",
+    publication: { coveredByDatabaseDump: true },
+    guestControls: { coveredByDatabaseDump: true },
+    queue: { coveredByDatabaseDump: true },
+    playlists: { coveredByDatabaseDump: true },
+    requests: { coveredByDatabaseDump: true },
+    profile: { accountDocumentId: "e2e-public-music-evidence-account", publicMusic: true, preferenceRevision: 4, preferenceHash: "b".repeat(64) },
+    database: { namespace: "e2e-public-music-evidence", dumpHash: "a".repeat(64) },
+  };
+  let current: unknown = structuredClone(baseline);
+  const records: unknown[] = [];
+  try {
+    process.env.MUSIC_E2E_LIVE_WRITE = "true";
+    process.env.MUSIC_E2E_STATE_SERVICE_URL = "http://127.0.0.1:55174";
+    process.env.MUSIC_E2E_STATE_TOKEN = "sentinel-state-token";
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/restore")) {
+        current = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(current), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+
+    await withRestoredMusicFixture({
+      journeyId: "music.owner.queue-add",
+      snapshot: async () => { throw new Error("live mode must use the canonical snapshot adapter"); },
+      cleanupNamespace: async () => undefined,
+      restore: async () => { throw new Error("live mode must use the canonical restore adapter"); },
+      writeJourneyResult: async (record) => { records.push(record); },
+    }, async () => { current = { mutated: true }; });
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of environmentKeys) {
+      const value = originalEnvironment[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+  expect(records).toEqual([expect.objectContaining({
+    id: "music.owner.queue-add",
+    cleanup: "restored",
+    beforeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    afterHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+  })]);
+});
+
+test("per-batch profile evidence hashes canonical state and refuses mismatch before writing", async () => {
+  const { recordRestoredProfileJourney } = await import("../scripts/music-public-live-preflight.mjs");
+  const rows = buildProfileCoveringRows().slice(0, 12);
+  const written: unknown[] = [];
+  const before = { social_media: { b: 2, a: 1 }, Feed_Data: ["music", "places"] };
+  const after = { Feed_Data: ["music", "places"], social_media: { a: 1, b: 2 } };
+  const record = await recordRestoredProfileJourney({
+    id: "profile.owner.pairwise.batch-01",
+    before,
+    after,
+    rows,
+    write: async (value) => { written.push(value); },
+  });
+  expect(written).toEqual([record]);
+  expect(record).toMatchObject({
+    id: "profile.owner.pairwise.batch-01",
+    rowCount: 12,
+    rows,
+    beforeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    afterHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  expect(record.beforeHash).toBe(record.afterHash);
+
+  const mismatched: unknown[] = [];
+  await expect(recordRestoredProfileJourney({
+    id: "profile.owner.pairwise.batch-01",
+    before,
+    after: { ...after, Feed_Data: ["places", "music"] },
+    rows,
+    write: async (value) => { mismatched.push(value); },
+  })).rejects.toThrow(/canonical profile restoration mismatch/i);
+  expect(mismatched).toEqual([]);
+});
+
+test("runner propagates typed preflight and terminal journey evidence without inventing an eighteenth journey", async () => {
+  const finalHash = "f".repeat(64);
+  const records = validJourneyEvidenceRecords();
+  const executionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" });
+  const reports: unknown[] = [];
+  const common = {
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: "typed-evidence", lane: "live" },
+    artifacts: {
+      directory: "fixture-artifacts",
+      authPath: "owner-auth.json",
+      storagePath: "profile-storage-state.json",
+      mkdir: () => undefined,
+      write: () => undefined,
+      chmod: () => undefined,
+    },
+    restoreEvidence: {
+      path: "journey-results.jsonl",
+      exists: () => true,
+      read: () => records.map((record) => JSON.stringify(record)).join("\n"),
+    },
+    restore: async () => ({ ok: true, cleanup: "restored", beforeHash: finalHash, afterHash: finalHash }),
+    teardown: {
+      artifactPaths: [],
+      exists: () => false,
+      unlink: () => undefined,
+      stopStateService: () => undefined,
+      down: () => 0,
+    },
+    writeReport: async (report: unknown) => { reports.push(structuredClone(report)); },
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
+  };
+  const successful = await runMusicFixtureOrchestration({
+    ...common,
+    execute: async () => ({ status: 0, executionReport }),
+  });
+  expect(successful.exitCode).toBe(0);
+  expect(successful.report).toMatchObject({
+    result: "passed",
+    cleanup: "restored",
+    manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
+    journeys: records,
+    finalRestore: { cleanup: "restored", beforeHash: finalHash, afterHash: finalHash },
+  });
+  expect(successful.report.journeys).toHaveLength(17);
+  expect(successful.report).not.toHaveProperty("restoreHashes");
+
+  const preflightDiagnostics = {
+    failureStage: "preflight",
+    subcheck: "authority-process",
+    journeyPresence: EXPECTED_LIVE_JOURNEYS.map(({ id }) => ({ id, present: false })),
+  };
+  const preflight = await runMusicFixtureOrchestration({
+    ...common,
+    restoreEvidence: { ...common.restoreEvidence, exists: () => false },
+    execute: async () => ({ status: 4, preflightDiagnostics }),
+  });
+  expect(preflight.exitCode).toBe(4);
+  expect(preflight.report).toMatchObject({
+    result: "failed",
+    cleanup: "restored",
+    preflightDiagnostics,
+    finalRestore: { cleanup: "restored", beforeHash: finalHash, afterHash: finalHash },
+  });
+  expect(preflight.report).not.toHaveProperty("journeys");
+
+  const cleanupFailure = await runMusicFixtureOrchestration({
+    ...common,
+    restoreEvidence: { ...common.restoreEvidence, exists: () => false },
+    execute: async () => ({ status: 4, preflightDiagnostics }),
+    teardown: { ...common.teardown, down: () => 1 },
+  });
+  expect(cleanupFailure.exitCode).toBe(5);
+  expect(cleanupFailure.report.cleanup).toBe("teardown-failed");
+});
+
+test("declared root TSX CLI executes the exact inert authority child from Explorer cwd", () => {
+  const tsxCli = resolveDeclaredTsxCli();
+  expect(tsxCli.replace(/\\/g, "/")).toMatch(/\/node_modules\/tsx\/dist\/cli\.mjs$/);
+  expect(tsxCli.replace(/\\/g, "/")).not.toContain("/explorers-earth/node_modules/");
+  expect(tsxCli.replace(/\\/g, "/")).not.toContain("/tunes/node_modules/");
+  const result = spawnSync(process.execPath, [tsxCli, "-e", "import { musicLiveWriteSkipReason } from './e2e/setup/music.ts'; const skipReason=musicLiveWriteSkipReason(); process.stdout.write(JSON.stringify({skipReason}));"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
+      PLAYWRIGHT_PR_SAFE: "false",
+      MUSIC_E2E_LIVE_WRITE: "true",
+      MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+      MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
+      MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-sentinel-owner",
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-sentinel-account",
+      MUSIC_E2E_SERVICE_ORIGINS: "http://127.0.0.1:55173,http://127.0.0.1:55000,tcp://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55174",
+      MUSIC_E2E_STRAPI_TOKEN: "sentinel-authority-value",
+    },
+  });
+  expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  expect(JSON.parse(result.stdout)).toEqual({ skipReason: null });
+});
+
+test("live preflight runner invokes package-resolved authority before exact JSON collection", async () => {
+  const { runLivePreflight } = await import("../scripts/music-public-live-preflight.mjs");
+  const calls: Array<{ executable: string; args: string[]; options: Record<string, unknown> }> = [];
+  const collection = JSON.stringify(playwrightJourneyReport());
+  const outcome = runLivePreflight({
+    spawn: (executable: string, args: string[], options: Record<string, unknown>) => {
+      calls.push({ executable, args, options });
+      return calls.length === 1
+        ? preflightChild(0, JSON.stringify({ skipReason: null }))
+        : preflightChild(0, collection);
+    },
+    processExecPath: process.execPath,
+    tsxCli: "declared-package/tsx/cli.mjs",
+    playwrightCli: "explorer-package/playwright/cli.js",
+    project: "chromium-music-live",
+    cwd: process.cwd(),
+    environment: {
+      ...process.env,
+      MUSIC_E2E_STRAPI_TOKEN: "known-secret-value",
+      PLAYWRIGHT_JSON_OUTPUT_FILE: "must-not-be-used-by-preflight.json",
+    },
+    workspaceRoot: process.cwd(),
+    knownSecrets: ["known-secret-value"],
+  });
+  expect(outcome).toMatchObject({ ok: true, exitCode: 0, manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION });
+  expect(calls).toHaveLength(2);
+  expect(calls[0]).toMatchObject({
+    executable: process.execPath,
+    args: [
+      "declared-package/tsx/cli.mjs",
+      "-e",
+      expect.stringContaining("musicLiveWriteSkipReason"),
+    ],
+    options: { cwd: process.cwd(), encoding: "utf8", windowsHide: true },
+  });
+  expect(calls[1]).toMatchObject({
+    executable: process.execPath,
+    args: [
+      "explorer-package/playwright/cli.js",
+      "test",
+      "--project=chromium-music-live",
+      "--list",
+      "--reporter=json",
+    ],
+    options: { cwd: process.cwd(), encoding: "utf8", windowsHide: true },
+  });
+  expect(calls[0].options.env).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_FILE");
+  expect(calls[1].options.env).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_FILE");
+});
 
 test("clean PR-safe collection does not require live Music environment", () => {
   const env = { ...process.env, PLAYWRIGHT_PR_SAFE: "true" };
@@ -305,6 +834,7 @@ test("the documented root public E2E command is the hard-gated live orchestratio
 
 test("live browser authority is callback-minted and legacy fixture credentials cannot bypass the runner", () => {
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
+  const livePreflight = readFileSync("scripts/music-public-live-preflight.mjs", "utf8");
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
   for (const file of ["e2e/music-fixture-fullstack.spec.ts", "e2e/music-public-contract.spec.ts"]) {
     const source = readFileSync(file, "utf8");
@@ -324,12 +854,16 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain("E2E_PROFILE_LIVE_WRITES: \"1\"");
   expect(runner).toContain("E2E_PROFILE_STORAGE_STATE: profileStorageStatePath");
   expect(runner).toContain("E2E_PROFILE_USERNAME: username");
-  expect(runner).toContain('"--list"');
+  expect(livePreflight).toContain('"--list"');
   expect(runner).toContain("Live public Music E2E preflight refused");
   expect(runner).toContain('fetch(`${stateServiceUrl}/snapshot`');
   expect(runner).toContain('import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs"');
+  expect(runner).toContain("runLivePreflight({");
+  expect(runner).toContain("PLAYWRIGHT_JSON_OUTPUT_FILE");
+  expect(runner).not.toContain('path.resolve("node_modules/tsx/dist/cli.mjs")');
   expect(runner).toContain("const liveOutcome = await runMusicFixtureOrchestration({");
-  expect(runner.indexOf('"--list"')).toBeLessThan(runner.indexOf("google-auth/callback?access_token="));
+  expect(runner.indexOf('fetch(`${stateServiceUrl}/snapshot`')).toBeLessThan(runner.indexOf("runLivePreflight({"));
+  expect(runner.indexOf("runLivePreflight({")).toBeLessThan(runner.indexOf("google-auth/callback?access_token="));
   expect(runner).toContain("browserApiPrefix");
   expect(runner).not.toContain("http://localhost:55173/api/");
   expect(runner).toContain("callback bootstrap failed; details redacted");

@@ -2,6 +2,7 @@ import { test as base, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { buildLiveJourneyResult } from "../../scripts/music-public-live-preflight.mjs";
 
 export const MUSIC_PUBLIC_FIXTURE_VERSION = "music-public-e2e-fixture/v1" as const;
 export const MUSIC_LIVE_WRITE_CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE" as const;
@@ -356,17 +357,22 @@ export function buildSanitizedFixtureEvidence(input: {
 }
 
 export async function withRestoredMusicFixture<T>(adapters: {
+  journeyId?: string;
   snapshot: () => Promise<unknown>;
   cleanupNamespace: () => Promise<void>;
   restore: (snapshot: unknown) => Promise<void>;
   writeRecoveryArtifact?: (artifact: { reason: string; beforeHash: string; afterHash?: string }) => Promise<void>;
+  writeJourneyResult?: (record: unknown) => Promise<void>;
 }, journey: () => Promise<T>): Promise<{
   value: T;
   cleanup: "restored";
   beforeHash: string;
   afterHash: string;
 }> {
-  if (process.env.MUSIC_E2E_LIVE_WRITE === "true") adapters = canonicalMusicFixtureAdapterFromEnvironment();
+  if (process.env.MUSIC_E2E_LIVE_WRITE === "true") {
+    const { journeyId, writeJourneyResult } = adapters;
+    adapters = { ...canonicalMusicFixtureAdapterFromEnvironment(), journeyId, writeJourneyResult };
+  }
   const before = await adapters.snapshot();
   const beforeHash = normalizedSnapshotHash(before);
   const writeRecoveryArtifact = async (artifact: { reason: string; beforeHash: string; afterHash?: string }) => {
@@ -415,9 +421,15 @@ export async function withRestoredMusicFixture<T>(adapters: {
   }
   if (journeyFailure) throw journeyFailure;
   const restoreEvidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
-  if (restoreEvidencePath) {
-    mkdirSync(dirname(restoreEvidencePath), { recursive: true });
-    appendFileSync(restoreEvidencePath, `${JSON.stringify({ version: MUSIC_PUBLIC_FIXTURE_VERSION, cleanup: "restored", beforeHash, afterHash })}\n`, { encoding: "utf8", mode: 0o600 });
+  if (adapters.journeyId) {
+    const record = buildLiveJourneyResult({ id: adapters.journeyId, beforeHash, afterHash });
+    if (adapters.writeJourneyResult) await adapters.writeJourneyResult(record);
+    else if (restoreEvidencePath) {
+      mkdirSync(dirname(restoreEvidencePath), { recursive: true });
+      appendFileSync(restoreEvidencePath, `${JSON.stringify(record)}\n`, { encoding: "utf8", mode: 0o600 });
+    } else if (process.env.MUSIC_E2E_LIVE_WRITE === "true") {
+      throw new Error("MUSIC_E2E_RESTORE_EVIDENCE_PATH is required for manifested live journeys");
+    }
   }
   return { value, cleanup: "restored", beforeHash, afterHash };
 }

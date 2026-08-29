@@ -21,10 +21,11 @@ function guardedMutation<T>(callsite: MusicMutationCallsite, mutation: () => Pro
   return runAuthorizedMusicMutation(musicLiveAuthorityFromEnvironment(), callsite, mutation);
 }
 
-async function withFixtureRestore<T>(page: Page, journey: () => Promise<T>): Promise<T> {
+async function withFixtureRestore<T>(page: Page, journeyId: string, journey: () => Promise<T>): Promise<T> {
   const state = fixtureMutationState(page);
   const credential = state.ownerCredential!;
   const restored = await withRestoredMusicFixture({
+    journeyId,
     snapshot: async () => {
       const [dashboard, controls] = await Promise.all([
         page.request.get(`${fixtureOrigin}/api/music/dashboard`, { headers: { Authorization: credential } }),
@@ -177,7 +178,7 @@ test("authenticated owner queue mutation reaches the branch-local Tunes fixture 
   const ownerCredential = process.env.MUSIC_E2E_AUTH_STATE_PATH ? musicOwnerCredentialFromAuthState() : fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 
-  await withFixtureRestore(page, async () => {
+  await withFixtureRestore(page, "music.owner.queue-add", async () => {
 
   await page.getByRole("searchbox", { name: "Search music or paste a URL" }).fill("fixture journey");
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -223,7 +224,7 @@ test("full owner workspace remains usable at a mobile viewport", async ({ page }
   await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();
   const ownerCredential = process.env.MUSIC_E2E_AUTH_STATE_PATH ? musicOwnerCredentialFromAuthState() : fixtureMutationState(page).ownerCredential;
   expect(ownerCredential).toMatch(/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-  await withFixtureRestore(page, async () => {
+  await withFixtureRestore(page, "music.owner.mobile-workspace", async () => {
   const longTitle = "A deliberately very long mobile queue title that must truncate without hiding play or actions";
   const insertLongTitle = await guardedMutation("playlist-song-add", () => page.request.post(`${fixtureOrigin}/api/playlist/songs`, {
     headers: fixtureWriteHeaders(ownerCredential!, "fixture-mobile-long-title"),

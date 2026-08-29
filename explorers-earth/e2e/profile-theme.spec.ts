@@ -7,6 +7,11 @@ import {
   type Route,
 } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import {
+  appendLiveJourneyResult,
+  buildProfileCoveringRows as buildManifestProfileCoveringRows,
+  recordRestoredProfileJourney,
+} from '../scripts/music-public-live-preflight.mjs';
 
 const FACTORS = {
   preset: [
@@ -298,7 +303,7 @@ test('live matrix is split into ordered batches of at most twelve rows', () => {
 const LIVE_USERNAME = process.env.E2E_PROFILE_USERNAME;
 const LIVE_STORAGE_STATE = process.env.E2E_PROFILE_STORAGE_STATE;
 const LIVE_WRITES_APPROVED = process.env.E2E_PROFILE_LIVE_WRITES === '1';
-const LIVE_MATRIX = generateCoveringArray();
+const LIVE_MATRIX = buildManifestProfileCoveringRows() as CoveringRow[];
 const LIVE_BATCHES = batchCoveringRows(LIVE_MATRIX);
 const liveBatchTimeoutMs = (rows: readonly CoveringRow[]) =>
   (rows.length + 2) * 8_000 + 5 * 60_000;
@@ -816,6 +821,7 @@ test.describe('approved live profile writes', () => {
     let liveWriteStarted = false;
     let baselineHasBusiness = false;
     let expectedUpdatedAt = baselineUpdatedAt;
+    let restoredSnapshot: ReturnType<typeof restorableAccountSnapshot> | undefined;
     try {
       // From this point onward, every exit path is inside the exact-restore guard.
       liveWriteStarted = true;
@@ -880,7 +886,8 @@ test.describe('approved live profile writes', () => {
           verify: async () => {
             const restored = await openDashboard(page);
             expect(restored.social_media).toEqual(baselineSocialMedia);
-            expect(restorableAccountSnapshot(restored)).toEqual(baselineSnapshot);
+            restoredSnapshot = restorableAccountSnapshot(restored);
+            expect(restoredSnapshot).toEqual(baselineSnapshot);
 
             await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
             const expectedInitialTab =
@@ -925,6 +932,16 @@ test.describe('approved live profile writes', () => {
     }
 
     if (liveFailure) throw liveFailure;
+    if (!restoredSnapshot) throw new Error('Profile journey restore did not produce canonical evidence');
+    const evidencePath = process.env.MUSIC_E2E_RESTORE_EVIDENCE_PATH;
+    if (!evidencePath) throw new Error('MUSIC_E2E_RESTORE_EVIDENCE_PATH is required for manifested profile journeys');
+    await recordRestoredProfileJourney({
+      id: `profile.owner.pairwise.batch-${String(batchIndex + 1).padStart(2, '0')}`,
+      before: baselineSnapshot,
+      after: restoredSnapshot,
+      rows: liveRows,
+      write: async (record) => appendLiveJourneyResult(evidencePath, record),
+    });
   });
   }
 });

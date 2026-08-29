@@ -4,6 +4,7 @@ import { createConnection } from "node:net";
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { stopMusicFixture } from "./music-fixture-cleanup.mjs";
+import { runLivePreflight } from "./music-public-live-preflight.mjs";
 import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs";
 
 const VERSION = "music-public-e2e-fixture/v1";
@@ -216,6 +217,7 @@ if (mode.lane === "live") {
   profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
   const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
   const restoreEvidencePath = path.resolve(`.artifacts/music-public/${runId}/restore-evidence.jsonl`);
+  const journeyReportPath = path.resolve(`.artifacts/music-public/${runId}/playwright-journey-results.json`);
   const liveOutcome = await runMusicFixtureOrchestration({
     snapshotExists: Boolean(initialSnapshot),
     baseReport,
@@ -235,13 +237,19 @@ if (mode.lane === "live") {
     execute: async () => {
       const preflightEnvironment = { ...process.env, PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl, PLAYWRIGHT_PR_SAFE: "false", MUSIC_E2E_LIVE_WRITE: "true", MUSIC_E2E_RESTORE_EVIDENCE_PATH: restoreEvidencePath,
         E2E_PROFILE_LIVE_WRITES: "1", E2E_PROFILE_STORAGE_STATE: profileStorageStatePath, E2E_PROFILE_USERNAME: username };
-      const tsxCli = path.resolve("node_modules/tsx/dist/cli.mjs");
-      const authorityPreflight = spawnSync(process.execPath, [tsxCli, "-e", "import { musicLiveWriteSkipReason } from './e2e/setup/music.ts'; const reason=musicLiveWriteSkipReason(); if(reason) throw new Error(reason);"], { cwd: process.cwd(), encoding: "utf8", env: preflightEnvironment });
-      const collectionPreflight = spawnSync(process.execPath, [playwrightCli, "test", `--project=${mode.project}`, "--list"], { cwd: process.cwd(), encoding: "utf8", env: preflightEnvironment });
-      const requiredJourneys = ["owner publication", "guest request", "guest playback", "pairwise matrix batch 1/6", "pairwise matrix batch 6/6"];
-      if (authorityPreflight.status !== 0 || collectionPreflight.status !== 0 || !requiredJourneys.every((title) => collectionPreflight.stdout.includes(title))) {
+      const preflight = runLivePreflight({
+        spawn: spawnSync,
+        processExecPath: process.execPath,
+        playwrightCli,
+        project: mode.project,
+        cwd: process.cwd(),
+        environment: preflightEnvironment,
+        workspaceRoot: monorepoRoot,
+        knownSecrets: [strapiToken, stateToken],
+      });
+      if (!preflight.ok) {
         process.stderr.write("Live public Music E2E preflight refused: authority was skipped or expected mutation journeys did not collect; details redacted.\n");
-        return 4;
+        return { status: 4, preflightDiagnostics: preflight.diagnostics };
       }
 
       let browser;
@@ -276,7 +284,7 @@ if (mode.lane === "live") {
         return 4;
       }
 
-      const args = [playwrightCli, "test", ...mode.files, `--project=${mode.project}`];
+      const args = [playwrightCli, "test", ...mode.files, `--project=${mode.project}`, "--reporter=line,json"];
       const childEnvironment = {
         ...process.env,
         PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl,
@@ -286,8 +294,12 @@ if (mode.lane === "live") {
         E2E_PROFILE_LIVE_WRITES: "1",
         E2E_PROFILE_STORAGE_STATE: profileStorageStatePath,
         E2E_PROFILE_USERNAME: username,
+        PLAYWRIGHT_JSON_OUTPUT_FILE: journeyReportPath,
       };
-      return spawnSync(process.execPath, args, { cwd: process.cwd(), stdio: "inherit", env: childEnvironment }).status ?? 1;
+      const execution = spawnSync(process.execPath, args, { cwd: process.cwd(), stdio: "inherit", env: childEnvironment });
+      let executionReport;
+      try { executionReport = JSON.parse(readFileSync(journeyReportPath, "utf8")); } catch { /* typed runner will reject missing terminal evidence */ }
+      return { status: execution.status ?? 1, executionReport };
     },
     restore: restoreInitialSnapshot,
     teardown: {
