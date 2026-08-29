@@ -193,29 +193,39 @@ export async function runMusicFixtureOrchestration({
 
   const legacyEvidenceVerified = parsedEvidence.every((entry) => entry?.cleanup === "restored"
     && typeof entry.beforeHash === "string" && entry.beforeHash.length > 0 && entry.beforeHash === entry.afterHash);
-  const preflightRefusal = executionOutcome?.status === 4 && executionOutcome.preflightDiagnostics;
-  const reportStatusFailure = executionOutcome?.reportStatus && executionOutcome.reportStatus !== "accepted"
-    ? {
-      ok: false,
-      failureStage: "journey-evidence",
-      subcheck: `execution-report-${executionOutcome.reportStatus}`,
-      journeyPresence: LIVE_JOURNEY_MANIFEST.map(({ id }) => ({ id, present: false })),
-    }
-    : undefined;
-  const journeyEvidence = reportStatusFailure ?? (executionOutcome?.executionReport
-    ? validateLiveJourneyEvidence({ executionReport: executionOutcome.executionReport, records: parsedEvidence })
-    : undefined);
-  const privateArtifactCleanupFailed = executionOutcome?.privateArtifactCleanup === "delete-failed";
   const coordinatedFailure = coordinator.snapshot().failure;
   if (coordinatedFailure) {
     executionStatus = Math.max(executionStatus, coordinatedFailure.exitCode);
     executionOutcome ??= coordinatedFailure.executionOutcome;
   }
+  const preflightRefusal = executionOutcome?.status === 4 && executionOutcome.preflightDiagnostics;
+  const independentRecordEvidence = validateLiveJourneyEvidence({ executionReport: undefined, records: parsedEvidence });
+  const reportStatusFailure = executionOutcome?.reportStatus && executionOutcome.reportStatus !== "accepted"
+    ? (() => {
+      const reportSubcheck = `execution-report-${executionOutcome.reportStatus}`;
+      return {
+        ok: false,
+        failureStage: "journey-evidence",
+        subcheck: reportSubcheck,
+        subchecks: [reportSubcheck, ...(independentRecordEvidence.subchecks ?? [])
+          .filter((subcheck) => subcheck !== "execution-report")],
+        journeyPresence: independentRecordEvidence.journeyPresence,
+      };
+    })()
+    : undefined;
+  const journeyEvidence = reportStatusFailure ?? (executionOutcome?.executionReport
+    ? validateLiveJourneyEvidence({ executionReport: executionOutcome.executionReport, records: parsedEvidence })
+    : undefined);
+  const privateArtifactCleanupFailed = executionOutcome?.privateArtifactCleanup === "delete-failed";
+  const outcomeLedgerFailed = executionOutcome?.outcomeLedgerStatus !== undefined
+    && executionOutcome.outcomeLedgerStatus !== "persisted";
   const evidenceVerified = coordinatedFailure
-    ? legacyEvidenceVerified && !privateArtifactCleanupFailed
+    ? legacyEvidenceVerified && !privateArtifactCleanupFailed && !outcomeLedgerFailed
     : (preflightRefusal
       ? parsedEvidence.length === 0
-      : (executionOutcome ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed : legacyEvidenceVerified));
+      : (executionOutcome
+        ? Boolean(journeyEvidence?.ok) && !privateArtifactCleanupFailed && !outcomeLedgerFailed
+        : legacyEvidenceVerified));
   let cleanup = initialHash && evidenceVerified && !evidenceParseFailed
     ? "restored"
     : (initialHash ? "evidence-missing" : "restore-failed");
@@ -239,6 +249,7 @@ export async function runMusicFixtureOrchestration({
     ...(journeyEvidence?.ok ? { manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION, journeys: journeyEvidence.journeyResults } : {}),
     ...(journeyEvidence && !journeyEvidence.ok ? { journeyDiagnostics: journeyEvidence } : {}),
     ...(executionOutcome?.reportStatus ? { journeyReportStatus: executionOutcome.reportStatus } : {}),
+    ...(executionOutcome?.outcomeLedgerStatus ? { journeyOutcomeLedgerStatus: executionOutcome.outcomeLedgerStatus } : {}),
     ...(executionOutcome?.privateArtifactCleanup ? { journeyArtifactCleanup: executionOutcome.privateArtifactCleanup } : {}),
     ...(preflightRefusal ? { preflightDiagnostics: executionOutcome.preflightDiagnostics } : {}),
   };

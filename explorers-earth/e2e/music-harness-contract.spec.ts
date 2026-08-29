@@ -60,38 +60,38 @@ const EXPECTED_LIVE_JOURNEYS = [
 ] as const;
 
 const EXPECTED_LIVE_READ_ONLY = [
-  { title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
-  { title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
-  { title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
-  { title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
-  { title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
-  { title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
-  { title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 768x1024", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 1440x900", source: "e2e/music-public-contract.spec.ts" },
-  { title: "friendly route resolves one stable Account descriptor and shares canonical content", source: "e2e/music-public-contract.spec.ts" },
-  { title: "friendly Music navigation preserves history, current-page semantics, heading order, and announcements", source: "e2e/music-public-contract.spec.ts" },
-  { title: "wrong username and descriptor outage use non-enumerating recovery", source: "e2e/music-public-contract.spec.ts" },
-  { title: "explicit friendly recovery: preference=true descriptor=missing", source: "e2e/music-public-contract.spec.ts" },
-  { title: "explicit friendly recovery: preference=true descriptor=outage", source: "e2e/music-public-contract.spec.ts" },
-  { title: "explicit friendly recovery: preference=false descriptor=available", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline dark-banner-full-content", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline minimal-light-solid", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline failed-image-fallback", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline mobile-reconnecting", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline 320-long-nav-stress", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline desktop-full-content", source: "e2e/music-public-contract.spec.ts" },
-  { title: "restore guard uses one emergency cleanup and preserves the original failure", source: "e2e/profile-theme.spec.ts" },
-  { title: "restore guard never performs an emergency write after a confirmed normal restore", source: "e2e/profile-theme.spec.ts" },
-  { title: "restore guard refuses every write after a concurrent profile change", source: "e2e/profile-theme.spec.ts" },
-  { title: "covering array dry run proves all values and all factor pairs", source: "e2e/profile-theme.spec.ts" },
-  { title: "live timeout preserves at least five minutes for exact restore", source: "e2e/profile-theme.spec.ts" },
-  { title: "live matrix is split into ordered batches of at most twelve rows", source: "e2e/profile-theme.spec.ts" },
-  { title: "live row oracle promotes a category first view independently of saved order", source: "e2e/profile-theme.spec.ts" },
-  { title: "renders homepage, navigation, and theme system elements", source: "e2e/profile-theme.spec.ts" },
+  { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.permission-matrix", title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.first-view-fallback", title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.a11y-announcements", title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.share-privacy", title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.cache-isolation", title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.generic-recovery", title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-320x700", title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-375x667", title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-390x844", title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-768x1024", title: "accessible public structure reflows at 768x1024", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-1440x900", title: "accessible public structure reflows at 1440x900", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.friendly-descriptor", title: "friendly route resolves one stable Account descriptor and shares canonical content", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.friendly-navigation", title: "friendly Music navigation preserves history, current-page semantics, heading order, and announcements", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.wrong-user-recovery", title: "wrong username and descriptor outage use non-enumerating recovery", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.preference-true-missing", title: "explicit friendly recovery: preference=true descriptor=missing", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.preference-true-outage", title: "explicit friendly recovery: preference=true descriptor=outage", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.preference-false-available", title: "explicit friendly recovery: preference=false descriptor=available", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-dark-banner", title: "visual baseline dark-banner-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-minimal-light", title: "visual baseline minimal-light-solid", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-image-fallback", title: "visual baseline failed-image-fallback", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-mobile-reconnecting", title: "visual baseline mobile-reconnecting", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-long-nav", title: "visual baseline 320-long-nav-stress", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-desktop-full", title: "visual baseline desktop-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { id: "profile.read-only.restore-emergency", title: "restore guard uses one emergency cleanup and preserves the original failure", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.restore-confirmed", title: "restore guard never performs an emergency write after a confirmed normal restore", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.restore-concurrent-change", title: "restore guard refuses every write after a concurrent profile change", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.covering-array", title: "covering array dry run proves all values and all factor pairs", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.live-timeout", title: "live timeout preserves at least five minutes for exact restore", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.live-batches", title: "live matrix is split into ordered batches of at most twelve rows", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.first-view-oracle", title: "live row oracle promotes a category first view independently of saved order", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.theme-elements", title: "renders homepage, navigation, and theme system elements", source: "e2e/profile-theme.spec.ts" },
 ] as const;
 
 const LIVE_MUTATION_TAG = "@explorers-live-mutation";
@@ -126,6 +126,7 @@ const REQUIRED_QUALIFICATION_ARTIFACTS = [
   { role: "docker-inspection", path: "docker-inspection.json" },
   { role: "skip-ledger", path: "skip-reasons.json" },
   { role: "restoration-record", path: "restoration.json" },
+  { role: "journey-outcomes", path: "journey-outcomes.json" },
   { role: "evidence", path: "evidence.json" },
 ] as const;
 const SAFE_FIXTURE_AUTHORITY_GATE = Object.freeze({
@@ -149,8 +150,26 @@ const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
   traces: [],
 })}\n`;
 
+function notRunJourneyOutcomeLedger() {
+  return {
+    schemaVersion: "explorers-public-journey-outcomes/v1",
+    integrity: "not-run",
+    counts: {
+      execution: { total: 49, passed: 0, failed: 0, skipped: 0, notRun: 49 },
+      terminal: { total: 17, passed: 0, failed: 0, missing: 0, invalid: 0, notRun: 17 },
+    },
+    executionOutcomes: [...EXPECTED_LIVE_JOURNEYS, ...EXPECTED_LIVE_READ_ONLY].map(({ id }) => ({
+      id, status: "not-run", reason: "execution-not-run", stage: "preflight",
+    })),
+    mutationTerminals: EXPECTED_LIVE_JOURNEYS.map(({ id }) => ({
+      id, status: "not-run", reason: "terminal-not-run", stage: "preflight",
+    })),
+  };
+}
+
 function seededQualificationEvidence() {
   return `${JSON.stringify({
+    journeyOutcomes: notRunJourneyOutcomeLedger(),
     stateServiceLifecycle: {
       schemaVersion: "explorers-public-state-service-lifecycle/v1",
       error: { status: "unavailable" },
@@ -171,6 +190,7 @@ function seededQualificationEvidence() {
 function seededQualificationArtifactContent(role: string) {
   if (role === "visual-trace-ledger") return NONE_RETAINED_VISUAL_LEDGER;
   if (role === "fixture-authority") return `${JSON.stringify(SAFE_FIXTURE_AUTHORITY_GATE, null, 2)}\n`;
+  if (role === "journey-outcomes") return `${JSON.stringify(notRunJourneyOutcomeLedger(), null, 2)}\n`;
   if (role === "evidence") return seededQualificationEvidence();
   return "abc";
 }
@@ -223,19 +243,24 @@ function writeQualificationManifestBytes(runDirectory: string, bytes: Buffer) {
 
 function playwrightJourneyReport(
   entries: ReadonlyArray<{ id: string; title: string; source: string }> = EXPECTED_LIVE_JOURNEYS,
-  options: { skippedId?: string; resultStatus?: string } = {},
+  options: { skippedId?: string; resultStatus?: string; statusById?: Readonly<Record<string, string>> } = {},
 ) {
-  const spec = (entry: { id: string; title: string; source: string }) => ({
-    title: entry.title,
-    file: entry.source.replace(/^e2e\//, ""),
-    tags: [LIVE_MUTATION_TAG],
-    tests: [{
-      annotations: entry.id === options.skippedId ? [{ type: "skip", description: "Bearer should-not-survive" }] : [],
-      expectedStatus: "passed",
-      results: options.resultStatus ? [{ status: options.resultStatus }] : [],
-      status: options.resultStatus ?? "skipped",
-    }],
-  });
+  const statusFor = (entry: { id: string }) => options.statusById?.[entry.id] ?? options.resultStatus;
+  const spec = (entry: { id: string; title: string; source: string }) => {
+    const status = statusFor(entry);
+    const skipped = entry.id === options.skippedId || status === "skipped";
+    return {
+      title: entry.title,
+      file: entry.source.replace(/^e2e\//, ""),
+      tags: [LIVE_MUTATION_TAG],
+      tests: [{
+        annotations: skipped ? [{ type: "skip", description: "Bearer should-not-survive" }] : [],
+        expectedStatus: "passed",
+        results: status ? [{ status }] : [],
+        status: status ?? "skipped",
+      }],
+    };
+  };
   const fixture = entries.filter(({ source }) => source.endsWith("music-fixture-fullstack.spec.ts"));
   const music = entries.filter(({ source }) => source.endsWith("music-public-contract.spec.ts"));
   const profile = entries.filter(({ source }) => source.endsWith("profile-theme.spec.ts"));
@@ -243,12 +268,19 @@ function playwrightJourneyReport(
   const unknownSources = entries.filter(({ source }) => !reviewedSources.has(source));
   const musicReadOnly = EXPECTED_LIVE_READ_ONLY.filter(({ source }) => source.endsWith("music-public-contract.spec.ts"));
   const profileReadOnly = EXPECTED_LIVE_READ_ONLY.filter(({ source }) => source.endsWith("profile-theme.spec.ts"));
-  const readOnlySpec = (entry: { title: string; source: string }) => ({
-    title: entry.title,
-    file: entry.source.replace(/^e2e\//, ""),
-    tags: [LIVE_READ_ONLY_TAG],
-    tests: [{ annotations: [], expectedStatus: "passed", results: options.resultStatus ? [{ status: options.resultStatus }] : [] }],
-  });
+  const readOnlySpec = (entry: { id: string; title: string; source: string }) => {
+    const status = statusFor(entry);
+    return {
+      title: entry.title,
+      file: entry.source.replace(/^e2e\//, ""),
+      tags: [LIVE_READ_ONLY_TAG],
+      tests: [{
+        annotations: status === "skipped" ? [{ type: "skip", description: "Bearer should-not-survive" }] : [],
+        expectedStatus: "passed",
+        results: status ? [{ status }] : [],
+      }],
+    };
+  };
   return {
     suites: [
       { title: "music-fixture-fullstack.spec.ts", file: "music-fixture-fullstack.spec.ts", specs: fixture.map(spec) },
@@ -1037,6 +1069,8 @@ test("production journey execution command writes JSON that terminal evidence va
   const syntheticRoot = mkdtempSync(join(artifactRoot, "journey-report-contract-"));
   const reportPath = join(syntheticRoot, "playwright-journey-results.json");
   const outputDirectory = join(syntheticRoot, "private-playwright-output");
+  const terminalEvidencePath = join(syntheticRoot, "restore-evidence.jsonl");
+  const outcomeLedgerPath = join(syntheticRoot, "journey-outcomes.json");
   try {
     const testDirectory = join(syntheticRoot, "e2e");
     mkdirSync(testDirectory, { recursive: true });
@@ -1055,6 +1089,7 @@ test("production journey execution command writes JSON that terminal evidence va
         EXPECTED_LIVE_READ_ONLY.filter((entry) => entry.source === source),
       ));
     }
+    writeFileSync(terminalEvidencePath, `${validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n")}\n`);
 
     const outcome = (execute as (input: Record<string, unknown>) => { status: number; executionReport?: unknown })({
       spawn: spawnSync,
@@ -1070,11 +1105,14 @@ test("production journey execution command writes JSON that terminal evidence va
       environment: { ...process.env },
       reportPath,
       outputDirectory,
+      terminalEvidencePath,
+      outcomeLedgerPath,
     });
     expect(outcome.status).toBe(0);
     expect(outcome).toMatchObject({ reportStatus: "accepted", privateArtifactCleanup: "deleted" });
     expect(existsSync(reportPath)).toBe(false);
     expect(existsSync(outputDirectory)).toBe(false);
+    expect(existsSync(outcomeLedgerPath)).toBe(true);
     expect(JSON.stringify(outcome).length).toBeLessThan(48 * 1024);
     expect(validateLiveJourneyEvidence({
       executionReport: outcome.executionReport,
@@ -1085,12 +1123,256 @@ test("production journey execution command writes JSON that terminal evidence va
   }
 });
 
+test("sanitized journey outcome ledger retains exact 32/12/5 execution and all mutation terminal identities", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const buildLedger = module.buildSanitizedJourneyOutcomeLedger;
+  const validateLedger = module.validateSanitizedJourneyOutcomeLedger;
+  expect(typeof buildLedger, "the stable safe outcome ledger builder must exist").toBe("function");
+  expect(typeof validateLedger, "the safe outcome ledger validator must exist").toBe("function");
+  if (typeof buildLedger !== "function" || typeof validateLedger !== "function") return;
+
+  const expectedExecution = [...EXPECTED_LIVE_JOURNEYS, ...EXPECTED_LIVE_READ_ONLY];
+  const statusById = Object.fromEntries(expectedExecution.map(({ id }, index) => [
+    id,
+    index < 32 ? "passed" : (index < 44 ? "failed" : "skipped"),
+  ]));
+  const terminalRecords = EXPECTED_LIVE_JOURNEYS.map(({ id }, index) => ({
+    id,
+    status: index < 12 ? "passed" : "failed",
+    reason: "Bearer hostile-terminal-reason-must-not-survive",
+    stage: "C:\\private\\hostile-terminal-stage",
+  }));
+  const ledger = (buildLedger as (input: Record<string, unknown>) => Record<string, unknown>)({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { statusById }),
+    reportStatus: "accepted",
+    terminalRecords,
+  }) as {
+    schemaVersion: string;
+    integrity: string;
+    counts: Record<string, Record<string, number>>;
+    executionOutcomes: Array<Record<string, unknown>>;
+    mutationTerminals: Array<Record<string, unknown>>;
+  };
+
+  expect(ledger).toMatchObject({
+    schemaVersion: "explorers-public-journey-outcomes/v1",
+    integrity: "accepted",
+    counts: {
+      execution: { total: 49, passed: 32, failed: 12, skipped: 5, notRun: 0 },
+      terminal: { total: 17, passed: 12, failed: 5, missing: 0, invalid: 0, notRun: 0 },
+    },
+  });
+  expect(ledger.executionOutcomes.map(({ id }) => id)).toEqual(expectedExecution.map(({ id }) => id));
+  expect(ledger.mutationTerminals.map(({ id }) => id)).toEqual(EXPECTED_LIVE_JOURNEYS.map(({ id }) => id));
+  expect(ledger.executionOutcomes.every((entry) => Object.keys(entry).sort().join(",") === "id,reason,stage,status")).toBe(true);
+  expect(ledger.mutationTerminals.every((entry) => Object.keys(entry).sort().join(",") === "id,reason,stage,status")).toBe(true);
+  expect(ledger.mutationTerminals.slice(12)).toEqual(EXPECTED_LIVE_JOURNEYS.slice(12).map(({ id }) => ({
+    id,
+    status: "failed",
+    reason: "terminal-failed",
+    stage: "terminal-evidence",
+  })));
+  const retained = JSON.stringify(ledger);
+  expect(retained).not.toContain("hostile-terminal-reason");
+  expect(retained).not.toContain("private");
+  expect(retained).not.toMatch(/"(?:title|source|file|path|trace|screenshot|stdout|storage|auth)"\s*:/i);
+  const hostileTuple = structuredClone(ledger);
+  hostileTuple.executionOutcomes[0] = {
+    id: EXPECTED_LIVE_JOURNEYS[0].id,
+    status: "passed",
+    reason: "report-missing",
+    stage: "preflight",
+  };
+  expect((validateLedger as (value: unknown) => boolean)(hostileTuple)).toBe(false);
+});
+
+test("missing malformed and hostile journey reports retain only fixed safe diagnostics", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const buildLedger = module.buildSanitizedJourneyOutcomeLedger;
+  expect(typeof buildLedger, "the stable safe outcome ledger builder must exist").toBe("function");
+  if (typeof buildLedger !== "function") return;
+
+  const hostilePath = "C:\\private\\playwright\\Bearer hostile-report-secret.json";
+  const cases = [
+    { reportStatus: "missing", executionReport: undefined, reason: "report-missing" },
+    { reportStatus: "parse-failed", executionReport: undefined, reason: "report-malformed" },
+    { reportStatus: "too-large", executionReport: undefined, reason: "report-too-large" },
+    {
+      reportStatus: "accepted",
+      executionReport: {
+        suites: [{ specs: [{
+          title: `Bearer hostile-report-secret ${hostilePath}`,
+          file: hostilePath,
+          tags: [LIVE_MUTATION_TAG],
+          tests: [{ results: [{ status: "failed" }] }],
+        }] }],
+      },
+      reason: "report-invalid",
+    },
+  ];
+  for (const fixture of cases) {
+    const ledger = (buildLedger as (input: Record<string, unknown>) => {
+      integrity: string;
+      executionOutcomes: Array<Record<string, unknown>>;
+      mutationTerminals: Array<Record<string, unknown>>;
+    })({ ...fixture, terminalRecords: undefined });
+    expect(ledger.integrity).toBe("invalid");
+    expect(ledger.executionOutcomes).toHaveLength(49);
+    expect(ledger.executionOutcomes.every((entry) => entry.status === "failed" && entry.reason === fixture.reason)).toBe(true);
+    expect(ledger.mutationTerminals).toHaveLength(17);
+    expect(ledger.mutationTerminals.every((entry) => entry.status === "missing" && entry.reason === "terminal-missing")).toBe(true);
+    const retained = JSON.stringify(ledger);
+    expect(retained).not.toContain("hostile-report-secret");
+    expect(retained).not.toContain(hostilePath);
+    expect(retained.replaceAll("\\", "/")).not.toContain(hostilePath.replaceAll("\\", "/"));
+  }
+  const malformedTerminal = (buildLedger as (input: Record<string, unknown>) => {
+    integrity: string;
+    mutationTerminals: Array<Record<string, unknown>>;
+  })({ reportStatus: "not-run", terminalStatus: "parse-failed", terminalRecords: undefined });
+  expect(malformedTerminal.integrity).toBe("invalid");
+  expect(malformedTerminal.mutationTerminals.every((entry) => (
+    entry.status === "invalid" && entry.reason === "terminal-invalid" && entry.stage === "terminal-evidence"
+  ))).toBe(true);
+});
+
+test("journey outcome ledger is persisted before private deletion and persistence failure still cleans fail-closed", async () => {
+  const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
+  const execute = module.runPlaywrightJourneyExecution;
+  expect(typeof execute).toBe("function");
+  if (typeof execute !== "function") return;
+
+  for (const persistence of ["succeeds", "fails"] as const) {
+    const runDirectory = resolve(`guarded/run-ledger-${persistence}`);
+    const reportPath = join(runDirectory, "playwright-journey-results.json");
+    const outputDirectory = join(runDirectory, "private-playwright-output");
+    const terminalEvidencePath = join(runDirectory, "restore-evidence.jsonl");
+    const outcomeLedgerPath = join(runDirectory, "journey-outcomes.json");
+    const calls: string[] = [];
+    const report = JSON.stringify(playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "failed" }));
+    const terminals = validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n");
+    const outcome = (execute as (input: Record<string, unknown>) => Record<string, unknown>)({
+      spawn: () => ({ status: 1 }),
+      processExecPath: process.execPath,
+      playwrightCli: "playwright-cli.js",
+      files: ["e2e/profile-theme.spec.ts"],
+      project: "synthetic-private-report",
+      cwd: process.cwd(),
+      environment: { ...process.env },
+      reportPath,
+      outputDirectory,
+      terminalEvidencePath,
+      outcomeLedgerPath,
+      persistOutcomeLedger: ({ path: exactPath, ledger }: { path: string; ledger: unknown }) => {
+        calls.push(`persist:${exactPath}`);
+        expect(JSON.stringify(ledger)).not.toMatch(/(?:Bearer|beforeHash|afterHash|rows|title|source|path)/);
+        if (persistence === "fails") throw new Error("Bearer persistence-secret");
+      },
+      privateArtifactIo: {
+        exists: (path: string) => { calls.push(`exists:${path}`); return path !== outcomeLedgerPath; },
+        size: (path: string) => { calls.push(`size:${path}`); return Buffer.byteLength(path === reportPath ? report : terminals); },
+        read: (path: string) => { calls.push(`read:${path}`); return path === reportPath ? report : terminals; },
+        unlink: (path: string) => { calls.push(`unlink:${path}`); },
+        removeDirectory: (path: string) => { calls.push(`remove-directory:${path}`); },
+      },
+    });
+    expect(calls.indexOf(`persist:${outcomeLedgerPath}`)).toBeGreaterThan(calls.indexOf(`read:${terminalEvidencePath}`));
+    expect(calls.indexOf(`persist:${outcomeLedgerPath}`)).toBeLessThan(calls.indexOf(`unlink:${reportPath}`));
+    expect(calls).toContain(`remove-directory:${outputDirectory}`);
+    expect(outcome).toMatchObject({
+      status: expect.any(Number),
+      outcomeLedgerStatus: persistence === "succeeds" ? "persisted" : "persist-failed",
+      privateArtifactCleanup: "deleted",
+    });
+    expect(outcome.status).not.toBe(0);
+    expect(Object.hasOwn(outcome, "journeyOutcomeLedger")).toBe(persistence === "succeeds");
+    expect(JSON.stringify(outcome)).not.toContain("persistence-secret");
+  }
+});
+
+test("journey evidence validation accumulates execution and terminal defects while final restore remains independent", async () => {
+  const executionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "failed" });
+  const incompleteRecords = validJourneyEvidenceRecords().slice(0, 12);
+  expect(validateLiveJourneyEvidence({ executionReport, records: incompleteRecords })).toMatchObject({
+    ok: false,
+    subcheck: "execution-status",
+    subchecks: ["execution-status", "records-missing"],
+  });
+
+  const finalHash = "d".repeat(64);
+  const orchestrationInput = {
+    snapshotExists: true,
+    baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: "multi-defect-retention", lane: "live" },
+    artifacts: {
+      directory: "guarded/multi-defect-retention",
+      authPath: "owner-auth.json",
+      storagePath: "profile-storage-state.json",
+      mkdir: () => undefined,
+      write: () => undefined,
+      chmod: () => undefined,
+    },
+    restoreEvidence: {
+      path: "restore-evidence.jsonl",
+      exists: () => true,
+      read: () => incompleteRecords.map((record) => JSON.stringify(record)).join("\n"),
+    },
+    execute: async () => ({
+      status: 1,
+      reportStatus: "accepted",
+      privateArtifactCleanup: "deleted",
+      executionReport,
+    }),
+    teardown: {
+      artifactPaths: [],
+      artifactDirectories: [],
+      exists: () => false,
+      unlink: () => undefined,
+      removeDirectory: () => undefined,
+      stopStateService: () => undefined,
+      down: () => 0,
+    },
+    writeReport: async () => undefined,
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
+  };
+  const outcome = await runMusicFixtureOrchestration({
+    ...orchestrationInput,
+    restore: async () => ({ ok: true, cleanup: "restored", beforeHash: finalHash, afterHash: finalHash }),
+  });
+  expect(outcome).toMatchObject({
+    exitCode: 5,
+    report: {
+      result: "failed",
+      cleanup: "evidence-missing",
+      finalRestore: { beforeHash: finalHash, afterHash: finalHash },
+      journeyDiagnostics: { subchecks: ["execution-status", "records-missing"] },
+    },
+  });
+
+  const restoreFailure = await runMusicFixtureOrchestration({
+    ...orchestrationInput,
+    baseReport: { ...orchestrationInput.baseReport, runId: "multi-defect-restore-failure" },
+    restore: async () => ({ ok: false, cleanup: "restore-failed" }),
+  });
+  expect(restoreFailure).toMatchObject({
+    exitCode: 5,
+    report: {
+      result: "failed",
+      cleanup: "restore-failed",
+      journeyDiagnostics: { subchecks: ["execution-status", "records-missing"] },
+    },
+  });
+  expect(restoreFailure.report.finalRestore).toBeUndefined();
+});
+
 test("failing production child retains only bounded canonical evidence and deletes every private Playwright artifact", async () => {
   const artifactRoot = resolve(".artifacts");
   mkdirSync(artifactRoot, { recursive: true });
   const syntheticRoot = mkdtempSync(join(artifactRoot, "hostile-journey-report-contract-"));
   const reportPath = join(syntheticRoot, "playwright-journey-results.json");
   const outputDirectory = join(syntheticRoot, "private-playwright-output");
+  const terminalEvidencePath = join(syntheticRoot, "restore-evidence.jsonl");
+  const outcomeLedgerPath = join(syntheticRoot, "journey-outcomes.json");
   const hostile = {
     title: EXPECTED_LIVE_JOURNEYS[0].title,
     bearer: "hostile.bearer.sentinel",
@@ -1118,6 +1400,7 @@ test("failing production child retains only bounded canonical evidence and delet
         hostile,
       ));
     }
+    writeFileSync(terminalEvidencePath, `${validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n")}\n`);
 
     const wrapperPath = join(syntheticRoot, "run-production-execution.mjs");
     writeFileSync(wrapperPath, [
@@ -1133,6 +1416,8 @@ test("failing production child retains only bounded canonical evidence and delet
       "  environment: { ...process.env },",
       `  reportPath: ${JSON.stringify(reportPath)},`,
       `  outputDirectory: ${JSON.stringify(outputDirectory)},`,
+      `  terminalEvidencePath: ${JSON.stringify(terminalEvidencePath)},`,
+      `  outcomeLedgerPath: ${JSON.stringify(outcomeLedgerPath)},`,
       "});",
       "process.stdout.write(JSON.stringify(outcome));",
       "",
@@ -1203,6 +1488,9 @@ test("unknown hostile mutation identity is replaced by fixed sentinels before ma
     : entry);
   const reportPath = resolve("guarded/run-hostile-identity/playwright-journey-results.json");
   const outputDirectory = resolve("guarded/run-hostile-identity/private-playwright-output");
+  const terminalEvidencePath = resolve("guarded/run-hostile-identity/restore-evidence.jsonl");
+  const outcomeLedgerPath = resolve("guarded/run-hostile-identity/journey-outcomes.json");
+  const terminalRecords = validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n");
   const calls: string[] = [];
   const outcome = (execute as (input: Record<string, unknown>) => {
     status: number;
@@ -1219,15 +1507,21 @@ test("unknown hostile mutation identity is replaced by fixed sentinels before ma
     environment: { ...process.env },
     reportPath,
     outputDirectory,
+    terminalEvidencePath,
+    outcomeLedgerPath,
+    persistOutcomeLedger: ({ path }: { path: string }) => { calls.push(`persist:${path}`); },
     privateArtifactIo: {
-      exists: (path: string) => { calls.push(`exists:${path}`); return true; },
-      size: (path: string) => { calls.push(`size:${path}`); return 4096; },
-      read: (path: string) => { calls.push(`read:${path}`); return JSON.stringify(playwrightJourneyReport(entries, { resultStatus: "passed" })); },
+      exists: (path: string) => { calls.push(`exists:${path}`); return path !== outcomeLedgerPath; },
+      size: (path: string) => { calls.push(`size:${path}`); return path === reportPath ? 4096 : Buffer.byteLength(terminalRecords); },
+      read: (path: string) => { calls.push(`read:${path}`); return path === reportPath
+        ? JSON.stringify(playwrightJourneyReport(entries, { resultStatus: "passed" }))
+        : terminalRecords; },
       unlink: (path: string) => { calls.push(`unlink:${path}`); },
       removeDirectory: (path: string) => { calls.push(`remove-directory:${path}`); },
     },
   });
-  expect(outcome).toMatchObject({ status: 0, reportStatus: "accepted", privateArtifactCleanup: "deleted" });
+  expect(outcome).toMatchObject({ status: expect.any(Number), reportStatus: "accepted", privateArtifactCleanup: "deleted" });
+  expect(outcome.status).not.toBe(0);
   expect(validateLiveJourneyEvidence({
     executionReport: outcome.executionReport,
     records: validJourneyEvidenceRecords(),
@@ -1251,6 +1545,10 @@ test("unknown hostile mutation identity is replaced by fixed sentinels before ma
     `exists:${reportPath}`,
     `size:${reportPath}`,
     `read:${reportPath}`,
+    `exists:${terminalEvidencePath}`,
+    `size:${terminalEvidencePath}`,
+    `read:${terminalEvidencePath}`,
+    `persist:${outcomeLedgerPath}`,
     `exists:${reportPath}`,
     `unlink:${reportPath}`,
     `exists:${outputDirectory}`,
@@ -1269,6 +1567,9 @@ test("private raw report size and parse failures are rejected before retention a
     let reads = 0;
     const reportPath = resolve(`guarded/run-${failure}/playwright-journey-results.json`);
     const outputDirectory = resolve(`guarded/run-${failure}/private-playwright-output`);
+    const terminalEvidencePath = resolve(`guarded/run-${failure}/restore-evidence.jsonl`);
+    const outcomeLedgerPath = resolve(`guarded/run-${failure}/journey-outcomes.json`);
+    const terminalRecords = validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n");
     const outcome = (execute as (input: Record<string, unknown>) => {
       status: number;
       reportStatus?: string;
@@ -1284,10 +1585,19 @@ test("private raw report size and parse failures are rejected before retention a
       environment: { ...process.env },
       reportPath,
       outputDirectory,
+      terminalEvidencePath,
+      outcomeLedgerPath,
+      persistOutcomeLedger: ({ path }: { path: string }) => { calls.push(`persist:${path}`); },
       privateArtifactIo: {
-        exists: (path: string) => { calls.push(`exists:${path}`); return true; },
-        size: (path: string) => { calls.push(`size:${path}`); return failure === "too-large" ? 64 * 1024 * 1024 : 12; },
-        read: (path: string) => { calls.push(`read:${path}`); reads += 1; return "{not-json"; },
+        exists: (path: string) => { calls.push(`exists:${path}`); return path !== outcomeLedgerPath; },
+        size: (path: string) => { calls.push(`size:${path}`); return path === reportPath
+          ? (failure === "too-large" ? 64 * 1024 * 1024 : 12)
+          : Buffer.byteLength(terminalRecords); },
+        read: (path: string) => {
+          calls.push(`read:${path}`);
+          if (path === reportPath) { reads += 1; return "{not-json"; }
+          return terminalRecords;
+        },
         unlink: (path: string) => { calls.push(`unlink:${path}`); },
         removeDirectory: (path: string) => { calls.push(`remove-directory:${path}`); },
       },
@@ -1304,6 +1614,10 @@ test("private raw report size and parse failures are rejected before retention a
       `exists:${reportPath}`,
       `size:${reportPath}`,
       ...(failure === "too-large" ? [] : [`read:${reportPath}`]),
+      `exists:${terminalEvidencePath}`,
+      `size:${terminalEvidencePath}`,
+      `read:${terminalEvidencePath}`,
+      `persist:${outcomeLedgerPath}`,
       `exists:${reportPath}`,
       `unlink:${reportPath}`,
       `exists:${outputDirectory}`,
@@ -1331,6 +1645,9 @@ test("first private report deletion failure is evidence-missing while restore an
 
   const reportPath = resolve("guarded/run-delete-failure/playwright-journey-results.json");
   const outputDirectory = resolve("guarded/run-delete-failure/private-playwright-output");
+  const terminalEvidencePath = resolve("guarded/run-delete-failure/restore-evidence.jsonl");
+  const outcomeLedgerPath = resolve("guarded/run-delete-failure/journey-outcomes.json");
+  const terminalRecords = validJourneyEvidenceRecords().map((record) => JSON.stringify(record)).join("\n");
   const helperCalls: string[] = [];
   const executionOutcome = (execute as (input: Record<string, unknown>) => {
     status: number;
@@ -1347,10 +1664,15 @@ test("first private report deletion failure is evidence-missing while restore an
     environment: { ...process.env },
     reportPath,
     outputDirectory,
+    terminalEvidencePath,
+    outcomeLedgerPath,
+    persistOutcomeLedger: ({ path }: { path: string }) => { helperCalls.push(`persist:${path}`); },
     privateArtifactIo: {
       exists: (path: string) => { helperCalls.push(`exists:${path}`); return true; },
-      size: (path: string) => { helperCalls.push(`size:${path}`); return 1024; },
-      read: (path: string) => { helperCalls.push(`read:${path}`); return JSON.stringify(playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" })); },
+      size: (path: string) => { helperCalls.push(`size:${path}`); return path === reportPath ? 1024 : Buffer.byteLength(terminalRecords); },
+      read: (path: string) => { helperCalls.push(`read:${path}`); return path === reportPath
+        ? JSON.stringify(playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" }))
+        : terminalRecords; },
       unlink: (path: string) => { helperCalls.push(`unlink:${path}`); throw new Error("Bearer private-delete-secret"); },
       removeDirectory: (path: string) => { helperCalls.push(`remove-directory:${path}`); },
     },
@@ -1365,6 +1687,10 @@ test("first private report deletion failure is evidence-missing while restore an
     `exists:${reportPath}`,
     `size:${reportPath}`,
     `read:${reportPath}`,
+    `exists:${terminalEvidencePath}`,
+    `size:${terminalEvidencePath}`,
+    `read:${terminalEvidencePath}`,
+    `persist:${outcomeLedgerPath}`,
     `exists:${reportPath}`,
     `unlink:${reportPath}`,
     `exists:${outputDirectory}`,
@@ -1678,7 +2004,7 @@ test("developer fixture command prints a sanitized, versioned dry-run contract",
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
     ], { cwd: sandbox, encoding: "utf8", windowsHide: true });
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
-    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 15, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 16, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
     expect(JSON.parse(readFileSync(join(runDirectory, "analytics-events.jsonl"), "utf8"))).toEqual({
       schemaVersion: "explorers-public-analytics-ledger/v1",
       status: "unavailable",
@@ -2081,7 +2407,7 @@ test("qualification artifact CLI creates and verifies one canonical manifest wit
     expect(readFileSync(join(runDirectory, "manifest.sha256"), "utf8")).toBe(`${expectedManifestHash}\n`);
     expect(JSON.parse(created.stdout)).toEqual({
       schemaVersion: "explorers-public-qualification-artifacts/v1",
-      files: 15,
+      files: 16,
       manifestSha256: expectedManifestHash,
     });
 
@@ -2141,7 +2467,7 @@ test("qualification visual/trace ledger makes every retained relative file manif
       cwd: process.cwd(), encoding: "utf8", windowsHide: true,
     });
     expect(verified.status, `${verified.stdout}\n${verified.stderr}`).toBe(0);
-    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 17 });
+    expect(JSON.parse(verified.stdout)).toMatchObject({ files: 18 });
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -2693,10 +3019,11 @@ test("authoritative per-source streams preserve later up down and state output a
         finalRestore: null,
         journeys: [],
       },
+      journeyOutcomeLedger: notRunJourneyOutcomeLedger(),
       evidence,
     });
 
-    expect(finalized).toMatchObject({ files: 15, verified: true });
+    expect(finalized).toMatchObject({ files: 16, verified: true });
     const retainedEvidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
     expect(retainedEvidence.streams).toHaveLength(8);
     for (const definition of AUTHORITATIVE_QUALIFICATION_STREAMS) {
@@ -3081,6 +3408,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
         finalRestore: { beforeHash: finalHash, afterHash: finalHash },
         journeys: [],
       },
+      journeyOutcomeLedger: notRunJourneyOutcomeLedger(),
       evidence: {
         version: MUSIC_PUBLIC_FIXTURE_VERSION,
         runId,
@@ -3101,7 +3429,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
     const qualificationArtifacts = await import("../scripts/music-public-qualification-artifacts.mjs");
     let finalized: { files: number; manifestSha256: string; verified: boolean } | undefined;
     expect(() => { finalized = qualificationArtifacts.finalizeQualificationRunArtifacts(input); }).not.toThrow();
-    expect(finalized).toEqual({ files: 15, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
+    expect(finalized).toEqual({ files: 16, manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/), verified: true });
     expect(readFileSync(join(runDirectory, "logs", "fixture-bootstrap.stdout.log"), "utf8"))
       .toBe("guarded run stopped before mutation callback\n");
     expect(readFileSync(join(runDirectory, "logs", "fixture-bootstrap.stderr.log"), "utf8"))
@@ -3113,6 +3441,10 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       .toEqual(input.skipLedger);
     expect(JSON.parse(readFileSync(join(runDirectory, "restoration.json"), "utf8")))
       .toEqual(input.restorationRecord);
+    expect(JSON.parse(readFileSync(join(runDirectory, "journey-outcomes.json"), "utf8")))
+      .toEqual(input.journeyOutcomeLedger);
+    expect(JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8")).journeyOutcomes)
+      .toEqual(input.journeyOutcomeLedger);
     expect(readFileSync(join(runDirectory, "evidence.json"), "utf8").toString())
       .not.toContain("finalization-private-token");
     expect(existsSync(join(runDirectory, "restore-evidence.jsonl"))).toBe(false);
@@ -3120,7 +3452,53 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", runDirectory,
     ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
     expect(verify.status, `${verify.stdout}\n${verify.stderr}`).toBe(0);
-    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 15, manifestSha256: finalized!.manifestSha256 });
+    expect(JSON.parse(verify.stdout)).toMatchObject({ files: 16, manifestSha256: finalized!.manifestSha256 });
+
+    const persistedRunId = "persisted-failure-ledger-run";
+    const persistedRunDirectory = join(sandbox, ".artifacts", "music-public", persistedRunId);
+    mkdirSync(persistedRunDirectory);
+    const expectedExecution = [...EXPECTED_LIVE_JOURNEYS, ...EXPECTED_LIVE_READ_ONLY];
+    const statusById = Object.fromEntries(expectedExecution.map(({ id }, index) => [
+      id,
+      index < 32 ? "passed" : (index < 44 ? "failed" : "skipped"),
+    ]));
+    const livePreflight = await import("../scripts/music-public-live-preflight.mjs");
+    const persistedLedger = livePreflight.buildSanitizedJourneyOutcomeLedger({
+      executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { statusById }),
+      reportStatus: "accepted",
+      terminalRecords: EXPECTED_LIVE_JOURNEYS.map(({ id }, index) => ({ id, status: index < 12 ? "passed" : "failed" })),
+      terminalStatus: "accepted",
+    });
+    livePreflight.persistSanitizedJourneyOutcomeLedger({
+      path: join(persistedRunDirectory, "journey-outcomes.json"),
+      ledger: persistedLedger,
+    });
+    expect(() => qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: persistedRunDirectory,
+      journeyOutcomeLedger: persistedLedger,
+      journeyOutcomeLedgerPersisted: true,
+      evidence: { ...input.evidence, runId: persistedRunId },
+    })).toThrow("qualification structured artifact contract is invalid");
+    const persistedFinalized = qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: persistedRunDirectory,
+      journeyOutcomeLedger: persistedLedger,
+      journeyOutcomeLedgerPersisted: true,
+      skipLedger: {
+        schemaVersion: "explorers-public-skip-ledger/v1",
+        lane: "live",
+        execution: "completed",
+        totals: { total: 49, passed: 32, failed: 12, skipped: 5 },
+        reasons: [{ scope: "journey", reason: "test-skipped" }],
+      },
+      evidence: { ...input.evidence, runId: persistedRunId },
+    });
+    expect(persistedFinalized).toMatchObject({ files: 16, verified: true });
+    expect(JSON.parse(readFileSync(join(persistedRunDirectory, "evidence.json"), "utf8")).journeyOutcomes)
+      .toEqual(persistedLedger);
+    expect(JSON.parse(readFileSync(join(persistedRunDirectory, "manifest.json"), "utf8")).artifacts)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ role: "journey-outcomes", path: "journey-outcomes.json" })]));
 
     const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
     mkdirSync(unsafeRunDirectory);
@@ -3131,6 +3509,17 @@ test("preflight-stopped qualification finalization writes every safe artifact an
     })).toThrow("qualification structured artifact is invalid");
     expect(existsSync(join(unsafeRunDirectory, "logs", "fixture-bootstrap.stdout.log"))).toBe(false);
     expect(existsSync(join(unsafeRunDirectory, "analytics-events.jsonl"))).toBe(false);
+
+    const missingPersistedRunDirectory = join(sandbox, ".artifacts", "music-public", "missing-persisted-ledger-run");
+    mkdirSync(missingPersistedRunDirectory);
+    expect(() => qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: missingPersistedRunDirectory,
+      journeyOutcomeLedgerPersisted: true,
+    })).toThrow("qualification journey outcome ledger is missing or unreadable");
+    expect(existsSync(join(missingPersistedRunDirectory, "manifest.json"))).toBe(false);
+    expect(existsSync(join(missingPersistedRunDirectory, "manifest.sha256"))).toBe(false);
+    expect(existsSync(join(missingPersistedRunDirectory, "journey-outcomes.json"))).toBe(false);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -3396,6 +3785,10 @@ test("the documented root public E2E command is the hard-gated live orchestratio
   expect(runner.indexOf("captureQualificationFixtureAuthority({"))
     .toBeLessThan(runner.indexOf('runLifecycleCommand("fixture-bootstrap")'));
   expect(runner).toMatch(/artifactPaths:\s*\[[^\]]*restoreEvidencePath[^\]]*authStatePath[^\]]*profileStorageStatePath[^\]]*\]/s);
+  expect(runner).toContain("journeyOutcomeCleanupRequired = journeyExecutionOutcome.outcomeLedgerStatus === \"persist-failed\"");
+  expect(runner).toContain("[journeyOutcomeLedgerPath, `${journeyOutcomeLedgerPath}.private-tmp`]");
+  expect(runner.indexOf("const journeyExecutionOutcome = runPlaywrightJourneyExecution({"))
+    .toBeLessThan(runner.indexOf("journeyOutcomeCleanupRequired = journeyExecutionOutcome.outcomeLedgerStatus"));
   expect(runner).toContain("writeReport: async () => undefined");
   expect(runner).not.toContain("function writeLiveReport");
   expect(runner).toContain('"--reporter=json"');

@@ -4,7 +4,11 @@ import { createConnection } from "node:net";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createMusicFixtureStateServiceGuard, stopMusicFixture } from "./music-fixture-cleanup.mjs";
-import { runLivePreflight, runPlaywrightJourneyExecution } from "./music-public-live-preflight.mjs";
+import {
+  buildSanitizedJourneyOutcomeLedger,
+  runLivePreflight,
+  runPlaywrightJourneyExecution,
+} from "./music-public-live-preflight.mjs";
 import {
   createMusicQualificationFailureCoordinator,
   runMusicFixtureOrchestration,
@@ -139,6 +143,7 @@ const profileStorageStatePath = path.join(runArtifactDirectory, "profile-storage
 const restoreEvidencePath = path.join(runArtifactDirectory, "restore-evidence.jsonl");
 const journeyReportPath = path.join(runArtifactDirectory, "playwright-journey-results.json");
 const privatePlaywrightOutputDirectory = path.join(runArtifactDirectory, "private-playwright-output");
+const journeyOutcomeLedgerPath = path.join(runArtifactDirectory, "journey-outcomes.json");
 let fixtureAuthorityRecord = createUnavailableQualificationFixtureAuthority();
 
 if (dryRun) {
@@ -232,6 +237,10 @@ if (dryRun) {
         finalRestore: null,
         journeys: [],
       },
+      journeyOutcomeLedger: buildSanitizedJourneyOutcomeLedger({
+        reportStatus: "not-run",
+        terminalStatus: "not-run",
+      }),
       evidence: report,
     });
   } catch {
@@ -283,6 +292,7 @@ function flushPrivateStateServiceOutput() {
   retainQualificationStreams(stateServiceGuard.streamInputs());
 }
 let fixtureLifecycleAttempted = false;
+let journeyOutcomeCleanupRequired = false;
 let stateServiceGuard;
 let stateServiceOutputFlushed = false;
 let stateToken;
@@ -293,7 +303,15 @@ let qualificationFailureMessage;
 let failureSettlementPromise;
 function fixtureTeardownContract() {
   return {
-    artifactPaths: [restoreEvidencePath, authStatePath, profileStorageStatePath, journeyReportPath],
+    artifactPaths: [
+      restoreEvidencePath,
+      authStatePath,
+      profileStorageStatePath,
+      journeyReportPath,
+      ...(journeyOutcomeCleanupRequired
+        ? [journeyOutcomeLedgerPath, `${journeyOutcomeLedgerPath}.private-tmp`]
+        : []),
+    ],
     artifactDirectories: [privatePlaywrightOutputDirectory],
     exists: existsSync,
     unlink: unlinkSync,
@@ -340,7 +358,12 @@ function qualificationCommit() {
     : { sha: "unavailable", reason: "git-inspection-failed" };
 }
 function finalizeCurrentQualification({ report, executionOutcome, exitCode, stage }) {
-  const { skipLedger, restorationRecord } = buildQualificationOutcomeRecords({
+  const {
+    skipLedger,
+    restorationRecord,
+    journeyOutcomeLedger,
+    journeyOutcomeLedgerPersisted,
+  } = buildQualificationOutcomeRecords({
     lane: mode.lane,
     executionOutcome,
     report,
@@ -414,6 +437,8 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
     dockerInspection,
     skipLedger,
     restorationRecord,
+    journeyOutcomeLedger,
+    journeyOutcomeLedgerPersisted,
     evidence,
   });
   return { ...finalized, exitCode: qualificationExitCode };
@@ -719,7 +744,10 @@ async function runLiveQualification() {
         environment: childEnvironment,
         reportPath: journeyReportPath,
         outputDirectory: privatePlaywrightOutputDirectory,
+        terminalEvidencePath: restoreEvidencePath,
+        outcomeLedgerPath: journeyOutcomeLedgerPath,
       });
+      journeyOutcomeCleanupRequired = journeyExecutionOutcome.outcomeLedgerStatus === "persist-failed";
       const stateServiceFailure = qualificationCoordinator.snapshot().failure;
       liveExecutionOutcome = stateServiceFailure
         ? { ...journeyExecutionOutcome, status: Math.max(journeyExecutionOutcome.status, stateServiceFailure.exitCode) }

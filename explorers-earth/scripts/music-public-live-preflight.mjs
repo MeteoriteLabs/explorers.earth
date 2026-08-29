@@ -1,6 +1,16 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,8 +21,10 @@ export const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
 const LIVE_MUTATION_REPORT_TAG = LIVE_MUTATION_TAG.replace(/^@/, "");
 const LIVE_READ_ONLY_REPORT_TAG = LIVE_READ_ONLY_TAG.replace(/^@/, "");
 const MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES = 4 * 1024 * 1024;
+const MAX_PRIVATE_TERMINAL_EVIDENCE_BYTES = 4 * 1024 * 1024;
 const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v2";
 const SAFE_EXECUTION_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
+export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v1";
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
@@ -34,39 +46,39 @@ export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "profile.owner.pairwise.batch-06", title: "publishes pairwise matrix batch 6/6 and restores exact raw social_media", source: "e2e/profile-theme.spec.ts" },
 ]);
 
-const LIVE_READ_ONLY_COLLECTION = Object.freeze([
-  { title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
-  { title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
-  { title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
-  { title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
-  { title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
-  { title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
-  { title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 768x1024", source: "e2e/music-public-contract.spec.ts" },
-  { title: "accessible public structure reflows at 1440x900", source: "e2e/music-public-contract.spec.ts" },
-  { title: "friendly route resolves one stable Account descriptor and shares canonical content", source: "e2e/music-public-contract.spec.ts" },
-  { title: "friendly Music navigation preserves history, current-page semantics, heading order, and announcements", source: "e2e/music-public-contract.spec.ts" },
-  { title: "wrong username and descriptor outage use non-enumerating recovery", source: "e2e/music-public-contract.spec.ts" },
-  { title: "explicit friendly recovery: preference=true descriptor=missing", source: "e2e/music-public-contract.spec.ts" },
-  { title: "explicit friendly recovery: preference=true descriptor=outage", source: "e2e/music-public-contract.spec.ts" },
-  { title: "explicit friendly recovery: preference=false descriptor=available", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline dark-banner-full-content", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline minimal-light-solid", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline failed-image-fallback", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline mobile-reconnecting", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline 320-long-nav-stress", source: "e2e/music-public-contract.spec.ts" },
-  { title: "visual baseline desktop-full-content", source: "e2e/music-public-contract.spec.ts" },
-  { title: "restore guard uses one emergency cleanup and preserves the original failure", source: "e2e/profile-theme.spec.ts" },
-  { title: "restore guard never performs an emergency write after a confirmed normal restore", source: "e2e/profile-theme.spec.ts" },
-  { title: "restore guard refuses every write after a concurrent profile change", source: "e2e/profile-theme.spec.ts" },
-  { title: "covering array dry run proves all values and all factor pairs", source: "e2e/profile-theme.spec.ts" },
-  { title: "live timeout preserves at least five minutes for exact restore", source: "e2e/profile-theme.spec.ts" },
-  { title: "live matrix is split into ordered batches of at most twelve rows", source: "e2e/profile-theme.spec.ts" },
-  { title: "live row oracle promotes a category first view independently of saved order", source: "e2e/profile-theme.spec.ts" },
-  { title: "renders homepage, navigation, and theme system elements", source: "e2e/profile-theme.spec.ts" },
+export const LIVE_READ_ONLY_COLLECTION = Object.freeze([
+  { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.permission-matrix", title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.first-view-fallback", title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.a11y-announcements", title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.share-privacy", title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.cache-isolation", title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.generic-recovery", title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-320x700", title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-375x667", title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-390x844", title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-768x1024", title: "accessible public structure reflows at 768x1024", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.viewport-1440x900", title: "accessible public structure reflows at 1440x900", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.friendly-descriptor", title: "friendly route resolves one stable Account descriptor and shares canonical content", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.friendly-navigation", title: "friendly Music navigation preserves history, current-page semantics, heading order, and announcements", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.wrong-user-recovery", title: "wrong username and descriptor outage use non-enumerating recovery", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.preference-true-missing", title: "explicit friendly recovery: preference=true descriptor=missing", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.preference-true-outage", title: "explicit friendly recovery: preference=true descriptor=outage", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.preference-false-available", title: "explicit friendly recovery: preference=false descriptor=available", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-dark-banner", title: "visual baseline dark-banner-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-minimal-light", title: "visual baseline minimal-light-solid", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-image-fallback", title: "visual baseline failed-image-fallback", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-mobile-reconnecting", title: "visual baseline mobile-reconnecting", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-long-nav", title: "visual baseline 320-long-nav-stress", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.visual-desktop-full", title: "visual baseline desktop-full-content", source: "e2e/music-public-contract.spec.ts" },
+  { id: "profile.read-only.restore-emergency", title: "restore guard uses one emergency cleanup and preserves the original failure", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.restore-confirmed", title: "restore guard never performs an emergency write after a confirmed normal restore", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.restore-concurrent-change", title: "restore guard refuses every write after a concurrent profile change", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.covering-array", title: "covering array dry run proves all values and all factor pairs", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.live-timeout", title: "live timeout preserves at least five minutes for exact restore", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.live-batches", title: "live matrix is split into ordered batches of at most twelve rows", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.first-view-oracle", title: "live row oracle promotes a category first view independently of saved order", source: "e2e/profile-theme.spec.ts" },
+  { id: "profile.read-only.theme-elements", title: "renders homepage, navigation, and theme system elements", source: "e2e/profile-theme.spec.ts" },
 ]);
 
 const PROFILE_FACTORS = Object.freeze({
@@ -315,6 +327,284 @@ function sanitizedLiveExecutionReport(rawReport) {
   };
 }
 
+const EXECUTION_OUTCOME_STATUSES = new Set(["passed", "failed", "skipped", "not-run"]);
+const EXECUTION_OUTCOME_REASONS = new Set([
+  "none", "test-failed", "test-timed-out", "test-interrupted", "test-skipped", "result-missing",
+  "report-missing", "report-malformed", "report-too-large", "report-invalid", "execution-not-run",
+]);
+const EXECUTION_OUTCOME_STAGES = new Set(["execution", "execution-report", "preflight"]);
+const TERMINAL_OUTCOME_STATUSES = new Set(["passed", "failed", "missing", "invalid", "not-run"]);
+const TERMINAL_OUTCOME_REASONS = new Set([
+  "none", "terminal-failed", "terminal-missing", "terminal-invalid", "terminal-not-run",
+]);
+const TERMINAL_OUTCOME_STAGES = new Set(["terminal-evidence", "preflight"]);
+const LEDGER_INTEGRITY_STATES = new Set(["accepted", "incomplete", "invalid", "not-run"]);
+const EXECUTION_OUTCOME_TUPLES = new Set([
+  "passed\0none\0execution",
+  "failed\0test-failed\0execution",
+  "failed\0test-timed-out\0execution",
+  "failed\0test-interrupted\0execution",
+  "failed\0result-missing\0execution",
+  "failed\0report-missing\0execution-report",
+  "failed\0report-malformed\0execution-report",
+  "failed\0report-too-large\0execution-report",
+  "failed\0report-invalid\0execution-report",
+  "skipped\0test-skipped\0execution",
+  "not-run\0execution-not-run\0preflight",
+]);
+const TERMINAL_OUTCOME_TUPLES = new Set([
+  "passed\0none\0terminal-evidence",
+  "failed\0terminal-failed\0terminal-evidence",
+  "missing\0terminal-missing\0terminal-evidence",
+  "invalid\0terminal-invalid\0terminal-evidence",
+  "not-run\0terminal-not-run\0preflight",
+]);
+const EXPECTED_EXECUTION_OUTCOMES = Object.freeze([...LIVE_JOURNEY_MANIFEST, ...LIVE_READ_ONLY_COLLECTION]);
+
+function exactKeySet(value, expected) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return actual.length === sortedExpected.length && actual.every((key, index) => key === sortedExpected[index]);
+}
+
+function fixedExecutionOutcomes({ status, reason, stage }) {
+  return EXPECTED_EXECUTION_OUTCOMES.map(({ id }) => ({ id, status, reason, stage }));
+}
+
+function executionStatusRecord(entry, id) {
+  if (entry.skipReason !== null || entry.status === "skipped") {
+    return { id, status: "skipped", reason: "test-skipped", stage: "execution" };
+  }
+  if (entry.status === "passed") return { id, status: "passed", reason: "none", stage: "execution" };
+  if (entry.status === "failed") return { id, status: "failed", reason: "test-failed", stage: "execution" };
+  if (entry.status === "timedOut") return { id, status: "failed", reason: "test-timed-out", stage: "execution" };
+  if (entry.status === "interrupted") return { id, status: "failed", reason: "test-interrupted", stage: "execution" };
+  return { id, status: "failed", reason: "result-missing", stage: "execution" };
+}
+
+function sanitizedExecutionOutcomes(executionReport, reportStatus) {
+  if (reportStatus === "not-run") {
+    return {
+      integrity: "not-run",
+      outcomes: fixedExecutionOutcomes({ status: "not-run", reason: "execution-not-run", stage: "preflight" }),
+    };
+  }
+  const reportFailureReason = {
+    missing: "report-missing",
+    "parse-failed": "report-malformed",
+    "too-large": "report-too-large",
+  }[reportStatus];
+  if (reportFailureReason) {
+    return {
+      integrity: "invalid",
+      outcomes: fixedExecutionOutcomes({ status: "failed", reason: reportFailureReason, stage: "execution-report" }),
+    };
+  }
+  if (reportStatus !== "accepted") {
+    return {
+      integrity: "invalid",
+      outcomes: fixedExecutionOutcomes({ status: "failed", reason: "report-invalid", stage: "execution-report" }),
+    };
+  }
+  try {
+    const { collection, failure } = parsedLiveCollection(executionReport);
+    if (failure) throw new Error("invalid classified collection");
+    const byIdentity = new Map([...collection.mutations, ...collection.readOnly]
+      .map((entry) => [manifestKey(entry), entry]));
+    const outcomes = EXPECTED_EXECUTION_OUTCOMES.map((expected) => executionStatusRecord(
+      byIdentity.get(manifestKey(expected)) ?? { status: null, skipReason: null },
+      expected.id,
+    ));
+    return {
+      integrity: outcomes.some(({ reason }) => reason === "result-missing") ? "invalid" : "accepted",
+      outcomes,
+    };
+  } catch {
+    return {
+      integrity: "invalid",
+      outcomes: fixedExecutionOutcomes({ status: "failed", reason: "report-invalid", stage: "execution-report" }),
+    };
+  }
+}
+
+function sanitizedTerminalOutcomes(terminalRecords, terminalStatus) {
+  if (terminalStatus === "not-run") {
+    return {
+      integrity: "not-run",
+      outcomes: LIVE_JOURNEY_MANIFEST.map(({ id }) => ({
+        id, status: "not-run", reason: "terminal-not-run", stage: "preflight",
+      })),
+    };
+  }
+  if (terminalStatus !== "accepted" || !Array.isArray(terminalRecords)) {
+    const malformed = terminalStatus !== "missing";
+    return {
+      integrity: malformed ? "invalid" : "incomplete",
+      outcomes: LIVE_JOURNEY_MANIFEST.map(({ id }) => ({
+        id,
+        status: malformed ? "invalid" : "missing",
+        reason: malformed ? "terminal-invalid" : "terminal-missing",
+        stage: "terminal-evidence",
+      })),
+    };
+  }
+  if (terminalRecords.length > 256) {
+    return {
+      integrity: "invalid",
+      outcomes: LIVE_JOURNEY_MANIFEST.map(({ id }) => ({
+        id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence",
+      })),
+    };
+  }
+  const knownIds = new Set(LIVE_JOURNEY_MANIFEST.map(({ id }) => id));
+  const recordsById = new Map();
+  let hostileRecord = false;
+  for (const record of terminalRecords) {
+    if (!record || typeof record !== "object" || Array.isArray(record) || !knownIds.has(record.id)) {
+      hostileRecord = true;
+      continue;
+    }
+    const records = recordsById.get(record.id) ?? [];
+    records.push(record);
+    recordsById.set(record.id, records);
+  }
+  const outcomes = LIVE_JOURNEY_MANIFEST.map(({ id }) => {
+    const records = recordsById.get(id) ?? [];
+    if (records.length === 0) return { id, status: "missing", reason: "terminal-missing", stage: "terminal-evidence" };
+    if (records.length !== 1) return { id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence" };
+    if (records[0].status === "passed") return { id, status: "passed", reason: "none", stage: "terminal-evidence" };
+    if (records[0].status === "failed") return { id, status: "failed", reason: "terminal-failed", stage: "terminal-evidence" };
+    return { id, status: "invalid", reason: "terminal-invalid", stage: "terminal-evidence" };
+  });
+  const integrity = hostileRecord || outcomes.some(({ status }) => status === "invalid")
+    ? "invalid"
+    : (outcomes.some(({ status }) => status === "missing") ? "incomplete" : "accepted");
+  return { integrity, outcomes };
+}
+
+function outcomeCounts(outcomes, statuses) {
+  return Object.fromEntries(statuses.map((status) => [status, outcomes.filter((entry) => entry.status === status).length]));
+}
+
+function derivedLedgerIntegrity(execution, terminal) {
+  if (execution.integrity === "not-run" && terminal.integrity === "not-run") return "not-run";
+  if (execution.integrity === "invalid" || terminal.integrity === "invalid") return "invalid";
+  if (execution.integrity === "incomplete" || terminal.integrity === "incomplete") return "incomplete";
+  return "accepted";
+}
+
+export function buildSanitizedJourneyOutcomeLedger({
+  executionReport,
+  reportStatus = executionReport === undefined ? "missing" : "accepted",
+  terminalRecords,
+  terminalStatus = Array.isArray(terminalRecords) ? "accepted" : "missing",
+} = {}) {
+  const execution = sanitizedExecutionOutcomes(executionReport, reportStatus);
+  const terminal = sanitizedTerminalOutcomes(terminalRecords, terminalStatus);
+  const ledger = {
+    schemaVersion: JOURNEY_OUTCOME_LEDGER_VERSION,
+    integrity: derivedLedgerIntegrity(execution, terminal),
+    counts: {
+      execution: {
+        total: execution.outcomes.length,
+        ...outcomeCounts(execution.outcomes, ["passed", "failed", "skipped"]),
+        notRun: execution.outcomes.filter((entry) => entry.status === "not-run").length,
+      },
+      terminal: {
+        total: terminal.outcomes.length,
+        ...outcomeCounts(terminal.outcomes, ["passed", "failed", "missing", "invalid"]),
+        notRun: terminal.outcomes.filter((entry) => entry.status === "not-run").length,
+      },
+    },
+    executionOutcomes: execution.outcomes,
+    mutationTerminals: terminal.outcomes,
+  };
+  if (!validateSanitizedJourneyOutcomeLedger(ledger)) throw new Error("sanitized journey outcome ledger is invalid");
+  return ledger;
+}
+
+function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tuples }) {
+  return exactKeySet(record, ["id", "status", "reason", "stage"])
+    && record.id === expectedId && statuses.has(record.status) && reasons.has(record.reason) && stages.has(record.stage)
+    && tuples.has(`${record.status}\0${record.reason}\0${record.stage}`);
+}
+
+export function validateSanitizedJourneyOutcomeLedger(ledger) {
+  if (!exactKeySet(ledger, ["schemaVersion", "integrity", "counts", "executionOutcomes", "mutationTerminals"])
+      || ledger.schemaVersion !== JOURNEY_OUTCOME_LEDGER_VERSION || !LEDGER_INTEGRITY_STATES.has(ledger.integrity)
+      || !exactKeySet(ledger.counts, ["execution", "terminal"])
+      || !exactKeySet(ledger.counts.execution, ["total", "passed", "failed", "skipped", "notRun"])
+      || !exactKeySet(ledger.counts.terminal, ["total", "passed", "failed", "missing", "invalid", "notRun"])
+      || !Array.isArray(ledger.executionOutcomes) || !Array.isArray(ledger.mutationTerminals)
+      || ledger.executionOutcomes.length !== EXPECTED_EXECUTION_OUTCOMES.length
+      || ledger.mutationTerminals.length !== LIVE_JOURNEY_MANIFEST.length) return false;
+  if (!ledger.executionOutcomes.every((record, index) => outcomeRecordValid(record, EXPECTED_EXECUTION_OUTCOMES[index].id, {
+    statuses: EXECUTION_OUTCOME_STATUSES, reasons: EXECUTION_OUTCOME_REASONS, stages: EXECUTION_OUTCOME_STAGES,
+    tuples: EXECUTION_OUTCOME_TUPLES,
+  })) || !ledger.mutationTerminals.every((record, index) => outcomeRecordValid(record, LIVE_JOURNEY_MANIFEST[index].id, {
+    statuses: TERMINAL_OUTCOME_STATUSES, reasons: TERMINAL_OUTCOME_REASONS, stages: TERMINAL_OUTCOME_STAGES,
+    tuples: TERMINAL_OUTCOME_TUPLES,
+  }))) return false;
+  const expectedExecutionCounts = {
+    total: EXPECTED_EXECUTION_OUTCOMES.length,
+    ...outcomeCounts(ledger.executionOutcomes, ["passed", "failed", "skipped"]),
+    "not-run": ledger.executionOutcomes.filter((entry) => entry.status === "not-run").length,
+  };
+  const expectedTerminalCounts = {
+    total: LIVE_JOURNEY_MANIFEST.length,
+    ...outcomeCounts(ledger.mutationTerminals, ["passed", "failed", "missing", "invalid"]),
+    "not-run": ledger.mutationTerminals.filter((entry) => entry.status === "not-run").length,
+  };
+  const normalizedExecutionCounts = {
+    ...ledger.counts.execution,
+    "not-run": ledger.counts.execution.notRun,
+  };
+  delete normalizedExecutionCounts.notRun;
+  const normalizedTerminalCounts = {
+    ...ledger.counts.terminal,
+    "not-run": ledger.counts.terminal.notRun,
+  };
+  delete normalizedTerminalCounts.notRun;
+  if (JSON.stringify(normalizedExecutionCounts) !== JSON.stringify(expectedExecutionCounts)
+      || JSON.stringify(normalizedTerminalCounts) !== JSON.stringify(expectedTerminalCounts)) return false;
+  const executionIntegrity = ledger.executionOutcomes.every(({ status }) => status === "not-run")
+    ? "not-run"
+    : (ledger.executionOutcomes.some(({ reason }) => reason.startsWith("report-") || reason === "result-missing") ? "invalid" : "accepted");
+  const terminalIntegrity = ledger.mutationTerminals.every(({ status }) => status === "not-run")
+    ? "not-run"
+    : (ledger.mutationTerminals.some(({ status }) => status === "invalid")
+      ? "invalid"
+      : (ledger.mutationTerminals.some(({ status }) => status === "missing") ? "incomplete" : "accepted"));
+  return ledger.integrity === derivedLedgerIntegrity({ integrity: executionIntegrity }, { integrity: terminalIntegrity });
+}
+
+export function persistSanitizedJourneyOutcomeLedger({ path: ledgerPath, ledger } = {}) {
+  if (typeof ledgerPath !== "string" || ledgerPath.length === 0 || !validateSanitizedJourneyOutcomeLedger(ledger)) {
+    throw new Error("sanitized journey outcome persistence contract is invalid");
+  }
+  const exactPath = resolve(ledgerPath);
+  const temporaryPath = `${exactPath}.private-tmp`;
+  if (existsSync(exactPath) || existsSync(temporaryPath)) throw new Error("sanitized journey outcome artifact already exists");
+  mkdirSync(dirname(exactPath), { recursive: true, mode: 0o700 });
+  const bytes = `${JSON.stringify(ledger, null, 2)}\n`;
+  let published = false;
+  try {
+    writeFileSync(temporaryPath, bytes, { encoding: "utf8", flag: "wx", mode: 0o600 });
+    linkSync(temporaryPath, exactPath);
+    published = true;
+  } finally {
+    try { if (existsSync(temporaryPath)) unlinkSync(temporaryPath); }
+    catch {
+      if (published) {
+        try { unlinkSync(exactPath); } catch { /* caller cleanup remains fail-closed */ }
+      }
+      throw new Error("sanitized journey outcome temporary cleanup failed");
+    }
+  }
+  return { bytes: Buffer.byteLength(bytes), status: "persisted" };
+}
+
 function journeyPresence(collected = []) {
   const present = new Set(collected.map(manifestKey));
   return LIVE_JOURNEY_MANIFEST.map((entry) => ({ id: entry.id, present: present.has(manifestKey(entry)) }));
@@ -499,11 +789,20 @@ export function runPlaywrightJourneyExecution({
   environment,
   reportPath,
   outputDirectory,
+  terminalEvidencePath,
+  outcomeLedgerPath,
+  persistOutcomeLedger = persistSanitizedJourneyOutcomeLedger,
   privateArtifactIo,
 }) {
   const exactReportPath = resolve(reportPath);
   const exactOutputDirectory = resolve(outputDirectory);
-  if (dirname(exactReportPath) !== dirname(exactOutputDirectory) || exactReportPath === exactOutputDirectory) {
+  const exactTerminalEvidencePath = resolve(terminalEvidencePath);
+  const exactOutcomeLedgerPath = resolve(outcomeLedgerPath);
+  const artifactDirectory = dirname(exactReportPath);
+  if (dirname(exactOutputDirectory) !== artifactDirectory || dirname(exactTerminalEvidencePath) !== artifactDirectory
+      || dirname(exactOutcomeLedgerPath) !== artifactDirectory
+      || new Set([exactReportPath, exactOutputDirectory, exactTerminalEvidencePath, exactOutcomeLedgerPath]).size !== 4
+      || typeof persistOutcomeLedger !== "function") {
     throw new Error("Private Playwright paths must be exclusive children of one run artifact directory");
   }
   const io = {
@@ -520,6 +819,10 @@ export function runPlaywrightJourneyExecution({
   let execution;
   let executionReport;
   let reportStatus = "missing";
+  let terminalRecords;
+  let terminalStatus = "missing";
+  let journeyOutcomeLedger;
+  let outcomeLedgerStatus = "persist-failed";
   let privateArtifactCleanup = "deleted";
   try {
     try {
@@ -553,13 +856,59 @@ export function runPlaywrightJourneyExecution({
       executionReport = undefined;
       reportStatus = "parse-failed";
     }
+    try {
+      if (io.exists(exactTerminalEvidencePath)) {
+        const evidenceSize = io.size(exactTerminalEvidencePath);
+        if (!Number.isSafeInteger(evidenceSize) || evidenceSize < 0
+            || evidenceSize > MAX_PRIVATE_TERMINAL_EVIDENCE_BYTES) {
+          terminalStatus = "too-large";
+        } else {
+          const retainedLines = io.read(exactTerminalEvidencePath).trim().split(/\r?\n/).filter(Boolean);
+          terminalRecords = retainedLines.map((line) => JSON.parse(line));
+          terminalStatus = "accepted";
+        }
+      }
+    } catch {
+      terminalRecords = undefined;
+      terminalStatus = "parse-failed";
+    }
+    try {
+      const candidate = buildSanitizedJourneyOutcomeLedger({
+        executionReport,
+        reportStatus,
+        terminalRecords,
+        terminalStatus,
+      });
+      persistOutcomeLedger({ path: exactOutcomeLedgerPath, ledger: candidate });
+      journeyOutcomeLedger = candidate;
+      outcomeLedgerStatus = "persisted";
+    } catch {
+      journeyOutcomeLedger = undefined;
+      outcomeLedgerStatus = "persist-failed";
+    }
   } finally {
+    if (outcomeLedgerStatus !== "persisted") {
+      for (const retainedPath of [exactOutcomeLedgerPath, `${exactOutcomeLedgerPath}.private-tmp`]) {
+        try { if (io.exists(retainedPath)) io.unlink(retainedPath); } catch { privateArtifactCleanup = "delete-failed"; }
+      }
+    }
     try { if (io.exists(exactReportPath)) io.unlink(exactReportPath); } catch { privateArtifactCleanup = "delete-failed"; }
     try { if (io.exists(exactOutputDirectory)) io.removeDirectory(exactOutputDirectory); } catch { privateArtifactCleanup = "delete-failed"; }
   }
   const childStatus = execution?.status ?? 1;
-  const status = childStatus === 0 && reportStatus === "accepted" && privateArtifactCleanup === "deleted" ? 0 : (childStatus || 1);
-  return { status, reportStatus, privateArtifactCleanup, executionReport };
+  const ledgerComplete = journeyOutcomeLedger?.integrity === "accepted"
+    && journeyOutcomeLedger.counts.execution.passed === EXPECTED_EXECUTION_OUTCOMES.length
+    && journeyOutcomeLedger.counts.terminal.passed === LIVE_JOURNEY_MANIFEST.length;
+  const status = childStatus === 0 && reportStatus === "accepted" && outcomeLedgerStatus === "persisted"
+    && ledgerComplete && privateArtifactCleanup === "deleted" ? 0 : (childStatus || 1);
+  return {
+    status,
+    reportStatus,
+    outcomeLedgerStatus,
+    privateArtifactCleanup,
+    executionReport,
+    ...(journeyOutcomeLedger ? { journeyOutcomeLedger } : {}),
+  };
 }
 
 export function liveJourneyManifestEntry(id) {
@@ -601,12 +950,15 @@ export function appendLiveJourneyResult(file, record) {
   appendFileSync(file, `${JSON.stringify(record)}\n`, { encoding: "utf8", mode: 0o600 });
 }
 
-function evidenceFailure(subcheck, records = []) {
-  const ids = new Set(records.map((record) => record?.id).filter((id) => typeof id === "string"));
+function evidenceFailure(subchecks, records = []) {
+  const exactSubchecks = [...new Set(Array.isArray(subchecks) ? subchecks : [subchecks])];
+  const exactRecords = Array.isArray(records) ? records : [];
+  const ids = new Set(exactRecords.map((record) => record?.id).filter((id) => typeof id === "string"));
   return {
     ok: false,
     failureStage: "journey-evidence",
-    subcheck,
+    subcheck: exactSubchecks[0],
+    subchecks: exactSubchecks,
     journeyPresence: LIVE_JOURNEY_MANIFEST.map(({ id }) => ({ id, present: ids.has(id) })),
   };
 }
@@ -617,37 +969,56 @@ function validHashPair(record) {
 }
 
 export function validateLiveJourneyEvidence({ executionReport, records }) {
+  const subchecks = [];
   let collected;
   try { collected = collectedMutationResults(executionReport); } catch (error) {
-    return evidenceFailure(error?.classification?.subcheck ?? "execution-report", records);
+    subchecks.push(error?.classification?.subcheck ?? "execution-report");
   }
-  if (collected.some((entry) => entry.status !== "passed")) return evidenceFailure("execution-status", records);
-  if (!Array.isArray(records)) return evidenceFailure("records-missing");
-  const knownIds = new Set(LIVE_JOURNEY_MANIFEST.map(({ id }) => id));
-  if (records.some((record) => !knownIds.has(record?.id))) return evidenceFailure("records-unknown", records);
-  if (new Set(records.map((record) => record?.id)).size !== records.length) return evidenceFailure("records-duplicate", records);
-  if (records.length !== LIVE_JOURNEY_MANIFEST.length) return evidenceFailure("records-missing", records);
-  for (let index = 0; index < LIVE_JOURNEY_MANIFEST.length; index += 1) {
-    const expected = LIVE_JOURNEY_MANIFEST[index];
-    const record = records[index];
-    if (record.id !== expected.id) return evidenceFailure("records-reordered", records);
-    if (record.version !== LIVE_JOURNEY_RESULT_VERSION || record.manifestVersion !== LIVE_JOURNEY_MANIFEST_VERSION
-        || record.title !== expected.title || record.source !== expected.source
-        || record.status !== "passed" || record.skipReason !== null || record.cleanup !== "restored"
-        || !validHashPair(record)) return evidenceFailure("record-contract", records);
+  if (collected?.some((entry) => entry.status !== "passed")) subchecks.push("execution-status");
+  if (!Array.isArray(records)) {
+    subchecks.push("records-missing");
+  } else {
+    const knownIds = new Set(LIVE_JOURNEY_MANIFEST.map(({ id }) => id));
+    if (records.some((record) => !knownIds.has(record?.id))) subchecks.push("records-unknown");
+    if (new Set(records.map((record) => record?.id)).size !== records.length) subchecks.push("records-duplicate");
+    if (records.length !== LIVE_JOURNEY_MANIFEST.length) {
+      subchecks.push("records-missing");
+    } else {
+      let reordered = false;
+      let invalidContract = false;
+      for (let index = 0; index < LIVE_JOURNEY_MANIFEST.length; index += 1) {
+        const expected = LIVE_JOURNEY_MANIFEST[index];
+        const record = records[index];
+        if (record?.id !== expected.id) reordered = true;
+        if (record?.version !== LIVE_JOURNEY_RESULT_VERSION || record?.manifestVersion !== LIVE_JOURNEY_MANIFEST_VERSION
+            || record?.title !== expected.title || record?.source !== expected.source
+            || record?.status !== "passed" || record?.skipReason !== null || record?.cleanup !== "restored"
+            || !validHashPair(record ?? {})) invalidContract = true;
+      }
+      if (reordered) subchecks.push("records-reordered");
+      if (invalidContract) subchecks.push("record-contract");
+    }
   }
-  const profileRecords = records.slice(11);
-  if (profileRecords.some((record) => record.rowCount !== 12 || !Array.isArray(record.rows) || record.rows.length !== 12)) {
-    return evidenceFailure("profile-row-count", records);
+  if (Array.isArray(records) && records.length === LIVE_JOURNEY_MANIFEST.length
+      && !subchecks.includes("records-reordered") && !subchecks.includes("record-contract")) {
+    const profileRecords = records.slice(11);
+    if (profileRecords.some((record) => record.rowCount !== 12 || !Array.isArray(record.rows) || record.rows.length !== 12)) {
+      subchecks.push("profile-row-count");
+    } else {
+      const rows = profileRecords.flatMap((record) => record.rows);
+      const expectedRows = buildProfileCoveringRows();
+      if (rows.length !== 72 || new Set(rows.map((row) => JSON.stringify(canonicalValue(row)))).size !== 72
+          || JSON.stringify(rows) !== JSON.stringify(expectedRows)) {
+        subchecks.push("profile-row-order");
+      } else {
+        const coveredPairs = profileFactorPairs(rows);
+        const requiredPairs = requiredProfileFactorPairs();
+        if (coveredPairs.size !== 484 || coveredPairs.size !== requiredPairs.size
+            || [...requiredPairs].some((pair) => !coveredPairs.has(pair))) subchecks.push("profile-factor-pairs");
+      }
+    }
   }
-  const rows = profileRecords.flatMap((record) => record.rows);
-  const expectedRows = buildProfileCoveringRows();
-  if (rows.length !== 72 || new Set(rows.map((row) => JSON.stringify(canonicalValue(row)))).size !== 72
-      || JSON.stringify(rows) !== JSON.stringify(expectedRows)) return evidenceFailure("profile-row-order", records);
-  const coveredPairs = profileFactorPairs(rows);
-  const requiredPairs = requiredProfileFactorPairs();
-  if (coveredPairs.size !== 484 || coveredPairs.size !== requiredPairs.size
-      || [...requiredPairs].some((pair) => !coveredPairs.has(pair))) return evidenceFailure("profile-factor-pairs", records);
+  if (subchecks.length > 0) return evidenceFailure(subchecks, records);
   return {
     ok: true,
     journeyResults: records,

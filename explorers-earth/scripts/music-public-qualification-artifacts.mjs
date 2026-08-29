@@ -14,6 +14,10 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  buildSanitizedJourneyOutcomeLedger,
+  validateSanitizedJourneyOutcomeLedger,
+} from "./music-public-live-preflight.mjs";
 
 const SAFE_RUN_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SCHEMA_VERSION = "explorers-public-qualification-artifacts/v1";
@@ -69,6 +73,7 @@ export const LIVE_QUALIFICATION_REQUIRED_ARTIFACTS = Object.freeze([
   Object.freeze({ role: "docker-inspection", path: "docker-inspection.json" }),
   Object.freeze({ role: "skip-ledger", path: "skip-reasons.json" }),
   Object.freeze({ role: "restoration-record", path: "restoration.json" }),
+  Object.freeze({ role: "journey-outcomes", path: "journey-outcomes.json" }),
   Object.freeze({ role: "evidence", path: "evidence.json" }),
 ]);
 
@@ -676,6 +681,20 @@ function validSkipLedger(value) {
     && allowedReasons.has(entry.reason));
 }
 
+function validJourneyOutcomeTotals(skipLedger, journeyOutcomeLedger) {
+  if (!validSkipLedger(skipLedger) || !validateSanitizedJourneyOutcomeLedger(journeyOutcomeLedger)) return false;
+  const execution = journeyOutcomeLedger.counts.execution;
+  if (execution.notRun === execution.total) return skipLedger.totals.total === 0;
+  if (journeyOutcomeLedger.executionOutcomes.some(({ reason }) => (
+    reason.startsWith("report-") || reason === "result-missing"
+  ))) return skipLedger.execution !== "completed";
+  return execution.notRun === 0 && skipLedger.execution === "completed"
+    && skipLedger.totals.total === execution.total
+    && skipLedger.totals.passed === execution.passed
+    && skipLedger.totals.failed === execution.failed
+    && skipLedger.totals.skipped === execution.skipped;
+}
+
 function executionTotals(executionReport) {
   const specs = [];
   const visit = (suite) => {
@@ -766,7 +785,29 @@ export function buildQualificationOutcomeRecords({ lane, executionOutcome, repor
   if (!validSkipLedger(skipLedger) || !validRestorationRecord(restorationRecord)) {
     fail("qualification outcome contract is invalid");
   }
-  return { skipLedger, restorationRecord };
+  let journeyOutcomeLedger;
+  let journeyOutcomeLedgerPersisted = false;
+  if (executionOutcome?.outcomeLedgerStatus !== undefined) {
+    if (executionOutcome.outcomeLedgerStatus !== "persisted"
+        || !validateSanitizedJourneyOutcomeLedger(executionOutcome.journeyOutcomeLedger)) {
+      fail("qualification journey outcome persistence is invalid");
+    }
+    journeyOutcomeLedger = executionOutcome.journeyOutcomeLedger;
+    journeyOutcomeLedgerPersisted = true;
+  } else if (executionOutcome?.preflightDiagnostics || !executionOutcome?.executionReport) {
+    journeyOutcomeLedger = buildSanitizedJourneyOutcomeLedger({
+      reportStatus: "not-run",
+      terminalStatus: "not-run",
+    });
+  } else {
+    journeyOutcomeLedger = buildSanitizedJourneyOutcomeLedger({
+      executionReport: executionOutcome.executionReport,
+      reportStatus: "accepted",
+      terminalRecords: Array.isArray(report.journeys) ? report.journeys : undefined,
+      terminalStatus: Array.isArray(report.journeys) ? "accepted" : "not-run",
+    });
+  }
+  return { skipLedger, restorationRecord, journeyOutcomeLedger, journeyOutcomeLedgerPersisted };
 }
 
 function validHashPair(value) {
@@ -811,6 +852,36 @@ function writeCanonicalStructuredArtifact({ runDirectory, relativePath, value, k
   mkdirSync(path.dirname(artifactPath), { recursive: true, mode: 0o700 });
   try { writeFileSync(artifactPath, retained, { encoding: "utf8", flag: "wx", mode: 0o600 }); }
   catch { fail("qualification artifact already exists"); }
+}
+
+function retainJourneyOutcomeLedger({
+  runDirectory,
+  ledger,
+  alreadyPersisted,
+  knownSecrets,
+  workspaceRoot,
+}) {
+  if (!validateSanitizedJourneyOutcomeLedger(ledger) || typeof alreadyPersisted !== "boolean") {
+    fail("qualification journey outcome ledger contract is invalid");
+  }
+  assertSafeStructuredArtifact(ledger, { knownSecrets, workspaceRoot });
+  const expectedBytes = Buffer.from(`${JSON.stringify(ledger, null, 2)}\n`, "utf8");
+  const ledgerPath = safeArtifactPath(runDirectory, "journey-outcomes.json");
+  if (alreadyPersisted) {
+    let retained;
+    try { retained = readBoundedRegularFile(ledgerPath, MAX_LEDGER_BYTES); }
+    catch { fail("qualification journey outcome ledger is missing or unreadable"); }
+    if (!retained.equals(expectedBytes)) fail("qualification journey outcome ledger changed after private cleanup");
+    return;
+  }
+  if (existsSync(ledgerPath)) fail("qualification journey outcome ledger unexpectedly exists");
+  writeCanonicalStructuredArtifact({
+    runDirectory,
+    relativePath: "journey-outcomes.json",
+    value: ledger,
+    knownSecrets,
+    workspaceRoot,
+  });
 }
 
 function validStateServiceTerminalRecord(value) {
@@ -885,13 +956,16 @@ export function finalizeQualificationRunArtifacts({
   dockerInspection,
   skipLedger,
   restorationRecord,
+  journeyOutcomeLedger,
+  journeyOutcomeLedgerPersisted = false,
   evidence,
 } = {}) {
   const runDirectory = requireGuardedRunDirectory(runDirectoryInput);
   if (typeof workspaceRoot !== "string" || !path.isAbsolute(workspaceRoot)
       || !Array.isArray(knownSecrets) || knownSecrets.some((secret) => typeof secret !== "string")
       || !evidence || typeof evidence !== "object" || Array.isArray(evidence)
-      || Object.hasOwn(evidence, "streams") || !validStateServiceLifecycle(evidence.stateServiceLifecycle)) {
+      || Object.hasOwn(evidence, "streams") || Object.hasOwn(evidence, "journeyOutcomes")
+      || !validStateServiceLifecycle(evidence.stateServiceLifecycle)) {
     fail("qualification finalization contract is invalid");
   }
   const normalizedStreams = normalizedQualificationStreamInputs(streamArtifacts);
@@ -899,9 +973,12 @@ export function finalizeQualificationRunArtifacts({
   if (!validFixtureAuthorityRecord(fixtureAuthority)
       || (!validObservedAnalyticsLedger(analyticsLedger) && !validUnavailableAnalyticsLedger(analyticsLedger))
       || !validDockerInspection(dockerInspection) || !validSkipLedger(skipLedger)
-      || !validRestorationRecord(restorationRecord)) fail("qualification structured artifact contract is invalid");
+      || !validRestorationRecord(restorationRecord)
+      || !validJourneyOutcomeTotals(skipLedger, journeyOutcomeLedger)
+      || typeof journeyOutcomeLedgerPersisted !== "boolean") fail("qualification structured artifact contract is invalid");
   for (const value of [
-    fixtureAuthority, analyticsLedger, visualTraceLedger, dockerInspection, skipLedger, restorationRecord, evidence,
+    fixtureAuthority, analyticsLedger, visualTraceLedger, dockerInspection, skipLedger, restorationRecord,
+    journeyOutcomeLedger, evidence,
   ]) assertSafeStructuredArtifact(value, { knownSecrets, workspaceRoot });
   const streamRecords = normalizedStreams.map(({ definition, input }) => {
     const written = writeSanitizedQualificationLog({
@@ -927,8 +1004,15 @@ export function finalizeQualificationRunArtifacts({
     };
   });
   if (!validQualificationStreamRecords(streamRecords)) fail("qualification stream artifact contract is invalid");
-  const retainedEvidence = { ...evidence, streams: streamRecords };
+  const retainedEvidence = { ...evidence, journeyOutcomes: journeyOutcomeLedger, streams: streamRecords };
   assertSafeStructuredArtifact(retainedEvidence, { knownSecrets, workspaceRoot });
+  retainJourneyOutcomeLedger({
+    runDirectory,
+    ledger: journeyOutcomeLedger,
+    alreadyPersisted: journeyOutcomeLedgerPersisted,
+    knownSecrets,
+    workspaceRoot,
+  });
   writeCanonicalStructuredArtifact({
     runDirectory, relativePath: "fixture-authority.json", value: fixtureAuthority,
     knownSecrets, workspaceRoot,
@@ -1166,6 +1250,28 @@ function verifyFixtureAuthorityEvidence(runDirectory, manifestArtifacts) {
   }
 }
 
+function verifyJourneyOutcomeEvidence(runDirectory, manifestArtifacts) {
+  let ledger;
+  let ledgerBytes;
+  let evidence;
+  try {
+    ledgerBytes = readBoundedRegularFile(safeArtifactPath(runDirectory, "journey-outcomes.json"), MAX_LEDGER_BYTES);
+    ledger = JSON.parse(ledgerBytes.toString("utf8"));
+    evidence = JSON.parse(readBoundedRegularFile(safeArtifactPath(runDirectory, "evidence.json"), MAX_LEDGER_BYTES).toString("utf8"));
+  } catch {
+    fail("qualification journey outcome evidence contract is invalid");
+  }
+  if (!validateSanitizedJourneyOutcomeLedger(ledger)
+      || !ledgerBytes.equals(Buffer.from(`${JSON.stringify(ledger, null, 2)}\n`, "utf8"))
+      || JSON.stringify(evidence?.journeyOutcomes) !== JSON.stringify(ledger)) {
+    fail("qualification journey outcome evidence contract is invalid");
+  }
+  const artifact = manifestArtifacts.find(({ role }) => role === "journey-outcomes");
+  if (!artifact || artifact.path !== "journey-outcomes.json" || artifact.bytes !== ledgerBytes.length) {
+    fail("qualification journey outcome evidence contract is invalid");
+  }
+}
+
 export function verifyQualificationArtifactManifest({
   runDirectory: runDirectoryInput,
   requiredArtifacts,
@@ -1223,6 +1329,7 @@ export function verifyQualificationArtifactManifest({
   assertQualificationFileSet(runDirectory, exactRequiredArtifacts);
   verifyQualificationStreamEvidence(runDirectory, manifest.artifacts);
   verifyFixtureAuthorityEvidence(runDirectory, manifest.artifacts);
+  verifyJourneyOutcomeEvidence(runDirectory, manifest.artifacts);
   return { schemaVersion: SCHEMA_VERSION, files: manifest.artifacts.length, manifestSha256: observedHash };
 }
 
