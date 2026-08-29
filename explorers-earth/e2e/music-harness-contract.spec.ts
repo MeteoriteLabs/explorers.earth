@@ -19,7 +19,7 @@ import {
   resolveMusicTestLane,
   withRestoredMusicFixture,
 } from "./setup/music";
-import { prepareMusicFixtureArtifacts, settleMusicFixture, stopMusicFixture } from "../scripts/music-fixture-cleanup.mjs";
+import { stopMusicFixture } from "../scripts/music-fixture-cleanup.mjs";
 import playwrightConfig from "../playwright.config";
 
 test("clean PR-safe collection does not require live Music environment", () => {
@@ -326,51 +326,157 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain('"--list"');
   expect(runner).toContain("Live public Music E2E preflight refused");
   expect(runner).toContain('fetch(`${stateServiceUrl}/snapshot`');
-  expect(runner).toContain('globalRestoreOk ? "evidence-missing" : "restore-failed"');
+  expect(runner).toContain('import { runMusicFixtureOrchestration } from "./music-public-e2e-runner.mjs"');
+  expect(runner).toContain("const liveOutcome = await runMusicFixtureOrchestration({");
   expect(runner.indexOf('"--list"')).toBeLessThan(runner.indexOf("google-auth/callback?access_token="));
   expect(runner).toContain("browserApiPrefix");
   expect(runner).not.toContain("http://localhost:55173/api/");
   expect(runner).toContain("callback bootstrap failed; details redacted");
   expect(runner).not.toContain("callbackBootstrapError.message");
   expect(runner).toContain("result.beforeHash === expected && result.afterHash === expected");
-  expect(runner).toContain('if (cleanup !== "restored") process.exitCode = 5');
-  expect(runner).toContain('report = { ...report, result: "failed", cleanup }');
+  expect(runner).toContain('runNpm(["run", "--silent", "music-cli", "--", "down"]');
 });
 
-test("post-snapshot setup and evidence failures still restore once, tear down, and redact reporting", async () => {
-  expect(() => prepareMusicFixtureArtifacts({
-    directory: "fixture", authPath: "auth", storagePath: "storage",
-    mkdir: () => undefined, write: () => { throw new Error("Bearer secret-token"); }, chmod: () => { throw new Error("must not reach"); },
-  })).toThrow(/secret-token/);
+test("runner orchestration contains setup, parse, and report faults with restored abort hashes", async () => {
+  type RestoreResult = { ok: boolean; cleanup: string; beforeHash?: string; afterHash?: string };
+  type RunnerReport = { result: string; cleanup: string; restoreHashes: Array<{ beforeHash: string; afterHash: string }> };
+  type RunnerOutcome = { exitCode: number; report: RunnerReport };
+  type RunnerOptions = {
+    snapshotExists: boolean;
+    baseReport: Record<string, unknown>;
+    artifacts: {
+      directory: string;
+      authPath: string;
+      storagePath: string;
+      mkdir: (directory: string) => void;
+      write: (file: string, content: string) => void;
+      chmod: (file: string) => void;
+    };
+    restoreEvidence: {
+      path: string;
+      exists: (file: string) => boolean;
+      read: (file: string) => string;
+    };
+    execute: () => Promise<number>;
+    restore: () => Promise<RestoreResult>;
+    teardown: {
+      artifactPaths: string[];
+      exists: (file: string) => boolean;
+      unlink: (file: string) => void;
+      stopStateService: () => void;
+      down: () => number;
+    };
+    writeReport: (report: RunnerReport) => Promise<void>;
+    writeStdout: (text: string) => void;
+    writeStderr: (text: string) => void;
+  };
+  const runnerModule = await import("../scripts/music-public-e2e-runner.mjs") as unknown as {
+    runMusicFixtureOrchestration?: (options: RunnerOptions) => Promise<RunnerOutcome>;
+  };
+  expect(runnerModule.runMusicFixtureOrchestration, "the CLI must expose its real post-snapshot orchestration path").toBeDefined();
+  if (!runnerModule.runMusicFixtureOrchestration) return;
 
-  for (const failure of ["report", "evidence"] as const) {
+  const hash = "a".repeat(64);
+  for (const fault of ["setup", "parse", "report"] as const) {
     const calls: string[] = [];
-    const settled = await settleMusicFixture({
-      restore: async () => { calls.push("restore"); return { ok: true, cleanup: "restored", beforeHash: "a".repeat(64), afterHash: "a".repeat(64) }; },
-      parseEvidence: async () => { calls.push("parse"); if (failure === "evidence") throw new Error("Bearer secret-token"); return []; },
-      teardown: async () => { calls.push("down"); return 0; },
-      writeEvidence: async () => { calls.push("report"); if (failure === "report") throw new Error("Bearer secret-token"); },
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const reports: RunnerReport[] = [];
+    const outcome = await runnerModule.runMusicFixtureOrchestration({
+      snapshotExists: true,
+      baseReport: { version: MUSIC_PUBLIC_FIXTURE_VERSION, runId: `fault-${fault}`, lane: "live" },
+      artifacts: {
+        directory: "fixture-artifacts",
+        authPath: "owner-auth.json",
+        storagePath: "profile-storage-state.json",
+        mkdir: () => { calls.push("mkdir"); },
+        write: (file) => {
+          calls.push(`write:${file}`);
+          if (fault === "setup") throw new Error("Bearer secret-token");
+        },
+        chmod: (file) => { calls.push(`chmod:${file}`); },
+      },
+      restoreEvidence: {
+        path: "restore-evidence.jsonl",
+        exists: () => true,
+        read: () => {
+          calls.push("parse-restore-evidence");
+          if (fault === "parse") throw new Error("Bearer secret-token");
+          return `${JSON.stringify({ cleanup: "restored", beforeHash: hash, afterHash: hash })}\n`;
+        },
+      },
+      execute: async () => { calls.push("execute"); return 0; },
+      restore: async () => {
+        calls.push("initial-restore");
+        return { ok: true, cleanup: "restored", beforeHash: hash, afterHash: hash };
+      },
+      teardown: {
+        artifactPaths: ["owner-auth.json", "profile-storage-state.json"],
+        exists: (file) => { calls.push(`exists:${file}`); return true; },
+        unlink: (file) => { calls.push(`unlink:${file}`); },
+        stopStateService: () => { calls.push("state-service-stop"); },
+        down: () => { calls.push("npm run --silent music-cli -- down"); return 0; },
+      },
+      writeReport: async (report) => {
+        calls.push("write-final-report");
+        if (fault === "report") throw new Error("Bearer secret-token");
+        reports.push(structuredClone(report));
+      },
+      writeStdout: (text) => { stdout.push(text); },
+      writeStderr: (text) => { stderr.push(text); },
     });
-    expect(calls).toEqual(["restore", "parse", "down", "report"]);
-    expect(calls.filter((call) => call === "restore")).toHaveLength(1);
-    expect(settled.teardownOk).toBe(true);
-    expect(JSON.stringify(settled)).not.toContain("secret-token");
-    expect(settled.cleanup).toBe("evidence-missing");
-    expect(settled.exitCode).toBe(5);
+
+    expect(calls.filter((call) => call === "initial-restore"), fault).toHaveLength(1);
+    expect(calls, fault).toEqual(expect.arrayContaining([
+      "exists:owner-auth.json",
+      "unlink:owner-auth.json",
+      "exists:profile-storage-state.json",
+      "unlink:profile-storage-state.json",
+      "state-service-stop",
+      "npm run --silent music-cli -- down",
+      "write-final-report",
+    ]));
+    expect(outcome.exitCode, fault).not.toBe(0);
+    expect(outcome.report.result, fault).toBe("failed");
+    expect(outcome.report.cleanup, fault).toBe(fault === "setup" ? "restored" : "evidence-missing");
+    expect(outcome.report.restoreHashes, fault).toEqual(expect.arrayContaining([{ beforeHash: hash, afterHash: hash }]));
+    expect(JSON.parse(stdout.join("")), fault).toEqual(outcome.report);
+    expect(`${stdout.join("")}\n${stderr.join("")}`, fault).not.toMatch(/bearer|token/i);
+    if (fault === "setup") {
+      expect(reports, "restored abort evidence must be written with direct verified hashes").toEqual([
+        expect.objectContaining({ cleanup: "restored", restoreHashes: [{ beforeHash: hash, afterHash: hash }] }),
+      ]);
+    }
   }
 });
 
 test("teardown attempts every artifact, state service, and exact down after individual failures", () => {
-  const calls: string[] = [];
-  const status = stopMusicFixture({
-    artifactPaths: ["owner-auth", "profile-state"],
-    exists: () => true,
-    unlink: (file) => { calls.push(`unlink:${file}`); if (file === "owner-auth") throw new Error("denied"); },
-    stopStateService: () => { calls.push("state-stop"); throw new Error("already exited"); },
-    down: () => { calls.push("music-cli down"); return 0; },
-  });
-  expect(calls).toEqual(["unlink:owner-auth", "unlink:profile-state", "state-stop", "music-cli down"]);
-  expect(status).toBe(1);
+  for (const fault of ["first-exists", "first-unlink", "second-unlink", "state-stop", "down"] as const) {
+    const calls: string[] = [];
+    const status = stopMusicFixture({
+      artifactPaths: ["owner-auth", "profile-state"],
+      exists: (file) => {
+        calls.push(`exists:${file}`);
+        if (fault === "first-exists" && file === "owner-auth") throw new Error("denied");
+        return true;
+      },
+      unlink: (file) => {
+        calls.push(`unlink:${file}`);
+        if ((fault === "first-unlink" && file === "owner-auth") || (fault === "second-unlink" && file === "profile-state")) {
+          throw new Error("denied");
+        }
+      },
+      stopStateService: () => {
+        calls.push("state-stop");
+        if (fault === "state-stop") throw new Error("already exited");
+      },
+      down: () => { calls.push("npm run --silent music-cli -- down"); return fault === "down" ? 1 : 0; },
+    });
+    expect(calls, fault).toEqual(fault === "first-exists"
+      ? ["exists:owner-auth", "exists:profile-state", "unlink:profile-state", "state-stop", "npm run --silent music-cli -- down"]
+      : ["exists:owner-auth", "unlink:owner-auth", "exists:profile-state", "unlink:profile-state", "state-stop", "npm run --silent music-cli -- down"]);
+    expect(status, fault).toBe(1);
+  }
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
