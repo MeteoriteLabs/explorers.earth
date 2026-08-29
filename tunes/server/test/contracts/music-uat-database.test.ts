@@ -261,4 +261,50 @@ describe("owned Task-4 UAT database lane", () => {
       ],
     });
   });
+
+  it("binds the migration suite admin lifecycle to the validated owned target and tolerates setup refusal", () => {
+    const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+    const source = readFileSync(resolve(
+      repositoryRoot,
+      "tunes/server/test/migrations/music-migration.integration.test.ts",
+    ), "utf8");
+    expect(source).toContain("validateIntegrationDatabaseTarget(adminUrl)");
+    expect(source).not.toContain("127.0.0.1:55432/music_fixture");
+    expect(source).not.toContain('pathname: "/music_fixture"');
+    expect(source).toMatch(/afterAll\(async \(\) => \{\s+if \(!admin\) return;[\s\S]+await admin\.end\(\)/);
+  });
+
+  it("derives the runtime-role migration count from the checked-in migration inventory", () => {
+    const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+    const source = readFileSync(resolve(
+      repositoryRoot,
+      "tunes/server/test/music-runtime-role.integration.test.ts",
+    ), "utf8");
+    expect(source).toContain("EXPECTED_MUSIC_MIGRATION_CHAIN.length");
+    expect(source).not.toMatch(/music_schema_migrations[\s\S]{0,160}\.toBe\(20\)/);
+  });
+
+  it("uses a file-backed public ID key in the live runtime-role fixture and cleans its protected root", () => {
+    const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+    const source = readFileSync(resolve(
+      repositoryRoot,
+      "tunes/server/test/music-runtime-role.integration.test.ts",
+    ), "utf8");
+    expect(source).toContain("writeFileSync(publicIdHmacPath");
+    expect(source).toContain("chmodSync(publicIdHmacPath, 0o600)");
+    expect(source).toContain("delete values.MUSIC_PUBLIC_ID_HMAC_KEY");
+    expect(source).toContain("MUSIC_PUBLIC_ID_HMAC_KEY_FILE: publicIdHmacPath");
+    expect(source).toMatch(/afterAll\(async \(\) => \{[\s\S]+finally \{\s+rmSync\(runtimeSecretRoot, \{ recursive: true, force: true \}\)/);
+  });
+
+  it("keeps live runtime-role startup on the owned database socket after file-key validation", () => {
+    const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+    const source = readFileSync(resolve(
+      repositoryRoot,
+      "tunes/server/test/music-runtime-role.integration.test.ts",
+    ), "utf8");
+    expect(source).toContain("const databaseAuthority = new URL(ownerTarget)");
+    expect(source).toContain("MUSIC_DATABASE_HOST: databaseAuthority.hostname");
+    expect(source).toContain("MUSIC_DATABASE_PORT: databaseAuthority.port");
+  });
 });

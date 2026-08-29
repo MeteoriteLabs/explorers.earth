@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
 import { startMusicServer } from "../config/music-startup";
+import { EXPECTED_MUSIC_MIGRATION_CHAIN } from "../../shared/music-migration-contract";
 
 const ownerTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C5_POSTGRES_TEST === "1";
@@ -47,16 +48,19 @@ const runtimePasswordPath = join(runtimeSecretRoot, "database-runtime");
 const signingPath = join(runtimeSecretRoot, "music-token");
 const lifecycleProofPath = join(runtimeSecretRoot, "strapi-lifecycle-proof-token");
 const publicationResponsePath = join(runtimeSecretRoot, "publication-response");
+const publicIdHmacPath = join(runtimeSecretRoot, "public-id-hmac");
 const gateOwnerPasswordPath = join(runtimeSecretRoot, "database-migrator");
 writeFileSync(runtimePasswordPath, runtimePassword, { mode: 0o600 });
 writeFileSync(signingPath, Buffer.alloc(32, 0x6e).toString("base64url"), { mode: 0o600 });
 writeFileSync(lifecycleProofPath, Buffer.alloc(32, 0x70).toString("base64url"), { mode: 0o600 });
 writeFileSync(publicationResponsePath, Buffer.alloc(32, 0x71).toString("base64url"), { mode: 0o600 });
+writeFileSync(publicIdHmacPath, Buffer.alloc(32, 0x73).toString("base64url"), { mode: 0o600 });
 writeFileSync(gateOwnerPasswordPath, gateOwnerPassword, { mode: 0o600 });
 chmodSync(runtimePasswordPath, 0o600);
 chmodSync(signingPath, 0o600);
 chmodSync(lifecycleProofPath, 0o600);
 chmodSync(publicationResponsePath, 0o600);
+chmodSync(publicIdHmacPath, 0o600);
 chmodSync(gateOwnerPasswordPath, 0o600);
 let clusterAdmin: pg.Pool;
 let owner: pg.Pool;
@@ -72,9 +76,11 @@ async function loadAuthority(): Promise<Record<string, unknown>> {
 
 function startupEnvironment(): Record<string, string> {
   const repositoryRoot = resolve(import.meta.dirname, "../../..");
+  const databaseAuthority = new URL(ownerTarget);
   const values = Object.fromEntries(readFileSync(join(repositoryRoot, ".env.music.test.example"), "utf8")
     .split(/\r?\n/).filter((line) => line && !line.startsWith("#"))
     .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
+  delete values.MUSIC_PUBLIC_ID_HMAC_KEY;
   return {
     ...values,
     MUSIC_MODE: "live",
@@ -82,8 +88,8 @@ function startupEnvironment(): Record<string, string> {
     MUSIC_STRAPI_ALLOWED_ORIGINS: "https://cms.example.invalid",
     TRUST_PROXY_HOPS: "1",
     MUSIC_TRUSTED_PROXY_IP: "127.0.0.1",
-    MUSIC_DATABASE_HOST: "127.0.0.1",
-    MUSIC_DATABASE_PORT: "55432",
+    MUSIC_DATABASE_HOST: databaseAuthority.hostname,
+    MUSIC_DATABASE_PORT: databaseAuthority.port,
     MUSIC_DATABASE_NAME: databaseName,
     MUSIC_DATABASE_USER: runtimeUser,
     MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
@@ -93,6 +99,7 @@ function startupEnvironment(): Record<string, string> {
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "runtime-test-publication",
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "",
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: publicationResponsePath,
+    MUSIC_PUBLIC_ID_HMAC_KEY_FILE: publicIdHmacPath,
   };
 }
 
@@ -107,34 +114,37 @@ describePg("C5 least-privilege Music runtime database authority", () => {
   });
 
   afterAll(async () => {
-    await runtime?.end();
-    await owner?.end();
-    await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${reverseBridgeRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${reverseBridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${runtimeUser} FROM ${incomingBridgeRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${incomingBridgeRole} FROM ${incomingRogueRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${runtimeUser} FROM ${incomingRogueRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${bridgeRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeUser}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${rogueLoginRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${bridgeRole}`).catch(() => undefined);
-    await clusterAdmin?.query(`REVOKE ADMIN OPTION FOR ${runtimeCapabilityRole} FROM ${runtimeUser}`).catch(() => undefined);
-    await clusterAdmin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
-    await clusterAdmin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${runtimeUser}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${bridgeRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${reverseBridgeRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${incomingBridgeRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${incomingRogueRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${escalationRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${rogueLoginRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${gateOwnerRole}`);
-    await clusterAdmin?.query(`DROP ROLE IF EXISTS ${unexpectedOwnerRole}`);
-    await clusterAdmin?.end();
-    rmSync(runtimeSecretRoot, { recursive: true, force: true });
+    try {
+      await runtime?.end();
+      await owner?.end();
+      await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${runtimeCapabilityRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${reverseBridgeRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${reverseBridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${runtimeUser} FROM ${incomingBridgeRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${incomingBridgeRole} FROM ${incomingRogueRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${runtimeUser} FROM ${incomingRogueRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${bridgeRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${escalationRole} FROM ${runtimeUser}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${rogueLoginRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${bridgeRole} FROM ${rogueLoginRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ${runtimeCapabilityRole} FROM ${bridgeRole}`).catch(() => undefined);
+      await clusterAdmin?.query(`REVOKE ADMIN OPTION FOR ${runtimeCapabilityRole} FROM ${runtimeUser}`).catch(() => undefined);
+      await clusterAdmin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
+      await clusterAdmin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${runtimeUser}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${bridgeRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${reverseBridgeRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${incomingBridgeRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${incomingRogueRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${escalationRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${rogueLoginRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${gateOwnerRole}`);
+      await clusterAdmin?.query(`DROP ROLE IF EXISTS ${unexpectedOwnerRole}`);
+      await clusterAdmin?.end();
+    } finally {
+      rmSync(runtimeSecretRoot, { recursive: true, force: true });
+    }
   });
 
   it("provisions a distinct restricted login and refuses every owner/migration/history bypass", async () => {
@@ -212,7 +222,8 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     expect((await owner.query(`SELECT privilege_type FROM information_schema.column_privileges
       WHERE grantee='music_runtime' AND table_schema='public' AND table_name='users'
         AND column_name='public_snapshot_revision' AND privilege_type='UPDATE'`)).rowCount).toBeGreaterThan(0);
-    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count).toBe(20);
+    expect((await runtime.query("SELECT count(*)::int AS count FROM music_schema_migrations")).rows[0].count)
+      .toBe(EXPECTED_MUSIC_MIGRATION_CHAIN.length);
 
     for (const statement of [
       "SET session_replication_role='replica'",

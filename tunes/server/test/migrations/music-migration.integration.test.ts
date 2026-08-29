@@ -14,9 +14,10 @@ import {
   verifyMusicDatabase,
 } from "../../db/migrate";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../../../shared/music-migration-contract";
+import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
 import manifest from "../../../../fixtures/db/music-runtime-table-manifest.json";
 
-const adminUrl = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
+const adminUrl = process.env.DATABASE_URL_TEST ?? "";
 const runIntegration = process.env.MUSIC_C3_POSTGRES_TEST === "1";
 const describePostgres = runIntegration ? describe.sequential : describe.skip;
 const databases: string[] = [];
@@ -41,22 +42,14 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
   beforeAll(async () => {
-    const exactTarget = new URL(adminUrl);
-    const expectedPort = process.env.MUSIC_C10_STANDALONE_POSTGRES_ACK === "C10_LABELED_LOCAL_PG15"
-      ? process.env.MUSIC_C10_STANDALONE_POSTGRES_PORT
-      : "55432";
-    expect({ protocol: exactTarget.protocol, hostname: exactTarget.hostname, port: exactTarget.port,
-      pathname: exactTarget.pathname, username: exactTarget.username }).toEqual({
-      protocol: "postgresql:", hostname: "127.0.0.1", port: expectedPort,
-      pathname: "/music_fixture", username: "music_migrator",
-    });
-    expect(exactTarget.password).not.toBe("");
-    admin = new pg.Pool({ connectionString: adminUrl, max: 4 });
+    const exactTarget = validateIntegrationDatabaseTarget(adminUrl);
+    admin = new pg.Pool({ connectionString: exactTarget.toString(), max: 4 });
     const version = await admin.query<{ server_version: string }>("SHOW server_version");
     expect(version.rows[0].server_version).toMatch(/^15\./);
   });
 
   afterAll(async () => {
+    if (!admin) return;
     for (const name of databases.reverse()) {
       await admin.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()", [name]);
       await admin.query(`DROP DATABASE ${name}`);
