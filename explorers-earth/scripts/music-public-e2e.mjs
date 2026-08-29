@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createConnection } from "node:net";
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { settleMusicFixture } from "./music-fixture-cleanup.mjs";
 
 const VERSION = "music-public-e2e-fixture/v1";
 const CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE";
@@ -104,6 +105,7 @@ let authStatePath;
 let profileStorageStatePath;
 let initialSnapshot;
 let initialRestoreEvidence;
+let initialRestorePromise;
 function stopFixture() {
   if (authStatePath && existsSync(authStatePath)) { unlinkSync(authStatePath); authStatePath = undefined; }
   if (profileStorageStatePath && existsSync(profileStorageStatePath)) { unlinkSync(profileStorageStatePath); profileStorageStatePath = undefined; }
@@ -113,20 +115,31 @@ function stopFixture() {
   return runNpm(["run", "--silent", "music-cli", "--", "down"], { cwd: monorepoRoot, stdio: "inherit" }).status ?? 1;
 }
 async function restoreInitialSnapshot() {
-  if (!initialSnapshot || !stateToken) return { ok: false, cleanup: "evidence-missing" };
-  try {
+  if (initialRestorePromise) return initialRestorePromise;
+  initialRestorePromise = (async () => {
+    if (!initialSnapshot || !stateToken) return { ok: false, cleanup: "evidence-missing" };
+    try {
     const response = await fetch(`${stateServiceUrl}/restore`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) });
     if (!response.ok) return { ok: false, cleanup: "restore-failed" };
     const result = await response.json();
     const expected = initialSnapshot?.database?.dumpHash;
     const ok = typeof expected === "string" && result.beforeHash === expected && result.afterHash === expected;
     return { ok, cleanup: ok ? "restored" : "restore-failed", beforeHash: result.beforeHash, afterHash: result.afterHash };
-  } catch { return { ok: false, cleanup: "restore-failed" }; }
+    } catch { return { ok: false, cleanup: "restore-failed" }; }
+  })();
+  return initialRestorePromise;
 }
 function writeLiveFailureEvidence(cleanup) {
   const absoluteEvidence = path.resolve(evidencePath);
   mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
   writeFileSync(absoluteEvidence, `${JSON.stringify({ ...baseReport, result: "failed", cleanup, restoreHashes: initialRestoreEvidence?.ok ? [{ beforeHash: initialRestoreEvidence.beforeHash, afterHash: initialRestoreEvidence.afterHash }] : [] }, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+}
+async function abortPostSnapshot(message) {
+  const settled = await settleMusicFixture({ restore: restoreInitialSnapshot, parseEvidence: async () => [], teardown: stopFixture,
+    writeEvidence: async ({ cleanup }) => writeLiveFailureEvidence(cleanup) });
+  initialRestoreEvidence = settled.restoration;
+  process.stderr.write(`${message}; details redacted.\n`);
+  process.exit(4);
 }
 if (mode.lane === "live") {
   const authorityBootstrap = runNpm(["run", "--silent", "music-cli", "--", "bootstrap"], { cwd: monorepoRoot, stdio: "inherit", env: process.env });
@@ -203,10 +216,12 @@ if (mode.lane === "live") {
     writeLiveFailureEvidence(teardownStatus === 0 ? "evidence-missing" : "teardown-failed");
     process.exit(4);
   }
-  profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
-  mkdirSync(path.dirname(profileStorageStatePath), { recursive: true });
-  writeFileSync(profileStorageStatePath, `${JSON.stringify({ cookies: [], origins: [] })}\n`, { encoding: "utf8", mode: 0o600 });
-  chmodSync(profileStorageStatePath, 0o600);
+  try {
+    profileStorageStatePath = path.resolve(`.artifacts/music-public/${runId}/profile-storage-state.json`);
+    mkdirSync(path.dirname(profileStorageStatePath), { recursive: true });
+    writeFileSync(profileStorageStatePath, `${JSON.stringify({ cookies: [], origins: [] })}\n`, { encoding: "utf8", mode: 0o600 });
+    chmodSync(profileStorageStatePath, 0o600);
+  } catch { await abortPostSnapshot("Live public Music E2E setup failed"); }
   const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
   const restoreEvidencePath = path.resolve(`.artifacts/music-public/${runId}/restore-evidence.jsonl`);
   const preflightEnvironment = { ...process.env, PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl, PLAYWRIGHT_PR_SAFE: "false", MUSIC_E2E_LIVE_WRITE: "true", MUSIC_E2E_RESTORE_EVIDENCE_PATH: restoreEvidencePath,
@@ -217,10 +232,7 @@ if (mode.lane === "live") {
   const requiredJourneys = ["owner publication", "guest request", "guest playback", "pairwise matrix batch 1/6", "pairwise matrix batch 6/6"];
   if (authorityPreflight.status !== 0 || collectionPreflight.status !== 0 || !requiredJourneys.every((title) => collectionPreflight.stdout.includes(title))) {
     process.stderr.write("Live public Music E2E preflight refused: authority was skipped or expected mutation journeys did not collect.\n");
-    initialRestoreEvidence = await restoreInitialSnapshot();
-    const teardownStatus = stopFixture();
-    writeLiveFailureEvidence(teardownStatus === 0 ? initialRestoreEvidence.cleanup : "teardown-failed");
-    process.exit(4);
+    await abortPostSnapshot("Live public Music E2E preflight failed");
   }
 
   let browser;
@@ -253,10 +265,7 @@ if (mode.lane === "live") {
   finally { if (browser) { try { await browser.close(); } catch { callbackBootstrapError ??= new Error("browser close failed"); } } }
   if (callbackBootstrapError) {
     process.stderr.write("Live public Music E2E callback bootstrap failed; details redacted.\n");
-    initialRestoreEvidence = await restoreInitialSnapshot();
-    const teardownStatus = stopFixture();
-    writeLiveFailureEvidence(teardownStatus === 0 ? initialRestoreEvidence.cleanup : "teardown-failed");
-    process.exit(4);
+    await abortPostSnapshot("Live public Music E2E callback bootstrap failed");
   }
 
 }
@@ -284,20 +293,15 @@ const result = spawnSync(process.execPath, args, {
 let cleanup = "not-required";
 let restoreHashes = [];
 if (mode.lane === "live") {
-  let globalRestoreOk = false;
+  initialRestoreEvidence = await restoreInitialSnapshot();
+  const globalRestoreOk = initialRestoreEvidence.ok;
+  if (globalRestoreOk) restoreHashes.push({ cleanup: "restored", beforeHash: initialRestoreEvidence.beforeHash, afterHash: initialRestoreEvidence.afterHash });
+  let evidenceParseFailed = false;
   try {
-    const globalRestore = await fetch(`${stateServiceUrl}/restore`, { method: "POST", headers: { Authorization: `Bearer ${stateToken}`, "content-type": "application/json" }, body: JSON.stringify(initialSnapshot), signal: AbortSignal.timeout(60_000) });
-    globalRestoreOk = globalRestore.ok;
-    if (globalRestoreOk) {
-      const restored = await globalRestore.json();
-      restoreHashes.push({ cleanup: "restored", beforeHash: restored.beforeHash, afterHash: restored.afterHash });
-    }
-  } catch { globalRestoreOk = false; }
-  if (existsSync(restoreEvidencePath)) {
-    restoreHashes.push(...readFileSync(restoreEvidencePath, "utf8").trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)));
-  }
+    if (existsSync(restoreEvidencePath)) restoreHashes.push(...readFileSync(restoreEvidencePath, "utf8").trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)));
+  } catch { evidenceParseFailed = true; }
   const hashesVerified = globalRestoreOk && restoreHashes.length > 0 && restoreHashes.every((entry) => entry.cleanup === "restored" && entry.beforeHash === entry.afterHash);
-  cleanup = hashesVerified ? "restored" : (globalRestoreOk ? "evidence-missing" : "restore-failed");
+  cleanup = hashesVerified && !evidenceParseFailed ? "restored" : (globalRestoreOk ? "evidence-missing" : "restore-failed");
   const teardownStatus = stopFixture();
   if (teardownStatus !== 0) cleanup = "teardown-failed";
   if (!hashesVerified || teardownStatus !== 0) process.exitCode = 5;
@@ -305,7 +309,9 @@ if (mode.lane === "live") {
 const passed = result.status === 0 && (cleanup === "not-required" || cleanup === "restored");
 const report = { ...baseReport, result: passed ? "passed" : "failed", cleanup, restoreHashes: restoreHashes.map(({ beforeHash, afterHash }) => ({ beforeHash, afterHash })) };
 const absoluteEvidence = path.resolve(evidencePath);
-mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
-writeFileSync(absoluteEvidence, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+try {
+  mkdirSync(path.dirname(absoluteEvidence), { recursive: true });
+  writeFileSync(absoluteEvidence, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+} catch { process.exitCode ||= 5; }
 process.stdout.write(`${JSON.stringify(report)}\n`);
 process.exit(process.exitCode || result.status || 0);

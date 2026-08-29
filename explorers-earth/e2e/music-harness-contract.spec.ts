@@ -19,6 +19,7 @@ import {
   resolveMusicTestLane,
   withRestoredMusicFixture,
 } from "./setup/music";
+import { settleMusicFixture } from "../scripts/music-fixture-cleanup.mjs";
 import playwrightConfig from "../playwright.config";
 
 test("clean PR-safe collection does not require live Music environment", () => {
@@ -332,6 +333,23 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain("callback bootstrap failed; details redacted");
   expect(runner).not.toContain("callbackBootstrapError.message");
   expect(runner).toContain("result.beforeHash === expected && result.afterHash === expected");
+});
+
+test("post-snapshot setup and evidence failures still restore once, tear down, and redact reporting", async () => {
+  for (const failure of ["setup", "evidence"] as const) {
+    const calls: string[] = [];
+    const settled = await settleMusicFixture({
+      restore: async () => { calls.push("restore"); return { ok: true, cleanup: "restored", beforeHash: "a".repeat(64), afterHash: "a".repeat(64) }; },
+      parseEvidence: async () => { calls.push("parse"); if (failure === "evidence") throw new Error("Bearer secret-token"); return []; },
+      teardown: async () => { calls.push("down"); return 0; },
+      writeEvidence: async () => { calls.push("report"); if (failure === "setup") throw new Error("Bearer secret-token"); },
+    });
+    expect(calls).toEqual(["restore", "parse", "down", "report"]);
+    expect(calls.filter((call) => call === "restore")).toHaveLength(1);
+    expect(settled.teardownOk).toBe(true);
+    expect(JSON.stringify(settled)).not.toContain("secret-token");
+    expect(settled.cleanup).toBe(failure === "evidence" ? "evidence-missing" : "restored");
+  }
 });
 
 test("one canonical adapter refuses incomplete account state and restores every domain through namespace reset", async () => {
