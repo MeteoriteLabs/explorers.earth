@@ -111,6 +111,17 @@ const EXACT_PUBLIC_LIVE_AUTHORITY_ARGS = [
   "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
 ] as const;
 
+const EXACT_PUBLIC_C14_AUTHORITY_ARGS = [
+  "--ack",
+  "TASK4_FULL_FIXTURE_PREBROWSER_QUALIFICATION_V1",
+  "--fixture-version",
+  MUSIC_PUBLIC_FIXTURE_VERSION,
+  "--confirm-project",
+  "explorers-music-fixture",
+  "--confirm-namespace-reset",
+  "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
+] as const;
+
 const EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES = [
   "visibility", "owner", "playlist", "saved-song-1", "saved-song-2", "saved-song-3",
   "playlist-visible", "queue", "playback-1", "playback-2", "controls", "publication",
@@ -6403,4 +6414,522 @@ test("live runner preserves safe initial-snapshot failure before qualifier and a
   const artifacts = readFileSync("scripts/music-public-qualification-artifacts.mjs", "utf8");
   expect(artifacts).toContain("validateMusicInitialSnapshotQualificationRecord");
   expect(artifacts).toMatch(/!validateMusicInitialSnapshotQualificationRecord\(evidence\.initialSnapshotQualification\)/);
+});
+
+function c14CliInitialSnapshot() {
+  const namespace = `e2e-public-music-${"1".repeat(32)}`;
+  return {
+    version: "music-live-account-snapshot/v1",
+    snapshotId: "c14-initial-snapshot",
+    publication: { coveredByDatabaseDump: true },
+    guestControls: { coveredByDatabaseDump: true },
+    queue: { coveredByDatabaseDump: true },
+    playlists: { coveredByDatabaseDump: true },
+    requests: { coveredByDatabaseDump: true },
+    profile: {
+      accountDocumentId: `${namespace}-account`,
+      publicMusic: false,
+      profileRevision: 0,
+      profileHash: "b".repeat(64),
+      fieldCount: 24,
+    },
+    database: { namespace, dumpHash: "a".repeat(64), identityRows: 0 },
+  };
+}
+
+function c14CliDependencies(events: string[], overrides: Record<string, unknown> = {}) {
+  const snapshot = c14CliInitialSnapshot();
+  const initialSnapshotQualification = {
+    schemaVersion: "explorers-public-initial-snapshot/v1",
+    status: "passed",
+    stage: "snapshot-store",
+    code: "none",
+    metadata: {
+      databaseHash: snapshot.database.dumpHash,
+      profileHash: snapshot.profile.profileHash,
+      identityRows: snapshot.database.identityRows,
+      profileRevision: snapshot.profile.profileRevision,
+      profileFieldCount: snapshot.profile.fieldCount,
+    },
+  };
+  let randomCall = 0;
+  return {
+    randomBytes: (size: number) => {
+      randomCall += 1;
+      events.push(`random:${size}`);
+      return Buffer.alloc(size, randomCall);
+    },
+    inspectSource: () => {
+      events.push("source");
+      return { ok: true, commit: "c".repeat(40) };
+    },
+    attestAuthority: ({ phase }: { phase: string }) => {
+      events.push(`authority:${phase}`);
+      return { ok: true };
+    },
+    runLifecycle: ({ stage }: { stage: string }) => {
+      events.push(`lifecycle:${stage}`);
+      return { status: 0 };
+    },
+    createRuntimeDirectory: () => {
+      events.push("temp:create");
+      return {
+        directory: "<test-c14-runtime>",
+        mutationGuardPath: "<test-c14-guard>",
+        recoveryPath: "<test-c14-recovery>",
+      };
+    },
+    startStateService: () => {
+      events.push("state:start");
+      return {
+        stop: async () => { events.push("state:stop"); },
+      };
+    },
+    waitForReadiness: async () => {
+      events.push("readiness");
+      return true;
+    },
+    captureInitialSnapshot: async () => {
+      events.push("initial:snapshot");
+      return { ok: true, snapshot, record: initialSnapshotQualification };
+    },
+    qualify: async ({ authority }: { authority: Record<string, unknown> }) => {
+      events.push("qualify");
+      expect(Object.keys(authority).sort()).toEqual([
+        "accountDocumentId", "explorerOrigin", "fixtureToken", "namespace", "orchestrationToken",
+        "stateOrigin", "stateToken", "strapiOrigin", "tunesOrigin", "userDocumentId", "username",
+      ]);
+      return {
+        schemaVersion: "explorers-public-prebrowser-c14/v1",
+        status: "passed",
+        counts: { graphqlOperations: 20, publicMusicResources: 2, queueSongs: 3 },
+        qualification: passedPrebrowserQualification(),
+      };
+    },
+    restoreFinal: async () => {
+      events.push("final:restore");
+      return { ok: true, databaseEqual: true, profileEqual: true };
+    },
+    removeRuntimeDirectory: () => {
+      events.push("temp:remove");
+      return true;
+    },
+    ...overrides,
+  };
+}
+
+test("the documented root C14 command forwards only the exact reviewed eight-element argv", () => {
+  // Production break caught: the approved C14 lane existed only as an importable
+  // helper, so the reviewed root command could not reach a guarded orchestrator.
+  const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
+  const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
+  const testingGuide = readFileSync("../docs/testing.md", "utf8");
+  const exactCommand = `npm run music:test:public-c14 -- ${EXACT_PUBLIC_C14_AUTHORITY_ARGS.join(" ")}`;
+  expect(rootPackage.scripts["music:test:public-c14"]).toBe("npm --prefix explorers-earth run music:test:public-c14 --");
+  expect(clientPackage.scripts["music:test:public-c14"]).toBe("node scripts/music-public-prebrowser-c14-cli.mjs");
+  expect(testingGuide).toContain(exactCommand);
+
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-c14-package-command-"));
+  try {
+    const preloader = join(sandbox, "capture-c14-runner.cjs");
+    const capturePath = join(sandbox, "runner.json");
+    writeFileSync(preloader, [
+      'const { basename } = require("node:path");',
+      'if (basename(String(process.argv[1])) === "music-public-prebrowser-c14-cli.mjs") {',
+      '  require("node:fs").writeFileSync(process.env.FAKE_C14_RUNNER_CAPTURE, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd() }));',
+      '  process.exit(0);',
+      '}',
+      '',
+    ].join("\n"));
+    const npmExecPath = process.env.npm_execpath
+      ?? join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+    expect(existsSync(npmExecPath)).toBe(true);
+    const result = spawnSync(process.execPath, [
+      npmExecPath, "run", "--silent", "music:test:public-c14", "--", ...EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+    ], {
+      cwd: resolve(".."),
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 10_000,
+      env: {
+        ...withoutPublicLiveAuthority(process.env),
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${preloader}`.trim(),
+        FAKE_C14_RUNNER_CAPTURE: capturePath,
+      },
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(JSON.parse(readFileSync(capturePath, "utf8"))).toEqual({
+      argv: [...EXACT_PUBLIC_C14_AUTHORITY_ARGS],
+      cwd: resolve(),
+    });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("C14 authority rejects malformed argv and hostile ambient input before randomness or lifecycle", async () => {
+  // Production break caught: a public helper must not grow an ambient or
+  // backwards-compatible path that can mint fixture authority before refusal.
+  const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
+    buildMusicPrebrowserC14Authority(input: Record<string, unknown>): Record<string, unknown>;
+  };
+  expect(cli).not.toBeNull();
+  if (!cli) return;
+  for (const candidate of [
+    [],
+    EXACT_PUBLIC_C14_AUTHORITY_ARGS.slice(0, -2),
+    [...EXACT_PUBLIC_C14_AUTHORITY_ARGS, "--extra"],
+    [EXACT_PUBLIC_C14_AUTHORITY_ARGS[2], EXACT_PUBLIC_C14_AUTHORITY_ARGS[3], ...EXACT_PUBLIC_C14_AUTHORITY_ARGS.slice(0, 2), ...EXACT_PUBLIC_C14_AUTHORITY_ARGS.slice(4)],
+  ]) {
+    let randomCalls = 0;
+    expect(() => cli.buildMusicPrebrowserC14Authority({
+      args: candidate,
+      environment: {},
+      randomBytes: () => { randomCalls += 1; return Buffer.alloc(32); },
+    })).toThrow(/refused/i);
+    expect(randomCalls).toBe(0);
+  }
+  for (const environment of [
+    { MUSIC_E2E_STRAPI_TOKEN: "hostile" },
+    { DATABASE_URL: "postgresql://hostile" },
+    { NODE_OPTIONS: "--require=hostile.cjs" },
+    { C14_TOKEN: "hostile" },
+    { MUSIC_PREBROWSER_C14_TOKEN: "hostile" },
+  ]) {
+    let randomCalls = 0;
+    expect(() => cli.buildMusicPrebrowserC14Authority({
+      args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+      environment,
+      randomBytes: () => { randomCalls += 1; return Buffer.alloc(32); },
+    })).toThrow(/refused/i);
+    expect(randomCalls).toBe(0);
+  }
+});
+
+test("C14 CLI executes the exact reviewed lifecycle and emits only canonical safe success metadata", async () => {
+  // Production break caught: C14 lacked an owned full-fixture lifecycle and a
+  // single terminal record proving 20/2/3 capability plus exact final restore.
+  const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
+    runMusicPrebrowserC14Cli(input: Record<string, unknown>): Promise<{ exitCode: number; record: Record<string, unknown> }>;
+    validateMusicPrebrowserC14CliRecord(value: unknown): boolean;
+  };
+  expect(cli).not.toBeNull();
+  if (!cli) return;
+  const events: string[] = [];
+  const result = await cli.runMusicPrebrowserC14Cli({
+    args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+    environment: {},
+    dependencies: c14CliDependencies(events),
+  });
+  expect(events).toEqual([
+    "source",
+    "random:16", "random:32", "random:32", "random:32",
+    "authority:pre",
+    "lifecycle:fixture-bootstrap", "lifecycle:fixture-up",
+    "temp:create", "state:start", "readiness", "initial:snapshot", "qualify",
+    "final:restore", "state:stop", "lifecycle:fixture-down", "authority:post", "temp:remove",
+  ]);
+  expect(result).toMatchObject({
+    exitCode: 0,
+    record: {
+      schemaVersion: "explorers-public-prebrowser-c14-cli/v1",
+      runId: "01010101010101010101010101010101",
+      commit: "c".repeat(40),
+      result: "passed",
+      stage: "complete",
+      code: "none",
+      exitCode: 0,
+      initialSnapshotQualification: { status: "passed" },
+      qualifier: { schemaVersion: "explorers-public-prebrowser-qualification/v3", status: "passed" },
+      counts: { graphqlOperations: 20, publicMusicResources: 2, queueSongs: 3 },
+      finalRestore: { status: "passed", databaseEqual: true, profileEqual: true },
+      cleanup: {
+        status: "passed", code: "none", stateServiceStopped: true,
+        fixtureDown: true, authorityRetired: true, tempRemoved: true,
+      },
+    },
+  });
+  expect(cli.validateMusicPrebrowserC14CliRecord(result.record)).toBe(true);
+  const serialized = JSON.stringify(result.record);
+  expect(Buffer.byteLength(serialized)).toBeLessThanOrEqual(16 * 1024);
+  expect(serialized).not.toMatch(/Bearer|token|credential|authorization|https?:\/\/|C:\\Users|<test-c14|stdout|stderr|raw/i);
+  expect(cli.validateMusicPrebrowserC14CliRecord({ ...result.record, debug: "hostile" })).toBe(false);
+});
+
+test("C14 cleanup failures dominate without skipping later cleanup", async () => {
+  // Production break caught: a qualification result must never conceal an
+  // incomplete state stop, fixture down, authority retirement, or temp removal.
+  const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
+    runMusicPrebrowserC14Cli(input: Record<string, unknown>): Promise<{ exitCode: number; record: Record<string, unknown> }>;
+  };
+  expect(cli).not.toBeNull();
+  if (!cli) return;
+  const cases = [
+    ["state-stop-failed", {
+      startStateService: () => ({ stop: async () => { throw new Error("Bearer hostile-state"); } }),
+    }],
+    ["fixture-down-failed", {
+      runLifecycle: ({ stage }: { stage: string }) => ({ status: stage === "fixture-down" ? 1 : 0 }),
+    }],
+    ["authority-retirement-failed", {
+      attestAuthority: ({ phase }: { phase: string }) => ({ ok: phase !== "post" }),
+    }],
+    ["temp-cleanup-failed", { removeRuntimeDirectory: () => false }],
+  ] as const;
+  for (const [expectedCode, overrides] of cases) {
+    const events: string[] = [];
+    const dependencies = c14CliDependencies(events, overrides as Record<string, unknown>);
+    if (expectedCode === "state-stop-failed") {
+      dependencies.startStateService = () => ({
+        stop: async () => { events.push("state:stop"); throw new Error("Bearer hostile-state"); },
+      });
+    }
+    if (expectedCode === "fixture-down-failed") {
+      dependencies.runLifecycle = ({ stage }: { stage: string }) => {
+        events.push(`lifecycle:${stage}`);
+        return { status: stage === "fixture-down" ? 1 : 0 };
+      };
+    }
+    if (expectedCode === "authority-retirement-failed") {
+      dependencies.attestAuthority = ({ phase }: { phase: string }) => {
+        events.push(`authority:${phase}`);
+        return { ok: phase !== "post" };
+      };
+    }
+    if (expectedCode === "temp-cleanup-failed") {
+      dependencies.removeRuntimeDirectory = () => { events.push("temp:remove"); return false; };
+    }
+    const result = await cli.runMusicPrebrowserC14Cli({
+      args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+      environment: {},
+      dependencies,
+    });
+    expect(result).toMatchObject({
+      exitCode: 5,
+      record: { result: "failed", exitCode: 5, cleanup: { status: "failed", code: expectedCode } },
+    });
+    expect(events.slice(-3)).toEqual(["lifecycle:fixture-down", "authority:post", "temp:remove"]);
+    expect(JSON.stringify(result.record)).not.toMatch(/hostile-state|Bearer/);
+  }
+});
+
+test("C14 preflight and qualification failures stop forward work but preserve owned teardown", async () => {
+  // Production break caught: a failed gate must stop later capability work while
+  // every already-owned state/lifecycle resource still follows the fixed teardown.
+  const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
+    runMusicPrebrowserC14Cli(input: Record<string, unknown>): Promise<{ exitCode: number; record: Record<string, unknown> }>;
+  };
+  expect(cli).not.toBeNull();
+  if (!cli) return;
+  const cases: Array<{
+    expected: { stage: string; code: string };
+    configure: (dependencies: ReturnType<typeof c14CliDependencies>, events: string[]) => void;
+    absent: string[];
+    tail: string[];
+  }> = [
+    {
+      expected: { stage: "authority", code: "authority-gate-failed" },
+      configure: (dependencies, events) => {
+        dependencies.attestAuthority = ({ phase }: { phase: string }) => {
+          events.push(`authority:${phase}`);
+          return { ok: false };
+        };
+      },
+      absent: ["lifecycle:fixture-bootstrap", "qualify", "final:restore"],
+      tail: ["authority:pre"],
+    },
+    {
+      expected: { stage: "bootstrap", code: "fixture-bootstrap-failed" },
+      configure: (dependencies, events) => {
+        dependencies.runLifecycle = ({ stage }: { stage: string }) => {
+          events.push(`lifecycle:${stage}`);
+          return { status: stage === "fixture-bootstrap" ? 1 : 0 };
+        };
+      },
+      absent: ["lifecycle:fixture-up", "state:start", "qualify", "final:restore"],
+      tail: ["lifecycle:fixture-down", "authority:post"],
+    },
+    {
+      expected: { stage: "up", code: "fixture-up-failed" },
+      configure: (dependencies, events) => {
+        dependencies.runLifecycle = ({ stage }: { stage: string }) => {
+          events.push(`lifecycle:${stage}`);
+          return { status: stage === "fixture-up" ? 1 : 0 };
+        };
+      },
+      absent: ["state:start", "qualify", "final:restore"],
+      tail: ["lifecycle:fixture-down", "authority:post"],
+    },
+    {
+      expected: { stage: "readiness", code: "readiness-failed" },
+      configure: (dependencies, events) => {
+        dependencies.waitForReadiness = async () => { events.push("readiness"); return false; };
+      },
+      absent: ["initial:snapshot", "qualify", "final:restore"],
+      tail: ["lifecycle:fixture-down", "authority:post", "temp:remove"],
+    },
+    {
+      expected: { stage: "initial-snapshot", code: "initial-snapshot-failed" },
+      configure: (dependencies, events) => {
+        dependencies.captureInitialSnapshot = async () => {
+          events.push("initial:snapshot");
+          return {
+            ok: false,
+            record: {
+              ...unavailableInitialSnapshotQualification(),
+              status: "failed", stage: "profile-schema", code: "contract-invalid",
+            },
+          };
+        };
+      },
+      absent: ["qualify", "final:restore"],
+      tail: ["lifecycle:fixture-down", "authority:post", "temp:remove"],
+    },
+    {
+      expected: { stage: "qualification", code: "qualification-failed" },
+      configure: (dependencies, events) => {
+        dependencies.qualify = async () => {
+          events.push("qualify");
+          return {
+            schemaVersion: "explorers-public-prebrowser-c14/v1",
+            status: "failed",
+            counts: { graphqlOperations: 0, publicMusicResources: 0, queueSongs: 0 },
+            qualification: failedPrebrowserQualification(),
+          };
+        };
+      },
+      absent: [],
+      tail: ["lifecycle:fixture-down", "authority:post", "temp:remove"],
+    },
+  ];
+  for (const scenario of cases) {
+    const events: string[] = [];
+    const dependencies = c14CliDependencies(events);
+    scenario.configure(dependencies, events);
+    const result = await cli.runMusicPrebrowserC14Cli({
+      args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+      environment: {},
+      dependencies,
+    });
+    expect(result).toMatchObject({
+      exitCode: 4,
+      record: {
+        result: "failed",
+        ...scenario.expected,
+        cleanup: { status: scenario.expected.stage === "authority" ? "not-required" : "passed" },
+      },
+    });
+    for (const absent of scenario.absent) expect(events).not.toContain(absent);
+    expect(events.slice(-scenario.tail.length)).toEqual(scenario.tail);
+    if (scenario.expected.stage === "qualification") {
+      expect(events).toContain("final:restore");
+      expect(result.record).toMatchObject({ finalRestore: { status: "passed" } });
+    }
+  }
+});
+
+test("C14 runtime cleanup refuses a changed identity before deleting its exact temp child", async () => {
+  // Production break caught: recursive temp cleanup must be bound to the exact
+  // directory created by this invocation, not merely a prefix-shaped path.
+  const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
+    createMusicPrebrowserC14RuntimeDirectory(input: { runId: string }): Record<string, unknown>;
+    removeMusicPrebrowserC14RuntimeDirectory(runtime: Record<string, unknown>): boolean;
+  };
+  expect(cli).not.toBeNull();
+  if (!cli) return;
+  expect(() => cli.createMusicPrebrowserC14RuntimeDirectory({ runId: "../hostile" })).toThrow(/refused/i);
+  const runtime = cli.createMusicPrebrowserC14RuntimeDirectory({ runId: "d".repeat(32) });
+  const directory = String(runtime.directory);
+  try {
+    const identity = runtime.identity as { dev: bigint; ino: bigint };
+    expect(existsSync(directory)).toBe(true);
+    expect(cli.removeMusicPrebrowserC14RuntimeDirectory({
+      ...runtime,
+      identity: { ...identity, ino: identity.ino + 1n },
+    })).toBe(false);
+    expect(existsSync(directory)).toBe(true);
+    expect(cli.removeMusicPrebrowserC14RuntimeDirectory(runtime)).toBe(true);
+    expect(existsSync(directory)).toBe(false);
+  } finally {
+    if (existsSync(directory)) rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("C14 production entrypoint contains no browser, callback, auth-file, or evidence-tree path", () => {
+  const source = readFileSync("scripts/music-public-prebrowser-c14-cli.mjs", "utf8");
+  expect(source).toContain("captureQualificationLifecycleCommand");
+  expect(source).toContain("captureQualificationFixtureAuthority");
+  expect(source).toContain("boundedSanitizedQualificationOutput");
+  expect(source).toContain("sanitizeAndDiscardStreams");
+  expect(source).toContain("createMusicFixtureStateServiceGuard");
+  expect(source).toContain("runMusicPrebrowserC14Integration");
+  expect(source).not.toMatch(/playwright|callback|authPath|storageState|\.artifacts\/music-public/i);
+});
+
+test("fresh-process C14 refusals emit one valid null-run record and invoke zero lifecycle", async () => {
+  // Production break caught: malformed or hostile public invocation must be a
+  // canonical refusal even before a run ID exists, without starting subprocesses.
+  const cliPath = resolve("scripts/music-public-prebrowser-c14-cli.mjs");
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-c14-refusal-"));
+  try {
+    const preloader = join(sandbox, "block-c14-side-effects.cjs");
+    const lifecycleLog = join(sandbox, "side-effects.log");
+    writeFileSync(preloader, [
+      'const fs = require("node:fs");',
+      'const cp = require("node:child_process");',
+      'const crypto = require("node:crypto");',
+      'const { syncBuiltinESMExports } = require("node:module");',
+      'const observed = () => fs.appendFileSync(process.env.FAKE_C14_SIDE_EFFECT_LOG, "observed\\n");',
+      'cp.spawnSync = () => { observed(); return { status: 91, stdout: "", stderr: "" }; };',
+      'cp.spawn = () => { observed(); throw new Error("blocked test child"); };',
+      'crypto.randomBytes = (size) => { observed(); return Buffer.alloc(size, 7); };',
+      'delete process.env.NODE_OPTIONS;',
+      'syncBuiltinESMExports();',
+      '',
+    ].join("\n"));
+    const invoke = (args: readonly string[], extraEnvironment: Record<string, string> = {}) => spawnSync(
+      process.execPath,
+      [cliPath, ...args],
+      {
+        cwd: sandbox,
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: 10_000,
+        env: {
+          ...withoutPublicLiveAuthority(process.env),
+          NODE_OPTIONS: `--require=${preloader}`,
+          FAKE_C14_SIDE_EFFECT_LOG: lifecycleLog,
+          ...extraEnvironment,
+        },
+      },
+    );
+    const malformed = invoke([]);
+    const hostile = invoke(EXACT_PUBLIC_C14_AUTHORITY_ARGS, { MUSIC_E2E_STRAPI_TOKEN: "hostile-ambient" });
+    const cli = await import("../scripts/music-public-prebrowser-c14-cli.mjs").catch(() => null) as null | {
+      validateMusicPrebrowserC14CliRecord(value: unknown): boolean;
+    };
+    expect(cli).not.toBeNull();
+    if (!cli) return;
+    for (const result of [malformed, hostile]) {
+      expect(result.status).toBe(3);
+      expect(result.stderr).toBe("");
+      const lines = result.stdout.trim().split(/\r?\n/);
+      expect(lines).toHaveLength(1);
+      const record = JSON.parse(lines[0]);
+      expect(record).toMatchObject({
+        schemaVersion: "explorers-public-prebrowser-c14-cli/v1",
+        runId: null,
+        commit: null,
+        result: "failed",
+        stage: "preflight",
+        exitCode: 3,
+      });
+      expect(cli.validateMusicPrebrowserC14CliRecord(record)).toBe(true);
+      expect(JSON.stringify(record)).not.toContain("hostile-ambient");
+    }
+    expect(existsSync(lifecycleLog)).toBe(false);
+    expect(existsSync(join(sandbox, ".artifacts"))).toBe(false);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });

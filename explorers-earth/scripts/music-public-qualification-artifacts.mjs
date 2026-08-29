@@ -157,7 +157,7 @@ function sanitizeQualificationText(value, { workspaceRoot, knownSecrets }) {
   return sanitized;
 }
 
-function boundedSanitizedQualificationOutput(value, {
+export function boundedSanitizedQualificationOutput(value, {
   workspaceRoot,
   knownSecrets,
   maximumBytes = 4_096,
