@@ -10,6 +10,12 @@ import {
   runMusicFixtureOrchestration,
 } from "./music-public-e2e-runner.mjs";
 import {
+  MUSIC_PUBLIC_LIVE_AUTHORITY_ARGS,
+  MUSIC_PUBLIC_LIVE_ACKNOWLEDGEMENT,
+  MUSIC_PUBLIC_LIVE_FIXTURE_VERSION,
+  buildMusicPublicLiveAuthority,
+} from "./music-public-live-authority.mjs";
+import {
   assessQualificationCleanup,
   buildQualificationOutcomeRecords,
   captureQualificationFixtureAuthority,
@@ -22,8 +28,8 @@ import {
   LIVE_QUALIFICATION_REQUIRED_ARTIFACTS,
 } from "./music-public-qualification-artifacts.mjs";
 
-const VERSION = "music-public-e2e-fixture/v1";
-const CONFIRMATION = "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE";
+const VERSION = MUSIC_PUBLIC_LIVE_FIXTURE_VERSION;
+const CONFIRMATION = MUSIC_PUBLIC_LIVE_ACKNOWLEDGEMENT;
 const MODES = {
   fast: { lane: "pr-safe", project: "chromium-pr-safe", files: ["e2e/music-harness-contract.spec.ts", "e2e/music-fullstack.spec.ts"] },
   pr: { lane: "pr-safe", project: "chromium-pr-safe", files: [
@@ -48,20 +54,41 @@ if (!mode) {
   process.exit(2);
 }
 
-const runId = (process.env.MUSIC_PUBLIC_RUN_ID ?? new Date().toISOString().replace(/\D/g, "")).replace(/[^a-zA-Z0-9_-]/g, "-");
+let liveAuthority;
+if (mode.lane === "live") {
+  try {
+    liveAuthority = buildMusicPublicLiveAuthority({
+      args: process.argv.slice(3),
+      environment: process.env,
+      randomBytes,
+    });
+  } catch {
+    process.stderr.write("Live public Music E2E refused: use the exact documented local fixture command; ambient authority is forbidden.\n");
+    process.exit(3);
+  }
+  Object.assign(process.env, liveAuthority.environment);
+}
+
+const runId = liveAuthority?.runId
+  ?? (process.env.MUSIC_PUBLIC_RUN_ID ?? new Date().toISOString().replace(/\D/g, "")).replace(/[^a-zA-Z0-9_-]/g, "-");
 const evidencePath = `.artifacts/music-public/${runId}/evidence.json`;
-const externalUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL ?? (mode.lane === "live" ? "http://localhost:55173" : "http://127.0.0.1:5173");
-const generatedNamespace = `e2e-public-music-${runId.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
-const username = process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? (mode.lane === "live" ? `${generatedNamespace}-owner` : "not-configured");
+const externalUrl = liveAuthority?.externalUrl
+  ?? process.env.PLAYWRIGHT_EXTERNAL_BASE_URL ?? "http://127.0.0.1:5173";
+const username = liveAuthority?.username ?? process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? "not-configured";
 const namespace = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/)?.[1];
-const accountDocumentId = process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? (namespace ? `${namespace}-account` : "not-configured");
-const userDocumentId = process.env.MUSIC_E2E_USER_DOCUMENT_ID ?? (namespace ? `${namespace}-user` : "not-configured");
-const fixtureVersion = process.env.MUSIC_E2E_FIXTURE_VERSION ?? "not-configured";
-const configuredServiceOrigins = (process.env.MUSIC_E2E_SERVICE_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
-const healthUrls = (process.env.MUSIC_E2E_HEALTH_URLS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
-const namespaceResetConfirmation = process.env.MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION;
-const strapiUrl = process.env.MUSIC_E2E_STRAPI_URL ?? (mode.lane === "live" ? "http://127.0.0.1:51337" : "");
-const strapiToken = process.env.MUSIC_E2E_STRAPI_TOKEN ?? (mode.lane === "live" ? randomBytes(32).toString("base64url") : "");
+const accountDocumentId = liveAuthority?.accountDocumentId
+  ?? process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? (namespace ? `${namespace}-account` : "not-configured");
+const userDocumentId = liveAuthority?.userDocumentId
+  ?? process.env.MUSIC_E2E_USER_DOCUMENT_ID ?? (namespace ? `${namespace}-user` : "not-configured");
+const fixtureVersion = liveAuthority?.fixtureVersion ?? process.env.MUSIC_E2E_FIXTURE_VERSION ?? "not-configured";
+const configuredServiceOrigins = liveAuthority?.serviceOrigins
+  ?? (process.env.MUSIC_E2E_SERVICE_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+const healthUrls = liveAuthority?.healthUrls
+  ?? (process.env.MUSIC_E2E_HEALTH_URLS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+const namespaceResetConfirmation = liveAuthority?.namespaceResetConfirmation
+  ?? process.env.MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION;
+const strapiUrl = liveAuthority?.strapiUrl ?? process.env.MUSIC_E2E_STRAPI_URL ?? "";
+const strapiToken = liveAuthority?.fixtureToken ?? process.env.MUSIC_E2E_STRAPI_TOKEN ?? "";
 const stateServiceUrl = "http://127.0.0.1:55174";
 
 function loopbackHttp(raw) {
@@ -74,8 +101,6 @@ function loopbackHttp(raw) {
 }
 
 if (mode.lane === "live") {
-  Object.assign(process.env, { MUSIC_E2E_ACCOUNT_USERNAME: username, MUSIC_E2E_ACCOUNT_DOCUMENT_ID: accountDocumentId,
-    MUSIC_E2E_USER_DOCUMENT_ID: userDocumentId, MUSIC_E2E_STRAPI_URL: strapiUrl, MUSIC_E2E_STRAPI_TOKEN: strapiToken });
   const namespaceMatch = username.match(/^(e2e-public-music-[a-z0-9-]+)-owner$/);
   const validIdentity = namespaceMatch && accountDocumentId === `${namespaceMatch[1]}-account`;
   const fiveServices = configuredServiceOrigins.length === 5 && healthUrls.length === 5;
@@ -347,7 +372,7 @@ function finalizeCurrentQualification({ report, executionOutcome, exitCode, stag
       : report.cleanup,
     stage,
     git: qualificationCommit(),
-    command: ["node", "scripts/music-public-e2e.mjs", modeName],
+    command: ["node", "scripts/music-public-e2e.mjs", modeName, ...MUSIC_PUBLIC_LIVE_AUTHORITY_ARGS],
     cwd: "<repository>/explorers-earth",
     exitCode: qualificationExitCode,
     totals: skipLedger.totals,

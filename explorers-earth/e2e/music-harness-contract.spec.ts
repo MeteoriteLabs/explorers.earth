@@ -2,9 +2,9 @@ import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { pathToFileURL } from "node:url";
 import {
@@ -96,6 +96,17 @@ const EXPECTED_LIVE_READ_ONLY = [
 
 const LIVE_MUTATION_TAG = "@explorers-live-mutation";
 const LIVE_READ_ONLY_TAG = "@explorers-live-read-only";
+
+const EXACT_PUBLIC_LIVE_AUTHORITY_ARGS = [
+  "--ack",
+  "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
+  "--fixture-version",
+  MUSIC_PUBLIC_FIXTURE_VERSION,
+  "--confirm-project",
+  "explorers-music-fixture",
+  "--confirm-namespace-reset",
+  "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
+] as const;
 
 const AUTHORITATIVE_QUALIFICATION_STREAMS = [
   { role: "fixture-bootstrap-stdout", path: "logs/fixture-bootstrap.stdout.log", source: "fixture-bootstrap", stream: "stdout" },
@@ -300,6 +311,7 @@ function writeLifecycleContractShims(sandbox: string) {
   mkdirSync(binDirectory);
   writeFileSync(fakeNpmPath, [
     'import { appendFileSync, existsSync, rmSync, writeFileSync } from "node:fs";',
+    'import { createHash } from "node:crypto";',
     'const authority = process.argv.includes("music:fixture:authority:attest");',
     'const scenario = process.env.FAKE_LIFECYCLE_SCENARIO;',
     'if (authority) {',
@@ -313,10 +325,12 @@ function writeLifecycleContractShims(sandbox: string) {
     '  process.exit(0);',
     '}',
     'const action = ["bootstrap", "up", "down"].find((candidate) => process.argv.includes(candidate));',
+    'const fixtureToken = process.env.MUSIC_E2E_STRAPI_TOKEN;',
     'appendFileSync(process.env.FAKE_LIFECYCLE_LOG, `${action}\n`);',
-    'process.stdout.write(`workspace=${process.cwd()} Bearer ${process.env.FAKE_PRIVATE_VALUE}\n${"bounded-child-output".repeat(600)}`);',
-    'process.stderr.write(`credential=${process.env.FAKE_PRIVATE_VALUE} path=/private/fixture/lifecycle.log\n`);',
+    'process.stdout.write(`workspace=${process.cwd()} Bearer ${process.env.FAKE_PRIVATE_VALUE} fixture_token=${fixtureToken}\n${"bounded-child-output".repeat(600)}`);',
+    'process.stderr.write(`credential=${process.env.FAKE_PRIVATE_VALUE} fixture_token=${fixtureToken} path=/private/fixture/lifecycle.log\n`);',
     'if (action === "bootstrap") {',
+    '  writeFileSync(process.env.FAKE_FIXTURE_TOKEN_MARKER, fixtureToken);',
     '  if (scenario === "bootstrap-partial") writeFileSync(process.env.FAKE_RESOURCE_MARKER, "partial");',
     '  if (scenario.startsWith("bootstrap-")) process.exit(1);',
     '}',
@@ -324,6 +338,8 @@ function writeLifecycleContractShims(sandbox: string) {
     '  if (scenario === "up-partial") { writeFileSync(process.env.FAKE_RESOURCE_MARKER, "partial"); process.exit(1); }',
     '}',
     'if (action === "down") {',
+    '  writeFileSync(process.env.FAKE_FIXTURE_TOKEN_DIGEST, createHash("sha256").update(fixtureToken).digest("hex"));',
+    '  if (existsSync(process.env.FAKE_FIXTURE_TOKEN_MARKER)) rmSync(process.env.FAKE_FIXTURE_TOKEN_MARKER);',
     '  if (existsSync(process.env.FAKE_RESOURCE_MARKER)) rmSync(process.env.FAKE_RESOURCE_MARKER);',
     '  if (scenario.endsWith("down-failure")) process.exit(1);',
     '}',
@@ -337,6 +353,14 @@ function writeLifecycleContractShims(sandbox: string) {
   ].join("\n"));
   writeFileSync(fakeDockerHookPath, [
     'const { basename } = require("node:path");',
+    'if (process.env.FAKE_LIFECYCLE_SCENARIO === "state-service-exit" && String(process.argv[1]).endsWith("music-public-e2e.mjs")) {',
+    '  const { EventEmitter } = require("node:events");',
+    '  const net = require("node:net");',
+    '  const { syncBuiltinESMExports } = require("node:module");',
+    '  net.createConnection = (_options, connected) => { const socket = new EventEmitter(); socket.setTimeout = () => socket; socket.destroy = () => undefined; queueMicrotask(connected); return socket; };',
+    '  syncBuiltinESMExports();',
+    '  global.fetch = async (input) => { await new Promise((resolve) => setTimeout(resolve, 25)); const url = String(input); return { ok: true, status: 200, async json() { if (url.includes("/api/accounts/")) return { data: { documentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID } }; if (url.endsWith("/api/users/me")) return { username: process.env.MUSIC_E2E_ACCOUNT_USERNAME, documentId: process.env.MUSIC_E2E_USER_DOCUMENT_ID, accounts: [{ documentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID }] }; return { database: { dumpHash: "b".repeat(64) } }; } }; };',
+    '}',
     'if ([basename(process.execPath), basename(process.argv0)].some((name) => name.toLowerCase() === "docker.exe")) {',
     '  const mode = process.env.FAKE_DOCKER_MODE;',
     '  if (mode === "unavailable") process.exit(2);',
@@ -374,36 +398,46 @@ function lifecycleFreshProcessEnvironment({
   dockerMode: string;
   privateValue: string;
 }) {
+  const cleanEnvironment = withoutPublicLiveAuthority(process.env);
   return {
-    ...process.env,
+    ...cleanEnvironment,
     PATH: `${binDirectory}${delimiter}${process.env.PATH ?? ""}`,
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${fakeDockerHookPath}`.trim(),
     npm_execpath: fakeNpmPath,
-    MUSIC_PUBLIC_RUN_ID: runId,
-    PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
-    MUSIC_E2E_LIVE_WRITE: "true",
-    MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
-    MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
-    MUSIC_E2E_ACCOUNT_USERNAME: `e2e-public-music-${runId}-owner`,
-    MUSIC_E2E_ACCOUNT_DOCUMENT_ID: `e2e-public-music-${runId}-account`,
-    MUSIC_E2E_USER_DOCUMENT_ID: `e2e-public-music-${runId}-user`,
-    MUSIC_E2E_STRAPI_URL: "http://127.0.0.1:51337",
-    MUSIC_E2E_STRAPI_TOKEN: privateValue,
-    MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION: "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
-    MUSIC_E2E_SERVICE_ORIGINS: [
-      "http://127.0.0.1:55173", "http://127.0.0.1:55000", "tcp://127.0.0.1:55432",
-      "http://127.0.0.1:51337", "http://127.0.0.1:55174",
-    ].join(","),
-    MUSIC_E2E_HEALTH_URLS: [
-      "http://127.0.0.1:55173/health", "http://127.0.0.1:55000/health", "tcp://127.0.0.1:55432",
-      "http://127.0.0.1:51337/health", "http://127.0.0.1:55174/health",
-    ].join(","),
     FAKE_LIFECYCLE_SCENARIO: scenario,
     FAKE_DOCKER_MODE: dockerMode,
     FAKE_LIFECYCLE_LOG: join(sandbox, `${runId}-lifecycle.log`),
     FAKE_RESOURCE_MARKER: join(sandbox, `${runId}-resource.marker`),
+    FAKE_FIXTURE_TOKEN_MARKER: join(sandbox, `${runId}-fixture-token.private`),
+    FAKE_FIXTURE_TOKEN_DIGEST: join(sandbox, `${runId}-fixture-token.sha256`),
     FAKE_PRIVATE_VALUE: privateValue,
   };
+}
+
+function withoutPublicLiveAuthority(environment: NodeJS.ProcessEnv) {
+  const cleanEnvironment = { ...environment };
+  for (const key of Object.keys(cleanEnvironment)) {
+    const upper = key.toUpperCase();
+    if (upper.startsWith("MUSIC_E2E_") || upper.startsWith("MUSIC_DEPLOY_")
+        || upper.startsWith("MUSIC_DATABASE_") || upper.startsWith("MUSIC_DB_")
+        || upper.startsWith("MUSIC_C10_STANDALONE_POSTGRES_") || upper.startsWith("MUSIC_UAT_DATABASE_")
+        || upper.startsWith("LIVE_STRAPI_") || [
+          "COMPOSE_PROJECT_NAME", "DATABASE_URL", "DATABASE_URL_TEST", "DOCKER_CONTEXT", "DOCKER_HOST",
+          "E2E_PROFILE_LIVE_WRITES", "E2E_PROFILE_STORAGE_STATE", "E2E_PROFILE_USERNAME", "GATE_PROD",
+          "MUSIC_API_BASE_URL", "MUSIC_MODE", "MUSIC_PUBLIC_RUN_ID", "MUSIC_STRAPI_HOST_PORT",
+          "PLAYWRIGHT_EXTERNAL_BASE_URL", "PLAYWRIGHT_PR_SAFE", "STRAPI_ACCESS_TOKEN",
+          "STRAPI_ANALYTICS_ACCESS_TOKEN", "STRAPI_URL", "VITE_API_URL", "VITE_BASE_URL",
+          "VITE_LOCAL_TUNES_API_URL", "VITE_PUBLIC_ACCESS_TOKEN", "VITE_REST_API_URL",
+        ].includes(upper)) delete cleanEnvironment[key];
+  }
+  return cleanEnvironment;
+}
+
+function onlyQualificationRunDirectory(sandbox: string) {
+  const parent = join(sandbox, ".artifacts", "music-public");
+  const entries = readdirSync(parent, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  if (entries.length !== 1) throw new Error(`expected one fresh qualification directory, received ${entries.length}`);
+  return join(parent, entries[0]!.name);
 }
 
 type JsonCollectionSuite = {
@@ -1680,53 +1714,18 @@ test("developer fixture command prints a sanitized, versioned dry-run contract",
   }
 });
 
-test("qualification run allocation refuses a reused run ID before any fixture action", () => {
+test("qualification run allocation refuses a reused run ID before any fixture action", async () => {
   // Production break caught: a repeated run ID reopens the same directory and
   // can replace evidence that a reviewer already treated as immutable.
   const sandbox = mkdtempSync(join(tmpdir(), "music-public-exclusive-run-"));
   try {
-    const environment = {
-      ...process.env,
-      MUSIC_PUBLIC_RUN_ID: "exclusive-contract-run",
-      MUSIC_E2E_LIVE_WRITE: "true",
-      MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
-      MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
-      MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-exclusive-contract-owner",
-      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-exclusive-contract-account",
-      MUSIC_E2E_USER_DOCUMENT_ID: "e2e-public-music-exclusive-contract-user",
-      MUSIC_E2E_STRAPI_URL: "http://127.0.0.1:51337",
-      MUSIC_E2E_STRAPI_TOKEN: "exclusive-contract-private-token",
-      MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION: "RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE",
-      MUSIC_E2E_SERVICE_ORIGINS: [
-        "http://127.0.0.1:55173",
-        "http://127.0.0.1:55000",
-        "tcp://127.0.0.1:55432",
-        "http://127.0.0.1:51337",
-        "http://127.0.0.1:55174",
-      ].join(","),
-      MUSIC_E2E_HEALTH_URLS: [
-        "http://127.0.0.1:55173/health",
-        "http://127.0.0.1:55000/health",
-        "tcp://127.0.0.1:55432",
-        "http://127.0.0.1:51337/health",
-        "http://127.0.0.1:55174/health",
-      ].join(","),
-    };
-    const invoke = () => spawnSync(process.execPath, [
-      resolve("scripts/music-public-e2e.mjs"),
-      "live",
-      "--dry-run",
-    ], { cwd: sandbox, env: environment, encoding: "utf8", windowsHide: true });
-
-    const first = invoke();
-    expect(first.status, `${first.stdout}\n${first.stderr}`).toBe(0);
-    expect(existsSync(join(sandbox, ".artifacts", "music-public", "exclusive-contract-run"))).toBe(true);
-
-    const second = invoke();
-    expect(second.status).toBe(5);
-    expect(second.stderr).toBe("Live public Music E2E artifact initialization failed; details redacted.\n");
-    expect(`${second.stdout}\n${second.stderr}`).not.toContain(sandbox);
-    expect(`${second.stdout}\n${second.stderr}`).not.toContain("exclusive-contract-private-token");
+    const { createExclusiveQualificationRunDirectory } = await import("../scripts/music-public-qualification-artifacts.mjs");
+    const artifactParent = join(sandbox, ".artifacts", "music-public");
+    const first = createExclusiveQualificationRunDirectory({ artifactParent, runId: "exclusive-contract-run" });
+    expect(first).toBe(join(artifactParent, "exclusive-contract-run"));
+    expect(() => createExclusiveQualificationRunDirectory({ artifactParent, runId: "exclusive-contract-run" }))
+      .toThrow(/exist/i);
+    expect(readdirSync(artifactParent)).toEqual(["exclusive-contract-run"]);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -1751,13 +1750,15 @@ test("fresh live runner rejects hostile fixture authority before bootstrap witho
       dockerMode: "clean",
       privateValue,
     });
-    const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+    const result = spawnSync(process.execPath, [
+      resolve("scripts/music-public-e2e.mjs"), "live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+    ], {
       cwd: sandbox,
       env: environment,
       encoding: "utf8",
       windowsHide: true,
     });
-    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    const runDirectory = onlyQualificationRunDirectory(sandbox);
     const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
     const retainedAuthority = JSON.parse(readFileSync(join(runDirectory, "fixture-authority.json"), "utf8"));
 
@@ -1868,13 +1869,15 @@ for (const lifecycleCase of [
         dockerMode: lifecycleCase.dockerMode,
         privateValue,
       });
-      const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+      const result = spawnSync(process.execPath, [
+        resolve("scripts/music-public-e2e.mjs"), "live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+      ], {
         cwd: sandbox,
         env: environment,
         encoding: "utf8",
         windowsHide: true,
       });
-      const runDirectory = join(sandbox, ".artifacts", "music-public", lifecycleCase.runId);
+      const runDirectory = onlyQualificationRunDirectory(sandbox);
       expect(existsSync(join(runDirectory, "evidence.json")), `${result.stdout}\n${result.stderr}`).toBe(true);
       const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
       const dockerInspection = JSON.parse(readFileSync(join(runDirectory, "docker-inspection.json"), "utf8"));
@@ -1920,6 +1923,58 @@ for (const lifecycleCase of [
   });
 }
 
+test("generated fixture token stays off argv and retained output and is retired on failure", () => {
+  // Production break caught: generating the fixture token inside the runner is
+  // safe only if hostile child output is sanitized and exact down retires the
+  // simulated protected authority even when bootstrap fails.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-generated-token-"));
+  try {
+    const runLabel = "generated-token-contract";
+    const { fakeNpmPath, fakeDockerHookPath, binDirectory } = writeLifecycleContractShims(sandbox);
+    const environment = lifecycleFreshProcessEnvironment({
+      sandbox,
+      runId: runLabel,
+      fakeNpmPath,
+      fakeDockerHookPath,
+      binDirectory,
+      scenario: "bootstrap-partial",
+      dockerMode: "clean",
+      privateValue: "separate-hostile-child-value",
+    });
+    const result = spawnSync(process.execPath, [
+      resolve("scripts/music-public-e2e.mjs"), "live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+    ], { cwd: sandbox, env: environment, encoding: "utf8", windowsHide: true });
+    const runDirectory = onlyQualificationRunDirectory(sandbox);
+    const retainedFiles: string[] = [];
+    const visit = (directory: string) => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const target = join(directory, entry.name);
+        if (entry.isDirectory()) visit(target);
+        else retainedFiles.push(readFileSync(target, "utf8"));
+      }
+    };
+    visit(runDirectory);
+    const retainedText = `${result.stdout}\n${result.stderr}\n${retainedFiles.join("\n")}`;
+    const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
+    const digest = readFileSync(environment.FAKE_FIXTURE_TOKEN_DIGEST, "utf8");
+    const tokenLikeValues = retainedText.match(/[A-Za-z0-9_-]{32,128}/g) ?? [];
+    const argvValues = JSON.stringify(EXACT_PUBLIC_LIVE_AUTHORITY_ARGS).match(/[A-Za-z0-9_-]{32,128}/g) ?? [];
+
+    expect(result.status, retainedText).toBe(4);
+    expect(evidence.command).toEqual(["node", "scripts/music-public-e2e.mjs", "live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS]);
+    expect(readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/))
+      .toEqual(["authority", "bootstrap", "down"]);
+    expect(existsSync(environment.FAKE_FIXTURE_TOKEN_MARKER)).toBe(false);
+    expect(digest).toMatch(/^[a-f0-9]{64}$/);
+    expect(tokenLikeValues.some((value) => createHash("sha256").update(value).digest("hex") === digest)).toBe(false);
+    expect(argvValues.some((value) => createHash("sha256").update(value).digest("hex") === digest)).toBe(false);
+    expect(retainedText).toContain("<redacted>");
+    expect(retainedText).not.toContain("separate-hostile-child-value");
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
 test("fresh runner routes asynchronous state-service exit through one exact cleanup and finalizer", () => {
   // Production break caught: an asynchronously failed state-service child had no
   // terminal listener, so another readiness branch could finalize first and call
@@ -1939,15 +1994,16 @@ test("fresh runner routes asynchronous state-service exit through one exact clea
       dockerMode: "clean",
       privateValue,
     });
-    environment.MUSIC_E2E_HEALTH_URLS = Array.from({ length: 5 }, () => "http://127.0.0.1:55174/health").join(",");
-    const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+    const result = spawnSync(process.execPath, [
+      resolve("scripts/music-public-e2e.mjs"), "live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+    ], {
       cwd: sandbox,
       env: environment,
       encoding: "utf8",
       windowsHide: true,
       timeout: 10_000,
     });
-    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    const runDirectory = onlyQualificationRunDirectory(sandbox);
     const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
     const lifecycleActions = readFileSync(environment.FAKE_LIFECYCLE_LOG, "utf8").trim().split(/\r?\n/);
 
@@ -3080,38 +3136,254 @@ test("preflight-stopped qualification finalization writes every safe artifact an
   }
 });
 
-test("live runner refuses before Playwright when any authority or five-service health input is missing", () => {
-  const result = spawnSync(process.execPath, ["scripts/music-public-e2e.mjs", "live", "--dry-run"], {
-    cwd: process.cwd(), encoding: "utf8", env: {
-      ...process.env,
-      PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
-      MUSIC_E2E_LIVE_WRITE: "true",
-      MUSIC_E2E_LIVE_WRITE_CONFIRMATION: "I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE",
-      MUSIC_E2E_FIXTURE_VERSION: MUSIC_PUBLIC_FIXTURE_VERSION,
-      MUSIC_E2E_ACCOUNT_USERNAME: "e2e-public-music-contract-owner",
-      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: "e2e-public-music-contract-account",
-      MUSIC_E2E_SERVICE_ORIGINS: "http://127.0.0.1:55173,http://127.0.0.1:55000,http://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55174",
-      MUSIC_E2E_HEALTH_URLS: "http://127.0.0.1:55173/health,http://127.0.0.1:55000/health,http://127.0.0.1:55432/health,http://127.0.0.1:51337/health,http://127.0.0.1:55174/health",
-    },
+test("explicit live authority rejects malformed argv before any random authority is generated", async () => {
+  // Production break caught: the public runner previously accepted no argv at
+  // all and tried to reconstruct mutation authority from ambient variables.
+  const modulePath = "../scripts/music-public-live-authority.mjs";
+  const authorityModule = await import(modulePath).catch(() => null) as null | {
+    buildMusicPublicLiveAuthority(input: {
+      args: readonly string[];
+      environment: Record<string, string | undefined>;
+      randomBytes: (size: number) => Buffer;
+    }): unknown;
+  };
+  expect(authorityModule, "the side-effect-free live authority builder must exist").not.toBeNull();
+  if (!authorityModule) return;
+
+  let randomCalls = 0;
+  const invoke = (args: readonly string[]) => authorityModule.buildMusicPublicLiveAuthority({
+    args,
+    environment: {},
+    randomBytes: (size) => { randomCalls += 1; return Buffer.alloc(size, 0x11); },
   });
-  expect(result.status).toBe(3);
-  expect(result.stderr).toMatch(/full snapshot|namespace reset/i);
+  const wrongValue = [...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS];
+  wrongValue[1] = "not-the-reviewed-acknowledgement";
+  const duplicate = [...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS, "--ack", EXACT_PUBLIC_LIVE_AUTHORITY_ARGS[1]];
+  const extra = [...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS, "--dry-run"];
+  const reordered = [...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS];
+  [reordered[0], reordered[2]] = [reordered[2], reordered[0]];
+
+  for (const invalid of [[], EXACT_PUBLIC_LIVE_AUTHORITY_ARGS.slice(0, -2), wrongValue, duplicate, extra, reordered]) {
+    expect(() => invoke(invalid)).toThrow(/refused/i);
+  }
+  expect(randomCalls).toBe(0);
+});
+
+test("explicit live authority rejects every ambient target or credential override before randomness", async () => {
+  // Production break caught: a correct-looking local argv could still inherit a
+  // database, production, URL, token, or identity target from the shell.
+  const modulePath = "../scripts/music-public-live-authority.mjs";
+  const authorityModule = await import(modulePath).catch(() => null) as null | {
+    buildMusicPublicLiveAuthority(input: {
+      args: readonly string[];
+      environment: Record<string, string | undefined>;
+      randomBytes: (size: number) => Buffer;
+    }): unknown;
+  };
+  expect(authorityModule, "the side-effect-free live authority builder must exist").not.toBeNull();
+  if (!authorityModule) return;
+
+  let randomCalls = 0;
+  for (const hostileEnvironment of [
+    { MUSIC_E2E_STRAPI_TOKEN: "hostile-token" },
+    { music_e2e_account_username: "hostile-owner" },
+    { MUSIC_PUBLIC_RUN_ID: "caller-selected-run" },
+    { PLAYWRIGHT_EXTERNAL_BASE_URL: "https://explorers.earth" },
+    { MUSIC_API_BASE_URL: "https://localtunes.earth" },
+    { MUSIC_STRAPI_HOST_PORT: "1337" },
+    { LIVE_STRAPI_URL: "https://cms.example" },
+    { LIVE_STRAPI_READ_ONLY_CREDENTIAL: "hostile-credential" },
+    { STRAPI_URL: "https://cms.example" },
+    { STRAPI_ACCESS_TOKEN: "hostile-access-token" },
+    { DATABASE_URL: "postgresql://production.example/music" },
+    { DATABASE_URL_TEST: "postgresql://127.0.0.1:5432/shared" },
+    { DOCKER_HOST: "tcp://production.example:2375" },
+    { GATE_PROD: "1" },
+    { MUSIC_DEPLOY_PRODUCTION: "1" },
+  ]) {
+    expect(() => authorityModule.buildMusicPublicLiveAuthority({
+      args: EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+      environment: hostileEnvironment,
+      randomBytes: (size) => { randomCalls += 1; return Buffer.alloc(size, 0x22); },
+    })).toThrow(/refused/i);
+  }
+  expect(randomCalls).toBe(0);
+});
+
+test("explicit live authority derives one distinct namespaced tuple and fixed five-service topology", async () => {
+  // Production break caught: the old shell recipe let ports, URLs, identities,
+  // and the fixture token drift independently across one supposedly owned run.
+  const modulePath = "../scripts/music-public-live-authority.mjs";
+  const authorityModule = await import(modulePath).catch(() => null) as null | {
+    buildMusicPublicLiveAuthority(input: {
+      args: readonly string[];
+      environment: Record<string, string | undefined>;
+      randomBytes: (size: number) => Buffer;
+    }): {
+      runId: string;
+      namespace: string;
+      username: string;
+      accountDocumentId: string;
+      userDocumentId: string;
+      fixtureToken: string;
+      project: string;
+      externalUrl: string;
+      strapiUrl: string;
+      serviceOrigins: string[];
+      healthUrls: string[];
+      environment: Record<string, string>;
+    };
+  };
+  expect(authorityModule, "the side-effect-free live authority builder must exist").not.toBeNull();
+  if (!authorityModule) return;
+
+  const fills = [0x11, 0x22, 0x33, 0x44];
+  const generated = [0, 1].map(() => authorityModule.buildMusicPublicLiveAuthority({
+    args: EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+    environment: {},
+    randomBytes: (size) => Buffer.alloc(size, fills.shift()),
+  }));
+  const first = generated[0];
+  expect(first.runId).toBe("11".repeat(16));
+  expect(first.namespace).toBe(`e2e-public-music-${first.runId}`);
+  expect(new Set([first.namespace, first.username, first.accountDocumentId, first.userDocumentId]).size).toBe(4);
+  expect(first).toMatchObject({
+    project: "explorers-music-fixture",
+    username: `${first.namespace}-owner`,
+    accountDocumentId: `${first.namespace}-account`,
+    userDocumentId: `${first.namespace}-user`,
+    externalUrl: "http://localhost:55173",
+    strapiUrl: "http://127.0.0.1:51337",
+    serviceOrigins: [
+      "tcp://127.0.0.1:55432",
+      "http://127.0.0.1:51337",
+      "http://127.0.0.1:55000",
+      "http://localhost:55173",
+      "http://127.0.0.1:55174",
+    ],
+    healthUrls: [
+      "tcp://127.0.0.1:55432",
+      "http://127.0.0.1:51337/health",
+      "http://127.0.0.1:55000/api/music-fixture/readiness",
+      "http://localhost:55173/health",
+      "http://127.0.0.1:55174/health",
+    ],
+  });
+  expect(first.environment).toMatchObject({
+    MUSIC_PUBLIC_RUN_ID: first.runId,
+    PLAYWRIGHT_EXTERNAL_BASE_URL: first.externalUrl,
+    PLAYWRIGHT_PR_SAFE: "false",
+    MUSIC_STRAPI_HOST_PORT: "51337",
+    MUSIC_E2E_ACCOUNT_USERNAME: first.username,
+    MUSIC_E2E_ACCOUNT_DOCUMENT_ID: first.accountDocumentId,
+    MUSIC_E2E_USER_DOCUMENT_ID: first.userDocumentId,
+    MUSIC_E2E_STRAPI_URL: first.strapiUrl,
+    MUSIC_E2E_STRAPI_TOKEN: first.fixtureToken,
+  });
+  expect(first.fixtureToken).toBe(Buffer.alloc(32, 0x22).toString("base64url"));
+  expect(generated[1].runId).not.toBe(first.runId);
+  expect(generated[1].fixtureToken).not.toBe(first.fixtureToken);
+  expect(JSON.stringify(EXACT_PUBLIC_LIVE_AUTHORITY_ARGS)).not.toContain(first.fixtureToken);
+});
+
+test("naked or ambient-hostile live invocation refuses before artifacts and fixture lifecycle", () => {
+  // Production break caught: the documented naked command failed only after
+  // trying to source a hand-built ambient tuple, while a hostile shell could
+  // influence generated authority before the lifecycle gate.
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-invocation-refusal-"));
+  try {
+    const lifecycleLog = join(sandbox, "lifecycle.log");
+    const fakeNpmPath = join(sandbox, "fake-npm.cjs");
+    writeFileSync(fakeNpmPath, [
+      'require("node:fs").appendFileSync(process.env.FAKE_LIFECYCLE_LOG, `${process.argv.slice(2).join(" ")}\n`);',
+      "process.exit(1);",
+      "",
+    ].join("\n"));
+    const cleanEnvironment = withoutPublicLiveAuthority(process.env);
+    const invoke = (args: readonly string[], hostileEnvironment: Record<string, string> = {}) => spawnSync(
+      process.execPath,
+      [resolve("scripts/music-public-e2e.mjs"), "live", ...args],
+      {
+        cwd: sandbox,
+        encoding: "utf8",
+        windowsHide: true,
+        env: {
+          ...cleanEnvironment,
+          npm_execpath: fakeNpmPath,
+          FAKE_LIFECYCLE_LOG: lifecycleLog,
+          ...hostileEnvironment,
+        },
+      },
+    );
+
+    const naked = invoke([]);
+    const hostile = invoke(EXACT_PUBLIC_LIVE_AUTHORITY_ARGS, { MUSIC_E2E_STRAPI_TOKEN: "hostile-ambient-token" });
+    for (const result of [naked, hostile]) {
+      expect(result.status).toBe(3);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toMatch(/^Live public Music E2E refused:/);
+      expect(`${result.stdout}\n${result.stderr}`).not.toContain("hostile-ambient-token");
+    }
+    expect(existsSync(lifecycleLog)).toBe(false);
+    expect(existsSync(join(sandbox, ".artifacts"))).toBe(false);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test("the documented root public E2E command is the hard-gated live orchestration path", () => {
   const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
   const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
   const testingGuide = readFileSync("../docs/testing.md", "utf8");
+  const exactRunbookCommand = `npm run music:test:public-e2e -- ${EXACT_PUBLIC_LIVE_AUTHORITY_ARGS.join(" ")}`;
   expect(rootPackage.scripts["music:fixture:authority:attest"])
     .toBe("tsx tunes/scripts/music-fixture-authority-attest.ts");
-  expect(rootPackage.scripts["music:test:public-e2e"]).toContain("music:test:public-e2e");
-  expect(clientPackage.scripts["music:test:public-e2e"]).toContain("music-public-e2e.mjs live");
+  expect(rootPackage.scripts["music:test:public-e2e"]).toBe("npm --prefix explorers-earth run music:test:public-e2e --");
+  expect(clientPackage.scripts["music:test:public-e2e"]).toBe("node scripts/music-public-e2e.mjs live");
   expect(clientPackage.scripts["music:test:public-fast"]).toContain("music-public-e2e.mjs fast");
   expect(clientPackage.scripts["music:test:public-pr"]).toContain("music-public-e2e.mjs pr");
   expect(clientPackage.scripts["music:fixture:public:verify"]).toContain("music-public-e2e.mjs verify");
-  expect(testingGuide).toContain("$env:MUSIC_E2E_USER_DOCUMENT_ID='e2e-public-music-local-user'");
-  expect(testingGuide).toContain("$env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:51337'");
-  expect(testingGuide).not.toContain("$env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:1337'");
+  expect(testingGuide).toContain(exactRunbookCommand);
+  expect(testingGuide).not.toMatch(/\$env:MUSIC_E2E_/);
+  expect(testingGuide).not.toContain("<account-scoped local fixture token>");
+
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-package-command-"));
+  try {
+    const preloader = join(sandbox, "capture-runner.cjs");
+    const capturePath = join(sandbox, "runner.json");
+    writeFileSync(preloader, [
+      'const { basename } = require("node:path");',
+      'if (basename(String(process.argv[1])) === "music-public-e2e.mjs") {',
+      '  require("node:fs").writeFileSync(process.env.FAKE_RUNNER_CAPTURE, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd() }));',
+      '  process.exit(0);',
+      '}',
+      '',
+    ].join("\n"));
+    const npmExecPath = process.env.npm_execpath
+      ?? join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+    expect(existsSync(npmExecPath)).toBe(true);
+    const result = spawnSync(process.execPath, [
+      npmExecPath, "run", "--silent", "music:test:public-e2e", "--", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+    ], {
+      cwd: resolve(".."),
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 10_000,
+      env: {
+        ...withoutPublicLiveAuthority(process.env),
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${preloader}`.trim(),
+        FAKE_RUNNER_CAPTURE: capturePath,
+      },
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(JSON.parse(readFileSync(capturePath, "utf8"))).toEqual({
+      argv: ["live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS],
+      cwd: resolve(),
+    });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+
   const runner = readFileSync("scripts/music-public-e2e.mjs", "utf8");
   expect(runner).toContain("process.env.npm_execpath");
   expect(runner).not.toContain('process.platform === "win32" ? "npm.cmd"');
@@ -3176,6 +3448,12 @@ test("live browser authority is callback-minted and legacy fixture credentials c
   expect(runner).toContain("const liveOutcome = await runMusicFixtureOrchestration({");
   expect(runner.indexOf('fetch(`${stateServiceUrl}/snapshot`')).toBeLessThan(runner.indexOf("runLivePreflight({"));
   expect(runner.indexOf("runLivePreflight({")).toBeLessThan(runner.indexOf("google-auth/callback?access_token="));
+  expect(runner.indexOf("google-auth/callback?access_token="))
+    .toBeLessThan(runner.indexOf("writeFileSync(authStatePath"));
+  expect(runner.indexOf("writeFileSync(authStatePath"))
+    .toBeLessThan(runner.indexOf("runPlaywrightJourneyExecution({"));
+  expect(runner).toContain('authorization !== `Bearer ${strapiToken}`');
+  expect(runner).toMatch(/\^Bearer \[A-Za-z0-9_-\]\+\\\.\[A-Za-z0-9_-\]\+\\\.\[A-Za-z0-9_-\]\+\$/);
   expect(runner).toContain("browserApiPrefix");
   expect(runner).not.toContain("http://localhost:55173/api/");
   expect(runner).toContain("callback bootstrap failed; details redacted");
@@ -3850,6 +4128,7 @@ test("fresh live runner lets verified restoration finish before a state-service 
       'const { EventEmitter } = require("node:events");',
       'const { appendFileSync } = require("node:fs");',
       'const { PassThrough } = require("node:stream");',
+      'const net = require("node:net");',
       'const { syncBuiltinESMExports } = require("node:module");',
       'const append = (entry) => appendFileSync(process.env.FAKE_PHASE_LOG, `${entry}\n`);',
       'const child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), exitCode: null, signalCode: null, kill(signal) { this.signalCode = signal; queueMicrotask(() => { this.stdout.end(); this.stderr.end(); this.emit("exit", null, signal); this.emit("close", null, signal); }); return true; } });',
@@ -3863,6 +4142,7 @@ test("fresh live runner lets verified restoration finish before a state-service 
       '  if (String(file).toLowerCase().includes("docker")) return { status: 0, stdout: "", stderr: "", signal: null, error: undefined };',
       '  return { status: 1, stdout: "", stderr: "preflight stopped", signal: null, error: undefined };',
       '};',
+      'net.createConnection = (_options, connected) => { const socket = new EventEmitter(); socket.setTimeout = () => socket; socket.destroy = () => undefined; queueMicrotask(connected); return socket; };',
       'syncBuiltinESMExports();',
       'let terminalEmitted = false;',
       'global.fetch = async (input) => {',
@@ -3893,15 +4173,16 @@ test("fresh live runner lets verified restoration finish before a state-service 
     });
     environment.NODE_OPTIONS = `--require=${preloader}`;
     environment.FAKE_PHASE_LOG = phaseLog;
-    environment.MUSIC_E2E_HEALTH_URLS = Array.from({ length: 5 }, () => "http://127.0.0.1:55174/health").join(",");
-    const result = spawnSync(process.execPath, [resolve("scripts/music-public-e2e.mjs"), "live"], {
+    const result = spawnSync(process.execPath, [
+      resolve("scripts/music-public-e2e.mjs"), "live", ...EXACT_PUBLIC_LIVE_AUTHORITY_ARGS,
+    ], {
       cwd: sandbox,
       env: environment,
       encoding: "utf8",
       windowsHide: true,
       timeout: 10_000,
     });
-    const runDirectory = join(sandbox, ".artifacts", "music-public", runId);
+    const runDirectory = onlyQualificationRunDirectory(sandbox);
     const phaseEntries = readFileSync(phaseLog, "utf8").trim().split(/\r?\n/);
     const evidence = JSON.parse(readFileSync(join(runDirectory, "evidence.json"), "utf8"));
 

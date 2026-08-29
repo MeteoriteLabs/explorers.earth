@@ -94,11 +94,20 @@ The public browser harness is intentionally split by authority. These commands a
 ```bash
 npm run music:test:public-fast       # deterministic mocked Chromium feedback
 npm run music:test:public-pr         # PR-safe read-only analytics/Music coverage
-npm run music:test:public-e2e        # authorized live-write lane; hard-gated and exactly restored
 npm run music:fixture:public:verify  # fixture/harness contract verification
 ```
 
-`music:test:public-fast`, `music:test:public-pr`, and `music:fixture:public:verify` never write. The live command first runs the fixed repository fixture-authority attestation and starts the owned five-service `explorers-music-fixture` only after that gate accepts. It also refuses before Playwright unless every value below is supplied. Origins and health URLs must all be loopback; the username/document ID must share the same `e2e-public-music-<run>` namespace. Use a dedicated local Strapi test token that can GET and PUT only that Account's `public_music` field.
+`music:test:public-fast`, `music:test:public-pr`, and `music:fixture:public:verify` never write. The live command first validates one exact ordered, non-secret argv and rejects missing, wrong, duplicate, reordered, or extra arguments. It also rejects ambient Music E2E, database, production, Docker, URL, token, or identity authority before generating a run ID or token, allocating artifacts, attesting, or attempting fixture lifecycle. There is no ambient compatibility path.
+
+After the separately reviewed reset, zero-resource, free-port, and retired-authority prechecks, the exact live command is:
+
+```powershell
+npm run music:test:public-e2e -- --ack I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE --fixture-version music-public-e2e-fixture/v1 --confirm-project explorers-music-fixture --confirm-namespace-reset RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE
+```
+
+The runner derives a fresh `e2e-public-music-<run>` namespace, distinct owner/account/user document identifiers, and an ephemeral random local Strapi fixture token internally. It fixes PostgreSQL, Strapi, Tunes, Explorer, and the snapshot service to loopback ports `55432`, `51337`, `55000`, `55173`, and `55174`, respectively, including their reviewed health URLs. The token is never accepted on argv, printed, or retained in public evidence; exact fixture `down` retires it on every lifecycle-attempted failure path. The callback still mints the distinct private owner Tunes JWT only after snapshot and collection preflight, writes its protected auth path immediately before browser execution, and removes it during final restoration/teardown.
+
+The live command runs the fixed repository fixture-authority attestation and starts the owned five-service `explorers-music-fixture` only after that gate accepts.
 
 When retained fixture volumes require reset, the reviewed order is exact and must not be shortened: reset, prove zero exact-label volumes, prove the five fixture ports are free, attest retired fixture authority, then invoke the live runner (which repeats and manifests the attestation immediately before bootstrap). `music:db:reset` is a dedicated volume-only lane: it requires zero exact-project containers and never weakens or substitutes for generic `music:down` resource validation.
 
@@ -112,21 +121,6 @@ npm run --silent music:fixture:authority:attest # require exit 0 and one strict 
 The accepted record has exactly `schemaVersion`, `state`, `safeToBootstrap`, and `usableRecords`: version `music-fixture-authority-attestation/v1`, state `absent` or `tombstone`, boolean `true`, and count `0`. A reference, raw/nonempty, malformed, unsupported, unreadable, symlinked, ambiguous, or credential-bearing state refuses.
 
 Before any reset mutation, two equal read-only snapshots must prove zero Compose-project containers and a dual-label volume inventory containing the mandatory exact `explorers-music-fixture_music-fixture-postgres` plus only the optional exact `explorers-music-fixture_music-fixture-gates`. Each present volume must have one unambiguous inspection with its exact name, creation identity, mountpoint, fixture/project labels, Compose project, and Compose logical-volume label. Extra, missing-postgres, unlabeled, mismatched, malformed, duplicate, or changing targets refuse with byte-identical fixture authority and no delete command. After that authorization boundary, reset retires only authenticated fixture authority, rechecks the exact volume fingerprints, issues one allowlisted `docker volume rm` argv, proves both exact names absent and the dual-label enumeration empty, and repeats the retired-authority oracle before success. A deletion attempt that fails remains non-success and leaves authority retired for containment. Already-safe missing and tombstoned authority inputs are supported. A failed live-runner attestation occurs before the lifecycle-attempt flag and bootstrap; with the preceding volume/port proofs, no fixture `down` is required or attempted.
-
-```powershell
-$env:MUSIC_E2E_LIVE_WRITE='true'
-$env:MUSIC_E2E_LIVE_WRITE_CONFIRMATION='I_UNDERSTAND_THIS_MUTATES_A_DISPOSABLE_FIXTURE'
-$env:MUSIC_E2E_FIXTURE_VERSION='music-public-e2e-fixture/v1'
-$env:MUSIC_E2E_ACCOUNT_USERNAME='e2e-public-music-local-owner'
-$env:MUSIC_E2E_ACCOUNT_DOCUMENT_ID='e2e-public-music-local-account'
-$env:MUSIC_E2E_USER_DOCUMENT_ID='e2e-public-music-local-user'
-$env:MUSIC_E2E_STRAPI_URL='http://127.0.0.1:51337'
-$env:MUSIC_E2E_STRAPI_TOKEN='<account-scoped-local-test-token>'
-$env:MUSIC_E2E_NAMESPACE_RESET_CONFIRMATION='RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE'
-$env:MUSIC_E2E_SERVICE_ORIGINS='tcp://127.0.0.1:55432,http://127.0.0.1:51337,http://127.0.0.1:55000,http://localhost:55173,http://127.0.0.1:55174'
-$env:MUSIC_E2E_HEALTH_URLS='tcp://127.0.0.1:55432,http://127.0.0.1:51337/health,http://127.0.0.1:55000/api/music-fixture/readiness,http://localhost:55173/health,http://127.0.0.1:55174/health'
-npm run music:test:public-e2e # callback bootstraps the private owner authority; do not supply a bearer token
-```
 
 The runner captures the complete disposable PostgreSQL database plus the original Strapi `public_music` value before each mutation journey, restores both in `finally`, re-reads them, and stops all later live tests on any hash mismatch. It never accepts a production or non-loopback origin.
 
