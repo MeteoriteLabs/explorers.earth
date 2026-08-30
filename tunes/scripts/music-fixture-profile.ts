@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Kind, parse, print, visit, type DocumentNode } from "graphql";
+import { RECOMMENDATION_CATEGORY_IDS } from "../../explorers-earth/src/features/Profile/types/themeTypes.ts";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const PROFILE_STATE_VERSION = "music-fixture-profile-state/v1" as const;
@@ -230,7 +231,7 @@ export function createFixtureProfileController(config: {
         footerBranding: "enabled",
         recommendations: {
           layout: "shelves",
-          categoryOrder: ["places", "music", "movies", "books", "games", "guides", "apps", "products", "people"],
+          categoryOrder: [...RECOMMENDATION_CATEGORY_IDS],
         },
       },
     },

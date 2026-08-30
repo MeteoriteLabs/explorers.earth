@@ -16,6 +16,12 @@ import {
   type ProfileBatchUpdateAccount,
 } from './setup/profile-batch';
 import {
+  PROFILE_BATCH_CATEGORY_IDS as CATEGORY_IDS,
+  parseProfileBatchRecommendationOrder,
+  profileBatchSavedOrder as orderForShape,
+  profileBatchPublicOrder as expectedPublicOrderForRow,
+} from './setup/profile-batch-order';
+import {
   LIVE_MUTATION_TAG,
   LIVE_READ_ONLY_TAG,
   buildProfileCoveringRows as buildManifestProfileCoveringRows,
@@ -358,20 +364,8 @@ const LAYOUT_TEST_IDS: Record<string, string> = {
 };
 const normalizeLayout = (layout: unknown) =>
   typeof layout === 'string' && layout in LAYOUT_TEST_IDS ? layout : 'shelves';
-const CATEGORY_IDS = [
-  'places',
-  'music',
-  'movies',
-  'books',
-  'games',
-  'guides',
-  'apps',
-  'products',
-  'people',
-] as const;
 const CATEGORY_LABELS: Record<(typeof CATEGORY_IDS)[number], string> = {
   places: 'Places',
-  music: 'Music',
   movies: 'Movies & Shows',
   books: 'Books',
   games: 'Games',
@@ -492,10 +486,7 @@ async function readDashboardOrder(page: Page) {
     .evaluateAll((rows) =>
       rows.map((row) => row.getAttribute('data-category-id') || ''),
     );
-  if (ids.length !== CATEGORY_IDS.length || ids.some((id) => !id)) {
-    throw new Error('Dashboard did not expose all nine recommendation categories');
-  }
-  return ids as (typeof CATEGORY_IDS)[number][];
+  return parseProfileBatchRecommendationOrder(ids);
 }
 
 async function readDashboardPresentation(page: Page) {
@@ -529,41 +520,6 @@ async function readDashboardPresentation(page: Page) {
   };
 }
 
-const orderForShape = (
-  shape: CoveringRow['orderShape'],
-  firstView: CoveringRow['firstView'],
-) => {
-  const canonical = [...CATEGORY_IDS];
-  if (shape === 'reverse') return canonical.reverse();
-  if (shape === 'rotate') return [...canonical.slice(2), ...canonical.slice(0, 2)];
-  if (
-    shape === 'preferred-first' &&
-    CATEGORY_IDS.includes(firstView as (typeof CATEGORY_IDS)[number])
-  ) {
-    return [
-      firstView as (typeof CATEGORY_IDS)[number],
-      ...canonical.filter((id) => id !== firstView),
-    ];
-  }
-  return canonical;
-};
-
-const expectedPublicOrderForRow = (
-  shape: CoveringRow['orderShape'],
-  firstView: CoveringRow['firstView'],
-) => {
-  const savedOrder = orderForShape(shape, firstView);
-  if (
-    CATEGORY_IDS.includes(firstView as (typeof CATEGORY_IDS)[number])
-  ) {
-    return [
-      firstView as (typeof CATEGORY_IDS)[number],
-      ...savedOrder.filter((id) => id !== firstView),
-    ];
-  }
-  return savedOrder;
-};
-
 test('live row oracle promotes a category first view independently of saved order', { tag: LIVE_READ_ONLY_TAG }, () => {
   expect(expectedPublicOrderForRow('reverse', 'places')).toEqual([
     'places',
@@ -574,7 +530,6 @@ test('live row oracle promotes a category first view independently of saved orde
     'games',
     'books',
     'movies',
-    'music',
   ]);
 });
 

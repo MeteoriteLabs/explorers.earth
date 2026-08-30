@@ -5935,6 +5935,7 @@ test("profile publish observes UpdateAccount, its exact refetch, and the saved t
 
 test("browser-inert profile batch uses the real fixture documents for abort discard and first-row public projection", async () => {
   const { createFixtureProfileController } = await import("../../tunes/scripts/music-fixture-profile");
+  const { PROFILE_BATCH_CATEGORY_IDS } = await import("./setup/profile-batch-order");
   const document = (file: string, operation: string) => {
     const source = readFileSync(file, "utf8");
     const matches = [...source.matchAll(/gql`([\s\S]*?)`/g)]
@@ -5998,7 +5999,7 @@ test("browser-inert profile batch uses the real fixture documents for abort disc
   theme.landingTab = "all-recommendations";
   theme.recommendations = {
     layout: "shelves",
-    categoryOrder: ["places", "music", "movies", "books", "games", "guides", "apps", "products", "people"],
+    categoryOrder: [...PROFILE_BATCH_CATEGORY_IDS],
     __e2eSentinel: "profile-contract-sentinel",
   };
   const published = await observeProfilePublish({
