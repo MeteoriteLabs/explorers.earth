@@ -9,7 +9,7 @@ export const MUSIC_PUBLIC_SOCKET_C15_VERSION = "explorers-public-socket-c15/v1";
 const EXPLORER_ORIGIN = "http://localhost:55173";
 const SOCKET_PATH = "/ws";
 const CONNECT_TIMEOUT_MS = 10_000;
-const CODES = new Set(["none", "connection-failed", "connection-timeout"]);
+const CODES = new Set(["none", "connection-failed", "connection-timeout", "disconnect-failed"]);
 
 function exactKeys(value, expected) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -28,7 +28,13 @@ export function validateMusicPublicSocketC15Record(value) {
       || typeof value.closed !== "boolean") return false;
   return value.status === "passed"
     ? value.code === "none" && value.connections === 2 && value.reconnects === 1 && value.closed
-    : value.code !== "none" && !(value.connections === 2 && value.reconnects === 1);
+    : value.connections === 2 && value.reconnects === 1
+      ? value.code === "disconnect-failed" && !value.closed
+      : value.code !== "none";
+}
+
+function isPositivelyDisconnected(socket) {
+  return socket?.connected === false && socket?.disconnected === true;
 }
 
 function waitForConnection(socket) {
@@ -88,7 +94,15 @@ export async function runMusicPublicSocketProxyProbe({
     code = await waitForConnection(socket);
     if (code !== "none") throw new Error("C15 socket connection failed");
     connections = 1;
-    socket.disconnect();
+    try { socket.disconnect(); }
+    catch {
+      code = "disconnect-failed";
+      throw new Error("C15 socket disconnect failed");
+    }
+    if (!isPositivelyDisconnected(socket)) {
+      code = "disconnect-failed";
+      throw new Error("C15 socket disconnect failed");
+    }
     reconnects = 1;
     code = await waitForConnection(socket);
     if (code !== "none") throw new Error("C15 socket reconnection failed");
@@ -97,8 +111,14 @@ export async function runMusicPublicSocketProxyProbe({
     // Only the fixed code selected at the transport boundary is retained.
   } finally {
     if (socket && typeof socket.disconnect === "function") {
-      try { socket.disconnect(); } catch { /* best-effort bounded close */ }
-      closed = true;
+      try {
+        socket.disconnect();
+        closed = isPositivelyDisconnected(socket);
+        if (!closed) code = "disconnect-failed";
+      } catch {
+        code = "disconnect-failed";
+        closed = false;
+      }
     }
   }
   const passed = connections === 2 && reconnects === 1 && closed && code === "none";
@@ -122,9 +142,16 @@ export async function runMusicPublicSocketProxyProbe({
  * the C14 transactional snapshot; C14 then restores the phase and baseline.
  */
 export async function runMusicPublicSocketC15Qualification({
-  authority, initialSnapshot, fetchImpl,
+  authority,
+  initialSnapshot,
+  fetchImpl,
+  socketFactory = io,
+  prebrowserRunner = runMusicPrebrowserC14Integration,
 } = {}) {
-  return runMusicPrebrowserC14Integration({
+  if (typeof socketFactory !== "function" || typeof prebrowserRunner !== "function") {
+    throw new Error("C15 socket proxy qualification refused");
+  }
+  return prebrowserRunner({
     ack: MUSIC_PREBROWSER_C14_ACK,
     authority,
     initialSnapshot,
@@ -133,6 +160,7 @@ export async function runMusicPublicSocketC15Qualification({
       const record = await runMusicPublicSocketProxyProbe({
         explorerOrigin: authority?.explorerOrigin,
         publicSlug,
+        socketFactory,
       });
       return record.status === "passed";
     },

@@ -132,15 +132,35 @@ function mapC14Outcome(outcome) {
 }
 
 export async function runMusicPublicSocketC15Cli({
-  args = [], environment = process.env, dependencies, cwd = process.cwd(),
+  args = [],
+  environment = process.env,
+  dependencies,
+  cwd = process.cwd(),
+  socketFactory,
+  prebrowserRunner,
 } = {}) {
   if (!exactC15Gate(environment)) return { exitCode: 3, record: refusalRecord() };
+  if (!(socketFactory === undefined || typeof socketFactory === "function")
+      || !(prebrowserRunner === undefined || typeof prebrowserRunner === "function")) {
+    return {
+      exitCode: 3,
+      record: { ...refusalRecord(), code: "invocation-refused" },
+    };
+  }
+  const qualificationRunner = (input) => runMusicPublicSocketC15Qualification({
+    ...input,
+    socketFactory,
+    prebrowserRunner,
+  });
+  const runtimeDependencies = dependencies && typeof dependencies === "object" && !Array.isArray(dependencies)
+    ? { ...dependencies, qualify: qualificationRunner }
+    : dependencies;
   const outcome = await runMusicPrebrowserC14Cli({
     args,
     environment: withoutC15Gate(environment),
-    dependencies,
+    dependencies: runtimeDependencies,
     cwd,
-    qualificationRunner: runMusicPublicSocketC15Qualification,
+    qualificationRunner,
   });
   const mapped = mapC14Outcome(outcome);
   return validateMusicPublicSocketC15CliRecord(mapped.record)

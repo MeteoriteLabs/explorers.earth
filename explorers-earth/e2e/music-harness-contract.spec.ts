@@ -7546,8 +7546,22 @@ test("C15 probes the exact Explorer ws path through one bounded disconnect and r
   class FakeSocket extends EventEmitter {
     connectCalls = 0;
     disconnectCalls = 0;
-    connect() { this.connectCalls += 1; queueMicrotask(() => this.emit("connect")); return this; }
-    disconnect() { this.disconnectCalls += 1; this.emit("disconnect"); return this; }
+    connected = false;
+    disconnected = true;
+    connect() {
+      this.connectCalls += 1;
+      this.connected = true;
+      this.disconnected = false;
+      queueMicrotask(() => this.emit("connect"));
+      return this;
+    }
+    disconnect() {
+      this.disconnectCalls += 1;
+      this.connected = false;
+      this.disconnected = true;
+      this.emit("disconnect");
+      return this;
+    }
   }
   const socket = new FakeSocket();
   const options: Record<string, unknown>[] = [];
@@ -7578,8 +7592,15 @@ test("C15 probes the exact Explorer ws path through one bounded disconnect and r
   expect(JSON.stringify(record)).not.toMatch(/public_slug|https?:|token|credential|authorization|path/i);
 
   class FailedSocket extends EventEmitter {
+    connected = false;
+    disconnected = true;
     connect() { queueMicrotask(() => this.emit("connect_error", new Error("Bearer secret at C:\\Users\\hostile"))); return this; }
-    disconnect() { this.emit("disconnect"); return this; }
+    disconnect() {
+      this.connected = false;
+      this.disconnected = true;
+      this.emit("disconnect");
+      return this;
+    }
   }
   const failed = await c15.runMusicPublicSocketProxyProbe({
     explorerOrigin: "http://localhost:55173",
@@ -7595,6 +7616,56 @@ test("C15 probes the exact Explorer ws path through one bounded disconnect and r
     closed: true,
   });
   expect(JSON.stringify(failed)).not.toMatch(/Bearer|secret|Users|hostile|public_slug|https?:|path/i);
+
+  class FinalDisconnectThrowsSocket extends FakeSocket {
+    override disconnect() {
+      this.disconnectCalls += 1;
+      if (this.disconnectCalls === 2) {
+        throw new Error("Bearer terminal-secret at C:\\Users\\hostile\\socket.log");
+      }
+      this.connected = false;
+      this.disconnected = true;
+      this.emit("disconnect");
+      return this;
+    }
+  }
+  const finalDisconnectThrows = new FinalDisconnectThrowsSocket();
+  const cleanupFailed = await c15.runMusicPublicSocketProxyProbe({
+    explorerOrigin: "http://localhost:55173",
+    publicSlug: "public_slug-123",
+    socketFactory: () => finalDisconnectThrows,
+  });
+  expect(cleanupFailed).toEqual({
+    schemaVersion: "explorers-public-socket-c15/v1",
+    status: "failed",
+    code: "disconnect-failed",
+    connections: 2,
+    reconnects: 1,
+    closed: false,
+  });
+  expect(c15.validateMusicPublicSocketC15Record(cleanupFailed)).toBe(true);
+  expect(finalDisconnectThrows.connectCalls).toBe(2);
+  expect(finalDisconnectThrows.disconnectCalls).toBe(2);
+  expect(JSON.stringify(cleanupFailed)).not.toMatch(/Bearer|secret|Users|hostile|socket\.log|public_slug|https?:|path/i);
+
+  class FinalDisconnectDoesNotCloseSocket extends FakeSocket {
+    override disconnect() {
+      this.disconnectCalls += 1;
+      if (this.disconnectCalls === 2) return this;
+      this.connected = false;
+      this.disconnected = true;
+      this.emit("disconnect");
+      return this;
+    }
+  }
+  const finalDisconnectDoesNotClose = new FinalDisconnectDoesNotCloseSocket();
+  await expect(c15.runMusicPublicSocketProxyProbe({
+    explorerOrigin: "http://localhost:55173",
+    publicSlug: "public_slug-123",
+    socketFactory: () => finalDisconnectDoesNotClose,
+  })).resolves.toMatchObject({
+    status: "failed", code: "disconnect-failed", connections: 2, reconnects: 1, closed: false,
+  });
 });
 
 test("C15 is inert without its exact flag and otherwise reuses the exact C14 lifecycle", async () => {
@@ -7606,6 +7677,51 @@ test("C15 is inert without its exact flag and otherwise reuses the exact C14 lif
   };
   expect(cli).not.toBeNull();
   if (!cli) return;
+
+  class CliSocket extends EventEmitter {
+    connectCalls = 0;
+    disconnectCalls = 0;
+    connected = false;
+    disconnected = true;
+    connect() {
+      this.connectCalls += 1;
+      this.connected = true;
+      this.disconnected = false;
+      queueMicrotask(() => this.emit("connect"));
+      return this;
+    }
+    disconnect() {
+      this.disconnectCalls += 1;
+      this.connected = false;
+      this.disconnected = true;
+      this.emit("disconnect");
+      return this;
+    }
+  }
+  const c15QualificationBoundary = (events: string[], socket: CliSocket) => ({
+    socketFactory: () => socket,
+    prebrowserRunner: async ({ publicCapabilityProbe }: {
+      publicCapabilityProbe(input: { publicSlug: string }): Promise<boolean>;
+    }) => {
+      events.push("qualify");
+      const probePassed = await publicCapabilityProbe({ publicSlug: "public_slug-123" });
+      const qualification = passedPrebrowserQualification();
+      return {
+        schemaVersion: "explorers-public-prebrowser-c14/v1",
+        status: probePassed ? "passed" : "failed",
+        counts: probePassed
+          ? { graphqlOperations: 20, publicMusicResources: 2, queueSongs: 3 }
+          : { graphqlOperations: 0, publicMusicResources: 0, queueSongs: 0 },
+        qualification: probePassed ? qualification : {
+          ...qualification,
+          status: "failed",
+          code: "public-flow-failed",
+          publicFlowFailure: { stage: "proxy-public-music", code: "contract-invalid" },
+          checks: { ...qualification.checks, publicProjection: false },
+        },
+      };
+    },
+  });
 
   for (const environment of [
     {},
@@ -7625,10 +7741,12 @@ test("C15 is inert without its exact flag and otherwise reuses the exact C14 lif
   }
 
   const events: string[] = [];
+  const successSocket = new CliSocket();
   const result = await cli.runMusicPublicSocketC15Cli({
     args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
     environment: { MUSIC_C15_SOCKET_PROXY_TEST: "1" },
     dependencies: c14CliDependencies(events),
+    ...c15QualificationBoundary(events, successSocket),
   });
   expect(events).toEqual([
     "source",
@@ -7654,6 +7772,8 @@ test("C15 is inert without its exact flag and otherwise reuses the exact C14 lif
       },
     },
   });
+  expect(successSocket.connectCalls).toBe(2);
+  expect(successSocket.disconnectCalls).toBe(2);
   expect(cli.validateMusicPublicSocketC15CliRecord(result.record)).toBe(true);
   expect(cli.validateMusicPublicSocketC15CliRecord({
     ...result.record,
@@ -7677,6 +7797,7 @@ test("C15 is inert without its exact flag and otherwise reuses the exact C14 lif
   expect(JSON.stringify(result.record)).not.toMatch(/Bearer|token|credential|authorization|https?:|[A-Z]:\\|stdout|stderr|raw/i);
 
   const cleanupEvents: string[] = [];
+  const cleanupSocket = new CliSocket();
   const cleanupFailure = await cli.runMusicPublicSocketC15Cli({
     args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
     environment: { MUSIC_C15_SOCKET_PROXY_TEST: "1" },
@@ -7686,6 +7807,7 @@ test("C15 is inert without its exact flag and otherwise reuses the exact C14 lif
         return { stop: async () => { cleanupEvents.push("state:stop"); throw new Error("hostile cleanup detail"); } };
       },
     }),
+    ...c15QualificationBoundary(cleanupEvents, cleanupSocket),
   });
   expect(cleanupFailure).toMatchObject({
     exitCode: 5,
@@ -7699,6 +7821,51 @@ test("C15 is inert without its exact flag and otherwise reuses the exact C14 lif
     "state:stop", "lifecycle:fixture-down", "authority:post", "temp:remove",
   ]);
   expect(JSON.stringify(cleanupFailure.record)).not.toContain("hostile cleanup detail");
+
+  class FinalDisconnectThrowsCliSocket extends CliSocket {
+    override disconnect() {
+      this.disconnectCalls += 1;
+      if (this.disconnectCalls === 2) {
+        throw new Error("Bearer terminal-secret at C:\\Users\\hostile\\socket.log");
+      }
+      this.connected = false;
+      this.disconnected = true;
+      this.emit("disconnect");
+      return this;
+    }
+  }
+  const disconnectFailureEvents: string[] = [];
+  const disconnectFailureSocket = new FinalDisconnectThrowsCliSocket();
+  const disconnectFailure = await cli.runMusicPublicSocketC15Cli({
+    args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+    environment: { MUSIC_C15_SOCKET_PROXY_TEST: "1" },
+    dependencies: c14CliDependencies(disconnectFailureEvents),
+    ...c15QualificationBoundary(disconnectFailureEvents, disconnectFailureSocket),
+  });
+  expect(disconnectFailure).toMatchObject({
+    exitCode: 4,
+    record: {
+      result: "failed", stage: "qualification", code: "qualification-failed", exitCode: 4,
+      counts: { connections: 0, reconnects: 0 },
+      finalRestore: { status: "passed", databaseEqual: true, profileEqual: true },
+      cleanup: {
+        status: "passed", code: "none", stateServiceStopped: true,
+        fixtureDown: true, authorityRetired: true, tempRemoved: true,
+      },
+    },
+  });
+  expect(disconnectFailureEvents).toEqual([
+    "source",
+    "random:16", "random:32", "random:32", "random:32",
+    "authority:pre",
+    "lifecycle:fixture-bootstrap", "lifecycle:fixture-up",
+    "temp:create", "state:start", "readiness", "initial:snapshot", "qualify",
+    "final:restore", "state:stop", "lifecycle:fixture-down", "authority:post", "temp:remove",
+  ]);
+  expect(disconnectFailureSocket.connectCalls).toBe(2);
+  expect(disconnectFailureSocket.disconnectCalls).toBe(2);
+  expect(cli.validateMusicPublicSocketC15CliRecord(disconnectFailure.record)).toBe(true);
+  expect(JSON.stringify(disconnectFailure.record)).not.toMatch(/Bearer|secret|Users|hostile|socket\.log|public_slug|https?:|path/i);
 
   const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
   const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
