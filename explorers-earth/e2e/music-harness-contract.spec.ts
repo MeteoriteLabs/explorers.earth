@@ -11,8 +11,10 @@ import * as ts from "typescript";
 import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
+  LIVE_RECONNECT_JOURNEY_FAILURE_STAGES,
   LIVE_PUBLIC_JOURNEY_FAILURE_STAGES,
   MUSIC_PUBLIC_STATES,
+  LiveReconnectJourneyFailure,
   LivePublicJourneyFailure,
   assertLivePermissionGuestControlVisible,
   assertLivePublicSlug,
@@ -25,6 +27,7 @@ import {
   fixtureNamespace,
   normalizedSnapshotHash,
   prepareLivePublicMusicJourney,
+  readLiveCanonicalPublicRevision,
   musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
   resetMusicRestoreBlockForContractTest,
@@ -1513,6 +1516,153 @@ test("permission failure metadata is fixed, sanitized, and valid only on failed 
     executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" }),
     records: hostilePassedEvidence,
   })).toMatchObject({ ok: false, subchecks: expect.arrayContaining(["record-contract"]) });
+});
+
+test("reconnect canonical reads use the strict public resource revision contract", async () => {
+  const requests: string[] = [];
+  const revision = await readLiveCanonicalPublicRevision({
+    publicSlug: "public_slug-123",
+    stage: "initial-canonical-resource",
+    read: async (path) => {
+      requests.push(path);
+      return {
+        status: 200,
+        body: {
+          version: "music-public-resource/v1",
+          revision: 9,
+          user: { username: "fixture", venueName: null },
+          permissions: {
+            allowSongRequests: false,
+            allowGuestPlayOnDevice: false,
+            allowPlaylistSharing: false,
+            allowRecentlyPlayedVisibility: false,
+            allowQueueVisibility: false,
+          },
+          currentlyPlaying: null,
+          queue: { items: [], total: 0, truncated: false },
+          recentlyPlayed: { items: [], total: 0, truncated: false },
+          playlists: { items: [], total: 0, truncated: false },
+        },
+      };
+    },
+  });
+  expect(revision).toBe(9);
+  expect(requests).toEqual(["/api/music/public-resource/v1/public_slug-123"]);
+
+  await expect(readLiveCanonicalPublicRevision({
+    publicSlug: "public_slug-123",
+    stage: "online-canonical-apply",
+    read: async () => ({ status: 200, body: { revision: 10 } }),
+  })).rejects.toMatchObject({
+    name: "LiveReconnectJourneyFailure",
+    stage: "online-canonical-apply",
+    code: "contract-invalid",
+  });
+  await expect(readLiveCanonicalPublicRevision({
+    publicSlug: "public_slug-123",
+    stage: "initial-canonical-resource",
+    read: async () => ({ status: 404 }),
+  })).rejects.toMatchObject({ code: "http-failed" });
+});
+
+test("reconnect failure metadata is fixed, sanitized, and valid only on the failed reconnect terminal", async () => {
+  expect(LIVE_RECONNECT_JOURNEY_FAILURE_STAGES).toEqual([
+    "preparation", "initial-canonical-resource", "guest-ready", "offline-announcement",
+    "owner-controls", "online-canonical-apply", "online-announcement-cleared", "guest-control-visible",
+  ]);
+  const hash = "b".repeat(64);
+  const reconnectFailure = { stage: "offline-announcement", code: "assertion-failed" } as const;
+  const terminal = buildLiveJourneyTerminal({
+    id: "music.owner-guest.reconnect",
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    beforeHash: hash,
+    afterHash: hash,
+    reconnectFailure,
+  });
+  expect(terminal.reconnectFailure).toEqual(reconnectFailure);
+
+  const preflight = await import("../scripts/music-public-live-preflight.mjs");
+  const ledger = preflight.buildSanitizedJourneyOutcomeLedger({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+      statusById: { "music.owner-guest.reconnect": "failed" },
+    }),
+    reportStatus: "accepted",
+    terminalRecords: [terminal],
+    terminalStatus: "accepted",
+  });
+  expect(ledger.mutationTerminals.find(({ id }) => id === "music.owner-guest.reconnect")).toEqual({
+    id: "music.owner-guest.reconnect",
+    status: "failed",
+    reason: "terminal-failed",
+    stage: "terminal-evidence",
+    reconnectFailure,
+  });
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(ledger)).toBe(true);
+  expect(JSON.stringify(ledger)).not.toMatch(/Bearer|https?:|[A-Z]:\\|public_slug-123/i);
+
+  for (const hostile of [
+    { id: "music.owner.queue-add", reconnectFailure },
+    { id: "music.owner-guest.reconnect", status: "passed", reason: "none", stage: "verification", reconnectFailure },
+    { id: "music.owner-guest.reconnect", reconnectFailure: { stage: "C:\\private\\hostile", code: "Bearer hostile" } },
+  ]) {
+    expect(() => buildLiveJourneyTerminal({
+      id: hostile.id,
+      status: hostile.status ?? "failed",
+      reason: hostile.reason ?? "body-failed",
+      stage: hostile.stage ?? "body",
+      cleanup: "restored",
+      beforeHash: hash,
+      afterHash: hash,
+      reconnectFailure: hostile.reconnectFailure,
+    })).toThrow(/reconnect failure/i);
+  }
+});
+
+test("restored reconnect failures write one safe substage terminal after exact restoration", async () => {
+  const events: string[] = [];
+  const terminals: Array<Record<string, unknown>> = [];
+  const state = { revision: 0 };
+  await expect(withRestoredMusicFixture({
+    journeyId: "music.owner-guest.reconnect",
+    snapshot: async () => { events.push("snapshot"); return structuredClone(state); },
+    cleanupNamespace: async () => { events.push("cleanup"); },
+    restore: async () => { events.push("restore"); },
+    writeJourneyResult: async (record) => { events.push("terminal"); terminals.push(record as Record<string, unknown>); },
+  }, async () => {
+    events.push("body");
+    throw new LiveReconnectJourneyFailure("guest-ready", "assertion-failed");
+  })).rejects.toMatchObject({ stage: "guest-ready", code: "assertion-failed" });
+  expect(events).toEqual(["snapshot", "body", "cleanup", "restore", "snapshot", "terminal"]);
+  expect(terminals).toEqual([expect.objectContaining({
+    id: "music.owner-guest.reconnect",
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    reconnectFailure: { stage: "guest-ready", code: "assertion-failed" },
+  })]);
+});
+
+test("the fixture exposes only the exact Socket.IO ws boundary through Explorer", () => {
+  // Break caught: the same-origin browser bundle points Socket.IO at Explorer,
+  // but Nginx sends /ws to the SPA fallback or broadens Tunes proxy authority.
+  const nginx = readFileSync("nginx.music-fixture.conf", "utf8");
+  const socketLocations = [...nginx.matchAll(/location\s+~\s+\^\/ws\/\?\$\s*\{([\s\S]*?)\}/g)];
+  expect(socketLocations).toHaveLength(1);
+  const socket = socketLocations[0]![1]!;
+  expect(socket).toContain("proxy_pass http://tunes:5000;");
+  expect(socket).toContain("proxy_http_version 1.1;");
+  expect(socket).toContain("proxy_set_header Upgrade $http_upgrade;");
+  expect(socket).toContain('proxy_set_header Connection "upgrade";');
+  expect(socket).toContain("proxy_set_header Host $host;");
+  expect(socket).toContain("proxy_set_header Origin $scheme://$http_host;");
+  expect(socket).not.toMatch(/proxy_pass\s+http:\/\/tunes:5000\//);
+  expect(nginx.match(/proxy_pass http:\/\/tunes:5000;/g)).toHaveLength(3);
+  expect(nginx).not.toMatch(/location\s+(?:\^~\s+)?\/ws(?:\/|\s)/);
+  expect(nginx).not.toMatch(/location\s+\/\s*\{\s*proxy_pass\s+http:\/\/tunes:5000;/);
 });
 
 test("restored permission failures write one safe substage terminal after exact restoration", async () => {
@@ -6641,12 +6791,21 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
   ownerDashboardMutation = undefined;
   injectedPublicFailureCode = "http-failed";
   const c14 = await import("../scripts/music-public-prebrowser-c14.mjs");
+  let publicCapabilityProbeCalls = 0;
   const c14Outcome = await c14.runMusicPrebrowserC14Integration({
     ack: c14.MUSIC_PREBROWSER_C14_ACK,
     authority,
     initialSnapshot: initial,
     fetchImpl,
+    publicCapabilityProbe: ({ publicSlug }: { publicSlug: string }) => {
+      publicCapabilityProbeCalls += 1;
+      expect(publicSlug).toBe("actual-qualified-public-slug");
+      expect(baselineRestored).toBe(false);
+      return true;
+    },
   });
+  expect(publicCapabilityProbeCalls).toBe(1);
+  expect(baselineRestored).toBe(true);
   expect(c14Outcome).toMatchObject({
     schemaVersion: "explorers-public-prebrowser-c14/v1",
     status: "passed",
@@ -7374,6 +7533,216 @@ function c14CliDependencies(events: string[], overrides: Record<string, unknown>
     ...overrides,
   };
 }
+
+test("C15 probes the exact Explorer ws path through one bounded disconnect and reconnect", async () => {
+  // Break caught: a static Nginx stanza looks correct while the reviewed
+  // browser-free probe bypasses Explorer, leaks authority, or never reconnects.
+  const c15 = await import("../scripts/music-public-socket-c15.mjs").catch(() => null) as null | {
+    runMusicPublicSocketProxyProbe(input: Record<string, unknown>): Promise<Record<string, unknown>>;
+    validateMusicPublicSocketC15Record(value: unknown): boolean;
+  };
+  expect(c15).not.toBeNull();
+  if (!c15) return;
+  class FakeSocket extends EventEmitter {
+    connectCalls = 0;
+    disconnectCalls = 0;
+    connect() { this.connectCalls += 1; queueMicrotask(() => this.emit("connect")); return this; }
+    disconnect() { this.disconnectCalls += 1; this.emit("disconnect"); return this; }
+  }
+  const socket = new FakeSocket();
+  const options: Record<string, unknown>[] = [];
+  const record = await c15.runMusicPublicSocketProxyProbe({
+    explorerOrigin: "http://localhost:55173",
+    publicSlug: "public_slug-123",
+    socketFactory: (_origin: string, value: Record<string, unknown>) => { options.push(value); return socket; },
+  });
+  expect(record).toEqual({
+    schemaVersion: "explorers-public-socket-c15/v1",
+    status: "passed",
+    code: "none",
+    connections: 2,
+    reconnects: 1,
+    closed: true,
+  });
+  expect(c15.validateMusicPublicSocketC15Record(record)).toBe(true);
+  expect(socket.connectCalls).toBe(2);
+  expect(socket.disconnectCalls).toBe(2);
+  expect(options).toEqual([{
+    autoConnect: false,
+    path: "/ws",
+    transports: ["websocket", "polling"],
+    auth: { publicSlug: "public_slug-123" },
+    extraHeaders: { Origin: "http://localhost:55173" },
+    reconnection: true,
+  }]);
+  expect(JSON.stringify(record)).not.toMatch(/public_slug|https?:|token|credential|authorization|path/i);
+
+  class FailedSocket extends EventEmitter {
+    connect() { queueMicrotask(() => this.emit("connect_error", new Error("Bearer secret at C:\\Users\\hostile"))); return this; }
+    disconnect() { this.emit("disconnect"); return this; }
+  }
+  const failed = await c15.runMusicPublicSocketProxyProbe({
+    explorerOrigin: "http://localhost:55173",
+    publicSlug: "public_slug-123",
+    socketFactory: () => new FailedSocket(),
+  });
+  expect(failed).toEqual({
+    schemaVersion: "explorers-public-socket-c15/v1",
+    status: "failed",
+    code: "connection-failed",
+    connections: 0,
+    reconnects: 0,
+    closed: true,
+  });
+  expect(JSON.stringify(failed)).not.toMatch(/Bearer|secret|Users|hostile|public_slug|https?:|path/i);
+});
+
+test("C15 is inert without its exact flag and otherwise reuses the exact C14 lifecycle", async () => {
+  // Break caught: C15 grows a second lifecycle implementation or can reach
+  // source inspection/randomness/lifecycle from an ambient or malformed gate.
+  const cli = await import("../scripts/music-public-socket-c15-cli.mjs").catch(() => null) as null | {
+    runMusicPublicSocketC15Cli(input: Record<string, unknown>): Promise<{ exitCode: number; record: Record<string, unknown> }>;
+    validateMusicPublicSocketC15CliRecord(value: unknown): boolean;
+  };
+  expect(cli).not.toBeNull();
+  if (!cli) return;
+
+  for (const environment of [
+    {},
+    { MUSIC_C15_SOCKET_PROXY_TEST: "0" },
+    { music_c15_socket_proxy_test: "1" },
+    { MUSIC_C15_SOCKET_PROXY_TEST: "1", MUSIC_C15_TOKEN: "hostile" },
+  ]) {
+    const events: string[] = [];
+    const refused = await cli.runMusicPublicSocketC15Cli({
+      args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+      environment,
+      dependencies: { inspectSource: () => { events.push("source"); } },
+    });
+    expect(refused.exitCode).toBe(3);
+    expect(events).toEqual([]);
+    expect(cli.validateMusicPublicSocketC15CliRecord(refused.record)).toBe(true);
+  }
+
+  const events: string[] = [];
+  const result = await cli.runMusicPublicSocketC15Cli({
+    args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+    environment: { MUSIC_C15_SOCKET_PROXY_TEST: "1" },
+    dependencies: c14CliDependencies(events),
+  });
+  expect(events).toEqual([
+    "source",
+    "random:16", "random:32", "random:32", "random:32",
+    "authority:pre",
+    "lifecycle:fixture-bootstrap", "lifecycle:fixture-up",
+    "temp:create", "state:start", "readiness", "initial:snapshot", "qualify",
+    "final:restore", "state:stop", "lifecycle:fixture-down", "authority:post", "temp:remove",
+  ]);
+  expect(result).toEqual({
+    exitCode: 0,
+    record: {
+      schemaVersion: "explorers-public-socket-c15-cli/v1",
+      result: "passed",
+      stage: "complete",
+      code: "none",
+      exitCode: 0,
+      counts: { connections: 2, reconnects: 1 },
+      finalRestore: { status: "passed", databaseEqual: true, profileEqual: true },
+      cleanup: {
+        status: "passed", code: "none", stateServiceStopped: true,
+        fixtureDown: true, authorityRetired: true, tempRemoved: true,
+      },
+    },
+  });
+  expect(cli.validateMusicPublicSocketC15CliRecord(result.record)).toBe(true);
+  expect(cli.validateMusicPublicSocketC15CliRecord({
+    ...result.record,
+    result: "failed",
+    stage: "final-restore",
+    code: "final-restore-failed",
+    exitCode: 5,
+    counts: { connections: 0, reconnects: 0 },
+    finalRestore: { status: "failed", databaseEqual: true, profileEqual: true },
+  })).toBe(false);
+  expect(cli.validateMusicPublicSocketC15CliRecord({
+    ...result.record,
+    result: "failed",
+    stage: "preflight",
+    code: "ambient-refused",
+    exitCode: 3,
+    counts: { connections: 0, reconnects: 0 },
+    finalRestore: { status: "not-run", databaseEqual: false, profileEqual: false },
+    cleanup: { ...result.record.cleanup, status: "not-required", stateServiceStopped: true },
+  })).toBe(false);
+  expect(JSON.stringify(result.record)).not.toMatch(/Bearer|token|credential|authorization|https?:|[A-Z]:\\|stdout|stderr|raw/i);
+
+  const cleanupEvents: string[] = [];
+  const cleanupFailure = await cli.runMusicPublicSocketC15Cli({
+    args: EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+    environment: { MUSIC_C15_SOCKET_PROXY_TEST: "1" },
+    dependencies: c14CliDependencies(cleanupEvents, {
+      startStateService: () => {
+        cleanupEvents.push("state:start");
+        return { stop: async () => { cleanupEvents.push("state:stop"); throw new Error("hostile cleanup detail"); } };
+      },
+    }),
+  });
+  expect(cleanupFailure).toMatchObject({
+    exitCode: 5,
+    record: {
+      result: "failed", stage: "state-stop", code: "state-stop-failed",
+      counts: { connections: 0, reconnects: 0 },
+      cleanup: { status: "failed", fixtureDown: true, authorityRetired: true, tempRemoved: true },
+    },
+  });
+  expect(cleanupEvents.slice(cleanupEvents.indexOf("state:stop"))).toEqual([
+    "state:stop", "lifecycle:fixture-down", "authority:post", "temp:remove",
+  ]);
+  expect(JSON.stringify(cleanupFailure.record)).not.toContain("hostile cleanup detail");
+
+  const rootPackage = JSON.parse(readFileSync("../package.json", "utf8")) as { scripts: Record<string, string> };
+  const clientPackage = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
+  expect(rootPackage.scripts["music:test:public-c15"]).toBe("npm --prefix explorers-earth run music:test:public-c15 --");
+  expect(clientPackage.scripts["music:test:public-c15"]).toBe("node scripts/music-public-socket-c15-cli.mjs");
+
+  const sandbox = mkdtempSync(join(tmpdir(), "music-public-c15-package-command-"));
+  try {
+    const preloader = join(sandbox, "capture-c15-runner.cjs");
+    const capturePath = join(sandbox, "runner.json");
+    writeFileSync(preloader, [
+      'const { basename } = require("node:path");',
+      'if (basename(String(process.argv[1])) === "music-public-socket-c15-cli.mjs") {',
+      '  require("node:fs").writeFileSync(process.env.FAKE_C15_RUNNER_CAPTURE, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd() }));',
+      '  process.exit(0);',
+      '}',
+      '',
+    ].join("\n"));
+    const npmExecPath = process.env.npm_execpath
+      ?? join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+    expect(existsSync(npmExecPath)).toBe(true);
+    const packageResult = spawnSync(process.execPath, [
+      npmExecPath, "run", "--silent", "music:test:public-c15", "--", ...EXACT_PUBLIC_C14_AUTHORITY_ARGS,
+    ], {
+      cwd: resolve(".."),
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 10_000,
+      env: {
+        ...withoutPublicLiveAuthority(process.env),
+        MUSIC_C15_SOCKET_PROXY_TEST: "1",
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require=${preloader}`.trim(),
+        FAKE_C15_RUNNER_CAPTURE: capturePath,
+      },
+    });
+    expect(packageResult.status, `${packageResult.stdout}\n${packageResult.stderr}`).toBe(0);
+    expect(JSON.parse(readFileSync(capturePath, "utf8"))).toEqual({
+      argv: [...EXACT_PUBLIC_C14_AUTHORITY_ARGS],
+      cwd: resolve(),
+    });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
 
 test("the documented root C14 command forwards only the exact reviewed eight-element argv", () => {
   // Production break caught: the approved C14 lane existed only as an importable

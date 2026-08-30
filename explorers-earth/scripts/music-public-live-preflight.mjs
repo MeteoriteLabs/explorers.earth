@@ -62,9 +62,18 @@ export const LIVE_PERMISSION_FAILURE_STAGES = Object.freeze([
 export const LIVE_PERMISSION_FAILURE_CODES = Object.freeze([
   "operation-failed", "http-failed", "contract-invalid", "assertion-failed",
 ]);
+export const LIVE_RECONNECT_FAILURE_STAGES = Object.freeze([
+  "preparation", "initial-canonical-resource", "guest-ready", "offline-announcement",
+  "owner-controls", "online-canonical-apply", "online-announcement-cleared", "guest-control-visible",
+]);
+export const LIVE_RECONNECT_FAILURE_CODES = Object.freeze([
+  "operation-failed", "operation-timeout", "http-failed", "contract-invalid", "assertion-failed",
+]);
 const LIVE_PERMISSION_JOURNEY_ID_SET = new Set(LIVE_PERMISSION_JOURNEY_IDS);
 const LIVE_PERMISSION_FAILURE_STAGE_SET = new Set(LIVE_PERMISSION_FAILURE_STAGES);
 const LIVE_PERMISSION_FAILURE_CODE_SET = new Set(LIVE_PERMISSION_FAILURE_CODES);
+const LIVE_RECONNECT_FAILURE_STAGE_SET = new Set(LIVE_RECONNECT_FAILURE_STAGES);
+const LIVE_RECONNECT_FAILURE_CODE_SET = new Set(LIVE_RECONNECT_FAILURE_CODES);
 
 export const LIVE_READ_ONLY_COLLECTION = Object.freeze([
   { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
@@ -458,6 +467,12 @@ function validPermissionFailure(value) {
     && LIVE_PERMISSION_FAILURE_CODE_SET.has(value.code);
 }
 
+function validReconnectFailure(value) {
+  return exactKeySet(value, ["stage", "code"])
+    && LIVE_RECONNECT_FAILURE_STAGE_SET.has(value.stage)
+    && LIVE_RECONNECT_FAILURE_CODE_SET.has(value.code);
+}
+
 function terminalPermissionFailureValid(record) {
   if (!Object.prototype.hasOwnProperty.call(record, "permissionFailure")) return true;
   return LIVE_PERMISSION_JOURNEY_ID_SET.has(record.id)
@@ -466,6 +481,16 @@ function terminalPermissionFailureValid(record) {
     && record.stage === "body"
     && record.cleanup === "restored"
     && validPermissionFailure(record.permissionFailure);
+}
+
+function terminalReconnectFailureValid(record) {
+  if (!Object.prototype.hasOwnProperty.call(record, "reconnectFailure")) return true;
+  return record.id === "music.owner-guest.reconnect"
+    && record.status === "failed"
+    && record.reason === "body-failed"
+    && record.stage === "body"
+    && record.cleanup === "restored"
+    && validReconnectFailure(record.reconnectFailure);
 }
 
 function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOutcomes = []) {
@@ -503,7 +528,10 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
   let hostileRecord = false;
   for (const record of terminalRecords) {
     if (!record || typeof record !== "object" || Array.isArray(record) || !knownIds.has(record.id)
-        || !terminalPermissionFailureValid(record)) {
+        || !terminalPermissionFailureValid(record)
+        || !terminalReconnectFailureValid(record)
+        || (Object.prototype.hasOwnProperty.call(record, "permissionFailure")
+          && Object.prototype.hasOwnProperty.call(record, "reconnectFailure"))) {
       hostileRecord = true;
       continue;
     }
@@ -539,6 +567,10 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
         ...(records[0].permissionFailure ? { permissionFailure: {
           stage: records[0].permissionFailure.stage,
           code: records[0].permissionFailure.code,
+        } } : {}),
+        ...(records[0].reconnectFailure ? { reconnectFailure: {
+          stage: records[0].reconnectFailure.stage,
+          code: records[0].reconnectFailure.code,
         } } : {}),
       };
     }
@@ -593,13 +625,22 @@ export function buildSanitizedJourneyOutcomeLedger({
 
 function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tuples, permissionTerminal = false }) {
   const hasPermissionFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure");
-  return exactKeySet(record, hasPermissionFailure ? ["id", "status", "reason", "stage", "permissionFailure"] : ["id", "status", "reason", "stage"])
+  const hasReconnectFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "reconnectFailure");
+  const keys = ["id", "status", "reason", "stage",
+    ...(hasPermissionFailure ? ["permissionFailure"] : []),
+    ...(hasReconnectFailure ? ["reconnectFailure"] : [])];
+  return exactKeySet(record, keys)
     && record.id === expectedId && statuses.has(record.status) && reasons.has(record.reason) && stages.has(record.stage)
     && tuples.has(`${record.status}\0${record.reason}\0${record.stage}`)
+    && !(hasPermissionFailure && hasReconnectFailure)
     && (!hasPermissionFailure || (permissionTerminal
       && LIVE_PERMISSION_JOURNEY_ID_SET.has(expectedId)
       && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
-      && validPermissionFailure(record.permissionFailure)));
+      && validPermissionFailure(record.permissionFailure)))
+    && (!hasReconnectFailure || (permissionTerminal
+      && expectedId === "music.owner-guest.reconnect"
+      && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
+      && validReconnectFailure(record.reconnectFailure)));
 }
 
 export function validateSanitizedJourneyOutcomeLedger(ledger) {
@@ -1003,7 +1044,7 @@ const LIVE_TERMINAL_TUPLES = new Set([
 
 export function buildLiveJourneyTerminal({
   id, status = "passed", reason = "none", stage = "verification", cleanup = "restored",
-  beforeHash, afterHash, rows, permissionFailure,
+  beforeHash, afterHash, rows, permissionFailure, reconnectFailure,
 }) {
   const entry = liveJourneyManifestEntry(id);
   if (!entry) throw new Error("Unknown live journey ID");
@@ -1017,6 +1058,11 @@ export function buildLiveJourneyTerminal({
       || status !== "failed" || reason !== "body-failed" || stage !== "body" || cleanup !== "restored"
       || !validPermissionFailure(permissionFailure))) {
     throw new Error("Live journey permission failure metadata is invalid");
+  }
+  if (reconnectFailure !== undefined && (id !== "music.owner-guest.reconnect"
+      || status !== "failed" || reason !== "body-failed" || stage !== "body" || cleanup !== "restored"
+      || !validReconnectFailure(reconnectFailure) || permissionFailure !== undefined)) {
+    throw new Error("Live journey reconnect failure metadata is invalid");
   }
   const requiresEqualHashes = cleanup === "restored";
   if (typeof beforeHash !== "string" || !/^[a-f0-9]{64}$/.test(beforeHash)
@@ -1037,6 +1083,10 @@ export function buildLiveJourneyTerminal({
     ...(permissionFailure ? { permissionFailure: {
       stage: permissionFailure.stage,
       code: permissionFailure.code,
+    } } : {}),
+    ...(reconnectFailure ? { reconnectFailure: {
+      stage: reconnectFailure.stage,
+      code: reconnectFailure.code,
     } } : {}),
     ...(profile && Array.isArray(rows) ? { rowCount: rows.length, rows } : {}),
   };
@@ -1106,6 +1156,7 @@ export function validateLiveJourneyEvidence({ executionReport, records }) {
             || record?.title !== expected.title || record?.source !== expected.source
             || record?.status !== "passed" || record?.skipReason !== null || record?.cleanup !== "restored"
             || Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure")
+            || Object.prototype.hasOwnProperty.call(record ?? {}, "reconnectFailure")
             || !validHashPair(record ?? {})) invalidContract = true;
       }
       if (reordered) subchecks.push("records-reordered");

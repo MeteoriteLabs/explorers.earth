@@ -11,6 +11,102 @@ class FakeSocket extends EventEmitter {
 describe("public Music live client", () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
+  it("keeps reconnecting until an equal-or-newer canonical snapshot applies", async () => {
+    // Break caught: transport availability is presented as current before the
+    // canonical snapshot for that connection generation has applied.
+    const socket = new FakeSocket();
+    const states: string[] = [];
+    const applies = [vi.fn(), vi.fn()];
+    const resolvers: Array<(value: { revision: number; apply: () => void }) => void> = [];
+    const onInvalidate = vi.fn(() => new Promise<{ revision: number; apply: () => void }>((resolve) => {
+      resolvers.push(resolve);
+    }));
+    const subscription = subscribeToPublicMusic({
+      publicSlug: "public-one",
+      initialRevision: 7,
+      onInvalidate,
+      onConnectionState: (state: string) => states.push(state),
+    }, { socketFactory: () => socket as never });
+
+    expect(states).toEqual(["connecting"]);
+    socket.emit("connect");
+    await Promise.resolve();
+    expect(states).toEqual(["connecting"]);
+    resolvers[0]!({ revision: 7, apply: applies[0]! });
+    await vi.waitFor(() => expect(applies[0]).toHaveBeenCalledOnce());
+    expect(states).toEqual(["connecting", "connected"]);
+
+    socket.emit("disconnect");
+    expect(states).toEqual(["connecting", "connected", "reconnecting"]);
+    socket.emit("connect");
+    await vi.waitFor(() => expect(onInvalidate).toHaveBeenCalledTimes(2));
+    expect(states.at(-1)).toBe("reconnecting");
+    resolvers[1]!({ revision: 8, apply: applies[1]! });
+    await Promise.resolve(); await Promise.resolve();
+    expect(applies[1]).toHaveBeenCalledOnce();
+    expect(states).toEqual(["connecting", "connected", "reconnecting", "connected"]);
+    subscription.unsubscribe();
+  });
+
+  it("announces offline staleness and ignores a late canonical result after unsubscribe", async () => {
+    // Break caught: an offline page neither announces retained stale content,
+    // nor fences a late reconnect read after its subscription is gone.
+    const socket = new FakeSocket();
+    const states: string[] = [];
+    const apply = vi.fn();
+    let resolve!: (value: { revision: number; apply: () => void }) => void;
+    const onInvalidate = vi.fn(() => new Promise<{ revision: number; apply: () => void }>((done) => { resolve = done; }));
+    const subscription = subscribeToPublicMusic({
+      publicSlug: "public-one",
+      initialRevision: 4,
+      onInvalidate,
+      onConnectionState: (state: string) => states.push(state),
+    }, { socketFactory: () => socket as never });
+
+    window.dispatchEvent(new Event("offline"));
+    expect(states).toEqual(["connecting", "reconnecting"]);
+    window.dispatchEvent(new Event("online"));
+    expect(onInvalidate).toHaveBeenCalledOnce();
+    subscription.unsubscribe();
+    resolve({ revision: 4, apply });
+    await Promise.resolve(); await Promise.resolve();
+    expect(apply).not.toHaveBeenCalled();
+    expect(states).toEqual(["connecting", "reconnecting"]);
+  });
+
+  it("does not clear reconnecting with a canonical read from the disconnected generation", async () => {
+    // Break caught: a request started before transport loss resolves late and
+    // clears the retained-content warning without a post-reconnect refetch.
+    const socket = new FakeSocket();
+    const states: string[] = [];
+    const applies = [vi.fn(), vi.fn()];
+    const resolvers: Array<(value: { revision: number; apply: () => void }) => void> = [];
+    const onInvalidate = vi.fn(() => new Promise<{ revision: number; apply: () => void }>((resolve) => {
+      resolvers.push(resolve);
+    }));
+    const subscription = subscribeToPublicMusic({
+      publicSlug: "public-one",
+      initialRevision: 9,
+      onInvalidate,
+      onConnectionState: (state: string) => states.push(state),
+    }, { socketFactory: () => socket as never });
+
+    socket.emit("connect");
+    await vi.waitFor(() => expect(onInvalidate).toHaveBeenCalledOnce());
+    socket.emit("disconnect");
+    socket.emit("connect");
+    await vi.waitFor(() => expect(onInvalidate).toHaveBeenCalledTimes(2));
+    resolvers[0]!({ revision: 9, apply: applies[0]! });
+    await Promise.resolve(); await Promise.resolve();
+    expect(applies[0]).not.toHaveBeenCalled();
+    expect(states.at(-1)).toBe("reconnecting");
+
+    resolvers[1]!({ revision: 9, apply: applies[1]! });
+    await vi.waitFor(() => expect(applies[1]).toHaveBeenCalledOnce());
+    expect(states.at(-1)).toBe("connected");
+    subscription.unsubscribe();
+  });
+
   it("keeps reconnect, polling, and cleanup alive when telemetry delivery throws", async () => {
     vi.useFakeTimers();
     const socket = new FakeSocket();

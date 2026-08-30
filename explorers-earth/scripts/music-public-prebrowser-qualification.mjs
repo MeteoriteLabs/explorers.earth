@@ -540,8 +540,11 @@ export function validateMusicQualificationQueueResponse(value, songInputs, prior
   return { revision: value.revision, queueSongIds: queueIds };
 }
 
-export function createLoopbackPrebrowserQualificationAdapter({ authority, initialSnapshot, fetchImpl = fetch } = {}) {
+export function createLoopbackPrebrowserQualificationAdapter({
+  authority, initialSnapshot, fetchImpl = fetch, publicCapabilityProbe,
+} = {}) {
   if (!validateMusicPrebrowserLoopbackAuthority(authority) || !exactSnapshot(initialSnapshot) || typeof fetchImpl !== "function"
+      || !(publicCapabilityProbe === undefined || typeof publicCapabilityProbe === "function")
       || initialSnapshot.database.namespace !== authority.namespace
       || initialSnapshot.profile.accountDocumentId !== authority.accountDocumentId) {
     throw new Error("loopback pre-browser qualification authority is invalid");
@@ -831,6 +834,17 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
             && exactObject(body?.playlists)?.items?.some((entry) => entry?.name === "Pre-browser public fixture")
             && Object.entries(controls).every(([key, enabled]) => exactObject(body?.permissions)?.[key] === enabled));
       }
+      if (publicCapabilityProbe) {
+        try {
+          const probePassed = await publicCapabilityProbe({ publicSlug });
+          if (probePassed !== true) {
+            throw createMusicPrebrowserPublicFlowFailure("proxy-public-music", "contract-invalid");
+          }
+        } catch (error) {
+          if (error instanceof MusicPrebrowserPublicFlowFailure) throw error;
+          throw createMusicPrebrowserPublicFlowFailure("proxy-public-music", "operation-failed");
+        }
+      }
       return { publicSlug, categoryQueries, musicPrerequisites: 9 };
     },
     async restoreBaseline(snapshot) {
@@ -853,11 +867,13 @@ export function createLoopbackPrebrowserQualificationAdapter({ authority, initia
 }
 
 export async function runLoopbackMusicPrebrowserQualification({
-  authority, initialSnapshot, fetchImpl = fetch,
+  authority, initialSnapshot, fetchImpl = fetch, publicCapabilityProbe,
 } = {}) {
   return runMusicPrebrowserQualification({
     initialSnapshot,
-    adapter: createLoopbackPrebrowserQualificationAdapter({ authority, initialSnapshot, fetchImpl }),
+    adapter: createLoopbackPrebrowserQualificationAdapter({
+      authority, initialSnapshot, fetchImpl, publicCapabilityProbe,
+    }),
   });
 }
 

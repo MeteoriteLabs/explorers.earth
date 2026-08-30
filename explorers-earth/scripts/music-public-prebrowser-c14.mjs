@@ -20,12 +20,14 @@ export const MUSIC_PREBROWSER_C14_ACK = "TASK4_FULL_FIXTURE_PREBROWSER_QUALIFICA
  * callback credential, auth file, report directory, or retained raw response.
  */
 export async function runMusicPrebrowserC14Integration({
-  ack, authority, initialSnapshot, fetchImpl = fetch,
+  ack, authority, initialSnapshot, fetchImpl = fetch, publicCapabilityProbe,
 } = {}) {
   if (ack !== MUSIC_PREBROWSER_C14_ACK) {
     throw new Error("C14 full-fixture qualification refused");
   }
-  const result = await runLoopbackMusicPrebrowserQualification({ authority, initialSnapshot, fetchImpl });
+  const result = await runLoopbackMusicPrebrowserQualification({
+    authority, initialSnapshot, fetchImpl, publicCapabilityProbe,
+  });
   if (!validateMusicPrebrowserQualificationRecord(result.record)) {
     throw new Error("C14 full-fixture qualification contract failed");
   }
@@ -53,7 +55,7 @@ export async function runMusicPrebrowserC14Integration({
  * performs I/O, and refusal happens before the first request.
  */
 export async function runMusicPrebrowserC14AgainstFullFixture({
-  ack, authority, fetchImpl = fetch,
+  ack, authority, fetchImpl = fetch, publicCapabilityProbe,
 } = {}) {
   if (ack !== MUSIC_PREBROWSER_C14_ACK || !validateMusicPrebrowserLoopbackAuthority(authority)
       || typeof fetchImpl !== "function") {
@@ -92,6 +94,7 @@ export async function runMusicPrebrowserC14AgainstFullFixture({
     authority,
     initialSnapshot: initial.snapshot,
     fetchImpl,
+    publicCapabilityProbe,
   });
   return { ...outcome, initialSnapshotQualification: initial.record };
 }

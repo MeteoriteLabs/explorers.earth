@@ -39,6 +39,7 @@ export function PublicMusicContent({
   state,
   resource,
   retryAfterSeconds = 60,
+  stale = false,
   onRetry,
   standalone = true,
   returnTo = "/",
@@ -50,6 +51,7 @@ export function PublicMusicContent({
   state: PublicMusicViewState;
   resource?: PublicMusicResource;
   retryAfterSeconds?: number;
+  stale?: boolean;
   onRetry?: () => void;
   standalone?: boolean;
   returnTo?: string;
@@ -115,6 +117,17 @@ export function PublicMusicContent({
     <Frame className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
       <div className="mx-auto max-w-6xl">
         <h1 id="public-music-heading" tabIndex={-1} className="text-3xl font-semibold">Music</h1>
+        {stale ? (
+          <p
+            role="status"
+            aria-label="Music connection status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="mt-4 rounded-xl border border-dashboard-border bg-dashboard-card/60 px-4 py-3 text-sm text-dashboard-text-muted"
+          >
+            Reconnecting… Your last Music update remains visible.
+          </p>
+        ) : null}
         <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} onReconcile={onRetry} onAnalytics={onAnalytics} />
       </div>
     </Frame>
@@ -169,7 +182,7 @@ export default function PublicMusic() {
         noIndex={Boolean(capability)}
         noFollow={Boolean(capability)}
       />
-      <PublicMusicContent state={music.state} resource={music.resource} publicSlug={publicSlug} capability={capability} retryAfterSeconds={music.retryAfterSeconds} onRetry={music.retry} analyticsRoute="direct" onAnalytics={trackMusic} />
+      <PublicMusicContent state={music.state} resource={music.resource} stale={music.stale} publicSlug={publicSlug} capability={capability} retryAfterSeconds={music.retryAfterSeconds} onRetry={music.retry} analyticsRoute="direct" onAnalytics={trackMusic} />
     </>
   );
 }

@@ -397,7 +397,9 @@ async function restoreFinal({ authority, initialSnapshot, fetchImpl }) {
   }
 }
 
-function createDefaultDependencies({ environment, monorepoRoot }) {
+function createDefaultDependencies({
+  environment, monorepoRoot, qualificationRunner = runMusicPrebrowserC14Integration,
+}) {
   const npmExecPath = environment.npm_execpath;
   if (typeof npmExecPath !== "string" || npmExecPath.length === 0) return null;
   const lifecycle = ({ stage, authority }) => {
@@ -472,7 +474,7 @@ function createDefaultDependencies({ environment, monorepoRoot }) {
     },
     waitForReadiness,
     captureInitialSnapshot,
-    qualify: ({ authority, initialSnapshot, fetchImpl }) => runMusicPrebrowserC14Integration({
+    qualify: ({ authority, initialSnapshot, fetchImpl }) => qualificationRunner({
       ack: MUSIC_PREBROWSER_C14_ACK,
       authority,
       initialSnapshot,
@@ -496,15 +498,23 @@ export async function runMusicPrebrowserC14Cli({
   args = [],
   environment = process.env,
   dependencies,
+  qualificationRunner,
   cwd = process.cwd(),
 } = {}) {
   const refused = invocationFailure(args, environment);
-  if (refused) {
-    return { exitCode: 3, record: baseRecord({ stage: "preflight", code: refused, exitCode: 3 }) };
+  if (refused || !(qualificationRunner === undefined || typeof qualificationRunner === "function")) {
+    return {
+      exitCode: 3,
+      record: baseRecord({ stage: "preflight", code: refused ?? "invocation-refused", exitCode: 3 }),
+    };
   }
   const explorerRoot = path.resolve(cwd);
   const monorepoRoot = path.resolve(explorerRoot, "..");
-  const runtimeDependencies = dependencies ?? createDefaultDependencies({ environment, monorepoRoot });
+  const runtimeDependencies = dependencies ?? createDefaultDependencies({
+    environment,
+    monorepoRoot,
+    qualificationRunner: qualificationRunner ?? runMusicPrebrowserC14Integration,
+  });
   if (!runtimeDependencies || !exactDependencyContract(runtimeDependencies)) {
     return {
       exitCode: 3,

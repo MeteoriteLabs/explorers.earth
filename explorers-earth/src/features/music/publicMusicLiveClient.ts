@@ -14,6 +14,7 @@ type SocketLike = {
 };
 
 export interface PublicMusicSubscription { unsubscribe(): void }
+export type PublicMusicConnectionState = "connecting" | "connected" | "reconnecting";
 
 export function subscribeToPublicMusic(
   options: {
@@ -22,6 +23,7 @@ export function subscribeToPublicMusic(
     initialRevision?: number;
     onInvalidate(signal: AbortSignal): Promise<{ revision: number; apply?: () => void } | void>;
     onError?(error: unknown): void;
+    onConnectionState?(state: PublicMusicConnectionState): void;
     signal?: AbortSignal;
   },
   dependencies: {
@@ -53,6 +55,12 @@ export function subscribeToPublicMusic(
   let catchUpIndex = 0;
   let generation = 0;
   let fallbackActive = false;
+  let connectionState: PublicMusicConnectionState | undefined;
+  const announceConnectionState = (next: PublicMusicConnectionState) => {
+    if (stopped || connectionState === next) return;
+    connectionState = next;
+    try { options.onConnectionState?.(next); } catch { /* UI observers cannot break transport cleanup. */ }
+  };
   const enterFallback = () => { if (!fallbackActive) { fallbackActive = true; observability.record("fallback_state", { outcome: "entered" }); } };
   const exitFallback = () => { if (fallbackActive) { fallbackActive = false; observability.record("fallback_state", { outcome: "exited" }); } };
 
@@ -93,18 +101,23 @@ export function subscribeToPublicMusic(
       const revision = result?.revision;
       const requiredRevision = Math.max(lastAppliedRevision, requestedRevision);
       if (!Number.isSafeInteger(revision) || Number(revision) < requiredRevision) {
+        announceConnectionState("reconnecting");
         observability.record("invalidation", { outcome: "stale" });
         scheduleCatchUp();
         return;
       }
       lastAppliedRevision = Number(revision);
-      result.apply?.();
+      if (typeof result.apply === "function") {
+        result.apply();
+        announceConnectionState("connected");
+      }
       failureIndex = 0;
       catchUpIndex = 0;
       if (!socketAvailable) schedulePoll(30_000);
       if (reason === "poll") observability.record("fallback_poll", { outcome: "success" });
     }).catch((error) => {
       if (active() && generation === requestGeneration && !controller.signal.aborted) {
+        announceConnectionState("reconnecting");
         options.onError?.(error);
       }
       if (active() && generation === requestGeneration && !controller.signal.aborted) scheduleFailureRetry(error);
@@ -133,7 +146,17 @@ export function subscribeToPublicMusic(
     if (!inFlight && !timer && active()) timer = setTimeout(() => { timer = undefined; void refresh("event"); }, 0);
   };
   const onConnect = () => { socketAvailable = true; exitFallback(); observability.record("socket_reconnect", { outcome: "connected" }); clearTimer(); void refresh("reconnect"); };
-  const onDisconnect = () => { socketAvailable = false; enterFallback(); observability.record("socket_reconnect", { outcome: "disconnected" }); schedulePoll(30_000); };
+  const onDisconnect = () => {
+    socketAvailable = false;
+    announceConnectionState("reconnecting");
+    generation += 1;
+    requestController?.abort();
+    requestController = undefined;
+    inFlight = undefined;
+    enterFallback();
+    observability.record("socket_reconnect", { outcome: "disconnected" });
+    schedulePoll(30_000);
+  };
   const onVisibility = () => {
     clearTimer();
     if (document.visibilityState === "hidden") {
@@ -143,7 +166,7 @@ export function subscribeToPublicMusic(
     if (navigator.onLine !== false) void refresh("resume");
   };
   const onOnline = () => { clearTimer(); void refresh("resume"); };
-  const onOffline = () => { clearTimer(); generation += 1; requestController?.abort(); requestController = undefined; inFlight = undefined; };
+  const onOffline = () => { announceConnectionState("reconnecting"); clearTimer(); generation += 1; requestController?.abort(); requestController = undefined; inFlight = undefined; };
   const unsubscribe = () => {
     if (stopped) return;
     stopped = true; generation += 1; clearTimer(); requestController?.abort(); requestController = undefined; inFlight = undefined;
@@ -155,6 +178,7 @@ export function subscribeToPublicMusic(
   };
   socket.on("music_public_change", onChange); socket.on("connect", onConnect); socket.on("disconnect", onDisconnect); socket.on("connect_error", onDisconnect);
   document.addEventListener("visibilitychange", onVisibility); window.addEventListener("online", onOnline); window.addEventListener("offline", onOffline);
+  announceConnectionState("connecting");
   options.signal?.addEventListener("abort", unsubscribe, { once: true });
   if (options.signal?.aborted) unsubscribe();
   return { unsubscribe };

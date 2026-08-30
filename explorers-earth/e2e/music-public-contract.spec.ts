@@ -11,6 +11,7 @@ import {
   attachLiveFailureScreenshotBestEffort,
   completeMusicAccount,
   installMusicQualificationMocks,
+  LiveReconnectJourneyFailure,
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
   buildPairwisePermissionMatrix,
@@ -18,6 +19,7 @@ import {
   musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
   prepareLivePublicMusicJourney,
+  readLiveCanonicalPublicRevision,
   runAuthorizedMusicMutation,
   withRestoredMusicFixture,
   type LivePublicJourneyControls,
@@ -466,10 +468,38 @@ async function authenticateOwner(page: Page): Promise<string> {
   return credential!;
 }
 
+async function canonicalPublicRevision(
+  page: Page,
+  publicSlug: string,
+  stage: "initial-canonical-resource" | "online-canonical-apply",
+): Promise<number> {
+  return readLiveCanonicalPublicRevision({
+    publicSlug,
+    stage,
+    read: async (path) => {
+      const response = await page.request.get(`${fixtureOrigin}${path}`);
+      return { status: response.status(), ...(response.status() === 204 ? {} : { body: await response.json() }) };
+    },
+  });
+}
+
 async function publicResource(page: Page, publicSlug: string, capability?: string) {
   return page.request.get(`${fixtureOrigin}/api/playlist/${publicSlug}`, {
     headers: capability ? { "X-Music-Guest-Capability": capability } : undefined,
   });
+}
+
+async function reconnectStage<T>(
+  stage: ConstructorParameters<typeof LiveReconnectJourneyFailure>[0],
+  code: ConstructorParameters<typeof LiveReconnectJourneyFailure>[1],
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof LiveReconnectJourneyFailure) throw error;
+    throw new LiveReconnectJourneyFailure(stage, code);
+  }
 }
 
 const disabledGuestControls = (): GuestControls => ({
@@ -608,27 +638,33 @@ liveTest("live guest reconnect refetches canonical state after transport interru
     const guest = await browser.newContext();
     try {
       const initialControls = disabledGuestControls();
-      const prepared = await prepareOwnerPublicJourney(page, credential, initialControls);
-      const beforeResponse = await publicResource(page, prepared.publicSlug);
-      const beforeRevision = (await beforeResponse.json() as { revision: number }).revision;
+      const prepared = await reconnectStage("preparation", "operation-failed",
+        () => prepareOwnerPublicJourney(page, credential, initialControls));
+      const beforeRevision = await canonicalPublicRevision(page, prepared.publicSlug, "initial-canonical-resource");
       const guestPage = await guest.newPage();
-      await guestPage.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`);
-      await expect(guestPage.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
-      await guest.setOffline(true);
-      await expect(guestPage.getByRole("status").filter({ hasText: /reconnecting/i })).toHaveAttribute("aria-live", "polite");
-      const changed = await guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
-        headers: mutationHeaders(credential), data: { ...initialControls, allowSongRequests: !initialControls.allowSongRequests },
-      }));
-      expect(changed.status()).toBe(200);
-      await guest.setOffline(false);
-      await expect(guestPage.getByText(/reconnecting/i)).toBeHidden();
-      await expect.poll(async () => {
-        const canonical = await publicResource(page, prepared.publicSlug);
-        return (await canonical.json() as { revision: number }).revision;
-      }).toBeGreaterThan(beforeRevision);
+      await reconnectStage("guest-ready", "operation-failed",
+        () => guestPage.goto(`${fixtureOrigin}/music/share/${prepared.publicSlug}`));
+      await reconnectStage("guest-ready", "assertion-failed",
+        () => expect(guestPage.getByRole("heading", { name: "Music", level: 1 })).toBeVisible());
+      await reconnectStage("offline-announcement", "operation-failed", () => guest.setOffline(true));
+      await reconnectStage("offline-announcement", "assertion-failed",
+        () => expect(guestPage.getByRole("status").filter({ hasText: /reconnecting/i })).toHaveAttribute("aria-live", "polite"));
+      const changed = await reconnectStage("owner-controls", "operation-failed",
+        () => guardedMutation("guest-controls", () => page.request.patch(`${fixtureOrigin}/api/music/guest-controls`, {
+          headers: mutationHeaders(credential), data: { ...initialControls, allowSongRequests: !initialControls.allowSongRequests },
+        })));
+      if (changed.status() !== 200) throw new LiveReconnectJourneyFailure("owner-controls", "http-failed");
+      await reconnectStage("online-canonical-apply", "operation-failed", () => guest.setOffline(false));
+      await reconnectStage("online-canonical-apply", "assertion-failed", () => expect.poll(
+        () => canonicalPublicRevision(page, prepared.publicSlug, "online-canonical-apply"),
+      ).toBeGreaterThan(beforeRevision));
+      await reconnectStage("online-announcement-cleared", "assertion-failed",
+        () => expect(guestPage.getByText(/reconnecting/i)).toBeHidden());
       const requestRegion = guestPage.getByRole("region", { name: "Request a song" });
-      if (initialControls.allowSongRequests) await expect(requestRegion).toHaveCount(0);
-      else await expect(requestRegion).toBeVisible();
+      await reconnectStage("guest-control-visible", "assertion-failed", async () => {
+        if (initialControls.allowSongRequests) await expect(requestRegion).toHaveCount(0);
+        else await expect(requestRegion).toBeVisible();
+      });
     } finally {
       await guest.close();
     }

@@ -4,6 +4,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path";
 import {
   LIVE_PERMISSION_JOURNEY_IDS,
+  LIVE_RECONNECT_FAILURE_STAGES,
   buildLiveJourneyResult,
   buildLiveJourneyTerminal,
 } from "../../scripts/music-public-live-preflight.mjs";
@@ -463,6 +464,22 @@ export class LivePublicJourneyFailure extends Error {
   }
 }
 
+export const LIVE_RECONNECT_JOURNEY_FAILURE_STAGES = LIVE_RECONNECT_FAILURE_STAGES;
+export type LiveReconnectJourneyFailureStage = typeof LIVE_RECONNECT_JOURNEY_FAILURE_STAGES[number];
+export type LiveReconnectJourneyFailureCode = "operation-failed" | "operation-timeout" | "http-failed" | "contract-invalid" | "assertion-failed";
+
+export class LiveReconnectJourneyFailure extends Error {
+  readonly stage: LiveReconnectJourneyFailureStage;
+  readonly code: LiveReconnectJourneyFailureCode;
+
+  constructor(stage: LiveReconnectJourneyFailureStage, code: LiveReconnectJourneyFailureCode) {
+    super("Live public reconnect journey failed");
+    this.name = "LiveReconnectJourneyFailure";
+    this.stage = stage;
+    this.code = code;
+  }
+}
+
 const LIVE_PERMISSION_JOURNEY_ID_SET = new Set<string>(LIVE_PERMISSION_JOURNEY_IDS);
 
 export async function assertLivePermissionGuestControlVisible(assertion: () => Promise<void>): Promise<void> {
@@ -477,6 +494,35 @@ export function assertLivePublicSlug(value: unknown): asserts value is string {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(value) || value === "qualification-public") {
     throw new Error("Fixture publication did not return a valid live returned public slug");
   }
+}
+
+export async function readLiveCanonicalPublicRevision(input: {
+  publicSlug: string;
+  stage: "initial-canonical-resource" | "online-canonical-apply";
+  read: (path: string) => Promise<LivePublicJourneyResponse>;
+}): Promise<number> {
+  try {
+    assertLivePublicSlug(input.publicSlug);
+  } catch {
+    throw new LiveReconnectJourneyFailure(input.stage, "contract-invalid");
+  }
+  let response: LivePublicJourneyResponse;
+  try {
+    response = await input.read(`/api/music/public-resource/v1/${encodeURIComponent(input.publicSlug)}`);
+  } catch {
+    throw new LiveReconnectJourneyFailure(input.stage, "operation-failed");
+  }
+  if (!response || typeof response !== "object" || response.status !== 200) {
+    throw new LiveReconnectJourneyFailure(input.stage, "http-failed");
+  }
+  const body = recordValue(response.body);
+  if (!body || !exactRecord(body, [
+    "version", "revision", "user", "permissions", "currentlyPlaying", "queue", "recentlyPlayed", "playlists",
+  ]) || body.version !== "music-public-resource/v1"
+      || !Number.isSafeInteger(body.revision) || Number(body.revision) < 0) {
+    throw new LiveReconnectJourneyFailure(input.stage, "contract-invalid");
+  }
+  return Number(body.revision);
 }
 
 function exactRecord(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
@@ -843,9 +889,13 @@ export async function withRestoredMusicFixture<T>(adapters: {
       && adapters.journeyId && LIVE_PERMISSION_JOURNEY_ID_SET.has(adapters.journeyId)
       ? { stage: journeyFailure.stage, code: journeyFailure.code }
       : undefined;
+    const reconnectFailure = journeyFailure instanceof LiveReconnectJourneyFailure
+      && adapters.journeyId === "music.owner-guest.reconnect"
+      ? { stage: journeyFailure.stage, code: journeyFailure.code }
+      : undefined;
     if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
       id: adapters.journeyId, status: "failed", reason: "body-failed", stage: "body",
-      cleanup: "restored", beforeHash, afterHash, rows: adapters.journeyRows, permissionFailure,
+      cleanup: "restored", beforeHash, afterHash, rows: adapters.journeyRows, permissionFailure, reconnectFailure,
     }));
     throw journeyFailure;
   }

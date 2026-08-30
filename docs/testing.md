@@ -119,6 +119,27 @@ npm run music:test:public-c14 -- --ack TASK4_FULL_FIXTURE_PREBROWSER_QUALIFICATI
 
 That command accepts exactly those eight ordered non-secret argv elements and no ambient Music, database, Docker, URL, token, identity, Node preload, or C14-control override. It derives the fixed five loopback services, unique namespace identifiers, and random local fixture/state tokens internally. It uses the reviewed authority/lifecycle capture helpers for attestation, bootstrap, up, exact down-with-volumes, and post-down tombstone proof; starts only the private state service in an identity-checked operating-system temporary directory; and invokes the exact production initial-snapshot codec and C14 qualifier. It never starts Playwright, creates callback authentication, writes an auth/storage file, or allocates the live evidence tree. Final database/profile restore, state-service stop, fixture down, authority retirement, and guarded temporary removal run on every lifecycle-attempted path. The only public output is one bounded canonical JSON line with fixed stage/code metadata; success requires exactly 20 GraphQL operations, two public Music resources, three queue songs, equal database/profile restoration, and complete cleanup.
 
+The browser-free C15 Socket.IO proxy qualification is a separately gated,
+one-shot integration and remains inert unless independently authorized. It
+reuses the exact C14 argv and lifecycle, then connects only through Explorer's
+fixed `/ws` boundary while the published C14 resource remains inside the
+transactional snapshot. In PowerShell, the reviewed invocation is:
+
+```powershell
+$env:MUSIC_C15_SOCKET_PROXY_TEST='1'
+try {
+  npm run music:test:public-c15 -- --ack TASK4_FULL_FIXTURE_PREBROWSER_QUALIFICATION_V1 --fixture-version music-public-e2e-fixture/v1 --confirm-project explorers-music-fixture --confirm-namespace-reset RESET_EXPLORERS_MUSIC_FIXTURE_NAMESPACE
+} finally {
+  Remove-Item Env:MUSIC_C15_SOCKET_PROXY_TEST
+}
+```
+
+C15 accepts no additional or case-variant `MUSIC_C15_*` input, emits only one
+bounded safe JSON line, starts no browser or callback authentication, and
+requires two connections, one bounded disconnect/reconnect, exact final
+database/profile equality, and the complete C14 teardown. Do not run it without
+separate fixture-integration authorization.
+
 Only after that qualification passes does collection prove the exact `49 = 17 mutation + 32 read-only` manifest. The callback then mints a different private owner Tunes JWT; equality with the qualifier credential is a hard failure. The protected callback auth path is written immediately before browser execution and removed during final restoration/teardown.
 
 The live command runs the fixed repository fixture-authority attestation and starts the owned five-service `explorers-music-fixture` only after that gate accepts.

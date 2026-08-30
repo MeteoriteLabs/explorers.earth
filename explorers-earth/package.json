@@ -30,6 +30,7 @@
     "music:test:public-pr": "node scripts/music-public-e2e.mjs pr",
     "music:test:public-e2e": "node scripts/music-public-e2e.mjs live",
     "music:test:public-c14": "node scripts/music-public-prebrowser-c14-cli.mjs",
+    "music:test:public-c15": "node scripts/music-public-socket-c15-cli.mjs",
     "music:fixture:public:verify": "node scripts/music-public-e2e.mjs verify",
     "test:e2e:ui": "playwright test --ui"
   },

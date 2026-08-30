@@ -66,6 +66,25 @@ describe("public Music page", () => {
     expect(screen.getByText("Nothing has been shared here yet")).toBeInTheDocument();
   });
 
+  it("announces reconnecting without replacing or focusing retained Music", () => {
+    const focusTarget = document.createElement("button");
+    document.body.append(focusTarget);
+    focusTarget.focus();
+    try {
+      render(<MemoryRouter><PublicMusicContent state="ready" stale resource={resource()} /></MemoryRouter>);
+
+      expect(screen.getByRole("status", { name: "Music connection status" })).toHaveTextContent(
+        "Reconnecting… Your last Music update remains visible.",
+      );
+      expect(screen.getByRole("status", { name: "Music connection status" })).toHaveAttribute("aria-live", "polite");
+      expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
+      expect(screen.getByText("Nothing has been shared here yet")).toBeInTheDocument();
+      expect(document.activeElement).toBe(focusTarget);
+    } finally {
+      focusTarget.remove();
+    }
+  });
+
   it("renders public playlist content without edit controls", () => {
     render(<MemoryRouter><PublicMusicContent state="ready" resource={resource({
       permissions: { ...resource().permissions, allowPlaylistSharing: true },
@@ -218,5 +237,48 @@ describe("public Music page", () => {
     options.onError(new PublicMusicError("PUBLIC_UNAVAILABLE"));
     expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
     expect(subscribeToPublicMusic).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows stale only after reconnecting and clears it after the current canonical apply", async () => {
+    loadPublicMusic.mockResolvedValueOnce(resource({ revision: 3 })).mockResolvedValueOnce(resource({ revision: 3 }));
+    render(<MemoryRouter initialEntries={["/music/share/public_slug-123"]}><Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes></MemoryRouter>);
+    await screen.findByRole("heading", { name: "Music" });
+    const options = subscribeToPublicMusic.mock.calls[0][0];
+
+    act(() => options.onConnectionState("connecting"));
+    expect(screen.queryByRole("status", { name: "Music connection status" })).not.toBeInTheDocument();
+    act(() => options.onConnectionState("reconnecting"));
+    expect(screen.getByRole("status", { name: "Music connection status" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
+
+    const update = await options.onInvalidate(new AbortController().signal);
+    act(() => {
+      update.apply();
+      options.onConnectionState("connected");
+    });
+    expect(screen.queryByRole("status", { name: "Music connection status" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
+  });
+
+  it("ignores reconnect state from a disposed slug subscription", async () => {
+    loadPublicMusic.mockResolvedValue(resource());
+    function Switcher() {
+      const navigate = useNavigate();
+      return <button type="button" onClick={() => navigate("/music/share/public-slug-b")}>Next Music page</button>;
+    }
+    render(
+      <MemoryRouter initialEntries={["/music/share/public-slug-a"]}>
+        <Switcher />
+        <Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(subscribeToPublicMusic).toHaveBeenCalledTimes(1));
+    const first = subscribeToPublicMusic.mock.calls[0][0];
+    fireEvent.click(screen.getByRole("button", { name: "Next Music page" }));
+    await waitFor(() => expect(subscribeToPublicMusic).toHaveBeenCalledTimes(2));
+
+    act(() => first.onConnectionState("reconnecting"));
+    expect(screen.queryByRole("status", { name: "Music connection status" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Music" })).toBeInTheDocument();
   });
 });
