@@ -9,6 +9,13 @@ import {
 import { setupMockAuthentication } from './setup/auth';
 import { withRestoredMusicFixture } from './setup/music';
 import {
+  observeProfilePublish,
+  profileBatchBoundary,
+  settleAbortedProfileMutation,
+  type ProfileBatchRawAccount,
+  type ProfileBatchUpdateAccount,
+} from './setup/profile-batch';
+import {
   LIVE_MUTATION_TAG,
   LIVE_READ_ONLY_TAG,
   buildProfileCoveringRows as buildManifestProfileCoveringRows,
@@ -378,6 +385,13 @@ interface MutationTemplate {
   headers: Record<string, string>;
   body: Record<string, any>;
 }
+type DashboardAccount = ProfileBatchRawAccount & {
+  social_media: Record<string, unknown> & {
+    theme_settings?: Record<string, unknown> & {
+      recommendations?: Record<string, unknown>;
+    };
+  };
+};
 
 const requestOperation = (request: Request) => {
   if (!request.url().includes('/graphql')) return '';
@@ -406,7 +420,7 @@ class ConcurrentProfileChangeError extends Error {
   }
 }
 
-const accountVersion = (account: Record<string, any>) => {
+const accountVersion = (account: Pick<ProfileBatchRawAccount, 'updatedAt'>) => {
   if (typeof account.updatedAt !== 'string' || !account.updatedAt) {
     throw new Error('Authenticated profile response did not include account.updatedAt');
   }
@@ -414,7 +428,7 @@ const accountVersion = (account: Record<string, any>) => {
 };
 
 const assertAccountVersion = (
-  account: Record<string, any>,
+  account: Pick<ProfileBatchRawAccount, 'updatedAt'>,
   expected: string,
 ) => {
   const actual = accountVersion(account);
@@ -424,16 +438,33 @@ const assertAccountVersion = (
 const accountFromProfileResponse = async (response: Response) => {
   const payload = await response.json();
   const account = payload?.data?.usersPermissionsUser?.accounts?.[0];
-  if (!account || typeof account.social_media !== 'object') {
+  if (!response.ok() || payload?.errors?.length || !account
+      || typeof account.documentId !== 'string'
+      || typeof account.updatedAt !== 'string'
+      || !account.updatedAt
+      || typeof account.social_media !== 'object'
+      || account.social_media === null
+      || Array.isArray(account.social_media)) {
     throw new Error('Authenticated profile response did not include raw social_media');
   }
-  return account as Record<string, any>;
+  return account as DashboardAccount;
 };
 
-async function openDashboard(page: Page) {
-  const responsePromise = page.waitForResponse(profileResponse);
-  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
-  const account = await accountFromProfileResponse(await responsePromise);
+const accountFromUpdateResponse = async (response: Response) => {
+  const payload = await response.json();
+  const account = payload?.data?.updateAccount;
+  if (!response.ok() || payload?.errors?.length || !account
+      || typeof account.documentId !== 'string'
+      || !account.documentId
+      || typeof account.social_media !== 'object'
+      || account.social_media === null
+      || Array.isArray(account.social_media)) {
+    throw new Error('Profile update response did not include the exact account projection');
+  }
+  return account as ProfileBatchUpdateAccount;
+};
+
+async function activateAppearanceWorkspace(page: Page) {
   const appearanceTab = page.getByRole('tab', {
     name: 'Appearance',
     exact: true,
@@ -444,6 +475,14 @@ async function openDashboard(page: Page) {
   }
   await expect(page.getByTestId('appearance-workspace')).toBeVisible();
   await expect(page.getByLabel('First view')).toBeVisible();
+}
+
+async function openDashboard(page: Page) {
+  const responsePromise = page.waitForResponse(profileResponse);
+  void responsePromise.catch(() => undefined);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  const account = await accountFromProfileResponse(await responsePromise);
+  await activateAppearanceWorkspace(page);
   return account;
 }
 
@@ -576,16 +615,65 @@ async function applyDashboardRow(page: Page, row: CoveringRow) {
   await setDashboardOrder(page, orderForShape(row.orderShape, row.firstView));
 }
 
-async function publishDashboard(page: Page) {
-  const responsePromise = page.waitForResponse(
-    (response) => requestOperation(response.request()) === 'UpdateAccount',
-  );
-  await page.getByRole('button', { name: 'Save & Publish', exact: true }).click();
-  const response = await responsePromise;
-  const payload = await response.json();
-  if (!response.ok() || payload?.errors?.length || !payload?.data?.updateAccount) {
-    throw new Error('Save & Publish was not confirmed');
-  }
+async function publishDashboard(
+  page: Page,
+  rowOrdinal: number,
+  completedRows: number,
+) {
+  const save = page.getByRole('button', { name: 'Save & Publish', exact: true });
+  const progress = { rowOrdinal, completedRows };
+  return observeProfilePublish({
+    rowOrdinal,
+    completedRows,
+    observeUpdate: async (markResponseObserved) => {
+      const response = await profileBatchBoundary(
+        'row-publish-response',
+        'timeout',
+        progress,
+        async () => page.waitForResponse(
+          (candidate) => {
+            if (requestOperation(candidate.request()) !== 'UpdateAccount') return false;
+            markResponseObserved();
+            return true;
+          },
+        ),
+      );
+      return profileBatchBoundary(
+        'row-publish-response',
+        'contract-invalid',
+        progress,
+        async () => accountFromUpdateResponse(response),
+      );
+    },
+    observeRefetch: async (afterUpdateResponse) => {
+      const response = await profileBatchBoundary(
+        'row-publish-settle',
+        'timeout',
+        progress,
+        async () => page.waitForResponse(
+          (candidate) => afterUpdateResponse() && profileResponse(candidate),
+        ),
+      );
+      return profileBatchBoundary(
+        'row-publish-settle',
+        'contract-invalid',
+        progress,
+        async () => accountFromProfileResponse(response),
+      );
+    },
+    triggerSave: async () => profileBatchBoundary(
+      'row-publish-response',
+      'locator-missing',
+      progress,
+      async () => { await save.click(); },
+    ),
+    waitForSavedTerminal: async () => {
+      await expect(
+        page.getByText('Saved & published successfully', { exact: true }),
+      ).toBeVisible();
+      await expect(save).toBeEnabled();
+    },
+  });
 }
 
 const safeTemplateHeaders = (headers: Record<string, string>) => {
@@ -616,34 +704,47 @@ async function captureAbortedMutationTemplate(
   page: Page,
   baselineAccent: string,
 ) {
-  let captured: MutationTemplate | undefined;
-  let resolveCaptured: ((template: MutationTemplate) => void) | undefined;
-  const capturedPromise = new Promise<MutationTemplate>((resolve) => {
-    resolveCaptured = resolve;
+  let abortFailed = false;
+  let resolveAbort: (() => void) | undefined;
+  const abortCompleted = new Promise<void>((resolve) => {
+    resolveAbort = resolve;
   });
   const handler = async (route: Route) => {
     if (requestOperation(route.request()) !== 'UpdateAccount') {
       return route.continue();
     }
-    captured = {
-      url: route.request().url(),
-      headers: route.request().headers(),
-      body: route.request().postDataJSON() as Record<string, any>,
-    };
-    resolveCaptured?.(captured);
-    await route.abort('aborted');
+    try {
+      await route.abort('aborted');
+    } catch {
+      abortFailed = true;
+    } finally {
+      resolveAbort?.();
+    }
   };
   await page.route('**/graphql', handler);
-  const alternativeAccent = Object.keys(ACCENT_LABELS).find(
-    (accent) => accent !== baselineAccent,
-  )!;
-  await page
-    .getByRole('button', { name: ACCENT_LABELS[alternativeAccent], exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Save & Publish', exact: true }).click();
-  const template = await capturedPromise;
-  await page.unroute('**/graphql', handler);
-  return template;
+  try {
+    const requestPromise = page.waitForRequest(
+      (request) => requestOperation(request) === 'UpdateAccount',
+    );
+    void requestPromise.catch(() => undefined);
+    const alternativeAccent = Object.keys(ACCENT_LABELS).find(
+      (accent) => accent !== baselineAccent,
+    )!;
+    await page
+      .getByRole('button', { name: ACCENT_LABELS[alternativeAccent], exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Save & Publish', exact: true }).click();
+    const request = await requestPromise;
+    await abortCompleted;
+    if (abortFailed) throw new Error('Intentional profile mutation abort was not confirmed');
+    return {
+      url: request.url(),
+      headers: request.headers(),
+      body: request.postDataJSON() as Record<string, any>,
+    };
+  } finally {
+    await page.unroute('**/graphql', handler);
+  }
 }
 
 async function publicCategoryIds(page: Page, layout: string) {
@@ -663,63 +764,82 @@ async function verifyPublicRow(
   username: string,
   row: CoveringRow,
   hasBusiness: boolean,
+  rowOrdinal: number,
+  completedRows: number,
 ) {
-  await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
+  const progress = { rowOrdinal, completedRows };
   const themeRoot = page.getByTestId('public-profile-theme-root');
-  await expect(themeRoot).toHaveAttribute('data-theme-preset', row.preset);
-  await expect(themeRoot).toHaveAttribute('data-theme-accent', row.accent);
-  await expect(themeRoot).toHaveAttribute(
-    'data-wallpaper-mode',
-    row.wallpaper,
-  );
-  await expect
-    .poll(() =>
-      themeRoot.evaluate((node) =>
-        getComputedStyle(node).getPropertyValue('--accent-color').trim(),
-      ),
-    )
-    .toBe(row.accent);
+  await profileBatchBoundary('row-public-theme', 'attribute-mismatch', progress, async () => {
+    await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
+    await expect(themeRoot).toHaveAttribute('data-theme-preset', row.preset);
+    await expect(themeRoot).toHaveAttribute('data-theme-accent', row.accent);
+    await expect(themeRoot).toHaveAttribute(
+      'data-wallpaper-mode',
+      row.wallpaper,
+    );
+    await expect
+      .poll(() =>
+        themeRoot.evaluate((node) =>
+          getComputedStyle(node).getPropertyValue('--accent-color').trim(),
+        ),
+      )
+      .toBe(row.accent);
+  });
   const expectedTab =
     row.firstView === 'gallery'
       ? 'Gallery'
       : row.firstView === 'business' && hasBusiness
         ? 'Business Details'
         : 'Recommendations';
-  await expect(page.getByRole('tab', { name: expectedTab })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  if (expectedTab !== 'Recommendations') {
-    await page.getByRole('tab', { name: 'Recommendations' }).click();
-  }
-  await expect(page.getByTestId(LAYOUT_TEST_IDS[row.layout])).toBeVisible();
-  const rendered = await publicCategoryIds(page, row.layout);
+  await profileBatchBoundary('row-public-tab', 'locator-missing', progress, async () => {
+    await expect(page.getByRole('tab', { name: expectedTab })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    if (expectedTab !== 'Recommendations') {
+      await page.getByRole('tab', { name: 'Recommendations' }).click();
+    }
+  });
+  await profileBatchBoundary('row-public-layout', 'attribute-mismatch', progress, async () => {
+    await expect(page.getByTestId(LAYOUT_TEST_IDS[row.layout])).toBeVisible();
+  });
+  const rendered = await profileBatchBoundary('row-public-order', 'order-mismatch', progress, async () => (
+    publicCategoryIds(page, row.layout)
+  ));
   const expectedOrder = expectedPublicOrderForRow(
     row.orderShape,
     row.firstView,
   ).filter((id) => rendered.includes(id));
-  expect(rendered.slice(0, expectedOrder.length)).toEqual(expectedOrder);
-  if (
-    CATEGORY_IDS.includes(row.firstView as (typeof CATEGORY_IDS)[number]) &&
-    rendered.includes(row.firstView)
-  ) {
-    expect(rendered[0]).toBe(row.firstView);
-    expect(rendered.length).toBeGreaterThan(1);
-  }
-  if (row.layout === 'featured') {
-    await expect(page.getByTestId('featured-category')).toHaveAttribute(
-      'data-category-id',
-      expectedOrder[0],
-    );
-  }
-  await page.getByRole('tab', { name: 'Gallery' }).click();
-  await expect(page.getByRole('tabpanel', { name: 'Gallery' })).toBeVisible();
-  if (hasBusiness) {
-    await page.getByRole('tab', { name: 'Business Details' }).click();
-    await expect(
-      page.getByRole('tabpanel', { name: 'Business Details' }),
-    ).toBeVisible();
-  }
+  await profileBatchBoundary('row-public-order', 'order-mismatch', progress, async () => {
+    expect(rendered.slice(0, expectedOrder.length)).toEqual(expectedOrder);
+    if (
+      CATEGORY_IDS.includes(row.firstView as (typeof CATEGORY_IDS)[number]) &&
+      rendered.includes(row.firstView)
+    ) {
+      expect(rendered[0]).toBe(row.firstView);
+      expect(rendered.length).toBeGreaterThan(1);
+    }
+  });
+  await profileBatchBoundary('row-public-featured', 'attribute-mismatch', progress, async () => {
+    if (row.layout === 'featured') {
+      await expect(page.getByTestId('featured-category')).toHaveAttribute(
+        'data-category-id',
+        expectedOrder[0],
+      );
+    }
+  });
+  await profileBatchBoundary('row-public-gallery', 'locator-missing', progress, async () => {
+    await page.getByRole('tab', { name: 'Gallery' }).click();
+    await expect(page.getByRole('tabpanel', { name: 'Gallery' })).toBeVisible();
+  });
+  await profileBatchBoundary('row-public-business', 'locator-missing', progress, async () => {
+    if (hasBusiness) {
+      await page.getByRole('tab', { name: 'Business Details' }).click();
+      await expect(
+        page.getByRole('tabpanel', { name: 'Business Details' }),
+      ).toBeVisible();
+    }
+  });
 }
 
 test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => {
@@ -753,24 +873,55 @@ test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => 
         onBodyFailureAfterRestore: blockProfileMutationsAfterBatchFailure,
       }, async () => {
         const username = LIVE_USERNAME!;
-        const baselineAccount = await openDashboard(page);
-        const baselineUpdatedAt = accountVersion(baselineAccount);
+        const baselineProgress = { rowOrdinal: 0, completedRows: 0 } as const;
+        const baselineAccount = await profileBatchBoundary(
+          'baseline-dashboard',
+          'locator-missing',
+          baselineProgress,
+          async () => openDashboard(page),
+        );
+        const baselineUpdatedAt = await profileBatchBoundary(
+          'baseline-dashboard',
+          'contract-invalid',
+          baselineProgress,
+          async () => accountVersion(baselineAccount),
+        );
         const baselineSocialMedia = clone(
           baselineAccount.social_media,
         ) as Record<string, unknown>;
-        const baselinePresentation = await readDashboardPresentation(page);
-        const template = await captureAbortedMutationTemplate(
-          page,
-          baselinePresentation.accent,
+        const baselinePresentation = await profileBatchBoundary(
+          'baseline-presentation',
+          'contract-invalid',
+          baselineProgress,
+          async () => readDashboardPresentation(page),
         );
+        const aborted = await settleAbortedProfileMutation({
+          baselineAccount,
+          captureAbortedMutation: async () => captureAbortedMutationTemplate(
+            page,
+            baselinePresentation.accent,
+          ),
+          waitForSaveSettled: async () => {
+            await expect(
+              page.getByRole('button', { name: 'Save & Publish', exact: true }),
+            ).toBeEnabled();
+          },
+          onDialog: (handler) => { page.on('dialog', handler); },
+          offDialog: (handler) => { page.off('dialog', handler); },
+          reloadAndReadAccount: async () => {
+            const responsePromise = page.waitForResponse(profileResponse);
+            void responsePromise.catch(() => undefined);
+            await page.reload({ waitUntil: 'domcontentloaded' });
+            const account = await accountFromProfileResponse(await responsePromise);
+            await activateAppearanceWorkspace(page);
+            return account;
+          },
+        });
+        const template = aborted.template;
         const baselineMutationData = clone(
           template.body.variables.data,
         ) as Record<string, any>;
         baselineMutationData.social_media = clone(baselineSocialMedia);
-
-        const afterAbort = await openDashboard(page);
-        expect(afterAbort.social_media).toEqual(baselineSocialMedia);
-        assertAccountVersion(afterAbort, baselineUpdatedAt);
 
         const sentinelMutationData = clone(baselineMutationData) as Record<string, any>;
         const sentinelSocialMedia = sentinelMutationData.social_media as Record<string, any>;
@@ -781,46 +932,77 @@ test.describe('approved live profile writes', { tag: LIVE_MUTATION_TAG }, () => 
         let baselineHasBusiness = false;
         let expectedUpdatedAt = baselineUpdatedAt;
 
-        assertAccountVersion(afterAbort, expectedUpdatedAt);
-        await runTemplateMutation(page, template, sentinelMutationData);
-        const afterSentinel = await openDashboard(page);
-        expectedUpdatedAt = accountVersion(afterSentinel);
-        expect(
-          afterSentinel.social_media?.theme_settings?.recommendations
-            ?.__e2eSentinel,
-        ).toBe(sentinel);
-
-        await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
-        const recommendationsTab = page.getByRole('tab', {
-          name: 'Recommendations',
+        await profileBatchBoundary('sentinel-write', 'http-failed', baselineProgress, async () => {
+          await runTemplateMutation(page, template, sentinelMutationData);
         });
-        if ((await recommendationsTab.getAttribute('aria-selected')) !== 'true') {
-          await recommendationsTab.click();
-        }
-        const baselineLayout = normalizeLayout(
-          afterSentinel.social_media?.theme_settings?.recommendations?.layout ||
-            'shelves',
+        const afterSentinel = await profileBatchBoundary(
+          'sentinel-readback',
+          'state-mismatch',
+          baselineProgress,
+          async () => {
+            const account = await openDashboard(page);
+            const nextVersion = accountVersion(account);
+            expect(
+              account.social_media?.theme_settings?.recommendations
+                ?.__e2eSentinel,
+            ).toBe(sentinel);
+            expectedUpdatedAt = nextVersion;
+            return account;
+          },
         );
-        await expect(
-          page.getByTestId(LAYOUT_TEST_IDS[baselineLayout]),
-        ).toBeVisible();
-        const eligible = await publicCategoryIds(page, baselineLayout);
-        if (eligible.length < 2) {
-          throw new Error(
-            'Approved live account needs at least two content-bearing recommendation categories',
-          );
-        }
-        baselineHasBusiness =
-          (await page.getByRole('tab', { name: 'Business Details' }).count()) > 0;
 
-        for (const row of liveRows) {
-          const beforeRow = await openDashboard(page);
-          assertAccountVersion(beforeRow, expectedUpdatedAt);
-          await applyDashboardRow(page, row);
-          await publishDashboard(page);
-          const afterPublish = await openDashboard(page);
-          expectedUpdatedAt = accountVersion(afterPublish);
-          await verifyPublicRow(page, username, row, baselineHasBusiness);
+        await profileBatchBoundary('baseline-public', 'content-insufficient', baselineProgress, async () => {
+          await page.goto(`/${username}`, { waitUntil: 'domcontentloaded' });
+          const recommendationsTab = page.getByRole('tab', {
+            name: 'Recommendations',
+          });
+          if ((await recommendationsTab.getAttribute('aria-selected')) !== 'true') {
+            await recommendationsTab.click();
+          }
+          const baselineLayout = normalizeLayout(
+            afterSentinel.social_media?.theme_settings?.recommendations?.layout ||
+              'shelves',
+          );
+          await expect(
+            page.getByTestId(LAYOUT_TEST_IDS[baselineLayout]),
+          ).toBeVisible();
+          const eligible = await publicCategoryIds(page, baselineLayout);
+          if (eligible.length < 2) {
+            throw new Error('Profile content prerequisite is incomplete');
+          }
+          baselineHasBusiness =
+            (await page.getByRole('tab', { name: 'Business Details' }).count()) > 0;
+        });
+
+        let completedRows = 0;
+        for (const [rowIndex, row] of liveRows.entries()) {
+          const rowOrdinal = rowIndex + 1;
+          const progress = { rowOrdinal, completedRows };
+          const beforeRow = await profileBatchBoundary(
+            'row-dashboard',
+            'locator-missing',
+            progress,
+            async () => openDashboard(page),
+          );
+          await profileBatchBoundary('row-dashboard', 'version-mismatch', progress, async () => {
+            assertAccountVersion(beforeRow, expectedUpdatedAt);
+          });
+          await profileBatchBoundary('row-apply', 'unexpected', progress, async () => {
+            await applyDashboardRow(page, row);
+          });
+          const afterPublish = await publishDashboard(page, rowOrdinal, completedRows);
+          await profileBatchBoundary('row-dashboard-readback', 'version-mismatch', progress, async () => {
+            expectedUpdatedAt = accountVersion(afterPublish);
+          });
+          await verifyPublicRow(
+            page,
+            username,
+            row,
+            baselineHasBusiness,
+            rowOrdinal,
+            completedRows,
+          );
+          completedRows += 1;
         }
       });
     });

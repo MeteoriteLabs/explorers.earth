@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import {
+  LIVE_PROFILE_BATCH_FAILURE_CODES,
+  LIVE_PROFILE_BATCH_FAILURE_STAGES,
   LIVE_PERMISSION_JOURNEY_IDS,
   LIVE_RECONNECT_FAILURE_STAGES,
   buildLiveJourneyResult,
@@ -480,6 +482,41 @@ export class LiveReconnectJourneyFailure extends Error {
   }
 }
 
+export { LIVE_PROFILE_BATCH_FAILURE_CODES, LIVE_PROFILE_BATCH_FAILURE_STAGES };
+export type LiveProfileBatchFailureStage = typeof LIVE_PROFILE_BATCH_FAILURE_STAGES[number];
+export type LiveProfileBatchFailureCode = typeof LIVE_PROFILE_BATCH_FAILURE_CODES[number];
+
+export class LiveProfileBatchFailure extends Error {
+  readonly stage: LiveProfileBatchFailureStage;
+  readonly code: LiveProfileBatchFailureCode;
+  readonly rowOrdinal: number;
+  readonly completedRows: number;
+
+  constructor(
+    stage: LiveProfileBatchFailureStage,
+    code: LiveProfileBatchFailureCode,
+    rowOrdinal: number,
+    completedRows: number,
+  ) {
+    super("Live profile batch journey failed");
+    const rowStage = String(stage).startsWith("row-");
+    if (!LIVE_PROFILE_BATCH_FAILURE_STAGES.includes(stage)
+        || !LIVE_PROFILE_BATCH_FAILURE_CODES.includes(code)
+        || !Number.isSafeInteger(rowOrdinal)
+        || !Number.isSafeInteger(completedRows)
+        || (rowStage
+          ? (rowOrdinal < 1 || rowOrdinal > 12 || completedRows !== rowOrdinal - 1)
+          : (rowOrdinal !== 0 || completedRows !== 0))) {
+      throw new Error("Live profile batch failure input is invalid");
+    }
+    this.name = "LiveProfileBatchFailure";
+    this.stage = stage;
+    this.code = code;
+    this.rowOrdinal = rowOrdinal;
+    this.completedRows = completedRows;
+  }
+}
+
 const LIVE_PERMISSION_JOURNEY_ID_SET = new Set<string>(LIVE_PERMISSION_JOURNEY_IDS);
 
 export async function assertLivePermissionGuestControlVisible(assertion: () => Promise<void>): Promise<void> {
@@ -893,9 +930,19 @@ export async function withRestoredMusicFixture<T>(adapters: {
       && adapters.journeyId === "music.owner-guest.reconnect"
       ? { stage: journeyFailure.stage, code: journeyFailure.code }
       : undefined;
+    const profileBatchFailure = journeyFailure instanceof LiveProfileBatchFailure
+      && adapters.journeyId?.startsWith("profile.owner.pairwise.batch-")
+      ? {
+        stage: journeyFailure.stage,
+        code: journeyFailure.code,
+        rowOrdinal: journeyFailure.rowOrdinal,
+        completedRows: journeyFailure.completedRows,
+      }
+      : undefined;
     if (adapters.journeyId) await writeTerminal(buildLiveJourneyTerminal({
       id: adapters.journeyId, status: "failed", reason: "body-failed", stage: "body",
-      cleanup: "restored", beforeHash, afterHash, rows: adapters.journeyRows, permissionFailure, reconnectFailure,
+      cleanup: "restored", beforeHash, afterHash, rows: adapters.journeyRows,
+      permissionFailure, reconnectFailure, profileBatchFailure,
     }));
     throw journeyFailure;
   }

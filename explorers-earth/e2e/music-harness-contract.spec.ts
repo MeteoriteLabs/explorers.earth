@@ -12,9 +12,12 @@ import {
   MUSIC_MUTATION_CALLSITES,
   MUSIC_PUBLIC_FIXTURE_VERSION,
   LIVE_RECONNECT_JOURNEY_FAILURE_STAGES,
+  LIVE_PROFILE_BATCH_FAILURE_CODES,
+  LIVE_PROFILE_BATCH_FAILURE_STAGES,
   LIVE_PUBLIC_JOURNEY_FAILURE_STAGES,
   MUSIC_PUBLIC_STATES,
   LiveReconnectJourneyFailure,
+  LiveProfileBatchFailure,
   LivePublicJourneyFailure,
   assertLivePermissionGuestControlVisible,
   assertLivePublicSlug,
@@ -35,6 +38,13 @@ import {
   resolveMusicTestLane,
   withRestoredMusicFixture,
 } from "./setup/music";
+import {
+  observeProfilePublish,
+  settleAbortedProfileMutation,
+  type ProfileBatchDialog,
+  type ProfileBatchRawAccount,
+  type ProfileBatchUpdateAccount,
+} from "./setup/profile-batch";
 import { stopMusicFixture } from "../scripts/music-fixture-cleanup.mjs";
 import { runMusicFixtureOrchestration } from "../scripts/music-public-e2e-runner.mjs";
 import {
@@ -4244,6 +4254,59 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       files: 17, manifestSha256: partialFinalized.manifestSha256,
     });
 
+    const profileRunId = "profile-batch-failure-finalization";
+    const profileRunDirectory = join(sandbox, ".artifacts", "music-public", profileRunId);
+    mkdirSync(profileRunDirectory);
+    const profileFailure = {
+      stage: "abort-discard-navigation", code: "navigation-blocked", rowOrdinal: 0, completedRows: 0,
+    };
+    const profileExecutionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+      statusById: {
+        ...Object.fromEntries([
+          ...EXPECTED_LIVE_JOURNEYS.slice(0, 11), ...EXPECTED_LIVE_READ_ONLY.slice(0, -1),
+        ].map(({ id }) => [id, "passed"])),
+        "profile.owner.pairwise.batch-01": "failed",
+      },
+    });
+    const profileLedger = livePreflight.buildSanitizedJourneyOutcomeLedger({
+      executionReport: profileExecutionReport,
+      reportStatus: "accepted",
+      terminalRecords: [
+        ...validJourneyEvidenceRecords().slice(0, 11),
+        buildLiveJourneyTerminal({
+          id: "profile.owner.pairwise.batch-01", status: "failed", reason: "body-failed", stage: "body",
+          cleanup: "restored", beforeHash: finalHash, afterHash: finalHash,
+          rows: buildProfileCoveringRows().slice(0, 12), profileBatchFailure: profileFailure,
+        }),
+      ],
+      terminalStatus: "accepted",
+    });
+    const profileRecords = qualificationArtifacts.buildQualificationOutcomeRecords({
+      lane: "live",
+      executionOutcome: {
+        status: 1, executionReport: profileExecutionReport, reportStatus: "accepted",
+        journeyOutcomeLedger: profileLedger,
+      },
+      report: { cleanup: "restored", finalRestore: { beforeHash: finalHash, afterHash: finalHash } },
+    });
+    const profileFinalized = qualificationArtifacts.finalizeQualificationRunArtifacts({
+      ...input,
+      runDirectory: profileRunDirectory,
+      skipLedger: profileRecords.skipLedger,
+      restorationRecord: profileRecords.restorationRecord,
+      journeyOutcomeLedger: profileLedger,
+      evidence: { ...input.evidence, runId: profileRunId, result: "failed", cleanup: "restored" },
+    });
+    expect(profileFinalized).toMatchObject({ files: 17, verified: true });
+    expect(profileLedger.counts.execution).toEqual({ total: 49, passed: 42, failed: 1, skipped: 0, notRun: 6 });
+    const profileRetained = JSON.parse(readFileSync(join(profileRunDirectory, "evidence.json"), "utf8"));
+    expect(profileRetained.journeyOutcomes).toEqual(profileLedger);
+    expect(profileRetained.journeyOutcomes.mutationTerminals[11].profileBatchFailure).toEqual(profileFailure);
+    const profileVerify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", profileRunDirectory,
+    ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
+    expect(profileVerify.status, `${profileVerify.stdout}\n${profileVerify.stderr}`).toBe(0);
+
     const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
     mkdirSync(unsafeRunDirectory);
     expect(() => qualificationArtifacts.finalizeQualificationRunArtifacts({
@@ -5700,6 +5763,419 @@ test("profile batch body failures restore first, emit one row-bearing terminal, 
   })]);
 });
 
+test("profile abort settlement accepts exactly one beforeunload and preserves the raw profile authority", async () => {
+  const baseline = {
+    documentId: "fixture-account",
+    updatedAt: "2026-08-30T00:00:00.000Z",
+    social_media: { theme_settings: { preset: "cinematic-dark", accentColor: "#10B981" } },
+  };
+  const events: string[] = [];
+  let dirty = false;
+  let dialogHandler: ((dialog: {
+    type: () => string;
+    accept: () => Promise<void>;
+    dismiss: () => Promise<void>;
+  }) => Promise<void>) | undefined;
+  const result = await settleAbortedProfileMutation({
+    baselineAccount: baseline,
+    captureAbortedMutation: async () => {
+      events.push("capture-aborted-update");
+      dirty = true;
+      return { operationName: "UpdateAccount", data: { accentColor: "#38BDF8" } };
+    },
+    waitForSaveSettled: async () => { events.push("save-settled"); },
+    onDialog: (handler) => { events.push("dialog-on"); dialogHandler = handler; },
+    offDialog: (handler) => {
+      events.push("dialog-off");
+      expect(handler).toBe(dialogHandler);
+      dialogHandler = undefined;
+    },
+    reloadAndReadAccount: async () => {
+      events.push("reload");
+      expect(dialogHandler).toBeDefined();
+      await dialogHandler!({
+        type: () => "beforeunload",
+        accept: async () => { events.push("beforeunload-accepted"); dirty = false; },
+        dismiss: async () => { events.push("beforeunload-dismissed"); },
+      });
+      expect(dirty).toBe(false);
+      return structuredClone(baseline);
+    },
+  });
+  expect(result).toEqual({
+    template: { operationName: "UpdateAccount", data: { accentColor: "#38BDF8" } },
+    account: baseline,
+  });
+  expect(events).toEqual([
+    "capture-aborted-update", "save-settled", "dialog-on", "reload",
+    "beforeunload-accepted", "dialog-off",
+  ]);
+  expect(dialogHandler).toBeUndefined();
+
+  for (const hostile of [
+    { dialogTypes: [], expectedCode: "navigation-blocked" },
+    { dialogTypes: ["alert"], expectedCode: "navigation-blocked" },
+    { dialogTypes: ["beforeunload", "beforeunload"], expectedCode: "navigation-blocked" },
+  ] as const) {
+    let active: typeof dialogHandler;
+    await expect(settleAbortedProfileMutation({
+      baselineAccount: baseline,
+      captureAbortedMutation: async () => ({ operationName: "UpdateAccount" }),
+      waitForSaveSettled: async () => undefined,
+      onDialog: (handler) => { active = handler; },
+      offDialog: (handler) => { expect(handler).toBe(active); active = undefined; },
+      reloadAndReadAccount: async () => {
+        for (const type of hostile.dialogTypes) {
+          await active!({ type: () => type, accept: async () => undefined, dismiss: async () => undefined });
+        }
+        return structuredClone(baseline);
+      },
+    })).rejects.toMatchObject({
+      name: "LiveProfileBatchFailure",
+      stage: "abort-discard-navigation",
+      code: hostile.expectedCode,
+      rowOrdinal: 0,
+      completedRows: 0,
+    });
+    expect(active).toBeUndefined();
+  }
+
+  for (const changed of [
+    { account: { ...structuredClone(baseline), updatedAt: "2026-08-30T00:00:01.000Z" }, code: "version-mismatch" },
+    {
+      account: { ...structuredClone(baseline), social_media: { theme_settings: { preset: "minimal-light" } } },
+      code: "state-mismatch",
+    },
+  ] as const) {
+    await expect(settleAbortedProfileMutation({
+      baselineAccount: baseline,
+      captureAbortedMutation: async () => ({ operationName: "UpdateAccount" }),
+      waitForSaveSettled: async () => undefined,
+      onDialog: (handler) => { dialogHandler = handler; },
+      offDialog: () => { dialogHandler = undefined; },
+      reloadAndReadAccount: async () => {
+        await dialogHandler!({ type: () => "beforeunload", accept: async () => undefined, dismiss: async () => undefined });
+        return changed.account;
+      },
+    })).rejects.toMatchObject({ stage: "abort-state-verify", code: changed.code });
+  }
+});
+
+test("profile publish observes UpdateAccount, its exact refetch, and the saved terminal before public navigation", async () => {
+  const socialMedia = { theme_settings: { preset: "cinematic-dark", accentColor: "#10B981" } };
+  const events: string[] = [];
+  let markUpdateObserved!: () => void;
+  let canAcceptRefetch!: () => boolean;
+  let resolveUpdate!: (account: ProfileBatchUpdateAccount) => void;
+  let resolveRefetch!: (account: ProfileBatchRawAccount) => void;
+  const account = await observeProfilePublish({
+    rowOrdinal: 1,
+    completedRows: 0,
+    observeUpdate: (markObserved) => {
+      events.push("observe-update");
+      markUpdateObserved = markObserved;
+      return new Promise((resolve) => { resolveUpdate = resolve; });
+    },
+    observeRefetch: (afterUpdateObserved) => {
+      events.push("observe-refetch");
+      canAcceptRefetch = afterUpdateObserved;
+      return new Promise((resolve) => { resolveRefetch = resolve; });
+    },
+    triggerSave: async () => {
+      events.push("trigger-save");
+      expect(canAcceptRefetch()).toBe(false);
+      markUpdateObserved();
+      resolveUpdate({ documentId: "fixture-account", social_media: structuredClone(socialMedia) });
+      expect(canAcceptRefetch()).toBe(true);
+      resolveRefetch({ documentId: "fixture-account", updatedAt: "2026-08-30T00:00:01.000Z", social_media: structuredClone(socialMedia) });
+    },
+    waitForSavedTerminal: async () => { events.push("saved-terminal"); },
+  });
+  events.push("public-verification");
+  expect(account.updatedAt).toBe("2026-08-30T00:00:01.000Z");
+  expect(events).toEqual([
+    "observe-update", "observe-refetch", "trigger-save", "saved-terminal", "public-verification",
+  ]);
+
+  await expect(observeProfilePublish({
+    rowOrdinal: 4,
+    completedRows: 3,
+    observeUpdate: async (markObserved) => {
+      markObserved();
+      return { documentId: "fixture-account", social_media: structuredClone(socialMedia) };
+    },
+    observeRefetch: async () => ({
+      documentId: "other-account",
+      updatedAt: "2026-08-30T00:00:01.000Z",
+      social_media: structuredClone(socialMedia),
+    }),
+    triggerSave: async () => undefined,
+    waitForSavedTerminal: async () => undefined,
+  })).rejects.toMatchObject({
+    name: "LiveProfileBatchFailure",
+    stage: "row-publish-settle",
+    code: "state-mismatch",
+    rowOrdinal: 4,
+    completedRows: 3,
+  });
+
+  const hostile = "Bearer never-retain C:\\private\\raw-profile";
+  await expect(observeProfilePublish({
+    rowOrdinal: 1,
+    completedRows: 0,
+    observeUpdate: () => Promise.reject(new Error(hostile)),
+    observeRefetch: () => Promise.reject(new Error(hostile)),
+    triggerSave: async () => { throw new Error(hostile); },
+    waitForSavedTerminal: async () => undefined,
+  })).rejects.toMatchObject({
+    name: "LiveProfileBatchFailure", stage: "row-publish-response", code: "http-failed",
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+});
+
+test("browser-inert profile batch uses the real fixture documents for abort discard and first-row public projection", async () => {
+  const { createFixtureProfileController } = await import("../../tunes/scripts/music-fixture-profile");
+  const document = (file: string, operation: string) => {
+    const source = readFileSync(file, "utf8");
+    const matches = [...source.matchAll(/gql`([\s\S]*?)`/g)]
+      .map((match) => match[1]!)
+      .filter((query) => new RegExp(`(?:query|mutation)\\s+${operation}\\b`).test(query));
+    expect(matches).toHaveLength(1);
+    return matches[0]!;
+  };
+  const profileQuery = document("src/features/Profile/api/query.ts", "UsersPermissionsUser");
+  const updateMutation = document("src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+  const publicQuery = document("src/features/PublicHome/api/query.ts", "PublicProfileData");
+  const username = "e2e-public-music-profile-contract-owner";
+  const controller = createFixtureProfileController({
+    username,
+    accountDocumentId: "e2e-public-music-profile-contract-account",
+    userDocumentId: "e2e-public-music-profile-contract-user",
+    baseUser: { provider: "local", confirmed: true, blocked: false },
+    baseAccount: { mobile_number: "+10000000000" },
+  });
+  const readAccount = () => {
+    const response = controller.graphql(profileQuery, { documentId: "e2e-public-music-profile-contract-user" });
+    expect(response.status).toBe(200);
+    return (response.body as { data: { usersPermissionsUser: { accounts: ProfileBatchRawAccount[] } } })
+      .data.usersPermissionsUser.accounts[0]!;
+  };
+  const baseline = readAccount();
+  const events: string[] = [];
+  let activeDialog: ((dialog: ProfileBatchDialog) => Promise<void>) | undefined;
+  await settleAbortedProfileMutation({
+    baselineAccount: baseline,
+    captureAbortedMutation: async () => {
+      events.push("abort-update-before-fixture");
+      return { query: updateMutation, variables: { documentId: baseline.documentId, data: { social_media: {} } } };
+    },
+    waitForSaveSettled: async () => { events.push("failed-save-settled"); },
+    onDialog: (handler) => { activeDialog = handler; },
+    offDialog: () => { activeDialog = undefined; },
+    reloadAndReadAccount: async () => {
+      await activeDialog!({
+        type: () => "beforeunload",
+        accept: async () => { events.push("discard-dirty-ui"); },
+        dismiss: async () => { throw new Error("unexpected dialog dismissal"); },
+      });
+      events.push("reload-profile-query");
+      return readAccount();
+    },
+  });
+  expect(readAccount()).toEqual(baseline);
+  expect(activeDialog).toBeUndefined();
+
+  let resolveUpdate!: (account: ProfileBatchUpdateAccount) => void;
+  let resolveRefetch!: (account: ProfileBatchRawAccount) => void;
+  let markPublishedResponse!: () => void;
+  let acceptsPublishedRefetch!: () => boolean;
+  let savePending = true;
+  const nextSocialMedia = structuredClone(baseline.social_media);
+  const theme = nextSocialMedia.theme_settings as Record<string, unknown>;
+  theme.preset = "cinematic-dark";
+  theme.accentColor = "#10B981";
+  theme.wallpaperMode = "banner-top";
+  theme.landingTab = "all-recommendations";
+  theme.recommendations = {
+    layout: "shelves",
+    categoryOrder: ["places", "music", "movies", "books", "games", "guides", "apps", "products", "people"],
+    __e2eSentinel: "profile-contract-sentinel",
+  };
+  const published = await observeProfilePublish({
+    rowOrdinal: 1,
+    completedRows: 0,
+    observeUpdate: (markObserved) => new Promise((resolve) => {
+      events.push("observe-update"); markPublishedResponse = markObserved; resolveUpdate = resolve;
+    }),
+    observeRefetch: (afterUpdateResponse) => new Promise((resolve) => {
+      events.push("observe-refetch"); acceptsPublishedRefetch = afterUpdateResponse; resolveRefetch = resolve;
+    }),
+    triggerSave: async () => {
+      events.push("publish-update");
+      const response = controller.graphql(updateMutation, {
+        documentId: baseline.documentId,
+        data: { social_media: nextSocialMedia },
+      });
+      expect(response.status).toBe(200);
+      expect(acceptsPublishedRefetch()).toBe(false);
+      markPublishedResponse();
+      resolveUpdate((response.body as { data: { updateAccount: ProfileBatchUpdateAccount } }).data.updateAccount);
+      events.push("profile-refetch-applied");
+      expect(acceptsPublishedRefetch()).toBe(true);
+      resolveRefetch(readAccount());
+      savePending = false;
+    },
+    waitForSavedTerminal: async () => {
+      expect(savePending).toBe(false);
+      events.push("saved-terminal");
+    },
+  });
+  expect(published.updatedAt).toBe("2026-08-29T00:00:01.000Z");
+  const publicResponse = controller.graphql(publicQuery, { filters: { username: { eq: username } } });
+  expect(publicResponse.status).toBe(200);
+  const publicAccount = (publicResponse.body as { data: { accounts: ProfileBatchRawAccount[] } }).data.accounts[0]!;
+  expect(publicAccount.social_media).toEqual(nextSocialMedia);
+  events.push("public-first-row-verified");
+  expect(events).toEqual([
+    "abort-update-before-fixture", "failed-save-settled", "discard-dirty-ui", "reload-profile-query",
+    "observe-update", "observe-refetch", "publish-update", "profile-refetch-applied", "saved-terminal",
+    "public-first-row-verified",
+  ]);
+});
+
+test("profile batch diagnostics are fixed, progress-checked, sanitized, and forbidden outside failed profile terminals", async () => {
+  expect(LIVE_PROFILE_BATCH_FAILURE_STAGES).toEqual([
+    "baseline-dashboard", "baseline-presentation", "template-capture", "abort-settle",
+    "abort-discard-navigation", "abort-state-verify", "sentinel-write", "sentinel-readback",
+    "baseline-public", "row-dashboard", "row-apply", "row-publish-response",
+    "row-publish-settle", "row-dashboard-readback", "row-public-theme", "row-public-tab",
+    "row-public-layout", "row-public-order", "row-public-featured", "row-public-gallery",
+    "row-public-business",
+  ]);
+  expect(LIVE_PROFILE_BATCH_FAILURE_CODES).toEqual([
+    "timeout", "http-failed", "contract-invalid", "version-mismatch", "state-mismatch",
+    "navigation-blocked", "mutation-not-observed", "locator-missing", "attribute-mismatch",
+    "order-mismatch", "content-insufficient", "unexpected",
+  ]);
+  const hash = "c".repeat(64);
+  const rows = buildProfileCoveringRows().slice(0, 12);
+  const profileBatchFailure = {
+    stage: "row-public-order", code: "order-mismatch", rowOrdinal: 4, completedRows: 3,
+  } as const;
+  const terminal = buildLiveJourneyTerminal({
+    id: "profile.owner.pairwise.batch-01",
+    status: "failed",
+    reason: "body-failed",
+    stage: "body",
+    cleanup: "restored",
+    beforeHash: hash,
+    afterHash: hash,
+    rows,
+    profileBatchFailure,
+  });
+  expect(terminal.profileBatchFailure).toEqual(profileBatchFailure);
+
+  const preflight = await import("../scripts/music-public-live-preflight.mjs");
+  const ledger = preflight.buildSanitizedJourneyOutcomeLedger({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+      statusById: { "profile.owner.pairwise.batch-01": "failed" },
+    }),
+    reportStatus: "accepted",
+    terminalRecords: [terminal],
+    terminalStatus: "accepted",
+  });
+  expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v3");
+  expect(ledger.mutationTerminals.find(({ id }) => id === "profile.owner.pairwise.batch-01")).toEqual({
+    id: "profile.owner.pairwise.batch-01",
+    status: "failed",
+    reason: "terminal-failed",
+    stage: "terminal-evidence",
+    profileBatchFailure,
+  });
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(ledger)).toBe(true);
+  expect(JSON.stringify(ledger)).not.toMatch(/Bearer|https?:|[A-Z]:\\|social_media|updatedAt/i);
+
+  for (const hostile of [
+    { id: "profile.owner.pairwise.batch-01", status: "passed", failure: profileBatchFailure },
+    { id: "music.owner.queue-add", status: "failed", failure: profileBatchFailure },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, rowOrdinal: 0 } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, completedRows: 4 } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, rowOrdinal: 13, completedRows: 12 } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, rowOrdinal: 1.5, completedRows: 0.5 } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, stage: "baseline-dashboard" } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, stage: "C:\\private\\hostile" } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, code: "Bearer hostile" } },
+    { id: "profile.owner.pairwise.batch-01", status: "failed", failure: { ...profileBatchFailure, raw: "forbidden" } },
+  ] as const) {
+    expect(() => buildLiveJourneyTerminal({
+      id: hostile.id,
+      status: hostile.status,
+      reason: hostile.status === "passed" ? "none" : "body-failed",
+      stage: hostile.status === "passed" ? "verification" : "body",
+      cleanup: "restored",
+      beforeHash: hash,
+      afterHash: hash,
+      rows: hostile.id.startsWith("profile.") ? rows : undefined,
+      profileBatchFailure: hostile.failure,
+    })).toThrow(/profile batch failure/i);
+  }
+
+  const hostileLedger = structuredClone(ledger);
+  hostileLedger.mutationTerminals[0].profileBatchFailure = profileBatchFailure;
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(hostileLedger)).toBe(false);
+  const hostileExecution = structuredClone(ledger);
+  hostileExecution.executionOutcomes[11].profileBatchFailure = profileBatchFailure;
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(hostileExecution)).toBe(false);
+  for (const id of EXPECTED_LIVE_JOURNEYS.slice(11).map((entry) => entry.id)) {
+    expect(buildLiveJourneyTerminal({
+      id, status: "failed", reason: "body-failed", stage: "body", cleanup: "restored",
+      beforeHash: hash, afterHash: hash, rows,
+      profileBatchFailure: { stage: "baseline-dashboard", code: "locator-missing", rowOrdinal: 0, completedRows: 0 },
+    }).profileBatchFailure).toEqual({
+      stage: "baseline-dashboard", code: "locator-missing", rowOrdinal: 0, completedRows: 0,
+    });
+  }
+  const passedEvidence = validJourneyEvidenceRecords();
+  passedEvidence[11]!.profileBatchFailure = profileBatchFailure;
+  expect(validateLiveJourneyEvidence({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" }),
+    records: passedEvidence,
+  })).toMatchObject({ ok: false, subchecks: expect.arrayContaining(["record-contract"]) });
+});
+
+test("restored profile batch failures retain only fixed progress metadata after restoration", async () => {
+  const events: string[] = [];
+  const terminals: Array<Record<string, unknown>> = [];
+  const rows = buildProfileCoveringRows().slice(0, 12);
+  const state = { profile: { revision: 1 } };
+  await expect(withRestoredMusicFixture({
+    journeyId: "profile.owner.pairwise.batch-01",
+    journeyRows: rows,
+    snapshot: async () => { events.push("snapshot"); return structuredClone(state); },
+    cleanupNamespace: async () => { events.push("cleanup"); },
+    restore: async () => { events.push("restore"); },
+    onBodyFailureAfterRestore: async () => { events.push("block"); },
+    writeJourneyResult: async (record) => { events.push("terminal"); terminals.push(record as Record<string, unknown>); },
+  }, async () => {
+    events.push("body");
+    throw new LiveProfileBatchFailure("row-public-layout", "attribute-mismatch", 7, 6);
+  })).rejects.toMatchObject({
+    stage: "row-public-layout", code: "attribute-mismatch", rowOrdinal: 7, completedRows: 6,
+  });
+  expect(events).toEqual(["snapshot", "body", "cleanup", "restore", "snapshot", "block", "terminal"]);
+  expect(terminals).toEqual([expect.objectContaining({
+    id: "profile.owner.pairwise.batch-01",
+    status: "failed",
+    cleanup: "restored",
+    profileBatchFailure: {
+      stage: "row-public-layout", code: "attribute-mismatch", rowOrdinal: 7, completedRows: 6,
+    },
+  })]);
+  expect(JSON.stringify(terminals[0]!.profileBatchFailure)).not.toMatch(
+    /social_media|updatedAt|Bearer|https?:|[A-Z]:\\/i,
+  );
+});
+
 test("live Music afterEach hooks are read-only and every mutation journey owns its complete postcondition lifecycle", () => {
   const liveFiles = [
     { path: "e2e/music-fixture-fullstack.spec.ts", expectedWrappers: 2 },
@@ -5821,8 +6297,9 @@ test("guest-device playback is local-only and leaves the owner queue exact while
 test("profile batch baseline and every row execute inside canonical snapshot restoration and terminal ownership", () => {
   const source = readFileSync("e2e/profile-theme.spec.ts", "utf8");
   const liveBatch = source.slice(source.indexOf("test.describe('approved live profile writes'"), source.indexOf("test.describe('Public Profile Theme"));
-  expect(liveBatch).toMatch(/withRestoredMusicFixture\([\s\S]+journeyRows:\s*liveRows[\s\S]+async \(\) => \{[\s\S]+const baselineAccount = await openDashboard/);
-  expect(liveBatch.indexOf("withRestoredMusicFixture(")).toBeLessThan(liveBatch.indexOf("const baselineAccount = await openDashboard"));
+  expect(liveBatch).toMatch(/withRestoredMusicFixture\([\s\S]+journeyRows:\s*liveRows[\s\S]+async \(\) => \{[\s\S]+const baselineAccount = await profileBatchBoundary/);
+  expect(liveBatch.indexOf("withRestoredMusicFixture(")).toBeLessThan(liveBatch.indexOf("const baselineAccount = await profileBatchBoundary"));
+  expect(liveBatch.indexOf("await verifyPublicRow(")).toBeLessThan(liveBatch.indexOf("completedRows += 1"));
   expect(liveBatch).not.toContain("appendLiveJourneyResult");
   expect(liveBatch).not.toContain("normalExactRestore");
 });

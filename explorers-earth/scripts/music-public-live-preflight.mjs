@@ -69,11 +69,29 @@ export const LIVE_RECONNECT_FAILURE_STAGES = Object.freeze([
 export const LIVE_RECONNECT_FAILURE_CODES = Object.freeze([
   "operation-failed", "operation-timeout", "http-failed", "contract-invalid", "assertion-failed",
 ]);
+export const LIVE_PROFILE_BATCH_FAILURE_STAGES = Object.freeze([
+  "baseline-dashboard", "baseline-presentation", "template-capture", "abort-settle",
+  "abort-discard-navigation", "abort-state-verify", "sentinel-write", "sentinel-readback",
+  "baseline-public", "row-dashboard", "row-apply", "row-publish-response",
+  "row-publish-settle", "row-dashboard-readback", "row-public-theme", "row-public-tab",
+  "row-public-layout", "row-public-order", "row-public-featured", "row-public-gallery",
+  "row-public-business",
+]);
+export const LIVE_PROFILE_BATCH_FAILURE_CODES = Object.freeze([
+  "timeout", "http-failed", "contract-invalid", "version-mismatch", "state-mismatch",
+  "navigation-blocked", "mutation-not-observed", "locator-missing", "attribute-mismatch",
+  "order-mismatch", "content-insufficient", "unexpected",
+]);
 const LIVE_PERMISSION_JOURNEY_ID_SET = new Set(LIVE_PERMISSION_JOURNEY_IDS);
+const LIVE_PROFILE_BATCH_JOURNEY_ID_SET = new Set(
+  LIVE_JOURNEY_MANIFEST.filter(({ id }) => id.startsWith("profile.owner.pairwise.batch-")).map(({ id }) => id),
+);
 const LIVE_PERMISSION_FAILURE_STAGE_SET = new Set(LIVE_PERMISSION_FAILURE_STAGES);
 const LIVE_PERMISSION_FAILURE_CODE_SET = new Set(LIVE_PERMISSION_FAILURE_CODES);
 const LIVE_RECONNECT_FAILURE_STAGE_SET = new Set(LIVE_RECONNECT_FAILURE_STAGES);
 const LIVE_RECONNECT_FAILURE_CODE_SET = new Set(LIVE_RECONNECT_FAILURE_CODES);
+const LIVE_PROFILE_BATCH_FAILURE_STAGE_SET = new Set(LIVE_PROFILE_BATCH_FAILURE_STAGES);
+const LIVE_PROFILE_BATCH_FAILURE_CODE_SET = new Set(LIVE_PROFILE_BATCH_FAILURE_CODES);
 
 export const LIVE_READ_ONLY_COLLECTION = Object.freeze([
   { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
@@ -473,6 +491,18 @@ function validReconnectFailure(value) {
     && LIVE_RECONNECT_FAILURE_CODE_SET.has(value.code);
 }
 
+function validProfileBatchFailure(value) {
+  if (!exactKeySet(value, ["stage", "code", "rowOrdinal", "completedRows"])
+      || !LIVE_PROFILE_BATCH_FAILURE_STAGE_SET.has(value.stage)
+      || !LIVE_PROFILE_BATCH_FAILURE_CODE_SET.has(value.code)
+      || !Number.isSafeInteger(value.rowOrdinal)
+      || !Number.isSafeInteger(value.completedRows)) return false;
+  const rowStage = value.stage.startsWith("row-");
+  return rowStage
+    ? value.rowOrdinal >= 1 && value.rowOrdinal <= 12 && value.completedRows === value.rowOrdinal - 1
+    : value.rowOrdinal === 0 && value.completedRows === 0;
+}
+
 function terminalPermissionFailureValid(record) {
   if (!Object.prototype.hasOwnProperty.call(record, "permissionFailure")) return true;
   return LIVE_PERMISSION_JOURNEY_ID_SET.has(record.id)
@@ -491,6 +521,16 @@ function terminalReconnectFailureValid(record) {
     && record.stage === "body"
     && record.cleanup === "restored"
     && validReconnectFailure(record.reconnectFailure);
+}
+
+function terminalProfileBatchFailureValid(record) {
+  if (!Object.prototype.hasOwnProperty.call(record, "profileBatchFailure")) return true;
+  return LIVE_PROFILE_BATCH_JOURNEY_ID_SET.has(record.id)
+    && record.status === "failed"
+    && record.reason === "body-failed"
+    && record.stage === "body"
+    && record.cleanup === "restored"
+    && validProfileBatchFailure(record.profileBatchFailure);
 }
 
 function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOutcomes = []) {
@@ -530,8 +570,9 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
     if (!record || typeof record !== "object" || Array.isArray(record) || !knownIds.has(record.id)
         || !terminalPermissionFailureValid(record)
         || !terminalReconnectFailureValid(record)
-        || (Object.prototype.hasOwnProperty.call(record, "permissionFailure")
-          && Object.prototype.hasOwnProperty.call(record, "reconnectFailure"))) {
+        || !terminalProfileBatchFailureValid(record)
+        || ["permissionFailure", "reconnectFailure", "profileBatchFailure"]
+          .filter((key) => Object.prototype.hasOwnProperty.call(record, key)).length > 1) {
       hostileRecord = true;
       continue;
     }
@@ -571,6 +612,12 @@ function sanitizedTerminalOutcomes(terminalRecords, terminalStatus, executionOut
         ...(records[0].reconnectFailure ? { reconnectFailure: {
           stage: records[0].reconnectFailure.stage,
           code: records[0].reconnectFailure.code,
+        } } : {}),
+        ...(records[0].profileBatchFailure ? { profileBatchFailure: {
+          stage: records[0].profileBatchFailure.stage,
+          code: records[0].profileBatchFailure.code,
+          rowOrdinal: records[0].profileBatchFailure.rowOrdinal,
+          completedRows: records[0].profileBatchFailure.completedRows,
         } } : {}),
       };
     }
@@ -626,13 +673,15 @@ export function buildSanitizedJourneyOutcomeLedger({
 function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tuples, permissionTerminal = false }) {
   const hasPermissionFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure");
   const hasReconnectFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "reconnectFailure");
+  const hasProfileBatchFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "profileBatchFailure");
   const keys = ["id", "status", "reason", "stage",
     ...(hasPermissionFailure ? ["permissionFailure"] : []),
-    ...(hasReconnectFailure ? ["reconnectFailure"] : [])];
+    ...(hasReconnectFailure ? ["reconnectFailure"] : []),
+    ...(hasProfileBatchFailure ? ["profileBatchFailure"] : [])];
   return exactKeySet(record, keys)
     && record.id === expectedId && statuses.has(record.status) && reasons.has(record.reason) && stages.has(record.stage)
     && tuples.has(`${record.status}\0${record.reason}\0${record.stage}`)
-    && !(hasPermissionFailure && hasReconnectFailure)
+    && [hasPermissionFailure, hasReconnectFailure, hasProfileBatchFailure].filter(Boolean).length <= 1
     && (!hasPermissionFailure || (permissionTerminal
       && LIVE_PERMISSION_JOURNEY_ID_SET.has(expectedId)
       && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
@@ -640,7 +689,11 @@ function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tup
     && (!hasReconnectFailure || (permissionTerminal
       && expectedId === "music.owner-guest.reconnect"
       && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
-      && validReconnectFailure(record.reconnectFailure)));
+      && validReconnectFailure(record.reconnectFailure)))
+    && (!hasProfileBatchFailure || (permissionTerminal
+      && LIVE_PROFILE_BATCH_JOURNEY_ID_SET.has(expectedId)
+      && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
+      && validProfileBatchFailure(record.profileBatchFailure)));
 }
 
 export function validateSanitizedJourneyOutcomeLedger(ledger) {
@@ -1044,7 +1097,7 @@ const LIVE_TERMINAL_TUPLES = new Set([
 
 export function buildLiveJourneyTerminal({
   id, status = "passed", reason = "none", stage = "verification", cleanup = "restored",
-  beforeHash, afterHash, rows, permissionFailure, reconnectFailure,
+  beforeHash, afterHash, rows, permissionFailure, reconnectFailure, profileBatchFailure,
 }) {
   const entry = liveJourneyManifestEntry(id);
   if (!entry) throw new Error("Unknown live journey ID");
@@ -1063,6 +1116,12 @@ export function buildLiveJourneyTerminal({
       || status !== "failed" || reason !== "body-failed" || stage !== "body" || cleanup !== "restored"
       || !validReconnectFailure(reconnectFailure) || permissionFailure !== undefined)) {
     throw new Error("Live journey reconnect failure metadata is invalid");
+  }
+  if (profileBatchFailure !== undefined && (!LIVE_PROFILE_BATCH_JOURNEY_ID_SET.has(id)
+      || status !== "failed" || reason !== "body-failed" || stage !== "body" || cleanup !== "restored"
+      || !validProfileBatchFailure(profileBatchFailure)
+      || permissionFailure !== undefined || reconnectFailure !== undefined)) {
+    throw new Error("Live journey profile batch failure metadata is invalid");
   }
   const requiresEqualHashes = cleanup === "restored";
   if (typeof beforeHash !== "string" || !/^[a-f0-9]{64}$/.test(beforeHash)
@@ -1087,6 +1146,12 @@ export function buildLiveJourneyTerminal({
     ...(reconnectFailure ? { reconnectFailure: {
       stage: reconnectFailure.stage,
       code: reconnectFailure.code,
+    } } : {}),
+    ...(profileBatchFailure ? { profileBatchFailure: {
+      stage: profileBatchFailure.stage,
+      code: profileBatchFailure.code,
+      rowOrdinal: profileBatchFailure.rowOrdinal,
+      completedRows: profileBatchFailure.completedRows,
     } } : {}),
     ...(profile && Array.isArray(rows) ? { rowCount: rows.length, rows } : {}),
   };
@@ -1157,6 +1222,7 @@ export function validateLiveJourneyEvidence({ executionReport, records }) {
             || record?.status !== "passed" || record?.skipReason !== null || record?.cleanup !== "restored"
             || Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure")
             || Object.prototype.hasOwnProperty.call(record ?? {}, "reconnectFailure")
+            || Object.prototype.hasOwnProperty.call(record ?? {}, "profileBatchFailure")
             || !validHashPair(record ?? {})) invalidContract = true;
       }
       if (reordered) subchecks.push("records-reordered");
