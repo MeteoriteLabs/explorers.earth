@@ -24,7 +24,8 @@ const MAX_PRIVATE_PLAYWRIGHT_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_PRIVATE_TERMINAL_EVIDENCE_BYTES = 4 * 1024 * 1024;
 const SANITIZED_EXECUTION_REPORT_VERSION = "explorers-live-playwright-evidence/v2";
 const SAFE_EXECUTION_STATUSES = new Set(["passed", "failed", "timedOut", "skipped", "interrupted"]);
-export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v3";
+export const JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v4";
+const HISTORICAL_JOURNEY_OUTCOME_LEDGER_VERSION = "explorers-public-journey-outcomes/v3";
 
 export const LIVE_JOURNEY_MANIFEST = Object.freeze([
   { id: "music.owner.queue-add", title: "authenticated owner queue mutation reaches the branch-local Tunes fixture through the fixture browser origin", source: "e2e/music-fixture-fullstack.spec.ts" },
@@ -74,7 +75,8 @@ export const LIVE_PROFILE_BATCH_FAILURE_STAGES = Object.freeze([
   "abort-discard-navigation", "abort-state-verify", "sentinel-write", "sentinel-readback",
   "baseline-public", "row-dashboard", "row-apply", "row-publish-response",
   "row-publish-settle", "row-dashboard-readback", "row-public-theme", "row-public-tab",
-  "row-public-layout", "row-public-order", "row-public-featured", "row-public-gallery",
+  "row-public-layout", "row-public-order", "row-public-featured",
+  "row-public-gallery-tab", "row-public-gallery-select", "row-public-gallery-panel", "row-public-gallery-content",
   "row-public-business",
 ]);
 export const LIVE_PROFILE_BATCH_FAILURE_CODES = Object.freeze([
@@ -91,6 +93,12 @@ const LIVE_PERMISSION_FAILURE_CODE_SET = new Set(LIVE_PERMISSION_FAILURE_CODES);
 const LIVE_RECONNECT_FAILURE_STAGE_SET = new Set(LIVE_RECONNECT_FAILURE_STAGES);
 const LIVE_RECONNECT_FAILURE_CODE_SET = new Set(LIVE_RECONNECT_FAILURE_CODES);
 const LIVE_PROFILE_BATCH_FAILURE_STAGE_SET = new Set(LIVE_PROFILE_BATCH_FAILURE_STAGES);
+// Only explicit historical manifest verification may use the coarse v3 stage.
+// Raw terminals and all new producers validate against the current set above.
+const HISTORICAL_PROFILE_BATCH_FAILURE_STAGE_SET = new Set([
+  ...LIVE_PROFILE_BATCH_FAILURE_STAGES.filter((stage) => !stage.startsWith("row-public-gallery-")),
+  "row-public-gallery",
+]);
 const LIVE_PROFILE_BATCH_FAILURE_CODE_SET = new Set(LIVE_PROFILE_BATCH_FAILURE_CODES);
 
 export const LIVE_READ_ONLY_COLLECTION = Object.freeze([
@@ -491,9 +499,10 @@ function validReconnectFailure(value) {
     && LIVE_RECONNECT_FAILURE_CODE_SET.has(value.code);
 }
 
-function validProfileBatchFailure(value) {
+function validProfileBatchFailure(value, historical = false) {
+  const stages = historical ? HISTORICAL_PROFILE_BATCH_FAILURE_STAGE_SET : LIVE_PROFILE_BATCH_FAILURE_STAGE_SET;
   if (!exactKeySet(value, ["stage", "code", "rowOrdinal", "completedRows"])
-      || !LIVE_PROFILE_BATCH_FAILURE_STAGE_SET.has(value.stage)
+      || !stages.has(value.stage)
       || !LIVE_PROFILE_BATCH_FAILURE_CODE_SET.has(value.code)
       || !Number.isSafeInteger(value.rowOrdinal)
       || !Number.isSafeInteger(value.completedRows)) return false;
@@ -670,7 +679,9 @@ export function buildSanitizedJourneyOutcomeLedger({
   return ledger;
 }
 
-function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tuples, permissionTerminal = false }) {
+function outcomeRecordValid(record, expectedId, {
+  statuses, reasons, stages, tuples, permissionTerminal = false, historicalProfileBatchFailure = false,
+}) {
   const hasPermissionFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "permissionFailure");
   const hasReconnectFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "reconnectFailure");
   const hasProfileBatchFailure = Object.prototype.hasOwnProperty.call(record ?? {}, "profileBatchFailure");
@@ -693,12 +704,14 @@ function outcomeRecordValid(record, expectedId, { statuses, reasons, stages, tup
     && (!hasProfileBatchFailure || (permissionTerminal
       && LIVE_PROFILE_BATCH_JOURNEY_ID_SET.has(expectedId)
       && record.status === "failed" && record.reason === "terminal-failed" && record.stage === "terminal-evidence"
-      && validProfileBatchFailure(record.profileBatchFailure)));
+      && validProfileBatchFailure(record.profileBatchFailure, historicalProfileBatchFailure)));
 }
 
-export function validateSanitizedJourneyOutcomeLedger(ledger) {
+export function validateSanitizedJourneyOutcomeLedger(ledger, { allowHistorical = false } = {}) {
+  const historical = allowHistorical === true && ledger?.schemaVersion === HISTORICAL_JOURNEY_OUTCOME_LEDGER_VERSION;
   if (!exactKeySet(ledger, ["schemaVersion", "integrity", "counts", "executionOutcomes", "mutationTerminals"])
-      || ledger.schemaVersion !== JOURNEY_OUTCOME_LEDGER_VERSION || !LEDGER_INTEGRITY_STATES.has(ledger.integrity)
+      || (ledger.schemaVersion !== JOURNEY_OUTCOME_LEDGER_VERSION && !historical)
+      || !LEDGER_INTEGRITY_STATES.has(ledger.integrity)
       || !exactKeySet(ledger.counts, ["execution", "terminal"])
       || !exactKeySet(ledger.counts.execution, ["total", "passed", "failed", "skipped", "notRun"])
       || !exactKeySet(ledger.counts.terminal, ["total", "passed", "failed", "missing", "invalid", "notRun"])
@@ -710,7 +723,7 @@ export function validateSanitizedJourneyOutcomeLedger(ledger) {
     tuples: EXECUTION_OUTCOME_TUPLES,
   })) || !ledger.mutationTerminals.every((record, index) => outcomeRecordValid(record, LIVE_JOURNEY_MANIFEST[index].id, {
     statuses: TERMINAL_OUTCOME_STATUSES, reasons: TERMINAL_OUTCOME_REASONS, stages: TERMINAL_OUTCOME_STAGES,
-    tuples: TERMINAL_OUTCOME_TUPLES, permissionTerminal: true,
+    tuples: TERMINAL_OUTCOME_TUPLES, permissionTerminal: true, historicalProfileBatchFailure: historical,
   }))) return false;
   const expectedExecutionCounts = {
     total: EXPECTED_EXECUTION_OUTCOMES.length,

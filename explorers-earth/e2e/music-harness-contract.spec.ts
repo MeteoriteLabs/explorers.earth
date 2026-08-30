@@ -204,7 +204,7 @@ const NONE_RETAINED_VISUAL_LEDGER = `${JSON.stringify({
 
 function notRunJourneyOutcomeLedger() {
   return {
-    schemaVersion: "explorers-public-journey-outcomes/v3",
+    schemaVersion: "explorers-public-journey-outcomes/v4",
     integrity: "not-run",
     counts: {
       execution: { total: 49, passed: 0, failed: 0, skipped: 0, notRun: 49 },
@@ -1385,7 +1385,7 @@ test("sanitized journey outcome ledger retains exact 32/12/5 execution and all m
   };
 
   expect(ledger).toMatchObject({
-    schemaVersion: "explorers-public-journey-outcomes/v3",
+    schemaVersion: "explorers-public-journey-outcomes/v4",
     integrity: "accepted",
     counts: {
       execution: { total: 49, passed: 32, failed: 12, skipped: 5, notRun: 0 },
@@ -1468,7 +1468,7 @@ test("permission failure metadata is fixed, sanitized, and valid only on failed 
     terminalRecords: [terminal],
     terminalStatus: "accepted",
   });
-  expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v3");
+  expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v4");
   expect(ledger.mutationTerminals.find(({ id }) => id === permissionId)).toEqual({
     id: permissionId,
     status: "failed",
@@ -1715,7 +1715,7 @@ test("fail-fast partial reports retain stopped journeys and reject a passed term
   });
 
   expect(ledger).toMatchObject({
-    schemaVersion: "explorers-public-journey-outcomes/v3",
+    schemaVersion: "explorers-public-journey-outcomes/v4",
     integrity: "invalid",
     counts: {
       execution: { total: 49, passed: 0, failed: 1, skipped: 0, notRun: 48 },
@@ -4258,7 +4258,7 @@ test("preflight-stopped qualification finalization writes every safe artifact an
     const profileRunDirectory = join(sandbox, ".artifacts", "music-public", profileRunId);
     mkdirSync(profileRunDirectory);
     const profileFailure = {
-      stage: "abort-discard-navigation", code: "navigation-blocked", rowOrdinal: 0, completedRows: 0,
+      stage: "row-public-gallery-panel", code: "timeout", rowOrdinal: 1, completedRows: 0,
     };
     const profileExecutionReport = playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
       statusById: {
@@ -4306,6 +4306,36 @@ test("preflight-stopped qualification finalization writes every safe artifact an
       resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", profileRunDirectory,
     ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
     expect(profileVerify.status, `${profileVerify.stdout}\n${profileVerify.stderr}`).toBe(0);
+
+    // Build a separate historical fixture; current production never emits v3.
+    const historicalDirectory = join(sandbox, ".artifacts", "music-public", "historical-gallery-v3");
+    mkdirSync(historicalDirectory);
+    mkdirSync(join(historicalDirectory, "logs"));
+    for (const { path } of REQUIRED_QUALIFICATION_ARTIFACTS) {
+      copyFileSync(join(profileRunDirectory, path), join(historicalDirectory, path));
+    }
+    const historicalLedger = structuredClone(profileLedger);
+    historicalLedger.schemaVersion = "explorers-public-journey-outcomes/v3";
+    historicalLedger.mutationTerminals[11].profileBatchFailure = {
+      stage: "row-public-gallery", code: "locator-missing", rowOrdinal: 1, completedRows: 0,
+    };
+    const historicalEvidence = { ...profileRetained, journeyOutcomes: historicalLedger };
+    writeFileSync(join(historicalDirectory, "journey-outcomes.json"), `${JSON.stringify(historicalLedger, null, 2)}\n`);
+    writeFileSync(join(historicalDirectory, "evidence.json"), `${JSON.stringify(historicalEvidence, null, 2)}\n`);
+    const historicalManifest = JSON.parse(readFileSync(join(profileRunDirectory, "manifest.json"), "utf8"));
+    for (const artifact of historicalManifest.artifacts) {
+      const bytes = readFileSync(join(historicalDirectory, artifact.path));
+      artifact.bytes = bytes.length;
+      artifact.sha256 = createHash("sha256").update(bytes).digest("hex");
+    }
+    const historicalManifestBytes = `${JSON.stringify(historicalManifest, null, 2)}\n`;
+    writeFileSync(join(historicalDirectory, "manifest.json"), historicalManifestBytes);
+    writeFileSync(join(historicalDirectory, "manifest.sha256"), `${createHash("sha256").update(historicalManifestBytes).digest("hex")}\n`);
+    const historicalVerify = spawnSync(process.execPath, [
+      resolve("scripts/music-public-qualification-artifacts.mjs"), "verify", historicalDirectory,
+    ], { cwd: process.cwd(), encoding: "utf8", windowsHide: true });
+    expect(historicalVerify.status, `${historicalVerify.stdout}\n${historicalVerify.stderr}`).toBe(0);
+    expect(JSON.parse(historicalVerify.stdout)).toMatchObject({ files: 17 });
 
     const unsafeRunDirectory = join(sandbox, ".artifacts", "music-public", "unsafe-finalization-run");
     mkdirSync(unsafeRunDirectory);
@@ -6050,7 +6080,8 @@ test("profile batch diagnostics are fixed, progress-checked, sanitized, and forb
     "abort-discard-navigation", "abort-state-verify", "sentinel-write", "sentinel-readback",
     "baseline-public", "row-dashboard", "row-apply", "row-publish-response",
     "row-publish-settle", "row-dashboard-readback", "row-public-theme", "row-public-tab",
-    "row-public-layout", "row-public-order", "row-public-featured", "row-public-gallery",
+    "row-public-layout", "row-public-order", "row-public-featured",
+    "row-public-gallery-tab", "row-public-gallery-select", "row-public-gallery-panel", "row-public-gallery-content",
     "row-public-business",
   ]);
   expect(LIVE_PROFILE_BATCH_FAILURE_CODES).toEqual([
@@ -6085,7 +6116,7 @@ test("profile batch diagnostics are fixed, progress-checked, sanitized, and forb
     terminalRecords: [terminal],
     terminalStatus: "accepted",
   });
-  expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v3");
+  expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v4");
   expect(ledger.mutationTerminals.find(({ id }) => id === "profile.owner.pairwise.batch-01")).toEqual({
     id: "profile.owner.pairwise.batch-01",
     status: "failed",
@@ -6142,6 +6173,187 @@ test("profile batch diagnostics are fixed, progress-checked, sanitized, and forb
     executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, { resultStatus: "passed" }),
     records: passedEvidence,
   })).toMatchObject({ ok: false, subchecks: expect.arrayContaining(["record-contract"]) });
+});
+
+test("gallery qualification reports each failed predicate only after exact restoration and never advances progress", async () => {
+  const module = await import("./setup/profile-batch") as Record<string, unknown>;
+  expect(typeof module.verifyProfileBatchGallery).toBe("function");
+  const verifyGallery = module.verifyProfileBatchGallery as (input: {
+    progress: { rowOrdinal: number; completedRows: number };
+    assertTabPresent: () => Promise<void>;
+    assertTabVisible: () => Promise<void>;
+    selectTab: () => Promise<void>;
+    assertTabSelected: () => Promise<void>;
+    assertPanelPresent: () => Promise<void>;
+    assertPanelVisible: () => Promise<void>;
+    assertPopulatedContent: () => Promise<void>;
+    assertContentSource: () => Promise<void>;
+  }) => Promise<void>;
+  const predicates = [
+    { name: "assertTabPresent", stage: "row-public-gallery-tab", code: "locator-missing" },
+    { name: "assertTabVisible", stage: "row-public-gallery-tab", code: "timeout" },
+    { name: "selectTab", stage: "row-public-gallery-select", code: "timeout" },
+    { name: "assertTabSelected", stage: "row-public-gallery-select", code: "attribute-mismatch" },
+    { name: "assertPanelPresent", stage: "row-public-gallery-panel", code: "locator-missing" },
+    { name: "assertPanelVisible", stage: "row-public-gallery-panel", code: "timeout" },
+    { name: "assertPopulatedContent", stage: "row-public-gallery-content", code: "content-insufficient" },
+    { name: "assertContentSource", stage: "row-public-gallery-content", code: "attribute-mismatch" },
+  ] as const;
+  const preflight = await import("../scripts/music-public-live-preflight.mjs");
+  for (let failedIndex = 0; failedIndex < predicates.length; failedIndex += 1) {
+    const failed = predicates[failedIndex]!;
+    const events: string[] = [];
+    const terminals: Array<Record<string, unknown>> = [];
+    const state = { revision: 0, galleryImages: 1 };
+    const progress = { rowOrdinal: 1, completedRows: 0 };
+    const operations = Object.fromEntries(predicates.map(({ name }, index) => [name, async () => {
+      events.push(name);
+      if (index === failedIndex) throw new Error("Bearer hostile-gallery https://secret.invalid C:\\private\\gallery.png");
+    }])) as Omit<Parameters<typeof verifyGallery>[0], "progress">;
+    await expect(withRestoredMusicFixture({
+      journeyId: "profile.owner.pairwise.batch-01",
+      journeyRows: buildProfileCoveringRows().slice(0, 12),
+      snapshot: async () => { events.push("snapshot"); return structuredClone(state); },
+      cleanupNamespace: async () => { events.push("cleanup"); },
+      restore: async () => { events.push("restore"); state.revision = 0; },
+      onBodyFailureAfterRestore: async () => { events.push("block"); },
+      writeJourneyResult: async (record) => { events.push("terminal"); terminals.push(record as Record<string, unknown>); },
+    }, async () => {
+      state.revision = 1;
+      await verifyGallery({ progress, ...operations });
+      progress.completedRows += 1;
+    })).rejects.toMatchObject({
+      name: "LiveProfileBatchFailure", message: "Live profile batch journey failed",
+      stage: failed.stage, code: failed.code, rowOrdinal: 1, completedRows: 0,
+    });
+    expect(events).toEqual([
+      "snapshot", ...predicates.slice(0, failedIndex + 1).map(({ name }) => name),
+      "cleanup", "restore", "snapshot", "block", "terminal",
+    ]);
+    expect(progress).toEqual({ rowOrdinal: 1, completedRows: 0 });
+    expect(state).toEqual({ revision: 0, galleryImages: 1 });
+    expect(terminals).toHaveLength(1);
+    expect(terminals[0]).toMatchObject({
+      status: "failed", cleanup: "restored", reason: "body-failed", stage: "body",
+      profileBatchFailure: { stage: failed.stage, code: failed.code, rowOrdinal: 1, completedRows: 0 },
+    });
+    expect(terminals[0]!.beforeHash).toBe(terminals[0]!.afterHash);
+    const ledger = preflight.buildSanitizedJourneyOutcomeLedger({
+      executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+        statusById: { "profile.owner.pairwise.batch-01": "failed" },
+      }),
+      terminalRecords: terminals,
+    });
+    expect(preflight.validateSanitizedJourneyOutcomeLedger(ledger)).toBe(true);
+    expect(ledger.schemaVersion).toBe("explorers-public-journey-outcomes/v4");
+    expect(ledger.mutationTerminals[11].profileBatchFailure).toEqual(terminals[0]!.profileBatchFailure);
+    expect(JSON.stringify(ledger)).not.toMatch(/Bearer|hostile-gallery|https?:|[A-Z]:\\|gallery\.png/i);
+    for (const invalidProgress of [{ rowOrdinal: 0, completedRows: 0 }, { rowOrdinal: 1, completedRows: 1 }]) {
+      const hostileLedger = structuredClone(ledger);
+      Object.assign(hostileLedger.mutationTerminals[11].profileBatchFailure, invalidProgress);
+      expect(preflight.validateSanitizedJourneyOutcomeLedger(hostileLedger)).toBe(false);
+    }
+    for (const record of [
+      { ...terminals[0], status: "passed", reason: "none", stage: "verification" },
+      { ...terminals[0], id: "music.owner.queue-add", rows: undefined },
+    ]) {
+      expect(() => buildLiveJourneyTerminal(record)).toThrow(/profile batch failure/i);
+    }
+    const hostileOtherJourney = structuredClone(ledger);
+    hostileOtherJourney.mutationTerminals[0].profileBatchFailure = terminals[0]!.profileBatchFailure;
+    expect(preflight.validateSanitizedJourneyOutcomeLedger(hostileOtherJourney)).toBe(false);
+  }
+
+  const events: string[] = [];
+  const operations = Object.fromEntries(predicates.map(({ name }) => [name, async () => { events.push(name); }])) as
+    Omit<Parameters<typeof verifyGallery>[0], "progress">;
+  const progress = { rowOrdinal: 12, completedRows: 11 };
+  await verifyGallery({ progress, ...operations });
+  expect(events).toEqual(predicates.map(({ name }) => name));
+  expect(progress).toEqual({ rowOrdinal: 12, completedRows: 11 });
+  events.length = 0;
+  await expect(verifyGallery({ progress: { rowOrdinal: 0, completedRows: 0 }, ...operations })).rejects.toThrow(
+    "Live profile gallery progress is invalid",
+  );
+  expect(events).toEqual([]);
+});
+
+test("live gallery verification binds all four stages to exact accessible UI predicates", () => {
+  const source = readFileSync("e2e/profile-theme.spec.ts", "utf8");
+  const ast = ts.createSourceFile("profile-theme.spec.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const verifyRow = ast.statements.find((node): node is ts.FunctionDeclaration => (
+    ts.isFunctionDeclaration(node) && node.name?.text === "verifyPublicRow"
+  ));
+  expect(verifyRow?.body).toBeDefined();
+  const calls: ts.CallExpression[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && node.expression.getText(ast) === "verifyProfileBatchGallery") calls.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(verifyRow!);
+  expect(calls).toHaveLength(1);
+  const body = verifyRow!.getText(ast);
+  expect(body).not.toContain("'row-public-gallery'");
+  expect(body).toContain("getByRole('tab', { name: 'Gallery', exact: true })");
+  expect(body).toContain("getByRole('tabpanel', { name: 'Gallery', exact: true })");
+  expect(body).toContain("getByRole('img', { name: 'tuneslogo.png', exact: true })");
+  const input = calls[0]!.arguments[0]!;
+  expect(ts.isObjectLiteralExpression(input)).toBe(true);
+  if (!ts.isObjectLiteralExpression(input)) return;
+  expect(input.properties.map((property) => property.name?.getText(ast))).toEqual([
+    "progress", "assertTabPresent", "assertTabVisible", "selectTab", "assertTabSelected",
+    "assertPanelPresent", "assertPanelVisible", "assertPopulatedContent", "assertContentSource",
+  ]);
+  expect(input.getText(ast)).toContain("toHaveAttribute('aria-selected', 'true')");
+  expect(input.getText(ast)).toContain("toHaveAttribute('src', '/images/tuneslogo.png')");
+});
+
+test("gallery diagnostic versions reject coarse new production and isolate historical v3 reads", async () => {
+  const preflight = await import("../scripts/music-public-live-preflight.mjs");
+  const profileBatchFailure = {
+    stage: "row-public-gallery", code: "locator-missing", rowOrdinal: 1, completedRows: 0,
+  };
+  expect(() => new LiveProfileBatchFailure("row-public-gallery", "locator-missing", 1, 0)).toThrow(
+    "Live profile batch failure input is invalid",
+  );
+  expect(() => buildLiveJourneyTerminal({
+    id: "profile.owner.pairwise.batch-01", status: "failed", reason: "body-failed", stage: "body",
+    cleanup: "restored", beforeHash: "c".repeat(64), afterHash: "c".repeat(64),
+    rows: buildProfileCoveringRows().slice(0, 12), profileBatchFailure,
+  })).toThrow(/profile batch failure/i);
+  const current = preflight.buildSanitizedJourneyOutcomeLedger({
+    executionReport: playwrightJourneyReport(EXPECTED_LIVE_JOURNEYS, {
+      statusById: { "profile.owner.pairwise.batch-01": "failed" },
+    }),
+    terminalRecords: [buildLiveJourneyTerminal({
+      id: "profile.owner.pairwise.batch-01", status: "failed", reason: "body-failed", stage: "body",
+      cleanup: "restored", beforeHash: "c".repeat(64), afterHash: "c".repeat(64),
+      rows: buildProfileCoveringRows().slice(0, 12),
+      profileBatchFailure: { ...profileBatchFailure, stage: "row-public-gallery-tab" },
+    })],
+  });
+  expect(current.schemaVersion).toBe("explorers-public-journey-outcomes/v4");
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(current)).toBe(true);
+  const historical = structuredClone(current);
+  historical.schemaVersion = "explorers-public-journey-outcomes/v3";
+  historical.mutationTerminals[11].profileBatchFailure = profileBatchFailure;
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(historical)).toBe(false);
+  expect(preflight.validateSanitizedJourneyOutcomeLedger(historical, { allowHistorical: true })).toBe(true);
+  for (const record of [
+    { ...current, mutationTerminals: historical.mutationTerminals },
+    { ...historical, mutationTerminals: current.mutationTerminals },
+    { ...historical, schemaVersion: "explorers-public-journey-outcomes/v2" },
+  ]) {
+    expect(preflight.validateSanitizedJourneyOutcomeLedger(record)).toBe(false);
+    expect(preflight.validateSanitizedJourneyOutcomeLedger(record, { allowHistorical: true })).toBe(false);
+  }
+  const sandbox = mkdtempSync(join(tmpdir(), "gallery-historical-ledger-"));
+  try {
+    expect(() => preflight.persistSanitizedJourneyOutcomeLedger({
+      path: join(sandbox, "journey-outcomes.json"), ledger: historical,
+    })).toThrow("sanitized journey outcome persistence contract is invalid");
+    expect(readdirSync(sandbox)).toEqual([]);
+  } finally { rmSync(sandbox, { recursive: true, force: true }); }
 });
 
 test("restored profile batch failures retain only fixed progress metadata after restoration", async () => {

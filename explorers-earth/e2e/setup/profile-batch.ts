@@ -41,6 +41,33 @@ export async function profileBatchBoundary<Value>(
   }
 }
 
+export async function verifyProfileBatchGallery(input: {
+  progress: ProfileBatchProgress;
+  assertTabPresent: () => Promise<void>;
+  assertTabVisible: () => Promise<void>;
+  selectTab: () => Promise<void>;
+  assertTabSelected: () => Promise<void>;
+  assertPanelPresent: () => Promise<void>;
+  assertPanelVisible: () => Promise<void>;
+  assertPopulatedContent: () => Promise<void>;
+  assertContentSource: () => Promise<void>;
+}): Promise<void> {
+  const { progress } = input;
+  if (!Number.isSafeInteger(progress.rowOrdinal) || progress.rowOrdinal < 1 || progress.rowOrdinal > 12
+      || !Number.isSafeInteger(progress.completedRows) || progress.completedRows !== progress.rowOrdinal - 1) {
+    throw new Error("Live profile gallery progress is invalid");
+  }
+  // Each code describes the failed predicate, never arbitrary assertion text.
+  await profileBatchBoundary("row-public-gallery-tab", "locator-missing", progress, input.assertTabPresent);
+  await profileBatchBoundary("row-public-gallery-tab", "timeout", progress, input.assertTabVisible);
+  await profileBatchBoundary("row-public-gallery-select", "timeout", progress, input.selectTab);
+  await profileBatchBoundary("row-public-gallery-select", "attribute-mismatch", progress, input.assertTabSelected);
+  await profileBatchBoundary("row-public-gallery-panel", "locator-missing", progress, input.assertPanelPresent);
+  await profileBatchBoundary("row-public-gallery-panel", "timeout", progress, input.assertPanelVisible);
+  await profileBatchBoundary("row-public-gallery-content", "content-insufficient", progress, input.assertPopulatedContent);
+  await profileBatchBoundary("row-public-gallery-content", "attribute-mismatch", progress, input.assertContentSource);
+}
+
 function rawAccount(value: unknown): value is ProfileBatchRawAccount {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const account = value as Record<string, unknown>;

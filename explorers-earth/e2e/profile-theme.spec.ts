@@ -12,6 +12,7 @@ import {
   observeProfilePublish,
   profileBatchBoundary,
   settleAbortedProfileMutation,
+  verifyProfileBatchGallery,
   type ProfileBatchRawAccount,
   type ProfileBatchUpdateAccount,
 } from './setup/profile-batch';
@@ -783,9 +784,22 @@ async function verifyPublicRow(
       );
     }
   });
-  await profileBatchBoundary('row-public-gallery', 'locator-missing', progress, async () => {
-    await page.getByRole('tab', { name: 'Gallery' }).click();
-    await expect(page.getByRole('tabpanel', { name: 'Gallery' })).toBeVisible();
+  const galleryTab = page.getByRole('tab', { name: 'Gallery', exact: true });
+  const galleryPanel = page.getByRole('tabpanel', { name: 'Gallery', exact: true });
+  const galleryImage = galleryPanel.getByRole('img', { name: 'tuneslogo.png', exact: true });
+  await verifyProfileBatchGallery({
+    progress,
+    assertTabPresent: async () => { await expect(galleryTab).toHaveCount(1); },
+    assertTabVisible: async () => { await expect(galleryTab).toBeVisible(); },
+    selectTab: async () => { await galleryTab.click(); },
+    assertTabSelected: async () => { await expect(galleryTab).toHaveAttribute('aria-selected', 'true'); },
+    assertPanelPresent: async () => { await expect(galleryPanel).toHaveCount(1); },
+    assertPanelVisible: async () => { await expect(galleryPanel).toBeVisible(); },
+    assertPopulatedContent: async () => {
+      await expect(galleryImage).toHaveCount(1);
+      await expect(galleryImage).toBeVisible();
+    },
+    assertContentSource: async () => { await expect(galleryImage).toHaveAttribute('src', '/images/tuneslogo.png'); },
   });
   await profileBatchBoundary('row-public-business', 'locator-missing', progress, async () => {
     if (hasBusiness) {

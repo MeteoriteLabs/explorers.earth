@@ -1347,7 +1347,7 @@ function verifyJourneyOutcomeEvidence(runDirectory, manifestArtifacts) {
   } catch {
     fail("qualification journey outcome evidence contract is invalid");
   }
-  if (!validateSanitizedJourneyOutcomeLedger(ledger)
+  if (!validateSanitizedJourneyOutcomeLedger(ledger, { allowHistorical: true })
       || !ledgerBytes.equals(Buffer.from(`${JSON.stringify(ledger, null, 2)}\n`, "utf8"))
       || JSON.stringify(evidence?.journeyOutcomes) !== JSON.stringify(ledger)) {
     fail("qualification journey outcome evidence contract is invalid");
