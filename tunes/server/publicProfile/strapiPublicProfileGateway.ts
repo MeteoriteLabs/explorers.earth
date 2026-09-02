@@ -7,6 +7,32 @@ type StrapiGraphqlResponse<T> = {
   errors?: unknown[];
 };
 
+const PUBLIC_ACCOUNT_SELECTION = `
+  Account_Name
+  Account_Type
+  Primary_Address
+  Bio
+  bg_picture { url alternativeText }
+  createdAt
+  documentId
+  profile_picture { url alternativeText }
+  social_media
+  Public_Profile_Address
+  Feed_Data
+  public_profile
+  public_recommendations
+  public_music
+  public_movie
+  public_books
+  public_guides
+  public_games
+  public_apps
+  public_products
+  public_people
+  pinned_nav_tabs
+  auto_pinning
+`;
+
 export class StrapiPublicProfileGateway {
   constructor(private readonly options: { origin: string; token: string; fetchImpl: FetchLike }) {}
 
@@ -39,7 +65,7 @@ export class StrapiPublicProfileGateway {
   }
 
   async resolveAccount(username: string): Promise<Record<string, unknown> | undefined> {
-    const data = await this.request<{ accounts?: Record<string, unknown>[] }>("query PublicAccount($username: String!) { accounts(filters: { username: { eq: $username } }, pagination: { limit: 1 }) { public_profile public_recommendations public_movie public_books public_games public_guides public_apps public_products public_people } }", { username });
+    const data = await this.request<{ accounts?: Record<string, unknown>[] }>(`query PublicAccount($username: String!) { accounts(filters: { username: { eq: $username } }, pagination: { limit: 1 }) { ${PUBLIC_ACCOUNT_SELECTION} } }`, { username });
     return data.accounts?.[0];
   }
 }

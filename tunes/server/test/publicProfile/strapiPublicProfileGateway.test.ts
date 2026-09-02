@@ -33,4 +33,13 @@ describe("StrapiPublicProfileGateway", () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null, errors: [{ message: "Forbidden" }] }), { status: 200 }));
     await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveAccount("tk2727")).rejects.toThrow("PUBLIC_PROFILE_UPSTREAM_FAILED");
   });
+
+  it("uses a dedicated public shell projection and never requests a mobile number", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { accounts: [] } }), { status: 200 }));
+    await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveAccount("tk2727");
+    const query = JSON.parse(fetchImpl.mock.calls[0][1].body).query;
+    expect(query).toContain("Account_Name");
+    expect(query).toMatch(/profile_picture\s*\{\s*url\s+alternativeText/);
+    expect(query).not.toContain("mobile_number");
+  });
 });
