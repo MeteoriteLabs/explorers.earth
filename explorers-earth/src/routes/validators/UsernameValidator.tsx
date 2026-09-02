@@ -1,194 +1,99 @@
-import { useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
-import { EarthLoader } from "../../components/EarthLoader";
+import { useEffect, type ReactNode } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
 import NotFound from "../../pages/NotFound";
+import { usePublicAccountIdentity } from "../../features/music/PublicMusicAvailabilityProvider";
 
-// Query to check if username exists — intentionally minimal
-const checkUsernameQuery = gql`
-  query CheckUsername($username: String!) {
-    accounts(filters: { username: { eq: $username } }) {
-      documentId
-      Account_Name
-    }
+interface UsernameValidatorProps { children: ReactNode }
+
+const VALID_ROUTES = new Set([
+  "places", "music", "guides", "movies", "books", "games", "apps", "products", "people",
+]);
+
+function decodedLowerSegments(pathname: string): string[] {
+  return pathname.replace(/\/+$/, "").split("/").filter(Boolean).map((segment) => {
+    try { return decodeURIComponent(segment.trim()).toLowerCase(); }
+    catch { return segment.trim().toLowerCase(); }
+  });
+}
+
+function isValidPublicPath(pathname: string): boolean {
+  const [, ...restSegments] = decodedLowerSegments(pathname);
+  if (restSegments.length === 0) return true;
+  const currentRoute = restSegments[0];
+  if (!VALID_ROUTES.has(currentRoute)) return false;
+  if (currentRoute === "places") {
+    if (restSegments.length > 3) return false;
+    if (restSegments.length === 3 && !["map", "placesmap"].includes(restSegments[2])) return false;
+    return true;
   }
-`;
+  return !(
+    (currentRoute === "music" && restSegments.length !== 1)
+    || (currentRoute === "guides" && ![1, 2].includes(restSegments.length))
+    || (currentRoute === "movies" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "genre")))
+    || (currentRoute === "books" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "subject")))
+    || (currentRoute === "games" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "genre")))
+    || (currentRoute === "apps" && restSegments.length > 2)
+    || (currentRoute === "products" && ![1, 2].includes(restSegments.length))
+    || (currentRoute === "people" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "sector")))
+  );
+}
 
-interface UsernameValidatorProps {
-  children: React.ReactNode;
+function withCanonicalUsername(pathname: string, canonicalUsername: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  return `/${[canonicalUsername, ...segments.slice(1)].join("/")}`;
 }
 
 const UsernameValidator = ({ children }: UsernameValidatorProps) => {
   const { username } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const normalizedUsername = username?.trim();
-
-  const { data, loading, error } = useQuery(checkUsernameQuery, {
-    variables: { username: normalizedUsername },
-    skip: !normalizedUsername,
-  });
+  const cold = usePublicColdEntry();
+  const normalizedUsername = username?.trim().toLowerCase();
+  const identity = usePublicAccountIdentity();
+  const loading = identity.status === "loading";
+  const error = identity.status === "terminal-error" ? new Error("PROFILE_UNAVAILABLE") : undefined;
+  const account = identity.account as { username?: unknown } | undefined;
+  const canonicalUsername = typeof account?.username === "string"
+    ? account.username.trim().toLowerCase()
+    : undefined;
+  const accountMatches = !!normalizedUsername && canonicalUsername === normalizedUsername;
+  const canonicalPathname = canonicalUsername
+    ? withCanonicalUsername(location.pathname, canonicalUsername)
+    : undefined;
+  const needsCanonicalRedirect = accountMatches && canonicalPathname !== location.pathname;
+  const validPath = isValidPublicPath(location.pathname);
+  const [, routeSegment, ...remainingSegments] = decodedLowerSegments(location.pathname);
+  const allowsInlineRecovery = Boolean(error)
+    && routeSegment === "music"
+    && remainingSegments.length === 0;
 
   useEffect(() => {
-    if (!loading && !error && data) {
-      const account = data.accounts[0];
-
-      // If username doesn't exist, show 404
-      if (!account) {
-        return; // This will render NotFound component
+    if (accountMatches) {
+      if (!validPath) {
+        navigate({ pathname: `/${canonicalUsername}`, search: location.search, hash: location.hash }, { replace: true });
+        return;
       }
-
-      // Normalize and sanitize path segments safely (decode + trim)
-      const normalizedPath = location.pathname.replace(/\/+$/, "");
-      const decodedSegments = normalizedPath
-        .split("/")
-        .filter(Boolean)
-        .map((segment) => {
-          try {
-            return decodeURIComponent(segment.trim()).toLowerCase();
-          } catch {
-            return segment.trim().toLowerCase();
-          }
-        });
-
-      // /:username
-      if (decodedSegments.length === 1) {
-        return; // Allow the route to render normally
+      if (needsCanonicalRedirect && canonicalPathname) {
+        navigate({ pathname: canonicalPathname, search: location.search, hash: location.hash }, { replace: true });
+        return;
       }
-
-      // Validate nested route for /:username/*
-      if (decodedSegments.length >= 2) {
-        const [, ...restSegments] = decodedSegments;
-        const currentRoute = restSegments[0];
-        const redirectToProfileRoot = () =>
-          navigate(
-            {
-              pathname: `/${normalizedUsername}`,
-              search: location.search,
-              hash: location.hash,
-            },
-            { replace: true },
-          );
-        const validRoutes = [
-          "places",
-          "music",
-          "guides",
-          "movies",
-          "books",
-          "games",
-          "apps",
-          "products",
-          "people",
-        ];
-
-        // Check if the current route is valid
-        if (!validRoutes.includes(currentRoute)) {
-          // Redirect to profile root for invalid top-level category
-          redirectToProfileRoot();
-          return;
-        }
-
-        // Additional validation for places sub-routes
-        if (currentRoute === "places") {
-          // `/places` (index), `/places/map`, `/places/:slug`, `/places/:slug/map` are valid
-          if (restSegments.length > 3) {
-            redirectToProfileRoot();
-            return;
-          }
-
-          if (restSegments.length === 2 && restSegments[1] !== "map") {
-            if (restSegments[1] !== "placesmap") {
-              return;
-            }
-          }
-
-          if (restSegments.length === 3 && restSegments[2] !== "map") {
-            if (restSegments[2] !== "placesmap") {
-              redirectToProfileRoot();
-              return;
-            }
-          }
-        }
-
-        const hasInvalidLength =
-          (currentRoute === "music" && restSegments.length !== 1) ||
-          (currentRoute === "guides" &&
-            !(
-              restSegments.length === 1 ||
-              restSegments.length === 2
-            )) ||
-          (currentRoute === "movies" &&
-            !(
-              restSegments.length === 1 ||
-              restSegments.length === 2 ||
-              (restSegments.length === 3 && restSegments[1] === "genre")
-            )) ||
-          (currentRoute === "books" &&
-            !(
-              restSegments.length === 1 ||
-              restSegments.length === 2 ||
-              (restSegments.length === 3 && restSegments[1] === "subject")
-            )) ||
-          (currentRoute === "games" &&
-            !(
-              restSegments.length === 1 ||
-              restSegments.length === 2 ||
-              (restSegments.length === 3 && restSegments[1] === "genre")
-            )) ||
-          (currentRoute === "apps" && restSegments.length > 2) ||
-          (currentRoute === "products" &&
-            !(
-              restSegments.length === 1 ||
-              restSegments.length === 2
-            )) ||
-          (currentRoute === "people" &&
-            !(
-              restSegments.length === 1 ||
-              restSegments.length === 2 ||
-              (restSegments.length === 3 && restSegments[1] === "sector")
-            ));
-
-        if (hasInvalidLength) {
-          redirectToProfileRoot();
-          return;
-        }
-      }
+      cold.reportValidation("valid");
+      return;
     }
-  }, [
-    data,
-    loading,
-    error,
-    normalizedUsername,
-    navigate,
-    location.pathname,
-    location.search,
-    location.hash,
-  ]);
+    if (allowsInlineRecovery) { cold.reportValidation("valid"); return; }
+    if (loading) { cold.reportValidation("pending"); return; }
+    cold.reportValidation("terminal-invalid");
+  }, [accountMatches, canonicalPathname, canonicalUsername, cold.reportValidation, error, loading,
+    location.hash, location.search, navigate, needsCanonicalRedirect, validPath, allowsInlineRecovery]);
 
-  useEffect(() => {
-    (window as any).__publicProfileLoaded = false;
-    return () => {
-      (window as any).__publicProfileLoaded = false;
-    };
-  }, []);
-
-  // Show loading while checking username
-  if (loading) {
-    return (
-      <div className="bg-black min-h-screen">
-        <EarthLoader context="general" size="default" />
-      </div>
-    );
+  if (accountMatches) {
+    if (needsCanonicalRedirect || !validPath) return null;
+    return <>{children}</>;
   }
-
-  // Show 404 if username doesn't exist
-  if (!loading && (!data || !data.accounts[0])) {
-    return <NotFound />;
-  }
-
-  // Render children if username is valid
-  return <>{children}</>;
+  if (allowsInlineRecovery) return <>{children}</>;
+  if (loading) return null;
+  return <NotFound />;
 };
 
 export default UsernameValidator;

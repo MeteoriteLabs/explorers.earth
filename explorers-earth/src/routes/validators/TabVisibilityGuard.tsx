@@ -1,9 +1,8 @@
 import { memo } from "react";
-import { useQuery } from "@apollo/client";
-import { useParams } from "react-router-dom";
-import { getPublicAccountBasicQuery } from "../../features/PublicHome/api/query";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import UsernameRootRedirect from "./UsernameRootRedirect";
+import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
+import { usePublicAccountIdentity } from "../../features/music/PublicMusicAvailabilityProvider";
 
 interface TabVisibilityGuardProps {
     /** Which tab visibility field to check */
@@ -22,25 +21,14 @@ interface TabVisibilityGuardProps {
  * and error state render because it is the fallback destination.
  */
 const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }: TabVisibilityGuardProps) => {
-    const { username } = useParams();
-
-    const { data, loading, error } = useQuery(getPublicAccountBasicQuery, {
-        variables: {
-            filters: {
-                username: {
-                    eq: username,
-                },
-            },
-        },
-        skip: !username,
-        // Revalidate on mount so a category the owner just made public/hidden in
-        // the hub isn't gated on stale cache-first data (Account isn't normalized).
-        fetchPolicy: "cache-and-network",
-    });
+    const { shellRevealed } = usePublicColdEntry();
+    const identity = usePublicAccountIdentity();
+    const loading = identity.status === "loading";
+    const error = identity.status === "terminal-error";
 
     // Show loader while checking visibility
     if (loading) {
-        if ((window as any).__publicProfileLoaded) {
+        if (shellRevealed) {
             return (
                 <div className="bg-black min-h-screen pt-20 px-4 md:px-6">
                     <div className="max-w-5xl mx-auto">
@@ -56,7 +44,7 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }:
         return <UsernameRootRedirect />;
     }
 
-    const accountData = data?.accounts?.[0];
+    const accountData = identity.account;
 
     // Optional category routes fail closed when the lookup returns no account.
     // The profile route remains the single place responsible for its own

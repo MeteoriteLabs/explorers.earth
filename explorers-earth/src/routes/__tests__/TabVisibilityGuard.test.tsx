@@ -1,13 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import { useQuery } from "@apollo/client";
+import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MemoryRouter,
+  Outlet,
   Route,
   Routes,
   useLocation,
 } from "react-router-dom";
+import {
+  PublicColdEntryBoundary,
+  usePublicColdEntry,
+} from "../../layouts/PublicColdEntryBoundary";
 import TabVisibilityGuard from "../validators/TabVisibilityGuard";
+
+const usePublicAccountIdentity = vi.hoisted(() => vi.fn());
 
 vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
@@ -17,6 +25,7 @@ vi.mock("@apollo/client", async (importOriginal) => {
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => "div" }),
 }));
+vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({ usePublicAccountIdentity }));
 
 const mockUseQuery = vi.mocked(useQuery);
 
@@ -29,36 +38,61 @@ const LocationWitness = () => {
   );
 };
 
+const SettledPublicRouteFrame = () => {
+  const coldEntry = usePublicColdEntry();
+
+  useEffect(() => {
+    coldEntry.reportValidation("valid");
+    coldEntry.reportIdentity("ready");
+    coldEntry.reportRouteReady(true);
+  }, [
+    coldEntry.reportIdentity,
+    coldEntry.reportRouteReady,
+    coldEntry.reportValidation,
+  ]);
+
+  return <Outlet />;
+};
+
 const renderBooksRoute = (initialEntry = "/tk2727/books") =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route
-          path="/:username/books"
+          path="/:username/*"
           element={
-            <TabVisibilityGuard tabField="public_books">
-              <div>Books category</div>
-            </TabVisibilityGuard>
+            <PublicColdEntryBoundary>
+              <SettledPublicRouteFrame />
+            </PublicColdEntryBoundary>
           }
-        />
-        <Route
-          path="/:username"
-          element={
-            <>
-              <div>Profile root</div>
-              <LocationWitness />
-            </>
-          }
-        />
-        <Route
-          path="/:username/games"
-          element={
-            <>
-              <div>Games category</div>
-              <LocationWitness />
-            </>
-          }
-        />
+        >
+          <Route
+            path="books"
+            element={
+              <TabVisibilityGuard tabField="public_books">
+                <div>Books category</div>
+              </TabVisibilityGuard>
+            }
+          />
+          <Route
+            index
+            element={
+              <>
+                <div>Profile root</div>
+                <LocationWitness />
+              </>
+            }
+          />
+          <Route
+            path="games"
+            element={
+              <>
+                <div>Games category</div>
+                <LocationWitness />
+              </>
+            }
+          />
+        </Route>
       </Routes>
     </MemoryRouter>,
   );
@@ -66,9 +100,15 @@ const renderBooksRoute = (initialEntry = "/tk2727/books") =>
 describe("TabVisibilityGuard", () => {
   beforeEach(() => {
     mockUseQuery.mockReset();
+    usePublicAccountIdentity.mockReset();
+    usePublicAccountIdentity.mockImplementation(() => {
+      const result = mockUseQuery();
+      const account = result.data?.accounts?.[0];
+      return { usernameKey: "tk2727", status: account ? "ready" : result.loading ? "loading" : "terminal-error", ...(account ? { account } : {}) };
+    });
   });
 
-  it("renders an explicitly visible category", () => {
+  it("renders an explicitly visible category inside the settled public shell", async () => {
     mockUseQuery.mockReturnValue({
       data: { accounts: [{ public_books: "Yes" }] },
       loading: false,
@@ -77,6 +117,8 @@ describe("TabVisibilityGuard", () => {
     renderBooksRoute();
 
     expect(screen.getByText("Books category")).toBeInTheDocument();
+    expect(await screen.findByTestId("public-cold-entry-shell")).not.toHaveAttribute("inert");
+    expect(screen.queryByTestId("public-cold-entry-overlay")).not.toBeInTheDocument();
   });
 
   it("replaces a hidden category with the username root even when another category is visible", async () => {
