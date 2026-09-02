@@ -1,11 +1,14 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PublicMusicAvailabilityProvider, usePublicMusicAvailability } from "../PublicMusicAvailabilityProvider";
+import { PublicMusicAvailabilityProvider, usePublicAccountIdentity, usePublicMusicAvailability, useOwnerMusicAvailability, notifyMusicPublicationVerified } from "../PublicMusicAvailabilityProvider";
+import { PublicMusicError } from "../publicMusicClient";
 
 const discover = vi.hoisted(() => vi.fn());
 const useQuery = vi.hoisted(() => vi.fn());
+const usePublicProfileShell = vi.hoisted(() => vi.fn());
 vi.mock("@apollo/client", async (importOriginal) => ({ ...(await importOriginal<object>()), useQuery }));
+vi.mock("../../PublicHome/api/usePublicProfileShell", () => ({ usePublicProfileShell }));
 vi.mock("../publicMusicClient", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   publicMusicClient: { discover },
@@ -24,6 +27,15 @@ function RetryConsumer() {
   const availability = usePublicMusicAvailability();
   return <><button onClick={availability.retry}>retry</button><div>retry:{availability.state}:{availability.descriptor?.publication.publicSlug ?? "none"}</div></>;
 }
+function ErrorConsumer() {
+  const availability = usePublicMusicAvailability();
+  return <div>{availability.state}:{availability.retryAfterSeconds ?? "no-delay"}</div>;
+}
+
+function IdentityConsumer() {
+  const identity = usePublicAccountIdentity();
+  return <div>identity:{identity.usernameKey}:{identity.status}:{identity.account?.username ?? "none"}</div>;
+}
 
 function renderProvider() {
   return render(
@@ -36,9 +48,54 @@ function renderProvider() {
 }
 
 describe("PublicMusicAvailabilityProvider", () => {
+  it("uses the public-profile gateway shell instead of an anonymous Strapi account query", () => {
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", username: "alice", public_music: "No" }] }, loading: false });
+    renderProvider();
+    expect(usePublicProfileShell).toHaveBeenCalledWith("alice");
+  });
+
+  it("treats a matching cached account as ready during cache-and-network revalidation", () => {
+    useQuery.mockReturnValue({
+      data: { accounts: [{ documentId: "account-doc", username: "alice", public_music: "No" }] },
+      loading: true,
+    });
+    render(<MemoryRouter initialEntries={["/Alice/music"]}><Routes><Route path=":username/music" element={<PublicMusicAvailabilityProvider><IdentityConsumer /></PublicMusicAvailabilityProvider>} /></Routes></MemoryRouter>);
+    expect(screen.getByText("identity:alice:ready:alice")).toBeInTheDocument();
+  });
+
+  it("never exposes the previous username's cached account identity", () => {
+    useQuery.mockReturnValue({
+      data: { accounts: [{ documentId: "account-a", username: "alice", public_music: "No" }] },
+      loading: true,
+    });
+    render(<MemoryRouter initialEntries={["/bob/music"]}><Routes><Route path=":username/music" element={<PublicMusicAvailabilityProvider><IdentityConsumer /></PublicMusicAvailabilityProvider>} /></Routes></MemoryRouter>);
+    expect(screen.getByText("identity:bob:loading:none")).toBeInTheDocument();
+  });
+
+  it("settles a cold account lookup with a terminal identity error without changing Music discovery", () => {
+    useQuery.mockReturnValue({ data: { accounts: [] }, loading: false, error: new Error("profile unavailable") });
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes><Route path=":username/music" element={<PublicMusicAvailabilityProvider><IdentityConsumer /><Consumer label="music" /></PublicMusicAvailabilityProvider>} /></Routes></MemoryRouter>);
+    expect(screen.getByText("identity:alice:terminal-error:none")).toBeInTheDocument();
+    expect(screen.getByText("music:unavailable:none")).toBeInTheDocument();
+  });
+
+  it("recovers a previously not-public tab on focus without waiting for an available-only timer", async () => {
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false, refetch: vi.fn().mockResolvedValue({}) });
+    discover.mockRejectedValueOnce(new PublicMusicError('PUBLIC_NOT_FOUND'))
+      .mockResolvedValue({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 1 } });
+    renderProvider();
+    await screen.findByText('nav:not-public:none');
+    act(() => window.dispatchEvent(new Event('focus')));
+    await screen.findByText('nav:available:public_slug-123');
+  });
   beforeEach(() => {
     discover.mockReset();
     useQuery.mockReset();
+    usePublicProfileShell.mockReset();
+    usePublicProfileShell.mockImplementation(() => {
+      const result = useQuery();
+      return { ...result, data: result.data?.accounts?.[0] };
+    });
   });
   afterEach(() => vi.useRealTimers());
 
@@ -52,6 +109,19 @@ describe("PublicMusicAvailabilityProvider", () => {
     expect(discover).toHaveBeenCalledTimes(1);
     expect(discover).toHaveBeenCalledWith("account-doc", expect.any(AbortSignal));
   });
+  it('ignores other-account and malformed signals, and refreshes this account on a cross-tab final signal', async () => {
+    const refetch = vi.fn().mockResolvedValue({});
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: 'account-doc', public_music: 'Yes' }] }, loading: false, refetch });
+    discover.mockRejectedValueOnce(new PublicMusicError('PUBLIC_NOT_FOUND')).mockResolvedValue({ version: 'music-public-descriptor/v1', publication: { mode: 'public', publicSlug: 'public_slug-123', revision: 1 } });
+    renderProvider(); await screen.findByText('nav:not-public:none');
+    await act(async () => {
+      notifyMusicPublicationVerified('another-account');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-music-publication-verified/v1', newValue: '{invalid' }));
+    });
+    expect(refetch).not.toHaveBeenCalled(); expect(discover).toHaveBeenCalledTimes(1);
+    await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-music-publication-verified/v1', newValue: JSON.stringify({ version: 1, accountDocumentId: 'account-doc', eventId: 'verified-event' }) })));
+    await screen.findByText('nav:available:public_slug-123'); expect(refetch).toHaveBeenCalledTimes(1);
+  });
 
   it("fails closed without contacting Local Tunes when profile Music is hidden", () => {
     useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "No" }] }, loading: false });
@@ -59,12 +129,24 @@ describe("PublicMusicAvailabilityProvider", () => {
     expect(screen.getByText("nav:not-public:none")).toBeInTheDocument();
     expect(discover).not.toHaveBeenCalled();
   });
+  it.each(["PUBLIC_NOT_FOUND", "RATE_LIMITED"])("does not promote arbitrary %s errors into authoritative publication or rate-limit results", async (code) => {
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false });
+    discover.mockRejectedValue(Object.assign(new Error("untrusted upstream detail"), { code, retryAfterSeconds: 2 }));
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes><Route path=":username/music" element={<PublicMusicAvailabilityProvider><ErrorConsumer /></PublicMusicAvailabilityProvider>} /></Routes></MemoryRouter>);
+    await screen.findByText("unavailable:no-delay");
+  });
+  it("preserves only the typed rate-limit delay for friendly recovery", async () => {
+    useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false });
+    discover.mockRejectedValue(new PublicMusicError("RATE_LIMITED", 2));
+    render(<MemoryRouter initialEntries={["/alice/music"]}><Routes><Route path=":username/music" element={<PublicMusicAvailabilityProvider><ErrorConsumer /></PublicMusicAvailabilityProvider>} /></Routes></MemoryRouter>);
+    await screen.findByText("unavailable:2");
+  });
 
   it("expires availability, refetches canonically, and removes revoked eligibility", async () => {
     vi.useFakeTimers();
     useQuery.mockReturnValue({ data: { accounts: [{ documentId: "account-doc", public_music: "Yes" }] }, loading: false });
     discover.mockResolvedValueOnce({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 1 } })
-      .mockRejectedValueOnce(Object.assign(new Error("PUBLIC_NOT_FOUND"), { code: "PUBLIC_NOT_FOUND" }));
+      .mockRejectedValueOnce(new PublicMusicError("PUBLIC_NOT_FOUND"));
     renderProvider();
     await vi.waitFor(() => expect(screen.getByText("nav:available:public_slug-123")).toBeInTheDocument());
     await act(() => vi.advanceTimersByTimeAsync(30_000));
@@ -83,7 +165,7 @@ describe("PublicMusicAvailabilityProvider", () => {
     await act(() => vi.advanceTimersByTimeAsync(30_000));
     expect(screen.getByText("page:revalidating")).toBeInTheDocument();
     expect(screen.getByText("nav:eligible")).toBeInTheDocument();
-    await act(async () => rejectRevocation(Object.assign(new Error("PUBLIC_NOT_FOUND"), { code: "PUBLIC_NOT_FOUND" })));
+    await act(async () => rejectRevocation(new PublicMusicError("PUBLIC_NOT_FOUND")));
     expect(screen.getByText("page:unavailable")).toBeInTheDocument();
     expect(screen.getByText("nav:eligible")).toBeInTheDocument();
     await act(() => vi.runOnlyPendingTimersAsync());
@@ -125,8 +207,68 @@ describe("PublicMusicAvailabilityProvider", () => {
     const view = renderProvider();
     await vi.waitFor(() => expect(screen.getByText("nav:available:slug")).toBeInTheDocument());
     await act(() => vi.advanceTimersByTimeAsync(30_000));
-    await act(async () => reject(Object.assign(new Error("PUBLIC_NOT_FOUND"), { code: "PUBLIC_NOT_FOUND" })));
+    await act(async () => reject(new PublicMusicError("PUBLIC_NOT_FOUND")));
     view.unmount();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("owner Music publication availability", () => {
+  const descriptor = { version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 1 } };
+  beforeEach(() => discover.mockReset());
+  afterEach(() => vi.useRealTimers());
+  it("retains confirmed eligibility while revalidating instead of flickering auto-pins", async () => {
+    discover.mockResolvedValueOnce(descriptor).mockImplementationOnce(() => new Promise(() => {}));
+    const { result } = renderHook(() => useOwnerMusicAvailability("owner-account", "Yes"));
+    await waitFor(() => expect(result.current.state).toBe("available"));
+    act(() => result.current.retry());
+    expect(result.current.state).toBe("revalidating");
+  });
+
+  it.each(["No", undefined, null])("does not infer publication or request a descriptor for preference %s", (preference) => {
+    const { result } = renderHook(() => useOwnerMusicAvailability("owner-account", preference));
+    expect(result.current.state).toBe("not-public");
+    expect(discover).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["private", "PUBLIC_NOT_FOUND", "not-public"],
+    ["unlisted", "PUBLIC_NOT_FOUND", "not-public"],
+    ["404", "PUBLIC_NOT_FOUND", "not-public"],
+    ["429", "PUBLIC_RATE_LIMITED", "unavailable"],
+    ["503", "PUBLIC_UNAVAILABLE", "unavailable"],
+    ["offline", undefined, "unavailable"],
+  ])("keeps %s unavailable without mutating saved account data and recovers on retry", async (_scenario, code, expected) => {
+    discover.mockRejectedValueOnce(Object.assign(new Error("descriptor failed"), { code })).mockResolvedValueOnce(descriptor);
+    const account = Object.freeze({ documentId: "owner-account", public_music: "Yes", pinned_nav_tabs: Object.freeze(["public_profile", "public_music"]) });
+    const { result } = renderHook(() => useOwnerMusicAvailability(account.documentId, account.public_music));
+    await waitFor(() => expect(result.current.state).toBe(expected));
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.state).toBe("available"));
+    expect(account.pinned_nav_tabs).toEqual(["public_profile", "public_music"]);
+  });
+  it("aborts identity A and ignores its completion after switching to B", async () => {
+    let resolveA!: (value: unknown) => void;
+    discover.mockImplementationOnce(() => new Promise(resolve => { resolveA = resolve; })).mockRejectedValueOnce(new Error("offline"));
+    const { result, rerender, unmount } = renderHook(({ id }) => useOwnerMusicAvailability(id, "Yes"), { initialProps: { id: "A" } });
+    const signalA = discover.mock.calls[0][1];
+    rerender({ id: "B" });
+    expect(signalA.aborted).toBe(true);
+    await waitFor(() => expect(result.current.state).toBe("unavailable"));
+    await act(async () => resolveA(descriptor));
+    expect(result.current.state).toBe("unavailable");
+    unmount();
+    expect(discover.mock.calls[1][1].aborted).toBe(true);
+  });
+  it("recovers automatically on browser online and revalidates available publication", async () => {
+    vi.useFakeTimers();
+    discover.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(descriptor).mockRejectedValueOnce(Object.assign(new Error("revoked"), { code: "PUBLIC_NOT_FOUND" }));
+    const { result, unmount } = renderHook(() => useOwnerMusicAvailability("owner-account", "Yes"));
+    await act(async () => {});
+    expect(result.current.state).toBe("unavailable");
+    await act(async () => window.dispatchEvent(new Event("online")));
+    expect(result.current.state).toBe("available");
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(result.current.state).toBe("not-public");
+    unmount(); expect(vi.getTimerCount()).toBe(0);
   });
 });

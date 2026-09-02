@@ -1,28 +1,95 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "@apollo/client";
 import { useParams } from "react-router-dom";
-import { getPublicAccountBasicQuery } from "../PublicHome/api/query";
+import { usePublicProfileShell } from "../PublicHome/api/usePublicProfileShell";
 import { publicMusicClient, PublicMusicError, type PublicMusicDescriptor } from "./publicMusicClient";
 
 export type AvailabilityState = "loading" | "available" | "revalidating" | "revoked" | "not-public" | "unavailable";
-type Availability = { state: AvailabilityState; account?: Record<string, any>; descriptor?: PublicMusicDescriptor; retry: () => void };
-type AccountState = { accountId?: string; state: AvailabilityState; descriptor?: PublicMusicDescriptor };
+type Availability = { state: AvailabilityState; account?: Record<string, any>; descriptor?: PublicMusicDescriptor; retryAfterSeconds?: number; retry: () => void };
+type AccountState = { accountId?: string; state: AvailabilityState; descriptor?: PublicMusicDescriptor; retryAfterSeconds?: number };
+export type PublicAccountIdentity = {
+  usernameKey: string;
+  status: "loading" | "ready" | "terminal-error";
+  account?: Record<string, any>;
+};
 const AvailabilityContext = createContext<Availability | null>(null);
+const AccountIdentityContext = createContext<PublicAccountIdentity | null>(null);
 const unavailableOutsideProfileShell: Availability = { state: "unavailable", retry: () => undefined };
 export const PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS = 30_000;
+const PUBLICATION_VERIFIED = "explorers-music-publication-verified/v1";
+
+/** Invalidation only, never publication authority or a share capability. */
+export function notifyMusicPublicationVerified(accountDocumentId: string) {
+  const detail = { version: 1, accountDocumentId, eventId: crypto.randomUUID() };
+  window.dispatchEvent(new CustomEvent(PUBLICATION_VERIFIED, { detail }));
+  try { window.localStorage.setItem(PUBLICATION_VERIFIED, JSON.stringify(detail)); window.localStorage.removeItem(PUBLICATION_VERIFIED); } catch { /* Focus revalidation remains available. */ }
+}
+
+export function subscribePublicationVerified(accountId: string | undefined, refresh: () => void) {
+  const receive = (value: unknown) => {
+    const event = value as { version?: unknown; accountDocumentId?: unknown; eventId?: unknown } | null;
+    if (accountId && event?.version === 1 && event.accountDocumentId === accountId && typeof event.eventId === 'string') refresh();
+  };
+  const local = (event: Event) => receive((event as CustomEvent).detail);
+  const remote = (event: StorageEvent) => {
+    if (event.key !== PUBLICATION_VERIFIED || !event.newValue) return;
+    try { receive(JSON.parse(event.newValue)); } catch { /* Untrusted invalidation. */ }
+  };
+  window.addEventListener(PUBLICATION_VERIFIED, local); window.addEventListener('storage', remote);
+  return () => { window.removeEventListener(PUBLICATION_VERIFIED, local); window.removeEventListener('storage', remote); };
+}
+
+// Owner controls keep the saved preference separate from discoverable publication.
+// This read-only probe never publishes Music or changes account preferences.
+export function useOwnerMusicAvailability(accountId?: string, preference?: unknown) {
+  const [attempt, setAttempt] = useState(0);
+  const [resolved, setResolved] = useState<AccountState>({ state: "loading" });
+  const retry = useCallback(() => setAttempt(value => value + 1), []);
+  useEffect(() => subscribePublicationVerified(accountId, retry), [accountId, retry]);
+  useEffect(() => {
+    const controller = new AbortController();
+    if (!accountId || preference !== "Yes") {
+      setResolved({ accountId, state: "not-public" });
+      return () => controller.abort();
+    }
+    setResolved(previous => previous.accountId === accountId && previous.descriptor
+      ? { ...previous, state: "revalidating" } : { accountId, state: "loading" });
+    publicMusicClient.discover(accountId, controller.signal).then(descriptor => {
+      if (!controller.signal.aborted) setResolved({ accountId, state: "available", descriptor });
+    }).catch((reason: unknown) => {
+      if (controller.signal.aborted) return;
+      const code = (reason as { code?: string } | null)?.code;
+      setResolved({ accountId, state: code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable" });
+    });
+    return () => controller.abort();
+  }, [accountId, preference, attempt]);
+  useEffect(() => {
+    window.addEventListener("online", retry);
+    window.addEventListener("focus", retry);
+    const timer = window.setInterval(retry, PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS);
+    return () => { window.removeEventListener("online", retry); window.removeEventListener("focus", retry); window.clearInterval(timer); };
+  }, [retry]);
+  const state: AvailabilityState = preference !== "Yes" ? "not-public" : resolved.accountId === accountId ? resolved.state : "loading";
+  return { state, retry };
+}
 
 export function PublicMusicAvailabilityProvider({ children }: { children: ReactNode }) {
   const { username } = useParams();
+  const usernameKey = (username ?? "").trim().toLowerCase();
   const [attempt, setAttempt] = useState(0);
   const [resolved, setResolved] = useState<AccountState>({ state: "loading" });
   const resolvedRef = useRef(resolved);
   resolvedRef.current = resolved;
   const generation = useRef(0);
   const revocationTimer = useRef<number>();
-  const { data, loading, error } = useQuery(getPublicAccountBasicQuery, {
-    variables: { filters: { username: { eq: username } } }, skip: !username, fetchPolicy: "cache-and-network",
-  });
-  const account = data?.accounts?.[0] as Record<string, any> | undefined;
+  const { data, loading, error, refetch } = usePublicProfileShell(usernameKey);
+  const account = data as Record<string, any> | undefined;
+  const accountMatches = typeof account?.username === "string"
+    && account.username.trim().toLowerCase() === usernameKey;
+  const accountIdentity = useMemo<PublicAccountIdentity>(() => ({
+    usernameKey,
+    status: accountMatches ? "ready" : loading ? "loading" : "terminal-error",
+    ...(accountMatches ? { account } : {}),
+  }), [account, accountMatches, loading, usernameKey]);
   const accountId = typeof account?.documentId === "string" ? account.documentId : undefined;
 
   const invalidate = useCallback(() => {
@@ -47,14 +114,15 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
     if (account?.public_music !== "Yes") { commit({ accountId, state: "not-public" }); return () => controller.abort(); }
     commit({ accountId, state: staleDescriptor ? "revalidating" : "loading", descriptor: staleDescriptor });
     publicMusicClient.discover(accountId, controller.signal).then((descriptor) => commit({ accountId, state: "available", descriptor })).catch((reason: unknown) => {
-      const code = reason instanceof PublicMusicError ? reason.code : (reason as { code?: unknown } | null)?.code;
+      const code = reason instanceof PublicMusicError ? reason.code : undefined;
       if (code === "PUBLIC_NOT_FOUND" && staleDescriptor && !controller.signal.aborted && generation.current === requestGeneration) {
         setResolved({ accountId, state: "revoked", descriptor: staleDescriptor });
         revocationTimer.current = window.setTimeout(() => {
           if (generation.current === requestGeneration) setResolved({ accountId, state: "not-public" });
           revocationTimer.current = undefined;
         }, 0);
-      } else commit({ accountId, state: code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable" });
+      } else commit({ accountId, state: code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable",
+        ...(reason instanceof PublicMusicError && code === "RATE_LIMITED" ? { retryAfterSeconds: reason.retryAfterSeconds ?? 60 } : {}) });
     });
     return () => { controller.abort(); if (revocationTimer.current !== undefined) window.clearTimeout(revocationTimer.current); revocationTimer.current = undefined; };
   }, [accountId, account?.public_music, attempt, error, loading]);
@@ -64,15 +132,34 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
     const timer = window.setTimeout(invalidate, PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS);
     return () => window.clearTimeout(timer);
   }, [accountId, invalidate, resolved.accountId, resolved.descriptor?.publication.revision, resolved.state]);
-  useEffect(() => { window.addEventListener("online", invalidate); return () => window.removeEventListener("online", invalidate); }, [invalidate]);
+  const refresh = useCallback(() => {
+    invalidate();
+    // A previously hidden account also needs a fresh profile flag, not only a descriptor.
+    void refetch?.().catch(() => undefined);
+  }, [invalidate, refetch]);
+  useEffect(() => {
+    window.addEventListener("online", refresh); window.addEventListener("focus", refresh);
+    const unsubscribe = subscribePublicationVerified(accountId, refresh);
+    return () => { window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh); unsubscribe(); };
+  }, [accountId, refresh]);
 
   const keyed = resolved.accountId === accountId;
-  const state: AvailabilityState = keyed ? resolved.state : loading ? "loading" : account?.public_music === "No" ? "not-public" : "loading";
+  // Apollo may retain the previous username's account while the new query loads.
+  // Cached terminal state cannot authorize a redirect or unavailable acknowledgement.
+  const state: AvailabilityState = loading ? keyed && resolved.descriptor ? "revalidating" : "loading"
+    : keyed ? resolved.state : account?.public_music === "No" ? "not-public" : "loading";
   const descriptor = keyed ? resolved.descriptor : undefined;
-  const value = useMemo(() => ({ state, account, descriptor, retry: invalidate }), [account, descriptor, invalidate, state]);
-  return <AvailabilityContext.Provider value={value}>{children}</AvailabilityContext.Provider>;
+  const retryAfterSeconds = keyed ? resolved.retryAfterSeconds : undefined;
+  const value = useMemo(() => ({ state, account, descriptor, retryAfterSeconds, retry: refresh }), [account, descriptor, refresh, retryAfterSeconds, state]);
+  return <AccountIdentityContext.Provider value={accountIdentity}>
+    <AvailabilityContext.Provider value={value}>{children}</AvailabilityContext.Provider>
+  </AccountIdentityContext.Provider>;
 }
 
 export function usePublicMusicAvailability(): Availability {
   return useContext(AvailabilityContext) ?? unavailableOutsideProfileShell;
+}
+
+export function usePublicAccountIdentity(): PublicAccountIdentity {
+  return useContext(AccountIdentityContext) ?? { usernameKey: "", status: "terminal-error" };
 }
