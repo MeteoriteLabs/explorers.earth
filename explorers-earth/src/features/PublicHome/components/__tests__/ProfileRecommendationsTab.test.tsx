@@ -40,6 +40,23 @@ vi.mock("@apollo/client", async (importOriginal) => {
   };
 });
 
+vi.mock("../../api/usePublicRecommendationCategory", () => ({
+  usePublicRecommendationCategory: (_username: string, category: string, enabled: boolean) => {
+    const operationByCategory: Record<string, string> = {
+      places: "GetPlacesLists", movies: "GetMoviesLists", books: "GetBooksLists", games: "GetGamesLists",
+      apps: "GetAppsLists", products: "GetProductsLists", people: "GetPeopleLists", guides: "GetGuidesLists",
+    };
+    const operation = operationByCategory[category];
+    apolloCalls.push({ operation, options: { skip: !enabled }, source: "gateway" });
+    return apolloResults.get(operation) || {
+      data: undefined,
+      loading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    };
+  },
+}));
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
   return {
@@ -183,7 +200,7 @@ describe("ProfileRecommendationsTab", () => {
     expect(screen.getByRole("link", { name: "Open Books" })).toBeVisible();
   });
 
-  it("keeps partial Apollo content visible with one nonblocking error notice", () => {
+  it("keeps stale category content visible without a global failure banner", () => {
     apolloResults.set("GetPlacesLists", {
       data: placesData,
       loading: false,
@@ -193,11 +210,11 @@ describe("ProfileRecommendationsTab", () => {
     renderTab({ presentation: { layout: "shelves" } });
 
     expect(screen.getByRole("link", { name: "Open Places" })).toBeVisible();
-    expect(screen.getByText("Some categories are unavailable")).toBeVisible();
+    expect(screen.queryByText("Some categories are unavailable")).toBeNull();
     expect(screen.queryByText("No public recommendations yet")).toBeNull();
   });
 
-  it("shows recovery when all content fails and retries only failed queries once", async () => {
+  it("shows recovery at each failed category and retries each only once", async () => {
     apolloResults.set("GetPlacesLists", {
       data: undefined,
       loading: false,
@@ -212,10 +229,11 @@ describe("ProfileRecommendationsTab", () => {
     });
     renderTab();
 
-    expect(screen.getByText("Couldn’t load recommendations")).toBeVisible();
-    const retry = screen.getByRole("button", { name: "Try again" });
-    fireEvent.click(retry);
-    fireEvent.click(retry);
+    expect(screen.getByLabelText("Places unavailable")).toBeVisible();
+    expect(screen.getByLabelText("Books unavailable")).toBeVisible();
+    const [placesRetry, booksRetry] = screen.getAllByRole("button", { name: "Try again" });
+    fireEvent.click(placesRetry);
+    fireEvent.click(booksRetry);
 
     await vi.waitFor(() => expect(retryPlaces).toHaveBeenCalledTimes(1));
     expect(retryBooks).toHaveBeenCalledTimes(1);
@@ -236,7 +254,7 @@ describe("ProfileRecommendationsTab", () => {
     });
     renderTab();
 
-    expect(screen.getByText("Couldn’t load recommendations")).toBeVisible();
+    expect(screen.getByLabelText("Books unavailable")).toBeVisible();
     expect(screen.queryByText("No public recommendations yet")).toBeNull();
   });
 
@@ -259,16 +277,16 @@ describe("ProfileRecommendationsTab", () => {
     expect(screen.queryByText(/hasn't enabled/i)).toBeNull();
   });
 
-  it("treats a missing account id as recoverable without issuing requests", () => {
+  it("uses the public username rather than an account identifier", () => {
     renderTab({ accountData: { ...visibleAccount, documentId: undefined } });
 
-    expect(screen.getByText("Couldn’t load recommendations")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Open Places" })).toBeVisible();
     expect(
       apolloCalls
         .filter(({ operation }) =>
           ["GetPlacesLists", "GetBooksLists"].includes(operation),
         )
-        .every(({ options }) => options.skip === true),
+        .every(({ options }) => options.skip === false),
     ).toBe(true);
   });
 

@@ -1,4 +1,3 @@
-import { gql, useQuery } from "@apollo/client";
 import {
   BookOpen,
   Compass,
@@ -10,7 +9,7 @@ import {
   Smartphone,
   Users,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import {
@@ -28,6 +27,7 @@ import ProfileRecommendationsLayouts, {
   type RecommendationCategorySlotViewModel,
   type RecommendationListCardViewModel,
 } from "./ProfileRecommendationsLayouts";
+import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
 
 export interface PublicRecommendationAccountData {
   documentId?: string;
@@ -80,190 +80,6 @@ const CATEGORY_CONFIG = {
   products: { label: "Products", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.products", icon: ShoppingBag, color: "#f43f5e" },
   people: { label: "People", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.people", icon: Users, color: "#6366f1" },
 } as const;
-
-const GET_PLACES_LISTS = gql`
-  query GetPlacesLists($accountDocumentId: ID!) {
-    recommendationLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      Visibility
-      List_Name_Details
-      recommended_places(pagination: { limit: 4 }) {
-        documentId
-        media_details
-        Media { url }
-        Place_Details
-      }
-    }
-  }
-`;
-
-const GET_MOVIES_LISTS = gql`
-  query GetMoviesLists($accountDocumentId: ID!) {
-    movieLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      Visibility
-      cover_image { url }
-      recommended_movies(pagination: { limit: 4 }) {
-        documentId
-        poster_path
-      }
-    }
-  }
-`;
-
-const GET_BOOKS_LISTS = gql`
-  query GetBooksLists($accountDocumentId: ID!) {
-    bookLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      visibility
-      cover_image { url }
-      recommended_books(pagination: { limit: 4 }) {
-        documentId
-        cover_url
-      }
-    }
-  }
-`;
-
-const GET_GAMES_LISTS = gql`
-  query GetGamesLists($accountDocumentId: ID!) {
-    gameLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      Visibility
-      cover_image { url }
-      recommended_games(pagination: { limit: 4 }) {
-        documentId
-        cover_url
-        media_details
-      }
-    }
-  }
-`;
-
-const GET_APPS_LISTS = gql`
-  query GetAppsLists($accountDocumentId: ID!) {
-    appLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      Visibility
-      cover_image { url }
-      recommended_apps(pagination: { limit: 4 }) {
-        documentId
-        logo_url
-      }
-    }
-  }
-`;
-
-const GET_PRODUCTS_LISTS = gql`
-  query GetProductsLists($accountDocumentId: ID!) {
-    productLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      Visibility
-      cover_image { url }
-      recommended_products(pagination: { limit: 4 }) {
-        documentId
-        logo_url
-        images
-      }
-    }
-  }
-`;
-
-const GET_PEOPLE_LISTS = gql`
-  query GetPeopleLists($accountDocumentId: ID!) {
-    personLists(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      slug
-      Visibility
-      recommended_people(pagination: { limit: 4 }) {
-        documentId
-        avatar_path
-        media_details
-      }
-    }
-  }
-`;
-
-const GET_GUIDES_LISTS = gql`
-  query GetGuidesLists($accountDocumentId: ID!) {
-    guides(
-      filters: {
-        account: { documentId: { eq: $accountDocumentId } }
-        Visibility: { eq: true }
-      }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      Title
-      slug
-      Visibility
-      Guide_Media { url }
-    }
-  }
-`;
 
 const resolveCoverUrl = (
   path: string | null | undefined,
@@ -334,29 +150,22 @@ const parseProductImage = (product: any) => {
   }
 };
 
-const makeApolloState = ({
+const makeGatewayState = ({
   id,
   enabled,
-  documentId,
   query,
   lists,
   itemCount,
 }: {
   id: RecommendationCategoryId;
   enabled: boolean;
-  documentId?: string;
   query: any;
   lists: RecommendationListCardViewModel[];
   itemCount?: RecommendationCategoryQueryState["itemCount"];
 }): RecommendationCategoryQueryState | null => {
   if (!enabled) return null;
-  const missingAccountError = documentId
-    ? null
-    : new Error("The public profile account is unavailable");
-  const error = missingAccountError || query.error || null;
-  const dataStatus = missingAccountError
-    ? "empty"
-    : query.loading && query.data == null
+  const error = query.error || null;
+  const dataStatus = query.loading && query.data == null
       ? "loading"
       : lists.length > 0
         ? "ready"
@@ -368,10 +177,7 @@ const makeApolloState = ({
     listCount: lists.length,
     itemCount,
     error,
-    retry: async () => {
-      if (!documentId) return Promise.reject(missingAccountError);
-      return query.refetch?.();
-    },
+    retry: async () => query.refetch?.(),
   };
 };
 
@@ -382,8 +188,6 @@ const ProfileRecommendationsTab = ({
   preferredCategory,
 }: ProfileRecommendationsTabProps) => {
   const { t } = useTranslation();
-  const [isRetrying, setIsRetrying] = useState(false);
-  const retryLock = useRef(false);
   const normalizedPresentation = useMemo(
     () => normalizeRecommendationsPresentation(presentation),
     [presentation],
@@ -402,22 +206,14 @@ const ProfileRecommendationsTab = ({
       ) as Record<RecommendationCategoryId, boolean>,
     [accountRecord],
   );
-  const documentId = accountData.documentId;
-  const apolloOptions = (categoryEnabled: boolean) => ({
-    variables: { accountDocumentId: documentId },
-    skip: !documentId || !categoryEnabled,
-    errorPolicy: "all" as const,
-    notifyOnNetworkStatusChange: true,
-  });
-
-  const placesQuery = useQuery(GET_PLACES_LISTS, apolloOptions(enabled.places));
-  const moviesQuery = useQuery(GET_MOVIES_LISTS, apolloOptions(enabled.movies));
-  const booksQuery = useQuery(GET_BOOKS_LISTS, apolloOptions(enabled.books));
-  const gamesQuery = useQuery(GET_GAMES_LISTS, apolloOptions(enabled.games));
-  const appsQuery = useQuery(GET_APPS_LISTS, apolloOptions(enabled.apps));
-  const productsQuery = useQuery(GET_PRODUCTS_LISTS, apolloOptions(enabled.products));
-  const peopleQuery = useQuery(GET_PEOPLE_LISTS, apolloOptions(enabled.people));
-  const guidesQuery = useQuery(GET_GUIDES_LISTS, apolloOptions(enabled.guides));
+  const placesQuery = usePublicRecommendationCategory(username, "places", enabled.places);
+  const moviesQuery = usePublicRecommendationCategory(username, "movies", enabled.movies);
+  const booksQuery = usePublicRecommendationCategory(username, "books", enabled.books);
+  const gamesQuery = usePublicRecommendationCategory(username, "games", enabled.games);
+  const appsQuery = usePublicRecommendationCategory(username, "apps", enabled.apps);
+  const productsQuery = usePublicRecommendationCategory(username, "products", enabled.products);
+  const peopleQuery = usePublicRecommendationCategory(username, "people", enabled.people);
+  const guidesQuery = usePublicRecommendationCategory(username, "guides", enabled.guides);
 
   const placesRaw = placesQuery.data?.recommendationLists || [];
   const placesLists = placesRaw
@@ -585,65 +381,57 @@ const ProfileRecommendationsTab = ({
     }));
 
   const states = [
-    makeApolloState({
+    makeGatewayState({
       id: "places",
       enabled: enabled.places,
-      documentId,
       query: placesQuery,
       lists: placesLists,
       itemCount: aggregateCount(placesRaw, "place", "places"),
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "movies",
       enabled: enabled.movies,
-      documentId,
       query: moviesQuery,
       lists: moviesLists,
       itemCount: aggregateCount(moviesRaw, "movie", "movies"),
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "books",
       enabled: enabled.books,
-      documentId,
       query: booksQuery,
       lists: booksLists,
       itemCount: aggregateCount(booksRaw, "book", "books"),
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "games",
       enabled: enabled.games,
-      documentId,
       query: gamesQuery,
       lists: gamesLists,
       itemCount: aggregateCount(gamesRaw, "game", "games"),
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "guides",
       enabled: enabled.guides,
-      documentId,
       query: guidesQuery,
       lists: guidesLists,
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "apps",
       enabled: enabled.apps,
-      documentId,
       query: appsQuery,
       lists: appsLists,
       itemCount: aggregateCount(appsRaw, "app", "apps"),
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "products",
       enabled: enabled.products,
-      documentId,
       query: productsQuery,
       lists: productsLists,
       itemCount: aggregateCount(productsRaw, "product", "products"),
     }),
-    makeApolloState({
+    makeGatewayState({
       id: "people",
       enabled: enabled.people,
-      documentId,
       query: peopleQuery,
       lists: peopleLists,
       itemCount: aggregateCount(peopleRaw, "person", "people"),
@@ -660,9 +448,14 @@ const ProfileRecommendationsTab = ({
     RecommendationCategorySlotViewModel[]
   >((slots, id) => {
       const state = stateById.get(id);
-      if (!state || state.dataStatus === "empty") return slots;
+      if (!state) return slots;
       const config = CATEGORY_CONFIG[id];
       const label = t(config.labelKey, config.label);
+      if (state.error && state.lists.length === 0) {
+        slots.push({ status: "error", id, label, retry: state.retry });
+        return slots;
+      }
+      if (state.dataStatus === "empty") return slots;
       if (state.dataStatus === "loading") {
         slots.push({ status: "loading", id, label });
         return slots;
@@ -691,38 +484,8 @@ const ProfileRecommendationsTab = ({
       slots.push(ready);
       return slots;
     }, []);
-  const hasError = states.some((state) => state.error != null);
   const isLoading = states.some((state) => state.dataStatus === "loading");
   const hasRenderableContent = orderedSlots.length > 0;
-
-  const retryFailed = async () => {
-    if (retryLock.current) return;
-    const retrySnapshot = states
-      .filter((state) => state.error != null)
-      .map((state) => state.retry);
-    if (!retrySnapshot.length) return;
-    retryLock.current = true;
-    setIsRetrying(true);
-    try {
-      await Promise.allSettled(retrySnapshot.map((retry) => retry()));
-    } finally {
-      retryLock.current = false;
-      setIsRetrying(false);
-    }
-  };
-
-  const retryButton = (
-    <button
-      type="button"
-      onClick={retryFailed}
-      disabled={isRetrying}
-      className="profile-presentation-focus mt-3 min-h-12 rounded-lg border border-[var(--accent-color)] px-4 font-poppins text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {isRetrying
-        ? t("publicProfile.recommendations.retrying", "Retrying…")
-        : t("publicProfile.recommendations.retry", "Try again")}
-    </button>
-  );
 
   return (
     <section
@@ -731,21 +494,6 @@ const ProfileRecommendationsTab = ({
       aria-busy={isLoading}
       className="space-y-4 pb-12 pt-2 text-[var(--text-primary)]"
     >
-      {hasError && hasRenderableContent && (
-        <aside
-          role="status"
-          className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4"
-        >
-          <p className="font-poppins text-sm font-semibold text-[var(--text-primary)]">
-            {t(
-              "publicProfile.recommendations.partialError",
-              "Some categories are unavailable",
-            )}
-          </p>
-          {retryButton}
-        </aside>
-      )}
-
       {hasRenderableContent && (
         <ProfileRecommendationsLayouts
           layout={normalizedPresentation.layout}
@@ -753,25 +501,7 @@ const ProfileRecommendationsTab = ({
         />
       )}
 
-      {!isLoading && !hasRenderableContent && hasError && (
-        <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-6 text-center">
-          <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">
-            {t(
-              "publicProfile.recommendations.loadError",
-              "Couldn’t load recommendations",
-            )}
-          </h2>
-          <p className="mt-2 font-poppins text-sm text-[var(--text-secondary)]">
-            {t(
-              "publicProfile.recommendations.loadErrorHelp",
-              "Try again to load the unavailable categories.",
-            )}
-          </p>
-          {retryButton}
-        </div>
-      )}
-
-      {!isLoading && !hasRenderableContent && !hasError && (
+      {!isLoading && !hasRenderableContent && (
         <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-6 text-center">
           <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">
             {t(

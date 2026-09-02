@@ -41,9 +41,17 @@ export interface RecommendationCategoryLoadingViewModel {
   label: string;
 }
 
+export interface RecommendationCategoryErrorViewModel {
+  status: "error";
+  id: RecommendationCategoryId;
+  label: string;
+  retry: () => Promise<unknown>;
+}
+
 export type RecommendationCategorySlotViewModel =
   | RecommendationCategoryReadyViewModel
-  | RecommendationCategoryLoadingViewModel;
+  | RecommendationCategoryLoadingViewModel
+  | RecommendationCategoryErrorViewModel;
 
 interface ProfileRecommendationsLayoutsProps {
   layout: RecommendationsLayout;
@@ -138,6 +146,19 @@ const LoadingCategory = ({
   </section>
 );
 
+const UnavailableCategory = ({ slot }: { slot: RecommendationCategoryErrorViewModel }) => {
+  const [retrying, setRetrying] = useState(false);
+  return (
+    <section data-category-id={slot.id} aria-label={`${slot.label} unavailable`} className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4">
+      <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">{slot.label}</h2>
+      <p className="mt-1 font-poppins text-sm text-[var(--text-secondary)]">Couldn’t load this category.</p>
+      <button type="button" disabled={retrying} onClick={async () => { setRetrying(true); try { await slot.retry(); } finally { setRetrying(false); } }} className="profile-presentation-focus mt-3 min-h-11 rounded-lg border border-[var(--accent-color)] px-3 font-poppins text-sm font-semibold text-[var(--text-primary)] disabled:opacity-60">
+        {retrying ? "Retrying…" : "Try again"}
+      </button>
+    </section>
+  );
+};
+
 const ClassicShelves = ({
   slots,
 }: {
@@ -148,6 +169,7 @@ const ClassicShelves = ({
       if (slot.status === "loading") {
         return <LoadingCategory key={slot.id} slot={slot} />;
       }
+      if (slot.status === "error") return <UnavailableCategory key={slot.id} slot={slot} />;
 
       return (
         <section key={slot.id} data-category-id={slot.id} className="space-y-3">
@@ -192,6 +214,7 @@ const CategoryMosaic = ({
       if (slot.status === "loading") {
         return <LoadingCategory key={slot.id} slot={slot} className="min-h-56" />;
       }
+      if (slot.status === "error") return <UnavailableCategory key={slot.id} slot={slot} />;
       const images = categoryImages(slot, 3);
       const visibleImages = images.length ? images : [FALLBACK_IMAGE];
       const Icon = slot.icon;
@@ -303,8 +326,8 @@ const FeaturedFirst = ({
   const [first, ...rest] = slots;
   return (
     <div data-testid="recommendations-featured" className="space-y-4">
-      {first.status === "ready" ? (
-        <FeaturedCategory category={first} />
+      {first.status === "ready" ? <FeaturedCategory category={first} /> : first.status === "error" ? (
+        <UnavailableCategory slot={first} />
       ) : (
         <LoadingCategory
           slot={first}
@@ -317,6 +340,7 @@ const FeaturedFirst = ({
           if (slot.status === "loading") {
             return <LoadingCategory key={slot.id} slot={slot} className="min-h-24" />;
           }
+          if (slot.status === "error") return <UnavailableCategory key={slot.id} slot={slot} />;
           const Icon = slot.icon;
           const [image = FALLBACK_IMAGE] = categoryImages(slot, 1);
           return (

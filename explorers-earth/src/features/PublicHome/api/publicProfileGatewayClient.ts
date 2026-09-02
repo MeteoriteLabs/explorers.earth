@@ -23,3 +23,7 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
     },
   };
 }
+
+export const publicProfileGatewayClient = createPublicProfileGatewayClient(
+  import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
+);
