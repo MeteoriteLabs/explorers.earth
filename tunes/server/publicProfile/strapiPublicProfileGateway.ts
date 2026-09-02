@@ -66,6 +66,18 @@ export class StrapiPublicProfileGateway {
   }
 
   async resolveDetail(username: string, category: PublicCategory, slug: string, limit: number): Promise<unknown> {
+    if (category === "apps") {
+      return this.request(`query PublicAppDetail($username: String!, $slug: String!, $limit: Int!) {
+        appLists(filters:{account:{username:{eq:$username}},slug:{eq:$slug},Visibility:{eq:true}},pagination:{limit:1}) {
+          documentId List_Name list_description slug Visibility cover_image{url alternativeText} top_apps_heading
+          recommended_apps(sort:["display_order:asc"],pagination:{limit:$limit}) {
+            documentId app_url title description logo_url developer platforms price_tier download_url
+            is_pinned display_order screenshots user_recommendation_note user_rating pin_order
+            app_category{documentId name slug}
+          }
+        }
+      }`, { username, slug, limit });
+    }
     const categoryData = await this.resolveCategory(username, category, limit) as Record<string, unknown>;
     const collectionByCategory: Record<PublicCategory, string> = {
       places: "recommendationLists", movies: "movieLists", books: "bookLists", games: "gameLists",

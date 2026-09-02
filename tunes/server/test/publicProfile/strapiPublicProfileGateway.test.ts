@@ -42,4 +42,13 @@ describe("StrapiPublicProfileGateway", () => {
     expect(query).toMatch(/profile_picture\s*\{\s*url\s+alternativeText/);
     expect(query).not.toMatch(/\bmobile_number\b/);
   });
+
+  it("uses a fixed account-scoped Apps detail query rather than client-side list filtering", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { appLists: [] } }), { status: 200 }));
+    await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveDetail("tk2727", "apps", "useful-apps", 24);
+    const payload = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(payload.variables).toMatchObject({ username: "tk2727", slug: "useful-apps", limit: 24 });
+    expect(payload.query).toContain("slug:{eq:$slug}");
+    expect(payload.query).toContain("recommended_apps(sort:[\"display_order:asc\"],pagination:{limit:$limit})");
+  });
 });
