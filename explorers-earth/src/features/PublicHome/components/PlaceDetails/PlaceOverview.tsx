@@ -1,4 +1,4 @@
-import { FC, memo, useState, useRef, useEffect } from "react";
+import { FC, memo, useState, useRef, useEffect, type CSSProperties } from "react";
 import CrossIcon from "../../../../assets/icons/CrossIcon";
 import Button from "../../../../components/ui/Button";
 import StarIcon from "../../../../assets/icons/StarIcon";
@@ -23,10 +23,11 @@ interface PlaceOverviewProps {
   mobile?: string;
   placeLink?: string;
   isPublicProfile?: boolean;
+  publicPlace?: Record<string, unknown>;
 }
 
 const PlaceOverview: FC<PlaceOverviewProps> = memo(
-  ({ placeId, onClose, isPublicProfile = false }) => {
+  ({ placeId, onClose, isPublicProfile = false, publicPlace }) => {
     const [activeTab, setActiveTab] = useState("Overview");
 
     // Swipe-to-close functionality
@@ -40,9 +41,10 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
         documentId: placeId,
       },
       fetchPolicy: "network-only",
+      skip: Boolean(publicPlace),
     });
 
-    const fetchedPlace = data?.recommendedPlace;
+    const fetchedPlace: any = publicPlace ?? data?.recommendedPlace;
     const isPersonType = fetchedPlace?.Recommendation_Type === "person";
     const googleRating = fetchedPlace?.google_rating ?? fetchedPlace?.Place_Details?.Rating;
     const googleRatingText = googleRating ? (googleRating * 2).toFixed(1) : null;
@@ -122,7 +124,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
     const { username } = useParams();
 
     // Generate GEO data for individual place pages
-    const placeData = data?.recommendedPlace;
+    const placeData: any = publicPlace ?? data?.recommendedPlace;
     const placeName = isPersonType
       ? placeData?.Contact_Name || "Person"
       : (placeData?.Place_Details?.Place_Name || "Place");
@@ -162,7 +164,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
       : `Discover ${placeName} in ${locationName}, recommended by ${username}. ${category ? `Great ${category.toLowerCase()} spot with ` : ""
       }authentic local insights.`;
 
-    if (loading)
+    if (loading && !publicPlace)
       return (
         <div className="bg-dashboard-bg min-h-screen">
           <EarthLoader context="recommendations" />
@@ -207,9 +209,20 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
         )}
 
         <div
-          className={`dashboard-theme ${isPublicProfile ? "bg-[#2a2a2a]/90" : "bg-dashboard-sidebar"
+          data-public-place-detail={isPublicProfile ? true : undefined}
+          className={`${isPublicProfile
+            ? "public-place-detail border"
+            : "dashboard-theme bg-dashboard-sidebar"
             } h-full overflow-y-auto overflow-x-hidden scrollbar-hide rounded-t-2xl shadow-dashboard-elevated flex flex-col transition-transform duration-200 ease-out`}
           style={{
+            ...(isPublicProfile ? {
+              background: "var(--bg-card)",
+              color: "var(--text-primary)",
+              "--dash-text": "var(--text-primary)",
+              "--dash-text-light": "var(--text-secondary)",
+              "--dash-border": "var(--border-card)",
+              "--dash-accent": "var(--accent-color)",
+            } as CSSProperties : {}),
             transform: `translateY(${dragY}px)`,
             opacity: isDragging ? Math.max(0.7, 1 - dragY / 300) : 1,
           }}
@@ -314,7 +327,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
           <div className="md:flex md:justify-center md:items-center">
             <Tab
               tabs={tabs}
-              type={"public"}
+              type={isPublicProfile ? "public-profile" : "public"}
               activeTab={activeTab}
               onTabChange={handleTabChange}
             />

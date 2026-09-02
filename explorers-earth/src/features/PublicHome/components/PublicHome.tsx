@@ -1,9 +1,6 @@
-import { memo, useState, useRef, useMemo, useEffect } from "react";
+import { memo, useState, useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
 import Button from "../../../components/ui/Button";
-import { useQuery } from "@apollo/client";
-import { accountsDetailQuery } from "../api/query";
-import { recommendedPlacesQuery } from "../../Favorites/api/query";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
@@ -31,7 +28,7 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, ArrowLeft, Users, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Users, ShoppingBag } from "lucide-react";
 import { buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpers";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
@@ -43,13 +40,19 @@ import {
   useApiIsLoaded,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { getPlaceCoordinatesQuery } from "../api/query";
-import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import ErrorBoundary from "../../../components/ErrorBoundary";
+import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
+import {
+  isNonNullObject,
+  PublicRouteErrorState,
+  PublicRoutePartialNotice,
+} from "./PublicRouteContentState";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
 
 type CardDataItem = {
-  Media: {
+  Media?: {
     url: string;
   }[];
   media_details?: {
@@ -63,7 +66,7 @@ type CardDataItem = {
       url: string;
     }[];
   };
-  Place_Details: {
+  Place_Details?: {
     Photos: string[];
     Place_Address: string;
     Place_Id: string;
@@ -71,10 +74,11 @@ type CardDataItem = {
     Rating: number;
     Rating_Count: number;
     Title: string;
+    Geometry?: { lat: number; lng: number };
   };
   Recommendation_Type?: "place" | "person";
   Contact_Name?: string;
-  recommendation_category: { Category_Name: string };
+  recommendation_category?: { Category_Name: string };
   documentId: string;
 };
 
@@ -95,6 +99,109 @@ interface City {
   person_lists?: any[];
   product_lists?: any[];
 }
+
+const hasNonEmptyString = (value: unknown): value is string => (
+  typeof value === "string" && value.trim().length > 0
+);
+
+const normalizePlaceCard = (value: unknown): CardDataItem | null => {
+  if (
+    !isNonNullObject(value)
+    || !hasNonEmptyString(value.documentId)
+    || !Array.isArray(value.Media)
+  ) {
+    return null;
+  }
+
+  const recommendationType = value.Recommendation_Type === "person" ? "person" : "place";
+  const placeDetails = isNonNullObject(value.Place_Details) ? value.Place_Details : null;
+  if (recommendationType === "person") {
+    if (!hasNonEmptyString(value.Contact_Name)) return null;
+  } else if (!placeDetails || !hasNonEmptyString(placeDetails.Title)) {
+    return null;
+  }
+
+  const category = isNonNullObject(value.recommendation_category)
+    && hasNonEmptyString(value.recommendation_category.Category_Name)
+    ? { Category_Name: value.recommendation_category.Category_Name }
+    : undefined;
+
+  return {
+    ...value,
+    documentId: value.documentId,
+    Recommendation_Type: recommendationType,
+    Contact_Name: typeof value.Contact_Name === "string" ? value.Contact_Name : undefined,
+    Media: value.Media
+      .filter((media) => isNonNullObject(media) && typeof media.url === "string")
+      .map((media) => ({ url: media.url as string })),
+    Place_Details: placeDetails ? {
+      ...placeDetails,
+      Photos: Array.isArray(placeDetails.Photos)
+        ? placeDetails.Photos.filter((photo): photo is string => typeof photo === "string")
+        : [],
+    } : undefined,
+    recommendation_category: category,
+  } as CardDataItem;
+};
+
+const normalizePublishedCity = (value: unknown): City | null => {
+  if (
+    !isNonNullObject(value)
+    || value.Visibility !== true
+    || !hasNonEmptyString(value.documentId)
+    || !hasNonEmptyString(value.List_Name)
+    || !Array.isArray(value.recommended_places)
+  ) {
+    return null;
+  }
+
+  return {
+    ...value,
+    documentId: value.documentId,
+    List_Name: value.List_Name,
+    Visibility: true,
+    recommended_places: value.recommended_places
+      .map(normalizePlaceCard)
+      .filter((place): place is CardDataItem => place !== null),
+  } as City;
+};
+
+type MapPreviewPlace = CardDataItem["Place_Details"] & {
+  Media: { url: string }[];
+  category?: string;
+  region: string;
+  documentId: string;
+  Geometry: { lat: number; lng: number };
+};
+
+const normalizeMapPreviewPlace = (value: unknown, region: string): MapPreviewPlace | null => {
+  const place = normalizePlaceCard(value);
+  const details = place?.Place_Details;
+  const geometry = details?.Geometry;
+  if (
+    !place
+    || place.Recommendation_Type === "person"
+    || !details
+    || !geometry
+    || !Number.isFinite(geometry.lat)
+    || !Number.isFinite(geometry.lng)
+    || geometry.lat < -90
+    || geometry.lat > 90
+    || geometry.lng < -180
+    || geometry.lng > 180
+  ) {
+    return null;
+  }
+
+  return {
+    ...details,
+    Geometry: { lat: geometry.lat, lng: geometry.lng },
+    Media: place.Media ?? [],
+    category: place.recommendation_category?.Category_Name,
+    region,
+    documentId: place.documentId,
+  };
+};
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: CardDataItem): string => {
@@ -124,6 +231,24 @@ const MapPreviewController = ({ targetCoords, targetZoom }: { targetCoords: { la
   return null;
 };
 
+const MapPreviewFallback = ({ placeCount, compact = false }: { placeCount: number; compact?: boolean }) => (
+  <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-dashboard-sidebar px-4 text-center text-white">
+    {placeCount > 0 ? (
+      <>
+        <span className={compact ? "text-xs text-white/70" : "text-sm text-white/70"}>
+          Map preview unavailable
+        </span>
+        <span className={compact ? "text-sm font-semibold" : "text-base font-semibold"}>
+          {placeCount} saved place{placeCount === 1 ? "" : "s"}
+        </span>
+        <span className={compact ? "text-xs text-white/80" : "text-sm text-white/80"}>Open map</span>
+      </>
+    ) : (
+      <span className={compact ? "text-xs" : "text-sm"}>No saved locations yet</span>
+    )}
+  </div>
+);
+
 const PublicHome = memo(() => {
   const mapsApiLoaded = useApiIsLoaded();
   // Map previews are decorative hero slides. Keeping them static avoids loading
@@ -138,9 +263,13 @@ const PublicHome = memo(() => {
   const mobileScrollContainerRef = useRef<HTMLDivElement>(null);
   const desktopScrollContainerRef = useRef<HTMLDivElement>(null);
   const [hasMoreData, setHasMoreData] = useState<boolean>(true);
+  const nextPlacesPageRef = useRef(2);
+  const placesFetchInFlightRef = useRef(false);
+  const placesPaginationGenerationRef = useRef(0);
+  const placesPaginationCityIdRef = useRef<string | undefined>(undefined);
   const animationTriggeredRef = useRef<boolean>(false);
   const previousPathnameRef = useRef<string>('');
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Extract UTM parameters from current URL, or create default ones for QR codes
   const utmParams = useMemo(() => {
@@ -156,31 +285,48 @@ const PublicHome = memo(() => {
 
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const { data, loading } = useQuery(accountsDetailQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-    fetchPolicy: "cache-and-network", // Ensure fresh data is fetched
-  });
+  const { data: shellData, loading: shellLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
+  const { data: placesCategoryData, loading: placesCategoryLoading, error: placesCategoryError, refetch: refetchPlacesCategory } = usePublicRecommendationCategory(username, "places", shellData?.public_recommendations === "Yes");
+  const data = useMemo<any>(() => ({
+    accounts: shellData ? [{
+      ...shellData,
+      recommendation_lists: Array.isArray(placesCategoryData?.recommendationLists)
+        ? placesCategoryData.recommendationLists
+        : [],
+    }] : [],
+  }), [placesCategoryData?.recommendationLists, shellData]);
+  const loading = Boolean(shellLoading || placesCategoryLoading);
 
   const [showQR, setShowQR] = useState(false);
+  const rawAccountData = data?.accounts?.[0];
+  const normalizedRecommendationLists = useMemo(() => (
+    Array.isArray(rawAccountData?.recommendation_lists)
+      ? (rawAccountData.recommendation_lists as unknown[])
+        .map(normalizePublishedCity)
+        .filter((list): list is City => list !== null)
+      : []
+  ), [rawAccountData?.recommendation_lists]);
+  const hasRenderSafeRecommendationList = normalizedRecommendationLists.some(
+    (list: City) => (list.recommended_places?.length ?? 0) > 0,
+  );
+  const hasUsableData = Boolean(rawAccountData)
+    && (!accountError || hasRenderSafeRecommendationList);
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
   const [_isQRVisible, setIsQRVisible] = useState(false);
-  const accountData = data?.accounts?.[0];
+  const accountData = hasUsableData && rawAccountData
+    ? { ...rawAccountData, recommendation_lists: normalizedRecommendationLists }
+    : undefined;
 
   const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
+
+  const linkedListsData = useMemo(() => ({ personLists: [], productLists: [] }), []);
+  const linkedListsError = undefined;
 
   // Reset activeTab when selectedCity changes
   useEffect(() => {
@@ -189,16 +335,16 @@ const PublicHome = memo(() => {
 
   // Linked person and product lists for the selected city
   const linkedPersonLists = useMemo(() => {
-    return (selectedCity?.person_lists || []).filter((l: any) => l.Visibility === true);
-  }, [selectedCity]);
+    return (linkedListsData?.personLists || []).filter((l: any) => l?.Visibility === true);
+  }, [linkedListsData?.personLists]);
 
   const linkedProductLists = useMemo(() => {
-    return (selectedCity?.product_lists || []).filter((l: any) => l.Visibility === true);
-  }, [selectedCity]);
+    return (linkedListsData?.productLists || []).filter((l: any) => l?.Visibility === true);
+  }, [linkedListsData?.productLists]);
 
   const linkedPeople = useMemo(() => {
     const raw = linkedPersonLists.flatMap((l: any) =>
-      (l.recommended_people || []).map((p: any) => ({
+      (l?.recommended_people || []).filter(Boolean).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
         _listId: l.documentId,
@@ -210,7 +356,7 @@ const PublicHome = memo(() => {
 
   const linkedProducts = useMemo(() => {
     const raw = linkedProductLists.flatMap((l: any) =>
-      (l.recommended_products || []).map((p: any) => ({
+      (l?.recommended_products || []).filter(Boolean).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
         _listId: l.documentId,
@@ -235,16 +381,23 @@ const PublicHome = memo(() => {
 
   // Memoize expensive calculations to prevent unnecessary re-renders
   const PublishedCities = useMemo(() => {
-    return (
-      accountData?.recommendation_lists?.filter(
-        (list: {
-          List_Name: string;
-          Visibility: boolean;
-          recommended_places: string[];
-        }) => list.Visibility === true
-      ) || []
-    );
+    return accountData?.recommendation_lists ?? [];
   }, [accountData?.recommendation_lists]);
+  const paginationCityId = useMemo(() => {
+    if (PublishedCities.length === 0) return undefined;
+    if (placeSlug) {
+      return PublishedCities.find(
+        (city: City) => toUrlSlug(city.List_Name || "") === placeSlug.toLowerCase(),
+      )?.documentId ?? PublishedCities[0]?.documentId;
+    }
+    if (
+      selectedCity?.documentId
+      && PublishedCities.some((city: City) => city.documentId === selectedCity.documentId)
+    ) {
+      return selectedCity.documentId;
+    }
+    return PublishedCities[0]?.documentId;
+  }, [PublishedCities, placeSlug, selectedCity?.documentId]);
 
   // Analytics tracking - initialize after first city is selected
   const analytics = useTrackAnalytics({
@@ -279,36 +432,44 @@ const PublicHome = memo(() => {
 
   // Separate query for paginated places
   // CRITICAL: Only query places for published cities
-  const {
-    data: placesData,
-    loading: placesQueryLoading,
-    fetchMore,
-  } = useQuery(recommendedPlacesQuery, {
-    variables: {
-      pagination: {
-        page: 1,
-        pageSize: 10,
-      },
-      filters: {
-        recommendation_list: {
-          documentId: {
-            eq: selectedCity?.documentId,
-          },
-        },
-      },
-    },
-    fetchPolicy: "cache-and-network",
-    // Skip query if no selectedCity, no documentId, or city is not published
-    skip: !selectedCity?.documentId || selectedCity?.Visibility !== true,
-  });
+  const placesData = useMemo(() => ({
+    recommendedPlaces: selectedCity?.recommended_places ?? [],
+  }), [selectedCity?.recommended_places]);
+  const placesQueryLoading = false;
+  const placesError = placesCategoryError;
+  const refetchPlaces = refetchPlacesCategory;
+  const fetchMore: any = async () => ({ data: { recommendedPlaces: [] } });
+  const rawRecommendedPlaces = useMemo<unknown[]>(() => (
+    Array.isArray(placesData?.recommendedPlaces)
+      ? placesData.recommendedPlaces as unknown[]
+      : []
+  ), [placesData?.recommendedPlaces]);
+  const currentPlaces = useMemo(() => (
+    rawRecommendedPlaces
+      .map(normalizePlaceCard)
+      .filter((place): place is CardDataItem => place !== null)
+  ), [rawRecommendedPlaces]);
+  const selectedCityPlaces = useMemo(() => (
+    selectedCity?.recommended_places ?? []
+  ), [selectedCity?.recommended_places]);
+  const displayedPlaces = useMemo(() => (
+    placeSlug && placesError && currentPlaces.length === 0
+      ? selectedCityPlaces
+      : currentPlaces
+  ), [currentPlaces, placeSlug, placesError, selectedCityPlaces]);
+  const isPlacesDetailTerminalError = Boolean(
+    placeSlug
+    && selectedCity
+    && placesError
+    && displayedPlaces.length === 0,
+  );
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   // Track recommendation engagement views when card is opened
   useEffect(() => {
     if (isExpanded.visible && isExpanded.documentId && accountData?.documentId && selectedCity?.documentId) {
       // Find the clicked item to get its details from current places data
-      const currentPlaces = placesData?.recommendedPlaces || [];
-      const clickedItem = currentPlaces.find(
+      const clickedItem = displayedPlaces.find(
         (item: any) => item.documentId === isExpanded.documentId
       );
 
@@ -334,7 +495,7 @@ const PublicHome = memo(() => {
         });
       }
     }
-  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, placesData?.recommendedPlaces, analytics.trackEvent]);
+  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, displayedPlaces, analytics.trackEvent]);
 
   // CRITICAL FIX: Auto-select first PUBLISHED city only, not drafts
   useEffect(() => {
@@ -401,7 +562,20 @@ const PublicHome = memo(() => {
     }
   }, [selectedCity, PublishedCities, username, navigate]);
 
-  // Set up intersection observer for infinite scroll
+  // Reset the server cursor and invalidate any pending page write when the
+  // selected list changes. The generation prevents an older list response
+  // from mutating the newly selected list's pagination state.
+  useLayoutEffect(() => {
+    if (placesPaginationCityIdRef.current === paginationCityId) return;
+    placesPaginationCityIdRef.current = paginationCityId;
+    placesPaginationGenerationRef.current += 1;
+    nextPlacesPageRef.current = 2;
+    placesFetchInFlightRef.current = false;
+    setHasMoreData(true);
+  }, [paginationCityId]);
+
+  // Set up intersection observer for infinite scroll. Server page cardinality
+  // controls the cursor; normalized rows are only for rendering/analytics.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -409,14 +583,20 @@ const PublicHome = memo(() => {
           entries[0].isIntersecting &&
           !placesQueryLoading &&
           hasMoreData &&
-          placesData?.recommendedPlaces?.length > 0
+          !placesError &&
+          rawRecommendedPlaces.length >= 10 &&
+          selectedCity?.documentId &&
+          placesPaginationCityIdRef.current === selectedCity.documentId &&
+          !placesFetchInFlightRef.current
         ) {
+          const requestGeneration = placesPaginationGenerationRef.current;
+          const requestCityId = selectedCity.documentId;
+          const requestedPage = nextPlacesPageRef.current;
+          placesFetchInFlightRef.current = true;
           fetchMore({
             variables: {
               pagination: {
-                page:
-                  Math.ceil((placesData?.recommendedPlaces?.length || 0) / 10) +
-                  1,
+                page: requestedPage,
                 pageSize: 10,
               },
               filters: {
@@ -427,24 +607,44 @@ const PublicHome = memo(() => {
                 },
               },
             },
-            updateQuery: (prev, { fetchMoreResult }) => {
-              if (!fetchMoreResult?.recommendedPlaces?.length) {
-                setHasMoreData(false);
+            updateQuery: (prev: any, { fetchMoreResult }: { fetchMoreResult: any }) => {
+              if (
+                placesPaginationGenerationRef.current !== requestGeneration
+                || placesPaginationCityIdRef.current !== requestCityId
+              ) {
                 return prev;
               }
-              // If we get less than the page size, we've reached the end
-              if (fetchMoreResult.recommendedPlaces.length < 10) {
-                setHasMoreData(false);
-              }
+
+              const previousRawPlaces = Array.isArray(prev?.recommendedPlaces)
+                ? prev.recommendedPlaces as unknown[]
+                : [];
+              const nextRawPlaces = Array.isArray(fetchMoreResult?.recommendedPlaces)
+                ? fetchMoreResult.recommendedPlaces as unknown[]
+                : [];
+              nextPlacesPageRef.current = requestedPage + 1;
+              setHasMoreData(nextRawPlaces.length >= 10);
               return {
+                ...prev,
                 recommendedPlaces: [
-                  ...prev.recommendedPlaces,
-                  ...fetchMoreResult.recommendedPlaces,
+                  ...previousRawPlaces,
+                  ...nextRawPlaces,
                 ],
               };
             },
           }).catch(() => {
-            setHasMoreData(false);
+            if (
+              placesPaginationGenerationRef.current === requestGeneration
+              && placesPaginationCityIdRef.current === requestCityId
+            ) {
+              setHasMoreData(false);
+            }
+          }).finally(() => {
+            if (
+              placesPaginationGenerationRef.current === requestGeneration
+              && placesPaginationCityIdRef.current === requestCityId
+            ) {
+              placesFetchInFlightRef.current = false;
+            }
           });
         }
       },
@@ -452,10 +652,10 @@ const PublicHome = memo(() => {
     );
 
     // Observe both mobile and desktop targets
-    if (mobileObserverTarget.current && hasMoreData) {
+    if (mobileObserverTarget.current && hasMoreData && rawRecommendedPlaces.length >= 10) {
       observer.observe(mobileObserverTarget.current);
     }
-    if (desktopObserverTarget.current && hasMoreData) {
+    if (desktopObserverTarget.current && hasMoreData && rawRecommendedPlaces.length >= 10) {
       observer.observe(desktopObserverTarget.current);
     }
 
@@ -463,15 +663,11 @@ const PublicHome = memo(() => {
   }, [
     placesQueryLoading,
     hasMoreData,
-    placesData,
+    placesError,
+    rawRecommendedPlaces.length,
     fetchMore,
     selectedCity?.documentId,
   ]);
-
-  // Reset hasMoreData when selectedCity changes
-  useEffect(() => {
-    setHasMoreData(true);
-  }, [selectedCity?.documentId]);
 
   // Scroll animation (mobile and desktop) only when visiting base places route
   useEffect(() => {
@@ -611,40 +807,27 @@ const PublicHome = memo(() => {
 
 
   // Fetch map data for preview (same as MapView)
-  const { data: mapData, loading: mapLoading } = useQuery(getPlaceCoordinatesQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-  });
+  const mapData = data;
+  const mapLoading = loading;
+  const mapError = placesCategoryError;
+  const contentError = accountError || linkedListsError || placesError || mapError;
 
   // Calculate map preview coordinates and bounds
   const mapPreviewData = useMemo(() => {
-    if (!mapData?.accounts?.[0]?.recommendation_lists) {
+    const recommendationLists = mapData?.accounts?.[0]?.recommendation_lists;
+    if (!Array.isArray(recommendationLists)) {
       return { coordinates: [], center: { lat: 20.5937, lng: 78.9629 }, zoom: 2, places: [] };
     }
 
-    const recommendationLists = mapData.accounts[0].recommendation_lists;
-    const placeDataWithRegion = recommendationLists.flatMap(
-      (list: any) =>
-        list?.recommended_places?.map((place: any) => ({
-          ...place.Place_Details,
-          Media: place.Media,
-          category: place.recommendation_category?.Category_Name,
-          region: list.List_Name || 'Unknown Region',
-          documentId: place.documentId,
-        })) || []
-    );
+    const places = recommendationLists.flatMap((list: unknown) => {
+      if (!isNonNullObject(list) || !Array.isArray(list.recommended_places)) return [];
+      const region = hasNonEmptyString(list.List_Name) ? list.List_Name : "Unknown Region";
+      return list.recommended_places
+        .map((place) => normalizeMapPreviewPlace(place, region))
+        .filter((place): place is MapPreviewPlace => place !== null);
+    });
 
-    const places = placeDataWithRegion.filter(
-      (place: any) => place.Geometry && place.Geometry.lat && place.Geometry.lng
-    );
-
-    const coordinates = places.map((place: any) => place.Geometry);
+    const coordinates = places.map((place) => place.Geometry);
 
     if (coordinates.length === 0) {
       return { coordinates: [], center: { lat: 20.5937, lng: 78.9629 }, zoom: 2, places: [] };
@@ -715,32 +898,41 @@ const PublicHome = memo(() => {
     },
   ];
 
-  // Use paginated places data instead of nested data from accountsDetailQuery
-  const currentPlaces = placesData?.recommendedPlaces || [];
-
   // fetching categories for the recommendation list
   const categories: string[] = useMemo(() => {
     return Array.from(
       new Set(
-        currentPlaces?.map(
+        displayedPlaces.map(
           (place: CardDataItem) => place?.recommendation_category?.Category_Name
-        )
+        ).filter((category): category is string => typeof category === "string")
       )
     );
-  }, [currentPlaces]);
+  }, [displayedPlaces]);
 
   // Filter the recommended places by the selected category
   const filteredPlaces = useMemo(() => {
     return selectedCategory
-      ? currentPlaces?.filter(
+      ? displayedPlaces.filter(
         (place: CardDataItem) =>
           place?.recommendation_category?.Category_Name === selectedCategory
       )
-      : currentPlaces;
-  }, [selectedCategory, currentPlaces]);
+      : displayedPlaces;
+  }, [selectedCategory, displayedPlaces]);
 
   // Dynamic SEO data preparation
   const profileName = accountData?.Account_Name || username || "User";
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${accountData?.Account_Name || username}'s Places`,
+    text: "Check out these recommendations!",
+    url: selectedCity?.List_Name
+      ? `${getBaseUrl()}/${username}/places/${toUrlSlug(selectedCity.List_Name)}`
+      : `${getBaseUrl()}/${username}/places`,
+    analyticsContext: "places-header",
+    ...(selectedCity?.List_Name ? {
+      analyticsMetadata: { city: selectedCity.List_Name },
+    } : {}),
+  });
   const profileLocation = accountData?.Primary_Address?.address || "";
 
   // Extract city names for SEO
@@ -1034,50 +1226,9 @@ const PublicHome = memo(() => {
         />
       )}
 
-      <div className="relative bg-black min-h-screen pb-14 pt-14 flex flex-col overflow-x-hidden">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = selectedCity?.List_Name
-                    ? `${window.location.origin}/${username}/places/${toUrlSlug(selectedCity.List_Name)}`
-                    : `${window.location.origin}/${username}/places`;
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${accountData?.Account_Name || username}'s Places`,
-                      text: "Check out these recommendations!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                  analytics.trackClick('share-button', { context: 'places-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 className="h-4 w-4" style={{ color: 'white' }} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
+      <div className="relative bg-black min-h-screen pb-14 flex flex-col overflow-x-hidden" aria-busy={loading || undefined}>
+        {loading && !hasUsableData ? (
+          outletContext?.isShellRevealed ? (
             <div className="bg-black min-h-screen">
               {/* ── Hero skeleton — Desktop ── */}
               <div className="hidden md:block w-full mb-12 mt-4 px-4">
@@ -1119,8 +1270,14 @@ const PublicHome = memo(() => {
               </div>
             </div>
           ) : null
+        ) : accountError && !hasUsableData ? (
+          <PublicRouteErrorState title="Places unavailable" error={accountError} onRetry={refetchAccount} />
+        ) : accountData && isPlacesDetailTerminalError ? (
+          <PublicRouteErrorState title="Places unavailable" error={placesError as { message?: string }} onRetry={refetchPlaces} />
         ) : accountData ? (
-          <>            {/* ========================================== */}
+          <>
+            {contentError && <PublicRoutePartialNotice message="Some place data is unavailable." />}
+            {/* ========================================== */}
             {/*             HERO CAROUSEL SECTION          */}
             {/* ========================================== */}
             {heroSlides.length > 0 && !placeSlug && (
@@ -1150,11 +1307,7 @@ const PublicHome = memo(() => {
                         {heroSlides[activeHeroIndex].isMap ? (
                           <div className="absolute inset-0 z-0 pointer-events-auto">
                             {enableLiveMapPreviews && mapsApiLoaded && !mapLoading && mapPreviewData.places.length > 0 ? (
-                              <ErrorBoundary fallback={
-                                <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
-                                  <span className="text-white text-sm">Map preview unavailable</span>
-                                </div>
-                              }>
+                              <ErrorBoundary fallback={<MapPreviewFallback placeCount={mapPreviewData.places.length} />}>
                               <Map
                                 defaultCenter={mapPreviewData.center}
                                 defaultZoom={mapPreviewData.zoom}
@@ -1193,9 +1346,7 @@ const PublicHome = memo(() => {
                                 <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                               </div>
                             ) : (
-                              <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
-                                <span className="text-white text-sm">No locations available</span>
-                              </div>
+                              <MapPreviewFallback placeCount={mapPreviewData.places.length} />
                             )}
                           </div>
                         ) : (
@@ -1368,11 +1519,7 @@ const PublicHome = memo(() => {
                             {slide.isMap ? (
                               <div className="absolute inset-0 z-0 pointer-events-auto">
                                 {enableLiveMapPreviews && mapsApiLoaded && !mapLoading && mapPreviewData.places.length > 0 ? (
-                                  <ErrorBoundary fallback={
-                                    <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
-                                      <span className="text-white text-xs">Map preview unavailable</span>
-                                    </div>
-                                  }>
+                                  <ErrorBoundary fallback={<MapPreviewFallback placeCount={mapPreviewData.places.length} compact />}>
                                   <Map
                                     defaultCenter={mapPreviewData.center}
                                     defaultZoom={mapPreviewData.zoom}
@@ -1411,9 +1558,7 @@ const PublicHome = memo(() => {
                                     <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                                   </div>
                                 ) : (
-                                  <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
-                                    <span className="text-white text-xs">No locations available</span>
-                                  </div>
+                                  <MapPreviewFallback placeCount={mapPreviewData.places.length} compact />
                                 )}
                               </div>
                             ) : (
@@ -1692,13 +1837,14 @@ const PublicHome = memo(() => {
                                     />
                                   );
                                 })}
-                                {/* Observer target for infinite scroll */}
-                                <div ref={desktopObserverTarget} className="h-10 w-full col-span-2" />
                               </>
                             ) : (
                               <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-2 py-8">
                                 No Recommendation Available.
                               </h1>
+                            )}
+                            {hasMoreData && rawRecommendedPlaces.length >= 10 && !placesError && (
+                              <div ref={desktopObserverTarget} className="h-10 w-full col-span-2" />
                             )}
                           </div>
                         </>
@@ -1830,6 +1976,7 @@ const PublicHome = memo(() => {
                   {isExpanded.visible && (
                     <PlaceOverview
                       placeId={isExpanded.documentId}
+                      publicPlace={displayedPlaces.find((place) => place.documentId === isExpanded.documentId) as Record<string, unknown> | undefined}
                       onClose={() =>
                         setIsExpanded({ visible: false, documentId: null, type: null })
                       }
