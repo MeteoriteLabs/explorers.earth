@@ -8,6 +8,7 @@ type StrapiGraphqlResponse<T> = {
 };
 
 const PUBLIC_ACCOUNT_SELECTION = `
+  username
   Account_Name
   Account_Type
   Primary_Address

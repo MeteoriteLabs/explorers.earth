@@ -38,6 +38,7 @@ describe("StrapiPublicProfileGateway", () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { accounts: [] } }), { status: 200 }));
     await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveAccount("tk2727");
     const query = JSON.parse(fetchImpl.mock.calls[0][1].body).query;
+    expect(query).toMatch(/pagination:\s*\{\s*limit:\s*1\s*\}\s*\)\s*\{\s*username\s+Account_Name/);
     expect(query).toContain("Account_Name");
     expect(query).toMatch(/profile_picture\s*\{\s*url\s+alternativeText/);
     expect(query).not.toMatch(/\bmobile_number\b/);
