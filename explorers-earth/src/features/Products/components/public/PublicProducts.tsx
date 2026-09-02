@@ -1,10 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { ShoppingBag, Share2 } from "lucide-react";
-import { PUBLIC_PRODUCT_DATA } from "../../api/query";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { ShoppingBag } from "lucide-react";
 import { deduplicateProducts } from "../../utils/productHelpers";
-import { toast } from "sonner";
 import type { RecommendedProduct, ProductList } from "../../types";
 import ProductCarouselRow from "./ProductCarouselRow";
 import ProductDetailModal from "./ProductDetailModal";
@@ -14,57 +11,53 @@ import ProductTopPicksHero from "./ProductTopPicksHero";
 import ProductTopPicksMobileHero from "./ProductTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameProducts($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+const isRenderableProductList = (value: unknown): value is ProductList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_products);
 
 const PublicProducts = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; product: RecommendedProduct | null }>({
     open: false,
     product: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes");
 
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: productsLoading } = useQuery(PUBLIC_PRODUCT_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
 
   const loading = userLoading || productsLoading;
+  const queryError = userError || productsError;
+  const rawLists = data?.productLists;
+  const lists: ProductList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderableProductList)
+    .map((list) => ({
+      ...list,
+      recommended_products: list.recommended_products.filter(isNonNullObject) as ProductList["recommended_products"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableProductList);
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: ProductList[] = data?.productLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchProducts : undefined);
+  }, [accountDocumentId, refetchProducts, refetchUser]);
+
   const analytics = useTrackAnalytics(
     createAnalyticsOptions.products(accountDocumentId || "", username),
   );
@@ -108,16 +101,12 @@ const PublicProducts = () => {
     });
   }, [analytics, owningListByProductId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s Products`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-    analytics.trackClick("share-button", { context: "products-header" });
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s Products`,
+    url: window.location.href,
+    analyticsContext: "products-header",
+  });
 
   const productCount = allProducts.length;
   const listCount = lists.length;
@@ -138,7 +127,7 @@ const PublicProducts = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -151,32 +140,10 @@ const PublicProducts = () => {
       )}
 
       <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading ? (
-            (window as any).__publicProfileLoaded ? (
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+          {loading && !hasUsableData ? (
+            outletContext?.isShellRevealed ? (
               <div className="space-y-10 mt-4">
                 {/* Hero skeleton — Desktop (lg screens) */}
                 <div className="hidden lg:block">
@@ -204,10 +171,13 @@ const PublicProducts = () => {
                 ))}
               </div>
             ) : null
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="Products unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <>
+              {queryError && <PublicRoutePartialNotice message="Some product data is unavailable." />}
               {/* Empty state */}
-              {lists.length === 0 ? (
+              {allProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   <ShoppingBag size={48} className="text-white/20 mb-4" />
                   <p className="text-white/40 text-lg font-medium">No products shared yet</p>

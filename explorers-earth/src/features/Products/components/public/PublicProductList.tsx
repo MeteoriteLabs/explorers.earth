@@ -1,51 +1,35 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { ShoppingBag, Share2, ArrowLeft } from "lucide-react";
-import { PRODUCT_LIST_BY_SLUG } from "../../api/query";
+import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
+import { ShoppingBag, ArrowLeft } from "lucide-react";
 import { deduplicateProducts, buildImageUrl, formatPrice } from "../../utils/productHelpers";
 import type { RecommendedProduct, ProductList } from "../../types";
 import ProductDetailModal from "./ProductDetailModal";
-import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicProfileDetail } from "../../../PublicHome/api/usePublicProfileDetail";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForProductList($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+const isRenderableProductList = (value: unknown): value is ProductList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_products);
 
 const PublicProductList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
-  const navigate = useNavigate();
+  const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [selectedProduct, setSelectedProduct] = useState<RecommendedProduct | null>(null);
 
-  const { data: userLookup } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const { data: accountData } = usePublicProfileShell(username);
+  const { data, loading, error, refetch } = usePublicProfileDetail(username, "products", listSlug);
 
-  const { data, loading, error } = useQuery<{ productLists: ProductList[] }>(PRODUCT_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const list = data?.productLists?.[0];
+  const list = (Array.isArray(data?.productLists) ? data.productLists : []).find(isRenderableProductList);
+  const hasUsableData = Boolean(list);
   const products = deduplicateProducts<RecommendedProduct>(list?.recommended_products ?? []);
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const analytics = useTrackAnalytics(
     {
       ...createAnalyticsOptions.products(accountDocumentId || "", username, list?.documentId),
@@ -54,10 +38,10 @@ const PublicProductList = () => {
   );
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setSelectedProduct(product);
@@ -70,20 +54,16 @@ const PublicProductList = () => {
     });
   }, [analytics, list]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: list?.List_Name, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-    analytics.trackClick("share-button", {
-      context: "products-list-header",
-      listId: list?.documentId,
-      listName: list?.List_Name,
-    });
-  };
+  usePublicHeaderDescriptor(list ? {
+    navigationKey: location.key,
+    title: list.List_Name,
+    url: window.location.href,
+    analyticsContext: "products-list-header",
+    analyticsMetadata: {
+      listId: list.documentId,
+      listName: list.List_Name,
+    },
+  } : undefined);
 
   const pageTitle = list ? `${list.List_Name} | ${creatorName}'s Product List | explorers` : `Product List | explorers`;
   const metaDescription = list?.list_description 
@@ -112,30 +92,9 @@ const PublicProductList = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <div className="min-h-screen bg-[#0d1117] text-white" aria-busy={loading || undefined}>
         {/* Header content section */}
-        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2 mt-14">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
           <Link
             to={`/${username}/products`}
             className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
@@ -143,13 +102,15 @@ const PublicProductList = () => {
             <ArrowLeft size={14} /> {creatorName}'s Products
           </Link>
 
-          {loading ? (
+          {Boolean(error) && hasUsableData && <PublicRoutePartialNotice message="Some product data is unavailable." />}
+
+          {loading && !hasUsableData ? (
             <>
               <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
               <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
             </>
-          ) : error ? (
-            <p className="text-red-400">Failed to load list.</p>
+          ) : error && !hasUsableData ? (
+            <PublicRouteErrorState title="Product list unavailable" error={error} onRetry={refetch} />
           ) : list ? (
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -168,7 +129,7 @@ const PublicProductList = () => {
         {/* Grid */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {loading ? (
+            {loading && !hasUsableData ? (
               [1, 2, 3, 4, 5, 6].map((idx) => (
                 <div key={idx} className="h-52 rounded-2xl bg-white/5 skeleton-shimmer relative overflow-hidden" />
               ))
