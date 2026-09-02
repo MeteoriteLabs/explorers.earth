@@ -15,4 +15,20 @@ describe("public profile gateway client", () => {
     await client.shell("tk2727");
     expect(fetchImpl).toHaveBeenCalledWith("https://localtunes.example/api/explorers/v1/profiles/tk2727", { headers: { Accept: "application/json" }, signal: undefined });
   });
+
+  it("uses a cached ETag and returns its cached body for a 304 response", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ appLists: [] }), { status: 200, headers: { ETag: '"apps-v1"' } }))
+      .mockResolvedValueOnce(new Response(null, { status: 304 }));
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    await client.category("tk2727", "apps");
+    await expect(client.category("tk2727", "apps")).resolves.toEqual({ appLists: [] });
+    expect(fetchImpl.mock.calls[1][1].headers).toEqual({ Accept: "application/json", "If-None-Match": '"apps-v1"' });
+  });
+
+  it("does not parse an uncacheable 304 response as JSON", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 304 }));
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    await expect(client.shell("tk2727")).rejects.toThrow("PUBLIC_PROFILE_304");
+  });
 });
