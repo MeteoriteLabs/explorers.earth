@@ -231,7 +231,8 @@ describe("ProfileRecommendationsTab", () => {
 
     expect(screen.getByLabelText("Places unavailable")).toBeVisible();
     expect(screen.getByLabelText("Books unavailable")).toBeVisible();
-    const [placesRetry, booksRetry] = screen.getAllByRole("button", { name: "Try again" });
+    const placesRetry = screen.getByRole("button", { name: "Retry Places" });
+    const booksRetry = screen.getByRole("button", { name: "Retry Books" });
     fireEvent.click(placesRetry);
     fireEvent.click(booksRetry);
 

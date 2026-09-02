@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { publicProfileGatewayClient, type PublicCategory } from "./publicProfileGatewayClient";
 
 export function usePublicProfileDetail(username: string | undefined, category: PublicCategory, slug: string | undefined) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{ data: Record<string, unknown[]> | undefined; loading: boolean; error: unknown | null }>({ data: undefined, loading: Boolean(username && slug), error: null });
-  const refetch = useCallback(async () => { setAttempt((value) => value + 1); }, []);
+  const retryResolvers = useRef<Array<() => void>>([]);
+  const settleRetries = useCallback(() => { retryResolvers.current.splice(0).forEach((resolve) => resolve()); }, []);
+  const refetch = useCallback(async () => {
+    if (!username || !slug) return;
+    const settled = new Promise<void>((resolve) => retryResolvers.current.push(resolve));
+    setAttempt((value) => value + 1);
+    await settled;
+  }, [slug, username]);
   useEffect(() => {
     const controller = new AbortController();
     if (!username || !slug) {
@@ -13,9 +20,9 @@ export function usePublicProfileDetail(username: string | undefined, category: P
     }
     setState((previous) => ({ data: previous.data, loading: previous.data === undefined, error: null }));
     publicProfileGatewayClient.detail(username, category, slug, controller.signal)
-      .then((data) => { if (!controller.signal.aborted) setState({ data: data as Record<string, unknown[]>, loading: false, error: null }); })
-      .catch((error: unknown) => { if (!controller.signal.aborted) setState((previous) => ({ data: previous.data, loading: false, error })); });
+      .then((data) => { if (!controller.signal.aborted) { setState({ data: data as Record<string, unknown[]>, loading: false, error: null }); settleRetries(); } })
+      .catch((error: unknown) => { if (!controller.signal.aborted) { setState((previous) => ({ data: previous.data, loading: false, error })); settleRetries(); } });
     return () => controller.abort();
-  }, [attempt, category, slug, username]);
+  }, [attempt, category, settleRetries, slug, username]);
   return { ...state, refetch };
 }

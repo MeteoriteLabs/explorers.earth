@@ -152,7 +152,7 @@ const UnavailableCategory = ({ slot }: { slot: RecommendationCategoryErrorViewMo
     <section data-category-id={slot.id} aria-label={`${slot.label} unavailable`} className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4">
       <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">{slot.label}</h2>
       <p className="mt-1 font-poppins text-sm text-[var(--text-secondary)]">Couldn’t load this category.</p>
-      <button type="button" disabled={retrying} onClick={async () => { setRetrying(true); try { await slot.retry(); } finally { setRetrying(false); } }} className="profile-presentation-focus mt-3 min-h-11 rounded-lg border border-[var(--accent-color)] px-3 font-poppins text-sm font-semibold text-[var(--text-primary)] disabled:opacity-60">
+      <button type="button" aria-label={`Retry ${slot.label}`} disabled={retrying} onClick={async () => { setRetrying(true); try { await slot.retry(); } finally { setRetrying(false); } }} className="profile-presentation-focus mt-3 min-h-11 rounded-lg border border-[var(--accent-color)] px-3 font-poppins text-sm font-semibold text-[var(--text-primary)] disabled:opacity-60">
         {retrying ? "Retrying…" : "Try again"}
       </button>
     </section>

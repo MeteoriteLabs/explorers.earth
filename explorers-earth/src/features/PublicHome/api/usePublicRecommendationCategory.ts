@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   publicProfileGatewayClient,
   type PublicCategory,
@@ -22,9 +22,16 @@ export function usePublicRecommendationCategory(
     loading: enabled && Boolean(username),
     error: null,
   });
-  const refetch = useCallback(async () => {
-    setAttempt((value) => value + 1);
+  const retryResolvers = useRef<Array<() => void>>([]);
+  const settleRetries = useCallback(() => {
+    retryResolvers.current.splice(0).forEach((resolve) => resolve());
   }, []);
+  const refetch = useCallback(async () => {
+    if (!enabled || !username) return;
+    const settled = new Promise<void>((resolve) => retryResolvers.current.push(resolve));
+    setAttempt((value) => value + 1);
+    await settled;
+  }, [enabled, username]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -37,13 +44,17 @@ export function usePublicRecommendationCategory(
       .then((data) => {
         if (!controller.signal.aborted) {
           setState({ data: data as Record<string, unknown[]>, loading: false, error: null });
+          settleRetries();
         }
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setState((previous) => ({ data: previous.data, loading: false, error }));
+        if (!controller.signal.aborted) {
+          setState((previous) => ({ data: previous.data, loading: false, error }));
+          settleRetries();
+        }
       });
     return () => controller.abort();
-  }, [attempt, category, enabled, username]);
+  }, [attempt, category, enabled, settleRetries, username]);
 
   return { ...state, refetch };
 }

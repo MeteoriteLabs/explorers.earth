@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { category } = vi.hoisted(() => ({ category: vi.fn() }));
@@ -24,5 +24,23 @@ describe("usePublicRecommendationCategory", () => {
     renderHook(() => usePublicRecommendationCategory("tk2727", "apps", false));
     await Promise.resolve();
     expect(category).not.toHaveBeenCalled();
+  });
+
+  it("resolves refetch only after the replacement request settles", async () => {
+    let completeRetry: ((value: { appLists: never[] }) => void) | undefined;
+    category
+      .mockResolvedValueOnce({ appLists: [] })
+      .mockImplementationOnce(() => new Promise((resolve) => { completeRetry = resolve; }));
+    const { result } = renderHook(() => usePublicRecommendationCategory("tk2727", "apps", true));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let settled = false;
+    let retry: Promise<void> = Promise.resolve();
+    act(() => { retry = result.current.refetch().then(() => { settled = true; }); });
+    await waitFor(() => expect(category).toHaveBeenCalledTimes(2));
+    expect(settled).toBe(false);
+
+    await act(async () => { completeRetry?.({ appLists: [] }); await retry; });
+    expect(settled).toBe(true);
   });
 });
