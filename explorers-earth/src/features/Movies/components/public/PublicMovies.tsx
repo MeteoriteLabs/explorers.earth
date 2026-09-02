@@ -1,9 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery } from "@apollo/client";
+import { useParams, useOutletContext, useLocation } from "react-router-dom";
 import { deduplicateMovies } from "../../utils/movieHelpers";
-import { Film, Share2 } from "lucide-react";
-import { PUBLIC_MOVIE_DATA } from "../../api/query";
+import { Film } from "lucide-react";
 import type { RecommendedMovie, MovieList } from "../../types";
 import MovieCarouselRow from "./MovieCarouselRow";
 import TopPicksHero from "./TopPicksHero";
@@ -13,58 +11,50 @@ import GenreBrowse from "./GenreBrowse";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
-import { gql } from "@apollo/client";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+const isRenderableMovieList = (value: unknown): value is MovieList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_movies);
 
 const PublicMovies = () => {
   const { username } = useParams<{ username: string }>();
-  const navigate = useNavigate();
+  const location = useLocation();
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
-  // Step 1: Resolve account documentId from username
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  // Step 2: Fetch movie data
-  const { data: movieData, loading: moviesLoading } = useQuery(PUBLIC_MOVIE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
+  const { data: movieData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes");
 
   const loading = userLoading || moviesLoading;
+  const queryError = userError || moviesError;
+  const rawLists = movieData?.movieLists;
+  const lists: MovieList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderableMovieList)
+    .map((list) => ({
+      ...list,
+      recommended_movies: list.recommended_movies.filter(isNonNullObject) as MovieList["recommended_movies"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableMovieList);
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: MovieList[] = movieData?.movieLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchMovies : undefined);
+  }, [accountDocumentId, refetchMovies, refetchUser]);
+
 
   // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
@@ -96,15 +86,12 @@ const PublicMovies = () => {
     });
   }, [analytics]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s Movies`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-    }
-    analytics.trackClick('share-button', { context: 'movies-header' });
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s Movies`,
+    url: window.location.href,
+    analyticsContext: "movies-header",
+  });
 
   // Dynamic SEO details
   const profileName = creatorName || username || "User";
@@ -129,7 +116,7 @@ const PublicMovies = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -141,32 +128,10 @@ const PublicMovies = () => {
         />
       )}
       <div className="min-h-screen bg-[#0d1117] text-white">
-      {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-          <span
-            className="text-white font-bold text-2xl cursor-pointer"
-            onClick={() => navigate("/")}
-          >
-            explorers.earth
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-              aria-label="Share"
-            >
-              <Share2 size={16} />
-            </button>
-
-          </div>
-        </div>
-      </div>
-
       {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
+      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+        {loading && !hasUsableData ? (
+          outletContext?.isShellRevealed ? (
             <div className="space-y-10 mt-4">
               {/* Hero skeleton — Desktop (lg screens) */}
               <div className="hidden lg:block">
@@ -192,10 +157,13 @@ const PublicMovies = () => {
               ))}
             </div>
           ) : null
+        ) : queryError && !hasUsableData ? (
+          <PublicRouteErrorState title="Movies unavailable" error={queryError} onRetry={handleRetry} />
         ) : (
           <>
+            {queryError && <PublicRoutePartialNotice message="Some movie data is unavailable." />}
             {/* Empty state */}
-            {lists.length === 0 ? (
+            {allMovies.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <Film size={48} className="text-white/20 mb-4" />
                 <p className="text-white/40 text-lg font-medium">No movies shared yet</p>
