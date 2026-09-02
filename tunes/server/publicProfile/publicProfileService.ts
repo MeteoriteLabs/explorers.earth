@@ -3,6 +3,7 @@ import { canReadPublicCategory, type PublicCategory } from "./publicProfilePolic
 export interface PublicProfileGateway {
   resolveAccount(username: string): Promise<Record<string, unknown> | undefined>;
   resolveCategory(username: string, category: PublicCategory, limit: number): Promise<unknown>;
+  resolveDetail(username: string, category: PublicCategory, slug: string, limit: number): Promise<unknown>;
 }
 
 export type PublicProfileReadOptions = { bypassCache?: boolean };
@@ -66,5 +67,16 @@ export class PublicProfileService {
   async shell(username: string, options: PublicProfileReadOptions = {}): Promise<Record<string, unknown> | undefined> {
     const account = await this.account(username, Boolean(options.bypassCache));
     return account?.public_profile === "Yes" ? account : undefined;
+  }
+
+  async detail(username: string, category: PublicCategory, slug: string, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
+    const key = `${username}:${category}:${slug}:${limit}`;
+    const cached = this.read(this.categories, key, Boolean(options.bypassCache));
+    if (cached !== undefined) return cached;
+    const account = await this.account(username, Boolean(options.bypassCache));
+    if (!account || !canReadPublicCategory(account, category)) return undefined;
+    const value = await this.gateway.resolveDetail(username, category, slug, limit);
+    this.write(this.categories, key, value);
+    return value;
   }
 }

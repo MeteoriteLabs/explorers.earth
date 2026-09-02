@@ -63,4 +63,12 @@ describe("explorers public profile routes", () => {
     expect(response.body.error.code).toBe("UNAVAILABLE");
     expect(JSON.stringify(response.body)).not.toContain("private");
   });
+
+  it("uses the same safe detail route contract for a public list", async () => {
+    const detail = vi.fn().mockResolvedValue({ appLists: [{ slug: "useful-apps" }] });
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category: async () => undefined, detail });
+    await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps/useful-apps?limit=24").expect(200).expect({ appLists: [{ slug: "useful-apps" }] });
+    expect(detail).toHaveBeenCalledWith("tk2727", "apps", "useful-apps", 24, { bypassCache: false });
+  });
 });

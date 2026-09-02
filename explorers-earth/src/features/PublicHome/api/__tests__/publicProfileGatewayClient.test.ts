@@ -31,4 +31,11 @@ describe("public profile gateway client", () => {
     const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
     await expect(client.shell("tk2727")).rejects.toThrow("PUBLIC_PROFILE_304");
   });
+
+  it("uses the safe category detail endpoint for a public list slug", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ appLists: [] }), { status: 200 }));
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    await client.detail("tk2727", "apps", "useful-apps");
+    expect(fetchImpl).toHaveBeenCalledWith("https://localtunes.example/api/explorers/v1/profiles/tk2727/recommendations/apps/useful-apps", expect.any(Object));
+  });
 });

@@ -29,6 +29,9 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
     async category(username: string, category: PublicCategory, signal?: AbortSignal): Promise<unknown> {
       return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}`, signal);
     },
+    async detail(username: string, category: PublicCategory, slug: string, signal?: AbortSignal): Promise<unknown> {
+      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}/${encodeURIComponent(slug)}`, signal);
+    },
   };
 }
 

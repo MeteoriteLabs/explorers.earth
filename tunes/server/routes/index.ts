@@ -177,7 +177,7 @@ export async function registerRoutes(
       token: publicProfileGateway.token,
       fetchImpl: musicConfig.fetchImpl,
     }));
-    setupExplorersPublicProfileRoutes(app, { shell: publicProfileService.shell.bind(publicProfileService), category: publicProfileService.category.bind(publicProfileService) });
+    setupExplorersPublicProfileRoutes(app, { shell: publicProfileService.shell.bind(publicProfileService), category: publicProfileService.category.bind(publicProfileService), detail: publicProfileService.detail.bind(publicProfileService) });
   }
   installProfileOptionalMusicIntegrations(localProfile, {
     nativeAuth: () => setupAuthRoutes(app),

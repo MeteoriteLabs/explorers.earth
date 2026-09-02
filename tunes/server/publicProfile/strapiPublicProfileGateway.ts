@@ -65,6 +65,21 @@ export class StrapiPublicProfileGateway {
     return this.request(`query PublicCategory($username: String!, $limit: Int!) { ${documents[category]} }`, { username, limit });
   }
 
+  async resolveDetail(username: string, category: PublicCategory, slug: string, limit: number): Promise<unknown> {
+    const categoryData = await this.resolveCategory(username, category, limit) as Record<string, unknown>;
+    const collectionByCategory: Record<PublicCategory, string> = {
+      places: "recommendationLists", movies: "movieLists", books: "bookLists", games: "gameLists",
+      guides: "guides", apps: "appLists", products: "productLists", people: "personLists",
+    };
+    const collection = collectionByCategory[category];
+    const values = categoryData[collection];
+    return {
+      [collection]: Array.isArray(values)
+        ? values.filter((value) => Boolean(value) && typeof value === "object" && (value as { slug?: unknown }).slug === slug)
+        : [],
+    };
+  }
+
   async resolveAccount(username: string): Promise<Record<string, unknown> | undefined> {
     const data = await this.request<{ accounts?: Record<string, unknown>[] }>(`query PublicAccount($username: String!) { accounts(filters: { username: { eq: $username } }, pagination: { limit: 1 }) { ${PUBLIC_ACCOUNT_SELECTION} } }`, { username });
     return data.accounts?.[0];

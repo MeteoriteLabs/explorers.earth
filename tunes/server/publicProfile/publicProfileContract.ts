@@ -8,6 +8,10 @@ const requestSchema = z.object({
   cursor: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/).optional(),
 }).strict();
 
+const detailRequestSchema = requestSchema.extend({
+  slug: z.string().regex(/^[A-Za-z0-9_-]{1,160}$/),
+});
+
 const usernameSchema = z.string().trim().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 
 export type PublicProfileRequest = { username: string; category: PublicCategory; limit: number; cursor?: string };
@@ -18,4 +22,10 @@ export function parsePublicProfileRequest(value: unknown): PublicProfileRequest 
 
 export function parsePublicProfileUsername(value: unknown): string {
   return usernameSchema.parse(value);
+}
+
+export type PublicProfileDetailRequest = PublicProfileRequest & { slug: string };
+
+export function parsePublicProfileDetailRequest(value: unknown): PublicProfileDetailRequest {
+  return detailRequestSchema.parse(value);
 }
