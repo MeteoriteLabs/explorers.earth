@@ -38,7 +38,15 @@ import { startMusicReconciliationSuspensionListener } from "../services/musicRec
 import { MusicFeatureDecisionService, type MusicFeatureFlag } from "../services/musicFeatureDecisionService";
 import { setupMusicFeatureRoutes } from "./musicFeatureRoutes";
 import { setupExplorersAnalyticsRoutes } from "./explorersAnalyticsRoutes";
+import { setupExplorersPublicProfileRoutes } from "./explorersPublicProfileRoutes";
+import { PublicProfileService } from "../publicProfile/publicProfileService";
+import { StrapiPublicProfileGateway } from "../publicProfile/strapiPublicProfileGateway";
 import { createExplorersAnalyticsDependencies } from "../services/explorers-analytics-composition";
+import { setupLocalMusicBoundary } from "./musicLocalBoundary";
+import { setupLocalMusicHealthRoutes } from "../deployment/music-local-health";
+import { assertValidatedLocalMusicProfile, type ValidatedLocalMusicProfile } from "../config/music-local-profile";
+import { installProfileOptionalMusicIntegrations, musicCompositionPolicy } from "../config/music-local-composition";
+import { requestLocalMusicRuntimeShutdown } from "../config/music-local-shutdown";
 
 const featureAllowlist = (value?: string) => new Set((value ?? "").split(",").map((item) => item.trim()).filter(Boolean));
 const featurePercentage = (value?: string) => { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 0; };
@@ -51,11 +59,16 @@ export async function registerRoutes(
     proveAbsence(identity: { userDocumentId: string; accountDocumentId: string }): Promise<AuthoritativeAbsence>;
     fixtureReadToken?: string;
   },
-): Promise<Server> {
-  if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
+  localProfile?: ValidatedLocalMusicProfile,
+): Promise<{ server: Server; shutdown: () => Promise<void> }> {
+  if (localProfile) {
+    assertValidatedLocalMusicProfile(localProfile, process.env);
+    setupLocalMusicBoundary(app);
+    setupLocalMusicHealthRoutes(app, { profile: localProfile, pool });
+  } else if (process.env.MUSIC_DEPLOYMENT_HEALTH_ENABLED === "true") {
     setupMusicHealthRoutes(app, { pool });
   }
-  if (process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
+  if (!localProfile && process.env.MUSIC_MODE === "fixture") setupMusicFixtureProbeRoute(app, {
     mode: "fixture",
     databaseQuery: (sql) => pool.query(sql),
     migrationReadiness: () => checkMusicDatabaseReadiness(pool),
@@ -76,12 +89,17 @@ export async function registerRoutes(
     cacheTtlMs: musicConfig.cacheTtlMs,
     circuitFailureThreshold: musicConfig.circuitFailureThreshold,
     circuitOpenMs: musicConfig.circuitOpenMs,
+    ...(localProfile ? { diagnostic: (entry: Record<string, unknown>) => console.info("music_identity_upstream", entry) } : {}),
   });
   const identityRepository = new MusicIdentityRepository(pool);
   const identityProjection = new MusicProjectionService(identityGateway, identityRepository, musicConfig.maxInflight);
   const cohortEntryEnabled = createMusicCohortEntryResolver({
-    killSwitch: () => process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
-    cohort: parseMusicCohortConfiguration(process.env),
+    killSwitch: () => localProfile?.admission.newEntryKillSwitch
+      ?? process.env.MUSIC_NEW_ENTRY_KILL_SWITCH !== "false",
+    cohort: localProfile ? {
+      enabled: localProfile.admission.choice === "cohort",
+      userDocumentIds: new Set(localProfile.admission.cohortUserDocumentIds),
+    } : parseMusicCohortConfiguration(process.env),
     resolveIdentity: (proof, requestId) => identityGateway.resolve(proof, requestId),
   });
   const musicTokens = new MusicTokenService(musicConfig.musicToken);
@@ -130,23 +148,42 @@ export async function registerRoutes(
   };
   const featureFlags: MusicFeatureFlag[] = ["ownerWorkspace", "guestWorkspace", "playlistImports"];
   const featureEnvironment: Record<MusicFeatureFlag, string> = { ownerWorkspace: "OWNER_WORKSPACE", guestWorkspace: "GUEST_WORKSPACE", playlistImports: "PLAYLIST_IMPORTS" };
-  const allowlists = Object.fromEntries(featureFlags.map((flag) => [flag, featureAllowlist(process.env[`MUSIC_FEATURE_${featureEnvironment[flag]}_ALLOWLIST`])])) as Record<MusicFeatureFlag, Set<string>>;
-  const percentages = Object.fromEntries(featureFlags.map((flag) => [flag, featurePercentage(process.env[`MUSIC_FEATURE_${featureEnvironment[flag]}_PERCENT`])])) as Record<MusicFeatureFlag, number>;
+  const localFeatureCohort = new Set(localProfile?.admission.cohortUserDocumentIds ?? []);
+  const allowlists = localProfile ? {
+    ownerWorkspace: localProfile.admission.ownerWorkspace ? localFeatureCohort : new Set<string>(),
+    guestWorkspace: localProfile.admission.guestWorkspace ? localFeatureCohort : new Set<string>(),
+    playlistImports: new Set<string>(),
+  } : Object.fromEntries(featureFlags.map((flag) => [flag, featureAllowlist(process.env[`MUSIC_FEATURE_${featureEnvironment[flag]}_ALLOWLIST`])])) as Record<MusicFeatureFlag, Set<string>>;
+  const percentages = localProfile ? { ownerWorkspace: 0, guestWorkspace: 0, playlistImports: 0 }
+    : Object.fromEntries(featureFlags.map((flag) => [flag, featurePercentage(process.env[`MUSIC_FEATURE_${featureEnvironment[flag]}_PERCENT`])])) as Record<MusicFeatureFlag, number>;
   const featureDecisions = new MusicFeatureDecisionService({
-    killSwitch: () => process.env.MUSIC_WORKSPACE_KILL_SWITCH !== "false",
-    salt: process.env.MUSIC_FEATURE_COHORT_SALT ?? "",
-    cohortVersion: process.env.MUSIC_FEATURE_COHORT_VERSION ?? "disabled-v1",
+    killSwitch: () => localProfile?.admission.workspaceKillSwitch
+      ?? process.env.MUSIC_WORKSPACE_KILL_SWITCH !== "false",
+    salt: localProfile ? "" : process.env.MUSIC_FEATURE_COHORT_SALT ?? "",
+    cohortVersion: localProfile ? `local-${localProfile.instanceId}` : process.env.MUSIC_FEATURE_COHORT_VERSION ?? "disabled-v1",
     allowlists,
     percentages,
+    allowlistIdentity: localProfile ? (principal) => principal.subject : undefined,
     log: (entry) => console.info("music_feature_exposure", entry),
   });
   setupMusicFeatureRoutes(app, { resolvePrincipal: (token) => musicPrincipals.resolve(token), decide: (principal) => featureDecisions.decide(principal), allowedOrigins: canonicalDependencies.allowedOrigins });
   setupCanonicalMusicRoutes(app, canonicalDependencies);
   setupMusicOpenApiRoutes(app);
-  setupAuthRoutes(app);
-  setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies());
-  setupReactivationRoutes(app, {
-    reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
+  const publicProfileToken = process.env.STRAPI_PUBLIC_PROFILE_READ_TOKEN?.trim();
+  if (publicProfileToken) {
+    const publicProfileService = new PublicProfileService(new StrapiPublicProfileGateway({
+      origin: musicConfig.strapiOrigin,
+      token: publicProfileToken,
+      fetchImpl: musicConfig.fetchImpl,
+    }));
+    setupExplorersPublicProfileRoutes(app, { shell: publicProfileService.shell.bind(publicProfileService), category: publicProfileService.category.bind(publicProfileService) });
+  }
+  installProfileOptionalMusicIntegrations(localProfile, {
+    nativeAuth: () => setupAuthRoutes(app),
+    analyticsPublishing: () => setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies()),
+    reactivation: () => setupReactivationRoutes(app, {
+      reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
+    }),
   });
   setupMusicSurfaceBoundary(app, canonicalDependencies);
   setupOwnerContainment(app);
@@ -159,13 +196,29 @@ export async function registerRoutes(
     publicRegistry: publicSocketRegistry,
     observability: publicMusicObservability,
   });
-  const publicChangeListener = await startMusicPublicChangeListener({
+  let publicChangeListener: Awaited<ReturnType<typeof startMusicPublicChangeListener>> | undefined;
+  let suspensionListener: Awaited<ReturnType<typeof startMusicReconciliationSuspensionListener>> | undefined;
+  let lifecycleWorker: ReturnType<typeof startMusicLifecycleWorker> | undefined;
+  let publicationShredTimer: NodeJS.Timeout | undefined;
+  let cleanupPromise: Promise<void> | undefined;
+  const shutdown = (): Promise<void> => cleanupPromise ??= (async () => {
+    lifecycleWorker?.stop();
+    if (publicationShredTimer) clearInterval(publicationShredTimer);
+    await ownerSocketRegistry.disconnectAllSockets().catch(() => undefined);
+    await Promise.allSettled([
+      suspensionListener?.stop(),
+      publicChangeListener?.stop(),
+    ].filter((operation): operation is Promise<void> => operation !== undefined));
+  })();
+  try {
+  publicChangeListener = await startMusicPublicChangeListener({
     pool,
     fanout: (change) => publicSocketRegistry.publish(change),
     observability: publicMusicObservability,
     onFatal: () => {
       console.error("music_public_change_listener_failed");
-      if (server.listening) server.close();
+      if (localProfile) requestLocalMusicRuntimeShutdown(server);
+      else if (server.listening) server.close();
       void ownerSocketRegistry.disconnectAllSockets().catch(() => undefined);
     },
   });
@@ -174,14 +227,17 @@ export async function registerRoutes(
     if (suspensionSafetyFailed) return;
     suspensionSafetyFailed = true;
     const wasListening = server.listening;
-    if (wasListening) server.close();
+    if (wasListening) {
+      if (localProfile) requestLocalMusicRuntimeShutdown(server);
+      else server.close();
+    }
     void ownerSocketRegistry.disconnectAllSockets().catch(() => {
       console.error("music_reconciliation_socket_shutdown_failed");
     }).finally(() => {
       if (!wasListening) server.emit("error", new Error("Music reconciliation suspension safety failed"));
     });
   };
-  const suspensionListener = await startMusicReconciliationSuspensionListener({
+  suspensionListener = await startMusicReconciliationSuspensionListener({
     pool,
     disconnectOwner: (musicUserId) => ownerSocketRegistry.disconnectOwner(musicUserId),
     onDisconnectError: () => {
@@ -194,7 +250,7 @@ export async function registerRoutes(
     },
   });
   setupSeoRoutes(app, { listPublishedMusicPlaylists: () => musicDomain.listPublishedMusicPlaylists() });
-  const lifecycleWorker = startMusicLifecycleWorker({
+  if (musicCompositionPolicy(localProfile).lifecycleWorker) lifecycleWorker = startMusicLifecycleWorker({
     intervalMs: 30_000,
     onError: () => console.error("music_lifecycle_worker_failed"),
     runOnce: async () => {
@@ -207,7 +263,7 @@ export async function registerRoutes(
       if (result.claimed > 0) console.info("music_lifecycle_worker", result);
     },
   });
-  const publicationShredTimer = setInterval(() => {
+  publicationShredTimer = setInterval(() => {
     void publicationOperations.shredExpiredResponses(1_000)
       .then(() => publicationOperations.compactExpiredOperations(1_000))
       .catch(() => {
@@ -215,16 +271,7 @@ export async function registerRoutes(
       });
   }, 60 * 1_000);
   publicationShredTimer.unref();
-  server.once("close", () => {
-    lifecycleWorker.stop();
-    clearInterval(publicationShredTimer);
-    void suspensionListener.stop().catch(() => {
-      console.error("music_reconciliation_suspension_listener_stop_failed");
-    });
-    void publicChangeListener.stop().catch(() => {
-      console.error("music_public_change_listener_stop_failed");
-    });
-  });
+  server.once("close", () => { void shutdown(); });
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {
@@ -258,5 +305,10 @@ export async function registerRoutes(
     }
   });
   
-  return server;
+  return { server, shutdown };
+  } catch (error) {
+    await shutdown();
+    if (server.listening) await new Promise<void>((resolve) => server.close(() => resolve()));
+    throw error;
+  }
 }

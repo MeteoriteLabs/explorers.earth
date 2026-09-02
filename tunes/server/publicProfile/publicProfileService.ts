@@ -13,4 +13,9 @@ export class PublicProfileService {
     if (!account || !canReadPublicCategory(account, category)) return undefined;
     return this.gateway.resolveCategory(username, category, limit);
   }
+
+  async shell(username: string): Promise<Record<string, unknown> | undefined> {
+    const account = await this.gateway.resolveAccount(username);
+    return account?.public_profile === "Yes" ? account : undefined;
+  }
 }
