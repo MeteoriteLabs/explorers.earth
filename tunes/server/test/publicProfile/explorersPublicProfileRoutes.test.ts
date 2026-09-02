@@ -1,6 +1,6 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { setupExplorersPublicProfileRoutes } from "../../routes/explorersPublicProfileRoutes";
 
 describe("explorers public profile routes", () => {
@@ -30,5 +30,30 @@ describe("explorers public profile routes", () => {
     const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(503);
     expect(response.body.error.code).toBe("UNAVAILABLE");
     expect(JSON.stringify(response.body)).not.toContain("credentials");
+  });
+
+  it("rejects malformed public identifiers before calling the gateway", async () => {
+    const category = vi.fn();
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category });
+    await request(app).get("/api/explorers/v1/profiles/tk2727%2Fadmin/recommendations/apps").expect(404);
+    expect(category).not.toHaveBeenCalled();
+  });
+
+  it("honours the bounded page size and creator cache bypass", async () => {
+    const category = vi.fn().mockResolvedValue({ lists: [] });
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category });
+    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=24").set("Cache-Control", "no-cache").expect(200);
+    expect(category).toHaveBeenCalledWith("tk2727", "apps", 24, { bypassCache: true });
+    expect(response.headers["cache-control"]).toContain("max-age=30");
+  });
+
+  it("maps shell upstream failures to a safe retryable response", async () => {
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { shell: async () => { throw new Error("private upstream detail"); }, category: async () => undefined });
+    const response = await request(app).get("/api/explorers/v1/profiles/tk2727").expect(503);
+    expect(response.body.error.code).toBe("UNAVAILABLE");
+    expect(JSON.stringify(response.body)).not.toContain("private");
   });
 });

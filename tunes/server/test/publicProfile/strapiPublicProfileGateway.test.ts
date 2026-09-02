@@ -11,4 +11,26 @@ describe("StrapiPublicProfileGateway", () => {
     expect(init.headers.authorization).toBe("Bearer server-only-token");
     expect(JSON.parse(init.body)).toMatchObject({ variables: { username: "tk2727", limit: 12 } });
   });
+
+  it.each([["places", "recommended_places"], ["movies", "recommended_movies"], ["books", "recommended_books"], ["games", "recommended_games"], ["guides", "Guide_Media"], ["apps", "recommended_apps"], ["products", "recommended_products"], ["people", "recommended_people"]] as const)("uses the allowlisted %s projection", async (category, field) => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 }));
+    await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveCategory("tk2727", category, 12);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body).query).toContain(field);
+  });
+
+  it("unwraps the allowlisted GraphQL data instead of forwarding its envelope", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { appLists: [{ documentId: "list-1" }] }, extensions: { traceId: "internal" } }), { status: 200 }));
+    const value = await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveCategory("tk2727", "apps", 12);
+    expect(value).toEqual({ appLists: [{ documentId: "list-1" }] });
+  });
+
+  it("fails closed when Strapi returns GraphQL errors with an OK status", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null, errors: [{ message: "Forbidden" }] }), { status: 200 }));
+    await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveCategory("tk2727", "apps", 12)).rejects.toThrow("PUBLIC_PROFILE_UPSTREAM_FAILED");
+  });
+
+  it("fails closed when an account response contains GraphQL errors", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null, errors: [{ message: "Forbidden" }] }), { status: 200 }));
+    await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveAccount("tk2727")).rejects.toThrow("PUBLIC_PROFILE_UPSTREAM_FAILED");
+  });
 });

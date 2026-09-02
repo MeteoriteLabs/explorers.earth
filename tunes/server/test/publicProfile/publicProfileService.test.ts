@@ -8,4 +8,31 @@ describe("PublicProfileService", () => {
     await expect(service.category("tk2727", "apps", 12)).resolves.toBeUndefined();
     expect(gateway.resolveCategory).not.toHaveBeenCalled();
   });
+
+  it("uses a bounded short-lived cache for repeated public reads", async () => {
+    let now = 1_000;
+    const gateway = {
+      resolveAccount: vi.fn().mockResolvedValue({ public_profile: "Yes", public_apps: "Yes" }),
+      resolveCategory: vi.fn().mockResolvedValue({ appLists: [] }),
+    };
+    const service = new PublicProfileService(gateway, { now: () => now, ttlMs: 30_000 });
+    await service.category("tk2727", "apps", 12);
+    await service.category("tk2727", "apps", 12);
+    expect(gateway.resolveAccount).toHaveBeenCalledTimes(1);
+    expect(gateway.resolveCategory).toHaveBeenCalledTimes(1);
+    now += 30_001;
+    await service.category("tk2727", "apps", 12);
+    expect(gateway.resolveCategory).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes a public read when the creator requests no-cache", async () => {
+    const gateway = {
+      resolveAccount: vi.fn().mockResolvedValue({ public_profile: "Yes", public_apps: "Yes" }),
+      resolveCategory: vi.fn().mockResolvedValue({ appLists: [] }),
+    };
+    const service = new PublicProfileService(gateway);
+    await service.category("tk2727", "apps", 12);
+    await service.category("tk2727", "apps", 12, { bypassCache: true });
+    expect(gateway.resolveCategory).toHaveBeenCalledTimes(2);
+  });
 });
