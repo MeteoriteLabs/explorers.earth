@@ -46,6 +46,20 @@ describe("StrapiPublicProfileGateway", () => {
     await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveCategory("tk2727", "apps", 12)).rejects.toThrow("PUBLIC_PROFILE_UPSTREAM_FAILED");
   });
 
+  it("retries one failed upstream read and keeps the server-only authorization header", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary network failure"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { appLists: [] } }), { status: 200 }));
+    const gateway = new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl });
+
+    await expect(gateway.resolveCategory("tk2727", "apps", 12)).resolves.toEqual({ appLists: [] });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[1][1].headers.authorization).toBe("Bearer server-only-token");
+    expect(fetchImpl.mock.calls[1][1].signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("fails closed when an account response contains GraphQL errors", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: null, errors: [{ message: "Forbidden" }] }), { status: 200 }));
     await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveAccount("tk2727")).rejects.toThrow("PUBLIC_PROFILE_UPSTREAM_FAILED");

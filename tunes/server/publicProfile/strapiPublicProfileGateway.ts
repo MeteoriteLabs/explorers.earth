@@ -39,17 +39,30 @@ export class StrapiPublicProfileGateway {
   constructor(private readonly options: { origin: string; token: string; fetchImpl: FetchLike }) {}
 
   private async request<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-    const response = await this.options.fetchImpl(`${this.options.origin}/graphql`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${this.options.token}` },
-      body: JSON.stringify({ query, variables }),
-    });
-    if (!response.ok) throw new Error("PUBLIC_PROFILE_UPSTREAM_FAILED");
-    const body = await response.json() as StrapiGraphqlResponse<T>;
-    if (body.errors?.length || body.data === undefined || body.data === null) {
-      throw new Error("PUBLIC_PROFILE_UPSTREAM_FAILED");
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4_000);
+      try {
+        const response = await this.options.fetchImpl(`${this.options.origin}/graphql`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${this.options.token}` },
+          body: JSON.stringify({ query, variables }),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("PUBLIC_PROFILE_UPSTREAM_FAILED");
+        const body = await response.json() as StrapiGraphqlResponse<T>;
+        if (body.errors?.length || body.data === undefined || body.data === null) {
+          throw new Error("PUBLIC_PROFILE_UPSTREAM_FAILED");
+        }
+        return body.data;
+      } catch (error) {
+        lastError = error;
+      } finally {
+        clearTimeout(timeout);
+      }
     }
-    return body.data;
+    throw new Error("PUBLIC_PROFILE_UPSTREAM_FAILED", { cause: lastError });
   }
 
   async resolveCategory(username: string, category: PublicCategory, limit: number): Promise<unknown> {
