@@ -21,6 +21,14 @@ describe("StrapiPublicProfileGateway", () => {
     expect(query).toContain("app_category{documentId name slug}");
   });
 
+  it.each([["books", "recommended_books", "title"], ["products", "recommended_products", "title"]] as const)("returns bounded %s card data for the public overview", async (category, relation, requiredField) => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 }));
+    await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveCategory("tk2727", category, 12);
+    const query = JSON.parse(fetchImpl.mock.calls[0][1].body).query;
+    expect(query).toContain(`${relation}(sort:["display_order:asc"],pagination:{limit:12})`);
+    expect(query).toContain(requiredField);
+  });
+
   it.each([["places", "recommended_places"], ["movies", "recommended_movies"], ["books", "recommended_books"], ["games", "recommended_games"], ["guides", "Guide_Media"], ["apps", "recommended_apps"], ["products", "recommended_products"], ["people", "recommended_people"]] as const)("uses the allowlisted %s projection", async (category, field) => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 }));
     await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveCategory("tk2727", category, 12);
