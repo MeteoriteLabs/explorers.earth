@@ -41,6 +41,7 @@ import { setupExplorersAnalyticsRoutes } from "./explorersAnalyticsRoutes";
 import { setupExplorersPublicProfileRoutes } from "./explorersPublicProfileRoutes";
 import { PublicProfileService } from "../publicProfile/publicProfileService";
 import { StrapiPublicProfileGateway } from "../publicProfile/strapiPublicProfileGateway";
+import { resolvePublicProfileGatewayConfig } from "../config/public-profile-gateway-config";
 import { createExplorersAnalyticsDependencies } from "../services/explorers-analytics-composition";
 import { setupLocalMusicBoundary } from "./musicLocalBoundary";
 import { setupLocalMusicHealthRoutes } from "../deployment/music-local-health";
@@ -169,11 +170,11 @@ export async function registerRoutes(
   setupMusicFeatureRoutes(app, { resolvePrincipal: (token) => musicPrincipals.resolve(token), decide: (principal) => featureDecisions.decide(principal), allowedOrigins: canonicalDependencies.allowedOrigins });
   setupCanonicalMusicRoutes(app, canonicalDependencies);
   setupMusicOpenApiRoutes(app);
-  const publicProfileToken = process.env.STRAPI_PUBLIC_PROFILE_READ_TOKEN?.trim();
-  if (publicProfileToken) {
+  const publicProfileGateway = resolvePublicProfileGatewayConfig(process.env);
+  if (publicProfileGateway.enabled) {
     const publicProfileService = new PublicProfileService(new StrapiPublicProfileGateway({
       origin: musicConfig.strapiOrigin,
-      token: publicProfileToken,
+      token: publicProfileGateway.token,
       fetchImpl: musicConfig.fetchImpl,
     }));
     setupExplorersPublicProfileRoutes(app, { shell: publicProfileService.shell.bind(publicProfileService), category: publicProfileService.category.bind(publicProfileService) });
