@@ -1,8 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { Users, Share2, ArrowLeft } from "lucide-react";
-import { PUBLIC_PEOPLE_DATA } from "../../api/query";
+import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
+import { Users, ArrowLeft } from "lucide-react";
 import {
   deduplicatePeople,
   buildImageUrl,
@@ -12,58 +10,55 @@ import {
 import PlatformIcon from "../PlatformIcon";
 import type { RecommendedPerson, PersonList } from "../../types";
 import PersonDetailModal from "./PersonDetailModal";
-import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForPersonSector($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+const isRenderablePersonList = (value: unknown): value is PersonList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_people);
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
-  const navigate = useNavigate();
+  const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const sectorName = slugToCategoryName(sectorSlug ?? "");
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const analytics = useTrackAnalytics(
     createAnalyticsOptions.people(accountDocumentId || "", username),
   );
 
-  const { data, loading: peopleLoading, error } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = usePublicRecommendationCategory(username, "people", accountData?.public_people === "Yes");
 
   const loading = userLoading || peopleLoading;
+  const queryError = userError || peopleError;
+  const rawLists = data?.personLists;
+  const lists: PersonList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderablePersonList)
+    .map((list) => ({
+      ...list,
+      recommended_people: list.recommended_people.filter(isNonNullObject) as PersonList["recommended_people"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderablePersonList);
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists = data?.personLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
+  }, [accountDocumentId, refetchPeople, refetchUser]);
 
   // Extract all people across lists, deduplicate, and filter by sector slug
   const allPeople = useMemo(() => {
@@ -103,23 +98,13 @@ const PublicPersonSector = () => {
     });
   }, [analytics, owningListByPersonId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `${sectorName} recommendations by ${creatorName}`, url });
-      } catch {
-        /* ignore */
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-    analytics.trackClick("share-button", {
-      context: "people-sector-header",
-      sector: sectorSlug,
-    });
-  };
+  usePublicHeaderDescriptor(sectorSlug ? {
+    navigationKey: location.key,
+    title: `${sectorName} recommendations by ${creatorName}`,
+    url: window.location.href,
+    analyticsContext: "people-sector-header",
+    analyticsMetadata: { sector: sectorSlug },
+  } : undefined);
 
   const pageTitle = `${sectorName} | ${creatorName}'s People Sector | explorers`;
   const metaDescription = `Explore ${sectorPeople.length} people in ${sectorName} recommended by ${creatorName} on explorers.`;
@@ -138,30 +123,9 @@ const PublicPersonSector = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <div className="min-h-screen bg-[#0d1117] text-white" aria-busy={loading || undefined}>
         {/* Header content section */}
-        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2 mt-14">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
           <Link
             to={`/${username}/people`}
             className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
@@ -169,13 +133,15 @@ const PublicPersonSector = () => {
             <ArrowLeft size={14} /> {creatorName}'s People
           </Link>
 
-          {loading ? (
+          {Boolean(queryError) && hasUsableData && <PublicRoutePartialNotice message="Some people data is unavailable." />}
+
+          {loading && !hasUsableData ? (
             <>
               <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
               <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
             </>
-          ) : error ? (
-            <p className="text-red-400">Failed to load sector.</p>
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="People sector unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -193,7 +159,7 @@ const PublicPersonSector = () => {
         {/* Grid of person cards */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {loading ? (
+            {loading && !hasUsableData ? (
               [1, 2, 3, 4, 5, 6].map((idx) => (
                 <div key={idx} className="flex flex-col items-center gap-3">
                   <div className="w-24 h-24 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />

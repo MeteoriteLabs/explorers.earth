@@ -1,10 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { Users, Share2 } from "lucide-react";
-import { PUBLIC_PEOPLE_DATA } from "../../api/query";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { Users } from "lucide-react";
 import { deduplicatePeople, extractUniqueCategories } from "../../utils/personHelpers";
-import { toast } from "sonner";
 import type { RecommendedPerson, PersonList } from "../../types";
 import PersonCarouselRow from "./PersonCarouselRow";
 import PersonDetailModal from "./PersonDetailModal";
@@ -14,57 +11,52 @@ import PersonTopPicksHero from "./PersonTopPicksHero";
 import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernamePeople($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+const isRenderablePersonList = (value: unknown): value is PersonList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_people);
 
 const PublicPeople = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; person: RecommendedPerson | null }>({
     open: false,
     person: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: peopleLoading } = useQuery(PUBLIC_PEOPLE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
+  const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = usePublicRecommendationCategory(username, "people", accountData?.public_people === "Yes");
 
   const loading = userLoading || peopleLoading;
+  const queryError = userError || peopleError;
+  const rawLists = data?.personLists;
+  const lists: PersonList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderablePersonList)
+    .map((list) => ({
+      ...list,
+      recommended_people: list.recommended_people.filter(isNonNullObject) as PersonList["recommended_people"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderablePersonList);
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: PersonList[] = data?.personLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
+  }, [accountDocumentId, refetchPeople, refetchUser]);
+
   const analytics = useTrackAnalytics(
     createAnalyticsOptions.people(accountDocumentId || "", username),
   );
@@ -109,16 +101,12 @@ const PublicPeople = () => {
     });
   }, [analytics, owningListByPersonId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s People`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-    analytics.trackClick("share-button", { context: "people-header" });
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s People`,
+    url: window.location.href,
+    analyticsContext: "people-header",
+  });
 
   const personCount = allPeople.length;
   const listCount = lists.length;
@@ -138,7 +126,7 @@ const PublicPeople = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -151,32 +139,10 @@ const PublicPeople = () => {
       )}
 
       <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading ? (
-            (window as any).__publicProfileLoaded ? (
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+          {loading && !hasUsableData ? (
+            outletContext?.isShellRevealed ? (
               <div className="space-y-10 mt-4">
                 <div className="hidden lg:block">
                   <HeroSkeleton accentColor="purple" showThumbnails />
@@ -202,10 +168,13 @@ const PublicPeople = () => {
                 ))}
               </div>
             ) : null
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="People unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <>
+              {Boolean(queryError) && <PublicRoutePartialNotice message="Some people data is unavailable." />}
               {/* Empty state */}
-              {lists.length === 0 ? (
+              {allPeople.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   <Users size={48} className="text-white/20 mb-4" />
                   <p className="text-white/40 text-lg font-medium">No people shared yet</p>
