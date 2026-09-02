@@ -3,11 +3,13 @@ import { publicProfileGatewayClient, type PublicCategory } from "./publicProfile
 
 export function usePublicProfileDetail(username: string | undefined, category: PublicCategory, slug: string | undefined) {
   const [attempt, setAttempt] = useState(0);
+  const bypassCacheRef = useRef(false);
   const [state, setState] = useState<{ data: Record<string, unknown[]> | undefined; loading: boolean; error: unknown | null }>({ data: undefined, loading: Boolean(username && slug), error: null });
   const retryResolvers = useRef<Array<() => void>>([]);
   const settleRetries = useCallback(() => { retryResolvers.current.splice(0).forEach((resolve) => resolve()); }, []);
   const refetch = useCallback(async () => {
     if (!username || !slug) return;
+    bypassCacheRef.current = true;
     const settled = new Promise<void>((resolve) => retryResolvers.current.push(resolve));
     setAttempt((value) => value + 1);
     await settled;
@@ -19,7 +21,9 @@ export function usePublicProfileDetail(username: string | undefined, category: P
       return () => controller.abort();
     }
     setState((previous) => ({ data: previous.data, loading: previous.data === undefined, error: null }));
-    publicProfileGatewayClient.detail(username, category, slug, controller.signal)
+    const bypassCache = bypassCacheRef.current;
+    bypassCacheRef.current = false;
+    publicProfileGatewayClient.detail(username, category, slug, controller.signal, bypassCache)
       .then((data) => { if (!controller.signal.aborted) { setState({ data: data as Record<string, unknown[]>, loading: false, error: null }); settleRetries(); } })
       .catch((error: unknown) => { if (!controller.signal.aborted) { setState((previous) => ({ data: previous.data, loading: false, error })); settleRetries(); } });
     return () => controller.abort();

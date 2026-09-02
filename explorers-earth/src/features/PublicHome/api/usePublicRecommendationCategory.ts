@@ -17,6 +17,7 @@ export function usePublicRecommendationCategory(
   enabled: boolean,
 ): PublicCategoryGatewayState {
   const [attempt, setAttempt] = useState(0);
+  const bypassCacheRef = useRef(false);
   const [state, setState] = useState<Omit<PublicCategoryGatewayState, "refetch">>({
     data: undefined,
     loading: enabled && Boolean(username),
@@ -28,6 +29,7 @@ export function usePublicRecommendationCategory(
   }, []);
   const refetch = useCallback(async () => {
     if (!enabled || !username) return;
+    bypassCacheRef.current = true;
     const settled = new Promise<void>((resolve) => retryResolvers.current.push(resolve));
     setAttempt((value) => value + 1);
     await settled;
@@ -40,7 +42,9 @@ export function usePublicRecommendationCategory(
       return () => controller.abort();
     }
     setState((previous) => ({ data: previous.data, loading: previous.data === undefined, error: null }));
-    publicProfileGatewayClient.category(username, category, controller.signal)
+    const bypassCache = bypassCacheRef.current;
+    bypassCacheRef.current = false;
+    publicProfileGatewayClient.category(username, category, controller.signal, bypassCache)
       .then((data) => {
         if (!controller.signal.aborted) {
           setState({ data: data as Record<string, unknown[]>, loading: false, error: null });

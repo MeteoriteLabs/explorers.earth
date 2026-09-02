@@ -26,6 +26,13 @@ describe("public profile gateway client", () => {
     expect(fetchImpl.mock.calls[1][1].headers).toEqual({ Accept: "application/json", "If-None-Match": '"apps-v1"' });
   });
 
+  it("asks the gateway to bypass its cache for creator revalidation", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ username: "tk2727" }), { status: 200 }));
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    await client.shell("tk2727", undefined, true);
+    expect(fetchImpl.mock.calls[0][1].headers).toEqual({ Accept: "application/json", "Cache-Control": "no-cache" });
+  });
+
   it("does not parse an uncacheable 304 response as JSON", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 304 }));
     const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);

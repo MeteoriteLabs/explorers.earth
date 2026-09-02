@@ -5,12 +5,16 @@ type FetchLike = typeof fetch;
 export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: FetchLike = fetch) {
   const origin = baseUrl.replace(/\/$/, "");
   const cache = new Map<string, { etag: string; value: unknown }>();
-  const request = async (path: string, signal?: AbortSignal): Promise<unknown> => {
+  const request = async (path: string, signal?: AbortSignal, bypassCache = false): Promise<unknown> => {
     const url = `${origin}${path}`;
     const cached = cache.get(url);
     const response = await fetchImpl(url, {
       signal,
-      headers: cached ? { Accept: "application/json", "If-None-Match": cached.etag } : { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        ...(cached ? { "If-None-Match": cached.etag } : {}),
+        ...(bypassCache ? { "Cache-Control": "no-cache" } : {}),
+      },
     });
     if (response.status === 304) {
       if (cached) return cached.value;
@@ -23,14 +27,14 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
     return value;
   };
   return {
-    async shell(username: string, signal?: AbortSignal): Promise<unknown> {
-      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}`, signal);
+    async shell(username: string, signal?: AbortSignal, bypassCache = false): Promise<unknown> {
+      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}`, signal, bypassCache);
     },
-    async category(username: string, category: PublicCategory, signal?: AbortSignal): Promise<unknown> {
-      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}`, signal);
+    async category(username: string, category: PublicCategory, signal?: AbortSignal, bypassCache = false): Promise<unknown> {
+      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}`, signal, bypassCache);
     },
-    async detail(username: string, category: PublicCategory, slug: string, signal?: AbortSignal): Promise<unknown> {
-      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}/${encodeURIComponent(slug)}`, signal);
+    async detail(username: string, category: PublicCategory, slug: string, signal?: AbortSignal, bypassCache = false): Promise<unknown> {
+      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}/${encodeURIComponent(slug)}`, signal, bypassCache);
     },
   };
 }

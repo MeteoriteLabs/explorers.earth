@@ -16,7 +16,7 @@ describe("usePublicProfileShell", () => {
     shell.mockResolvedValueOnce({ Account_Name: "Alice" });
     const { result } = renderHook(() => usePublicProfileShell("tk2727"));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(shell).toHaveBeenCalledWith("tk2727", expect.any(AbortSignal));
+    expect(shell).toHaveBeenCalledWith("tk2727", expect.any(AbortSignal), false);
     expect(result.current.data).toEqual({ Account_Name: "Alice" });
   });
 });

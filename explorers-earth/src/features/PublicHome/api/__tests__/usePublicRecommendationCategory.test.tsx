@@ -16,7 +16,7 @@ describe("usePublicRecommendationCategory", () => {
     category.mockResolvedValueOnce({ appLists: [] });
     const { result } = renderHook(() => usePublicRecommendationCategory("tk2727", "apps", true));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(category).toHaveBeenCalledWith("tk2727", "apps", expect.any(AbortSignal));
+    expect(category).toHaveBeenCalledWith("tk2727", "apps", expect.any(AbortSignal), false);
     expect(result.current.data).toEqual({ appLists: [] });
   });
 
@@ -42,5 +42,6 @@ describe("usePublicRecommendationCategory", () => {
 
     await act(async () => { completeRetry?.({ appLists: [] }); await retry; });
     expect(settled).toBe(true);
+    expect(category).toHaveBeenLastCalledWith("tk2727", "apps", expect.any(AbortSignal), true);
   });
 });
