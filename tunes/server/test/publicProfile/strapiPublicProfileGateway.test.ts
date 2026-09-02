@@ -51,4 +51,22 @@ describe("StrapiPublicProfileGateway", () => {
     expect(payload.query).toContain("slug:{eq:$slug}");
     expect(payload.query).toContain("recommended_apps(sort:[\"display_order:asc\"],pagination:{limit:$limit})");
   });
+
+  it.each([
+    ["places", "recommendationLists", "recommended_places"],
+    ["movies", "movieLists", "recommended_movies"],
+    ["books", "bookLists", "recommended_books"],
+    ["games", "gameLists", "recommended_games"],
+    ["guides", "guides", "guide_sections"],
+    ["apps", "appLists", "recommended_apps"],
+    ["products", "productLists", "recommended_products"],
+    ["people", "personLists", "recommended_people"],
+  ] as const)("uses an exact, account-scoped %s detail projection", async (category, collection, detailField) => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { [collection]: [] } }), { status: 200 }));
+    await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl }).resolveDetail("tk2727", category, "published-list", 24);
+    const payload = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(payload.variables).toMatchObject({ username: "tk2727", slug: "published-list", limit: 24 });
+    expect(payload.query).toContain(`${collection}(filters:{account:{username:{eq:$username}},slug:{eq:$slug}`);
+    expect(payload.query).toContain(detailField);
+  });
 });
