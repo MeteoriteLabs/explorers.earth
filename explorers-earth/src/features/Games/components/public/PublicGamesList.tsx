@@ -1,19 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { Gamepad2, ArrowLeft, Star, Share2 } from "lucide-react";
-import { toast } from "sonner";
-import { GAME_LIST_BY_SLUG } from "../../api/query";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { Gamepad2, ArrowLeft, Star } from "lucide-react";
 import { deduplicateGames, buildCoverUrl } from "../../utils/gameHelpers";
 import type { RecommendedGame, GameList } from "../../types";
 import GameDetailModal from "./GameDetailModal";
 import GameCoverCard from "./GameCoverCard";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileDetail } from "../../../PublicHome/api/usePublicProfileDetail";
 
 const PublicGamesList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
@@ -21,44 +22,58 @@ const PublicGamesList = () => {
     game: null,
   });
 
-  const { data, loading } = useQuery(GAME_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
-  });
+  const { data, loading, error, refetch } = usePublicProfileDetail(username, "games", listSlug);
 
-  const rawList = data?.gameLists?.[0];
+  const rawList = (Array.isArray(data?.gameLists) ? data.gameLists : []).find(
+    (value: unknown): value is GameList => isNonNullObject(value) && Array.isArray(value.recommended_games),
+  );
   const list: GameList | null = rawList
     ? { ...rawList, recommended_games: deduplicateGames(rawList.recommended_games) }
     : null;
+  const hasUsableData = Boolean(list);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: list?.List_Name || "Game List", url }); } catch { /* ignore */ }
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copied!");
-      } catch (error) {
-        console.error("Failed to copy text:", error);
-      }
-    }
-  };
+  usePublicHeaderDescriptor(list ? {
+    navigationKey: location.key,
+    title: list.List_Name || "Game List",
+    url: window.location.href,
+    analyticsContext: "games-list-header",
+    analyticsMetadata: {
+      listId: list.documentId,
+      listName: list.List_Name,
+    },
+  } : undefined);
 
   const handleGameClick = useCallback((game: RecommendedGame) => {
     setModalState({ open: true, game });
   }, []);
 
-  if (loading) {
+  if (loading && !hasUsableData) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center" aria-busy="true">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+
+  if (error && !hasUsableData) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] text-white">
+        <PublicRouteErrorState
+          title="Game list unavailable"
+          error={error}
+          onRetry={refetch}
+          backAction={(
+            <button type="button" onClick={() => navigate(`/${username}/games`)} className="min-h-11 rounded-xl border border-white/15 px-5 py-2 text-sm font-semibold text-white">
+              Back to Games
+            </button>
+          )}
+        />
       </div>
     );
   }
@@ -97,30 +112,10 @@ const PublicGamesList = () => {
         author={username}
         siteName="explorers"
       />
-      <div className="min-h-screen bg-[#0d1117] pb-24">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <div className="min-h-screen bg-[#0d1117] pb-24" aria-busy={loading || undefined}>
+        {Boolean(error) && <PublicRoutePartialNotice message="Some game data is unavailable." />}
         {/* Header Banner */}
-        <div className="relative h-40 md:h-52 w-full overflow-hidden bg-white/5 mt-14">
+        <div className="relative h-40 md:h-52 w-full overflow-hidden bg-white/5">
           {coverUrl && (
             <img src={coverUrl} alt={list.List_Name} className="absolute inset-0 w-full h-full object-cover blur-sm opacity-50" />
           )}
