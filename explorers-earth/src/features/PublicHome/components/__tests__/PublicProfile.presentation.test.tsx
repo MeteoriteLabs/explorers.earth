@@ -34,6 +34,15 @@ vi.mock("@apollo/client", async (importOriginal) => {
   };
 });
 
+vi.mock("../../api/usePublicProfileShell", () => ({
+  usePublicProfileShell: () => ({
+    data: state.account,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+}));
+
 vi.mock("../../../../services/analyticsService", () => ({
   createAnalyticsOptions: { profile: vi.fn(() => ({})) },
   useTrackAnalytics: () => ({ trackClick }),
@@ -147,14 +156,14 @@ describe("PublicProfile recommendation presentation", () => {
     seoProps.length = 0;
     state.account = makeAccount();
     trackClick.mockReset();
-    (window as any).__publicProfileLoaded = false;
   });
 
-  it("preserves fixed-header share tracking on the profile root", async () => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn().mockResolvedValue(undefined) });
+  it("leaves the profile root header and Share action to the shared provider", () => {
     renderProfile();
-    fireEvent.click(screen.getByRole("button", { name: "Share" }));
-    await waitFor(() => expect(trackClick).toHaveBeenCalledWith("share-button", { context: "profile-header" }));
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Share" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Alice's profile photo" })).toBeInTheDocument();
+    expect(screen.getByRole("tablist", { name: "Profile sections" })).toBeInTheDocument();
   });
 
   it("sanitizes API rich text at the public render boundary and rejects an unsafe business website", () => {
@@ -312,11 +321,8 @@ describe("PublicProfile recommendation presentation", () => {
     },
   );
 
-  it("uses accessible logo and avatar controls without an accent ring", () => {
+  it("keeps the accessible avatar control without an accent ring", () => {
     renderProfile();
-
-    const brand = screen.getByRole("link", { name: "Explorers.Earth home" });
-    expect(brand.querySelector("img")).toHaveAttribute("src", "/eoe-icon.svg");
 
     const avatar = screen.getByRole("button", { name: "View Alice's profile photo" });
     expect(avatar).not.toHaveClass("border-4");

@@ -19,6 +19,7 @@ const PUBLIC_ACCOUNT_SELECTION = `
   social_media
   Public_Profile_Address
   Feed_Data
+  mobile_number_visibility
   public_profile
   public_recommendations
   public_music

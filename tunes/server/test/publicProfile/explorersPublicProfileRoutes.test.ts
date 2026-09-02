@@ -9,6 +9,13 @@ describe("explorers public profile routes", () => {
     setupExplorersPublicProfileRoutes(app, { shell: async () => ({ username: "tk2727", public_profile: "Yes" }), category: async () => undefined });
     await request(app).get("/api/explorers/v1/profiles/tk2727").expect(200).expect({ username: "tk2727", public_profile: "Yes" });
   });
+  it("caches the public shell with the same validator contract as categories", async () => {
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { shell: async () => ({ username: "tk2727", public_profile: "Yes" }), category: async () => undefined });
+    const first = await request(app).get("/api/explorers/v1/profiles/tk2727").expect(200);
+    expect(first.headers["cache-control"]).toContain("max-age=30");
+    await request(app).get("/api/explorers/v1/profiles/tk2727").set("If-None-Match", first.headers.etag).expect(304);
+  });
   it("returns the same safe 404 for an unavailable category", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category: async () => undefined });

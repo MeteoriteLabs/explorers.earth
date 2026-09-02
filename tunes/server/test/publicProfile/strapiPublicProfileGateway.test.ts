@@ -40,6 +40,6 @@ describe("StrapiPublicProfileGateway", () => {
     const query = JSON.parse(fetchImpl.mock.calls[0][1].body).query;
     expect(query).toContain("Account_Name");
     expect(query).toMatch(/profile_picture\s*\{\s*url\s+alternativeText/);
-    expect(query).not.toContain("mobile_number");
+    expect(query).not.toMatch(/\bmobile_number\b/);
   });
 });

@@ -8,11 +8,12 @@ import {
 } from "../../Profile/constants/recommendationsPresentation";
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
-import { PublicProfileFixedHeader, PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
-import { useQuery } from "@apollo/client";
+import { PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
+import { useQuery as useApolloQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
+import { getUserMobileNumberQuery } from "../api/query";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
 import MobileIcon from "../../../assets/icons/MobileIcon";
@@ -49,6 +50,7 @@ import {
   sanitizePublicRichText,
 } from "../utils/publicProfileContent";
 import { usePublicMusicAvailability } from "../../music/PublicMusicAvailabilityProvider";
+import { PublicRouteErrorState, PublicRoutePartialNotice } from "./PublicRouteContentState";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
@@ -106,29 +108,17 @@ ProfileSkeleton.displayName = "ProfileSkeleton";
 const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
   const musicAvailability = usePublicMusicAvailability();
   const musicLandingHandled = useRef<string>();
 
   // MediaViewer state
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
 
-  // Clean share URL without QR code UTM parameters for direct sharing
-  const getCleanShareUrl = () => {
-    return `${window.location.origin}/${username}`;
-  };
+  const { data, loading, error, refetch } = usePublicProfileShell(username);
 
-  const { data, loading } = useQuery(getPublicProfileDataQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-  });
-
-  const accountData = data?.accounts[0];
+  const accountData = data as any;
+  const hasUsableData = Boolean(accountData);
   const themeSettings = useMemo(
     () => normalizeThemeSettings(accountData?.social_media?.theme_settings),
     [accountData?.social_media?.theme_settings],
@@ -144,15 +134,14 @@ const PublicProfile = memo(() => {
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
   // Fetch mobile number ONLY when visibility is explicitly enabled
   // This prevents the mobile number from ever being in the response unless visibility is set
-  const { data: mobileData } = useQuery(getUserMobileNumberQuery, {
+  const { data: mobileData } = useApolloQuery(getUserMobileNumberQuery, {
     variables: {
       documentId: accountData?.documentId,
     },
@@ -417,11 +406,19 @@ const PublicProfile = memo(() => {
     }
   };
 
-  if (loading) {
-    if ((window as any).__publicProfileLoaded) {
+  if (loading && !hasUsableData) {
+    if (outletContext?.isShellRevealed) {
       return <ProfileSkeleton />;
     }
     return null;
+  }
+
+  if (error && !hasUsableData) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <PublicRouteErrorState title="Profile unavailable" error={error} onRetry={refetch} />
+      </div>
+    );
   }
 
   // Add safety check for accountData
@@ -635,6 +632,7 @@ const PublicProfile = memo(() => {
       <div
         className="h-full min-h-screen overflow-auto preview-scroll pb-20"
         data-testid="public-profile-theme-root"
+        aria-busy={loading || undefined}
         data-theme-preset={themeSettings.preset}
         data-theme-accent={themeSettings.accentColor}
         data-wallpaper-mode={themeSettings.wallpaperMode}
@@ -644,8 +642,7 @@ const PublicProfile = memo(() => {
           color: "var(--text-primary)",
         }}
       >
-        <PublicProfileFixedHeader shareUrl={getCleanShareUrl()} profileName={accountData?.Account_Name || username || "Explorer"} onTrackClick={analytics.trackClick} />
-
+        {Boolean(error) && <PublicRoutePartialNotice message="Some profile data is unavailable." />}
         {/* Profile Content */}
 
         <PublicProfileWallpaper account={accountData} theme={themeSettings} />
