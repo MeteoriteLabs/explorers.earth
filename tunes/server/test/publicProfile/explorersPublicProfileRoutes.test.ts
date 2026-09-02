@@ -39,11 +39,37 @@ describe("explorers public profile routes", () => {
     expect(JSON.stringify(response.body)).not.toContain("credentials");
   });
 
+  it("bounds public-profile traffic with a safe retryable 429 response", async () => {
+    const app = express();
+    setupExplorersPublicProfileRoutes(
+      app,
+      { category: async () => ({ appLists: [] }) },
+      { rateLimit: { limit: 1, windowMs: 60_000 } },
+    );
+
+    await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
+    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(429);
+    expect(response.body).toEqual({ version: "explorers-public-error/v1", error: { code: "RATE_LIMITED", retryable: true } });
+  });
+
   it("rejects malformed public identifiers before calling the gateway", async () => {
     const category = vi.fn();
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category });
-    await request(app).get("/api/explorers/v1/profiles/tk2727%2Fadmin/recommendations/apps").expect(404);
+    await request(app).get("/api/explorers/v1/profiles/tk2727%2Fadmin/recommendations/apps").expect(400);
+    expect(category).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe 400 for malformed request input without disclosing validation details", async () => {
+    const category = vi.fn();
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category });
+
+    const response = await request(app)
+      .get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=1000")
+      .expect(400);
+
+    expect(response.body).toEqual({ version: "explorers-public-error/v1", error: { code: "BAD_REQUEST" } });
     expect(category).not.toHaveBeenCalled();
   });
 

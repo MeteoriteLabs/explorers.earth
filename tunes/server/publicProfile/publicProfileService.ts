@@ -22,6 +22,8 @@ export class PublicProfileService {
   private readonly maxEntries: number;
   private readonly accounts = new Map<string, CacheEntry<Record<string, unknown>>>();
   private readonly categories = new Map<string, CacheEntry<unknown>>();
+  private readonly accountReads = new Map<string, Promise<Record<string, unknown> | undefined>>();
+  private readonly categoryReads = new Map<string, Promise<unknown>>();
 
   constructor(private readonly gateway: PublicProfileGateway, options: PublicProfileServiceOptions = {}) {
     this.now = options.now ?? Date.now;
@@ -48,9 +50,24 @@ export class PublicProfileService {
   private async account(username: string, bypassCache: boolean): Promise<Record<string, unknown> | undefined> {
     const cached = this.read(this.accounts, username, bypassCache);
     if (cached) return cached;
-    const account = await this.gateway.resolveAccount(username);
-    if (account) this.write(this.accounts, username, account);
-    return account;
+    const inFlight = this.accountReads.get(username);
+    if (inFlight) return inFlight;
+    const request = this.gateway.resolveAccount(username)
+      .then((account) => {
+        if (account) this.write(this.accounts, username, account);
+        return account;
+      })
+      .finally(() => this.accountReads.delete(username));
+    this.accountReads.set(username, request);
+    return request;
+  }
+
+  private async categoryRead(key: string, resolve: () => Promise<unknown>): Promise<unknown> {
+    const inFlight = this.categoryReads.get(key);
+    if (inFlight) return inFlight;
+    const request = resolve().finally(() => this.categoryReads.delete(key));
+    this.categoryReads.set(key, request);
+    return request;
   }
 
   async category(username: string, category: PublicCategory, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
@@ -59,7 +76,7 @@ export class PublicProfileService {
     if (cached !== undefined) return cached;
     const account = await this.account(username, Boolean(options.bypassCache));
     if (!account || !canReadPublicCategory(account, category)) return undefined;
-    const value = await this.gateway.resolveCategory(username, category, limit);
+    const value = await this.categoryRead(key, () => this.gateway.resolveCategory(username, category, limit));
     this.write(this.categories, key, value);
     return value;
   }
@@ -75,7 +92,7 @@ export class PublicProfileService {
     if (cached !== undefined) return cached;
     const account = await this.account(username, Boolean(options.bypassCache));
     if (!account || !canReadPublicCategory(account, category)) return undefined;
-    const value = await this.gateway.resolveDetail(username, category, slug, limit);
+    const value = await this.categoryRead(key, () => this.gateway.resolveDetail(username, category, slug, limit));
     this.write(this.categories, key, value);
     return value;
   }

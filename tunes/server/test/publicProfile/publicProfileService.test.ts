@@ -35,4 +35,23 @@ describe("PublicProfileService", () => {
     await service.category("tk2727", "apps", 12, { bypassCache: true });
     expect(gateway.resolveCategory).toHaveBeenCalledTimes(2);
   });
+
+  it("coalesces concurrent identical reads so a popular profile does not stampede Strapi", async () => {
+    let releaseAccount: ((value: Record<string, unknown>) => void) | undefined;
+    let releaseCategory: ((value: { appLists: never[] }) => void) | undefined;
+    const gateway = {
+      resolveAccount: vi.fn(() => new Promise<Record<string, unknown>>((resolve) => { releaseAccount = resolve; })),
+      resolveCategory: vi.fn(() => new Promise<{ appLists: never[] }>((resolve) => { releaseCategory = resolve; })),
+    };
+    const service = new PublicProfileService(gateway);
+
+    const first = service.category("tk2727", "apps", 12);
+    const second = service.category("tk2727", "apps", 12);
+    expect(gateway.resolveAccount).toHaveBeenCalledTimes(1);
+    releaseAccount?.({ public_profile: "Yes", public_apps: "Yes" });
+    await vi.waitFor(() => expect(gateway.resolveCategory).toHaveBeenCalledTimes(1));
+    releaseCategory?.({ appLists: [] });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([{ appLists: [] }, { appLists: [] }]);
+  });
 });
