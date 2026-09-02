@@ -1,52 +1,50 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { ArrowLeft, Star, Share2 } from "lucide-react";
+import { useParams, useOutletContext, useLocation } from "react-router-dom";
+import { ArrowLeft, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
-import { BOOK_LIST_BY_SLUG } from "../../api/query";
 import { deduplicateBooks } from "../../utils/bookHelpers";
-import type { RecommendedBook } from "../../types";
+import type { BookList, RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileDetail } from "../../../PublicHome/api/usePublicProfileDetail";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
+  const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
     book: null,
   });
 
-  const { data, loading } = useQuery(BOOK_LIST_BY_SLUG, {
-    variables: { slug: listSlug, username },
-    skip: !listSlug || !username,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = usePublicProfileDetail(username, "books", listSlug);
+
+  const rawList = (Array.isArray(data?.bookLists) ? data.bookLists : []).find(
+    (value: unknown): value is BookList =>
+      isNonNullObject(value) && Array.isArray(value.recommended_books),
+  );
+  const hasUsableData = Boolean(rawList);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: rawList?.List_Name || "Book List", url }); } catch { /* ignore */ }
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copied!");
-      } catch (error) {
-        console.error("Failed to copy text:", error);
-      }
-    }
-  };
-
-  const rawList = data?.bookLists?.[0];
+  usePublicHeaderDescriptor(rawList ? {
+    navigationKey: location.key,
+    title: rawList.List_Name || "Book List",
+    url: window.location.href,
+    analyticsContext: "books-list-header",
+    analyticsMetadata: {
+      listId: rawList.documentId,
+      listName: rawList.List_Name,
+    },
+  } : undefined);
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
@@ -83,29 +81,8 @@ const PublicBookList = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-black text-white">
-      {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-          <span
-            className="text-white font-bold text-2xl cursor-pointer"
-            onClick={() => window.location.href = "/"}
-          >
-            explorers.earth
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
-              aria-label="Share"
-            >
-              <Share2 size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-20 pb-20 px-4 md:px-8 max-w-6xl mx-auto">
+      <div className="min-h-screen bg-black text-white" aria-busy={loading || undefined}>
+      <div className="pb-20 px-4 md:px-8 max-w-6xl mx-auto">
         {/* Back link */}
         <div className="py-4">
           <Link to={`/${username}/books`} className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
@@ -113,7 +90,9 @@ const PublicBookList = () => {
           </Link>
         </div>
 
-        {loading && !data ? (
+        {Boolean(error) && hasUsableData && <PublicRoutePartialNotice message="Some book data is unavailable." />}
+
+        {loading && !hasUsableData ? (
           <div className="space-y-6">
             <div className="h-8 w-64 bg-white/5 rounded-lg animate-pulse" />
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -122,6 +101,8 @@ const PublicBookList = () => {
               ))}
             </div>
           </div>
+        ) : error && !hasUsableData ? (
+          <PublicRouteErrorState title="Book list unavailable" error={error} onRetry={refetch} />
         ) : !rawList ? (
           <div className="text-center py-24">
             <p className="text-white/40">This list doesn't exist or isn't publicly visible.</p>
