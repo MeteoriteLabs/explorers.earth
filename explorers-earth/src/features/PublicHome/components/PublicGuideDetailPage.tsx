@@ -1,10 +1,6 @@
-import { memo, useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useQuery } from "@apollo/client";
-import { useParams, useNavigate } from "react-router-dom";
+import { memo, useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from "react";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { EarthLoader } from "../../../components/EarthLoader";
-import { GET_PUBLIC_GUIDE_BY_ID_QUERY, GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
-import { getPublicAccountBasicQuery } from "../api/query";
 import JourneyIcon from "../../../assets/icons/JourneyIcon";
 import TransportationIcon from "../../../assets/icons/TransportationIcon";
 import StayIcon from "../../../assets/icons/StayIcon";
@@ -24,18 +20,75 @@ import SEO from "../../../components/SEO";
 import { createCanonicalUrl, getBaseUrl } from "../../../utils/getCurrentDomain";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
-import { Share2 } from "lucide-react";
-import { toast } from "sonner";
+import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
+import { measureGuideDayTabsStickyGeometry, measureGuideMainTabsStickyGeometry } from "./guideStickyGeometry";
+import { isNonNullObject, PublicRouteErrorState, PublicRouteLoadingState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
+import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
+
+const hasNonEmptyString = (value: unknown): value is string => (
+  typeof value === "string" && value.trim().length > 0
+);
+
+const isRenderSafeGuideSection = (value: unknown): value is Record<string, unknown> => (
+  isNonNullObject(value) && hasNonEmptyString(value.documentId)
+);
+
+const normalizeRenderableGuide = (value: unknown) => {
+  if (
+    !isNonNullObject(value)
+    || !hasNonEmptyString(value.documentId)
+    || !hasNonEmptyString(value.Title)
+    || !Array.isArray(value.guide_sections)
+  ) {
+    return undefined;
+  }
+
+  const seenSectionIds = new Set<string>();
+  const guideSections = value.guide_sections
+    .filter(isRenderSafeGuideSection)
+    .filter((section) => {
+      const documentId = section.documentId as string;
+      if (seenSectionIds.has(documentId)) return false;
+      seenSectionIds.add(documentId);
+      return true;
+    })
+    .sort((a, b) => {
+      const sequence = (section: Record<string, unknown>) => {
+        if (typeof section.Sequence === "number" && Number.isFinite(section.Sequence)) {
+          return section.Sequence;
+        }
+        if (typeof section.Sequence === "string") {
+          const parsed = Number.parseInt(section.Sequence, 10);
+          return Number.isFinite(parsed) ? parsed : 0;
+        }
+        return 0;
+      };
+      return sequence(a) - sequence(b);
+    });
+
+  return {
+    ...value,
+    slug: hasNonEmptyString(value.slug)
+      ? value.slug
+      : toUrlSlug(value.Title) || value.documentId,
+    Guide_Media: Array.isArray(value.Guide_Media)
+      ? value.Guide_Media.filter((media) => isNonNullObject(media) && typeof media.url === "string")
+      : [],
+    guide_sections: guideSections,
+  } as any;
+};
 
 const PublicGuideDetailPage = memo(() => {
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const outlet = useOutletContext<{ setIsPageLoaded?: (loaded: boolean) => void } | null>();
   const [activeTab, setActiveTab] = useState("journey");
   const [selectedDay, setSelectedDay] = useState<string>("overview");
   const [isMapView, setIsMapView] = useState(false);
   const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
   const [isMainTabsSticky, setIsMainTabsSticky] = useState(false);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const mainTabsRef = useRef<HTMLDivElement>(null);
   const coverImageRef = useRef<HTMLDivElement>(null);
@@ -43,76 +96,43 @@ const PublicGuideDetailPage = memo(() => {
   const tabsScrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [isDayTabsSticky, setIsDayTabsSticky] = useState(false);
-  const lastScrollTop = useRef(0);
+  const [stickyMainTabsHeight, setStickyMainTabsHeight] = useState(0);
 
   const handleBack = () => {
     navigate(`/${username}/guides`);
   };
 
 
-  // First, get account data to get account documentId
-  const { data: accountData } = useQuery(getPublicAccountBasicQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
+  const { loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
+  const { data, loading, error, refetch: refetchGuide } = usePublicProfileDetail(username, "guides", guideSlug);
+  const guide = useMemo(() => normalizeRenderableGuide((Array.isArray(data?.guides) ? data.guides : [])[0]), [data?.guides]);
+  const hasUsableData = Boolean(guide);
+  const queryError = accountError || error;
+  const loadingState = accountLoading || loading;
+  usePublicHeaderDescriptor(guide ? {
+    navigationKey: location.key,
+    title: guide.Title || "Guide",
+    text: "Check out this guide!",
+    url: window.location.href,
+    analyticsContext: "guide-header",
+    analyticsMetadata: {
+      guideId: guide.documentId,
+      guideName: guide.Title,
     },
-    skip: !username,
-  });
+  } : undefined);
 
-  const accountDocumentId = accountData?.accounts?.[0]?.documentId;
+  useEffect(() => {
+    if (!loadingState || hasUsableData) outlet?.setIsPageLoaded?.(true);
+  }, [hasUsableData, loadingState, outlet?.setIsPageLoaded]);
 
-  // Fetch all public guides to find the one matching the slug
-  const { data: guidesData, loading: guidesLoading } = useQuery(GET_PUBLIC_GUIDES_QUERY, {
-    variables: {
-      filters: {
-        and: [
-          {
-            account: {
-              documentId: {
-                eq: accountDocumentId,
-              },
-            },
-          },
-          {
-            Visibility: {
-              eq: true,
-            },
-          },
-        ],
-      },
-      pagination: {
-        limit: 100,
-      },
-    },
-    skip: !accountDocumentId,
-    fetchPolicy: "network-only",
-  });
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(
+      refetchAccount,
+      guide ? refetchGuide : undefined,
+    );
+  }, [guide, refetchAccount, refetchGuide]);
 
-  // Find guide by slug or documentId
-  const foundGuide = useMemo(() => {
-    if (!guidesData?.guides || !guideSlug) return null;
-    return guidesData.guides.find((guide: any) => {
-      const guideSlugMatch = guide.slug === guideSlug;
-      const titleSlugMatch = toUrlSlug(guide.Title) === guideSlug;
-      const documentIdMatch = guide.documentId === guideSlug;
-      return guideSlugMatch || titleSlugMatch || documentIdMatch;
-    });
-  }, [guidesData?.guides, guideSlug]);
-
-  // Now fetch the full guide details using documentId
-  const { data, loading, error } = useQuery(GET_PUBLIC_GUIDE_BY_ID_QUERY, {
-    variables: { documentId: foundGuide?.documentId || guideSlug || "" },
-    skip: !foundGuide?.documentId && !guideSlug,
-    fetchPolicy: "network-only",
-  });
-
-  const guide = data?.guide;
-  const loadingState = guidesLoading || loading;
-
-  // Scroll detection for sticky tabs and header visibility
+  // Scroll detection for sticky tabs inside the page-owned overflow root.
   // This effect needs to run after guide data is loaded and DOM is ready
   useEffect(() => {
     // Wait for guide data to be loaded
@@ -137,56 +157,16 @@ const PublicGuideDetailPage = memo(() => {
       const handleScroll = () => {
         if (!ticking) {
           window.requestAnimationFrame(() => {
-            // Get scroll position from container (prioritize container scroll)
-            const containerScrollTop = scrollContainer.scrollTop || 0;
-            const windowScrollTop = window.scrollY || window.pageYOffset || 0;
-            // Use the scroll position that's actually changing
-            const currentScrollTop = containerScrollTop > 0 ? containerScrollTop : windowScrollTop;
-
-            const headerHeight = 56; // h-14 = 56px
-
-            // Calculate when tabs should become sticky
-            // Tabs should stick when we've scrolled past the cover image
-            if (coverImage) {
-              // Get positions relative to the viewport
-              const coverImageRect = coverImage.getBoundingClientRect();
-
-              // Tabs should stick when cover image bottom is above the header
-              // This means: coverImageRect.bottom <= headerHeight
-              setIsMainTabsSticky(coverImageRect.bottom <= headerHeight);
-            } else {
-              // Fallback: use tabs position relative to scroll container
-              const tabsOffsetTop = mainTabs.offsetTop - (scrollContainer.offsetTop || 0);
-              setIsMainTabsSticky(currentScrollTop + headerHeight >= tabsOffsetTop);
-            }
-
-            // Hide/show header based on scroll direction
-            const scrollDelta = currentScrollTop - lastScrollTop.current;
-
-            // Always show header at the very top (within 20px of top)
-            if (currentScrollTop <= 20) {
-              setIsHeaderVisible(true);
-            } else if (Math.abs(scrollDelta) > 3) {
-              // Only update if scroll delta is significant enough to avoid flickering
-              if (scrollDelta > 0) {
-                // Scrolling down - hide header
-                setIsHeaderVisible(false);
-              } else {
-                // Scrolling up - show header
-                setIsHeaderVisible(true);
-              }
-            }
-
-            lastScrollTop.current = currentScrollTop;
+            const geometry = measureGuideMainTabsStickyGeometry(scrollContainer, mainTabs, coverImage);
+            setIsMainTabsSticky(geometry.shouldStick);
             ticking = false;
           });
           ticking = true;
         }
       };
 
-      // Listen to both container and window scroll events
+      // The guide owns this overflow root, so only its scroll drives sticky tabs.
       scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-      window.addEventListener('scroll', handleScroll, { passive: true });
 
       // Initial check after a small delay to ensure DOM is fully rendered
       setTimeout(() => {
@@ -195,7 +175,6 @@ const PublicGuideDetailPage = memo(() => {
 
       cleanup = () => {
         scrollContainer.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('scroll', handleScroll);
       };
     };
 
@@ -210,42 +189,7 @@ const PublicGuideDetailPage = memo(() => {
     };
   }, [loadingState, guide]);
 
-  // Parse guide sections and remove duplicates
-  // IMPORTANT: Only include sections that belong to THIS guide
-  const sections = useMemo(() => {
-    if (!guide?.guide_sections) {
-      console.log('[PublicGuideDetailPage] No guide_sections found');
-      return [];
-    }
-
-    const allSections = guide.guide_sections || [];
-
-    // Filter out duplicates and ensure sections belong to this guide
-    const uniqueSections = allSections.filter(
-      (section: any, index: number, self: any[]) => {
-        // Remove duplicates by documentId
-        const isUnique = index === self.findIndex((s: any) => s.documentId === section.documentId);
-
-        // Validate section has required properties
-        const isValid = section && typeof section === 'object';
-
-        if (!isValid) {
-          console.warn('[PublicGuideDetailPage] Invalid section found:', section);
-        }
-
-        return isUnique && isValid;
-      }
-    ).sort((a: any, b: any) => {
-      // Handle both numeric and string sequences
-      const seqA = typeof a.Sequence === 'number' ? a.Sequence : (typeof a.Sequence === 'string' ? parseInt(a.Sequence, 10) : 0);
-      const seqB = typeof b.Sequence === 'number' ? b.Sequence : (typeof b.Sequence === 'string' ? parseInt(b.Sequence, 10) : 0);
-      return (seqA || 0) - (seqB || 0);
-    });
-
-    console.log(`[PublicGuideDetailPage] Processed ${uniqueSections.length} unique sections for guide: ${guide.Title || guide.documentId}`);
-
-    return uniqueSections;
-  }, [guide?.guide_sections, guide?.Title, guide?.documentId]);
+  const sections = guide?.guide_sections ?? [];
 
   // Helper function to get days with data for a specific tab
   const getDaysWithDataForTab = useMemo(() => {
@@ -402,25 +346,21 @@ const PublicGuideDetailPage = memo(() => {
 
     const scrollContainer = scrollContainerRef.current;
     const dayTabs = dayTabsRef.current;
+    const mainTabs = mainTabsRef.current;
+    if (!mainTabs) return;
 
     const handleScroll = () => {
       // Day tabs should only be sticky when:
       // 1. Main tabs are sticky (we've scrolled past cover image)
       // 2. AND day tabs would be scrolled past their position
-      if (isMainTabsSticky) {
-        // Get positions relative to the viewport
-        const dayTabsRect = dayTabs.getBoundingClientRect();
-        const headerHeight = 56; // h-14 = 56px
-        // Main tabs height: ~80px mobile, ~96px sm, ~120px md, ~168px lg, ~184px xl
-        const mainTabsHeight = window.innerWidth >= 1280 ? 184 : (window.innerWidth >= 1024 ? 168 : (window.innerWidth >= 768 ? 120 : (window.innerWidth >= 640 ? 96 : 80)));
-        const stickyTopPosition = headerHeight + mainTabsHeight;
-
-        // Day tabs should stick when they would scroll above the sticky position
-        setIsDayTabsSticky(dayTabsRect.top <= stickyTopPosition);
-      } else {
-        // If main tabs aren't sticky, day tabs shouldn't be sticky either
-        setIsDayTabsSticky(false);
-      }
+      const geometry = measureGuideDayTabsStickyGeometry(
+        scrollContainer,
+        mainTabs,
+        dayTabs,
+        isMainTabsSticky,
+      );
+      setStickyMainTabsHeight((current) => current === geometry.mainTabsHeight ? current : geometry.mainTabsHeight);
+      setIsDayTabsSticky(geometry.shouldStick);
     };
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
@@ -637,7 +577,7 @@ const PublicGuideDetailPage = memo(() => {
     });
   }, [guide, locationNames, username, sections, seoDescription, guideCoords]);
 
-  if (loadingState) {
+  if (loadingState && !hasUsableData) {
     return (
       <>
         <SEO
@@ -650,38 +590,52 @@ const PublicGuideDetailPage = memo(() => {
           enableGEO={true}
           geoData={geoData}
         />
-        <div className="flex items-center justify-center min-h-screen bg-black">
-          <EarthLoader context="general" size="small" />
+        <PublicRouteLoadingState label="Guide loading" />
+      </>
+    );
+  }
+
+  if (queryError && !hasUsableData) {
+    return (
+      <>
+        <SEO
+          title={seoTitle}
+          description={seoDescription}
+          keywords={seoKeywords}
+          canonical={createCanonicalUrl(`/${username}/guides/${guideSlug}`)}
+          type="article"
+          siteName="explorers"
+          enableGEO={true}
+          geoData={geoData}
+        />
+        <div className="min-h-screen bg-black text-white">
+          <PublicRouteErrorState
+            title="Guide unavailable"
+            error={queryError}
+            onRetry={handleRetry}
+            backAction={(
+              <button
+                type="button"
+                onClick={() => navigate(`/${username}/guides`)}
+                className="min-h-11 rounded-xl border border-white/15 px-5 py-2 text-sm font-semibold text-white"
+              >
+                Back to Guides
+              </button>
+            )}
+          />
         </div>
       </>
     );
   }
 
-  if (error || !guide) {
+  if (!guide) {
     return (
-      <>
-        <SEO
-          title={seoTitle}
-          description={seoDescription}
-          keywords={seoKeywords}
-          canonical={createCanonicalUrl(`/${username}/guides/${guideSlug}`)}
-          type="article"
-          siteName="explorers"
-          enableGEO={true}
-          geoData={geoData}
-        />
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black p-8">
-          <p className="text-red-400 font-poppins text-lg mb-4">
-            Failed to load guide
-          </p>
-          <button
-            onClick={() => navigate(`/${username}/guides`)}
-            className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Back to Guides
-          </button>
-        </div>
-      </>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black p-8">
+        <p className="text-red-400 font-poppins text-lg mb-4">Failed to load guide</p>
+        <button onClick={handleBack} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
+          Back to Guides
+        </button>
+      </div>
     );
   }
 
@@ -714,48 +668,10 @@ const PublicGuideDetailPage = memo(() => {
         }
       `}</style>
 
-      <div ref={scrollContainerRef} className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20">
-        {/* Fixed Header */}
-        <div className={`fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14 transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
-          }`}>
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = `${window.location.origin}/${username}/guides/${guideSlug}`;
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${guide?.Title || 'Guide'}`,
-                      text: "Check out this guide!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 className="h-4 w-4" style={{ color: 'white' }} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
+      <div ref={scrollContainerRef} className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loadingState || undefined}>
+        {Boolean(queryError) && <PublicRoutePartialNotice message="Some guide data is unavailable." />}
         {/* Centered Container - Matching other public pages */}
-        <div className="md:max-w-5xl md:mx-auto mt-14 px-4 sm:px-6">
+        <div className="md:max-w-5xl md:mx-auto px-4 sm:px-6">
           {/* Guide Header with Cover Image and Badges */}
           <div
             ref={coverImageRef}
@@ -1003,7 +919,7 @@ const PublicGuideDetailPage = memo(() => {
           <div
             ref={mainTabsRef}
             className={`z-40 bg-black border-b border-gray-700 flex-shrink-0 shadow-lg transition-all duration-200 ${isMainTabsSticky
-              ? `fixed left-0 right-0 ${isHeaderVisible ? 'top-14' : 'top-0'}`
+              ? 'fixed left-0 right-0 top-[var(--public-header-reserved-offset)]'
               : 'relative'
               }`}
           >
@@ -1073,12 +989,11 @@ const PublicGuideDetailPage = memo(() => {
           {daysWithData.length > 0 && (
             <div
               ref={dayTabsRef}
+              style={{ "--guide-main-tabs-height": `${stickyMainTabsHeight}px` } as CSSProperties}
               className={`z-30 py-2 sm:py-3 transition-all duration-200 ${isDayTabsSticky
                 ? `fixed left-0 right-0 bg-gray-900/95 backdrop-blur-md shadow-lg border-b border-gray-800 ${isMainTabsSticky
-                  ? (isHeaderVisible
-                    ? 'top-[136px] sm:top-[152px] md:top-[176px] lg:top-[224px] xl:top-[240px]'
-                    : 'top-[80px] sm:top-[96px] md:top-[120px] lg:top-[168px] xl:top-[184px]')
-                  : (isHeaderVisible ? 'top-14' : 'top-0')
+                  ? 'top-[calc(var(--public-header-reserved-offset)+var(--guide-main-tabs-height))]'
+                  : 'top-[var(--public-header-reserved-offset)]'
                 }`
                 : 'relative'
                 }`}

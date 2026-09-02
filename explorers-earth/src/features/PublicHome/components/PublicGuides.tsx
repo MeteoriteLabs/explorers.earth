@@ -1,11 +1,8 @@
 import { memo, useMemo, useState, useEffect } from "react";
-import { useQuery } from "@apollo/client";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import PublicGuideCard from "../../Guides/components/PublicGuideCard";
-import { GET_PUBLIC_GUIDES_QUERY } from "../../Guides/api/queries";
-import { getPublicAccountBasicQuery } from "../api/query";
 import type { Guide } from "../../Guides/types";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
@@ -15,8 +12,11 @@ import { toUrlSlug } from "../../../utils/formatAddress";
 import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
-import { toast } from "sonner";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
 
 interface FilterState {
   guideType: string | null;
@@ -26,10 +26,22 @@ interface FilterState {
   budgetType: string | null;
 }
 
+type PublicGuideAccount = {
+  documentId?: string;
+  Account_Name?: string;
+  public_guides?: string;
+  profile_picture?: { url?: string } | null;
+  bg_picture?: { url?: string } | null;
+};
+
+const isRenderableGuide = (value: unknown): value is Guide =>
+  isNonNullObject(value) && typeof value.documentId === "string" && typeof value.Title === "string";
+
 const PublicGuides = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
   const [filters, setFilters] = useState<FilterState>({
     guideType: null,
     category: null,
@@ -43,64 +55,33 @@ const PublicGuides = memo(() => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeHeroIndex, setActiveHeroIndex] = useState<number>(0);
 
-  // First, get account data to get account documentId
-  const { data: accountData, loading: accountLoading } = useQuery(
-    getPublicAccountBasicQuery,
-    {
-      variables: {
-        filters: {
-          username: {
-            eq: username,
-          },
-        },
-      },
-      skip: !username,
-    }
-  );
+  const { data: rawAccount, loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
+  const account = rawAccount as PublicGuideAccount | undefined;
+  const accountDocumentId = typeof account?.documentId === "string" ? account.documentId : undefined;
+  const { data: guidesData, loading: guidesLoading, error: guidesError, refetch: refetchGuides } = usePublicRecommendationCategory(username, "guides", account?.public_guides === "Yes");
+  const loading = Boolean(accountLoading || guidesLoading);
+  const queryError = accountError || guidesError;
+  const rawGuides = guidesData?.guides;
+  const allGuides: Guide[] = (Array.isArray(rawGuides) ? rawGuides : []).filter(isRenderableGuide);
+  const completeCollection = Array.isArray(rawGuides) && rawGuides.every(isRenderableGuide);
+  const hasUsableData = queryError ? allGuides.length > 0 : completeCollection;
 
-  const accountDocumentId = accountData?.accounts?.[0]?.documentId;
-
-  // Fetch public guides with account filter and visibility filter
-  const {
-    data: guidesData,
-    loading: guidesLoading,
-    error,
-  } = useQuery(GET_PUBLIC_GUIDES_QUERY, {
-    variables: {
-      filters: {
-        and: [
-          {
-            account: {
-              documentId: {
-                eq: accountDocumentId,
-              },
-            },
-          },
-          {
-            Visibility: {
-              eq: true,
-            },
-          },
-        ],
-      },
-      pagination: {
-        limit: 100,
-      },
-    },
-    skip: !accountDocumentId,
-    fetchPolicy: "network-only",
+  const handleRetry = async () => {
+    await settlePublicRouteRetries(refetchAccount, accountDocumentId ? refetchGuides : undefined);
+  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${account?.Account_Name || username}'s Guides`,
+    text: "Check out these travel guides!",
+    url: window.location.href,
+    analyticsContext: "guides-header",
   });
 
-  const allGuides: Guide[] = guidesData?.guides || [];
-  const account = accountData?.accounts?.[0];
-  const loading = accountLoading || guidesLoading;
-
   useEffect(() => {
-    if (!loading && account) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, account, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
   const analytics = useTrackAnalytics({
     accountId: account?.documentId || "",
@@ -471,7 +452,7 @@ const PublicGuides = memo(() => {
   });
 
   // Check if account exists after loading is complete
-  if (!loading && !account) {
+  if (!loading && !account && !queryError) {
     return (
       <>
         <SEO
@@ -512,54 +493,13 @@ const PublicGuides = memo(() => {
         geoData={geoData}
       />
 
-      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20 pt-14">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer font-poppins"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = `${window.location.origin}/${username}/guides`;
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${account?.Account_Name || username}'s Guides`,
-                      text: "Check out these travel guides!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                  analytics.trackClick('share-button', { context: 'guides-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
-                aria-label="Share"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-              </button>
-
-            </div>
-          </div>
-        </div>
-
+      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loading || undefined}>
         {/* Guides Content */}
         <div className="md:max-w-5xl md:mx-auto">
           
           {/* ── LOADING SKELETON: shown while account/guides queries resolve ── */}
-          {loading && (
-            (window as any).__publicProfileLoaded ? (
+          {loading && !hasUsableData && (
+            outletContext?.isShellRevealed ? (
               <>
                 {/* Hero skeleton — Desktop */}
                 <div className="hidden md:block w-full mb-6 mt-4 px-4">
@@ -581,8 +521,10 @@ const PublicGuides = memo(() => {
             ) : null
           )}
 
+          {Boolean(queryError) && hasUsableData && <PublicRoutePartialNotice message="Some guide data is unavailable." />}
+
           {/* Featured Guides Slideshow Hero (only shown if pinned guides exist) */}
-          {!error && !loading && pinnedGuides.length > 0 && (
+          {!(Boolean(queryError) && !hasUsableData) && (!loading || hasUsableData) && pinnedGuides.length > 0 && (
             <>
               {/* Carousel Hero Section - Desktop Layout */}
               <div className="hidden md:block w-full mb-6 mt-4 px-4">
@@ -1131,21 +1073,12 @@ const PublicGuides = memo(() => {
           </>
 
           {/* Error State */}
-          {error && (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
-              <div className="bg-black p-6 rounded-lg border border-red-500 text-center">
-                <h1 className="text-red-400 font-poppins font-semibold text-lg md:text-xl mb-2">
-                  Error Loading Guides
-                </h1>
-                <p className="text-gray-300 font-poppins text-sm md:text-base">
-                  {error.message}
-                </p>
-              </div>
-            </div>
+          {Boolean(queryError) && !hasUsableData && (
+            <PublicRouteErrorState title="Guides unavailable" error={queryError as { message?: string }} onRetry={handleRetry} />
           )}
 
           {/* Location Tags */}
-          {!error && filterOptions.locations.length > 0 && (
+          {!(Boolean(queryError) && !hasUsableData) && filterOptions.locations.length > 0 && (
             <div className="px-4 mb-2">
               <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-1.5">
                 <div className="flex gap-3">
@@ -1172,11 +1105,11 @@ const PublicGuides = memo(() => {
           )}
 
           {/* Guides Grid */}
-          {!error && (
+          {!(Boolean(queryError) && !hasUsableData) && (
             <div className="px-4 mb-14">
               <div className="bg-black rounded-lg py-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 overflow-visible">
-                  {loading ? (
+                  {loading && !hasUsableData ? (
                     // Skeleton cards — same grid, public (dark) variant
                     <GuideCardSkeleton count={6} variant="public" />
                   ) : guides.length > 0 ? (
