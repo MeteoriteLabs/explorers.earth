@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { createServer as createViteServer, type ViteDevServer, type UserConfig } from "vite";
-import viteConfig, { resolveViteConfigDirectory } from "../../../../vite.config";
+import viteConfig from "../../../../vite.config";
 import { createMusicDevelopmentFetch } from "../musicDevelopmentTransport";
 
 const { fixtureEnv } = vi.hoisted(() => ({ fixtureEnv: {} as Record<string, string> }));
@@ -37,21 +37,6 @@ it("retains verified HTTPS remote development proxy and disallows local override
   Object.assign(fixtureEnv, { MUSIC_DEV_PROXY_TARGET: "http://127.0.0.1:5000", MUSIC_DEV_PROXY_ENABLED: "true" });
   const production = await configure({ mode: "production", command: "build" });
   expect(production.server?.proxy?.["/__localtunes"]).toBeUndefined();
-});
-
-it("aliases only the bare graphql package from the config directory rather than the caller cwd", async () => {
-  const configure = viteConfig as (env: { mode: string; command: string }) => UserConfig;
-  const config = await configure({ mode: "test", command: "serve" });
-  const alias = config.resolve?.alias;
-  expect(Array.isArray(alias)).toBe(true);
-  expect(alias).toEqual([expect.objectContaining({ find: /^graphql$/ })]);
-  expect(String((alias as Array<{ replacement: string }>)[0].replacement).replaceAll('\\', '/'))
-    .toMatch(/explorers-earth\/node_modules\/graphql\/index\.mjs$/);
-});
-
-it("falls back safely when a test harness supplies a non-file module URL", () => {
-  expect(resolveViteConfigDirectory('vitest://mocked/vite.config.ts', 'C:/fixture/caller'))
-    .toBe('C:/fixture/caller');
 });
 
 it("forwards analytics GET/POST, polling and websocket upgrade through the configured loopback Vite proxy", async () => {

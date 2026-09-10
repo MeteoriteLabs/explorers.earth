@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
@@ -6,6 +7,15 @@ const require = createRequire(import.meta.url);
 const syntheticEnv = require('./scripts/contained-unit-env.cjs');
 export default defineConfig({
   root: fileURLToPath(new URL('./', import.meta.url)),
+  resolve: {
+    // Two frontend contract suites intentionally exercise the shared fixture
+    // controller in ../tunes. Resolve its bare GraphQL import from this
+    // package's declared dependency; CI installs packages independently.
+    alias: [{
+      find: /^graphql$/,
+      replacement: resolve(fileURLToPath(new URL('./', import.meta.url)), 'node_modules/graphql/index.mjs'),
+    }],
+  },
   envDir: false,
   envPrefix: 'CONTAINED_UNIT_NEVER_AMBIENT_',
   plugins: [react()],

@@ -1,18 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { resolveMusicDevelopmentProxyTarget } from './src/features/music/musicDevelopmentTransport'
-
-export function resolveViteConfigDirectory(metaUrl: string, fallbackDirectory = process.cwd()): string {
-  try {
-    const url = new URL('.', metaUrl)
-    return url.protocol === 'file:' ? fileURLToPath(url) : fallbackDirectory
-  } catch {
-    return fallbackDirectory
-  }
-}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -32,15 +21,6 @@ export default defineConfig(({ mode }) => {
     console.warn('Music development proxy disabled: invalid Music origin.')
   }
   return ({
-  resolve: {
-    // Frontend contract tests exercise the shared Music fixture controller from
-    // ../tunes. Resolve its GraphQL runtime against this package's declared
-    // dependency instead of relying on a sibling package having been installed.
-    alias: [{
-      find: /^graphql$/,
-      replacement: resolve(resolveViteConfigDirectory(import.meta.url), 'node_modules/graphql/index.mjs'),
-    }],
-  },
   plugins: [
     react(),
   ],
