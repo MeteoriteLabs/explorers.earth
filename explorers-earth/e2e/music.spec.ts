@@ -12,6 +12,7 @@ const completeAccount = {
   Account_Type: "Personal",
   mobile_number: "+15555550123",
   profile_picture: null,
+  public_profile: "Yes",
   public_recommendations: "No",
   public_music: "No",
   public_guides: "No",
@@ -35,6 +36,8 @@ type MockOptions = {
 
 async function installMusicMocks(page: Page, options: MockOptions = {}) {
   let ensureCalls = 0;
+  let publicationMode: "private" | "unlisted" | "public" = "private";
+  let accountState = { ...completeAccount };
   const publicationCommands: Array<{ body: unknown; idempotencyKey: string | null }> = [];
   const warnings: string[] = [];
   const pageErrors: string[] = [];
@@ -48,6 +51,15 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
   await page.route("**/graphql", async (route) => {
     const payload = route.request().postDataJSON();
     const query = payload?.query ?? "";
+    if (query.includes("mutation UpdateTabVisibility")) {
+      accountState = { ...accountState, ...(payload?.variables?.data ?? {}) };
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { updateAccount: accountState } }),
+      });
+      return;
+    }
     if (query.includes("usersPermissionsUser")) {
       await route.fulfill({
         status: 200,
@@ -63,7 +75,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
               provider: "local",
               confirmed: true,
               blocked: false,
-              accounts: [completeAccount],
+              accounts: [accountState],
             },
           },
         }),
@@ -126,7 +138,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
       songs: [],
       currentlyPlaying: null,
       playedSongs: [],
-      publication: { mode: "private", publicSlug: "public-slug-123" },
+      publication: { mode: publicationMode, publicSlug: "public-slug-123" },
       guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
     }),
   }));
@@ -137,6 +149,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
   }));
   await page.route("**/api/music/publication", (route) => {
     const body = route.request().postDataJSON();
+    publicationMode = body.mode;
     publicationCommands.push({ body, idempotencyKey: route.request().headers()["idempotency-key"] ?? null });
     return route.fulfill({
     status: 200,
@@ -148,6 +161,13 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
       }),
     });
   });
+  await page.route("**/api/music/public-profile/account-document-123", (route) => route.fulfill({
+    status: publicationMode === "public" ? 200 : 404,
+    contentType: "application/json",
+    body: publicationMode === "public"
+      ? JSON.stringify({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public-slug-123", revision: 1 } })
+      : JSON.stringify({}),
+  }));
   await page.route("**/api/playlists/*/visibility", (route) => route.fulfill({ status: 204 }));
   await page.route("**/api/playlists/*/reorder", (route) => route.fulfill({ status: 204 }));
   await page.route("**/api/music/guest-controls", (route) => route.fulfill({
@@ -267,7 +287,7 @@ test("sharing dialog traps focus, closes with Escape, and exposes only approved 
   await expect(dialog.getByText("Public", { exact: true })).toBeVisible();
   await dialog.getByRole("radio", { name: "Public" }).check();
   await expect(dialog.getByText("Anyone can view shared playlists, and the page can appear in search.")).toBeVisible();
-  await expect(dialog.getByLabel("Music share link")).toHaveValue(/\/music\/share\/public-slug-123$/);
+  await expect(dialog.getByLabel("Music share link")).toHaveCount(0);
 
   const first = dialog.getByRole("radio", { name: "Private" });
   const last = dialog.getByRole("button", { name: "Save sharing" });
