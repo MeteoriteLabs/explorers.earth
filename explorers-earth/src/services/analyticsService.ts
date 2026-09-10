@@ -227,6 +227,7 @@ export const useTrackAnalytics = (
         const dynamicRecommendationId = canUseCanonicalTargets
           ? (metadata?.recommendationId as string | undefined) ||
             (metadata?.placeId as string | undefined) ||
+            (metadata?.guideId as string | undefined) ||
             (metadata?.id as string | undefined) ||
             recommendationId
           : null;

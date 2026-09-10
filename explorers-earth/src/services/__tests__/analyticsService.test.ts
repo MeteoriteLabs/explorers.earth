@@ -484,6 +484,7 @@ describe('analyticsService', () => {
         guideName: `Weekend guide ${'x'.repeat(498)}`,
         originalElement: 'share-button',
       });
+      expect(postEvent.mock.calls[0][0].recommendationId).toBe('guide-1');
       expect(JSON.stringify(postEvent.mock.calls[0][0])).not.toContain('private-token');
       expect(JSON.stringify(postEvent.mock.calls[0][0])).not.toContain('not-approved');
     });
