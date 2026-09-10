@@ -17,10 +17,29 @@ defaults:
     working-directory: explorers-earth
 
 jobs:
-  exhaustive-browser:
-    name: Exhaustive browser matrix
+  browser-matrix:
+    name: ${{ matrix.lane }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lane: category-navigation, command: "npx playwright test --config=playwright.category-navigation.config.ts" }
+          - { lane: public-shell-cross-browser, command: "npx playwright test --config=playwright.public-shell-continuity.config.ts" }
+          - { lane: public-category-themes, command: "npx playwright test --config=playwright.public-category-themes.config.ts" }
+          - { lane: public-theme-alignment, command: "npx playwright test --config=playwright.public-theme-alignment.config.ts" }
+          - { lane: category-theme-alignment, command: "npx playwright test --config=playwright.category-theme-alignment.config.ts" }
+          - { lane: music-publishing, command: "npx playwright test --config=playwright.music-publishing.config.ts" }
+          - { lane: music-presentation, command: "npx playwright test --config=playwright.music-presentation.config.ts" }
+          - { lane: music-presentation-cross-browser, command: "npx playwright test --config=playwright.music-presentation-cross-browser.config.ts" }
+          - { lane: music-permissions, command: "npx playwright test --config=playwright.music-permissions.config.ts" }
+          - { lane: account-lifecycle, command: "npx playwright test --config=playwright.lifecycle.config.ts" }
+          - { lane: profile-tabs, command: "npx playwright test --config=playwright.profile-tabs.config.ts" }
+          - lane: general-pages
+            command: "npx playwright test --config=playwright.general-e2e.config.ts e2e/analytics.spec.ts e2e/apps.spec.ts e2e/books.spec.ts e2e/categories.spec.ts e2e/games.spec.ts e2e/guides.spec.ts e2e/locations.spec.ts e2e/marketing-pages.spec.ts e2e/movies.spec.ts e2e/people.spec.ts e2e/products.spec.ts"
+          - lane: remaining-contained-contracts
+            command: "npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/music-auth-triggers.spec.ts e2e/music-fixture-fullstack.spec.ts e2e/music-fullstack.spec.ts e2e/music-harness-contract.spec.ts e2e/profile-editor-polish.spec.ts e2e/profile-presentation-visual.spec.ts e2e/profile-theme.spec.ts e2e/public-scroll.spec.ts e2e/reactivation-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -32,10 +51,11 @@ jobs:
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - run: npx playwright install --with-deps chromium firefox webkit
-      - name: Run the complete contained browser corpus
-        run: npx playwright test --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
+      - name: Run isolated qualification lane
+        run: ${{ matrix.command }} --reporter=line,json
         env:
           CI: true
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ../.artifacts/frontend-e2e-${{ matrix.lane }}.json
           VITE_API_URL: http://localhost:5173/graphql
           VITE_GOOGLE_MAPS_API_KEY: ""
           VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
@@ -48,8 +68,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: frontend-e2e-qualification
+          name: frontend-e2e-${{ matrix.lane }}
           path: |
-            explorers-earth/playwright-report/
+            .artifacts/frontend-e2e-${{ matrix.lane }}.json
+            .artifacts/**/results/
+            explorers-earth/.artifacts/**/results/
             explorers-earth/test-results/
           retention-days: 14

@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// This suite never starts a server itself or inherits the live fixture config.
-// Start only the companion no-proxy Vite config on this exact loopback port.
+// This suite owns its no-proxy companion on the exact loopback fixture port.
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "profile-tab-hit-testing.spec.ts",
@@ -26,5 +25,11 @@ export default defineConfig({
     launchOptions: {
       args: ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1", "--disable-quic"],
     },
+  },
+  webServer: {
+    command: "node node_modules/vite/bin/vite.js --config e2e/profile-tab-hit-testing.vite.config.ts",
+    url: "http://127.0.0.1:55175",
+    reuseExistingServer: false,
+    timeout: 120_000,
   },
 });

@@ -108,6 +108,21 @@ describe("ExplorersAnalyticsService", () => {
     expect(explorersAnalyticsInputSchema.safeParse(piiMetadata).success).toBe(false);
   });
 
+  it("accepts every privacy-safe category descriptor emitted by the Explorer client", () => {
+    const input = baseInput();
+    input.event.metadata = {
+      listId: "reading-list",
+      genre: "Documentary",
+      subject: "Architecture",
+      sector: "Productivity",
+      city: "Hyderabad",
+      guideId: "recommendation-1",
+      guideName: "Weekend guide",
+    } as typeof input.event.metadata;
+
+    expect(explorersAnalyticsInputSchema.safeParse(input).success).toBe(true);
+  });
+
   it("rejects card/list identity metadata when the validated top-level target is omitted", () => {
     const missingListTarget = baseInput();
     missingListTarget.locationId = null;
@@ -120,6 +135,25 @@ describe("ExplorersAnalyticsService", () => {
     };
     expect(
       explorersAnalyticsInputSchema.safeParse(missingRecommendationTarget).success,
+    ).toBe(false);
+
+    const missingGuideTarget = baseInput();
+    missingGuideTarget.recommendationId = null;
+    missingGuideTarget.event.metadata = {
+      listId: "reading-list",
+      guideId: "guide-document-1",
+    } as typeof missingGuideTarget.event.metadata;
+    expect(
+      explorersAnalyticsInputSchema.safeParse(missingGuideTarget).success,
+    ).toBe(false);
+
+    const mismatchedGuideTarget = baseInput();
+    mismatchedGuideTarget.event.metadata = {
+      listId: "reading-list",
+      guideId: "guide-document-1",
+    } as typeof mismatchedGuideTarget.event.metadata;
+    expect(
+      explorersAnalyticsInputSchema.safeParse(mismatchedGuideTarget).success,
     ).toBe(false);
 
     const forgedCardWithoutAnyTarget = baseInput();

@@ -837,8 +837,15 @@ test('catchall deliberately denies unknown external HTTP and WebSocket without f
     await visitor.page.goto(`/${fixtureUser.username}`); await expect(visitor.page.getByRole('link', { name: 'Profile', exact: true })).toBeVisible();
     visitor.guard.assertClean();
     await visitor.page.evaluate(async () => { try { await fetch('https://music-fixture.test/deliberately-unhandled'); } catch { /* Expected local abort. */ } });
+    const unhandledMusicPage = await visitor.context.newPage();
+    await unhandledMusicPage.goto('https://localtunes.test/assets/deliberately-unhandled.js').catch(() => undefined);
+    await unhandledMusicPage.close();
     await visitor.page.evaluate(origin => new Promise<void>(resolve => { const socket = new WebSocket(origin.replace('http:', 'ws:') + '/deliberately-unhandled'); socket.onclose = () => resolve(); }), baseURL!);
-    expect(visitor.guard.denied).toEqual(['GET external music-fixture.test', 'unexpected websocket']);
+    expect(visitor.guard.denied).toEqual([
+      'GET external music-fixture.test',
+      'GET external localtunes.test/assets/deliberately-unhandled.js',
+      'unexpected websocket',
+    ]);
     await test.info().attach('expected-denial', { contentType: 'application/json', body: JSON.stringify({ denied: visitor.guard.denied, console: visitor.guard.errors }) });
     expect(visitor.guard.errors).toEqual(['Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector']);
   } finally { await visitor.context.close(); }

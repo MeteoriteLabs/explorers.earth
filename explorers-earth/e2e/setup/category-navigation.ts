@@ -329,6 +329,10 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       }
       if (/^\/api\/explorers\/analytics\//.test(path) && request.method() === 'POST') return json({ accepted: true }, 201);
     }
+    if (isContainedMusicAuthority) {
+      denied.push(`${request.method()} external ${url.hostname}${url.pathname}`);
+      return route.abort('blockedbyclient');
+    }
     if (request.method() === 'GET' && (request.resourceType() === 'document' || url.pathname === '/e2e/setup/maps-fixture.tsx' || /^\/(?:src|node_modules|images|assets|landing|@vite|@id|@fs)\//.test(url.pathname) || /^\/(?:@react-refresh|explorers\.svg|eoe-icon\.svg|eoe-full\.svg|favicon\.ico)$/.test(url.pathname))) return route.continue();
     denied.push(`${request.method()} ${url.pathname}`); return route.abort('blockedbyclient');
   });

@@ -39,6 +39,7 @@ const metadataSchema = z
     cityId: boundedMetadataString.optional(),
     cityName: boundedMetadataString.optional(),
     cityname: boundedMetadataString.optional(),
+    city: boundedMetadataString.optional(),
     viewType: boundedMetadataString.optional(),
     recommendationId: boundedMetadataString.optional(),
     placeId: boundedMetadataString.optional(),
@@ -50,6 +51,11 @@ const metadataSchema = z
     authors: boundedMetadataString.optional(),
     listId: boundedMetadataString.optional(),
     listName: boundedMetadataString.optional(),
+    sector: boundedMetadataString.optional(),
+    genre: boundedMetadataString.optional(),
+    subject: boundedMetadataString.optional(),
+    guideId: boundedMetadataString.optional(),
+    guideName: boundedMetadataString.optional(),
     mediaType: boundedMetadataString.optional(),
     genres: boundedMetadataString.optional(),
     guideType: boundedMetadataString.optional(),
@@ -115,7 +121,7 @@ export const explorersAnalyticsInputSchema = z.object({
   const metadata = input.event.metadata;
   const metadataLocationId = metadata?.listId ?? metadata?.cityId;
   const metadataRecommendationId =
-    metadata?.recommendationId ?? metadata?.placeId ?? metadata?.id;
+    metadata?.recommendationId ?? metadata?.placeId ?? metadata?.guideId ?? metadata?.id;
 
   if (metadataLocationId && input.locationId !== metadataLocationId) {
     context.addIssue({
