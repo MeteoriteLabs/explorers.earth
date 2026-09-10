@@ -124,7 +124,7 @@ describe("PublicHome Places category states", () => {
 
     renderPlaces();
 
-    expect(await screen.findByLabelText("Loading places")).toBeVisible();
+    await waitFor(() => expect(screen.getByLabelText("Loading places")).toBeVisible());
     expect(screen.queryByText("No Places Yet")).not.toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeVisible();
     expect(screen.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
@@ -194,7 +194,7 @@ describe("PublicHome Places category states", () => {
 
     renderPlaces();
 
-    expect(await screen.findByLabelText("Loading places")).toBeVisible();
+    await waitFor(() => expect(screen.getByLabelText("Loading places")).toBeVisible());
     expect(screen.queryByText("No Places Yet")).not.toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeVisible();
     expect(screen.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
