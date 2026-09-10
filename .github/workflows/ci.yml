@@ -146,7 +146,7 @@ jobs:
         run: npm ci
 
       - name: Run integration tests
-        run: npx vitest run --reporter=verbose integration
+        run: npm run test:integration -- --reporter=verbose
         env:
           CI: true
 
@@ -170,6 +170,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # The public Music E2E fixture executes the sibling Tunes controller.
+      # Install that package explicitly; CI package installs are isolated.
+      - name: Install Music fixture dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium firefox webkit
