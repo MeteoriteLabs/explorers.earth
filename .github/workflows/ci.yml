@@ -156,7 +156,9 @@ jobs:
   e2e-tests:
     name: 🎭 E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The four contained suites complete in about 30 minutes on hosted Linux;
+    # retain a bounded 45-minute budget for runner variance and artifact upload.
+    timeout-minutes: 45
     needs: [lint, typecheck, unit-tests]
     steps:
       - uses: actions/checkout@v4
