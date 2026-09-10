@@ -1,0 +1,55 @@
+name: Frontend E2E qualification
+
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-e2e-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: explorers-earth
+
+jobs:
+  exhaustive-browser:
+    name: Exhaustive browser matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci
+      - name: Install Music fixture dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run the complete contained browser corpus
+        run: npx playwright test --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
+        env:
+          CI: true
+          VITE_API_URL: http://localhost:5173/graphql
+          VITE_GOOGLE_MAPS_API_KEY: ""
+          VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
+          VITE_LOCAL_TUNES_ENABLED: true
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
+          VITE_PAYMENT_API_URL: http://localhost:5173
+          PLAYWRIGHT_PR_SAFE: true
+      - name: Upload qualification evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: frontend-e2e-qualification
+          path: |
+            explorers-earth/playwright-report/
+            explorers-earth/test-results/
+          retention-days: 14

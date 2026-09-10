@@ -180,18 +180,34 @@ jobs:
         run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run Playwright E2E tests
-        run: npx playwright test --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual
+        # Keep the required PR gate bounded and deterministic. The default
+        # Chromium project matches every repository E2E spec (including large
+        # qualification matrices), so invoking it without an allowlist cannot
+        # complete inside this job's 30-minute budget. These suites cover the
+        # changed public shell/navigation, publishing, Music, accessibility,
+        # and account-lifecycle boundaries; exhaustive matrices retain their
+        # dedicated fixture/qualification lanes documented in docs/testing.md.
+        run: |
+          npx playwright test --config=playwright.category-navigation.config.ts
+          npx playwright test --config=playwright.public-shell-continuity.config.ts --project=chromium
+          npx playwright test --config=playwright.music-publishing.config.ts
+          npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual
         env:
           CI: true
           # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
           # it must end in /graphql for the specs' **/graphql route mocks to match.
           VITE_API_URL: http://localhost:5173/graphql
-          VITE_GOOGLE_MAPS_API_KEY: test-key
+          # Empty by design: the contained public-page fixture uses its map
+          # adapter and must never load the external Google Maps runtime.
+          VITE_GOOGLE_MAPS_API_KEY: ""
           VITE_PUBLIC_ACCESS_TOKEN: test-token
           # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
           # integration enabled or the playlist UI never renders.
           VITE_LOCAL_TUNES_ENABLED: true
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          # Keep the public profile gateway inside the same deterministic
+          # request fixture instead of falling back to an external authority.
+          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
           # Full-stack Music authority suites belong to the provisioned qualification lanes.
           PLAYWRIGHT_PR_SAFE: true
           # Keep billing requests same-origin so the deterministic Playwright
@@ -203,7 +219,11 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: explorers-earth/playwright-report/
+          path: |
+            explorers-earth/playwright-report/
+            .artifacts/category-navigation/report.json
+            .artifacts/public-shell-continuity/report.json
+            .artifacts/music-publishing/report.json
           retention-days: 7
 
       - name: Upload screenshots/videos on failure
@@ -211,5 +231,9 @@ jobs:
         if: failure()
         with:
           name: e2e-failure-artifacts
-          path: explorers-earth/test-results/
+          path: |
+            explorers-earth/test-results/
+            .artifacts/category-navigation/results/
+            .artifacts/public-shell-continuity/results/
+            .artifacts/music-publishing/results/
           retention-days: 7

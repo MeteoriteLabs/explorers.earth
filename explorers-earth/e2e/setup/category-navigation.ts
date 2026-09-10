@@ -143,6 +143,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
   });
   await context.route('**/*', async route => {
     const request = route.request(); const url = new URL(request.url());
+    const isContainedMusicAuthority = url.origin === 'https://localtunes.test';
     const waitForDestination = async () => {
       const pending = state.destinationGates.entries().next().value as [string, Promise<void>] | undefined;
       if (!pending) return;
@@ -151,7 +152,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       await gate;
     };
     if (url.origin !== origin) {
-      if (url.origin === 'https://music-fixture.test' && url.pathname.startsWith('/api/explorers/v1/profiles/')) {
+      if ((url.origin === 'https://music-fixture.test' || isContainedMusicAuthority) && url.pathname.startsWith('/api/explorers/v1/profiles/')) {
         await waitForDestination();
         if (request.method() !== 'GET' || request.headers().authorization) {
           return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ version: 'explorers-public-error/v1', error: { code: 'NOT_FOUND' } }) });
@@ -223,7 +224,12 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if ((url.origin === 'https://www.googletagmanager.com' && url.pathname === '/gtag/js') || (url.origin === 'https://www.clarity.ms' && url.pathname.startsWith('/tag/'))) {
         vendors.push(url.origin); return route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
       }
-      denied.push(`${request.method()} external ${url.hostname}`); return route.abort('blockedbyclient');
+      // The PR-safe runtime deliberately configures this inert Music authority.
+      // Its remaining API paths fall through to the same contained handlers as
+      // the development proxy; every other external origin remains denied.
+      if (!isContainedMusicAuthority) {
+        denied.push(`${request.method()} external ${url.hostname}`); return route.abort('blockedbyclient');
+      }
     }
     if (url.pathname === '/logo.svg') return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' });
     const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => {
