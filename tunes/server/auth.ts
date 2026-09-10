@@ -662,7 +662,7 @@ export function setupAuth(app: Express) {
       console.error('Registration error:', error);
       res.status(500).json({
         message: "Registration failed",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: "Unknown error"
       });
     }
     /* c8 ignore stop */

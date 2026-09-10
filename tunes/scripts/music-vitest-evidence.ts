@@ -170,7 +170,7 @@ export function unionFileEvidence(groups: MusicVitestEvidence[], expected: reado
     }
   }
 
-  const files = [...byFile.values()].sort((left, right) => left.file.localeCompare(right.file));
+  const files = Array.from(byFile.values()).sort((left, right) => left.file.localeCompare(right.file));
   const assertions = counts();
   for (const file of files) {
     for (const key of Object.keys(assertions) as Array<keyof Counts>) assertions[key] += file.assertions[key];
@@ -184,7 +184,7 @@ export function unionFileEvidence(groups: MusicVitestEvidence[], expected: reado
     fileCounts: { selected: files.length, passed: files.length, failed: 0, skipped: 0 },
   };
   requireExactFileManifest(evidence, expected);
-  return { evidence, duplicates: [...duplicates].sort() };
+  return { evidence, duplicates: Array.from(duplicates).sort() };
 }
 
 export function buildUatEvidenceEnvelope(input: {

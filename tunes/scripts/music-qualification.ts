@@ -900,7 +900,10 @@ export async function runMusicQualificationLane(
   }
 
   const executedIds = new Set(evidence.map(({ id }) => id));
-  for (const taskId of new Set(selectedStages.flatMap(({ taskIds }) => taskIds))) {
+  const scheduledTaskIds: Array<keyof typeof MUSIC_QUALIFICATION_TASKS> = Array.from(
+    new Set<keyof typeof MUSIC_QUALIFICATION_TASKS>(selectedStages.flatMap(({ taskIds }) => taskIds)),
+  );
+  for (const taskId of scheduledTaskIds) {
     if (executedIds.has(taskId)) continue;
     const selected = MUSIC_QUALIFICATION_TASKS[taskId];
     evidence.push({
