@@ -193,12 +193,15 @@ describe("StrapiPublicProfileGateway", () => {
   });
 
   it("uses a dedicated public shell projection and releases a mobile number only when its visibility flag is enabled", async () => {
-    const fetchImpl = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ data: { accounts: [{
-      documentId: "account-1", mobile_number_visibility: false, mobile_number: "+10000000000",
-    }] } }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { accounts: [{
+    const fetchImpl = vi.fn().mockImplementation(async (_url, init) => {
+      const payload = JSON.parse(String(init?.body));
+      if (String(payload.query).includes("PublicNavigationCounts")) return graphqlResponse({});
+      return graphqlResponse({ accounts: [payload.variables.username === "tk2727" ? {
+        documentId: "account-1", mobile_number_visibility: false, mobile_number: "+10000000000",
+      } : {
         documentId: "account-2", mobile_number_visibility: true, mobile_number: "+10000000001",
-      }] } }), { status: 200 }));
+      }] });
+    });
     const gateway = new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl });
     await expect(gateway.resolveAccount("tk2727")).resolves.toEqual({ documentId: "account-1", mobile_number_visibility: false });
     await expect(gateway.resolveAccount("visible-phone")).resolves.toEqual({ documentId: "account-2", mobile_number_visibility: true, mobile_number: "+10000000001" });
@@ -207,6 +210,72 @@ describe("StrapiPublicProfileGateway", () => {
     expect(query).toContain("Account_Name");
     expect(query).toMatch(/profile_picture\s*\{\s*url\s+alternativeText/);
     expect(query).toMatch(/\bmobile_number\b/);
+  });
+
+  it("projects exact published-list totals for navigation ranking without loading list rows", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(graphqlResponse({ accounts: [{ documentId: "account-1", public_profile: "Yes" }] }))
+      .mockResolvedValueOnce(graphqlResponse({
+      recommendationListsCount: { pageInfo: { total: 50 } },
+      movieListsCount: { pageInfo: { total: 12 } },
+      bookListsCount: { pageInfo: { total: 7 } },
+      gameListsCount: { pageInfo: { total: 6 } },
+      guidesCount: { pageInfo: { total: 5 } },
+      appListsCount: { pageInfo: { total: 4 } },
+      productListsCount: { pageInfo: { total: 3 } },
+      personListsCount: { pageInfo: { total: 2 } },
+      }));
+
+    await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl })
+      .resolveAccount("tk2727")).resolves.toMatchObject({
+        public_navigation_counts: {
+          public_recommendations: 50,
+          public_movie: 12,
+          public_books: 7,
+          public_games: 6,
+          public_guides: 5,
+          public_apps: 4,
+          public_products: 3,
+          public_people: 2,
+        },
+      });
+
+    const query = JSON.parse(fetchImpl.mock.calls[1][1].body).query;
+    expect(query).toContain("recommendationListsCount: recommendationLists_connection");
+    expect(query).toContain("pageInfo { total }");
+    expect(query).not.toMatch(/recommendationListsCount:[^{]+\{\s*nodes\b/);
+  });
+
+  it("returns the public shell when optional navigation-count projection is forbidden", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(graphqlResponse({ accounts: [{ documentId: "account-1", public_profile: "Yes" }] }))
+      .mockResolvedValueOnce(graphqlResponse(null))
+      .mockResolvedValueOnce(graphqlResponse(null));
+
+    await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl })
+      .resolveAccount("tk2727")).resolves.toEqual({ documentId: "account-1", public_profile: "Yes" });
+  });
+
+  it("bounds optional navigation-count latency without delaying the public shell", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn()
+        .mockResolvedValueOnce(graphqlResponse({ accounts: [{ documentId: "account-1", public_profile: "Yes" }] }))
+        .mockImplementationOnce((_url, init) => new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+        }));
+      const pending = new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl })
+        .resolveAccount("tk2727");
+      let result: unknown;
+      void pending.then((value) => { result = value; });
+
+      await vi.advanceTimersByTimeAsync(500);
+
+      expect(result).toEqual({ documentId: "account-1", public_profile: "Yes" });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("converts a bounded public cursor into Strapi's supported start/limit pagination", async () => {

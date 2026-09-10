@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -15,7 +16,7 @@ import {
 import { sanitizeLocalMusicStartFailure, startLocalMusic } from "../../scripts/music-local";
 
 const worktreeRoot = path.resolve(import.meta.dirname, "../../..");
-const stateDirectory = path.resolve("C:/private/ExplorersMusicLocal/task3");
+const stateDirectory = path.join(tmpdir(), "ExplorersMusicLocal", "task3");
 
 function manifest(cohortUserDocumentIds: string[] = []): LocalMusicManifest {
   return {

@@ -31,6 +31,7 @@ function parseChange(payload: string | undefined): PublicMusicInternalChange | u
 export async function startMusicPublicChangeListener(options: {
   pool: { connect(): Promise<ListenClient> };
   fanout(change: PublicMusicInternalChange): Promise<void>;
+  catchUp?(): Promise<void>;
   reconnectDelaysMs?: readonly number[];
   onFatal?(error: unknown): void;
   observability?: MusicPublicObservability;
@@ -97,6 +98,7 @@ export async function startMusicPublicChangeListener(options: {
       try {
         await next.query(`LISTEN ${CHANNEL}`);
         client = next;
+        await options.catchUp?.();
         options.observability?.listener("connected", disconnectedAt === undefined ? {} : { disconnectMs: now() - disconnectedAt });
         disconnectedAt = undefined;
       } catch (error) {

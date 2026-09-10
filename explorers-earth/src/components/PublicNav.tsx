@@ -10,6 +10,13 @@ import { usePublicMusicAvailability } from "../features/music/PublicMusicAvailab
 import { appendAttributionParamsToPath } from "../utils/urlHelpers";
 import { usePublicRecommendationCategory } from "../features/PublicHome/api/usePublicRecommendationCategory";
 
+function navigationCount(account: Record<string, unknown> | null | undefined, tabId: string, fallback: number): number {
+  const counts = account?.public_navigation_counts;
+  if (!counts || typeof counts !== "object" || Array.isArray(counts)) return fallback;
+  const value = (counts as Record<string, unknown>)[tabId];
+  return Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : fallback;
+}
+
 const PublicNav = memo(() => {
   const location = useLocation();
   const { username } = useParams();
@@ -110,17 +117,17 @@ const PublicNav = memo(() => {
   // Map each tab ID to its published list count for ranking.
   // MUST be before any early return to comply with React Rules of Hooks.
   const categoryListCountMap: Record<string, number> = useMemo(() => ({
-    public_recommendations: places.data?.recommendationLists?.length ?? 0,
-    public_movie:           movies.data?.movieLists?.length ?? 0,
-    public_books:           books.data?.bookLists?.length ?? 0,
-    public_games:           games.data?.gameLists?.length ?? 0,
-    public_apps:            apps.data?.appLists?.length ?? 0,
-    public_products:        products.data?.productLists?.length ?? 0,
-    public_people:          people.data?.personLists?.length ?? 0,
-    public_guides:          guides.data?.guides?.length ?? 0,
+    public_recommendations: navigationCount(accountData, "public_recommendations", places.data?.recommendationLists?.length ?? 0),
+    public_movie:           navigationCount(accountData, "public_movie", movies.data?.movieLists?.length ?? 0),
+    public_books:           navigationCount(accountData, "public_books", books.data?.bookLists?.length ?? 0),
+    public_games:           navigationCount(accountData, "public_games", games.data?.gameLists?.length ?? 0),
+    public_apps:            navigationCount(accountData, "public_apps", apps.data?.appLists?.length ?? 0),
+    public_products:        navigationCount(accountData, "public_products", products.data?.productLists?.length ?? 0),
+    public_people:          navigationCount(accountData, "public_people", people.data?.personLists?.length ?? 0),
+    public_guides:          navigationCount(accountData, "public_guides", guides.data?.guides?.length ?? 0),
     // Profile has no "lists" — it's always guaranteed a slot via default pin.
     public_profile:         0,
-  }), [apps.data, books.data, games.data, guides.data, movies.data, people.data, places.data, products.data]);
+  }), [accountData?.public_navigation_counts, apps.data, books.data, games.data, guides.data, movies.data, people.data, places.data, products.data]);
 
   const [intendedPathname, setIntendedPathname] = useState<string | null>(null);
   const intentToken = useRef(0);

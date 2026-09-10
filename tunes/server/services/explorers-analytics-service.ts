@@ -211,6 +211,7 @@ export interface AnalyticsReceipt {
   recovered: boolean;
   payloadHash: string;
   status: "pending" | "committed" | "failed";
+  indeterminate?: boolean;
   documentId?: string;
   leaseId?: string;
 }
@@ -218,7 +219,7 @@ export interface AnalyticsReceipt {
 export interface AnalyticsReceiptRepository {
   begin(eventId: string, payloadHash: string): Promise<AnalyticsReceipt>;
   commit(eventId: string, documentId: string, leaseId: string): Promise<void>;
-  fail?(eventId: string, message: string, leaseId: string): Promise<void>;
+  fail?(eventId: string, message: string, leaseId: string, disposition: "retryable" | "indeterminate"): Promise<void>;
 }
 
 export interface AnalyticsPublisher {
@@ -284,6 +285,7 @@ const normalizeCountry = (country: string | null | undefined) =>
 type IngestResult =
   | { status: "consent-denied" }
   | { status: "pending"; duplicate: true }
+  | { status: "dropped"; duplicate: true }
   | {
       status: "committed";
       documentId: string;
@@ -351,26 +353,16 @@ export class ExplorersAnalyticsService {
         duplicate: true,
       };
     }
-    if (!receipt.acquired && receipt.status === "pending") {
+    if (!receipt.acquired && receipt.indeterminate) {
+      return { status: "dropped", duplicate: true };
+    }
+    if (!receipt.acquired) {
       return { status: "pending", duplicate: true };
     }
 
-    if (receipt.recovered && this.publisher.findByEventId) {
-      const existingDocumentId = await this.publisher.findByEventId(
-        input.accountId,
-        input.eventId,
-      );
-      if (existingDocumentId) {
-        if (!receipt.leaseId) throw new Error("Analytics receipt lease is missing");
-        await this.receipts.commit(input.eventId, existingDocumentId, receipt.leaseId);
-        return {
-          status: "committed",
-          documentId: existingDocumentId,
-          duplicate: true,
-        };
-      }
-    }
-
+    // Strapi does not expose an atomic create-if-absent operation keyed by
+    // eventId. Reusing an expired lease can therefore race an earlier publish
+    // that completed externally but did not commit its local receipt.
     const payload: NormalizedExplorersAnalyticsEvent = {
       ...normalizedWithoutCountry,
       event: {
@@ -394,6 +386,7 @@ export class ExplorersAnalyticsService {
         input.eventId,
         error instanceof Error ? error.message : "analytics publish failed",
         receipt.leaseId ?? "",
+        error instanceof AnalyticsPublishDispatchError && error.safeToRetry ? "retryable" : "indeterminate",
       );
       throw error;
     }
@@ -401,5 +394,12 @@ export class ExplorersAnalyticsService {
 
   readAccountEvents(scope: { accountId: string; from: string; to: string }) {
     return this.publisher.readAccountEvents(scope);
+  }
+}
+
+export class AnalyticsPublishDispatchError extends Error {
+  constructor(message: string, readonly safeToRetry: boolean, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "AnalyticsPublishDispatchError";
   }
 }

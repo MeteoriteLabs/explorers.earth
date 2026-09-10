@@ -4,6 +4,7 @@ import type {
   ExplorersAnalyticsInput,
   NormalizedExplorersAnalyticsEvent,
 } from "./explorers-analytics-service";
+import { AnalyticsPublishDispatchError } from "./explorers-analytics-service";
 
 type FetchLike = typeof fetch;
 type GeoLookup = (ip: string) => { country?: string } | null;
@@ -98,6 +99,8 @@ interface AnalyticsTargetDescriptor {
   accountListRelation?: string;
   listRecommendationRelation?: string;
   accountRecommendationRelation?: string;
+  visibilityField?: string;
+  relationVisibilityField?: "Visibility" | "visibility";
 }
 
 // These are server-controlled GraphQL identifiers, never client input. Every
@@ -105,41 +108,68 @@ interface AnalyticsTargetDescriptor {
 // relation without requiring any Strapi schema or application-code changes.
 const ANALYTICS_TARGETS_BY_PAGE: Record<string, AnalyticsTargetDescriptor> = {
   "public-home": {
+    visibilityField: "public_recommendations",
+    relationVisibilityField: "Visibility",
     accountListRelation: "recommendation_lists",
     listRecommendationRelation: "recommended_places",
   },
   "recommendation-detail": {
+    visibilityField: "public_recommendations",
+    relationVisibilityField: "Visibility",
     accountListRelation: "recommendation_lists",
     listRecommendationRelation: "recommended_places",
   },
   "public-movies": {
+    visibilityField: "public_movie",
+    relationVisibilityField: "Visibility",
     accountListRelation: "movie_lists",
     listRecommendationRelation: "recommended_movies",
   },
   "public-books": {
+    visibilityField: "public_books",
+    relationVisibilityField: "visibility",
     accountListRelation: "book_lists",
     listRecommendationRelation: "recommended_books",
   },
   "public-games": {
+    visibilityField: "public_games",
+    relationVisibilityField: "Visibility",
     accountListRelation: "game_lists",
     listRecommendationRelation: "recommended_games",
   },
   "public-apps": {
+    visibilityField: "public_apps",
+    relationVisibilityField: "Visibility",
     accountListRelation: "app_lists",
     listRecommendationRelation: "recommended_apps",
   },
   "public-products": {
+    visibilityField: "public_products",
+    relationVisibilityField: "Visibility",
     accountListRelation: "product_lists",
     listRecommendationRelation: "recommended_products",
   },
   "public-people": {
+    visibilityField: "public_people",
+    relationVisibilityField: "Visibility",
     accountListRelation: "person_lists",
     listRecommendationRelation: "recommended_people",
   },
   "public-guides": {
+    visibilityField: "public_guides",
+    relationVisibilityField: "Visibility",
     accountRecommendationRelation: "guides",
   },
+  "public-music": { visibilityField: "public_music" },
 };
+
+function canonicalUsername(input: ExplorersAnalyticsInput): string | null {
+  const segments = input.event.canonicalPath.split("/").filter(Boolean);
+  if (input.event.page === "public-music" && segments[0] === "music" && segments[1] === "share") {
+    return null;
+  }
+  return segments[0] ? decodeURIComponent(segments[0]).trim().toLowerCase() : null;
+}
 
 function buildPublicTargetValidationQuery(input: ExplorersAnalyticsInput): {
   query: string;
@@ -158,9 +188,22 @@ function buildPublicTargetValidationQuery(input: ExplorersAnalyticsInput): {
     return null;
   }
 
+  const username = canonicalUsername(input);
   const variableDefinitions = ["$accountId: ID!"];
-  const accountSelections = ["documentId"];
+  const descriptorVisibility = input.event.page === "public-profile"
+    ? undefined
+    : descriptor?.visibilityField;
+  const accountSelections = [
+    "documentId",
+    "username",
+    "public_profile",
+    ...(descriptorVisibility ? [descriptorVisibility] : []),
+  ];
   const variables: Record<string, string> = { accountId: input.accountId };
+  if (username) {
+    variableDefinitions.push("$username: String!");
+    variables.username = username;
+  }
 
   if (locationId && descriptor?.accountListRelation) {
     variableDefinitions.push("$locationId: ID!");
@@ -177,7 +220,10 @@ function buildPublicTargetValidationQuery(input: ExplorersAnalyticsInput): {
       : "";
     accountSelections.push(`
       locationTargets: ${descriptor.accountListRelation}(
-        filters: { documentId: { eq: $locationId } }
+        filters: {
+          documentId: { eq: $locationId }
+          ${descriptor.relationVisibilityField}: { eq: true }
+        }
         pagination: { page: 1, pageSize: 1 }
       ) {
         documentId
@@ -192,7 +238,10 @@ function buildPublicTargetValidationQuery(input: ExplorersAnalyticsInput): {
     if (descriptor?.accountRecommendationRelation) {
       accountSelections.push(`
         recommendationTargets: ${descriptor.accountRecommendationRelation}(
-          filters: { documentId: { eq: $recommendationId } }
+          filters: {
+            documentId: { eq: $recommendationId }
+            ${descriptor.relationVisibilityField}: { eq: true }
+          }
           pagination: { page: 1, pageSize: 1 }
         ) {
           documentId
@@ -206,6 +255,7 @@ function buildPublicTargetValidationQuery(input: ExplorersAnalyticsInput): {
       accountSelections.push(`
         recommendationOwnerLists: ${descriptor.accountListRelation}(
           filters: {
+            ${descriptor.relationVisibilityField}: { eq: true }
             ${descriptor.listRecommendationRelation}: {
               documentId: { eq: $recommendationId }
             }
@@ -222,7 +272,10 @@ function buildPublicTargetValidationQuery(input: ExplorersAnalyticsInput): {
     query: `
       query ValidatePublicAnalyticsTarget(${variableDefinitions.join(", ")}) {
         accounts(
-          filters: { documentId: { eq: $accountId } }
+          filters: {
+            documentId: { eq: $accountId }
+            ${username ? "username: { eq: $username }" : ""}
+          }
           pagination: { page: 1, pageSize: 1 }
         ) {
           ${accountSelections.join("\n")}
@@ -263,6 +316,7 @@ export class StrapiAnalyticsTargetValidator {
     const cacheKey = [
       input.accountId,
       input.event.page,
+      canonicalUsername(input) ?? "server-authoritative",
       input.locationId ?? "",
       input.recommendationId ?? "",
     ].join("|");
@@ -288,7 +342,17 @@ export class StrapiAnalyticsTargetValidator {
     const account = Array.isArray(body?.data?.accounts)
       ? body.data.accounts[0]
       : null;
-    const accountValid = Boolean(account);
+    const expectedUsername = canonicalUsername(input);
+    const descriptor = ANALYTICS_TARGETS_BY_PAGE[input.event.page];
+    const visibilityField = input.event.page === "public-profile"
+      ? undefined
+      : descriptor?.visibilityField;
+    const accountValid = Boolean(
+      account &&
+      account.public_profile === "Yes" &&
+      (!expectedUsername || String(account.username).toLowerCase() === expectedUsername) &&
+      (!visibilityField || account[visibilityField] === "Yes"),
+    );
     const locationValid =
       !input.locationId ||
       (Array.isArray(account?.locationTargets) &&
@@ -338,7 +402,9 @@ export class StrapiAnalyticsPublisher implements AnalyticsPublisher {
   }
 
   private async request(query: string, variables: Record<string, unknown>) {
-    const response = await this.fetchImpl(this.graphqlUrl, {
+    let responsePromise: Promise<Response>;
+    try {
+      responsePromise = this.fetchImpl(this.graphqlUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -346,7 +412,11 @@ export class StrapiAnalyticsPublisher implements AnalyticsPublisher {
       },
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(8_000),
-    });
+      });
+    } catch (cause) {
+      throw new AnalyticsPublishDispatchError("Strapi analytics request was not dispatched", true, { cause });
+    }
+    const response = await responsePromise;
     const body = await response.json();
     if (!response.ok || body.errors?.length) {
       throw new Error(

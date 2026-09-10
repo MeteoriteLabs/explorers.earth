@@ -78,4 +78,26 @@ describe("Music public change LISTEN service", () => {
     await listener.stop();
     vi.useRealTimers();
   });
+
+  it("runs durable catch-up after LISTEN on every connection before reporting connected", async () => {
+    vi.useFakeTimers();
+    const first = new FakeClient(); const second = new FakeClient();
+    const clients = [first, second];
+    const events: string[] = [];
+    const catchUp = vi.fn(async () => { events.push("catch-up"); });
+    const listener = await startMusicPublicChangeListener({
+      pool: { connect: async () => clients.shift()! },
+      fanout: async () => undefined,
+      catchUp,
+      reconnectDelaysMs: [0],
+      observability: { listener: (outcome) => events.push(outcome), socket: () => undefined, request: () => undefined },
+    });
+    expect(events.slice(-2)).toEqual(["catch-up", "connected"]);
+    first.emit("error", new Error("lost"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(catchUp).toHaveBeenCalledTimes(2);
+    expect(events.slice(-2)).toEqual(["catch-up", "connected"]);
+    await listener.stop();
+    vi.useRealTimers();
+  });
 });

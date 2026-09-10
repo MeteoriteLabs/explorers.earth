@@ -193,6 +193,7 @@ export async function registerRoutes(
     ownerCredentials: createMusicSocketCredentialVerifier(musicPrincipals),
     resolveGuestCapability: (capability) => musicDomain.resolveGuestSocketAuthority(capability),
     resolvePublicMusicAuthority: (publicSlug, capability) => musicDomain.resolvePublicMusicSocketAuthority(publicSlug, capability),
+    resolvePublicMusicRevision: (musicUserId) => musicDomain.resolvePublicSnapshotRevision(musicUserId),
     ownerRegistry: ownerSocketRegistry,
     publicRegistry: publicSocketRegistry,
     observability: publicMusicObservability,
@@ -215,6 +216,7 @@ export async function registerRoutes(
   publicChangeListener = await startMusicPublicChangeListener({
     pool,
     fanout: (change) => publicSocketRegistry.publish(change),
+    catchUp: () => publicSocketRegistry.catchUp(),
     observability: publicMusicObservability,
     onFatal: () => {
       console.error("music_public_change_listener_failed");

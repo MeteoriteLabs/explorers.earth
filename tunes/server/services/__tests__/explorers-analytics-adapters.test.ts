@@ -5,7 +5,7 @@ import {
   StrapiAnalyticsTargetValidator,
   verifyAnalyticsAccountOwnership,
 } from "../explorers-analytics-adapters";
-import type { NormalizedExplorersAnalyticsEvent } from "../explorers-analytics-service";
+import { AnalyticsPublishDispatchError, type NormalizedExplorersAnalyticsEvent } from "../explorers-analytics-service";
 
 const payload: NormalizedExplorersAnalyticsEvent = {
   eventId: "evt-adapter-0001",
@@ -57,7 +57,7 @@ describe("StrapiAnalyticsTargetValidator", () => {
   it("validates and caches a real account without exposing Strapi data", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(
-        JSON.stringify({ data: { accounts: [{ documentId: "account-1" }] } }),
+        JSON.stringify({ data: { accounts: [{ documentId: "account-1", username: "tk2727", public_profile: "Yes" }] } }),
         { status: 200, headers: { "content-type": "application/json" } },
       ),
     );
@@ -75,7 +75,7 @@ describe("StrapiAnalyticsTargetValidator", () => {
     expect(init.headers.Authorization).toBe("Bearer server-only-token");
     expect(init.signal).toBeInstanceOf(AbortSignal);
     const body = JSON.parse(init.body);
-    expect(body.variables).toEqual({ accountId: "account-1" });
+    expect(body.variables).toEqual({ accountId: "account-1", username: "tk2727" });
     expect(body.query).toContain("documentId: { eq: $accountId }");
   });
 
@@ -97,6 +97,97 @@ describe("StrapiAnalyticsTargetValidator", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects a top-level event when its canonical username belongs to another account", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            accounts: [{
+              documentId: "account-1",
+              username: "someone-else",
+              public_profile: "Yes",
+            }],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    const validator = new StrapiAnalyticsTargetValidator({
+      strapiUrl: "https://cms.example",
+      accessToken: "server-only-token",
+      fetchImpl,
+    });
+
+    await expect(validator.validate(targetInput)).resolves.toBe(false);
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(body.variables).toEqual({ accountId: "account-1", username: "tk2727" });
+  });
+
+  it("rejects a top-level category event when that public category is unpublished", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            accounts: [{
+              documentId: "account-1",
+              username: "tk2727",
+              public_profile: "Yes",
+              public_books: "No",
+            }],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    const validator = new StrapiAnalyticsTargetValidator({
+      strapiUrl: "https://cms.example",
+      accessToken: "server-only-token",
+      fetchImpl,
+    });
+
+    await expect(
+      validator.validate({
+        ...bookTargetInput,
+        locationId: null,
+        recommendationId: null,
+      }),
+    ).resolves.toBe(false);
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(body.variables.username).toBe("tk2727");
+    expect(body.query).toContain("public_books");
+  });
+
+  it("does not reuse a canonical-account cache entry for a mismatched username path", async () => {
+    const publicAccount = {
+      documentId: "account-1",
+      username: "tk2727",
+      public_profile: "Yes",
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ data: { accounts: [publicAccount] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ))
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ data: { accounts: [] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ));
+    const validator = new StrapiAnalyticsTargetValidator({
+      strapiUrl: "https://cms.example",
+      accessToken: "server-only-token",
+      fetchImpl,
+    });
+
+    await expect(validator.validate(targetInput)).resolves.toBe(true);
+    await expect(validator.validate({
+      ...targetInput,
+      eventId: "evt-target-forged-path",
+      event: { ...targetInput.event, canonicalPath: "/someone-else" },
+    })).resolves.toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it("accepts optional list and item IDs only when both belong to the account", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(
@@ -104,6 +195,9 @@ describe("StrapiAnalyticsTargetValidator", () => {
           data: {
             accounts: [{
               documentId: "account-1",
+              username: "tk2727",
+              public_profile: "Yes",
+              public_books: "Yes",
               locationTargets: [{
                 documentId: "book-list-1",
                 recommendationTargets: [{ documentId: "book-1" }],
@@ -124,11 +218,44 @@ describe("StrapiAnalyticsTargetValidator", () => {
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(body.variables).toEqual({
       accountId: "account-1",
+      username: "tk2727",
       locationId: "book-list-1",
       recommendationId: "book-1",
     });
     expect(body.query).toContain("book_lists");
     expect(body.query).toContain("recommended_books");
+    expect(body.query).toMatch(/locationTargets:\s*book_lists\([\s\S]*visibility:\s*\{\s*eq:\s*true\s*\}/);
+  });
+
+  it("validates a guide only through its published relation", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ data: { accounts: [{
+        documentId: "account-1",
+        username: "tk2727",
+        public_profile: "Yes",
+        public_guides: "Yes",
+        recommendationTargets: [{ documentId: "guide-1" }],
+      }] } }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    ));
+    const validator = new StrapiAnalyticsTargetValidator({
+      strapiUrl: "https://cms.example",
+      accessToken: "server-only-token",
+      fetchImpl,
+    });
+
+    await expect(validator.validate({
+      ...targetInput,
+      eventId: "evt-target-guide-0001",
+      recommendationId: "guide-1",
+      event: {
+        ...targetInput.event,
+        page: "public-guides",
+        canonicalPath: "/tk2727/guides",
+      },
+    })).resolves.toBe(true);
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(body.query).toMatch(/recommendationTargets:\s*guides\([\s\S]*Visibility:\s*\{\s*eq:\s*true\s*\}/);
   });
 
   it("rejects a forged item ID even when the account and list are valid", async () => {
@@ -162,7 +289,7 @@ describe("StrapiAnalyticsTargetValidator", () => {
       .fn()
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ data: { accounts: [{ documentId: "account-1" }] } }),
+          JSON.stringify({ data: { accounts: [{ documentId: "account-1", username: "tk2727", public_profile: "Yes" }] } }),
           { status: 200, headers: { "content-type": "application/json" } },
         ),
       )
@@ -172,6 +299,9 @@ describe("StrapiAnalyticsTargetValidator", () => {
             data: {
               accounts: [{
                 documentId: "account-1",
+                username: "tk2727",
+                public_profile: "Yes",
+                public_books: "Yes",
                 locationTargets: [{
                   documentId: "book-list-1",
                   recommendationTargets: [],
@@ -200,6 +330,9 @@ describe("StrapiAnalyticsTargetValidator", () => {
           data: {
             accounts: [{
               documentId: "account-1",
+              username: "tk2727",
+              public_profile: "Yes",
+              public_books: "Yes",
               recommendationOwnerLists: [{ documentId: "book-list-1" }],
             }],
           },
@@ -225,6 +358,15 @@ describe("StrapiAnalyticsTargetValidator", () => {
 });
 
 describe("StrapiAnalyticsPublisher", () => {
+  it("classifies only a synchronous pre-dispatch fetch failure as safely retryable", async () => {
+    const publisher = new StrapiAnalyticsPublisher({
+      strapiUrl: "https://cms.example", accessToken: "server-only-token",
+      fetchImpl: (() => { throw new Error("request construction failed"); }) as typeof fetch,
+    });
+    await expect(publisher.publish(payload)).rejects.toMatchObject({
+      name: "AnalyticsPublishDispatchError", safeToRetry: true,
+    } satisfies Partial<AnalyticsPublishDispatchError>);
+  });
   it("writes the normalized event server-side without any raw IP", async () => {
     const fetchImpl = vi.fn().mockImplementation(async () =>
       new Response(

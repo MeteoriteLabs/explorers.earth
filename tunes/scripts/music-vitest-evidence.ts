@@ -21,7 +21,6 @@ export type MusicUatEvidence = {
   childSignal: null;
   cleanup: "database-dropped-container-removed";
   vitest: MusicVitestEvidence;
-  vitestRaw: string;
   vitestSha256: string;
 };
 
@@ -202,6 +201,7 @@ export function buildUatEvidenceEnvelope(input: {
     && input.cleanup === "database-dropped-container-removed"
     && typeof input.vitestRaw === "string", "incomplete UAT lifecycle");
   const vitest = parseFinalizedVitestEvidence(input.vitestRaw, input.exitCode, input.root);
+  const normalizedVitest = JSON.stringify(vitest);
   return {
     version: "explorers-music-uat-database/v1",
     runId: input.runId,
@@ -211,8 +211,7 @@ export function buildUatEvidenceEnvelope(input: {
     childSignal: null,
     cleanup: "database-dropped-container-removed",
     vitest,
-    vitestRaw: input.vitestRaw,
-    vitestSha256: createHash("sha256").update(input.vitestRaw, "utf8").digest("hex"),
+    vitestSha256: createHash("sha256").update(normalizedVitest, "utf8").digest("hex"),
   };
 }
 
@@ -229,16 +228,22 @@ export function parseUatVitestEvidenceFromOutput(output: string, input: {
   demand(outer.version === "explorers-music-uat-database/v1", "invalid UAT envelope version");
   demand(outer.commit === input.commit && outer.exitCode === input.nativeExit
     && input.nativeSignal === null && outer.result === "passed", "UAT outer result/identity mismatch");
-  const verified = buildUatEvidenceEnvelope({
+  demand(!Object.hasOwn(outer, "vitestRaw"), "raw Vitest evidence is forbidden");
+  const vitest = object(outer.vitest) as MusicVitestEvidence;
+  demand(vitest.finalized === true && vitest.success === true && vitest.nativeExit === input.nativeExit
+    && Array.isArray(vitest.files), "invalid normalized Vitest evidence");
+  requireExactFileManifest(vitest, vitest.files.map((file) => file.file));
+  const digest = createHash("sha256").update(JSON.stringify(vitest), "utf8").digest("hex");
+  demand(outer.vitestSha256 === digest, "UAT embedded evidence mismatch");
+  return {
+    version: "explorers-music-uat-database/v1",
     runId: outer.runId,
     commit: outer.commit,
+    result: "passed",
     exitCode: outer.exitCode,
-    childSignal: outer.childSignal,
-    cleanup: outer.cleanup,
-    vitestRaw: outer.vitestRaw,
-    root: input.root,
-  });
-  demand(outer.vitestSha256 === verified.vitestSha256
-    && JSON.stringify(outer.vitest) === JSON.stringify(verified.vitest), "UAT embedded evidence mismatch");
-  return verified;
+    childSignal: null,
+    cleanup: "database-dropped-container-removed",
+    vitest,
+    vitestSha256: digest,
+  };
 }

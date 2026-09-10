@@ -204,6 +204,7 @@ export function setupExplorersAnalyticsRoutes(
       }
       const result = await dependencies.service.ingest(analyticsInput, { getIp: () => req.ip || null });
       if (result.status === "pending") return res.status(202).json({ status: "pending", duplicate: true });
+      if (result.status === "dropped") return res.status(409).json({ status: "dropped", duplicate: true });
       if (result.status === "consent-denied") return res.status(204).send();
       return res.status(result.duplicate ? 200 : 201).json({ status: "committed", duplicate: result.duplicate });
     } catch (error) {
@@ -248,6 +249,7 @@ export function setupExplorersAnalyticsRoutes(
         getIp: () => req.ip || null,
       });
       if (result.status === "pending") return res.status(202).json({ status: "pending", duplicate: true });
+      if (result.status === "dropped") return res.status(409).json({ status: "dropped", duplicate: true });
       if (result.status === "consent-denied") return res.status(204).send();
       return res.status(result.duplicate ? 200 : 201).json({
         status: "committed",
@@ -292,6 +294,7 @@ export function setupExplorersAnalyticsRoutes(
       });
       if (result.status === "consent-denied") return res.status(204).send();
       if (result.status === "pending") return res.status(202).json(result);
+      if (result.status === "dropped") return res.status(409).json(result);
       return res.status(result.duplicate ? 200 : 201).json(result);
     } catch (error) {
       if (error instanceof IdempotencyConflictError) {

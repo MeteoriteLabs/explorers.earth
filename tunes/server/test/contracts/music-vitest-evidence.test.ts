@@ -186,6 +186,8 @@ describe("UAT evidence envelope", () => {
       nativeExit: 0,
       nativeSignal: null,
     })).toEqual(envelope);
+    expect(envelope).not.toHaveProperty("vitestRaw");
+    expect(JSON.stringify(envelope)).not.toContain(resolve(root, a));
   });
 
   it("rejects malformed identities and incomplete lifecycle state", () => {

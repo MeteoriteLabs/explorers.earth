@@ -67,6 +67,28 @@ type PublicGuidesResult = {
   guides?: unknown[];
 };
 
+const PUBLIC_NAVIGATION_COUNT_CONNECTIONS = {
+  public_recommendations: "recommendationListsCount",
+  public_movie: "movieListsCount",
+  public_books: "bookListsCount",
+  public_games: "gameListsCount",
+  public_guides: "guidesCount",
+  public_apps: "appListsCount",
+  public_products: "productListsCount",
+  public_people: "personListsCount",
+} as const;
+
+const PUBLIC_NAVIGATION_COUNT_SELECTION = `
+  recommendationListsCount: recommendationLists_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+  movieListsCount: movieLists_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+  bookListsCount: bookLists_connection(filters:{account:{username:{eq:$username}},visibility:{eq:true}}) { pageInfo { total } }
+  gameListsCount: gameLists_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+  guidesCount: guides_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+  appListsCount: appLists_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+  productListsCount: productLists_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+  personListsCount: personLists_connection(filters:{account:{username:{eq:$username}},Visibility:{eq:true}}) { pageInfo { total } }
+`;
+
 const hasGuide = (value: PublicGuidesResult): boolean => Array.isArray(value.guides) && value.guides.length > 0;
 const emptyGuides = (): PublicGuidesResult => ({ guides: [] });
 const legacyGuideTitleSlug = (title: string): string => title.toLowerCase().replace(/\s+/g, "-");
@@ -74,11 +96,11 @@ const legacyGuideTitleSlug = (title: string): string => title.toLowerCase().repl
 export class StrapiPublicProfileGateway {
   constructor(private readonly options: { origin: string; token: string; fetchImpl: FetchLike }) {}
 
-  private async request<T>(query: string, variables: Record<string, unknown>, redact = true, maxAttempts = 2): Promise<T> {
+  private async request<T>(query: string, variables: Record<string, unknown>, redact = true, maxAttempts = 2, timeoutMs = 4_000): Promise<T> {
     let lastError: unknown;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4_000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await this.options.fetchImpl(`${this.options.origin}/graphql`, {
           method: "POST",
@@ -210,6 +232,25 @@ export class StrapiPublicProfileGateway {
     const account = data.accounts?.[0];
     if (!account) return undefined;
     const projected = redactPublicValue(account) as Record<string, unknown>;
+    try {
+      const countData = await this.request<Record<string, unknown>>(
+        `query PublicNavigationCounts($username: String!) { ${PUBLIC_NAVIGATION_COUNT_SELECTION} }`,
+        { username },
+        true,
+        1,
+        250,
+      );
+      const navigationCounts = Object.entries(PUBLIC_NAVIGATION_COUNT_CONNECTIONS).map(([tabId, responseKey]) => {
+        const connection = countData[responseKey] as { pageInfo?: { total?: unknown } } | undefined;
+        const total = connection?.pageInfo?.total;
+        return [tabId, Number.isSafeInteger(total) && Number(total) >= 0 ? total : undefined] as const;
+      });
+      if (navigationCounts.every(([, total]) => total !== undefined)) {
+        projected.public_navigation_counts = Object.fromEntries(navigationCounts);
+      }
+    } catch {
+      // Counts improve auto-pin ordering but are never part of shell readiness.
+    }
     if (account.mobile_number_visibility === true && typeof account.mobile_number === "string") {
       projected.mobile_number = account.mobile_number;
     }

@@ -12,6 +12,7 @@ interface QueryResult {
     status: "pending" | "committed" | "failed";
     strapi_document_id: string | null;
     lease_id: string | null;
+    last_error?: string | null;
   }>;
 }
 
@@ -29,7 +30,10 @@ const toReceipt = (
   payloadHash: row.payload_hash,
   status: row.status,
   documentId: row.strapi_document_id || undefined,
-  leaseId: row.lease_id || undefined,
+  ...(row.lease_id ? { leaseId: row.lease_id } : {}),
+  ...(row.status === "failed" && row.last_error?.startsWith("retryable:") !== true
+    ? { indeterminate: true }
+    : {}),
 });
 
 export class PostgresAnalyticsReceiptRepository
@@ -55,27 +59,28 @@ export class PostgresAnalyticsReceiptRepository
     if (inserted.rows[0]) return toReceipt(inserted.rows[0], true, false);
 
     const recovered = await this.executor.query(
-      `
-        UPDATE explorers_analytics_receipts
-        SET status = 'pending', lease_id = $3, last_error = NULL, updated_at = NOW()
-        WHERE event_id = $1
-          AND payload_hash = $2
-          AND (
-            status = 'failed'
-            OR (
-              status = 'pending'
-              AND updated_at < NOW() - INTERVAL '2 minutes'
-            )
-          )
-        RETURNING event_id, payload_hash, status, strapi_document_id, lease_id
-      `,
+      `UPDATE explorers_analytics_receipts
+          SET status='pending', lease_id=$3, last_error=NULL, updated_at=NOW()
+        WHERE event_id=$1 AND payload_hash=$2 AND status='failed'
+          AND last_error LIKE 'retryable:%'
+        RETURNING event_id,payload_hash,status,strapi_document_id,lease_id,last_error`,
       [eventId, payloadHash, leaseId],
     );
     if (recovered.rows[0]) return toReceipt(recovered.rows[0], true, true);
 
+    const expired = await this.executor.query(
+      `UPDATE explorers_analytics_receipts
+          SET status='failed', last_error='indeterminate:publish outcome unknown', updated_at=NOW()
+        WHERE event_id=$1 AND payload_hash=$2 AND status='pending'
+          AND updated_at < NOW() - INTERVAL '2 minutes'
+        RETURNING event_id,payload_hash,status,strapi_document_id,lease_id,last_error`,
+      [eventId, payloadHash],
+    );
+    if (expired.rows[0]) return toReceipt(expired.rows[0], false, false);
+
     const existing = await this.executor.query(
       `
-        SELECT event_id, payload_hash, status, strapi_document_id
+        SELECT event_id, payload_hash, status, strapi_document_id, lease_id, last_error
         FROM explorers_analytics_receipts
         WHERE event_id = $1
         LIMIT 1
@@ -103,14 +108,14 @@ export class PostgresAnalyticsReceiptRepository
     }
   }
 
-  async fail(eventId: string, message: string, leaseId: string): Promise<void> {
+  async fail(eventId: string, message: string, leaseId: string, disposition: "retryable" | "indeterminate"): Promise<void> {
     const failed = await this.executor.query(
       `
         UPDATE explorers_analytics_receipts
-        SET status = 'failed', last_error = $2, updated_at = NOW()
+        SET status = 'failed', last_error = $4 || ':' || $2, updated_at = NOW()
         WHERE event_id = $1 AND lease_id = $3 AND status = 'pending'
       `,
-      [eventId, message.slice(0, 500), leaseId],
+      [eventId, message.slice(0, 500), leaseId, disposition],
     );
     if ((failed.rowCount ?? failed.rows.length) !== 1) {
       throw new Error("Analytics receipt lease was lost before failure recording");

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   explorersAnalyticsInputSchema,
+  AnalyticsPublishDispatchError,
   ExplorersAnalyticsService,
   IdempotencyConflictError,
   type AnalyticsPublisher,
@@ -248,7 +249,7 @@ describe("ExplorersAnalyticsService", () => {
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
-  it("reconciles a recovered receipt with Strapi before republishing", async () => {
+  it("retries a repository lease only when recovery represents a known pre-dispatch failure", async () => {
     const commit = vi.fn();
     const recoveredReceipts: AnalyticsReceiptRepository = {
       begin: vi.fn().mockResolvedValue({
@@ -282,7 +283,7 @@ describe("ExplorersAnalyticsService", () => {
     });
 
     const recoveredPublisher: AnalyticsPublisher = {
-      publish: vi.fn(),
+      publish: vi.fn().mockResolvedValue({ documentId: "strapi-event-retried" }),
       readAccountEvents: vi.fn(),
       findByEventId: vi.fn().mockResolvedValue("strapi-event-existing"),
     };
@@ -294,16 +295,69 @@ describe("ExplorersAnalyticsService", () => {
 
     await expect(
       recoveredService.ingest(baseInput(), { getIp: () => "8.8.8.8" }),
-    ).resolves.toEqual({
-      status: "committed",
-      documentId: "strapi-event-existing",
-      duplicate: true,
+    ).resolves.toEqual({ status: "committed", documentId: "strapi-event-retried", duplicate: false });
+    expect(recoveredPublisher.publish).toHaveBeenCalledOnce();
+    expect(recoveredPublisher.findByEventId).not.toHaveBeenCalled();
+    expect(commit).toHaveBeenCalledWith(baseInput().eventId, "strapi-event-retried", "recovery-lease");
+  });
+
+  it("fails closed for a stale external-publish receipt instead of risking a duplicate Strapi write", async () => {
+    const firstReceipts = new MemoryReceipts();
+    const firstService = new ExplorersAnalyticsService({ receipts: firstReceipts, publisher, resolveCountry });
+    await firstService.ingest(baseInput(), { getIp: () => "8.8.8.8" });
+    const receipt = await firstReceipts.begin(baseInput().eventId, "ignored");
+    const staleReceipts: AnalyticsReceiptRepository = {
+      begin: vi.fn().mockResolvedValue({
+        acquired: false, recovered: false, payloadHash: receipt.payloadHash,
+        status: "failed", indeterminate: true, leaseId: undefined,
+      }),
+      commit: vi.fn(),
+    };
+    const unsafePublisher: AnalyticsPublisher = {
+      publish: vi.fn(), readAccountEvents: vi.fn(), findByEventId: vi.fn().mockResolvedValue(null),
+    };
+    const staleService = new ExplorersAnalyticsService({ receipts: staleReceipts, publisher: unsafePublisher, resolveCountry });
+    await expect(staleService.ingest(baseInput(), { getIp: () => "8.8.8.8" }))
+      .resolves.toEqual({ status: "dropped", duplicate: true });
+    expect(unsafePublisher.findByEventId).not.toHaveBeenCalled();
+    expect(unsafePublisher.publish).not.toHaveBeenCalled();
+  });
+
+  it("retries only a failure explicitly proven to occur before dispatch", async () => {
+    const retryableReceipts: AnalyticsReceiptRepository = {
+      begin: vi.fn().mockResolvedValue({ acquired: true, recovered: true, payloadHash: "placeholder", status: "pending", leaseId: "retry-lease" }),
+      commit: vi.fn(), fail: vi.fn(),
+    };
+    const seed = new MemoryReceipts();
+    const seedService = new ExplorersAnalyticsService({ receipts: seed, publisher, resolveCountry });
+    await seedService.ingest(baseInput(), { getIp: () => null });
+    const known = await seed.begin(baseInput().eventId, "ignored");
+    (retryableReceipts.begin as ReturnType<typeof vi.fn>).mockResolvedValue({
+      acquired: true, recovered: true, payloadHash: known.payloadHash, status: "pending", leaseId: "retry-lease",
     });
-    expect(recoveredPublisher.publish).not.toHaveBeenCalled();
-    expect(commit).toHaveBeenCalledWith(
-      baseInput().eventId,
-      "strapi-event-existing",
-      "recovery-lease",
-    );
+    const retryPublisher: AnalyticsPublisher = { publish: vi.fn().mockResolvedValue({ documentId: "retried" }), readAccountEvents: vi.fn() };
+    const retryService = new ExplorersAnalyticsService({ receipts: retryableReceipts, publisher: retryPublisher, resolveCountry });
+    await expect(retryService.ingest(baseInput(), { getIp: () => null }))
+      .resolves.toEqual({ status: "committed", documentId: "retried", duplicate: false });
+    expect(retryPublisher.publish).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [new AnalyticsPublishDispatchError("not dispatched", true), "retryable"],
+    [new Error("timeout after dispatch may have committed"), "indeterminate"],
+  ] as const)("classifies publish failure fencing: %s", async (failure, disposition) => {
+    const fail = vi.fn();
+    const receipts: AnalyticsReceiptRepository = {
+      begin: vi.fn().mockImplementation(async (_eventId, payloadHash) => ({
+        acquired: true, recovered: false, payloadHash, status: "pending", leaseId: "lease-1",
+      })),
+      commit: vi.fn(), fail,
+    };
+    const failedPublisher: AnalyticsPublisher = {
+      publish: vi.fn().mockRejectedValue(failure), readAccountEvents: vi.fn(),
+    };
+    const failedService = new ExplorersAnalyticsService({ receipts, publisher: failedPublisher, resolveCountry });
+    await expect(failedService.ingest(baseInput(), { getIp: () => null })).rejects.toBe(failure);
+    expect(fail).toHaveBeenCalledWith(baseInput().eventId, failure.message, "lease-1", disposition);
   });
 });

@@ -61,15 +61,22 @@ type PublicMusicChange = { musicUserId: number; kind: PublicMusicInvalidationKin
 
 export class MusicPublicSocketRegistry {
   private publishChange: ((change: PublicMusicChange) => Promise<void>) | undefined;
+  private catchUpChanges: (() => Promise<void>) | undefined;
 
-  bind(publish: (change: PublicMusicChange) => Promise<void>): void {
+  bind(publish: (change: PublicMusicChange) => Promise<void>, catchUp: () => Promise<void>): void {
     if (this.publishChange) throw new Error("Music public socket registry is already bound");
     this.publishChange = publish;
+    this.catchUpChanges = catchUp;
   }
 
   async publish(change: PublicMusicChange): Promise<void> {
     if (!this.publishChange) throw new Error("Music public socket registry is unavailable");
     await this.publishChange(change);
+  }
+
+  async catchUp(): Promise<void> {
+    if (!this.catchUpChanges) throw new Error("Music public socket registry is unavailable");
+    await this.catchUpChanges();
   }
 }
 
@@ -85,6 +92,7 @@ export interface MusicSocketDependencies {
     musicUserId: number;
     active: boolean;
   } | undefined>;
+  resolvePublicMusicRevision?(musicUserId: number): Promise<number | undefined>;
   eventLimit?: number;
   eventWindowMs?: number;
   eventRateMaxEntries?: number;
@@ -191,6 +199,19 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
         recipient.emit("music_error", musicErrorEnvelope(safeSocketError(cause), randomUUID()));
         dependencies.observability?.socket("revocation_enforced", { role: "owner", reason: "revoked" });
         recipient.disconnect(true);
+      }
+    }));
+  }, async () => {
+    const sockets = await io.fetchSockets();
+    const musicUserIds = new Set<number>();
+    for (const socket of sockets) {
+      const authority = socket.data.musicAuthority as SocketAuthority | undefined;
+      if (authority) musicUserIds.add(authority.musicUserId);
+    }
+    await Promise.all(Array.from(musicUserIds, async (musicUserId) => {
+      const revision = await dependencies.resolvePublicMusicRevision?.(musicUserId);
+      if (revision !== undefined) {
+        await dependencies.publicRegistry!.publish({ musicUserId, kind: "publication_changed", revision });
       }
     }));
   });

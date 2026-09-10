@@ -1219,6 +1219,16 @@ export class MusicDomainRepository {
     return { mode: "public", publicSlug, revision };
   }
 
+  async resolvePublicSnapshotRevision(musicUserId: number): Promise<number | undefined> {
+    if (!Number.isSafeInteger(musicUserId) || musicUserId < 1) return undefined;
+    const row = (await this.pool.query(
+      "SELECT public_snapshot_revision AS revision FROM users WHERE id=$1 AND identity_status='active'",
+      [musicUserId],
+    )).rows[0];
+    const revision = Number(row?.revision);
+    return Number.isSafeInteger(revision) && revision >= 0 ? revision : undefined;
+  }
+
   async resolvePublicMusicResource(
     publicSlug: string,
     capability?: string,

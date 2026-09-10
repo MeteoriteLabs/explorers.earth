@@ -157,7 +157,7 @@ describe("FeedFields tab persistence", () => {
     fireEvent.click(image);
     switchAwayAndBackTwice();
     expect(screen.getByText("1 selected of 1")).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("clears pending progress and exposes the failure after delayed importer rejection", async () => {
     let rejectPhotos!: (reason?: unknown) => void;

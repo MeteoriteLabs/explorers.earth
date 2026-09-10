@@ -165,6 +165,11 @@ describe("explorers analytics routes", () => {
     const { request: pendingRequest } = await loopback.open({ app: pending.app });
     expect((await pendingRequest.post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(202);
 
+    const dropped = buildApp();
+    dropped.service.ingest.mockResolvedValue({ status: "dropped", duplicate: true });
+    const { request: droppedRequest } = await loopback.open({ app: dropped.app });
+    expect((await droppedRequest.post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(409);
+
     const limited = buildApp();
     limited.allowWrite.mockReturnValue(false);
     const { request: limitedRequest } = await loopback.open({ app: limited.app });

@@ -139,6 +139,34 @@ describe('PublicNav immediate semantic activation', () => {
     expect(screen.queryByRole('link', { name: 'Music', exact: true })).not.toBeInTheDocument();
   });
 
+  it('auto-pins from authoritative totals instead of tying categories whose first pages are full', () => {
+    musicAvailability.account = {
+      ...availableAccount,
+      auto_pinning: true,
+      public_recommendations: 'Yes', public_movie: 'Yes', public_books: 'Yes', public_apps: 'Yes',
+      public_navigation_counts: {
+        public_recommendations: 12,
+        public_movie: 50,
+        public_books: 30,
+        public_apps: 20,
+      },
+    };
+    usePublicRecommendationCategory.mockImplementation((_username, category) => ({
+      data: category === 'places'
+        ? { recommendationLists: Array.from({ length: 12 }, (_, index) => ({ documentId: `place-${index}` })) }
+        : category === 'movies'
+          ? { movieLists: Array.from({ length: 12 }, (_, index) => ({ documentId: `movie-${index}` })) }
+          : undefined,
+      loading: false, error: null, refetch: vi.fn(),
+    }));
+
+    renderHeldRouter('/alice');
+
+    expect(screen.getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Profile', 'Music', 'Movies', 'Books', 'Apps',
+    ]);
+  });
+
   it('uses the same 48px nav band while the provider has no retained account', () => {
     musicAvailability.state = 'loading';
     musicAvailability.account = null;

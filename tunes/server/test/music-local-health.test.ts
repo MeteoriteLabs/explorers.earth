@@ -1,4 +1,5 @@
 import express from "express";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -13,7 +14,7 @@ const loopback = createLoopbackSupertestScope();
 afterEach(async () => loopback.closeAll());
 
 const worktreeRoot = path.resolve(import.meta.dirname, "../../..");
-const stateDirectory = path.resolve("C:/private/ExplorersMusicLocal/health");
+const stateDirectory = path.join(tmpdir(), "ExplorersMusicLocal", "health");
 
 function profile(enableCohort = false) {
   const manifest: LocalMusicManifest = {
