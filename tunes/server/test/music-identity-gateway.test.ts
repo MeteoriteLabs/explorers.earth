@@ -69,6 +69,30 @@ describe("Strapi identity gateway", () => {
     expect(diagnostics).toEqual([{ endpoint: "user", attempt: 1, outcome: "transport_error" }]);
     expect(JSON.stringify(diagnostics)).not.toContain("secret-proof-value");
     expect(JSON.stringify(diagnostics)).not.toContain("contains-sensitive");
+
+    const successDiagnostics: unknown[] = [];
+    const successfulFetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response(user))
+      .mockResolvedValueOnce(accountsResponse([completeAccount]));
+    await expect(gateway(successfulFetch, {
+      diagnostic: (entry) => successDiagnostics.push(entry),
+    }).resolve("successful-proof-value", "request-success")).resolves.toMatchObject({
+      userDocumentId: user.documentId,
+      accountDocumentId: completeAccount.documentId,
+    });
+    expect(successDiagnostics).toEqual([
+      { endpoint: "user", attempt: 1, outcome: "ok" },
+      { endpoint: "account", attempt: 1, outcome: "ok" },
+    ]);
+
+    const httpDiagnostics: unknown[] = [];
+    await expect(gateway(vi.fn<typeof fetch>().mockResolvedValue(response({}, 401)), {
+      retries: 0,
+      diagnostic: (entry) => httpDiagnostics.push(entry),
+    }).resolve("invalid-proof-value", "request-http-error")).rejects.toMatchObject({ code: "AUTH_INVALID" });
+    expect(httpDiagnostics).toEqual([
+      { endpoint: "user", attempt: 1, outcome: "http_error", status: 401 },
+    ]);
   });
 
   it("reads every authoritative Account page before selecting a sole completed identity", async () => {

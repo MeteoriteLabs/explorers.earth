@@ -398,7 +398,13 @@ export class StrapiIdentityGateway {
           return { response, body };
         }, deadline, this.now);
         const { response } = result;
-        this.options.diagnostic?.({ endpoint, attempt: attempt + 1, outcome: response.status >= 400 ? "http_error" : "ok", ...(response.status >= 400 ? { status: response.status } : {}) });
+        if (this.options.diagnostic) {
+          if (response.status >= 400) {
+            this.options.diagnostic({ endpoint, attempt: attempt + 1, outcome: "http_error", status: response.status });
+          } else {
+            this.options.diagnostic({ endpoint, attempt: attempt + 1, outcome: "ok" });
+          }
+        }
         if (response.status === 401 || response.status === 403) {
           throw new MusicIdentityError("AUTH_INVALID", 401, "The Explorer proof is invalid or expired.", "authenticate", false);
         }
