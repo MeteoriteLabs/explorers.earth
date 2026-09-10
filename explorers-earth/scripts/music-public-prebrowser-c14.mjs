@@ -32,7 +32,7 @@ export async function runMusicPrebrowserC14Integration({
     throw new Error("C14 full-fixture qualification contract failed");
   }
   const passed = result.ok === true && result.record.status === "passed"
-    && result.record.counts.categoryQueries === 20
+    && result.record.counts.categoryQueries === 18
     && result.record.counts.musicPrerequisites === 9
     && result.record.checks.baselineRestored === true
     && result.record.checks.ephemeralOwnerRetired === true

@@ -167,7 +167,11 @@ vi.mock("../../store/useSetupStore", () => ({
 vi.mock("../../utils/setupStatusCalculations", () => ({
   calculateIsProfileComplete: () => true,
 }));
-vi.mock("../../components/ImageCropper", () => ({ default: () => null }));
+vi.mock("../../components/ImageCropper", () => ({
+  default: ({ buttonTitle }: { buttonTitle?: string }) => (
+    <button type="button" aria-label={buttonTitle ?? "Edit Image"} />
+  ),
+}));
 vi.mock("../../assets/icons/Gmail", () => ({
   default: () => <span data-testid="gmail-preview-icon" />,
 }));
@@ -212,6 +216,15 @@ describe("Profile save orchestration", () => {
     mutationSubmit.mockReset();
     toastError.mockReset();
     toastSuccess.mockReset();
+  });
+
+  it("uses the existing translated image label for the background editor", () => {
+    render(<Profile />);
+
+    expect(screen.getByRole("button", { name: "dashboard.profile.common.editImage" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "dashboard.profile.common.editBackground" }),
+    ).not.toBeInTheDocument();
   });
 
   it("returns saved and shows one success only after mutation completion", async () => {
@@ -560,6 +573,70 @@ describe("Profile save orchestration", () => {
         section.formFields.map((field: any) => field.name),
       ),
     ).toEqual(["theme_settings"]);
+  });
+
+  it.each([
+    ["Addresss:null", null],
+    ["omitted Addresss", undefined],
+  ])("renders the normal editor with %s and preserves empty address defaults", (_caseName, addresss) => {
+    accountScope.current = { ...accountScope.current };
+    if (addresss === undefined) {
+      delete accountScope.current.Addresss;
+    } else {
+      accountScope.current.Addresss = addresss;
+    }
+
+    render(<Profile />);
+
+    expect(screen.getByRole("button", { name: "Submit profile" })).toBeInTheDocument();
+    expect({
+      address: harness.profileFormProps.initialValues.address,
+      streetName: harness.profileFormProps.initialValues.streetName,
+      postalCode: harness.profileFormProps.initialValues.postalCode,
+      state: harness.profileFormProps.initialValues.state,
+      city: harness.profileFormProps.initialValues.city,
+      country: harness.profileFormProps.initialValues.country,
+    }).toStrictEqual({
+      address: "",
+      streetName: "",
+      postalCode: undefined,
+      state: "",
+      city: "",
+      country: "",
+    });
+    expect(mutationSubmit).not.toHaveBeenCalled();
+  });
+
+  it("preserves populated address values in the rendered editor", () => {
+    accountScope.current = {
+      ...accountScope.current,
+      Addresss: {
+        address: "123 Main Street",
+        streetName: "Main Street",
+        postalCode: "12345",
+        state: "California",
+        city: "San Francisco",
+        country: "United States",
+      },
+    };
+
+    render(<Profile />);
+
+    expect({
+      address: harness.profileFormProps.initialValues.address,
+      streetName: harness.profileFormProps.initialValues.streetName,
+      postalCode: harness.profileFormProps.initialValues.postalCode,
+      state: harness.profileFormProps.initialValues.state,
+      city: harness.profileFormProps.initialValues.city,
+      country: harness.profileFormProps.initialValues.country,
+    }).toStrictEqual({
+      address: "123 Main Street",
+      streetName: "Main Street",
+      postalCode: "12345",
+      state: "California",
+      city: "San Francisco",
+      country: "United States",
+    });
   });
 
   it("prefers canonical email data in the editor snapshot and profile preview", () => {

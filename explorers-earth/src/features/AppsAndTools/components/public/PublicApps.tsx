@@ -15,6 +15,7 @@ import { usePublicHeaderDescriptor } from "../../../PublicHome/components/Public
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const isRenderableAppList = (value: unknown): value is AppList =>
   isNonNullObject(value) && Array.isArray(value.recommended_apps);
@@ -31,7 +32,8 @@ const PublicApps = () => {
   });
 
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = usePublicRecommendationCategory(username, "apps", accountData?.public_apps === "Yes");
+  const query = usePublicRecommendationCategory(username, "apps", accountData?.public_apps === "Yes");
+  const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = query;
 
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
@@ -46,7 +48,8 @@ const PublicApps = () => {
       recommended_apps: list.recommended_apps.filter(isNonNullObject) as AppList["recommended_apps"],
     }));
   const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableAppList);
-  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
+  const hasPartialCollection = !completeCollection && lists.length > 0;
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection || hasPartialCollection;
 
   useEffect(() => {
     if (!loading || hasUsableData) {
@@ -112,7 +115,7 @@ const PublicApps = () => {
   const listCount = lists.length;
   const pageTitle = `${creatorName} | Favorite Apps & Tools | explorers`;
   const metaDescription = appCount > 0
-    ? `Browse curated app lists and recommended tools shared by ${creatorName} on explorers. Explore ${listCount} app list${listCount !== 1 ? 's' : ''} containing ${appCount} favorite app${appCount !== 1 ? 's' : ''}.`
+    ? `Browse curated app lists and recommended tools shared by ${creatorName} on explorers. Explore ${listCount}${query.hasMore || query.error ? '+' : ''} app list${listCount !== 1 ? 's' : ''} containing ${appCount} loaded favorite app${appCount !== 1 ? 's' : ''}.`
     : `Explore app and tool recommendations shared by ${creatorName} on explorers.`;
 
   const seoKeywords = [
@@ -139,7 +142,7 @@ const PublicApps = () => {
         />
       )}
 
-      <div className="min-h-screen bg-[#0d1117] text-white">
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
         {/* Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
           {loading && !hasUsableData ? (
@@ -158,13 +161,13 @@ const PublicApps = () => {
                   <section key={i} className="mb-8">
                     {/* Row header */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                      <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                      <div className="w-1.5 h-[22px] bg-[var(--category-skeleton,rgba(255,255,255,0.1))] rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                      <div className="h-5 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                     </div>
                     {/* Poster strip skeleton equivalent for apps */}
                     <div className="flex gap-3 overflow-hidden">
                       {[1, 2, 3, 4, 5].map((idx) => (
-                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                       ))}
                     </div>
                   </section>
@@ -175,13 +178,13 @@ const PublicApps = () => {
             <PublicRouteErrorState title="Apps unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <>
-              {queryError && <PublicRoutePartialNotice message="Some app data is unavailable." />}
+              {(queryError || hasPartialCollection) && <PublicRoutePartialNotice message="Some app data is unavailable." />}
               {/* Empty state */}
               {lists.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <Smartphone size={48} className="text-white/20 mb-4" />
-                  <p className="text-white/40 text-lg font-medium">No apps shared yet</p>
-                  <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                  <Smartphone size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No apps shared yet</p>
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
                 </div>
               ) : (
                 <>
@@ -224,13 +227,13 @@ const PublicApps = () => {
                   {/* Category browse - hidden for now as category pages are not registered/implemented
                   {allCategories.length > 0 && (
                     <div className="mt-10">
-                      <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
+                      <p className="text-sm font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.6))] mb-3">Browse by Category</p>
                       <div className="flex flex-wrap gap-2">
                         {allCategories.map((cat) => (
                           <button
                             key={cat.slug}
                             onClick={() => navigate(`/${username}/apps/category/${cat.slug}`)}
-                            className="text-xs text-violet-400/80 bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
+                            className="text-xs text-[color:var(--category-text,rgba(167,139,250,0.8))] bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
                           >
                             {cat.name}
                           </button>
@@ -243,6 +246,7 @@ const PublicApps = () => {
               )}
             </>
           )}
+          <PublicScrollContinuation {...query} label="app lists" />
         </div>
 
         <AppDetailModal

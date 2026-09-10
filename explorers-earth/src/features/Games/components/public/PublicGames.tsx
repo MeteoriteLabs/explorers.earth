@@ -15,6 +15,7 @@ import { usePublicHeaderDescriptor } from "../../../PublicHome/components/Public
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const isRenderableGameList = (value: unknown): value is GameList =>
   isNonNullObject(value) && Array.isArray(value.recommended_games);
@@ -32,7 +33,8 @@ const PublicGames = () => {
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
-  const { data, loading: gamesLoading, error: gamesError, refetch: refetchGames } = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
+  const query = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
+  const { data, loading: gamesLoading, error: gamesError, refetch: refetchGames } = query;
 
   const loading = userLoading || gamesLoading;
   const queryError = userError || gamesError;
@@ -98,7 +100,7 @@ const PublicGames = () => {
   
   const pageTitle = `${profileName} | Favorite Games | explorers`;
   const metaDescription = gameCount > 0
-    ? `Explore curated video game recommendations and lists shared by ${profileName} on explorers. Browse ${listCount} gaming list${listCount !== 1 ? 's' : ''} containing ${gameCount} game${gameCount !== 1 ? 's' : ''}.`
+    ? `Explore curated video game recommendations and lists shared by ${profileName} on explorers. Browse ${listCount}${query.hasMore || query.error ? '+' : ''} gaming list${listCount !== 1 ? 's' : ''} containing ${gameCount} loaded game${gameCount !== 1 ? 's' : ''}.`
     : `Explore game recommendations shared by ${profileName} on explorers.`;
 
   const seoKeywords = [
@@ -123,7 +125,7 @@ const PublicGames = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white">
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
         {loading && !hasUsableData ? (
@@ -131,12 +133,12 @@ const PublicGames = () => {
             <div className="space-y-10 mt-4">
               {[1, 2, 3].map(i => (
                 <section key={i}>
-                  <div className="h-5 w-40 bg-white/5 animate-pulse rounded mb-4" />
+                  <div className="h-5 w-40 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mb-4" />
                   <div className="flex gap-3 overflow-hidden">
                     {[1, 2, 3, 4, 5].map(j => (
                       <div key={j} className="w-36 flex-shrink-0">
-                        <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
-                        <div className="h-3 mt-2 bg-white/5 animate-pulse rounded w-4/5" />
+                        <div className="aspect-[3/4] rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse" />
+                        <div className="h-3 mt-2 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded w-4/5" />
                       </div>
                     ))}
                   </div>
@@ -152,9 +154,9 @@ const PublicGames = () => {
             {/* Empty state */}
             {allGames.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <Gamepad2 size={48} className="text-white/20 mb-4" />
-                <p className="text-white/40 text-lg font-medium">No games shared yet</p>
-                <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                <Gamepad2 size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No games shared yet</p>
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
               </div>
             ) : (
               <>
@@ -200,6 +202,7 @@ const PublicGames = () => {
             )}
           </>
         )}
+      <PublicScrollContinuation {...query} label="game lists" />
       </div>
 
       <GameDetailModal

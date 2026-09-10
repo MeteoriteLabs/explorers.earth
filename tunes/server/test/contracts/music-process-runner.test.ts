@@ -9,6 +9,23 @@ import { OwnedProcessRunner } from "../../../scripts/music-process-runner.ts";
 import { runUnixTerminationContract } from "./helpers/music-process-runner-unix-harness.ts";
 
 describe("owned process termination", () => {
+  it("preserves the native close signal field on natural child completion", async () => {
+    const runner = new OwnedProcessRunner();
+    const result = await runner.run(process.execPath, ["-e", "process.exit(0)"], {
+      cwd: process.cwd(), env: process.env,
+    });
+    expect(result).toMatchObject({ exitCode: 0, signal: null });
+  });
+
+  it.skipIf(process.platform === "win32")("preserves a native child termination signal", async () => {
+    const runner = new OwnedProcessRunner();
+    const result = await runner.run(process.execPath, ["-e", "process.kill(process.pid, 'SIGTERM')"], {
+      cwd: process.cwd(), env: process.env,
+    });
+    expect(result.signal).toBe("SIGTERM");
+    expect(result.exitCode).not.toBe(0);
+  });
+
   it("rejects a child that resumes after an empty termination snapshot", async () => {
     const runner = new OwnedProcessRunner();
     await runner.terminateAll();

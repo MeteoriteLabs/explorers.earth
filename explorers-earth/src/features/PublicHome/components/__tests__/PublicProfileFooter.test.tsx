@@ -11,10 +11,7 @@ describe('PublicProfileFooter', () => {
       </BrowserRouter>
     );
     expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Explorers.Earth' })).toHaveAttribute(
-      'src',
-      '/eoe-full.svg',
-    );
+    expect(screen.getByRole('img', { name: 'Explorers.Earth' })).toHaveClass('public-brand-wordmark');
     expect(screen.getByText(/Create your profile/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Create your profile/i })).toHaveClass(
       'min-h-11',

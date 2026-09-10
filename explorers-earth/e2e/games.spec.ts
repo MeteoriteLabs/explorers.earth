@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 test.beforeEach(async ({ context, page }) => {
+  await denyHostedEgress(page);
   await setupMockAuthentication(context);
   let recommendationCreated = false;
 
@@ -229,7 +231,7 @@ test.beforeEach(async ({ context, page }) => {
   // Keep the recommendation card deterministic and offline. The fixture below
   // deliberately returns an IGDB cover URL, so allowing the browser to fetch it
   // can exhaust sockets during the full cross-suite run.
-  await page.route('http://images.igdb.com/**', async route => {
+  await page.route('https://images.igdb.com/**', async route => {
     await route.fulfill({
       status: 200,
       contentType: 'image/svg+xml',

@@ -1,8 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 test.beforeEach(async ({ context, page }) => {
-  await setupMockAuthentication(context);
+  await denyHostedEgress(page);
+  await setupMockAuthentication(context, {
+    user: {
+      id: 'fixture-user',
+      documentId: 'fixture-user',
+      username: 'testuser',
+      email: 'test@explorers.earth',
+      blocked: false,
+    },
+  });
 
   // Inject Google Maps Autocomplete Mock
   await context.addInitScript(() => {
@@ -197,6 +207,20 @@ test.beforeEach(async ({ context, page }) => {
         })
       });
     }
+  });
+
+  await page.route('https://maps.googleapis.com/maps/api/geocode/json**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'OK',
+        results: [{
+          formatted_address: 'Paris, France',
+          address_components: [{ long_name: 'Paris', types: ['locality'] }],
+        }],
+      }),
+    });
   });
 
   // Location creation uploads the selected Google photo before creating the list.
@@ -546,8 +570,12 @@ test('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
   const submitBtn = page.locator('button[type="submit"]:has-text("Add Location")');
   await submitBtn.click();
 
+  await expect(page.getByText('Recommendation List Created Successfully!!!')).toBeVisible();
+
   // Click on the created city card to enter Step 2 details view
-  await page.locator('span:has-text("Paris")').first().click();
+  const createdCity = page.locator('span:has-text("Paris")').first();
+  await expect(createdCity).toBeVisible();
+  await createdCity.click();
 
   const addPlaceBtn = page.locator('button:has-text("Add Place")');
   await expect(addPlaceBtn).toBeVisible();
@@ -598,7 +626,7 @@ test('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
   await saveBtn.click();
 
   await expect(page).toHaveURL(/\/recommendations$/);
-  await expect(page.getByText('Recommendation Created Successfully!!!')).toBeVisible();
+  await expect(page.getByText('Recommendation and selected media saved successfully.')).toBeVisible();
   expect(failedResponses).toEqual([]);
   expect(consoleIssues).toEqual([]);
 });

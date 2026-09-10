@@ -12,6 +12,7 @@ import {
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toUrlSlug } from "../../../utils/formatAddress";
+import { publicGuideSlug } from "../../../utils/publicGuideSlug";
 import {
   isRecommendationCategoryVisible,
   normalizeRecommendationsPresentation,
@@ -28,6 +29,8 @@ import ProfileRecommendationsLayouts, {
   type RecommendationListCardViewModel,
 } from "./ProfileRecommendationsLayouts";
 import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
+import type { PublicPageContinuation } from "../api/usePublicPagedResource";
+import { resolvePublicPlaceImage } from "./publicPlaceMedia";
 
 export interface PublicRecommendationAccountData {
   documentId?: string;
@@ -59,6 +62,8 @@ interface RecommendationCategoryQueryState {
   dataStatus: "loading" | "empty" | "ready";
   lists: RecommendationListCardViewModel[];
   listCount: number;
+  listCountIsLowerBound?: boolean;
+  continuation?: PublicPageContinuation;
   itemCount?: {
     value: number;
     isLowerBound: boolean;
@@ -175,7 +180,9 @@ const makeGatewayState = ({
     dataStatus,
     lists,
     listCount: lists.length,
-    itemCount,
+    listCountIsLowerBound: Boolean(query.hasMore || error),
+    continuation: typeof query.loadMore === "function" ? query : undefined,
+    itemCount: itemCount ? { ...itemCount, isLowerBound: itemCount.isLowerBound || Boolean(query.hasMore || error) } : undefined,
     error,
     retry: async () => query.refetch?.(),
   };
@@ -230,18 +237,24 @@ const ProfileRecommendationsTab = ({
         cover = undefined;
       }
       const count = relationCount(list.recommended_places);
+      const firstPlace = list.recommended_places?.[0];
       return {
         id: list.documentId,
         title: list.List_Name || "",
-        image: resolveCoverUrl(cover, "place"),
+        image: resolvePublicPlaceImage({
+          itemMedia: firstPlace?.Media,
+          itemThumbnail: firstPlace?.media_details?.thumbnail,
+          itemPhotos: firstPlace?.Place_Details?.Photos,
+          parentListThumbnail: cover,
+        }),
         previewImages: previewUrls(
           (list.recommended_places || []).map((place: any) =>
-            resolveCoverUrl(
-              place.media_details?.thumbnail?.url ||
-                place.Media?.[0]?.url ||
-                place.Place_Details?.Photos?.[0],
-              "place",
-            ),
+            resolvePublicPlaceImage({
+              itemMedia: place.Media,
+              itemThumbnail: place.media_details?.thumbnail,
+              itemPhotos: place.Place_Details?.Photos,
+              parentListThumbnail: cover,
+            }),
           ),
         ),
         subtitle: formatCount(count, "Place", "Places"),
@@ -377,7 +390,7 @@ const ProfileRecommendationsTab = ({
       title: guide.Title || "",
       image: resolveCoverUrl(guide.Guide_Media?.[0]?.url, "guide"),
       previewImages: [],
-      href: `/${username}/guides/${guide.slug || toUrlSlug(guide.Title || "") || guide.documentId}`,
+      href: `/${username}/guides/${publicGuideSlug(guide)}`,
     }));
 
   const states = [
@@ -452,7 +465,7 @@ const ProfileRecommendationsTab = ({
       const config = CATEGORY_CONFIG[id];
       const label = t(config.labelKey, config.label);
       if (state.error && state.lists.length === 0) {
-        slots.push({ status: "error", id, label, retry: state.retry });
+        slots.push({ status: "error", id, label, retry: state.retry, continuation: state.continuation });
         return slots;
       }
       if (state.dataStatus === "empty") return slots;
@@ -478,6 +491,8 @@ const ProfileRecommendationsTab = ({
         icon: config.icon,
         lists: state.lists,
         listCount: state.listCount,
+        listCountIsLowerBound: state.listCountIsLowerBound,
+        continuation: state.continuation,
         itemCountLabel,
         href: `/${username}/${id}`,
       };

@@ -1,8 +1,9 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import UsernameRootRedirect from "./UsernameRootRedirect";
 import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
 import { usePublicAccountIdentity } from "../../features/music/PublicMusicAvailabilityProvider";
+import { subscribePublicProfileInvalidation } from "../../features/PublicHome/api/publicProfileInvalidation";
 
 interface TabVisibilityGuardProps {
     /** Which tab visibility field to check */
@@ -25,6 +26,21 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }:
     const identity = usePublicAccountIdentity();
     const loading = identity.status === "loading";
     const error = identity.status === "terminal-error";
+    const [ownerRevoked, setOwnerRevoked] = useState(false);
+
+    useEffect(() => {
+        setOwnerRevoked(false);
+        const username = identity.usernameKey;
+        if (!username) return;
+        return subscribePublicProfileInvalidation((event) => {
+            if (event.username.trim().toLowerCase() !== username) return;
+            if (event.category !== tabField) return;
+            // A confirmed owner unpublish must not leave a direct category URL
+            // visible while the shell refresh is retrying or temporarily stale.
+            if (event.action === "unpublish") setOwnerRevoked(true);
+            if (event.action === "publish") setOwnerRevoked(false);
+        });
+    }, [identity.usernameKey, tabField]);
 
     // Show loader while checking visibility
     if (loading) {
@@ -61,7 +77,7 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }:
         ? fieldValue === "Yes"
         : defaultVisible; // Use default if field is not set (null/undefined)
 
-    if (!isTabEnabled) {
+    if (ownerRevoked || !isTabEnabled) {
         return <UsernameRootRedirect />;
     }
 

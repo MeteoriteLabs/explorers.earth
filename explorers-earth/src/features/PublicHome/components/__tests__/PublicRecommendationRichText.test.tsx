@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RecommendedBook } from "../../../Books/types";
 import BookDetailModal from "../../../Books/components/public/BookDetailModal";
 import type { RecommendedGame } from "../../../Games/types";
@@ -9,6 +9,9 @@ import MovieDetailModal from "../../../Movies/components/public/MovieDetailModal
 import type { RecommendedPerson } from "../../../People/types";
 import PersonDetailModal from "../../../People/components/public/PersonDetailModal";
 import Overview from "../PlaceDetails/Details/Overview";
+import Address from "../PlaceDetails/Details/Address";
+
+const getCurrentLocation = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../../components/ui/MediaViewer", () => ({
   default: () => null,
@@ -33,7 +36,7 @@ vi.mock("../../../../hooks/useMediaViewer", () => ({
 }));
 
 vi.mock("../../../../utils/getCurrentLocation", () => ({
-  getCurrentLocation: vi.fn().mockResolvedValue(null),
+  getCurrentLocation,
 }));
 
 const unsafeRichText = [
@@ -196,6 +199,11 @@ const fixtures: PublicNoteFixture[] = [
 ];
 
 describe("public recommendation rich text render boundaries", () => {
+  beforeEach(() => {
+    getCurrentLocation.mockReset();
+    getCurrentLocation.mockResolvedValue(null);
+  });
+
   it.each(fixtures)("sanitizes $name while preserving safe Quill markup", ({ renderFixture }) => {
     const { container } = renderFixture();
 
@@ -216,5 +224,88 @@ describe("public recommendation rich text render boundaries", () => {
       "noopener noreferrer",
     );
     expect(screen.getByText("Unsafe note link")).not.toHaveAttribute("href");
+  });
+});
+
+describe("public place directions", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    getCurrentLocation.mockReset();
+    getCurrentLocation.mockResolvedValue(null);
+    vi.spyOn(window, "open").mockImplementation(() => null);
+  });
+
+  it("omits viewer origin when browser geolocation is unavailable", () => {
+    render(
+      <Overview
+        fetchedPlace={{
+          Place_Details: { Geometry: { lat: 17.385, lng: 78.4867 } },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button")[0]);
+
+    expect(window.open).toHaveBeenCalledWith(
+      "https://www.google.com/maps/dir/?api=1&destination=17.385%2C78.4867&travelmode=driving",
+      "_blank",
+    );
+  });
+
+  it("keeps the Place detail usable when browser geolocation is denied", async () => {
+    getCurrentLocation.mockRejectedValueOnce(new Error("GeolocationPositionError"));
+    render(
+      <Overview
+        fetchedPlace={{
+          Place_Details: { Geometry: { lat: 17.385, lng: 78.4867 } },
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(getCurrentLocation).toHaveBeenCalled());
+    fireEvent.click(screen.getAllByRole("button")[0]);
+
+    expect(window.open).toHaveBeenCalledWith(
+      "https://www.google.com/maps/dir/?api=1&destination=17.385%2C78.4867&travelmode=driving",
+      "_blank",
+    );
+  });
+
+  it("does not open directions without a finite destination", () => {
+    render(<Overview fetchedPlace={{ Place_Details: {} }} />);
+
+    fireEvent.click(screen.getAllByRole("button")[0]);
+
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it("includes an available viewer origin using an encoded Maps URL", async () => {
+    getCurrentLocation.mockResolvedValue({ latitude: 12.9716, longitude: 77.5946 });
+    render(
+      <Overview
+        fetchedPlace={{
+          Place_Details: { Geometry: { lat: 17.385, lng: 78.4867 } },
+        }}
+      />,
+    );
+    await waitFor(() => expect(getCurrentLocation).toHaveBeenCalled());
+
+    fireEvent.click(screen.getAllByRole("button")[0]);
+
+    expect(window.open).toHaveBeenCalledWith(
+      "https://www.google.com/maps/dir/?api=1&destination=17.385%2C78.4867&travelmode=driving&origin=12.9716%2C77.5946",
+      "_blank",
+    );
+  });
+
+  it("removes the Address link target when destination coordinates are invalid", () => {
+    render(
+      <Address
+        address="Unknown destination"
+        placeCoordinates={{ lat: Number.NaN, lng: Number.NaN }}
+      />,
+    );
+
+    expect(screen.getByText("Unknown destination")).not.toHaveAttribute("href");
   });
 });

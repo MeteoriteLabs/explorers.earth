@@ -166,7 +166,8 @@ describe("Strapi identity absence proof", () => {
     expect(app).toContain("new StrapiIdentityAbsenceProof");
     expect(routes).toContain("lifecycleAbsenceProof.proveAbsence");
     expect(routes).toContain("startMusicLifecycleWorker");
-    expect(routes).toMatch(/server\.once\("close",\s*\(\)\s*=>\s*\{\s*lifecycleWorker\.stop\(\)/);
+    expect(routes).toMatch(/server\.once\("close",\s*\(\)\s*=>\s*\{\s*void shutdown\(\)/);
+    expect(routes).toMatch(/const shutdown = [\s\S]*?cleanupPromise \?\?= \(async \(\) => \{\s*lifecycleWorker\?\.stop\(\)/);
   });
 
   it("removes the proof credential before passing runtime configuration to route composition", () => {

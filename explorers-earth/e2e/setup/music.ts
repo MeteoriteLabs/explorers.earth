@@ -960,6 +960,7 @@ export const completeMusicAccount = {
   Account_Type: "Personal",
   mobile_number: "+15555550123",
   profile_picture: null,
+  public_profile: "Yes",
   public_recommendations: "No",
   public_music: "No",
   public_guides: "No",
@@ -991,7 +992,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   let ensureCalls = 0;
   let strapiCalls = 0;
   let playlists = (options.playlists ?? []).map((playlist) => ({ ...playlist }));
-  let publicationMode: "private" | "unlisted" | "public" = "private";
+  let publicationMode: "private" | "unlisted" | "public" = options.accounts?.[0]?.public_music === "Yes" ? "public" : "private";
   const publicationCommands: Array<{ body: { mode: string }; idempotencyKey: string | null }> = [];
   const requests: Array<{
     method: string;
@@ -1003,6 +1004,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   }> = [];
   const credential = "fixture-browser-initial-music-credential";
   const renewedCredential = "fixture-browser-renewed-music-credential";
+  let accountStates = (options.accounts ?? [completeMusicAccount]).map((account) => ({ ...account }));
   let markEnsureStarted!: () => void;
   const ensureStarted = new Promise<void>((resolveStarted) => { markEnsureStarted = resolveStarted; });
   let releaseHeldEnsure!: () => void;
@@ -1012,6 +1014,16 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     strapiCalls += 1;
     const payload = route.request().postDataJSON();
     const query = payload?.query ?? "";
+    if (query.includes("updateAccount")) {
+      const accountState = { ...(accountStates[0] ?? completeMusicAccount), ...(payload?.variables?.data ?? {}) };
+      accountStates = [accountState, ...accountStates.slice(1)];
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { updateAccount: accountState } }),
+      });
+      return;
+    }
     if (query.includes("usersPermissionsUser")) {
       await route.fulfill({
         status: 200,
@@ -1025,7 +1037,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
           provider: options.provider ?? "local",
           confirmed: options.confirmed ?? true,
           blocked: false,
-          accounts: options.accounts ?? [completeMusicAccount],
+          accounts: accountStates,
         } } }),
       });
       return;
@@ -1077,6 +1089,21 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     } catch {
       if (!page.isClosed()) throw new Error("identity ensure fulfillment failed before browser exit");
     }
+  });
+
+  await page.route("**/api/music/public-profile/*", async (route) => {
+    if (publicationMode !== "public") {
+      await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: { code: "PUBLIC_NOT_FOUND" } }) });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: "music-public-descriptor/v1",
+        publication: { mode: "public", publicSlug: "qualification-public", revision: 1 },
+      }),
+    });
   });
 
   await page.route("**/api/playlists", async (route) => {

@@ -9,6 +9,13 @@ import PublicProductList from '../Products/components/public/PublicProductList';
 import PublicPeople from '../People/components/public/PublicPeople';
 import PublicPersonList from '../People/components/public/PublicPersonList';
 import PublicPersonSector from '../People/components/public/PublicPersonSector';
+import PublicHome from '../PublicHome/components/PublicHome';
+import PublicGuides from '../PublicHome/components/PublicGuides';
+import PublicGuideDetailPage from '../PublicHome/components/PublicGuideDetailPage';
+import PublicBookSubject from '../Books/components/public/PublicBookSubject';
+import PublicMovieGenre from '../Movies/components/public/PublicMovieGenre';
+import { PublicHeaderDescriptorProvider } from '../PublicHome/components/PublicHeaderDescriptorContext';
+import { PublicProfileFixedHeader } from '../PublicHome/components/PublicProfileChromePrimitives';
 
 const analyticsMocks = vi.hoisted(() => ({
   trackClick: vi.fn(),
@@ -32,10 +39,39 @@ const analyticsMocks = vi.hoisted(() => ({
   })),
 }));
 
+const gatewayFixtures = vi.hoisted(() => ({
+  loading: false,
+  categoryData: undefined as Record<string, unknown> | undefined,
+  detailData: undefined as Record<string, unknown> | undefined,
+}));
+
 vi.mock('@apollo/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@apollo/client')>();
   return { ...actual, useQuery: vi.fn() };
 });
+
+vi.mock('../PublicHome/api/usePublicProfileShell', () => ({
+  usePublicProfileShell: () => ({
+    data: gatewayFixtures.loading ? undefined : {
+      documentId: 'account-1', username: 'tk2727', Account_Name: 'TK', public_profile: 'Yes',
+      public_apps: 'Yes', public_products: 'Yes', public_people: 'Yes', public_books: 'Yes',
+      public_movies: 'Yes', public_guides: 'Yes', public_games: 'Yes', public_recommendations: 'Yes',
+    },
+    loading: gatewayFixtures.loading, error: null, refetch: vi.fn(),
+  }),
+}));
+
+vi.mock('../PublicHome/api/usePublicRecommendationCategory', () => ({
+  usePublicRecommendationCategory: () => ({
+    data: gatewayFixtures.categoryData, loading: gatewayFixtures.loading, error: null, refetch: vi.fn(),
+  }),
+}));
+
+vi.mock('../PublicHome/api/usePublicProfileDetail', () => ({
+  usePublicProfileDetail: () => ({
+    data: gatewayFixtures.detailData, loading: gatewayFixtures.loading, error: null, refetch: vi.fn(),
+  }),
+}));
 
 vi.mock('../../services/analyticsService', () => ({
   useTrackAnalytics: () => ({
@@ -85,6 +121,14 @@ vi.mock('../People/components/public/PersonCarouselRow', () => ({
 }));
 vi.mock('../People/components/public/PersonDetailModal', () => ({ default: () => null }));
 vi.mock('../../components/SEO', () => ({ default: () => null }));
+vi.mock('@vis.gl/react-google-maps', () => ({
+  APIProvider: ({ children }: any) => <>{children}</>,
+  AdvancedMarker: ({ children }: any) => <>{children}</>,
+  Map: ({ children }: any) => <>{children}</>,
+  Pin: () => null,
+  useApiIsLoaded: () => false,
+  useMap: () => null,
+}));
 
 const mockUseQuery = vi.mocked(useQuery);
 
@@ -133,15 +177,31 @@ function installQueryResults(category: keyof typeof records) {
       loading: false,
     } as ReturnType<typeof useQuery>;
   });
+  const relation = category === 'apps'
+    ? 'recommended_apps'
+    : category === 'products'
+      ? 'recommended_products'
+      : 'recommended_people';
+  const root = category === 'apps'
+    ? 'appLists'
+    : category === 'products'
+      ? 'productLists'
+      : 'personLists';
+  const data = { [root]: [{ ...source.list, [relation]: [source.item] }] };
+  gatewayFixtures.categoryData = data;
+  gatewayFixtures.detailData = data;
 }
 
 function renderCategory(path: string, Component: React.ComponentType) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/:username/:category" element={<Component />} />
-        <Route path="/:username/:category/:slug" element={<div>List route</div>} />
-      </Routes>
+      <PublicHeaderDescriptorProvider username="tk2727" profileName="TK">
+        <PublicProfileFixedHeader onTrackClick={analyticsMocks.trackClick} />
+        <Routes>
+          <Route path="/:username/:category" element={<Component />} />
+          <Route path="/:username/:category/:slug" element={<div>List route</div>} />
+        </Routes>
+      </PublicHeaderDescriptorProvider>
     </MemoryRouter>,
   );
 }
@@ -150,9 +210,55 @@ describe('public category analytics wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseQuery.mockReset();
+    gatewayFixtures.loading = false;
+    gatewayFixtures.categoryData = undefined;
+    gatewayFixtures.detailData = undefined;
+    class TestIntersectionObserver implements IntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = '';
+      readonly thresholds = [];
+      disconnect() {}
+      observe() {}
+      takeRecords() { return []; }
+      unobserve() {}
+    }
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: TestIntersectionObserver,
+    });
     Object.defineProperty(navigator, 'share', {
       configurable: true,
       value: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  it.each([
+    ['Places', '/tk2727/places', '/:username/places', PublicHome, 'places-header', {}],
+    ['Guides', '/tk2727/guides', '/:username/guides', PublicGuides, 'guides-header', {}],
+    ['guide detail', '/tk2727/guides/weekend-in-goa', '/:username/guides/:guideSlug', PublicGuideDetailPage, 'guides-header', {}],
+    ['book subject', '/tk2727/books/subject/design', '/:username/books/subject/:subjectSlug', PublicBookSubject, 'books-subject-header', { subject: 'design' }],
+    ['movie genre', '/tk2727/movies/genre/drama', '/:username/movies/genre/:genreSlug', PublicMovieGenre, 'movies-genre-header', { genre: 'drama' }],
+  ] as const)('renders one shared banner for %s while route data is loading', (_label, path, routePath, Component, context, metadata) => {
+    mockUseQuery.mockReturnValue({ data: undefined, loading: true } as ReturnType<typeof useQuery>);
+    gatewayFixtures.loading = true;
+
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <PublicHeaderDescriptorProvider username="tk2727" profileName="TK">
+          <PublicProfileFixedHeader onTrackClick={analyticsMocks.trackClick} />
+          <Routes>
+            <Route path={routePath} element={<Component />} />
+          </Routes>
+        </PublicHeaderDescriptorProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByRole('banner')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    expect(analyticsMocks.trackClick).toHaveBeenCalledWith('share-button', {
+      context,
+      ...metadata,
     });
   });
 
@@ -165,6 +271,8 @@ describe('public category analytics wiring', () => {
     (category, Component, cardLabel, cardElement, itemId, listId, listLabel, listElement) => {
       installQueryResults(category);
       renderCategory(`/tk2727/${category}`, Component);
+
+      expect(screen.getAllByRole('banner')).toHaveLength(1);
 
       fireEvent.click(screen.getByRole('button', { name: cardLabel }));
       expect(analyticsMocks.trackClick).toHaveBeenCalledWith(
@@ -190,12 +298,16 @@ describe('public category analytics wiring', () => {
       installQueryResults(category);
       render(
         <MemoryRouter initialEntries={[`/tk2727/${category}/creators`]}>
-          <Routes>
-            <Route path="/:username/:category/:listSlug" element={<Component />} />
-          </Routes>
+          <PublicHeaderDescriptorProvider username="tk2727" profileName="TK">
+            <PublicProfileFixedHeader onTrackClick={analyticsMocks.trackClick} />
+            <Routes>
+              <Route path="/:username/:category/:listSlug" element={<Component />} />
+            </Routes>
+          </PublicHeaderDescriptorProvider>
         </MemoryRouter>,
       );
 
+      expect(screen.getAllByRole('banner')).toHaveLength(1);
       expect(optionsSpy).toHaveBeenLastCalledWith('account-1', 'tk2727', listId);
       fireEvent.click(screen.getByRole('button', { name: new RegExp(itemLabel, 'i') }));
       expect(analyticsMocks.trackClick).toHaveBeenCalledWith(
@@ -217,15 +329,19 @@ describe('public category analytics wiring', () => {
     installQueryResults('people');
     render(
       <MemoryRouter initialEntries={['/tk2727/people/sector/creators']}>
-        <Routes>
-          <Route
-            path="/:username/people/sector/:sectorSlug"
-            element={<PublicPersonSector />}
-          />
-        </Routes>
+        <PublicHeaderDescriptorProvider username="tk2727" profileName="TK">
+          <PublicProfileFixedHeader onTrackClick={analyticsMocks.trackClick} />
+          <Routes>
+            <Route
+              path="/:username/people/sector/:sectorSlug"
+              element={<PublicPersonSector />}
+            />
+          </Routes>
+        </PublicHeaderDescriptorProvider>
       </MemoryRouter>,
     );
 
+    expect(screen.getAllByRole('banner')).toHaveLength(1);
     expect(analyticsMocks.peopleOptions).toHaveBeenLastCalledWith(
       'account-1',
       'tk2727',

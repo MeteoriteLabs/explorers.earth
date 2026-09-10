@@ -11,14 +11,13 @@ vi.mock("@apollo/client", () => ({
   gql: (strings: TemplateStringsArray, ...values: any[]) =>
     String.raw({ raw: strings }, ...values),
 }));
-vi.mock("../../store/store", () => ({ default: vi.fn() }));
 // EarthLoader pulls in heavy animation deps; stub it to a simple marker.
 vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>LOADING</div> }));
 // useLogout pulls in Apollo client + i18n + sonner; stub it (the gate only calls it).
 vi.mock("../../hooks/useLogout", () => ({ useLogout: () => vi.fn() }));
 
 const mockStore = (v: unknown) =>
-  (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(v);
+  useAuthStore.setState({ token: null, ...(v as Partial<ReturnType<typeof useAuthStore.getState>>) });
 const mockQuery = (v: unknown) =>
   (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(v);
 
@@ -49,6 +48,16 @@ const renderAt = (path = "/home") =>
 
 describe("ProtectedRoute onboarding gate", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it.each([false, true])("keeps non-lifecycle routes usable with invalid Music configuration (authenticated=%s)", (authenticated) => {
+    vi.stubEnv("VITE_LOCAL_TUNES_API_URL", "http://localhost:5000");
+    try {
+      mockStore(authenticated ? AUTHED : { isAuthenticated: false, user: null });
+      mockQuery({ data: COMPLETE, loading: false, error: null });
+      renderAt();
+      expect(screen.getByText(authenticated ? "PROTECTED HOME" : "LOGIN PAGE")).toBeInTheDocument();
+    } finally { vi.unstubAllEnvs(); }
+  });
 
   it("redirects to /login when not authenticated", () => {
     mockStore({ isAuthenticated: false, user: null });
@@ -122,7 +131,6 @@ describe("ProtectedRoute onboarding gate", () => {
   it("keeps account-less pending deletion on Settings so reload can resume", async () => {
     // Break caught: successful Account deletion redirects to onboarding before the user mutation can retry.
     mockStore({ ...AUTHED, token: "authoritative-bearer-proof" });
-    (useAuthStore as any).getState = () => ({ token: "authoritative-bearer-proof" });
     mockQuery({ data: { usersPermissionsUser: { accounts: [] } }, loading: false, error: null, refetch: vi.fn() });
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       version: "music-lifecycle/v1",

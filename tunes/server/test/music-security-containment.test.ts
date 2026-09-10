@@ -1,7 +1,39 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { request as rawHttpRequest } from "node:http";
-import request from "supertest";
 import jwt from "jsonwebtoken";
+import {
+  openLoopbackSupertest,
+  type LoopbackSupertestResponse,
+  type LoopbackSupertestSession,
+} from "./helpers/loopback-supertest";
+
+vi.mock("dotenv", () => {
+  throw new Error("DEFAULT_TEST_DOTENV_IMPORT_FORBIDDEN");
+});
+
+const databaseBoundary = vi.hoisted(() => {
+  const unexpected: string[] = [];
+  const reject = (operation: string) => (..._args: unknown[]): never => {
+    unexpected.push(operation);
+    throw new Error(`Unexpected database use: ${operation}`);
+  };
+  return {
+    unexpected,
+    pool: {
+      query: reject("pool.query"),
+      connect: reject("pool.connect"),
+      end: reject("pool.end"),
+    },
+  };
+});
+
+vi.mock("../db", () => ({ pool: databaseBoundary.pool }));
+
+const unexpectedFetch: string[] = [];
+const rejectFetch = async () => {
+  unexpectedFetch.push("fetch");
+  throw new Error("Unexpected upstream fetch in containment test");
+};
 
 const TEST_JWT_SECRET = "containment-test-jwt-secret-with-sufficient-length";
 const OWNER = {
@@ -28,6 +60,11 @@ vi.mock("../storage", async () => {
 
 vi.mock("../services/musicReconciliationSuspensionListener", () => ({
   startMusicReconciliationSuspensionListener: vi.fn(async () => ({ stop: vi.fn(async () => undefined) })),
+}));
+// This route-security suite is DB-free; the PostgreSQL notification transport
+// has its own listener tests and must not connect during app composition here.
+vi.mock("../services/musicPublicChangeListener", () => ({
+  startMusicPublicChangeListener: vi.fn(async () => ({ stop: vi.fn(async () => undefined) })),
 }));
 
 vi.mock("../repositories/musicPublicationOperationRepository", async (importOriginal) => {
@@ -62,7 +99,7 @@ async function createApp() {
   }
 }
 
-function expectRequestBoundError(response: request.Response, code: string) {
+function expectRequestBoundError(response: LoopbackSupertestResponse, code: string) {
   expect(response.headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/i);
   expect(response.body.error).toEqual(expect.objectContaining({
     code,
@@ -74,24 +111,50 @@ function expectRequestBoundError(response: request.Response, code: string) {
 }
 
 describe("C1 containment floor under the C6 principal boundary", () => {
-  let app: Awaited<ReturnType<typeof createApp>>["app"];
   let server: Awaited<ReturnType<typeof createApp>>["server"];
+  let session!: LoopbackSupertestSession;
+  let baselineRequestTimeout: number;
 
   beforeAll(async () => {
+    vi.stubGlobal("fetch", vi.fn(rejectFetch));
     const { hashPassword } = await import("../auth");
     OWNER.password = await hashPassword("correct horse battery staple");
     process.env.STRAPI_JWT_SECRET = TEST_JWT_SECRET;
     process.env.ALLOWED_ORIGINS = "https://explorers.example.test";
-    ({ app, server } = await createApp());
+    vi.stubEnv("STRAPI_ANALYTICS_ACCESS_TOKEN", "containment-test-analytics-token");
+    ({ server } = await createApp());
+    baselineRequestTimeout = server.requestTimeout;
+    session = await openLoopbackSupertest({ server });
   });
 
-  afterAll(() => server?.close());
+  afterAll(async () => {
+    const failures: unknown[] = [];
+    try {
+      try { expect(databaseBoundary.unexpected).toEqual([]); } catch (error) { failures.push(error); }
+      try { expect(unexpectedFetch).toEqual([]); } catch (error) { failures.push(error); }
+    } finally {
+      try {
+        if (session) await session.close();
+      } catch (error) {
+        failures.push(error);
+      } finally {
+        vi.unstubAllEnvs();
+        vi.unstubAllGlobals();
+      }
+    }
+    if (failures.length > 0) throw new AggregateError(failures, "containment cleanup failed");
+  }, 5_000);
 
   beforeEach(() => {
     resetContainmentLimiters();
     vi.restoreAllMocks();
     vi.clearAllMocks();
-    global.fetch = vi.fn(async () => { throw new Error("removed proxy reached upstream"); }) as typeof fetch;
+    global.fetch = vi.fn(rejectFetch) as typeof fetch;
+  });
+
+  afterEach(() => {
+    expect(databaseBoundary.unexpected).toEqual([]);
+    expect(unexpectedFetch).toEqual([]);
   });
 
   it.each([
@@ -99,13 +162,13 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["GET", "/api/auth/user-data?username=victim"],
     ["GET", "/api/auth/onboarding-status?username=victim"],
   ])("tombstones the legacy browser identity bridge: %s %s", async (method, path) => {
-    const response = await request(app)[method.toLowerCase() as "get"](path).send({ strapiUser: { username: "victim" } });
+    const response = await session.request[method.toLowerCase() as "get"](path).send({ strapiUser: { username: "victim" } });
     expect(response.status).toBe(410);
     expectRequestBoundError(response, "SURFACE_REMOVED");
   });
 
   it("keeps native registration unreachable before storage", async () => {
-    const response = await request(app).post("/api/register").send({ username: "new", password: "secret" });
+    const response = await session.request.post("/api/register").send({ username: "new", password: "secret" });
     expect(response.status).toBe(410);
     expectRequestBoundError(response, "LEGACY_IDENTITY_ROUTE_REMOVED");
     expect(storage.createUser).not.toHaveBeenCalled();
@@ -117,14 +180,14 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["GET", "/api/strapi/config"],
     ["GET", "/api/debug/strapi"],
   ])("tombstones every GraphQL/service-token proxy before fetch: %s %s", async (method, path) => {
-    const response = await request(app)[method.toLowerCase() as "get"](path).send({ query: "mutation { deleteUsers }" });
+    const response = await session.request[method.toLowerCase() as "get"](path).send({ query: "mutation { deleteUsers }" });
     expect(response.status).toBe(410);
     expectRequestBoundError(response, "SURFACE_REMOVED");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("serves a minimal OpenAPI document containing only live canonical Music endpoints", async () => {
-    const response = await request(app).get("/api-docs");
+    const response = await session.request.get("/api-docs");
     expect(response.status).toBe(200);
     expect(response.headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/i);
     expect(response.body.openapi).toBe("3.1.0");
@@ -136,11 +199,11 @@ describe("C1 containment floor under the C6 principal boundary", () => {
 
   it("keeps representative live failure statuses and bodies in OpenAPI parity", async () => {
     const { musicErrorEnvelopeSchema } = await import("../../shared/musicError");
-    const ownerFailure = await request(app).get("/api/playlists").set("X-Request-Id", "openapi-owner-failure");
-    const guestFailure = await request(app).post("/api/playlist/public-room-owner/requests")
+    const ownerFailure = await session.request.get("/api/playlists").set("X-Request-Id", "openapi-owner-failure");
+    const guestFailure = await session.request.post("/api/playlist/public-room-owner/requests")
       .set("Origin", "https://explorers.example.test")
       .set("X-Music-Guest-Capability", "invalid");
-    const specification = (await request(app).get("/api-docs")).body;
+    const specification = (await session.request.get("/api-docs")).body;
 
     expect(specification.paths["/api/playlists"].get.responses).toHaveProperty(String(ownerFailure.status));
     expect(specification.paths["/api/playlist/{guestUrl}/requests"].post.responses).toHaveProperty(String(guestFailure.status));
@@ -169,7 +232,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["GET", "/api"],
     ["GET", "/api/verify-email?token=removed"],
   ])("never leaves a removed family as an unregistered 404: %s %s", async (method, path) => {
-    const response = await request(app)[method.toLowerCase() as "get"](path).set("Origin", "https://explorers.example.test");
+    const response = await session.request[method.toLowerCase() as "get"](path).set("Origin", "https://explorers.example.test");
     expect([401, 410]).toContain(response.status);
     expect(response.status).not.toBe(404);
     expectRequestBoundError(response, response.status === 410 ? "SURFACE_REMOVED" : "TOKEN_INVALID");
@@ -198,7 +261,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["POST", "/api/playlist/import-youtube/"],
   ])("normalizes every retired family and HTTP method to the typed boundary: %s %s", async (method, path) => {
     // Break caught: a case, trailing-slash, encoded, root, or method alias falls through to SPA/plain 404.
-    const response = await request(app)[method.toLowerCase() as "get"](path)
+    const response = await session.request[method.toLowerCase() as "get"](path)
       .set("Origin", "https://explorers.example.test");
     expect(response.status).toBe(410);
     expect(response.body.version).toBe("music-error/v1");
@@ -207,8 +270,8 @@ describe("C1 containment floor under the C6 principal boundary", () => {
 
   it("mounts both public reactivation handlers ahead of the broad user retirement boundary", async () => {
     // Break caught: inventory says these routes are public while the mounted catch-all returns 410 first.
-    const requestMissingEmail = await request(app).post("/api/user/request-reactivation").send({});
-    const confirmMissingToken = await request(app).get("/api/user/reactivate");
+    const requestMissingEmail = await session.request.post("/api/user/request-reactivation").send({});
+    const confirmMissingToken = await session.request.get("/api/user/reactivate");
     expect(requestMissingEmail.status).toBe(400);
     expect(requestMissingEmail.body).toEqual({ message: "Email is required" });
     expect(confirmMissingToken.status).toBe(400);
@@ -219,7 +282,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
       ["post", "/api/user/reactivate/extra"],
       ["patch", "/api/user/analytics"],
     ] as const) {
-      const retired = await request(app)[method](path).set("Origin", "https://explorers.example.test");
+      const retired = await session.request[method](path).set("Origin", "https://explorers.example.test");
       expect(retired.status).toBe(410);
       expect(retired.body.version).toBe("music-error/v1");
       expectRequestBoundError(retired, "SURFACE_REMOVED");
@@ -228,8 +291,8 @@ describe("C1 containment floor under the C6 principal boundary", () => {
 
   it("rejects native-session and Strapi bearer substitution on owner surfaces", async () => {
     const strapi = jwt.sign({ id: 9001 }, TEST_JWT_SECRET, { expiresIn: "5m" });
-    const sessionOnly = await request(app).get("/api/playlists").set("Cookie", "cosmic.sid=fake-native-session");
-    const strapiBearer = await request(app).get("/api/playlists").set("Authorization", `Bearer ${strapi}`);
+    const sessionOnly = await session.request.get("/api/playlists").set("Cookie", "cosmic.sid=fake-native-session");
+    const strapiBearer = await session.request.get("/api/playlists").set("Authorization", `Bearer ${strapi}`);
     expect(sessionOnly.status).toBe(401);
     expect(strapiBearer.status).toBe(401);
     expectRequestBoundError(sessionOnly, "TOKEN_INVALID");
@@ -242,24 +305,24 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["POST", "/api/subscriptions/user-plans"],
     ["POST", "/api/payments/create-order"],
   ])("retires legacy paid caller targets before any upstream access: %s %s", async (method, path) => {
-    const response = await request(app)[method.toLowerCase() as "get"](path).send({ userId: 999, username: "victim", entitlement: "paid" });
+    const response = await session.request[method.toLowerCase() as "get"](path).send({ userId: 999, username: "victim", entitlement: "paid" });
     expect(response.status).toBe(410);
     expectRequestBoundError(response, "SURFACE_REMOVED");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("tombstones admin surfaces because no internal Music admin principal exists", async () => {
-    const response = await request(app).get("/api/admin/user/41");
+    const response = await session.request.get("/api/admin/user/41");
     expect(response.status).toBe(410);
     expectRequestBoundError(response, "SURFACE_REMOVED");
   });
 
   it("retains exact origin and double-submit CSRF on native session mutations", async () => {
-    const missingOrigin = await request(app).post("/api/login").send({ username: OWNER.username, password: "wrong" });
+    const missingOrigin = await session.request.post("/api/login").send({ username: OWNER.username, password: "wrong" });
     expect(missingOrigin.status).toBe(403);
     expectRequestBoundError(missingOrigin, "ORIGIN_FORBIDDEN");
 
-    const missingCsrf = await request(app).post("/api/login")
+    const missingCsrf = await session.request.post("/api/login")
       .set("Origin", "https://explorers.example.test")
       .send({ username: OWNER.username, password: "wrong" });
     expect(missingCsrf.status).toBe(403);
@@ -268,7 +331,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
 
   it("retains bounded payload rejection without reflecting sensitive input", async () => {
     const sentinel = "do-not-reflect-this-password";
-    const response = await request(app).post("/api/subscriptions/user-plans")
+    const response = await session.request.post("/api/subscriptions/user-plans")
       .set("Content-Type", "application/json")
       .send({ password: sentinel, padding: "x".repeat(1_000_000) });
     expect(response.status).toBe(413);
@@ -278,7 +341,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
 
   it("returns the shared Music envelope for malformed JSON without reflecting parser input", async () => {
     const sentinel = "malformed-sensitive-sentinel";
-    const response = await request(app).post("/api/playlist/songs")
+    const response = await session.request.post("/api/playlist/songs")
       .send(`{"title":"${sentinel}"`)
       .set("Content-Type", "application/json")
       .set("X-Request-Id", "parser-request-id")
@@ -303,7 +366,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["JSON", "application/json", JSON.stringify({ password: "oversize-sensitive-sentinel", padding: "x".repeat(70_000) })],
     ["form", "application/x-www-form-urlencoded", `password=oversize-sensitive-sentinel&padding=${"x".repeat(70_000)}`],
   ])("returns a request-bound shared 413 for oversized %s bodies", async (_kind, contentType, body) => {
-    const response = await request(app).post("/api/playlist/songs")
+    const response = await session.request.post("/api/playlist/songs")
       .set("Content-Type", contentType)
       .set("X-Request-Id", "oversize-request-id")
       .send(body);
@@ -320,14 +383,12 @@ describe("C1 containment floor under the C6 principal boundary", () => {
 
   it("rejects a declared oversized prefix promptly without awaiting attacker-controlled end", async () => {
     // Break caught: Content-Length is known excessive, but the server waits forever for the peer to finish.
-    if (!server.listening) await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const address = server.address();
-    if (!address || typeof address === "string") throw new Error("raw containment server did not bind");
+    expect(server.requestTimeout).toBe(baselineRequestTimeout);
     const startedAt = performance.now();
     const result = await new Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }>((resolve, reject) => {
       const client = rawHttpRequest({
         host: "127.0.0.1",
-        port: address.port,
+        port: session.address.port,
         method: "POST",
         path: "/api/playlist/songs",
         headers: {
@@ -347,6 +408,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
       client.write('{"password":"never-reflect');
     });
 
+    expect(server.requestTimeout).toBe(baselineRequestTimeout);
     expect(performance.now() - startedAt).toBeLessThan(500);
     expect(result.status).toBe(413);
     expect(result.headers["x-request-id"]).toBe("raw-oversize-request-id");
@@ -359,7 +421,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
   });
 
   it("does not reflect an unsafe caller request id", async () => {
-    const response = await request(app).post("/api/playlist/songs")
+    const response = await session.request.post("/api/playlist/songs")
       .send("{")
       .set("Content-Type", "application/json")
       .set("X-Request-Id", "unsafe/request/id")
@@ -371,9 +433,9 @@ describe("C1 containment floor under the C6 principal boundary", () => {
   });
 
   it("rate-limits repeated legacy identity probes without trusting forwarding headers", async () => {
-    let response!: request.Response;
+    let response!: LoopbackSupertestResponse;
     for (let index = 0; index < 31; index += 1) {
-      response = await request(app).post("/api/auth/sync").set("X-Forwarded-For", `203.0.113.${index}`);
+      response = await session.request.post("/api/auth/sync").set("X-Forwarded-For", `203.0.113.${index}`);
     }
     expect(response.status).toBe(429);
     expect(response.headers["retry-after"]).toBe("60");
@@ -416,7 +478,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
   });
 
   it("does not advertise X-Username through CORS", async () => {
-    const response = await request(app).options("/api/playlists")
+    const response = await session.request.options("/api/playlists")
       .set("Origin", "https://explorers.example.test")
       .set("Access-Control-Request-Method", "GET");
     expect(response.headers["access-control-allow-headers"]?.toLowerCase()).not.toContain("x-username");

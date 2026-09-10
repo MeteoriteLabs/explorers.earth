@@ -15,6 +15,7 @@ import { usePublicHeaderDescriptor } from "../../../PublicHome/components/Public
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const isRenderableProductList = (value: unknown): value is ProductList =>
   isNonNullObject(value) && Array.isArray(value.recommended_products);
@@ -31,7 +32,8 @@ const PublicProducts = () => {
   });
 
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes");
+  const query = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes");
+  const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = query;
 
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
@@ -112,7 +114,7 @@ const PublicProducts = () => {
   const listCount = lists.length;
   const pageTitle = `${creatorName} | Favorite Products | explorers`;
   const metaDescription = productCount > 0
-    ? `Browse curated product lists and recommendations shared by ${creatorName} on explorers. Explore ${listCount} product list${listCount !== 1 ? 's' : ''} containing ${productCount} favorite product${productCount !== 1 ? 's' : ''}.`
+    ? `Browse curated product lists and recommendations shared by ${creatorName} on explorers. Explore ${listCount}${query.hasMore || query.error ? '+' : ''} product list${listCount !== 1 ? 's' : ''} containing ${productCount} loaded favorite product${productCount !== 1 ? 's' : ''}.`
     : `Explore product recommendations shared by ${creatorName} on explorers.`;
 
   const seoKeywords = [
@@ -139,7 +141,7 @@ const PublicProducts = () => {
         />
       )}
 
-      <div className="min-h-screen bg-[#0d1117] text-white">
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
         {/* Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
           {loading && !hasUsableData ? (
@@ -158,13 +160,13 @@ const PublicProducts = () => {
                   <section key={i} className="mb-8">
                     {/* Row header */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                      <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                      <div className="w-1.5 h-[22px] bg-[var(--category-skeleton,rgba(255,255,255,0.1))] rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                      <div className="h-5 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                     </div>
                     {/* Poster strip skeleton equivalent for products */}
                     <div className="flex gap-3 overflow-hidden">
                       {[1, 2, 3, 4, 5].map((idx) => (
-                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                       ))}
                     </div>
                   </section>
@@ -179,9 +181,9 @@ const PublicProducts = () => {
               {/* Empty state */}
               {allProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <ShoppingBag size={48} className="text-white/20 mb-4" />
-                  <p className="text-white/40 text-lg font-medium">No products shared yet</p>
-                  <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                  <ShoppingBag size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No products shared yet</p>
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
                 </div>
               ) : (
                 <>
@@ -224,13 +226,13 @@ const PublicProducts = () => {
                   {/* Category browse - hidden for now as category pages are not registered/implemented
                   {allCategories.length > 0 && (
                     <div className="mt-10">
-                      <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
+                      <p className="text-sm font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.6))] mb-3">Browse by Category</p>
                       <div className="flex flex-wrap gap-2">
                         {allCategories.map((cat) => (
                           <button
                             key={cat.slug}
                             onClick={() => navigate(`/${username}/products/category/${cat.slug}`)}
-                            className="text-xs text-emerald-400/80 bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-800/20 px-3 py-1.5 rounded-full transition-all"
+                            className="text-xs text-[color:var(--category-text,rgba(52,211,153,0.8))] bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-800/20 px-3 py-1.5 rounded-full transition-all"
                           >
                             {cat.name}
                           </button>
@@ -243,6 +245,7 @@ const PublicProducts = () => {
               )}
             </>
           )}
+          <PublicScrollContinuation {...query} label="product lists" />
         </div>
 
         <ProductDetailModal

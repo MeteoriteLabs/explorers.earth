@@ -18,19 +18,24 @@ import { PublicProducts, PublicProductList } from "../features/Products";
 import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/People";
 import ProfileMusic from "../pages/public/ProfileMusic";
 import PublicMusicVisibilityBoundary from "./validators/PublicMusicVisibilityBoundary";
+import { PublicMusicAvailabilityProvider } from "../features/music/PublicMusicAvailabilityProvider";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
-import ErrorBoundary from "../components/ErrorBoundary";
+import { PublicColdEntryBoundary } from "../layouts/PublicColdEntryBoundary";
 
 const PublicRoutes = [
   <Route
     key="public-routes"
     path=":username/*"
     element={
-      <UsernameValidator>
-        <PublicLayout />
-      </UsernameValidator>
+      <PublicColdEntryBoundary>
+        <PublicMusicAvailabilityProvider>
+          <UsernameValidator>
+            <PublicLayout />
+          </UsernameValidator>
+        </PublicMusicAvailabilityProvider>
+      </PublicColdEntryBoundary>
     }
   >
     <Route index element={
@@ -56,23 +61,17 @@ const PublicRoutes = [
       } />
       <Route path="map" element={
         <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <ErrorBoundary fallback={<UsernameRootRedirect />}>
-            <MapView />
-          </ErrorBoundary>
+          <MapView />
         </TabVisibilityGuard>
       } />
       <Route path=":placeSlug/map" element={
         <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <ErrorBoundary fallback={<UsernameRootRedirect />}>
-            <MapView />
-          </ErrorBoundary>
+          <MapView />
         </TabVisibilityGuard>
       } />
       <Route path=":place/placesmap" element={
         <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
-          <ErrorBoundary fallback={<UsernameRootRedirect />}>
-            <PlaceMapView />
-          </ErrorBoundary>
+          <PlaceMapView />
         </TabVisibilityGuard>
       } />
     </Route>

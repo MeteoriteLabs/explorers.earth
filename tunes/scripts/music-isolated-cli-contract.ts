@@ -1,12 +1,19 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, realpathSync, rmdirSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import {
+  acquireMusicCliContractAuthority,
+  classifyMusicCliContractAuthorityPresence,
+  musicCliContractChildEnvironment,
+  readMusicCliContractDockerTrace,
+} from "./music-cli-contract-authority.ts";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
-const parent = mkdtempSync(join(tmpdir(), "music-c10-cli-contract-"));
+const inheritedAuthority = classifyMusicCliContractAuthorityPresence(process.env);
+assert(inheritedAuthority === "absent", "fresh music CLI contract authority forbids inherited authority");
+const parent = mkdtempSync(join(realpathSync(tmpdir()), "music-c10-cli-contract-"));
 const checkout = join(parent, "checkout");
-const fakeDockerDirectory = join(parent, "fake-docker");
 let worktreeAdded = false;
 const linkedPaths: string[] = [];
 
@@ -58,55 +65,43 @@ try {
     "-f", "docker-compose.music-test.yml", "config", "--format", "json",
   ], checkout);
   assert(Boolean(JSON.parse(composeModel)?.services), "fixture Compose model is invalid");
-  mkdirSync(fakeDockerDirectory, { mode: 0o700 });
-  const composeModelPath = join(fakeDockerDirectory, "compose-model.json");
-  const fakeDockerScript = join(fakeDockerDirectory, "fake-docker.cjs");
-  const fakeDockerTrace = join(fakeDockerDirectory, "docker-calls.jsonl");
-  const fakeNpmScript = join(fakeDockerDirectory, "fake-npm.cjs");
-  writeFileSync(composeModelPath, composeModel, { mode: 0o600 });
-  writeFileSync(fakeDockerScript, `const { appendFileSync, readFileSync } = require("node:fs");
-const args = process.argv.slice(2);
-appendFileSync(${JSON.stringify(fakeDockerTrace)}, JSON.stringify(args) + "\\n");
-if (args[0] === "info") { process.stdout.write("{}\\n"); process.exit(0); }
-if (args[0] === "compose" && args.includes("config")) { process.stdout.write(readFileSync(${JSON.stringify(composeModelPath)}, "utf8")); process.exit(0); }
-if (args[0] === "compose" && args.includes("ps")) process.exit(0);
-process.stderr.write("fixture Docker mutation blocked\\n"); process.exit(70);
-`, { mode: 0o700 });
-  writeFileSync(fakeNpmScript, `const args = process.argv.slice(2);
-if (JSON.stringify(args) === JSON.stringify(["--version"])) { process.stdout.write("10.0.0\\n"); process.exit(0); }
-if (JSON.stringify(args) === JSON.stringify(["exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-smoke.ts"])) {
-  process.stdout.write("SESSION_SECRET=hostile-child-secret C:\\\\Users\\\\fixture\\\\private\\n");
-  process.stderr.write("Bearer hostile-child-token\\n");
-  process.exit(1);
-}
-process.stderr.write("fixture npm mutation blocked\\n"); process.exit(70);
-`, { mode: 0o700 });
-  const mutationProbe = spawnSync(process.execPath, [fakeDockerScript, "compose", "-p", "explorers-music-fixture", "down"], {
-    cwd: checkout, encoding: "utf8", windowsHide: true,
+  const lease = acquireMusicCliContractAuthority({
+    mode: "fresh",
+    environment: process.env,
+    composeModel,
+    authorityRoot: parent,
   });
-  assert(mutationProbe.status === 70 && mutationProbe.stderr.trim() === "fixture Docker mutation blocked",
-    "fixture Docker mutation probe did not fail closed");
-  const isolatedEnvironment = { ...process.env };
-  isolatedEnvironment.MUSIC_C10_ISOLATED_DOCKER_ACK = "C10_MUTATION_BLOCKED";
-  isolatedEnvironment.MUSIC_C10_ISOLATED_DOCKER_SCRIPT = fakeDockerScript;
-  isolatedEnvironment.MUSIC_C10_ISOLATED_NPM_EXECPATH = fakeNpmScript;
-  const vitest = join(repositoryRoot, "tunes", "node_modules", "vitest", "vitest.mjs");
-  assert(existsSync(vitest), "isolated CLI contract Vitest runtime is unavailable");
-  run("isolated CLI contract", process.execPath, [
-    vitest, "run", "--config", "vitest.config.ts", "server/test/contracts/music-cli-contract.test.ts",
-  ], join(checkout, "tunes"), isolatedEnvironment);
-  const dockerCalls = readFileSync(fakeDockerTrace, "utf8").trim().split(/\r?\n/).map((line) => JSON.parse(line) as string[]);
-  assert(dockerCalls.some((args) => args[0] === "info")
-    && dockerCalls.some((args) => args[0] === "compose" && args.includes("config"))
-    && dockerCalls.some((args) => args[0] === "compose" && args.includes("ps"))
-    && dockerCalls.some((args) => args[0] === "compose" && args.includes("down")),
-  "isolated Docker probe did not observe the complete bounded command set");
-  process.stdout.write(`${JSON.stringify({
-    schemaVersion: "music-operation/v1",
-    metric: "isolated-cli-contract",
-    exactCommit: true,
-    sourceAuthorityUntouched: true,
-  })}\n`);
+  try {
+    assert(readMusicCliContractDockerTrace(lease.authority.dockerTrace).length === 0,
+      "isolated Docker trace was not independent at acquisition");
+    const mutationProbe = spawnSync(process.execPath, [lease.authority.dockerScript, "compose", "-p", "explorers-music-fixture", "down"], {
+      cwd: checkout, encoding: "utf8", windowsHide: true,
+    });
+    assert(mutationProbe.status === 70 && mutationProbe.stderr.trim() === "fixture Docker mutation blocked",
+      "fixture Docker mutation probe did not fail closed");
+    const afterProbe = readMusicCliContractDockerTrace(lease.authority.dockerTrace);
+    assert(afterProbe.length === 1 && afterProbe[0]?.kind === "blocked" && afterProbe[0].argumentCount === 4,
+      "isolated Docker mutation probe did not create the exact first event");
+    const vitest = join(repositoryRoot, "tunes", "node_modules", "vitest", "vitest.mjs");
+    assert(existsSync(vitest), "isolated CLI contract Vitest runtime is unavailable");
+    run("isolated CLI contract", process.execPath, [
+      vitest, "run", "--config", "vitest.config.ts", "server/test/contracts/music-cli-contract.test.ts",
+    ], join(checkout, "tunes"), musicCliContractChildEnvironment(lease.authority));
+    const dockerCalls = readMusicCliContractDockerTrace(lease.authority.dockerTrace);
+    assert(dockerCalls[0]?.kind === "blocked" && dockerCalls[0].argumentCount === 4
+      && dockerCalls.some(({ kind }) => kind === "info")
+      && dockerCalls.some(({ kind }) => kind === "compose-config")
+      && dockerCalls.some(({ kind }) => kind === "compose-ps"),
+    "isolated Docker probe did not observe the complete bounded command set");
+    process.stdout.write(`${JSON.stringify({
+      schemaVersion: "music-operation/v1",
+      metric: "isolated-cli-contract",
+      exactCommit: true,
+      sourceAuthorityUntouched: true,
+    })}\n`);
+  } finally {
+    lease.dispose();
+  }
 } finally {
   assert(basename(parent).startsWith("music-c10-cli-contract-"), "unsafe isolated CLI cleanup root");
   for (const linkedPath of linkedPaths.reverse()) {
@@ -122,6 +117,5 @@ process.stderr.write("fixture npm mutation blocked\\n"); process.exit(70);
     if ((removed.status ?? 1) !== 0) throw new Error(`isolated worktree cleanup failed: ${sanitize(removed.stderr ?? "")}`);
   }
   assert(!existsSync(checkout), "isolated worktree remains after cleanup");
-  rmSync(fakeDockerDirectory, { recursive: true, force: true });
   rmdirSync(parent);
 }

@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import {
   appendFileSync,
+  closeSync,
   existsSync,
   linkSync,
   mkdirSync,
+  openSync,
   readFileSync,
   rmSync,
   statSync,
@@ -103,12 +105,12 @@ const LIVE_PROFILE_BATCH_FAILURE_CODE_SET = new Set(LIVE_PROFILE_BATCH_FAILURE_C
 
 export const LIVE_READ_ONLY_COLLECTION = Object.freeze([
   { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
-  { id: "music.read-only.permission-matrix", title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.permission-matrix", title: "all 32 permission masks expose exactly the independently expected guest surfaces", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.first-view-fallback", title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.a11y-announcements", title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.share-privacy", title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.cache-isolation", title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
-  { id: "music.read-only.generic-recovery", title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.generic-recovery", title: "invalid, private, and missing resources converge on generic nonretryable recovery", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.viewport-320x700", title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.viewport-375x667", title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.viewport-390x844", title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
@@ -380,6 +382,32 @@ function sanitizedLiveExecutionReport(rawReport) {
     version: SANITIZED_EXECUTION_REPORT_VERSION,
     suites: [{ title: "sanitized-live-execution", specs }],
   };
+}
+
+function sanitizedGenericExecutionReport(rawReport) {
+  const specs = [];
+  const visit = (suite) => {
+    if (!suite || typeof suite !== "object") return;
+    for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
+      const test = Array.isArray(spec?.tests) ? spec.tests[0] : undefined;
+      const results = Array.isArray(test?.results) ? test.results : [];
+      specs.push({
+        title: typeof spec?.title === "string" ? spec.title.slice(0, 512) : "unnamed test",
+        file: typeof spec?.file === "string" ? spec.file.slice(-512) : "unknown",
+        tests: [{
+          annotations: Array.isArray(test?.annotations) && test.annotations.some((entry) => entry?.type === "skip")
+            ? [{ type: "skip", description: "skipped" }] : [],
+          expectedStatus: "passed",
+          results: results.length > 0
+            ? [{ status: SAFE_EXECUTION_STATUSES.has(results.at(-1)?.status) ? results.at(-1).status : "unknown" }]
+            : [],
+        }],
+      });
+    }
+    for (const child of Array.isArray(suite.suites) ? suite.suites : []) visit(child);
+  };
+  for (const suite of Array.isArray(rawReport?.suites) ? rawReport.suites : []) visit(suite);
+  return { version: SANITIZED_EXECUTION_REPORT_VERSION, suites: [{ title: "sanitized-execution", specs }] };
 }
 
 const EXECUTION_OUTCOME_STATUSES = new Set(["passed", "failed", "skipped", "not-run"]);
@@ -974,6 +1002,7 @@ export function runPlaywrightJourneyExecution({
   outcomeLedgerPath,
   persistOutcomeLedger = persistSanitizedJourneyOutcomeLedger,
   privateArtifactIo,
+  requireJourneyLedger = true,
 }) {
   const exactReportPath = resolve(reportPath);
   const exactOutputDirectory = resolve(outputDirectory);
@@ -994,7 +1023,8 @@ export function runPlaywrightJourneyExecution({
     removeDirectory: (directory) => rmSync(directory, { recursive: true, force: true }),
     ...privateArtifactIo,
   };
-  const childEnvironment = { ...environment, PLAYWRIGHT_JSON_OUTPUT_FILE: exactReportPath };
+  const childEnvironment = { ...environment };
+  delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_FILE;
   delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_NAME;
   delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_DIR;
   let execution;
@@ -1006,7 +1036,10 @@ export function runPlaywrightJourneyExecution({
   let outcomeLedgerStatus = "persist-failed";
   let privateArtifactCleanup = "deleted";
   try {
+    let reportDescriptor;
     try {
+      mkdirSync(artifactDirectory, { recursive: true });
+      reportDescriptor = openSync(exactReportPath, "wx", 0o600);
       execution = spawn(processExecPath, [
         playwrightCli,
         "test",
@@ -1019,11 +1052,16 @@ export function runPlaywrightJourneyExecution({
         exactOutputDirectory,
       ], {
         cwd,
-        stdio: "ignore",
+        stdio: ["ignore", reportDescriptor, "ignore"],
         env: childEnvironment,
         windowsHide: true,
       });
     } catch { execution = undefined; }
+    finally {
+      if (reportDescriptor !== undefined) {
+        try { closeSync(reportDescriptor); } catch { execution = undefined; }
+      }
+    }
     try {
       if (io.exists(exactReportPath)) {
         const reportSize = io.size(exactReportPath);
@@ -1031,7 +1069,9 @@ export function runPlaywrightJourneyExecution({
           reportStatus = "too-large";
         } else {
           const rawReport = JSON.parse(io.read(exactReportPath));
-          executionReport = sanitizedLiveExecutionReport(rawReport);
+          executionReport = requireJourneyLedger
+            ? sanitizedLiveExecutionReport(rawReport)
+            : sanitizedGenericExecutionReport(rawReport);
           reportStatus = "accepted";
         }
       }
@@ -1056,6 +1096,9 @@ export function runPlaywrightJourneyExecution({
       terminalStatus = "parse-failed";
     }
     try {
+      if (!requireJourneyLedger) {
+        outcomeLedgerStatus = undefined;
+      } else {
       const candidate = buildSanitizedJourneyOutcomeLedger({
         executionReport,
         reportStatus,
@@ -1065,12 +1108,13 @@ export function runPlaywrightJourneyExecution({
       persistOutcomeLedger({ path: exactOutcomeLedgerPath, ledger: candidate });
       journeyOutcomeLedger = candidate;
       outcomeLedgerStatus = "persisted";
+      }
     } catch {
       journeyOutcomeLedger = undefined;
       outcomeLedgerStatus = "persist-failed";
     }
   } finally {
-    if (outcomeLedgerStatus !== "persisted") {
+    if (requireJourneyLedger && outcomeLedgerStatus !== "persisted") {
       for (const retainedPath of [exactOutcomeLedgerPath, `${exactOutcomeLedgerPath}.private-tmp`]) {
         try { if (io.exists(retainedPath)) io.unlink(retainedPath); } catch { privateArtifactCleanup = "delete-failed"; }
       }
@@ -1082,8 +1126,11 @@ export function runPlaywrightJourneyExecution({
   const ledgerComplete = journeyOutcomeLedger?.integrity === "accepted"
     && journeyOutcomeLedger.counts.execution.passed === EXPECTED_EXECUTION_OUTCOMES.length
     && journeyOutcomeLedger.counts.terminal.passed === LIVE_JOURNEY_MANIFEST.length;
-  const status = childStatus === 0 && reportStatus === "accepted" && outcomeLedgerStatus === "persisted"
-    && ledgerComplete && privateArtifactCleanup === "deleted" ? 0 : (childStatus || 1);
+  const evidenceAccepted = requireJourneyLedger
+    ? outcomeLedgerStatus === "persisted" && ledgerComplete
+    : true;
+  const status = childStatus === 0 && reportStatus === "accepted" && evidenceAccepted
+    && privateArtifactCleanup === "deleted" ? 0 : (childStatus || 1);
   return {
     status,
     reportStatus,

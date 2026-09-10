@@ -6,6 +6,7 @@ import {
   type Route,
 } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 const operationName = (route: Route) => {
   const payload = route.request().postDataJSON() as
@@ -53,6 +54,14 @@ async function installAuthenticatedDashboardFixture(
   context: BrowserContext,
   page: Page,
 ) {
+  await denyHostedEgress(page);
+  await page.route('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'Topology', objects: { countries: { type: 'GeometryCollection', geometries: [] } }, arcs: [] }),
+    }),
+  );
   await setupMockAuthentication(context);
   await page.route("**/__localtunes/api/music/identity/ensure", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
@@ -436,6 +445,7 @@ test.describe('Public category analytics E2E', () => {
     context,
     page,
   }) => {
+    await denyHostedEgress(page);
     await context.addInitScript(() => {
       localStorage.setItem(
         'explorers-cookie-consent',
@@ -449,6 +459,7 @@ test.describe('Public category analytics E2E', () => {
 
     const publicAccount = {
       documentId: 'acc-public-1',
+      username: 'fixture-user',
       Account_Name: 'Public Analytics Fixture',
       Account_Type: 'personal',
       Primary_Address: 'Bengaluru',
@@ -556,6 +567,35 @@ test.describe('Public category analytics E2E', () => {
         status: 201,
         contentType: 'application/json',
         body: JSON.stringify({ status: 'committed', duplicate: false }),
+      });
+    });
+
+    await page.route('**/api/explorers/v1/profiles/fixture-user**', async (route) => {
+      const url = new URL(route.request().url());
+      const match = url.pathname.match(/\/recommendations\/(apps|products|people)(?:\/fixture-list)?$/);
+      if (!match) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(publicAccount),
+        });
+      }
+      const fixture = fixtures[match[1] as keyof typeof fixtures];
+      const list = {
+        documentId: fixture.listId,
+        List_Name: `${fixture.title} List`,
+        list_description: 'Public fixture list',
+        slug: 'fixture-list',
+        Visibility: true,
+        cover_image: null,
+        display_order: 1,
+        account: { documentId: publicAccount.documentId, username: 'fixture-user' },
+        [fixture.relation]: [fixture.item],
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ [fixture.listRoot]: [list] }),
       });
     });
 
@@ -686,6 +726,8 @@ test.describe('Public category analytics E2E', () => {
           write.recommendationId === fixture.itemId,
         ),
         share: writes.some((write) =>
+          write.accountId === publicAccount.documentId &&
+          write.event?.page === `public-${category}` &&
           write.event?.canonicalPath === canonicalPath &&
           write.event?.element === 'share-button' &&
           write.locationId === fixture.listId,

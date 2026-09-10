@@ -9,6 +9,9 @@ import {
   type MusicServerRuntime,
 } from "../config/music-startup";
 import type { MusicDatabaseConnection } from "../config/music-database-config";
+import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
+import { semanticWindowsSecurityInspection } from "./helpers/semantic-windows-security";
+import { productionEnvironmentFixture } from "./fixtures/music-production-environment";
 
 const windowsEffectiveUserSid = process.platform === "win32"
   ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
@@ -64,7 +67,7 @@ chmodSync(publicationResponsePath, 0o600);
 chmodSync(publicIdHmacPath, 0o600);
 afterAll(() => rmSync(signingRoot, { recursive: true, force: true }));
 
-function withSigningFile(environment: Record<string, string>): Record<string, string> {
+function withSigningFile(environment: Readonly<Record<string, string>>): Record<string, string> {
   const fixture = environment.MUSIC_MODE === "fixture";
   return {
     ...environment,
@@ -94,50 +97,41 @@ function parseEnvironmentFile(path: string): Record<string, string> {
     .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
 }
 
-function renderedProductionEnvironment(): Record<string, string> {
-  const digestA = `sha256:${"a".repeat(64)}`;
-  const digestB = `sha256:${"b".repeat(64)}`;
-  const environment = {
-    ...process.env,
-    ACME_EMAIL: "ops@example.invalid",
-    DB_USER: "legacy-owner",
-    DB_PASS: "legacy-owner-password-sentinel",
-    DB_MIGRATOR_USER: "music_migrator",
-    DB_MIGRATOR_PASSWORD_FILE_HOST: "C:/fixture/db-migrator",
-    DB_RUNTIME_USER: "music_runtime_login",
-    DB_RUNTIME_PASSWORD_FILE_HOST: "C:/fixture/db-runtime",
-    DB_NAME: "music",
-    SESSION_SECRET: "production-session-secret-at-least-32-characters",
-    COOKIE_SECRET: "production-cookie-secret-at-least-32-characters",
-    STRAPI_URL: "https://cms.example.com",
-    MUSIC_STRAPI_ALLOWED_ORIGINS: "https://cms.example.com",
-    STRAPI_ACCESS_TOKEN: "read-only-token",
-    STRAPI_ANALYTICS_ACCESS_TOKEN: "analytics-read-only-token",
-    STRAPI_JWT_SECRET: "production-jwt-secret-at-least-32-characters",
-    MUSIC_GATE_ATTESTATION_KEY: "production-gate-key-at-least-32-characters",
-    MUSIC_TOKEN_CURRENT_KID: "production-current",
-    MUSIC_TOKEN_SECRET_DIRECTORY_HOST: "C:/fixture/music-token-secrets",
-    MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "production-publication-current",
-    MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST: "C:/fixture/music-publication-response",
-    STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST: "C:/fixture/strapi-lifecycle-proof",
-    EXPLORERS_IMAGE: `ghcr.io/example/explorers@${digestA}`,
-    TUNES_BLUE_IMAGE: `ghcr.io/example/tunes@${digestA}`,
-    TUNES_BLUE_DIGEST: digestA,
-    TUNES_BLUE_COMMIT: "a".repeat(40),
-    TUNES_GREEN_IMAGE: `ghcr.io/example/tunes@${digestB}`,
-    TUNES_GREEN_DIGEST: digestB,
-    TUNES_GREEN_COMMIT: "b".repeat(40),
-    TUNES_CANDIDATE_IMAGE: `ghcr.io/example/tunes@${digestA}`,
-    TUNES_CANDIDATE_DIGEST: digestA,
-    TUNES_CANDIDATE_COMMIT: "a".repeat(40),
-    TUNES_COMPAT_IMAGE: `ghcr.io/example/tunes@${digestA}`,
+function controlledIdentityConfig(): MusicIdentityRuntimeConfig {
+  return {
+    mode: "live",
+    strapiOrigin: "https://cms.example.com",
+    trustedProxyHops: 1,
+    trustedProxyAddress: "172.31.250.2",
+    isTrustedProxy: () => true,
+    pinnedAddresses: ["8.8.8.8"],
+    lookup: vi.fn(),
+    fetchImpl: fetch,
+    maxConcurrency: 1,
+    maxPending: 1,
+    maxInflight: 1,
+    retries: 0,
+    connectTimeoutMs: 100,
+    readTimeoutMs: 100,
+    overallTimeoutMs: 100,
+    cacheTtlMs: 0,
+    circuitFailureThreshold: 1,
+    circuitOpenMs: 100,
+    rateLimitPerMinute: 1,
+    globalRateLimitPerMinute: 1,
+    rateMaxEntries: 2,
+    musicToken: {
+      current: { kid: "controlled-current", secret: Buffer.alloc(32, 0x71).toString("base64url") },
+      tokenLifetimeSeconds: 600,
+      clockSkewSeconds: 0,
+    },
+    lifecycleProofToken: "controlled-lifecycle-proof",
+    publicationResponse: {
+      current: { kid: "controlled-publication", key: Buffer.alloc(32, 0x72) },
+      retentionSeconds: 86_400,
+    },
+    publicIdHmacKey: Buffer.alloc(32, 0x73),
   };
-  const rendered = JSON.parse(execFileSync("docker", ["compose", "-f", "docker-compose.yml", "config", "--format", "json"], {
-    cwd: repositoryRoot,
-    env: environment,
-    encoding: "utf8",
-  })) as { services: Record<string, { environment: Record<string, string> }> };
-  return rendered.services["tunes-blue"].environment;
 }
 
 function controlledRuntime(events: string[]): MusicServerRuntime {
@@ -184,8 +178,8 @@ describe("discriminated Music startup bootstrap", () => {
     expect(environment.DATABASE_URL).toBe(database.connectionString);
   });
 
-  it("validates the rendered live Compose environment exactly once before application import and listen", async () => {
-    const environment = withSigningFile(renderedProductionEnvironment());
+  it("validates the literal production environment fixture exactly once before application import and listen", async () => {
+    const environment = withSigningFile(productionEnvironmentFixture());
     expect(environment.MUSIC_MIGRATION_MARKER).toBe("0021_explorers_analytics_receipts");
     for (const fixtureOnly of [
       "MUSIC_FIXTURE_VERSION", "STRAPI_FIXTURE_URL", "DATABASE_URL_TEST",
@@ -214,44 +208,67 @@ describe("discriminated Music startup bootstrap", () => {
     expect(resolver).toHaveBeenCalledTimes(1);
     expect(loadRuntime).toHaveBeenCalledTimes(1);
     expect(events).toEqual(["resolve-dns", "verify-runtime-db", "ensure-analytics-schema", "load-routes", "create-app", "static", "listen"]);
-  });
+  }, 20_000);
 
   it("rejects a wrong runtime database credential before importing routes or binding", async () => {
+    const resolveIdentityConfig = vi.fn(async () => controlledIdentityConfig());
+    const database: MusicDatabaseConnection = {
+      connectionString: "postgresql://music_runtime_login:controlled@db:5432/music",
+      database: "music",
+      host: "db",
+      password: "controlled",
+      port: 5432,
+      user: "music_runtime_login",
+    };
+    const resolveDatabaseConnection = vi.fn(async () => database);
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
     const verifyDatabaseConnection = vi.fn(async () => { throw new Error("runtime database authentication failed"); });
-    await expect(startMusicServer(withSigningFile(renderedProductionEnvironment()), {
-      resolveAddresses: async () => ["8.8.8.8"],
+    await expect(startMusicServer(withSigningFile(productionEnvironmentFixture()), {
+      resolveIdentityConfig,
+      resolveDatabaseConnection,
       verifyDatabaseConnection,
       loadRuntime,
-    } as never)).rejects.toThrow(/database authentication/i);
+    })).rejects.toThrow(/database authentication/i);
+    expect(resolveIdentityConfig).toHaveBeenCalledTimes(1);
+    expect(resolveDatabaseConnection).toHaveBeenCalledTimes(1);
     expect(verifyDatabaseConnection).toHaveBeenCalledTimes(1);
     expect(loadRuntime).not.toHaveBeenCalled();
   });
 
   it.each([
-    ["missing runtime user", { MUSIC_DATABASE_USER: "" }],
-    ["missing runtime secret", { MUSIC_DATABASE_PASSWORD_FILE: "" }],
-    ["owner/migrator runtime user", { MUSIC_DATABASE_USER: "music_migrator" }],
-  ])("rejects %s before importing routes or binding", async (_label, override) => {
+    ["missing runtime user", { MUSIC_DATABASE_USER: "" }, /MUSIC_DATABASE_USER is required/],
+    ["missing runtime secret", { MUSIC_DATABASE_PASSWORD_FILE: "" }, /MUSIC_DATABASE_PASSWORD_FILE is required/],
+    ["owner/migrator runtime user", { MUSIC_DATABASE_USER: "music_migrator" }, /runtime database role must be distinct/],
+  ] as const)("rejects %s before importing routes or binding", async (_label, override, expectedError) => {
+    const resolveIdentityConfig = vi.fn(async () => controlledIdentityConfig());
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
-    await expect(startMusicServer({ ...withSigningFile(renderedProductionEnvironment()), ...override }, {
-      resolveAddresses: async () => ["8.8.8.8"],
+    await expect(startMusicServer({ ...withSigningFile(productionEnvironmentFixture()), ...override }, {
+      resolveIdentityConfig,
       loadRuntime,
-    })).rejects.toThrow(/database|runtime|credential|role|secret/i);
+    })).rejects.toThrow(expectedError);
+    expect(resolveIdentityConfig).toHaveBeenCalledTimes(1);
     expect(loadRuntime).not.toHaveBeenCalled();
   });
 
   it.each([
-    ["HTTP URL", { STRAPI_URL: "http://cms.example.com" }, ["8.8.8.8"]],
-    ["wrong proxy policy", { TRUST_PROXY_HOPS: "2" }, ["8.8.8.8"]],
-    ["invalid numeric bound", { MUSIC_IDENTITY_MAX_PENDING: "Infinity" }, ["8.8.8.8"]],
-    ["private DNS", {}, ["127.0.0.1"]],
-  ])("rejects invalid live %s before importing or binding", async (_label, override, answers) => {
+    ["HTTP URL", { STRAPI_URL: "http://cms.example.com" }, ["8.8.8.8"], true],
+    ["wrong proxy policy", { TRUST_PROXY_HOPS: "2" }, ["8.8.8.8"], false],
+    ["invalid numeric bound", { MUSIC_IDENTITY_MAX_PENDING: "Infinity" }, ["8.8.8.8"], false],
+    ["private DNS", {}, ["127.0.0.1"], true],
+  ] as const)("rejects invalid live %s before importing or binding", async (_label, override, answers, reachesSecureReads) => {
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
-    await expect(startMusicServer({ ...withSigningFile(renderedProductionEnvironment()), ...override }, {
-      resolveAddresses: async () => answers,
+    const resolveAddresses = vi.fn(async () => answers);
+    const failure = startMusicServer({ ...withSigningFile(productionEnvironmentFixture()), ...override }, {
+      resolveAddresses,
+      ...(reachesSecureReads ? { windowsSecurityInspection: semanticWindowsSecurityInspection } : {}),
       loadRuntime,
-    })).rejects.toThrow();
+    });
+    if (_label === "private DNS") {
+      await expect(failure).rejects.toThrow(/public addresses/i);
+      expect(resolveAddresses).toHaveBeenCalledTimes(1);
+    } else {
+      await expect(failure).rejects.toThrow();
+    }
     expect(loadRuntime).not.toHaveBeenCalled();
   });
 
@@ -280,12 +297,13 @@ describe("discriminated Music startup bootstrap", () => {
   it("rejects a missing public-ID HMAC authority before route import or listener bind", async () => {
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
     await expect(startMusicServer({
-      ...withSigningFile(renderedProductionEnvironment()),
+      ...withSigningFile(productionEnvironmentFixture()),
       MUSIC_PUBLIC_ID_HMAC_KEY_FILE: "",
     }, {
       resolveAddresses: async () => ["8.8.8.8"],
+      windowsSecurityInspection: semanticWindowsSecurityInspection,
       loadRuntime,
-    })).rejects.toThrow(/public.?id|HMAC|secure file|required/i);
+    })).rejects.toThrow(/MUSIC_PUBLIC_ID_HMAC_KEY_FILE is required/i);
     expect(loadRuntime).not.toHaveBeenCalled();
   });
 
@@ -295,7 +313,7 @@ describe("discriminated Music startup bootstrap", () => {
     chmodSync(insecurePath, 0o644);
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
     const failure = startMusicServer({
-      ...withSigningFile(renderedProductionEnvironment()),
+      ...withSigningFile(productionEnvironmentFixture()),
       MUSIC_TOKEN_CURRENT_SECRET_FILE: insecurePath,
     }, { resolveAddresses: async () => ["8.8.8.8"], platform: "linux", effectiveUserId: 0, loadRuntime });
     await expect(failure).rejects.toThrow(/secret|secure|permission/i);

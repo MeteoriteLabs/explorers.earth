@@ -778,7 +778,11 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Profile/types/profileWorkspaces.ts
 !explorers-earth/src/features/Profile/types/themeTypes.ts
 !explorers-earth/src/features/Profile/types/types.ts
+!explorers-earth/src/features/PublicHome/api/publicProfileGatewayClient.ts
 !explorers-earth/src/features/PublicHome/api/query.ts
+!explorers-earth/src/features/PublicHome/api/usePublicProfileDetail.ts
+!explorers-earth/src/features/PublicHome/api/usePublicProfileShell.ts
+!explorers-earth/src/features/PublicHome/api/usePublicRecommendationCategory.ts
 !explorers-earth/src/features/PublicHome/components/Community.tsx
 !explorers-earth/src/features/PublicHome/components/MapView.tsx
 !explorers-earth/src/features/PublicHome/components/PlaceDetails/Details/Address.tsx
@@ -847,6 +851,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/musicShareUrl.ts
 !explorers-earth/src/features/music/musicState.ts
 !explorers-earth/src/features/music/musicWorkspaceClient.ts
+!explorers-earth/src/features/music/publicMusicAnalytics.ts
 !explorers-earth/src/features/music/publicMusicClient.ts
 !explorers-earth/src/features/music/publicMusicLiveClient.ts
 !explorers-earth/src/features/music/publicMusicObservability.ts

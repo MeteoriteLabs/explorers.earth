@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 test.beforeEach(async ({ context, page }) => {
+  await denyHostedEgress(page);
   await setupMockAuthentication(context);
   let recommendationCreated = false;
   const account = {
@@ -20,6 +22,10 @@ test.beforeEach(async ({ context, page }) => {
     public_movie: 'No',
     public_games: 'No',
     public_music: 'No',
+    public_guides: 'No',
+    public_apps: 'No',
+    public_products: 'No',
+    public_people: 'No',
   };
 
   await page.route('**/graphql', async route => {

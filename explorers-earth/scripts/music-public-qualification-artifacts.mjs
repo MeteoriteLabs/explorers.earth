@@ -690,6 +690,10 @@ function validSkipLedger(value) {
 function validJourneyOutcomeTotals(skipLedger, journeyOutcomeLedger) {
   if (!validSkipLedger(skipLedger) || !validateSanitizedJourneyOutcomeLedger(journeyOutcomeLedger)) return false;
   const execution = journeyOutcomeLedger.counts.execution;
+  if (skipLedger.lane === "pr-safe") {
+    return journeyOutcomeLedger.integrity === "not-run"
+      && execution.notRun === execution.total;
+  }
   const stopped = journeyOutcomeLedger.executionOutcomes.some(({ reason }) => reason === "execution-stopped");
   if (execution.notRun > 0) {
     return (stopped ? skipLedger.execution === "execution-stopped" : skipLedger.execution !== "completed")
@@ -717,7 +721,9 @@ function executionTotals(executionReport) {
   };
   if (!executionReport || typeof executionReport !== "object" || !Array.isArray(executionReport.suites)) return undefined;
   executionReport.suites.forEach(visit);
-  if (specs.length === 0 || specs.length > 256) return undefined;
+  // The PR-safe browser matrix currently contains more than 256 cases. Keep a
+  // finite ceiling while allowing the complete declared matrix to be counted.
+  if (specs.length === 0 || specs.length > 512) return undefined;
   const totals = { total: 0, passed: 0, failed: 0, skipped: 0 };
   let resultless = 0;
   for (const spec of specs) {
@@ -808,7 +814,12 @@ export function buildQualificationOutcomeRecords({ lane, executionOutcome, repor
   }
   let journeyOutcomeLedger;
   let journeyOutcomeLedgerPersisted = false;
-  if (executionOutcome?.outcomeLedgerStatus !== undefined) {
+  if (lane === "pr-safe") {
+    journeyOutcomeLedger = buildSanitizedJourneyOutcomeLedger({
+      reportStatus: "not-run",
+      terminalStatus: "not-run",
+    });
+  } else if (executionOutcome?.outcomeLedgerStatus !== undefined) {
     if (executionOutcome.outcomeLedgerStatus !== "persisted"
         || !validateSanitizedJourneyOutcomeLedger(executionOutcome.journeyOutcomeLedger)) {
       fail("qualification journey outcome persistence is invalid");

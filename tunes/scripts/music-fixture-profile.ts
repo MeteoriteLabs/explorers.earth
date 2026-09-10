@@ -20,12 +20,7 @@ const operationSources = [
   ["explorers-earth/src/features/Profile/api/query.ts", ["UsersPermissionsUser"]],
   ["explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", ["UpdateAccount"]],
   ["explorers-earth/src/features/Settings/api/mutation.ts", ["UsersPermissionsUser", "UpdateAccount"]],
-  ["explorers-earth/src/routes/validators/UsernameValidator.tsx", ["CheckUsername"]],
   ["explorers-earth/src/features/PublicHome/api/query.ts", ["PublicCategoryListCounts", "PublicAccountBasic", "PublicProfileData"]],
-  ["explorers-earth/src/features/PublicHome/components/ProfileRecommendationsTab.tsx", [
-    "GetPlacesLists", "GetMoviesLists", "GetBooksLists", "GetGamesLists",
-    "GetAppsLists", "GetProductsLists", "GetPeopleLists", "GetGuidesLists",
-  ]],
 ] as const;
 
 const identityOperations = new Set([
@@ -42,6 +37,17 @@ const categoryRoots = new Map([
   ["GetPeopleLists", "personLists"],
   ["GetGuidesLists", "guides"],
 ]);
+
+const gatewayCategories = new Map<string, readonly [string, string]>([
+  ["places", ["GetPlacesLists", "recommendationLists"]],
+  ["movies", ["GetMoviesLists", "movieLists"]],
+  ["books", ["GetBooksLists", "bookLists"]],
+  ["games", ["GetGamesLists", "gameLists"]],
+  ["apps", ["GetAppsLists", "appLists"]],
+  ["products", ["GetProductsLists", "productLists"]],
+  ["people", ["GetPeopleLists", "personLists"]],
+  ["guides", ["GetGuidesLists", "guides"]],
+] as const);
 
 function clone<Value>(value: Value): Value {
   return JSON.parse(JSON.stringify(value)) as Value;
@@ -177,7 +183,8 @@ function exactUsernameFilter(variables: Record<string, unknown>, username: strin
 
 function categoryFixture(operation: string, namespace: string): unknown {
   const documentId = `${namespace}-${operation.replace(/^Get|Lists$/g, "").toLowerCase()}-list`;
-  const base = { documentId, List_Name: `Fixture ${operation}`, slug: documentId, Visibility: true, visibility: true };
+  const base = { documentId, List_Name: `Fixture ${operation}`, slug: documentId,
+    ...(operation === "GetBooksLists" ? { visibility: true } : { Visibility: true }) };
   if (operation === "GetPlacesLists") return { ...base, List_Name_Details: "Fixture places", recommended_places: [{ documentId: `${documentId}-item`, media_details: {}, Media: null, Place_Details: { name: "Fixture Place" } }] };
   if (operation === "GetMoviesLists") return { ...base, cover_image: null, recommended_movies: [{ documentId: `${documentId}-item`, poster_path: null }] };
   if (operation === "GetBooksLists") return { ...base, cover_image: null, recommended_books: [{ documentId: `${documentId}-item`, cover_url: null }] };
@@ -257,6 +264,20 @@ export function createFixtureProfileController(config: {
   const captured = new Map<string, { snapshot: Record<string, unknown>; serialized: string }>();
 
   const currentAccount = () => clone(account);
+  const publicAccount = () => {
+    const source = currentAccount();
+    const projection = Object.fromEntries([
+      "username", "Account_Name", "Account_Type", "Primary_Address", "Bio", "bg_picture", "createdAt",
+      "documentId", "profile_picture", "social_media", "Public_Profile_Address", "Feed_Data",
+      "mobile_number_visibility", "public_profile", "public_recommendations", "public_music", "public_movie",
+      "public_books", "public_guides", "public_games", "public_apps", "public_products", "public_people",
+      "pinned_nav_tabs", "auto_pinning",
+    ].map((key) => [key, source[key]]));
+    if (source.mobile_number_visibility === true && typeof source.mobile_number === "string") {
+      projection.mobile_number = source.mobile_number;
+    }
+    return projection;
+  };
   const identity = () => ({
     ...clone(config.baseUser),
     __typename: "UsersPermissionsUser",
@@ -292,6 +313,17 @@ export function createFixtureProfileController(config: {
     setPublicMusic(value: "Yes" | "No") {
       update({ public_music: value });
       return currentAccount();
+    },
+    publicGateway(path: string, method: string | undefined): { status: number; body: unknown } | undefined {
+      const profilePath = `/api/explorers/v1/profiles/${encodeURIComponent(config.username)}`;
+      if (path !== profilePath && !path.startsWith(`${profilePath}/recommendations/`)) return undefined;
+      if (method !== "GET") return { status: 405, body: { error: "fixture public profile method denied" } };
+      if (path === profilePath) return { status: 200, body: publicAccount() };
+      const category = path.slice(`${profilePath}/recommendations/`.length);
+      const projection = gatewayCategories.get(category);
+      if (!projection) return { status: 404, body: { error: "fixture public category not found" } };
+      const [operation, root] = projection;
+      return { status: 200, body: { [root]: [categoryFixture(operation, namespace)] } };
     },
     privateResponse(path: string, method: string | undefined, body: unknown): { status: number; body: unknown } | undefined {
       if (path === "/__music-fixture/profile-state/snapshot") {
@@ -352,12 +384,6 @@ export function createFixtureProfileController(config: {
         }
         update(variables.data);
         return { status: 200, body: { data: { updateAccount: currentAccount() } } };
-      }
-      if (parsed.operation === "CheckUsername") {
-        if (!exactKeys(variables, ["username"]) || variables.username !== config.username) {
-          return { status: 403, body: { error: "fixture public profile subject denied" } };
-        }
-        return { status: 200, body: { data: { accounts: [{ documentId: config.accountDocumentId, Account_Name: account.Account_Name }] } } };
       }
       if (parsed.operation === "PublicProfileData" || parsed.operation === "PublicAccountBasic") {
         if (!exactUsernameFilter(variables, config.username)) {

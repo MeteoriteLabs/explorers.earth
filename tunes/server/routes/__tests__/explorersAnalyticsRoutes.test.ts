@@ -1,7 +1,7 @@
 import express from "express";
-import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setupExplorersAnalyticsRoutes } from "../explorersAnalyticsRoutes";
+import { createLoopbackSupertestScope } from "../../test/helpers/loopback-supertest";
 
 const input = {
   consent: true,
@@ -64,12 +64,16 @@ const buildApp = ({ authorized = true } = {}) => {
   };
 };
 
+const loopback = createLoopbackSupertestScope();
+
 describe("explorers analytics routes", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(async () => loopback.closeAll());
 
   it("attributes friendly unavailable events through account path authority only", async () => {
     const { app, service, resolveFriendlyMusicAnalyticsTarget } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/music-account/account-1/events")
       .send({ ...musicInput, event: { name: "unavailable", reason: "not_public" } });
     expect(response.status).toBe(201);
@@ -81,7 +85,8 @@ describe("explorers analytics routes", () => {
 
   it("resolves a public Music owner server-side and never returns or forwards route authority", async () => {
     const { app, service, resolvePublicMusicAnalyticsTarget } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/music/public-owner/events")
       .send(musicInput);
 
@@ -109,7 +114,8 @@ describe("explorers analytics routes", () => {
     const capability = "C".repeat(43);
     const accepted = buildApp();
     accepted.resolvePublicMusicAnalyticsTarget.mockResolvedValue({ accountId: "account-1", mode: "unlisted" });
-    expect((await request(accepted.app)
+    const { request: acceptedRequest } = await loopback.open({ app: accepted.app });
+    expect((await acceptedRequest
       .post("/api/explorers/analytics/music/unlisted-owner/events")
       .set("X-Music-Guest-Capability", capability)
       .send(musicInput)).status).toBe(201);
@@ -118,7 +124,8 @@ describe("explorers analytics routes", () => {
     for (const supplied of [undefined, "not-a-capability", "D".repeat(43)]) {
       const denied = buildApp();
       denied.resolvePublicMusicAnalyticsTarget.mockResolvedValue(undefined);
-      let operation = request(denied.app).post("/api/explorers/analytics/music/unlisted-owner/events");
+      const { request: deniedRequest } = await loopback.open({ app: denied.app });
+      let operation = deniedRequest.post("/api/explorers/analytics/music/unlisted-owner/events");
       if (supplied) operation = operation.set("X-Music-Guest-Capability", supplied);
       const response = await operation.send(musicInput);
       expect(response.status).toBe(404);
@@ -129,6 +136,7 @@ describe("explorers analytics routes", () => {
 
   it("rejects identity, capability, URL, raw-query, and unknown fields in the Music event body", async () => {
     const { app, service, resolvePublicMusicAnalyticsTarget } = buildApp();
+    const { request } = await loopback.open({ app });
     for (const forbidden of [
       { accountId: "account-1" },
       { publicSlug: "public-owner" },
@@ -137,7 +145,7 @@ describe("explorers analytics routes", () => {
       { mediaUrl: "https://youtube.com/watch?v=abcdefghijk" },
       { credential: "secret" },
     ]) {
-      const response = await request(app)
+      const response = await request
         .post("/api/explorers/analytics/music/public-owner/events")
         .send({ ...musicInput, event: { ...musicInput.event, ...forbidden } });
       expect(response.status).toBe(400);
@@ -149,22 +157,26 @@ describe("explorers analytics routes", () => {
   it("preserves analytics receipt replay semantics and rate limits before authority lookup", async () => {
     const replay = buildApp();
     replay.service.ingest.mockResolvedValue({ status: "committed", documentId: "event-document", duplicate: true });
-    expect((await request(replay.app).post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(200);
+    const { request: replayRequest } = await loopback.open({ app: replay.app });
+    expect((await replayRequest.post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(200);
 
     const pending = buildApp();
     pending.service.ingest.mockResolvedValue({ status: "pending", duplicate: true });
-    expect((await request(pending.app).post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(202);
+    const { request: pendingRequest } = await loopback.open({ app: pending.app });
+    expect((await pendingRequest.post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(202);
 
     const limited = buildApp();
     limited.allowWrite.mockReturnValue(false);
-    expect((await request(limited.app).post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(429);
+    const { request: limitedRequest } = await loopback.open({ app: limited.app });
+    expect((await limitedRequest.post("/api/explorers/analytics/music/public-owner/events").send(musicInput)).status).toBe(429);
     expect(limited.resolvePublicMusicAnalyticsTarget).not.toHaveBeenCalled();
     expect(limited.service.ingest).not.toHaveBeenCalled();
   });
 
   it("accepts a canonical public event without returning or storing an IP", async () => {
     const { app, service } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/events")
       .set("X-Forwarded-For", "203.0.113.90")
       .send(input);
@@ -186,7 +198,8 @@ describe("explorers analytics routes", () => {
     const { app, service } = buildApp();
     service.ingest.mockResolvedValue({ status: "consent-denied" });
 
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/events")
       .send({ ...input, consent: false });
 
@@ -195,7 +208,8 @@ describe("explorers analytics routes", () => {
 
   it("rejects malformed events before target validation or ingestion", async () => {
     const { app, service, validatePublicTarget } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/events")
       .send({ ...input, eventId: "short" });
 
@@ -208,7 +222,8 @@ describe("explorers analytics routes", () => {
     const { app, service, validatePublicTarget } = buildApp();
     validatePublicTarget.mockResolvedValue(false);
 
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/events")
       .send(input);
 
@@ -221,7 +236,8 @@ describe("explorers analytics routes", () => {
     const { app, service, validatePublicTarget, allowWrite } = buildApp();
     allowWrite.mockReturnValue(false);
 
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/events")
       .send(input);
 
@@ -233,7 +249,8 @@ describe("explorers analytics routes", () => {
   it("returns 202 for an in-flight duplicate", async () => {
     const { app, service } = buildApp();
     service.ingest.mockResolvedValue({ status: "pending", duplicate: true });
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/explorers/analytics/events")
       .send(input);
     expect(response.status).toBe(202);
@@ -245,9 +262,10 @@ describe("explorers analytics routes", () => {
     );
     const conflict = buildApp();
     conflict.service.ingest.mockRejectedValue(new IdempotencyConflictError());
+    const { request: conflictRequest } = await loopback.open({ app: conflict.app });
     expect(
       (
-        await request(conflict.app)
+        await conflictRequest
           .post("/api/explorers/analytics/events")
           .send(input)
       ).status,
@@ -255,9 +273,10 @@ describe("explorers analytics routes", () => {
 
     const upstream = buildApp();
     upstream.service.ingest.mockRejectedValue(new Error("Strapi unavailable"));
+    const { request: upstreamRequest } = await loopback.open({ app: upstream.app });
     expect(
       (
-        await request(upstream.app)
+        await upstreamRequest
           .post("/api/explorers/analytics/events")
           .send(input)
       ).status,
@@ -267,7 +286,8 @@ describe("explorers analytics routes", () => {
   it("denies cross-account owner reads before querying events", async () => {
     const { app, service, authorizeOwner } = buildApp({ authorized: false });
 
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "other-account",
@@ -287,7 +307,8 @@ describe("explorers analytics routes", () => {
   it("passes only the authorized account and date range to the scoped read", async () => {
     const { app, service } = buildApp();
 
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
@@ -307,7 +328,8 @@ describe("explorers analytics routes", () => {
 
   it("rejects invalid read scopes before authorization", async () => {
     const { app, service, authorizeOwner } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({ accountId: "account-1", fromDate: "not-a-date", toDate: "also-bad", timeZone: "invalid" });
     expect(response.status).toBe(400);
@@ -328,7 +350,8 @@ describe("explorers analytics routes", () => {
     },
   ])("rejects reversed or oversized analytics windows", async (scope) => {
     const { app, authorizeOwner } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({ accountId: "account-1", ...scope });
     expect(response.status).toBe(400);
@@ -340,7 +363,8 @@ describe("explorers analytics routes", () => {
     ["2026-02-15", "2026-05-18"],
   ])("accepts 93 calendar days across DST in America/New_York", async (fromDate, toDate) => {
     const { app, service } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({ accountId: "account-1", fromDate, toDate, timeZone: "America/New_York" });
 
@@ -353,7 +377,8 @@ describe("explorers analytics routes", () => {
     ["2026-02-15", "2026-05-19"],
   ])("rejects 94 calendar days across DST in America/New_York", async (fromDate, toDate) => {
     const { app, service, authorizeOwner } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({ accountId: "account-1", fromDate, toDate, timeZone: "America/New_York" });
 
@@ -364,7 +389,8 @@ describe("explorers analytics routes", () => {
 
   it("rejects a civil date skipped by the accepted IANA timezone", async () => {
     const { app, service, authorizeOwner } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
@@ -382,7 +408,8 @@ describe("explorers analytics routes", () => {
     "accepts a valid calendar date adjacent to Pacific/Apia's skipped day: %s",
     async (date) => {
       const { app, service } = buildApp();
-      const response = await request(app)
+      const { request } = await loopback.open({ app });
+      const response = await request
         .get("/api/explorers/analytics/events")
         .query({
           accountId: "account-1",
@@ -398,7 +425,8 @@ describe("explorers analytics routes", () => {
 
   it("rejects a timezone alias that is not an IANA timezone", async () => {
     const { app, service, authorizeOwner } = buildApp();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
@@ -417,7 +445,8 @@ describe("explorers analytics routes", () => {
     authorizationFailure.authorizeOwner.mockRejectedValue(
       new Error("identity provider unavailable"),
     );
-    const authResponse = await request(authorizationFailure.app)
+    const { request: authorizationRequest } = await loopback.open({ app: authorizationFailure.app });
+    const authResponse = await authorizationRequest
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",
@@ -431,7 +460,8 @@ describe("explorers analytics routes", () => {
     readFailure.service.readAccountEvents.mockRejectedValue(
       new Error("Strapi unavailable"),
     );
-    const readResponse = await request(readFailure.app)
+    const { request: readRequest } = await loopback.open({ app: readFailure.app });
+    const readResponse = await readRequest
       .get("/api/explorers/analytics/events")
       .query({
         accountId: "account-1",

@@ -1,6 +1,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
+import { subscribeToOwnerMusic } from "../features/music/ownerMusicLiveClient";
+import { getMusicCredential, subscribeMusicCredential } from "../lib/musicCredentialStore";
 import {
   createMusicWorkspaceClient,
   type MusicDashboardResponse,
@@ -84,6 +86,11 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     musicIdentityCoordinator.getDiagnosticSnapshot,
     musicIdentityCoordinator.getDiagnosticSnapshot,
   );
+  const credential = useSyncExternalStore(
+    subscribeMusicCredential,
+    getMusicCredential,
+    () => undefined,
+  );
   const query = useQuery({
     queryKey: scope ? musicWorkspaceQueryKey(scope) : ["music-workspace", "no-user", "no-account"],
     queryFn: () => musicWorkspaceClient.load(),
@@ -96,6 +103,18 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
       musicIdentityCoordinator.reportFailure(query.error);
     }
   }, [query.error]);
+  useEffect(() => {
+    if (identityStatus !== "ready" || !scope || !credential?.token) return;
+    const subscription = subscribeToOwnerMusic({
+      token: credential.token,
+      initialRevision: query.data?.dashboard.queueRevision ?? 0,
+      onInvalidate: async () => {
+        const result = await query.refetch();
+        return { revision: result.data?.dashboard.queueRevision ?? 0 };
+      },
+    });
+    return () => subscription.unsubscribe();
+  }, [credential?.token, identityStatus, scope?.accountDocumentId, scope?.userDocumentId]);
   const visibleData = query.error && isTerminalWorkspaceFailure(query.error) ? undefined : query.data;
   const dashboard = visibleData?.dashboard ?? null;
   return {

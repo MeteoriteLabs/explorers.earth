@@ -71,6 +71,7 @@ export function parseFinalizedVitestEvidence(raw: string, nativeExit: number, ro
     "suite totals disagree",
   );
   demand(report.numPendingTestSuites === 0, "unfinished suites");
+  demand(report.numTotalTestSuites === report.testResults.length, "suite results disagree");
 
   const seen = new Set<string>();
   const assertions = counts();
@@ -110,7 +111,14 @@ export function parseFinalizedVitestEvidence(raw: string, nativeExit: number, ro
       && report.numTodoTests === assertions.todo,
     "assertion totals disagree",
   );
+  demand(assertions.skipped === 0, "skipped assertions are not final evidence");
   const failed = files.filter((file) => file.status === "failed").length;
+  const passedSuites = files.filter((file) => file.status === "passed").length;
+  demand(
+    report.numPassedTestSuites === passedSuites
+      && report.numFailedTestSuites === failed,
+    "suite status counts disagree",
+  );
   demand(
     report.success === (files.length > 0 && failed === 0 && report.numFailedTestSuites === 0 && assertions.failed === 0),
     "success contradicts report",

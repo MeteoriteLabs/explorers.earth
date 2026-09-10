@@ -88,17 +88,22 @@ describe("ProfileRecommendationsLayouts", () => {
     expect(link.querySelectorAll("img")).toHaveLength(3);
   });
 
-  it("caps Classic Shelves to twelve cards and uses real list links", () => {
+  it("renders every loaded Classic Shelves card and uses real list links", () => {
     renderLayouts("shelves");
     const places = screen
       .getByTestId("recommendations-shelves")
       .querySelector('[data-category-id="places"]');
     expect(places).not.toBeNull();
 
-    expect(within(places as HTMLElement).getAllByRole("link")).toHaveLength(13);
+    expect(within(places as HTMLElement).getAllByRole("link")).toHaveLength(15);
     expect(
       within(places as HTMLElement).getByRole("link", { name: "Place 0" }),
     ).toHaveAttribute("href", "/alice/places/place-0");
+    for (let index = 0; index < 14; index++) {
+      expect(
+        within(places as HTMLElement).getByRole("link", { name: `Place ${index}` }),
+      ).toHaveAttribute("href", `/alice/places/place-${index}`);
+    }
   });
 
   it("caps featured imagery at four and compact-row imagery at one", () => {

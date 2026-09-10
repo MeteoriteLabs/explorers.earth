@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statfsSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
@@ -30,12 +30,11 @@ import {
   type SecureMusicSecretAuthorityEvidence,
 } from "../server/config/secure-music-secret-file.ts";
 import {
-  attachMusicQualificationMeasurements,
+  finalizeMusicQualificationReport,
   preferredQualificationPort,
   qualificationTelemetryIsBounded,
   qualificationReportMatchesAuthority,
   qualificationTaskEnvironment,
-  qualificationTaskOutputFailure,
   qualificationTaskUsesFixtureEnvironment,
   qualificationTaskUsesStandalonePostgres,
   runMusicQualificationLane,
@@ -44,9 +43,12 @@ import {
   type MusicQualificationLoadMeasurement,
   type MusicQualificationMeasurements,
   type MusicQualificationOperationalMeasurement,
+  type MusicQualificationReport,
   type MusicQualificationTask,
   type MusicQualificationTaskEvidence,
+  type QualificationOutcome,
 } from "./music-qualification.ts";
+import { parseFinalizedVitestEvidence, parseUatVitestEvidenceFromOutput, requireExactFileManifest } from "./music-vitest-evidence.ts";
 import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
@@ -152,7 +154,7 @@ export function validateStrapiFixture(fixture: StrapiIdentityFixture, options: {
 type OutputFormat = "human" | "json";
 type Mode = "fixture" | "live";
 export interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; confirmReset?: string; target?: string; resume?: string; checkpoint?: string; reconciliationMode: "dry-run" | "apply"; approvalToken?: string; }
-interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; suppressEvidence?: boolean; }
+interface RunResult { status: "success" | "failure" | "blocked" | "not-run"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; suppressEvidence?: boolean; }
 export interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVersion: string; gateValues: Record<string, string>; environmentFingerprint: string; }
 
 const root = resolve(import.meta.dirname, "../..");
@@ -341,6 +343,40 @@ const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEY_SET = new Set<string>(
   C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS,
 );
 
+const DEFAULT_TEST_CHILD_KEYS = new Set([
+  "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "TMPDIR",
+  "HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "LANG", "LC_ALL", "TZ", "CI",
+  "NPM_EXECPATH", "NPM_NODE_EXECPATH", "NPM_CONFIG_CACHE",
+]);
+export function defaultMusicTestChildEnvironment(ambient: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const child: NodeJS.ProcessEnv = {}, seen = new Set<string>();
+  for (const [key, value] of Object.entries(ambient)) {
+    const normalized = key.toUpperCase();
+    if (!DEFAULT_TEST_CHILD_KEYS.has(normalized) || value === undefined) continue;
+    if (seen.has(normalized)) throw new Error("duplicate case-insensitive child environment key");
+    seen.add(normalized); child[key] = value;
+  }
+  return child;
+}
+
+export function buildQualificationChildEnvironment(input: {
+  authority: "default" | "real-tool" | "c10-postgres" | "uat-postgres";
+  ambient: NodeJS.ProcessEnv;
+  ownedDatabase?: Record<string, string>;
+}): NodeJS.ProcessEnv {
+  const child = defaultMusicTestChildEnvironment(input.ambient);
+  const emptyConfiguration = process.platform === "win32" ? "NUL" : "/dev/null";
+  child.NPM_CONFIG_USERCONFIG = emptyConfiguration;
+  child.NPM_CONFIG_GLOBALCONFIG = emptyConfiguration;
+  if (input.authority === "c10-postgres") {
+    if (!input.ownedDatabase) throw new Error("owned C10 database environment required");
+    Object.assign(child, input.ownedDatabase);
+  } else if (input.ownedDatabase) {
+    throw new Error("foreign database authority");
+  }
+  return child;
+}
+
 export function qualificationChildAmbientEnvironment(
   taskId: string,
   environment: NodeJS.ProcessEnv = process.env,
@@ -443,7 +479,12 @@ export function sanitizeMusicChildArtifactOutput(
 }
 function redactedError(value: unknown): string { return sanitize(value instanceof Error ? value.message : String(value)); }
 function runId(): string { return `${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomBytes(4).toString("hex")}`; }
-function runDirectory(id: string): string { const directory = join(artifactRoot, id); mkdirSync(directory, { recursive: true }); return directory; }
+function runDirectory(id: string): string {
+  const directory = join(artifactRoot, id);
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") chmodSync(directory, 0o700);
+  return directory;
+}
 function currentSensitiveValues(): string[] {
   return musicSensitiveEnvironmentValues(activeFixtureEnvironment);
 }
@@ -981,7 +1022,10 @@ function executable(command: "npm" | "docker" | "node"): { file: string; args: s
 
 async function runChild(id: string, command: "npm" | "docker" | "node", args: string[], phase: string, failureExitCode: number): Promise<{ stdout: string; stderr: string; artifact: string }> {
   const resolved = executable(command);
-  const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: { ...process.env, ...activeFixtureEnvironment } });
+  const result = await runner.run(resolved.file, [...resolved.args, ...args], {
+    cwd: root,
+    env: phase === "all-tests" ? defaultMusicTestChildEnvironment(process.env) : { ...process.env, ...activeFixtureEnvironment },
+  });
   let sensitiveValues = currentSensitiveValues();
   try { sensitiveValues = await qualificationSensitiveValues(activeFixtureEnvironment); } catch { /* bounded fallback */ }
   const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${sanitizeMusicCliText(args.join(" "), sensitiveValues)}\nexit=${result.exitCode}\nstdout:\n${sanitizeMusicChildArtifactOutput(command, phase, result.stdout, sensitiveValues)}\nstderr:\n${sanitizeStructuredOutput(result.stderr, sensitiveValues)}`);
@@ -996,6 +1040,9 @@ async function runQualificationTask(
   remainingBudgetMs: number,
 ): Promise<MusicQualificationExecutionResult> {
   const started = Date.now();
+  const commitBefore = readGitSha();
+  const cleanBefore = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8", windowsHide: true }).trim() === "";
+  const rootLockSha256 = createHash("sha256").update(readFileSync(join(root, "package-lock.json"))).digest("hex");
   const taskRunner = new OwnedProcessRunner();
   qualificationRunners.add(taskRunner);
   const resolved = task.nativeReleaseMode
@@ -1004,7 +1051,17 @@ async function runQualificationTask(
   const taskEnvironment = qualificationTaskEnvironment(task.id);
   let playwrightPort: number | undefined;
   let timedOut = remainingBudgetMs <= 0;
-  let result = { exitCode: 124, stdout: "", stderr: "qualification wall-clock budget exhausted" };
+  let childStarted = false;
+  let result: { exitCode: number; signal: NodeJS.Signals | null; stdout: string; stderr: string } = { exitCode: 124, signal: null, stdout: "", stderr: "qualification wall-clock budget exhausted" };
+  const rawEvidenceDirectory = task.testEvidenceSource
+    ? mkdtempSync(join(tmpdir(), "explorers-music-evidence-"))
+    : undefined;
+  if (rawEvidenceDirectory && process.platform !== "win32") chmodSync(rawEvidenceDirectory, 0o700);
+  const rawEvidencePath = rawEvidenceDirectory ? join(rawEvidenceDirectory, "result.json") : undefined;
+  let capturedVitestRaw: string | undefined;
+  if (rawEvidencePath && task.testEvidenceSource?.kind === "vitest-json") {
+    writeFileSync(rawEvidencePath, "", { flag: "wx", mode: 0o600 });
+  }
   let sensitiveValues = Object.entries(activeFixtureEnvironment)
     .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
     .map(([, value]) => value);
@@ -1015,12 +1072,12 @@ async function runQualificationTask(
       let databaseUrlTest = taskEnvironment.MUSIC_C3_POSTGRES_TEST === "1"
         ? await fixtureMigratorUrl(activeFixtureEnvironment)
         : undefined;
-      const childAmbientEnvironment = qualificationChildAmbientEnvironment(task.id, {
+      const legacyChildEnvironment = qualificationChildAmbientEnvironment(task.id, {
         ...process.env,
         ...activeStandalonePostgresEnvironment,
       });
       const standalonePostgres = databaseUrlTest && qualificationTaskUsesStandalonePostgres(task.id)
-        ? attestC10StandalonePostgresAuthority(childAmbientEnvironment, readGitSha())
+        ? attestC10StandalonePostgresAuthority(activeStandalonePostgresEnvironment, readGitSha())
         : undefined;
       if (databaseUrlTest && standalonePostgres) {
         const standaloneDatabase = new URL(databaseUrlTest);
@@ -1028,6 +1085,21 @@ async function runQualificationTask(
         standaloneDatabase.port = String(standalonePostgres.port);
         databaseUrlTest = standaloneDatabase.toString();
       }
+      const boundedAuthority = task.authority && task.authority !== "existing" ? task.authority : undefined;
+      const childEnvironment = boundedAuthority ? buildQualificationChildEnvironment({
+        authority: boundedAuthority,
+        ambient: process.env,
+        ...(boundedAuthority === "c10-postgres" ? { ownedDatabase: {
+          ...activeStandalonePostgresEnvironment,
+          ...taskEnvironment,
+          ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
+        } } : {}),
+      }) : {
+        ...legacyChildEnvironment,
+        ...(qualificationTaskUsesFixtureEnvironment(task.id) ? activeFixtureEnvironment : {}),
+        ...taskEnvironment,
+        ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
+      };
       if (task.npmArgs.includes("test:e2e") && !taskEnvironment.PLAYWRIGHT_EXTERNAL_BASE_URL) {
         const preferred = preferredQualificationPort(task.id);
         for (let offset = 0; offset <= 4_000; offset += 1) {
@@ -1040,15 +1112,13 @@ async function runQualificationTask(
         }
         if (!playwrightPort) throw new MusicCommandError("no isolated Playwright port is available", `qualification-${task.id}`, EXIT.prerequisite);
       }
-      const completion = taskRunner.run(resolved.file, [...resolved.args, ...task.npmArgs], {
+      const evidenceArgs = rawEvidencePath && task.testEvidenceSource?.kind === "vitest-json"
+        ? ["--reporter=default", "--reporter=json", `--outputFile.json=${rawEvidencePath}`]
+        : [];
+      childStarted = true;
+      const completion = taskRunner.run(resolved.file, [...resolved.args, ...task.npmArgs, ...evidenceArgs], {
         cwd: root,
-        env: {
-          ...childAmbientEnvironment,
-          ...(qualificationTaskUsesFixtureEnvironment(task.id) ? activeFixtureEnvironment : {}),
-          ...taskEnvironment,
-          ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
-          ...(playwrightPort ? { PLAYWRIGHT_PORT: String(playwrightPort) } : {}),
-        },
+        env: { ...childEnvironment, ...(playwrightPort ? { PLAYWRIGHT_PORT: String(playwrightPort) } : {}) },
       });
       if (attempt === 1 && process.env.MUSIC_C10_INTERRUPT_PROBE === "1" && !qualificationInterruptProbeScheduled) {
         qualificationInterruptProbeScheduled = true;
@@ -1061,21 +1131,63 @@ async function runQualificationTask(
         }, Math.max(1, remainingBudgetMs));
       });
       result = await Promise.race([completion, timeout]) ?? await completion;
-      const outputFailure = result.exitCode === 0
-        ? qualificationTaskOutputFailure(task.id, result.stdout, result.stderr)
-        : undefined;
-      if (outputFailure) result = { ...result, exitCode: 1, stderr: `${result.stderr}\n${outputFailure}`.trim() };
     } else if (qualificationInterruptionRequested) {
-      result = { exitCode: EXIT.interrupted, stdout: "", stderr: "qualification interrupted before child start" };
+      result = { exitCode: EXIT.interrupted, signal: null, stdout: "", stderr: "qualification interrupted before child start" };
     }
   } catch (error) {
-    result = { exitCode: 1, stdout: "", stderr: redactedError(error) };
+    result = { exitCode: 1, signal: null, stdout: "", stderr: redactedError(error) };
   } finally {
     if (timer) clearTimeout(timer);
     if (playwrightPort) qualificationPorts.delete(playwrightPort);
     qualificationRunners.delete(taskRunner);
+    try {
+      if (rawEvidencePath && task.testEvidenceSource?.kind === "vitest-json" && existsSync(rawEvidencePath)) {
+        capturedVitestRaw = readFileSync(rawEvidencePath, "utf8");
+      }
+    } finally {
+      if (rawEvidenceDirectory) rmSync(rawEvidenceDirectory, { recursive: true, force: true });
+    }
   }
   const durationMs = Date.now() - started;
+  const commitAfter = readGitSha();
+  const cleanAfter = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8", windowsHide: true }).trim() === "";
+  const outcome: QualificationOutcome = {
+    started: childStarted,
+    nativeExit: result.exitCode,
+    nativeSignal: result.signal,
+    timedOut,
+    interrupted: qualificationInterruptionRequested || result.signal !== null,
+    source: { commitBefore, commitAfter, cleanBefore, cleanAfter, rootLockSha256, sourceRoot: join(root, "tunes") },
+    cleanup: taskRunner.activeChildCount === 0 ? "verified" : "unknown",
+  };
+  if (task.testEvidenceSource) {
+    try {
+      if (task.testEvidenceSource.kind === "vitest-json") {
+        if (capturedVitestRaw === undefined) throw new Error("final Vitest JSON evidence is missing");
+        const raw = capturedVitestRaw;
+        if (sanitizeMusicCliText(raw, sensitiveValues) !== raw) throw new Error("raw Vitest evidence contains sensitive data");
+        const evidence = parseFinalizedVitestEvidence(raw, result.exitCode, join(root, "tunes"));
+        if (task.testEvidenceSource.expectedFiles) requireExactFileManifest(evidence, task.testEvidenceSource.expectedFiles);
+        const rawSha256 = createHash("sha256").update(raw, "utf8").digest("hex");
+        outcome.testEvidence = evidence;
+        const metadata = JSON.stringify({ rawSha256, testEvidence: evidence }, null, 2);
+        const metadataPath = writeAtomicArtifact(id, `qualification-${task.id}-attempt-${attempt}-evidence.json`, metadata);
+        outcome.json = { path: portableQualificationArtifact(metadataPath), sha256: createHash("sha256").update(sanitizeStructuredOutput(metadata, currentSensitiveValues()), "utf8").digest("hex") };
+      } else {
+        const envelope = parseUatVitestEvidenceFromOutput(result.stdout, { root: join(root, "tunes"), commit: commitBefore, nativeExit: result.exitCode, nativeSignal: result.signal });
+        const rawEnvelope = result.stdout.trim().split(/\r?\n/).at(-1)!;
+        if (sanitizeMusicCliText(rawEnvelope, sensitiveValues) !== rawEnvelope) throw new Error("raw UAT evidence contains sensitive data");
+        if (task.testEvidenceSource.expectedFiles) requireExactFileManifest(envelope.vitest, task.testEvidenceSource.expectedFiles);
+        outcome.testEvidence = envelope.vitest;
+        outcome.uatRunId = envelope.runId;
+        const metadata = JSON.stringify({ rawSha256: createHash("sha256").update(rawEnvelope, "utf8").digest("hex"), testEvidence: envelope.vitest, uatRunId: envelope.runId }, null, 2);
+        const metadataPath = writeAtomicArtifact(id, `qualification-${task.id}-attempt-${attempt}-evidence.json`, metadata);
+        outcome.json = { path: portableQualificationArtifact(metadataPath), sha256: createHash("sha256").update(sanitizeStructuredOutput(metadata, currentSensitiveValues()), "utf8").digest("hex") };
+      }
+    } catch (error) {
+      outcome.validationError = redactedError(error);
+    }
+  }
   const artifact = writeArtifact(id, `qualification-${task.id}-attempt-${attempt}.log`, [
     `$ npm ${task.npmArgs.join(" ")}`,
     `attempt=${attempt}`,
@@ -1085,7 +1197,23 @@ async function runQualificationTask(
     `stdout:\n${sanitizeStructuredOutput(result.stdout, sensitiveValues)}`,
     `stderr:\n${sanitizeStructuredOutput(result.stderr, sensitiveValues)}`,
   ].join("\n"));
-  return { ...result, durationMs, artifact: portableQualificationArtifact(artifact), timedOut };
+  return { ...result, durationMs, artifact: portableQualificationArtifact(artifact), timedOut, outcome };
+}
+function writeAtomicArtifact(id: string, name: string, content: string): string {
+  const target = join(runDirectory(id), name);
+  writeOwnerOnlyAtomicFile(target, sanitizeStructuredOutput(content, currentSensitiveValues()));
+  return target;
+}
+export function writeOwnerOnlyAtomicFile(target: string, content: string): void {
+  mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") chmodSync(dirname(target), 0o700);
+  const temporary = `${target}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+  writeFileSync(temporary, content, { flag: "wx", mode: 0o600 });
+  try {
+    renameSync(temporary, target);
+    if (process.platform !== "win32") chmodSync(target, 0o600);
+  }
+  catch (error) { if (existsSync(temporary)) unlinkSync(temporary); throw error; }
 }
 
 async function qualificationSensitiveValues(environment: Record<string, string>): Promise<string[]> {
@@ -1513,7 +1641,6 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
         authority: { commit: context.commit, environmentFingerprint: context.environmentFingerprint },
         measurements: collectQualificationMeasurements([], context),
         execute: async (task, execution) => await runQualificationTask(id, task, execution.attempt, execution.remainingBudgetMs),
-        writeReport: async (value) => portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))),
       });
     const report = lane === "fast" ? await runLane() : await withQualificationPostgresAuthority({
       existing: attestC10StandalonePostgresAuthority(process.env, context.commit),
@@ -1538,8 +1665,8 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
         finally { activeStandalonePostgresEnvironment = {}; }
       },
     });
-    attachMusicQualificationMeasurements(report, collectQualificationMeasurements(report.tasks, context));
-    report.evidenceArtifact = portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(report, null, 2)));
+    await finalizeMusicQualificationReport(report, collectQualificationMeasurements(report.tasks, context), async (value) =>
+      portableQualificationArtifact(writeAtomicArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))));
     return {
       status: report.status,
       phase: `qualification-${lane}`,

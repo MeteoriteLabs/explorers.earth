@@ -10,12 +10,23 @@ export type PublicAccountIdentity = {
   usernameKey: string;
   status: "loading" | "ready" | "terminal-error";
   account?: Record<string, any>;
+  error?: unknown;
 };
 const AvailabilityContext = createContext<Availability | null>(null);
 const AccountIdentityContext = createContext<PublicAccountIdentity | null>(null);
 const unavailableOutsideProfileShell: Availability = { state: "unavailable", retry: () => undefined };
 export const PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS = 30_000;
+const PUBLIC_MUSIC_RECOVERY_BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const;
 const PUBLICATION_VERIFIED = "explorers-music-publication-verified/v1";
+
+async function discoverPublicMusicWithSingleTransientRetry(accountId: string, signal: AbortSignal): Promise<PublicMusicDescriptor> {
+  try {
+    return await publicMusicClient.discover(accountId, signal);
+  } catch (reason) {
+    if (signal.aborted || !(reason instanceof PublicMusicError) || reason.code !== "PUBLIC_UNAVAILABLE") throw reason;
+    return publicMusicClient.discover(accountId, signal);
+  }
+}
 
 /** Invalidation only, never publication authority or a share capability. */
 export function notifyMusicPublicationVerified(accountDocumentId: string) {
@@ -81,6 +92,8 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
   resolvedRef.current = resolved;
   const generation = useRef(0);
   const revocationTimer = useRef<number>();
+  const recoveryTimer = useRef<number>();
+  const recoveryAttempt = useRef(0);
   const { data, loading, error, refetch } = usePublicProfileShell(usernameKey);
   const account = data as Record<string, any> | undefined;
   const accountMatches = typeof account?.username === "string"
@@ -89,13 +102,16 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
     usernameKey,
     status: accountMatches ? "ready" : loading ? "loading" : "terminal-error",
     ...(accountMatches ? { account } : {}),
-  }), [account, accountMatches, loading, usernameKey]);
+    ...(!accountMatches && !loading && error ? { error } : {}),
+  }), [account, accountMatches, error, loading, usernameKey]);
   const accountId = typeof account?.documentId === "string" ? account.documentId : undefined;
 
   const invalidate = useCallback(() => {
     generation.current += 1;
     if (revocationTimer.current !== undefined) window.clearTimeout(revocationTimer.current);
     revocationTimer.current = undefined;
+    if (recoveryTimer.current !== undefined) window.clearTimeout(recoveryTimer.current);
+    recoveryTimer.current = undefined;
     setAttempt((value) => value + 1);
   }, []);
 
@@ -113,7 +129,10 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
     if (error || !accountId) { commit({ accountId, state: "unavailable" }); return () => controller.abort(); }
     if (account?.public_music !== "Yes") { commit({ accountId, state: "not-public" }); return () => controller.abort(); }
     commit({ accountId, state: staleDescriptor ? "revalidating" : "loading", descriptor: staleDescriptor });
-    publicMusicClient.discover(accountId, controller.signal).then((descriptor) => commit({ accountId, state: "available", descriptor })).catch((reason: unknown) => {
+    discoverPublicMusicWithSingleTransientRetry(accountId, controller.signal).then((descriptor) => {
+      recoveryAttempt.current = 0;
+      commit({ accountId, state: "available", descriptor });
+    }).catch((reason: unknown) => {
       const code = reason instanceof PublicMusicError ? reason.code : undefined;
       if (code === "PUBLIC_NOT_FOUND" && staleDescriptor && !controller.signal.aborted && generation.current === requestGeneration) {
         setResolved({ accountId, state: "revoked", descriptor: staleDescriptor });
@@ -121,10 +140,26 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
           if (generation.current === requestGeneration) setResolved({ accountId, state: "not-public" });
           revocationTimer.current = undefined;
         }, 0);
+      } else if (staleDescriptor && code !== "PUBLIC_NOT_FOUND" && !controller.signal.aborted && generation.current === requestGeneration) {
+        commit({ accountId, state: "revalidating", descriptor: staleDescriptor });
+        const backoff = PUBLIC_MUSIC_RECOVERY_BACKOFF_MS[Math.min(recoveryAttempt.current, PUBLIC_MUSIC_RECOVERY_BACKOFF_MS.length - 1)];
+        const retryAfter = reason instanceof PublicMusicError && code === "RATE_LIMITED"
+          ? Math.min(300_000, Math.max(0, (reason.retryAfterSeconds ?? 60) * 1_000)) : 0;
+        recoveryAttempt.current = Math.min(recoveryAttempt.current + 1, PUBLIC_MUSIC_RECOVERY_BACKOFF_MS.length - 1);
+        recoveryTimer.current = window.setTimeout(() => {
+          recoveryTimer.current = undefined;
+          invalidate();
+        }, Math.max(backoff, retryAfter));
       } else commit({ accountId, state: code === "PUBLIC_NOT_FOUND" ? "not-public" : "unavailable",
         ...(reason instanceof PublicMusicError && code === "RATE_LIMITED" ? { retryAfterSeconds: reason.retryAfterSeconds ?? 60 } : {}) });
     });
-    return () => { controller.abort(); if (revocationTimer.current !== undefined) window.clearTimeout(revocationTimer.current); revocationTimer.current = undefined; };
+    return () => {
+      controller.abort();
+      if (revocationTimer.current !== undefined) window.clearTimeout(revocationTimer.current);
+      if (recoveryTimer.current !== undefined) window.clearTimeout(recoveryTimer.current);
+      revocationTimer.current = undefined;
+      recoveryTimer.current = undefined;
+    };
   }, [accountId, account?.public_music, attempt, error, loading]);
 
   useEffect(() => {

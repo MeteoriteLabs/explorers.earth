@@ -13,11 +13,17 @@ import {
   type BigIntStats,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, win32 } from "node:path";
+import {
+  acquireMusicCliContractAuthority,
+  createDeterministicMusicCliContractComposeModel,
+  type MusicCliContractAuthority,
+} from "../../../../scripts/music-cli-contract-authority.ts";
 
 export interface IsolatedMusicCliContractRepository {
   isolationRoot: string;
   repositoryRoot: string;
   tunesRoot: string;
+  cliAuthority: MusicCliContractAuthority;
 }
 
 interface TrackedRepositoryEntry {
@@ -162,7 +168,16 @@ export async function withIsolatedMusicCliContractRepository<T>(
     const gitDirectory = join(repositoryRoot, ".git");
     mkdirSync(gitDirectory, { mode: 0o700 });
     writeFileSync(join(gitDirectory, "HEAD"), `${commit}\n`, { mode: 0o600 });
-    return await run({ isolationRoot, repositoryRoot, tunesRoot });
+    const lease = acquireMusicCliContractAuthority({
+      mode: "borrow-or-create",
+      environment: process.env,
+      composeModel: createDeterministicMusicCliContractComposeModel(repositoryRoot),
+    });
+    try {
+      return await run({ isolationRoot, repositoryRoot, tunesRoot, cliAuthority: lease.authority });
+    } finally {
+      lease.dispose();
+    }
   } finally {
     if (existsSync(isolationRoot)) {
       const observed = lstatSync(isolationRoot, { bigint: true });

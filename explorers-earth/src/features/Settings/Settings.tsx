@@ -1,5 +1,11 @@
-import { memo, useState, useEffect, useMemo, type KeyboardEvent } from "react";
+import { MusicPublishSwitch } from "../music/components/MusicPublishSwitch";
+import { useMusicPublish } from "../music/MusicPublishProvider";
+import { NavigationStatus } from "../navigation/NavigationStatus";
+import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
+import { CATEGORY_IDS, type CategoryId } from "../navigation/categoryNavigationPolicy";
+import { memo, useState, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import BillingTab from "./components/BillingTab";
+import { UnpublishCategoryDialog } from "./components/UnpublishCategoryDialog";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
@@ -10,8 +16,6 @@ import {
   deleteExplorerUserMutation,
   addReasonForLeavingMutation,
   updateBlockedStatusMutation,
-  updateTabVisibilityMutation,
-  CHECK_PUBLISHED_LISTS,
   getUserAccountQuery,
 } from "./api/mutation";
 import useAuthStore from "../../store/store";
@@ -29,12 +33,15 @@ import ProfileAccountSettings from "./components/ProfileAccountSettings";
 import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
 import {
   AccountLifecycleError,
-  createAccountLifecycleService,
   type AccountLifecycleStatus,
 } from "../../services/accountLifecycleService";
+import { createLazyAccountLifecycleService } from "../../services/lazyAccountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 import { closeLocalMusicSession } from "../music/musicSessionBoundary";
 import { createDeletionCancellationCoordinator, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
+import { useAccountLifecycleIdentity } from "../../services/useAccountLifecycleIdentity";
+import { computePinnedNavTabIds } from "../../utils/navPinning";
+import { useOwnerMusicAvailability } from "../music/PublicMusicAvailabilityProvider";
 
 
 const providerQuery = gql`
@@ -57,6 +64,7 @@ const settingsAccountQuery = gql`
         Addresss
         public_profile
         public_recommendations
+        public_music
         public_movie
         public_guides
         public_books
@@ -72,6 +80,15 @@ const settingsAccountQuery = gql`
 `;
 
 const Settings = memo(() => {
+  const identity = useAccountLifecycleIdentity();
+  // Identity changes discard modal credentials and all old action authority in
+  // the same render. A same-user profile refresh retains the current workflow.
+  return <IdentitySettings key={identity.key} lifecycleIdentity={identity} />;
+});
+
+const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType<typeof useAccountLifecycleIdentity> }) => {
+  const categoryNavigation = useCategoryNavigation();
+  const musicPublishing = useMusicPublish(categoryNavigation.authority, { ready: true });
   // Tab state
   const [activeTab, setActiveTab] = useState<'account' | 'billing'>('account');
   const settingsTabs = ['account', 'billing'] as const;
@@ -131,6 +148,8 @@ const Settings = memo(() => {
     useState<boolean>(false);
   const [deletionLifecycle, setDeletionLifecycle] = useState<AccountLifecycleStatus["operation"] | null>(null);
   const [deletionAuthorityResolved, setDeletionAuthorityResolved] = useState(false);
+  const lifecycleActionRunning = useRef(false);
+  const lifecycleStatusSequence = useRef(0);
   // Password visibility states for delete account modal
   const [deletePasswordVisible, setDeletePasswordVisible] = useState<boolean>(false);
   const [deletePasswordConfirmVisible, setDeletePasswordConfirmVisible] = useState<boolean>(false);
@@ -140,14 +159,16 @@ const Settings = memo(() => {
     setIsRedirectingAfterPasswordChange,
   ] = useState<boolean>(false);
   const [addReasonForLeaving] = useMutation(addReasonForLeavingMutation);
-  const [updateTabVisibility] = useMutation(updateTabVisibilityMutation);
-  // Optimistic UI state for tab visibility toggles
-  const [tabVisibilityOverrides, setTabVisibilityOverrides] = useState<Record<string, any>>({});
-  const [tabVisibilityLoading, setTabVisibilityLoading] = useState<Record<string, boolean>>({});
   const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [unpublishTarget, setUnpublishTarget] = useState<{ category: Exclude<CategoryId, "public_music">; label: string } | null>(null);
+  const navigationSaving = categoryNavigation.busy || !categoryNavigation.authority;
+  const isCategoryPending = (category: CategoryId) => (categoryNavigation.pending ?? []).some(
+    (operation) => operation.kind === "category" && operation.category === category,
+  );
+  const navigationHeading = useRef<HTMLHeadingElement>(null);
 
   const { data } = useQuery(providerQuery, {
     variables: {
@@ -157,7 +178,7 @@ const Settings = memo(() => {
   });
 
   // Query for current user's account data for tab visibility settings
-  const { data: currentUserAccountData, refetch: refetchAccountData, loading: settingsLoading } = useQuery(settingsAccountQuery, {
+  const { data: currentUserAccountData, loading: settingsLoading } = useQuery(settingsAccountQuery, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
@@ -165,23 +186,12 @@ const Settings = memo(() => {
   const currentAccountCandidates = currentUserAccountData?.usersPermissionsUser?.accounts;
   const selectedSettingsAccount = selectCompletedAccount(currentAccountCandidates);
   const currentAccount = currentAccountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedSettingsAccount?.documentId);
-  const accountDocumentId = currentAccount?.documentId;
-
-  const {
-    data: publishedListsData,
-    loading: publishedListsLoading,
-    error: publishedListsError,
-  } = useQuery(CHECK_PUBLISHED_LISTS, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "network-only",
-  });
-
+  const navigationAccountDocumentId = categoryNavigation.snapshot?.scope.accountDocumentId;
   const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
     variables: {
-      accountDocumentId,
+      accountDocumentId: navigationAccountDocumentId,
     },
-    skip: !accountDocumentId,
+    skip: !navigationAccountDocumentId,
   });
 
   useEffect(() => {
@@ -194,26 +204,58 @@ const Settings = memo(() => {
   const [deleteExplorerAccount] = useMutation(deleteExplorerAccountMutation);
   const [deleteExplorerUser] = useMutation(deleteExplorerUserMutation);
   const { t, i18n } = useTranslation();
-  const accountLifecycle = useMemo(() => createAccountLifecycleService({
+  const navText = (key: string, fallback: string) => {
+    const fullKey = `settings.publicNavigation.${key}`;
+    const value = t(fullKey, { defaultValue: fallback });
+    return value === fullKey ? fallback : value;
+  };
+  const musicPinHints: Record<typeof musicPublishing.state.kind, string | null> = {
+    loading: t('music.publication.checking', { defaultValue: 'Checking Music publication…' }),
+    published: null,
+    draft: t('music.publication.private', { defaultValue: 'Music is private.' }),
+    saving: t('music.publication.saving', { defaultValue: 'Saving and verifying Music publication…' }),
+    'needs-attention': t('music.publication.attention', { defaultValue: 'Music sharing needs attention. Review or make it private.' }),
+    unknown: musicPublishing.state.errorCode === 'scope-changed'
+      ? t('music.publication.notReady', { defaultValue: 'Music is not ready for this account. Other settings remain available.' })
+      : t('music.publication.unknown', { defaultValue: 'Music publication was not confirmed. Refresh or retry the previous action.' }),
+    conflict: t('music.publication.conflict', { defaultValue: 'Music changed or the previous action expired. Confirm a new action after reviewing the current state.' }),
+  };
+  useEffect(() => {
+    const openNavigation = () => {
+      if (window.location.hash !== "#public-navigation" || settingsLoading) return;
+      setActiveTab("account"); setSearchQuery(""); setPinnedNavTabsSectionOpen(true);
+    };
+    openNavigation(); window.addEventListener("hashchange", openNavigation);
+    return () => window.removeEventListener("hashchange", openNavigation);
+  }, [settingsLoading]);
+  useEffect(() => {
+    if (window.location.hash !== "#public-navigation" || settingsLoading || activeTab !== "account" || !pinnedNavTabsSectionOpen) return;
+    navigationHeading.current?.scrollIntoView?.({ block: "start" });
+    navigationHeading.current?.focus({ preventScroll: true });
+  }, [settingsLoading, activeTab, pinnedNavTabsSectionOpen]);
+  const accountLifecycle = useMemo(() => createLazyAccountLifecycleService({
     baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
-    getBearer: () => useAuthStore.getState().token ?? undefined,
-  }), []);
+    getBearer: lifecycleIdentity.getBearer,
+  }), [lifecycleIdentity]);
   const deletionCancellation = useMemo(() => createDeletionCancellationCoordinator({
     cancelDeletion: accountLifecycle.cancel,
     resumeMusic: accountLifecycle.resume,
   }), [accountLifecycle]);
 
   useEffect(() => {
-    if (!user) {
+    if (!lifecycleIdentity.isCurrent()) {
       setDeletionAuthorityResolved(false);
       return;
     }
     let active = true;
     const refresh = async () => {
+      if (!lifecycleIdentity.isCurrent() || lifecycleActionRunning.current) return;
+      const sequence = ++lifecycleStatusSequence.current;
+      const isCurrent = () => active && lifecycleIdentity.isCurrent() && sequence === lifecycleStatusSequence.current;
       setDeletionAuthorityResolved(false);
       try {
         const result = await accountLifecycle.status();
-        if (!active) return;
+        if (!isCurrent()) return;
         setDeletionLifecycle(result.operation);
         setDeletionAuthorityResolved(true);
         if (result.operation.status === "pending_deletion" || result.operation.status === "tombstoned") {
@@ -221,7 +263,7 @@ const Settings = memo(() => {
           setDeleteStep(4);
         }
       } catch (error) {
-        if (!active) return;
+        if (!isCurrent()) return;
         if (error instanceof AccountLifecycleError && error.code === "LIFECYCLE_NOT_FOUND") {
           setDeletionLifecycle(null);
           setDeletionAuthorityResolved(true);
@@ -237,12 +279,25 @@ const Settings = memo(() => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", refresh);
     };
-  }, [accountLifecycle, user]);
+  }, [accountLifecycle, lifecycleIdentity]);
 
   const deletionIsTerminal = deletionLifecycle?.deadLetter === true
     || deletionLifecycle?.phase === "finalized"
     || deletionLifecycle?.status === "tombstoned";
   const deletionActionsBlocked = !deletionAuthorityResolved || deletionIsTerminal;
+
+  const beginLifecycleAction = () => {
+    if (!lifecycleIdentity.isCurrent() || lifecycleActionRunning.current) return false;
+    lifecycleActionRunning.current = true;
+    ++lifecycleStatusSequence.current;
+    setDeleteAccountLoading(true);
+    return true;
+  };
+  const finishLifecycleAction = () => {
+    if (!lifecycleIdentity.isCurrent()) return;
+    lifecycleActionRunning.current = false;
+    setDeleteAccountLoading(false);
+  };
 
   // Helper to get the current language and handle settings search matching
   const currentLanguage = LANGUAGES.find((lang) => lang.code === i18n.language) || LANGUAGES[0];
@@ -252,24 +307,9 @@ const Settings = memo(() => {
     return text.toLowerCase().includes(searchQuery.toLowerCase());
   };
 
-  // Helper to get the effective toggle value (optimistic override > server data)
-  const getTabVisibility = (tabType: string): boolean => {
-    if (tabType === 'public_profile') return true;
-    if (tabType in tabVisibilityOverrides) {
-      return tabVisibilityOverrides[tabType] as boolean;
-    }
-    return currentAccount?.[tabType] === "Yes";
-  };
+  const getTabVisibility = (tabType: string): boolean => tabType === "public_profile" || categoryNavigation.snapshot?.visibility[tabType as CategoryId] === "Yes";
 
-  const getAutoPinningEnabled = (): boolean => {
-    if ('auto_pinning' in tabVisibilityOverrides) {
-      return tabVisibilityOverrides['auto_pinning'] as boolean;
-    }
-    const val = currentAccount?.auto_pinning;
-    return val === null || val === undefined ? true : val;
-  };
-
-  const isAutoPinningEnabled = getAutoPinningEnabled();
+  const isAutoPinningEnabled = categoryNavigation.snapshot?.autoPinning ?? true;
 
   // Map each tab ID to its published list count
   const categoryListCountMap: Record<string, number> = useMemo(() => ({
@@ -284,42 +324,19 @@ const Settings = memo(() => {
     public_profile:         0,
   }), [listCountsData]);
 
-  // Get list of currently published categories (visibility is ON)
-  const publishedTabs = useMemo(() => {
-    const keys = [
-      'public_profile',
-      'public_recommendations',
-      'public_guides',
-      'public_movie',
-      'public_books',
-      'public_games',
-      'public_apps',
-      'public_products',
-      'public_people'
-    ];
-    return keys.filter(key => getTabVisibility(key));
-  }, [currentUserAccountData, tabVisibilityOverrides]);
-
-  // Compute which tabs are auto-pinned based on published categories and list counts
-  const autoPinnedTabs = useMemo(() => {
-    const profileTab = publishedTabs.includes('public_profile') ? ['public_profile'] : [];
-    const otherTabs = publishedTabs
-      .filter(key => key !== 'public_profile')
-      .sort((a, b) => (categoryListCountMap[b] ?? 0) - (categoryListCountMap[a] ?? 0));
-    return [...profileTab, ...otherTabs].slice(0, 5);
-  }, [publishedTabs, categoryListCountMap]);
+  const effectiveAccount = {
+    ...categoryNavigation.snapshot?.visibility,
+    auto_pinning: categoryNavigation.snapshot?.autoPinning,
+    pinned_nav_tabs: categoryNavigation.snapshot?.savedPins,
+  };
+  const musicAvailability = useOwnerMusicAvailability(navigationAccountDocumentId, effectiveAccount.public_music);
+  const musicAvailable = musicAvailability.state === "available" || musicAvailability.state === "revalidating";
+  const autoPinnedTabs = computePinnedNavTabIds({ ...effectiveAccount, auto_pinning: true }, categoryListCountMap,
+    { musicAvailable });
 
   const getPinnedNavTabs = (): string[] => {
-    let pinned: string[] = [];
-    if ('pinned_nav_tabs' in tabVisibilityOverrides) {
-      pinned = tabVisibilityOverrides['pinned_nav_tabs'] || [];
-    } else {
-      pinned = currentAccount?.pinned_nav_tabs || [];
-    }
-    if (!pinned.includes('public_profile')) {
-      return ['public_profile', ...pinned];
-    }
-    return pinned;
+    const saved = categoryNavigation.snapshot?.savedPins;
+    return Array.isArray(saved) && saved.length > 0 ? saved.filter((id): id is string => typeof id === "string") : ["public_profile"];
   };
 
   const isTabPinned = (tabType: string): boolean => {
@@ -330,202 +347,59 @@ const Settings = memo(() => {
     return getPinnedNavTabs().includes(tabType);
   };
 
-  const handleAutoPinningToggle = async (enabled: boolean) => {
-    if (!currentAccount?.documentId) {
-      toast.error("Account not found");
-      return;
-    }
-
-    setTabVisibilityOverrides(prev => ({ ...prev, auto_pinning: enabled }));
-    setTabVisibilityLoading(prev => ({ ...prev, auto_pinning: true }));
-
-    try {
-      await updateTabVisibility({
-        variables: {
-          documentId: currentAccount.documentId,
-          data: {
-            auto_pinning: enabled
-          }
-        }
-      });
-      toast.success("Navigation pinning mode updated successfully");
-      await refetchAccountData();
-    } catch (error) {
-      console.error("Error updating auto pinning:", error);
-      toast.error("Failed to update navigation pinning mode");
-    } finally {
-      setTabVisibilityOverrides(prev => {
-        const next = { ...prev };
-        delete next['auto_pinning'];
-        return next;
-      });
-      setTabVisibilityLoading(prev => ({ ...prev, auto_pinning: false }));
-    }
+  const handleAutoPinningToggle = (enabled: boolean) => {
+    const origin = categoryNavigation.authority;
+    if (origin && !navigationSaving) void categoryNavigation.setAutoPinning(enabled, origin);
   };
 
-  const handleNavPinUpdate = async (tabType: string, isPinned: boolean) => {
-    if (!currentAccount?.documentId) {
-      toast.error("Account not found");
-      return;
-    }
-
-    let currentPinned = getPinnedNavTabs();
-
-    if (isPinned) {
-      if (currentPinned.length >= 5) {
-        toast.error("You can only select up to 5 tabs for the navigation menu");
-        return;
-      }
-      currentPinned = [...currentPinned, tabType];
-    } else {
-      currentPinned = currentPinned.filter(t => t !== tabType);
-    }
-
-    setTabVisibilityOverrides(prev => ({ ...prev, pinned_nav_tabs: currentPinned }));
-    setTabVisibilityLoading(prev => ({ ...prev, [`pin_${tabType}`]: true }));
-
-    try {
-      await updateTabVisibility({
-        variables: {
-          documentId: currentAccount.documentId,
-          data: {
-            pinned_nav_tabs: currentPinned
-          }
-        }
-      });
-      toast.success("Navigation tabs updated successfully");
-      await refetchAccountData();
-    } catch (error) {
-      console.error("Error updating pinned tabs:", error);
-      toast.error("Failed to update navigation menu settings");
-    } finally {
-      setTabVisibilityOverrides(prev => {
-        const next = { ...prev };
-        delete next['pinned_nav_tabs'];
-        return next;
-      });
-      setTabVisibilityLoading(prev => ({ ...prev, [`pin_${tabType}`]: false }));
-    }
+  const handleNavPinUpdate = (tabType: string, isPinned: boolean) => {
+    const origin = categoryNavigation.authority;
+    if (!origin || navigationSaving || isAutoPinningEnabled || !CATEGORY_IDS.includes(tabType as CategoryId)) return;
+    void categoryNavigation.request({ category: tabType as CategoryId, action: isPinned ? "pin" : "unpin" }, origin);
   };
 
-  // Function to update tab visibility with optimistic UI
-  const handleTabVisibilityUpdate = async (tabType: string, isVisible: boolean) => {
-    if (!currentAccount?.documentId) {
-      toast.error("Account not found");
+  const saveTabVisibility = async (tabType: Exclude<CategoryId, "public_music">, isVisible: boolean, wasPinned = false) => {
+    const origin = categoryNavigation.authority;
+    if (!origin || isCategoryPending(tabType)) return undefined;
+    const outcome = await categoryNavigation.request({ category: tabType, action: isVisible ? "publish" : "unpublish" }, origin);
+    if (outcome.kind === "confirmed") {
+      if (!isVisible) {
+        toast.success(wasPinned ? "Category unpublished and removed from navigation." : "Category unpublished.");
+      } else if (!isAutoPinningEnabled && !isTabPinned(tabType) && getPinnedNavTabs().length < 5) {
+        toast.success("Category is public.", {
+          action: {
+            label: "Add to navigation",
+            onClick: () => {
+              const currentAuthority = categoryNavigation.authority;
+              if (currentAuthority) void categoryNavigation.request({ category: tabType, action: "pin" }, currentAuthority);
+            },
+          },
+        });
+      } else {
+        toast.success("Category is public.");
+      }
+    } else if (outcome.kind === "uncertain" || outcome.kind === "conflict") {
+      toast.error("Could not verify this change.", {
+        duration: Infinity,
+        action: { label: "Retry", onClick: () => { void saveTabVisibility(tabType, isVisible); } },
+      });
+    } else if (outcome.kind === "cleanup-pending") {
+      toast.error("Visibility changed, but navigation needs repair.", {
+        duration: Infinity,
+        action: { label: "Refresh settings", onClick: () => { void categoryNavigation.refresh(); } },
+      });
+    }
+    return outcome;
+  };
+
+  const handleTabVisibilityUpdate = (tabType: string, label: string, isVisible: boolean) => {
+    if (tabType === "public_music" || !CATEGORY_IDS.includes(tabType as CategoryId)) return;
+    const category = tabType as Exclude<CategoryId, "public_music">;
+    if (!isVisible && isTabPinned(category)) {
+      setUnpublishTarget({ category, label });
       return;
     }
-
-    if (isVisible) {
-      // Guard: do not validate while the query is still loading or has errored.
-      // Without this, publishedListsData is undefined and every check evaluates
-      // to 0 > 0 = false, incorrectly blocking users who do have published lists.
-      if (publishedListsLoading) {
-        toast.info("Checking your published lists, please wait…");
-        return;
-      }
-      if (publishedListsError) {
-        toast.error("Could not verify your published lists. Please try again.");
-        return;
-      }
-
-      let hasPublished = false;
-      let errorMsg = "";
-
-      switch (tabType) {
-        case "public_books":
-          hasPublished = (publishedListsData?.bookLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published book list to make Books public.";
-          break;
-        case "public_games":
-          hasPublished = (publishedListsData?.gameLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published game list to make Games public.";
-          break;
-        case "public_apps":
-          hasPublished = (publishedListsData?.appLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published app list to make Apps & Tools public.";
-          break;
-        case "public_products":
-          hasPublished = (publishedListsData?.productLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published product list to make Products public.";
-          break;
-        case "public_movie":
-          hasPublished = (publishedListsData?.movieLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published movie list to make Movies public.";
-          break;
-        case "public_people":
-          hasPublished = (publishedListsData?.personLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published people list to make People public.";
-          break;
-        case "public_guides":
-          hasPublished = (publishedListsData?.guides?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published guide to make Guides public.";
-          break;
-        case "public_recommendations":
-          hasPublished = (publishedListsData?.recommendationLists?.length ?? 0) > 0;
-          errorMsg = "You must have at least one published place list to make Recommendations public.";
-          break;
-        default:
-          hasPublished = true;
-          break;
-      }
-
-      if (!hasPublished) {
-        toast.error(errorMsg);
-        return;
-      }
-    }
-
-    // Automatically unpin the tab if it is being hidden
-    let newPinnedTabs = getPinnedNavTabs();
-    let unpinned = false;
-    if (!isVisible && newPinnedTabs.includes(tabType)) {
-      newPinnedTabs = newPinnedTabs.filter(t => t !== tabType);
-      unpinned = true;
-    }
-
-    // Optimistic: toggle immediately + show loading
-    setTabVisibilityOverrides(prev => ({ 
-      ...prev, 
-      [tabType]: isVisible,
-      ...(unpinned ? { pinned_nav_tabs: newPinnedTabs } : {}) 
-    }));
-    setTabVisibilityLoading(prev => ({ ...prev, [tabType]: true }));
-
-    try {
-      const updateData: any = { [tabType]: isVisible ? "Yes" : "No" };
-      if (unpinned) {
-        updateData.pinned_nav_tabs = newPinnedTabs;
-      }
-
-      await updateTabVisibility({
-        variables: {
-          documentId: currentAccount.documentId,
-          data: updateData
-        }
-      });
-
-      toast.success(`Tab visibility updated successfully`);
-      await refetchAccountData(); // Refresh the data
-      // Clear override since server data is now up-to-date
-      setTabVisibilityOverrides(prev => {
-        const next = { ...prev };
-        delete next[tabType];
-        if (unpinned) delete next['pinned_nav_tabs'];
-        return next;
-      });
-    } catch (error) {
-      console.error("Error updating tab visibility:", error);
-      toast.error("Failed to update tab visibility");
-      // Revert optimistic update on failure
-      setTabVisibilityOverrides(prev => {
-        const next = { ...prev };
-        delete next[tabType];
-        if (unpinned) delete next['pinned_nav_tabs'];
-        return next;
-      });
-    } finally {
-      setTabVisibilityLoading(prev => ({ ...prev, [tabType]: false }));
-    }
+    void saveTabVisibility(category, isVisible);
   };
 
   // function to update password
@@ -601,7 +475,7 @@ const Settings = memo(() => {
 
   // deactive user account
   const handleConfirmDeactivateAccount = async () => {
-
+    if (!lifecycleIdentity.isCurrent() || lifecycleActionRunning.current) return;
 
     const isGoogleUser = data?.usersPermissionsUser?.provider === "google";
 
@@ -616,6 +490,7 @@ const Settings = memo(() => {
       return;
     }
 
+    if (!beginLifecycleAction()) return;
     try {
       // Only validate password by login for manual auth users
       if (!isGoogleUser) {
@@ -630,6 +505,7 @@ const Settings = memo(() => {
           },
         });
 
+        lifecycleIdentity.assertCurrent();
         if (!response.data) {
           return;
         }
@@ -638,12 +514,14 @@ const Settings = memo(() => {
       // Proceed with account deactivation/activation
       try {
         const updateExplorerBlocked = async () => {
+          lifecycleIdentity.assertCurrent();
           const response = await updateBlockedStatus({
             variables: {
               updateUsersPermissionsUserId: user?.id,
               data: { blocked: !userBlocked },
             },
           });
+          lifecycleIdentity.assertCurrent();
           return response.data?.updateUsersPermissionsUser?.data?.blocked === !userBlocked;
         };
         if (userBlocked) {
@@ -655,6 +533,7 @@ const Settings = memo(() => {
             resumeMusic: accountLifecycle.resume,
           });
         }
+        lifecycleIdentity.assertCurrent();
         toast.success(
           userBlocked
             ? t("settings.account.deactivateAccount.activatedMessage")
@@ -666,19 +545,24 @@ const Settings = memo(() => {
         logout();
         closeLocalMusicSession();
       } catch (error) {
+        if (!lifecycleIdentity.isCurrent()) return;
         console.error(error);
         toast.error(t("settings.account.changePassword.updateAccountStatusFailed"));
       }
     } catch (error) {
+      if (!lifecycleIdentity.isCurrent()) return;
       const errorMessage =
         (error as any)?.graphQLErrors?.[0]?.message || t("toast.error.somethingWentWrong");
       toast.error(errorMessage);
       // logging the error as well
+    } finally {
+      finishLifecycleAction();
     }
   };
 
   // Multi-step modal handlers
   const handleDeleteAccountStep2 = () => {
+    if (!lifecycleIdentity.isCurrent()) return;
     const isGoogleUser = data?.usersPermissionsUser?.provider === "google";
 
     if (!deleteUsername) {
@@ -702,6 +586,7 @@ const Settings = memo(() => {
   };
 
   const handleDeleteAccountStep3 = async () => {
+    if (!lifecycleIdentity.isCurrent()) return;
     if (!deleteReason.trim()) {
       toast.error(t("settings.account.deleteAccount.step4.reasonRequired"));
       return;
@@ -718,14 +603,15 @@ const Settings = memo(() => {
           },
         },
       });
-      setDeleteStep(4);
+      if (lifecycleIdentity.isCurrent()) setDeleteStep(4);
     } catch (error) {
+      if (!lifecycleIdentity.isCurrent()) return;
       toast.error(t("settings.account.changePassword.saveReasonFailed"));
     }
   };
 
   const handleDeleteAccountFinal = async () => {
-    if (deletionActionsBlocked) return;
+    if (!lifecycleIdentity.isCurrent() || deletionActionsBlocked || lifecycleActionRunning.current) return;
     if (deleteConfirmation.trim() !== t("settings.account.deleteAccount.step4.confirmTextValue")) {
       toast.error(
         t("settings.account.deleteAccount.step4.confirmationRequired")
@@ -735,7 +621,7 @@ const Settings = memo(() => {
 
     const isGoogleUser = data?.usersPermissionsUser?.provider === "google";
 
-    setDeleteAccountLoading(true);
+    if (!beginLifecycleAction()) return;
     try {
       // Only validate password for manual auth users
       if (!isGoogleUser) {
@@ -756,6 +642,8 @@ const Settings = memo(() => {
           },
         });
 
+        lifecycleIdentity.assertCurrent();
+
         if (!loginResponse.data?.login?.jwt) {
           toast.error(t("settings.account.changePassword.invalidPassword"));
           setDeleteAccountLoading(false);
@@ -774,6 +662,7 @@ const Settings = memo(() => {
 
       await performDurableAccountDeletion();
     } catch (error) {
+      if (!lifecycleIdentity.isCurrent()) return;
       console.error(error);
       // Check if it's a login error (invalid password) - only for manual auth users
       if (!isGoogleUser && error instanceof Error && error.message.includes('Invalid identifier or password')) {
@@ -782,11 +671,12 @@ const Settings = memo(() => {
         toast.error(t("settings.account.changePassword.deleteAccountFailed"));
       }
     } finally {
-      setDeleteAccountLoading(false);
+      finishLifecycleAction();
     }
   };
 
   const clearDeletedAccountAuth = () => {
+    lifecycleIdentity.assertCurrent();
     logout();
     closeLocalMusicSession();
     localStorage.removeItem("auth-storage");
@@ -797,17 +687,20 @@ const Settings = memo(() => {
   };
 
   const performDurableAccountDeletion = async () => {
+    lifecycleIdentity.assertCurrent();
     if (deletionActionsBlocked) {
       throw new AccountLifecycleError("LIFECYCLE_TERMINAL", 409, "Account deletion cannot be restarted.", false);
     }
     await accountLifecycle.deleteAccount({
       readAccountPresence: async (durableAccountDocumentId) => {
         try {
+          lifecycleIdentity.assertCurrent();
           const result = await apolloClient.query({
             query: getUserAccountQuery,
             variables: { documentId: user?.documentId },
             fetchPolicy: "network-only",
           });
+          lifecycleIdentity.assertCurrent();
           const accounts = result.data?.usersPermissionsUser?.accounts;
           if (!Array.isArray(accounts)) return { status: "unknown" } as const;
           if (accounts.length === 0) return { status: "absent" } as const;
@@ -821,12 +714,15 @@ const Settings = memo(() => {
         }
       },
       deleteExplorerAccount: async (authoritativeAccountDocumentId) => {
+        lifecycleIdentity.assertCurrent();
         const result = await deleteExplorerAccount({ variables: { accountDocumentId: authoritativeAccountDocumentId } });
+        lifecycleIdentity.assertCurrent();
         return typeof result.data?.deleteAccount?.documentId === "string"
           ? result.data.deleteAccount.documentId
           : null;
       },
       deleteExplorerUser: async () => {
+        lifecycleIdentity.assertCurrent();
         const result = await deleteExplorerUser({
           variables: {
             userId: user?.id,
@@ -834,40 +730,49 @@ const Settings = memo(() => {
             recommendationDocumentId: user?.documentId,
           },
         });
+        lifecycleIdentity.assertCurrent();
         return typeof result.data?.deleteUsersPermissionsUser?.data?.documentId === "string"
           ? result.data.deleteUsersPermissionsUser.data.documentId
           : null;
       },
-      clearAuth: clearDeletedAccountAuth,
+      clearAuth: () => {
+        lifecycleIdentity.assertCurrent();
+        toast.success(t("settings.account.deleteAccount.step4.successMessage"));
+        clearDeletedAccountAuth();
+      },
     });
-    toast.success(t("settings.account.deleteAccount.step4.successMessage"));
   };
 
   const cancelDurableDeletion = async () => {
-    setDeleteAccountLoading(true);
+    if (deletionActionsBlocked || deletionLifecycle?.boundaryCrossed || !beginLifecycleAction()) return;
     try {
       const result = await deletionCancellation.cancelAndResume();
+      if (!lifecycleIdentity.isCurrent()) return;
       setDeletionLifecycle(result.operation);
       setShowDeleteAccountModal(false);
       setDeleteStep(1);
       toast.success("Account deletion was cancelled and Music was reactivated.");
     } catch (error) {
+      if (!lifecycleIdentity.isCurrent()) return;
       toast.error(error instanceof Error ? error.message : "Account deletion could not be cancelled.");
     } finally {
-      setDeleteAccountLoading(false);
+      finishLifecycleAction();
     }
   };
 
   const retryDurableDeletion = async () => {
-    if (deletionActionsBlocked) return;
-    setDeleteAccountLoading(true);
+    if (deletionActionsBlocked || !beginLifecycleAction()) return;
     try {
       await performDurableAccountDeletion();
     } catch (error) {
+      if (!lifecycleIdentity.isCurrent()) return;
       toast.error(error instanceof Error ? error.message : "Account deletion could not be resumed.");
-      try { setDeletionLifecycle((await accountLifecycle.status()).operation); } catch { /* keep the last durable view */ }
+      try {
+        const result = await accountLifecycle.status();
+        if (lifecycleIdentity.isCurrent()) setDeletionLifecycle(result.operation);
+      } catch { /* keep the last durable view */ }
     } finally {
-      setDeleteAccountLoading(false);
+      finishLifecycleAction();
     }
   };
 
@@ -960,7 +865,8 @@ const Settings = memo(() => {
             {/* ── QUICK ACCESS section ── */}
             {((data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed")) ||
               matchesSearch("language preference display english locale translation") ||
-              matchesSearch("public visibility tab visibility profile control display") ||
+              matchesSearch("public visibility tab visibility profile control display music") ||
+              matchesSearch("music visibility public navigation") ||
               matchesSearch("pinned navigation tabs profile control navigation pin menu")) && (
               <>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Quick Access</p>
@@ -1041,7 +947,7 @@ const Settings = memo(() => {
                   )}
 
                   {/* Public Visibility row */}
-                  {matchesSearch("public visibility tab visibility profile control display") && (
+                  {matchesSearch("public visibility tab visibility profile control display music") && (
                     <>
                       <button
                         type="button"
@@ -1063,7 +969,7 @@ const Settings = memo(() => {
 
                       {/* Public Visibility expanded panel */}
                       {publicVisibilitySectionOpen && (
-                        <div
+                        <div role="region" aria-label="Public visibility settings"
                           ref={(el) => {
                             if (el && !el.dataset.scrolled) {
                               el.dataset.scrolled = 'true';
@@ -1115,29 +1021,30 @@ const Settings = memo(() => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             )},
+                            { key: 'public_music', label: 'Music Tab', icon: <span aria-hidden="true">♫</span> },
                           ].map(({ key, label, icon }) => {
                             const isProfile = key === 'public_profile';
+                            const rowSaving = !isProfile && key !== 'public_music' && isCategoryPending(key as CategoryId);
+                            const rowLabel = <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">{icon}</div>
+                              <span className="text-xs text-white font-poppins">{label}</span>
+                            </div>;
+                            if (key === 'public_music') return <MusicPublishSwitch key={key} origin={categoryNavigation.authority} ready compactLabel={rowLabel} />;
                             return (
-                              <div key={key} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
+                              <div key={key} aria-busy={rowSaving || undefined} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
+                                {rowLabel}
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                                    {icon}
-                                  </div>
-                                  <span className="text-xs text-white font-poppins">{label}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {tabVisibilityLoading[key] && (
-                                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                  )}
+                                  {rowSaving && <span className="text-[10px] text-dashboard-muted">Saving and verifying…</span>}
                                   <label className={`relative inline-flex items-center ${
-                                    tabVisibilityLoading[key] || isProfile ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
+                                    !categoryNavigation.authority || rowSaving || isProfile ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
                                   }`}>
                                     <input
                                       type="checkbox"
+                                      aria-label={label}
                                       className="sr-only peer"
                                       checked={getTabVisibility(key)}
-                                      disabled={isProfile}
-                                      onChange={(e) => handleTabVisibilityUpdate(key, e.target.checked)}
+                                      disabled={!categoryNavigation.authority || rowSaving || isProfile}
+                                      onChange={(e) => handleTabVisibilityUpdate(key, label, e.target.checked)}
                                     />
                                     <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
                                   </label>
@@ -1151,17 +1058,20 @@ const Settings = memo(() => {
                   )}
 
                   {/* Pinned Navigation Tabs row */}
-                  {matchesSearch("pinned navigation tabs profile control navigation pin menu") && (
+                  <NavigationStatus navigation={categoryNavigation} />
+                  {matchesSearch("pinned navigation tabs profile control navigation pin menu music") && (
                     <>
                       <button
                         type="button"
+                        aria-expanded={pinnedNavTabsSectionOpen}
+                        aria-controls="public-navigation-panel"
                         onClick={() => setPinnedNavTabsSectionOpen(prev => !prev)}
                         className="w-full flex items-center gap-3 px-4 py-3 border-t border-dashboard hover:bg-dashboard-muted/50 transition-colors duration-150 group text-left"
                       >
                         <span className="text-base leading-none">📌</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-dashboard font-poppins">Pinned Navigation Tabs</div>
-                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Navigation · Select up to 5 enabled tabs to pin to your public profile's navigation</div>
+                          <h3 id="public-navigation" ref={navigationHeading} tabIndex={-1} className="text-xs font-semibold text-dashboard font-poppins scroll-mt-6">{navText("title", "Pinned Navigation Tabs")}</h3>
+                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">{navText("summary", "Navigation · Manage your 5 public navigation slots, including Profile")}</div>
                         </div>
                         <svg
                           width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
@@ -1174,10 +1084,15 @@ const Settings = memo(() => {
                       {/* Pinned Navigation Tabs expanded panel */}
                       {pinnedNavTabsSectionOpen && (
                         <div
+                          id="public-navigation-panel"
+                          dir={i18n.dir?.()}
                           ref={(el) => {
                             if (el && !el.dataset.scrolled) {
                               el.dataset.scrolled = 'true';
                               setTimeout(() => {
+                                // Hash navigation already positioned/focused the heading.
+                                // Do not move the viewport to the panel bottom afterward.
+                                if (!el.isConnected || window.location.hash === '#public-navigation') return;
                                 const rect = el.getBoundingClientRect();
                                 const isMobile = window.innerWidth < 768;
                                 const bottomOffset = isMobile ? 80 : 20;
@@ -1194,23 +1109,21 @@ const Settings = memo(() => {
                           {/* Auto Pinning Toggle Switch */}
                           <div className="flex items-center justify-between pb-3 border-b border-white/5">
                             <div className="flex-1 min-w-0 pr-4">
-                              <span className="text-xs font-semibold text-white font-poppins">Auto-pin navigation tabs</span>
+                              <span className="text-xs font-semibold text-dashboard font-poppins">{navText("autoPin", "Auto-pin navigation tabs")}</span>
                               <p className="text-[10px] text-white/40 font-poppins mt-0.5">
-                                Automatically display your most active categories (with the most lists) in your public navigation menu.
+                                {navText("autoDescription", "Available Music is prioritized, followed by public categories ranked by list count.")}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
-                              {tabVisibilityLoading['auto_pinning'] && (
-                                <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                              )}
                               <label className={`relative inline-flex items-center ${
-                                tabVisibilityLoading['auto_pinning'] ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                                navigationSaving ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
                               }`}>
                                 <input
                                   type="checkbox"
+                                  aria-label={navText("autoPin", "Auto-pin navigation tabs")}
                                   className="sr-only peer"
                                   checked={isAutoPinningEnabled}
-                                  disabled={tabVisibilityLoading['auto_pinning']}
+                                  disabled={navigationSaving}
                                   onChange={(e) => handleAutoPinningToggle(e.target.checked)}
                                 />
                                 <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
@@ -1220,14 +1133,15 @@ const Settings = memo(() => {
 
                           <p className="text-[10px] text-white/50 font-poppins mb-1">
                             {isAutoPinningEnabled 
-                              ? "Auto-pinning is active. The system automatically selects and pins your categories." 
-                              : "Select up to 5 enabled tabs to pin to your public profile's navigation."}
+                              ? navText("autoHelp", "Auto-pinning is active. Available Music comes first, then categories with the most lists, within 5 tabs including Profile.")
+                              : navText("manualHelp", "Select up to 5 saved tabs including Profile. Unavailable Music keeps its saved pin and returns when available.")}
                           </p>
                           <div className="space-y-2">
                             {[
                               { key: 'public_profile', label: 'Profile Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                               )},
+                              { key: 'public_music', label: navText('musicTab', 'Music Tab'), icon: <span aria-hidden="true">♫</span> },
                               { key: 'public_recommendations', label: 'Places Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
@@ -1260,17 +1174,18 @@ const Settings = memo(() => {
                               )},
                             ].map(({ key, label, icon }) => {
                               const isProfile = key === 'public_profile';
-                              const isEnabled = getTabVisibility(key);
+                              const isEnabled = key === "public_profile" || (key === "public_music" ? musicPublishing.state.kind === "published" : categoryNavigation.snapshot?.visibility[key as CategoryId] === "Yes");
                               const isPinned = isTabPinned(key);
+                              const pinHint = key === 'public_music' ? musicPinHints[musicPublishing.state.kind] : !isEnabled ? 'Visibility off' : null;
                               return (
-                                <div key={key} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${(isProfile || (!isEnabled && !isPinned)) ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
-                                  <div className="flex items-center gap-2">
+                                <div key={key} className={`flex min-h-11 min-w-0 items-center justify-between gap-3 py-1.5 transition-opacity duration-150 ${(isProfile || (!isEnabled && !isPinned)) ? 'opacity-50' : ''}`}>
+                                  <div className="flex min-w-0 items-center gap-2 break-words">
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isEnabled ? 'bg-dashboard-muted' : 'bg-dashboard-muted/40 opacity-40'}`}>
                                       {icon}
                                     </div>
                                     <span className={`text-xs font-poppins ${isEnabled ? 'text-dashboard' : 'text-dashboard-muted'}`}>
                                       {label}
-                                      {!isEnabled && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">(Visibility off)</span>}
+                                      {pinHint && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">({pinHint})</span>}
                                       {isAutoPinningEnabled && isPinned && (
                                         <span className="text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded-full ml-1.5 font-medium font-poppins">
                                           Auto-pinned
@@ -1279,20 +1194,18 @@ const Settings = memo(() => {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {tabVisibilityLoading[`pin_${key}`] && (
-                                      <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                    )}
                                     <label className={`relative inline-flex items-center ${
-                                      tabVisibilityLoading[`pin_${key}`] || !isEnabled || isProfile || isAutoPinningEnabled ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                                      navigationSaving || (!isEnabled && !isPinned) || isProfile || isAutoPinningEnabled ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                     }`}>
                                       <input
                                         type="checkbox"
+                                        aria-label={key === 'public_music' ? navText('pinMusic', 'Pin Music Tab') : `Pin ${label}`}
                                         className="sr-only peer"
                                         checked={isPinned}
-                                        disabled={!isEnabled || tabVisibilityLoading[`pin_${key}`] || isProfile || isAutoPinningEnabled}
+                                        disabled={(!isEnabled && !isPinned) || navigationSaving || isProfile || isAutoPinningEnabled}
                                         onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
                                       />
-                                      <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                      <div className="w-9 h-5 bg-gray-600 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--dash-focus-ring)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--dash-sidebar-bg)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
                                     </label>
                                   </div>
                                 </div>
@@ -1374,6 +1287,18 @@ const Settings = memo(() => {
           </div>
         )}
       </div>
+
+      <UnpublishCategoryDialog
+        open={unpublishTarget !== null}
+        categoryName={unpublishTarget?.label.replace(" Tab", "") ?? "Category"}
+        pending={unpublishTarget ? isCategoryPending(unpublishTarget.category) : false}
+        onCancel={() => setUnpublishTarget(null)}
+        onConfirm={async () => {
+          if (!unpublishTarget) return;
+          const outcome = await saveTabVisibility(unpublishTarget.category, false, true);
+          if (outcome?.kind === "confirmed") setUnpublishTarget(null);
+        }}
+      />
 
       {/* Change Password Modal */}
       {showPasswordModal && (
@@ -1793,6 +1718,6 @@ const Settings = memo(() => {
       }
     </div >
   );
-});
+};
 
 export default Settings;

@@ -100,6 +100,7 @@ export interface MusicIdentityCoordinator {
   reportFailure(error: unknown): void;
   reset(): void;
   getSnapshot(): MusicIdentityCoordinatorStatus;
+  isReadyFor(scope: { userDocumentId: string; accountDocumentId: string }): boolean;
   getDiagnosticSnapshot(): MusicIdentityDiagnosticSnapshot;
   subscribe(listener: () => void): () => void;
 }
@@ -229,6 +230,8 @@ export function createMusicIdentityCoordinator(dependencies: {
       publish("idle");
     },
     getSnapshot: () => status,
+    // Read-only: a ready projection belongs to the exact completed owner scope.
+    isReadyFor: (scope) => status === "ready" && completedKey === `${scope.userDocumentId}:${scope.accountDocumentId}`,
     getDiagnosticSnapshot: () => diagnostic,
     subscribe(listener) {
       listeners.add(listener);

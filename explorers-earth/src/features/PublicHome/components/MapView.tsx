@@ -1,4 +1,5 @@
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded, useMap } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { memo, useState, useCallback, useEffect, useRef } from "react";
 import Button from "../../../components/ui/Button";
 import WhiteMap from "../../../assets/icons/WhiteMap";
@@ -580,13 +581,13 @@ const MapView = memo(() => {
 
   if (error && !hasUsableData)
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
-        <div className="text-white text-center">
+      <div className="flex bg-[var(--category-page,#000000)] items-center justify-center min-h-screen">
+        <div className="text-[var(--category-text,#FFFFFF)] text-center">
           <h2 className="text-xl font-semibold mb-2">Failed to Load Map</h2>
-          <p className="text-gray-400 mb-4">Could not connect to the data service.</p>
+          <p className="text-[var(--category-muted,#9CA3AF)] mb-4">Could not connect to the data service.</p>
           <button
             onClick={() => void settlePublicRouteRetries(refetch)}
-            className="min-h-11 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="min-h-11 px-4 py-2 bg-[var(--category-panel,rgba(255,255,255,0.1))] hover:bg-[var(--category-hover,rgba(255,255,255,0.2))] rounded-md text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Retry
           </button>
@@ -596,11 +597,11 @@ const MapView = memo(() => {
 
   if (!mapsApiLoaded)
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen" aria-busy={loading || undefined}>
-        <div className="text-white text-center px-6">
+      <div className="flex bg-[var(--category-page,#000000)] items-center justify-center min-h-screen" aria-busy={loading || undefined}>
+        <div className="text-[var(--category-text,#FFFFFF)] text-center px-6">
           {Boolean(error) && hasUsableData && <PublicRoutePartialNotice message="Some map data is unavailable." />}
           <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
-          <p className="text-gray-400">Use the list view while the map service is unavailable.</p>
+          <p className="text-[var(--category-muted,#9CA3AF)]">Use the list view while the map service is unavailable.</p>
         </div>
       </div>
     );
@@ -608,10 +609,10 @@ const MapView = memo(() => {
   // Check if we have valid data
   if (!Array.isArray(rawRecommendationLists)) {
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
-        <div className="text-white text-center">
+      <div className="flex bg-[var(--category-page,#000000)] items-center justify-center min-h-screen">
+        <div className="text-[var(--category-text,#FFFFFF)] text-center">
           <h2 className="text-xl font-semibold mb-2">No Data Available</h2>
-          <p className="text-gray-400">No recommendation lists found for this user.</p>
+          <p className="text-[var(--category-muted,#9CA3AF)]">No recommendation lists found for this user.</p>
         </div>
       </div>
     );
@@ -690,7 +691,7 @@ const MapView = memo(() => {
                 navigate(`/${username}/places`);
               }
             }}
-            className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
+            className="bg-[var(--category-accent,hsl(var(--blue-cta)))] hover:bg-[var(--category-accent,hsl(var(--blue-final)))]"
           />
         </div>
 
@@ -725,7 +726,7 @@ const MapView = memo(() => {
             </div>
           ) : (
             <div className="flex">
-              <span className="text-white text-sm">Loading regions...</span>
+              <span className="text-[var(--category-text,#FFFFFF)] text-sm">Loading regions...</span>
             </div>
           )}
         </div>
@@ -733,19 +734,19 @@ const MapView = memo(() => {
         {/* Fullscreen Button (Four Corners Button - Top Right of Second Row) */}
         <button
           onClick={toggleFullscreen}
-          className="absolute top-14 right-3 z-50 bg-white hover:bg-gray-100 text-gray-700 p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-gray-200"
+          className="absolute top-14 right-3 z-50 bg-[var(--category-panel,#FFFFFF)] hover:bg-[var(--category-hover,#F3F4F6)] text-[var(--category-muted,#374151)] p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-[var(--category-control-border,#E5E7EB)]"
           aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
         >
           {isFullscreen ? (
-            <Minimize2 className="w-4 h-4 text-gray-700" />
+            <Minimize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
           ) : (
-            <Maximize2 className="w-4 h-4 text-gray-700" />
+            <Maximize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
           )}
         </button>
 
         {/* Collapsible Wrapper for Category Filter and Place Cards */}
         <div
-          className="bg-[#0d1117]/90 border-t border-white/10 backdrop-blur-md py-4 absolute bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out rounded-t-2xl shadow-2xl"
+          className="bg-[var(--category-panel,rgba(13,17,23,0.9))] border-t border-[var(--category-control-border,rgba(255,255,255,0.1))] backdrop-blur-md py-4 absolute bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out rounded-t-2xl shadow-2xl"
           style={{
             transform: isCollapsed ? "translateY(calc(100% - 68px))" : "translateY(0)"
           }}
@@ -754,7 +755,7 @@ const MapView = memo(() => {
           <div className="flex justify-center mb-2">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="bg-gray-800 hover:bg-gray-700 border border-white/15 rounded-full p-2 text-white transition-colors duration-200 cursor-pointer flex items-center justify-center"
+              className="bg-[var(--category-panel,#1F2937)] hover:bg-[var(--category-hover,#374151)] border border-[var(--category-control-border,rgba(255,255,255,0.15))] rounded-full p-2 text-[var(--category-text,#FFFFFF)] transition-colors duration-200 cursor-pointer flex items-center justify-center"
               aria-label={isCollapsed ? "Expand filters and cards" : "Collapse filters and cards"}
             >
               {isCollapsed ? <UpArrow /> : <Down />}
@@ -792,7 +793,7 @@ const MapView = memo(() => {
               </div>
             ) : (
               <div className="flex px-4">
-                <span className="text-white/40 text-xs font-poppins">No categories available</span>
+                <span className="text-[var(--category-muted,rgba(255,255,255,0.4))] text-xs font-poppins">No categories available</span>
               </div>
             )}
           </div>
@@ -833,4 +834,4 @@ const MapView = memo(() => {
   );
 });
 
-export default MapView;
+export default withGoogleMapsProvider(MapView);

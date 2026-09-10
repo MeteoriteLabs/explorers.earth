@@ -106,6 +106,8 @@ function buildMusicFixtureService(config: MusicFixtureServiceConfig, allowStatic
     response(input: FixtureServiceInput): { status: number; body: unknown } {
       if (input.path === "/health" && input.method === "GET") return { status: 200, body: { service: "strapi", status: "ready", fixtureVersion: "1",
         identity: { username: config.username, userDocumentId: config.userDocumentId, accountDocumentId: config.accountDocumentId } } };
+      const publicProfile = profile.publicGateway(input.path, input.method);
+      if (publicProfile) return publicProfile;
       if (input.authorization !== `Bearer ${config.token}`) return { status: 403, body: { error: "fixture identity authority denied" } };
       const privateProfile = profile.privateResponse(input.path, input.method, input.body);
       if (privateProfile) return privateProfile;
@@ -254,11 +256,21 @@ export function createMusicFixtureRestRequestHandler(service: ReturnType<typeof 
   };
 }
 
-function argument(name: string): string | undefined { const index = process.argv.indexOf(name); return index < 0 ? undefined : process.argv[index + 1]; }
+export function parseMusicFixtureServerArguments(args: string[]): {
+  host: string; port: number; nonce: string | undefined;
+} {
+  const value = (name: string) => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
+  const port = Number(value("--port"));
+  const host = value("--host") ?? "0.0.0.0";
+  const nonce = value("--nonce");
+  if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error("usage: --port <0..65535>");
+  if (host !== "0.0.0.0" && host !== "127.0.0.1") throw new Error("usage: --host <0.0.0.0|127.0.0.1>");
+  if (nonce !== undefined && !/^[A-Za-z0-9_-]{1,128}$/.test(nonce)) throw new Error("usage: --nonce <safe-token>");
+  return { host, port, nonce };
+}
 
 if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server.ts")) {
-  const port = Number(argument("--port"));
-  if (!Number.isInteger(port)) throw new Error("usage: --port <port>");
+  const { host, port, nonce } = parseMusicFixtureServerArguments(process.argv.slice(2));
   const runtimeService = createMusicFixtureService({
     username: process.env.MUSIC_E2E_ACCOUNT_USERNAME ?? "e2e-public-music-fixture-owner",
     accountDocumentId: process.env.MUSIC_E2E_ACCOUNT_DOCUMENT_ID ?? "e2e-public-music-fixture-account",
@@ -266,7 +278,7 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server
     token: process.env.MUSIC_E2E_STRAPI_TOKEN ?? "fixture-read-only-token",
   });
   const handleRestRequest = createMusicFixtureRestRequestHandler(runtimeService);
-  createServer((request, response) => {
+  const server = createServer((request, response) => {
     const path = new URL(request.url ?? "/", "http://fixture").pathname;
     if (path === "/api/music-identities") {
       const result = fixtureReconciliationResponse({
@@ -328,5 +340,10 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("/scripts/music-fixture-server
       response.writeHead(result.status, { "content-type": "application/json" });
       response.end(JSON.stringify(result.body));
     });
-  }).listen(port, "0.0.0.0");
+  });
+  server.listen(port, host, () => {
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("fixture listener has no TCP address");
+    process.stdout.write(`${JSON.stringify({ schemaVersion: "music-fixture-ready/v1", host, port: address.port, nonce })}\n`);
+  });
 }

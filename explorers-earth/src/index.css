@@ -3413,3 +3413,24 @@ body.hide-dashboard-header .profile-editor-tab-rail.sticky-top-offset {
     transition-duration: 0.01ms !important;
   }
 }
+.public-place-detail {
+  border-color: var(--border-card);
+}
+
+.public-place-detail .text-dashboard {
+  color: var(--text-primary) !important;
+}
+
+.public-place-detail .text-dashboard-light,
+.public-place-detail .hover\:text-dashboard-light:hover {
+  color: var(--text-secondary) !important;
+}
+
+.public-place-detail .border-dashboard {
+  border-color: var(--border-card) !important;
+}
+
+.public-place-detail .bg-dashboard-muted,
+.public-place-detail .hover\:bg-dashboard-muted:hover {
+  background-color: color-mix(in srgb, var(--bg-card) 80%, var(--text-primary) 20%) !important;
+}

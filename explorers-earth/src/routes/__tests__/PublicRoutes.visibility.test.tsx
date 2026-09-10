@@ -1,10 +1,22 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Outlet, Routes } from "react-router-dom";
 import PublicRoutes from "../PublicRoutes";
 
+const mapRender = vi.hoisted(() => ({ throws: false }));
+
 vi.mock("../validators", () => ({
   UsernameValidator: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock("../../layouts/PublicColdEntryBoundary", () => ({
+  PublicColdEntryBoundary: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="public-cold-entry-boundary">{children}</div>
+  ),
+}));
+
+vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({
+  PublicMusicAvailabilityProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("../validators/TabVisibilityGuard", () => ({
@@ -17,9 +29,14 @@ vi.mock("../validators/TabVisibilityGuard", () => ({
   }) => <section data-testid={`visibility-${tabField}`}>{children}</section>,
 }));
 
-vi.mock("../../layouts/PublicLayout", () => ({
-  default: () => <Outlet />,
-}));
+vi.mock("../../layouts/PublicLayout", async () => {
+  const { default: PublicRouteErrorBoundary } = await import("../../layouts/PublicRouteErrorBoundary");
+  return {
+    default: () => <PublicRouteErrorBoundary contentRouteKey="tk2727:map" usernameKey="tk2727" shellRevealed reportTerminal={() => undefined}>
+      <Outlet />
+    </PublicRouteErrorBoundary>,
+  };
+});
 
 vi.mock("../../features/PublicHome/components/PublicProfile", () => ({
   default: () => <div>public-profile</div>,
@@ -37,10 +54,16 @@ vi.mock("../../features/PublicHome/components/Community", () => ({
   default: () => <div>community</div>,
 }));
 vi.mock("../../features/PublicHome/components/MapView", () => ({
-  default: () => <div>places-map</div>,
+  default: () => {
+    if (mapRender.throws) throw new Error("map render failed");
+    return <div>places-map</div>;
+  },
 }));
 vi.mock("../../features/PublicHome/components/PlaceMapView", () => ({
-  default: () => <div>place-map</div>,
+  default: () => {
+    if (mapRender.throws) throw new Error("place map render failed");
+    return <div>place-map</div>;
+  },
 }));
 vi.mock("../../features/PublicHome/components/PublicGuides", () => ({
   default: () => <div>guides-index</div>,
@@ -105,6 +128,7 @@ const cases = [
 ] as const;
 
 describe("PublicRoutes category visibility boundaries", () => {
+  beforeEach(() => { mapRender.throws = false; });
   it.each(cases)(
     "guards %s with %s before rendering %s",
     (path, visibilityField, leafText) => {
@@ -118,6 +142,9 @@ describe("PublicRoutes category visibility boundaries", () => {
       expect(
         screen.getByTestId(`visibility-${visibilityField}`),
       ).toContainElement(screen.getByText(leafText));
+      expect(screen.getByTestId("public-cold-entry-boundary")).toContainElement(
+        screen.getByText(leafText),
+      );
     },
   );
 
@@ -129,5 +156,20 @@ describe("PublicRoutes category visibility boundaries", () => {
     );
 
     expect(await screen.findByText("public-profile")).toBeInTheDocument();
+  });
+
+  it.each([
+    "/tk2727/places/map",
+    "/tk2727/places/paris/map",
+    "/tk2727/places/paris/placesmap",
+  ])("lets fatal map render failures reach the shell fallback without redirecting from %s", (path) => {
+    mapRender.throws = true;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(<MemoryRouter initialEntries={[path]}><Routes>{PublicRoutes}</Routes></MemoryRouter>);
+
+    expect(screen.getByRole("heading", { name: "This section could not be displayed" })).toBeInTheDocument();
+    expect(screen.queryByText("public-profile")).not.toBeInTheDocument();
+    mapRender.throws = false;
+    errors.mockRestore();
   });
 });

@@ -66,6 +66,7 @@ export interface StrapiIdentityGatewayOptions {
   now?: () => number;
   random?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
+  diagnostic?: (entry: { endpoint: "user" | "account"; attempt: number; outcome: "ok" | "http_error" | "transport_error"; status?: number }) => void;
 }
 
 interface CacheEntry {
@@ -294,7 +295,7 @@ export class StrapiIdentityGateway {
         "pagination[pageSize]": String(ACCOUNT_PAGE_SIZE),
         "pagination[withCount]": "true",
       });
-      const accountBody = await this.requestJson(`/api/accounts?${params.toString()}`, proof, requestId, deadline, admission);
+      const accountBody = await this.requestJson(`/api/accounts?${params.toString()}`, proof, requestId, deadline, admission, "account");
       const parsedAccounts = strapiAccountsSchema.safeParse(accountBody);
       if (!parsedAccounts.success) throw malformed();
       const { data, meta: { pagination } } = parsedAccounts.data;
@@ -342,7 +343,7 @@ export class StrapiIdentityGateway {
     deadline: number,
     admission: CircuitAdmission,
   ): Promise<z.infer<typeof strapiUserSchema>> {
-    const userBody = await this.requestJson("/api/users/me", proof, requestId, deadline, admission);
+    const userBody = await this.requestJson("/api/users/me", proof, requestId, deadline, admission, "user");
     const parsedUser = strapiUserSchema.safeParse(userBody);
     if (!parsedUser.success) throw malformed();
     const user = parsedUser.data;
@@ -360,6 +361,7 @@ export class StrapiIdentityGateway {
     requestId: string,
     deadline: number,
     admission: CircuitAdmission,
+    endpoint: "user" | "account",
   ): Promise<unknown> {
     for (let attempt = 0; attempt <= this.options.retries; attempt += 1) {
       if (deadline - this.now() <= 0) throw unavailable(2, true);
@@ -396,6 +398,7 @@ export class StrapiIdentityGateway {
           return { response, body };
         }, deadline, this.now);
         const { response } = result;
+        this.options.diagnostic?.({ endpoint, attempt: attempt + 1, outcome: response.status >= 400 ? "http_error" : "ok", ...(response.status >= 400 ? { status: response.status } : {}) });
         if (response.status === 401 || response.status === 403) {
           throw new MusicIdentityError("AUTH_INVALID", 401, "The Explorer proof is invalid or expired.", "authenticate", false);
         }
@@ -412,6 +415,9 @@ export class StrapiIdentityGateway {
         try { return JSON.parse(body); }
         catch { throw malformed(); }
       } catch (error) {
+        if (!(error instanceof MusicIdentityError) && !(error instanceof MalformedUpstreamBodyError)) {
+          this.options.diagnostic?.({ endpoint, attempt: attempt + 1, outcome: "transport_error" });
+        }
         if (error instanceof MusicIdentityError) throw error;
         if (error instanceof MalformedUpstreamBodyError) throw malformed();
         if (error instanceof AdmissionLimitError) throw unavailable(1, false);

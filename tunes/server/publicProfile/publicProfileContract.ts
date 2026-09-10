@@ -5,7 +5,7 @@ const requestSchema = z.object({
   username: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,64}$/),
   category: z.enum(PUBLIC_RECOMMENDATION_CATEGORIES),
   limit: z.coerce.number().int().min(1).max(24).default(12),
-  cursor: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/).optional(),
+  cursor: z.string().regex(/^o(?:0|[1-9][0-9]{0,4})$/).optional(),
 }).strict();
 
 const detailRequestSchema = requestSchema.extend({
@@ -28,4 +28,15 @@ export type PublicProfileDetailRequest = PublicProfileRequest & { slug: string }
 
 export function parsePublicProfileDetailRequest(value: unknown): PublicProfileDetailRequest {
   return detailRequestSchema.parse(value);
+}
+
+/** Cursor values are deliberately opaque to callers; only this BFF translates
+ * them into Strapi's bounded offset pagination. */
+export function publicProfileCursorStart(cursor?: string): number {
+  if (!cursor) return 0;
+  const start = Number.parseInt(cursor.slice(1), 10);
+  if (!Number.isSafeInteger(start) || start < 0 || start > 99_999) {
+    throw new Error("invalid public profile cursor");
+  }
+  return start;
 }

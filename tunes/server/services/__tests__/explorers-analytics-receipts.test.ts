@@ -112,7 +112,7 @@ describe("PostgresAnalyticsReceiptRepository", () => {
   });
 
   it("records committed and failed terminal state without storing payload data", async () => {
-    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
     const repository = new PostgresAnalyticsReceiptRepository({ query });
 
     await repository.commit("evt-1", "strapi-1", "lease-1");
@@ -128,5 +128,18 @@ describe("PostgresAnalyticsReceiptRepository", () => {
       "lease-2",
     ]);
     expect(JSON.stringify(query.mock.calls)).not.toMatch(/Stats|metadata|utm/i);
+  });
+
+  it.each(["commit", "fail"] as const)("rejects %s after another worker replaces the lease", async (operation) => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+    const repository = new PostgresAnalyticsReceiptRepository({ query });
+
+    const terminal = operation === "commit"
+      ? repository.commit("evt-1", "strapi-stale", "expired-lease")
+      : repository.fail("evt-1", "stale failure", "expired-lease");
+
+    await expect(terminal).rejects.toThrow("Analytics receipt lease was lost");
+    expect(query.mock.calls[0][0]).toContain("lease_id = $3");
+    expect(query.mock.calls[0][0]).toContain("status = 'pending'");
   });
 });

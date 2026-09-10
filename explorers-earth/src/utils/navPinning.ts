@@ -61,8 +61,8 @@ export function resolveAutoPinning(account: AccountLike | null | undefined): boo
 export function normalizePinnedTabs(account: AccountLike | null | undefined): string[] {
   const raw = account?.pinned_nav_tabs;
   if (!Array.isArray(raw)) return [PROFILE_TAB];
-  const unique = [...new Set(raw.filter((value): value is string => typeof value === "string" && value.trim() !== ""))];
-  return unique.includes(PROFILE_TAB) ? unique : [PROFILE_TAB, ...unique];
+  const unique = [...new Set(raw.filter((value): value is string => typeof value === "string" && NAV_TAB_ORDER.includes(value)))];
+  return [PROFILE_TAB, ...unique];
 }
 
 // Compute the ordered list of tab ids that are actually pinned/shown in the public

@@ -18,12 +18,12 @@ const QUALIFICATION_CODES = new Set([
 export const MUSIC_PREBROWSER_PUBLIC_FLOW_STAGES = Object.freeze([
   "visibility", "owner", "playlist", "saved-song-1", "saved-song-2", "saved-song-3",
   "playlist-visible", "queue", "playback-1", "playback-2", "controls", "publication",
-  "direct-public-profile-data", "direct-public-category-list-counts", "direct-get-places-lists",
-  "direct-get-movies-lists", "direct-get-books-lists", "direct-get-games-lists", "direct-get-apps-lists",
-  "direct-get-products-lists", "direct-get-people-lists", "direct-get-guides-lists",
-  "proxy-public-profile-data", "proxy-public-category-list-counts", "proxy-get-places-lists",
-  "proxy-get-movies-lists", "proxy-get-books-lists", "proxy-get-games-lists", "proxy-get-apps-lists",
-  "proxy-get-products-lists", "proxy-get-people-lists", "proxy-get-guides-lists",
+  "direct-public-profile", "direct-public-category-places", "direct-public-category-movies",
+  "direct-public-category-books", "direct-public-category-games", "direct-public-category-apps",
+  "direct-public-category-products", "direct-public-category-people", "direct-public-category-guides",
+  "proxy-public-profile", "proxy-public-category-places", "proxy-public-category-movies",
+  "proxy-public-category-books", "proxy-public-category-games", "proxy-public-category-apps",
+  "proxy-public-category-products", "proxy-public-category-people", "proxy-public-category-guides",
   "direct-public-music", "proxy-public-music",
 ]);
 export const MUSIC_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES = Object.freeze([
@@ -107,7 +107,7 @@ export function validateMusicPrebrowserQualificationRecord(value) {
       || !CHECK_KEYS.every((key) => typeof value.checks[key] === "boolean")
       || !exactKeys(value.counts, ["identityRows", "categoryQueries", "musicPrerequisites"])
       || ![0, 1].includes(value.counts.identityRows)
-      || ![0, 20].includes(value.counts.categoryQueries)
+      || ![0, 18].includes(value.counts.categoryQueries)
       || !Number.isSafeInteger(value.counts.musicPrerequisites)
       || value.counts.musicPrerequisites < 0 || value.counts.musicPrerequisites > 32
       || !exactKeys(value.hashes, HASH_KEYS) || !HASH_KEYS.every((key) => safeHash(value.hashes[key]))
@@ -129,7 +129,7 @@ export function validateMusicPrebrowserQualificationRecord(value) {
     return value.code === "none" && CHECK_KEYS.every((key) => value.checks[key] === true)
       && value.snapshotFailure.phase === "none"
       && value.publicFlowFailure.stage === "none"
-      && value.counts.identityRows === 1 && value.counts.categoryQueries === 20
+      && value.counts.identityRows === 1 && value.counts.categoryQueries === 18
       && value.counts.musicPrerequisites > 0 && HASH_KEYS.every((key) => value.hashes[key] !== null)
       && REVISION_KEYS.every((key) => value.profileRevisions[key] !== null)
       && value.hashes.populatedDatabase === value.hashes.rollbackDatabase
@@ -176,37 +176,19 @@ const checkedInDocument = (relativePath, operation) => {
   return matches[0];
 };
 const publicCategoryContracts = Object.freeze([
-  ["GetPlacesLists", "recommendationLists", "places", "recommended_places"],
-  ["GetMoviesLists", "movieLists", "movies", "recommended_movies"],
-  ["GetBooksLists", "bookLists", "books", "recommended_books"],
-  ["GetGamesLists", "gameLists", "games", "recommended_games"],
-  ["GetAppsLists", "appLists", "apps", "recommended_apps"],
-  ["GetProductsLists", "productLists", "products", "recommended_products"],
-  ["GetPeopleLists", "personLists", "people", "recommended_people"],
-  ["GetGuidesLists", "guides", "guides", "Title"],
-].map(([operation, root, subject, contentKey]) => Object.freeze({ operation, root, subject, contentKey })));
+  ["places", "recommendationLists", "recommended_places"],
+  ["movies", "movieLists", "recommended_movies"],
+  ["books", "bookLists", "recommended_books"],
+  ["games", "gameLists", "recommended_games"],
+  ["apps", "appLists", "recommended_apps"],
+  ["products", "productLists", "recommended_products"],
+  ["people", "personLists", "recommended_people"],
+  ["guides", "guides", "Title"],
+].map(([category, root, contentKey]) => Object.freeze({ category, root, subject: category, contentKey })));
 const documents = Object.freeze({
   profileUser: checkedInDocument("src/features/Profile/api/query.ts", "UsersPermissionsUser"),
   settingsUser: checkedInDocument("src/features/Settings/api/mutation.ts", "UsersPermissionsUser"),
   updateAccount: checkedInDocument("src/features/Settings/api/mutation.ts", "UpdateAccount"),
-  publicProfile: checkedInDocument("src/features/PublicHome/api/query.ts", "PublicProfileData"),
-  publicCounts: checkedInDocument("src/features/PublicHome/api/query.ts", "PublicCategoryListCounts"),
-  categories: Object.freeze(publicCategoryContracts.map((contract) => Object.freeze({
-    ...contract,
-    document: checkedInDocument("src/features/PublicHome/components/ProfileRecommendationsTab.tsx", contract.operation),
-  }))),
-});
-const publicGraphqlStageSuffix = Object.freeze({
-  PublicProfileData: "public-profile-data",
-  PublicCategoryListCounts: "public-category-list-counts",
-  GetPlacesLists: "get-places-lists",
-  GetMoviesLists: "get-movies-lists",
-  GetBooksLists: "get-books-lists",
-  GetGamesLists: "get-games-lists",
-  GetAppsLists: "get-apps-lists",
-  GetProductsLists: "get-products-lists",
-  GetPeopleLists: "get-people-lists",
-  GetGuidesLists: "get-guides-lists",
 });
 
 function sha256(value) {
@@ -481,37 +463,56 @@ export function validateMusicQualificationUpdateResponse({ status, body, account
     && keys.every((key) => updateAccount[key] === expectedFields[key]);
 }
 
-export function validateMusicQualificationPublicGraphql({
-  operation, root, body, namespace, accountDocumentId,
+export function validateMusicQualificationPublicGateway({
+  category, root, body, namespace, accountDocumentId,
 } = {}) {
   if (!/^e2e-public-music-[a-z0-9-]+$/.test(String(namespace))
-      || accountDocumentId !== `${namespace}-account` || !exactKeys(body, ["data"])) return false;
-  const data = exactObject(body.data);
+      || accountDocumentId !== `${namespace}-account`) return false;
+  const data = exactObject(body);
   if (!data) return false;
-  if (operation === "PublicProfileData") {
-    const accounts = data.accounts;
-    const account = Array.isArray(accounts) && accounts.length === 1 ? exactObject(accounts[0]) : undefined;
-    return root === "accounts" && account?.documentId === accountDocumentId
-      && account.Account_Name === "Fixture Explorer" && account.public_profile === "Yes"
-      && account.public_recommendations === "Yes" && account.public_music === "Yes";
+  if (category === undefined && root === undefined) {
+    const allowed = new Set([
+      "username", "Account_Name", "Account_Type", "Primary_Address", "Bio", "bg_picture", "createdAt",
+      "documentId", "profile_picture", "social_media", "Public_Profile_Address", "Feed_Data",
+      "mobile_number_visibility", "mobile_number", "public_profile", "public_recommendations", "public_music",
+      "public_movie", "public_books", "public_guides", "public_games", "public_apps", "public_products",
+      "public_people", "pinned_nav_tabs", "auto_pinning",
+    ]);
+    if (Object.keys(data).some((key) => !allowed.has(key))
+        || ("mobile_number" in data && data.mobile_number_visibility !== true)) return false;
+    return data.documentId === accountDocumentId && data.username === `${namespace}-owner`
+      && data.Account_Name === "Fixture Explorer" && data.public_profile === "Yes"
+      && data.public_recommendations === "Yes" && data.public_music === "Yes";
   }
-  if (operation === "PublicCategoryListCounts") {
-    return root === "recommendationLists" && publicCategoryContracts.every(({ root: categoryRoot }) => {
-      const values = data[categoryRoot];
-      return Array.isArray(values) && values.length === 1
-        && exactObject(values[0])?.documentId === `${namespace}-${categoryRoot}-count`;
-    });
-  }
-  const contract = publicCategoryContracts.find((entry) => entry.operation === operation && entry.root === root);
+  const contract = publicCategoryContracts.find((entry) => entry.category === category && entry.root === root);
   if (!contract) return false;
+  if (!exactKeys(data, [root])) return false;
   const values = data[root];
   const item = Array.isArray(values) && values.length === 1 ? exactObject(values[0]) : undefined;
   const expectedDocumentId = `${namespace}-${contract.subject}-list`;
   if (item?.documentId !== expectedDocumentId) return false;
+  const listFields = {
+    places: ["documentId", "List_Name", "slug", "Visibility", "List_Name_Details", "recommended_places"],
+    movies: ["documentId", "List_Name", "slug", "Visibility", "cover_image", "recommended_movies"],
+    books: ["documentId", "List_Name", "slug", "visibility", "cover_image", "recommended_books"],
+    games: ["documentId", "List_Name", "slug", "Visibility", "cover_image", "recommended_games"],
+    apps: ["documentId", "List_Name", "slug", "Visibility", "cover_image", "recommended_apps"],
+    products: ["documentId", "List_Name", "slug", "Visibility", "cover_image", "recommended_products"],
+    people: ["documentId", "List_Name", "slug", "Visibility", "recommended_people"],
+    guides: ["documentId", "Title", "slug", "Visibility", "Guide_Media"],
+  }[category];
+  if (!listFields || Object.keys(item).some((key) => !listFields.includes(key))) return false;
   if (contract.contentKey === "Title") return item.Title === "Fixture Guide";
   const content = item[contract.contentKey];
-  return Array.isArray(content) && content.length === 1
-    && exactObject(content[0])?.documentId === `${expectedDocumentId}-item`;
+  const child = Array.isArray(content) && content.length === 1 ? exactObject(content[0]) : undefined;
+  const itemFields = {
+    places: ["documentId", "media_details", "Media", "Place_Details"],
+    movies: ["documentId", "poster_path"], books: ["documentId", "cover_url"],
+    games: ["documentId", "cover_url", "media_details"], apps: ["documentId", "logo_url"],
+    products: ["documentId", "logo_url", "images"], people: ["documentId", "avatar_path", "media_details"],
+  }[category];
+  return child?.documentId === `${expectedDocumentId}-item`
+    && itemFields && Object.keys(child).every((key) => itemFields.includes(key));
 }
 
 export function validateMusicQualificationQueueResponse(value, songInputs, priorRevision) {
@@ -791,12 +792,10 @@ export function createLoopbackPrebrowserQualificationAdapter({
           && publicSlug !== "qualification-public");
 
       const publicDocuments = [
-        { operation: "PublicProfileData", document: documents.publicProfile,
-          variables: { filters: { username: { eq: authority.username } } }, root: "accounts" },
-        { operation: "PublicCategoryListCounts", document: documents.publicCounts,
-          variables: { accountDocumentId: authority.accountDocumentId }, root: "recommendationLists" },
-        ...documents.categories.map(({ operation, document, root }) => ({
-          operation, document, variables: { accountDocumentId: authority.accountDocumentId }, root,
+        { path: `/api/explorers/v1/profiles/${encodeURIComponent(authority.username)}` },
+        ...publicCategoryContracts.map(({ category, root }) => ({
+          category, root,
+          path: `/api/explorers/v1/profiles/${encodeURIComponent(authority.username)}/recommendations/${category}`,
         })),
       ];
       let categoryQueries = 0;
@@ -805,11 +804,13 @@ export function createLoopbackPrebrowserQualificationAdapter({
         ["proxy", authority.explorerOrigin],
       ]) {
         for (const entry of publicDocuments) {
-          const stage = `${scope}-${publicGraphqlStageSuffix[entry.operation]}`;
-          const response = await atPublicFlowBoundary(stage, () => graphql(origin, entry.document, entry.variables));
+          const stage = entry.category
+            ? `${scope}-public-category-${entry.category}`
+            : `${scope}-public-profile`;
+          const response = await atPublicFlowBoundary(stage, () => boundedResponse(fetchImpl, `${origin}${entry.path}`));
           requirePublicHttp(stage, response, 200);
-          requirePublicContract(stage, validateMusicQualificationPublicGraphql({
-            operation: entry.operation,
+          requirePublicContract(stage, validateMusicQualificationPublicGateway({
+            category: entry.category,
             root: entry.root,
             body: response.body,
             namespace: authority.namespace,
@@ -987,7 +988,7 @@ export async function runMusicPrebrowserQualification({ initialSnapshot, adapter
       if (typeof publicCapability?.publicSlug !== "string"
           || !/^[A-Za-z0-9_-]{8,128}$/.test(publicCapability.publicSlug)
           || publicCapability.publicSlug === "qualification-public"
-          || publicCapability.categoryQueries !== 20
+          || publicCapability.categoryQueries !== 18
           || !Number.isSafeInteger(publicCapability.musicPrerequisites)
           || publicCapability.musicPrerequisites < 1) {
         retainedPublicFlowFailure = { stage: "proxy-public-music", code: "contract-invalid" };

@@ -206,7 +206,13 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     else input.signal?.addEventListener("abort", abortFromCaller, { once: true });
     requestControllers.set(controller, generation);
     try {
-      const response = await fetchImpl(`${baseUrl}${input.path}`, { method: input.method, headers, body, signal: controller.signal });
+      const response = await fetchImpl(`${baseUrl}${input.path}`, {
+        method: input.method,
+        headers,
+        body,
+        signal: controller.signal,
+        cache: "no-store",
+      });
       if (!authorityStillCurrent(generation, subject) || controller.signal.aborted) throw staleAuthority();
       return response;
     } catch {

@@ -10,6 +10,7 @@ import {
   readSecureMusicSecretFile,
   readSecureMusicSecretFileWithDistinctAuthorities,
   type SecureMusicSecretFileSystem,
+  type WindowsSecretSecurityInspection,
 } from "./secure-music-secret-file";
 import {
   MUSIC_PUBLICATION_RESPONSE_RETENTION_SECONDS,
@@ -24,6 +25,7 @@ export interface MusicIdentityConfigDependencies {
   platform?: NodeJS.Platform;
   effectiveUserId?: number;
   now?: () => number;
+  windowsSecurityInspection?: WindowsSecretSecurityInspection;
 }
 
 export interface MusicIdentityRuntimeConfig {
@@ -204,6 +206,7 @@ async function resolvePublicIdHmacKey(
         platform: dependencies.platform,
         effectiveUserId: dependencies.effectiveUserId,
         requireDistinctValues: true,
+        windowsSecurityInspection: dependencies.windowsSecurityInspection,
       },
     );
   } catch {
@@ -330,6 +333,7 @@ async function readPublicationAuthorityFile(
       platform: dependencies.platform,
       effectiveUserId: dependencies.effectiveUserId,
       requireDistinctValues: true,
+      windowsSecurityInspection: dependencies.windowsSecurityInspection,
     });
   } catch {
     throw new Error("Music publication response authority is insecure, invalid, or aliases another protected authority.");
@@ -561,6 +565,7 @@ async function resolveSecret(
     fileSystem: dependencies.secretFileSystem,
     platform: dependencies.platform,
     effectiveUserId: dependencies.effectiveUserId,
+    windowsSecurityInspection: dependencies.windowsSecurityInspection,
   });
 }
 

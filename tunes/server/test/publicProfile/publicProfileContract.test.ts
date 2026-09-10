@@ -4,7 +4,9 @@ import { parsePublicProfileDetailRequest, parsePublicProfileRequest, parsePublic
 describe("public profile contract", () => {
   it("bounds public page size and cursor", () => {
     expect(parsePublicProfileRequest({ username: "tk2727", category: "apps", limit: "24" })).toMatchObject({ username: "tk2727", category: "apps", limit: 24 });
+    expect(parsePublicProfileRequest({ username: "tk2727", category: "apps", limit: "12", cursor: "o24" })).toMatchObject({ cursor: "o24" });
     expect(() => parsePublicProfileRequest({ username: "tk2727", category: "apps", limit: "25" })).toThrow();
+    expect(() => parsePublicProfileRequest({ username: "tk2727", category: "apps", cursor: "next-page" })).toThrow();
   });
 
   it("does not accept account identifiers or arbitrary request fields", () => {

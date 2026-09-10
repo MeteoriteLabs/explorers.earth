@@ -61,6 +61,16 @@ function gateway(fetchImpl: typeof fetch, overrides: Partial<ConstructorParamete
 }
 
 describe("Strapi identity gateway", () => {
+  it("emits sanitized upstream stage diagnostics without URL, proof, or response data", async () => {
+    const diagnostics: unknown[] = [];
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("contains-sensitive-transport-detail"));
+    await expect(gateway(fetchImpl, { retries: 0, diagnostic: (entry) => diagnostics.push(entry) }).resolve("secret-proof-value", "request-safe"))
+      .rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+    expect(diagnostics).toEqual([{ endpoint: "user", attempt: 1, outcome: "transport_error" }]);
+    expect(JSON.stringify(diagnostics)).not.toContain("secret-proof-value");
+    expect(JSON.stringify(diagnostics)).not.toContain("contains-sensitive");
+  });
+
   it("reads every authoritative Account page before selecting a sole completed identity", async () => {
     const incomplete = { ...completeAccount, documentId: "account-doc-incomplete", mobile_number: null };
     const firstPage = Array.from({ length: 50 }, (_, index) => ({ ...incomplete, documentId: `incomplete-${index}` }));

@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 // Integration tests (*.integration.test.ts) need Postgres and run via
 // `npm run test:integration` against vitest.integration.config.ts.
 export default defineConfig({
+  // Unit tests must not load checkout credentials from environment files.
+  envDir: false,
   plugins: [react()],
   resolve: {
     alias: {
@@ -19,6 +21,6 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./server/test/setup.ts'],
     // Exclude integration tests from the default run so `npm test` never needs a DB.
-    exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
+    exclude: [...configDefaults.exclude, '**/*.integration.test.ts', '**/*.real-tool.test.ts'],
   },
 });

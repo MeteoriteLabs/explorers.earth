@@ -1,32 +1,39 @@
 import express from "express";
-import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupExplorersPublicProfileRoutes } from "../../routes/explorersPublicProfileRoutes";
+import { createLoopbackSupertestScope } from "../helpers/loopback-supertest";
+
+const loopback = createLoopbackSupertestScope();
+afterEach(async () => loopback.closeAll());
 
 describe("explorers public profile routes", () => {
   it("returns a safe public shell", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { shell: async () => ({ username: "tk2727", public_profile: "Yes" }), category: async () => undefined });
-    await request(app).get("/api/explorers/v1/profiles/tk2727").expect(200).expect({ username: "tk2727", public_profile: "Yes" });
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727").expect(200).expect({ username: "tk2727", public_profile: "Yes" });
   });
   it("caches the public shell with the same validator contract as categories", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { shell: async () => ({ username: "tk2727", public_profile: "Yes" }), category: async () => undefined });
-    const first = await request(app).get("/api/explorers/v1/profiles/tk2727").expect(200);
+    const { request } = await loopback.open({ app });
+    const first = await request.get("/api/explorers/v1/profiles/tk2727").expect(200);
     expect(first.headers["cache-control"]).toContain("max-age=30");
-    await request(app).get("/api/explorers/v1/profiles/tk2727").set("If-None-Match", first.headers.etag).expect(304);
+    await request.get("/api/explorers/v1/profiles/tk2727").set("If-None-Match", first.headers.etag).expect(304);
   });
   it("returns the same safe 404 for an unavailable category", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category: async () => undefined });
-    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(404);
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(404);
     expect(response.body).toEqual({ version: "explorers-public-error/v1", error: { code: "NOT_FOUND" } });
   });
 
   it("sets public caching headers for an allowed category", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category: async () => ({ lists: [] }) });
-    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
     expect(response.headers["cache-control"]).toContain("max-age=30");
     expect(response.headers.etag).toBeDefined();
   });
@@ -34,7 +41,8 @@ describe("explorers public profile routes", () => {
   it("maps upstream failures to a safe retryable response", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category: async () => { throw new Error("upstream credentials must stay private"); } });
-    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(503);
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(503);
     expect(response.body.error.code).toBe("UNAVAILABLE");
     expect(JSON.stringify(response.body)).not.toContain("credentials");
   });
@@ -47,8 +55,9 @@ describe("explorers public profile routes", () => {
       { rateLimit: { limit: 1, windowMs: 60_000 } },
     );
 
-    await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
-    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(429);
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
+    const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(429);
     expect(response.body).toEqual({ version: "explorers-public-error/v1", error: { code: "RATE_LIMITED", retryable: true } });
   });
 
@@ -56,7 +65,8 @@ describe("explorers public profile routes", () => {
     const category = vi.fn();
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category });
-    await request(app).get("/api/explorers/v1/profiles/tk2727%2Fadmin/recommendations/apps").expect(400);
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727%2Fadmin/recommendations/apps").expect(400);
     expect(category).not.toHaveBeenCalled();
   });
 
@@ -65,7 +75,8 @@ describe("explorers public profile routes", () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category });
 
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=1000")
       .expect(400);
 
@@ -77,15 +88,27 @@ describe("explorers public profile routes", () => {
     const category = vi.fn().mockResolvedValue({ lists: [] });
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category });
-    const response = await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=24").set("Cache-Control", "no-cache").expect(200);
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=24").set("Cache-Control", "no-cache").expect(200);
     expect(category).toHaveBeenCalledWith("tk2727", "apps", 24, { bypassCache: true });
     expect(response.headers["cache-control"]).toContain("max-age=30");
+  });
+
+  it("passes a bounded cursor through to the category reader", async () => {
+    const category = vi.fn().mockResolvedValue({ appLists: [] });
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category });
+
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=12&cursor=o24").expect(200);
+    expect(category).toHaveBeenCalledWith("tk2727", "apps", 12, { bypassCache: false, cursor: "o24" });
   });
 
   it("maps shell upstream failures to a safe retryable response", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { shell: async () => { throw new Error("private upstream detail"); }, category: async () => undefined });
-    const response = await request(app).get("/api/explorers/v1/profiles/tk2727").expect(503);
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/explorers/v1/profiles/tk2727").expect(503);
     expect(response.body.error.code).toBe("UNAVAILABLE");
     expect(JSON.stringify(response.body)).not.toContain("private");
   });
@@ -94,7 +117,18 @@ describe("explorers public profile routes", () => {
     const detail = vi.fn().mockResolvedValue({ appLists: [{ slug: "useful-apps" }] });
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category: async () => undefined, detail });
-    await request(app).get("/api/explorers/v1/profiles/tk2727/recommendations/apps/useful-apps?limit=24").expect(200).expect({ appLists: [{ slug: "useful-apps" }] });
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps/useful-apps?limit=24").expect(200).expect({ appLists: [{ slug: "useful-apps" }] });
     expect(detail).toHaveBeenCalledWith("tk2727", "apps", "useful-apps", 24, { bypassCache: false });
+  });
+
+  it("passes a bounded cursor through to the detail reader", async () => {
+    const detail = vi.fn().mockResolvedValue({ appLists: [{ slug: "useful-apps" }] });
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category: async () => undefined, detail });
+
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps/useful-apps?limit=12&cursor=o24").expect(200);
+    expect(detail).toHaveBeenCalledWith("tk2727", "apps", "useful-apps", 12, { bypassCache: false, cursor: "o24" });
   });
 });

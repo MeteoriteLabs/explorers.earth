@@ -3,16 +3,14 @@ import { ChevronDown } from "lucide-react";
 import type { YouTubeSearchResponse, YouTubeVideo } from "../musicSearchClient";
 import type { MusicSongInput } from "../musicQueueClient";
 import type { MusicSong } from "../musicWorkspaceClient";
-import type { MusicPlaybackCommand } from "./musicPlaybackCommand";
 
 type SearchClient = { searchYouTube(query: string, pageToken?: string): Promise<YouTubeSearchResponse>; videoFromUrl(url: string): Promise<YouTubeVideo> };
-type QueueClient = { addSong(song: MusicSongInput, idempotencyKey: string): Promise<MusicSong>; setPlaying(songId: number | null, idempotencyKey: string): Promise<void | MusicSong> };
+type QueueClient = { addSong(song: MusicSongInput, idempotencyKey: string): Promise<MusicSong> };
 type PlaylistTarget = { id: number; name: string };
 type PlaylistClient = { addPlaylistSong(playlistId: number, song: MusicSongInput, idempotencyKey: string): Promise<unknown> };
-export interface MusicSearchProps { searchClient: SearchClient; queueClient: QueueClient; onChanged: () => void | Promise<void>; beginPlaybackRequest?: () => number; onPlaybackRequested?: MusicPlaybackCommand; playlists?: PlaylistTarget[]; playlistClient?: PlaylistClient }
+export interface MusicSearchProps { searchClient: SearchClient; queueClient: QueueClient; onChanged: () => void | Promise<void>; playlists?: PlaylistTarget[]; playlistClient?: PlaylistClient }
 type DiscoveryError = "search" | "lookup" | "playlist" | null;
 type MutationError = "queue" | "refresh" | null;
-type PendingPlay = { songId: number; youtubeId: string; title: string; phase: "play" | "refresh" };
 type PendingPlaylistAdd = { playlistId: number; song: MusicSongInput; idempotencyKey: string };
 type DiscoveryInput = { kind: "search"; query: string } | { kind: "video"; url: string } | { kind: "playlist" };
 const key = (operation: string) => `music-${operation}-${crypto.randomUUID()}`;
@@ -40,7 +38,7 @@ function classifyDiscoveryInput(value: string): DiscoveryInput {
   return { kind: "video", url: `https://www.youtube.com/watch?v=${videoId}` };
 }
 
-export function MusicSearch({ searchClient, queueClient, onChanged, beginPlaybackRequest, onPlaybackRequested, playlists = [], playlistClient }: MusicSearchProps) {
+export function MusicSearch({ searchClient, queueClient, onChanged, playlists = [], playlistClient }: MusicSearchProps) {
   const [query, setQuery] = useState("");
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [target, setTarget] = useState("queue");
@@ -53,7 +51,6 @@ export function MusicSearch({ searchClient, queueClient, onChanged, beginPlaybac
   const [mutationError, setMutationError] = useState<MutationError>(null);
   const [mutationTarget, setMutationTarget] = useState<"queue" | "playlist">("queue");
   const [refreshErrorText, setRefreshErrorText] = useState("");
-  const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null);
   const generation = useRef(0);
   const requestLock = useRef<number | null>(null);
   const pendingPlaylistAdds = useRef(new Map<string, PendingPlaylistAdd>());
@@ -85,56 +82,21 @@ export function MusicSearch({ searchClient, queueClient, onChanged, beginPlaybac
   async function reconcile() { try { await onChanged(); } catch { /* Visible mutation error remains authoritative. */ } }
   const markCommitted = (youtubeId: string) => setSelected((current) => { const next = new Set(current); next.delete(youtubeId); return next; });
 
-  async function refreshCommitted(play: PendingPlay) {
-    const refreshing = { ...play, phase: "refresh" as const };
-    setPendingPlay(refreshing);
-    try { await onChanged(); setPendingPlay(null); setMutationError(null); setRefreshErrorText(""); }
-    catch { setPendingPlay(refreshing); setRefreshErrorText("The song was queued and played, but the latest queue could not be loaded."); setMutationError("refresh"); }
-  }
   async function retryRefresh() {
     if (mutationBusy) return;
     setMutationBusy(true);
-    try { await onChanged(); setPendingPlay(null); setMutationError(null); setRefreshErrorText(""); }
+    try { await onChanged(); setMutationError(null); setRefreshErrorText(""); }
     catch { setMutationError("refresh"); }
     finally { setMutationBusy(false); }
   }
-  async function retryPlaying(play: PendingPlay) {
-    if (mutationBusy) return;
-    const requestId = beginPlaybackRequest?.() ?? 0;
-    setMutationTarget("queue");
-    setMutationBusy(true); setMutationError(null); setRefreshErrorText("");
-    try {
-      const outcome = onPlaybackRequested
-        ? await onPlaybackRequested(play.songId, requestId, "search-retry")
-        : (await queueClient.setPlaying(play.songId, key("play")), "acknowledged");
-      if (outcome === "superseded") { setPendingPlay(null); return; }
-      await refreshCommitted(play);
-    }
-    catch { setMutationError("queue"); await reconcile(); }
-    finally { setMutationBusy(false); }
-  }
-  async function add(videos: YouTubeVideo[], playNow = false) {
+  async function add(videos: YouTubeVideo[]) {
     if (mutationBusy || videos.length === 0) return;
-    const requestId = playNow ? (beginPlaybackRequest?.() ?? 0) : 0;
     setMutationTarget("queue");
     setMutationBusy(true); setMutationError(null); setRefreshErrorText("");
     try {
       for (const video of videos) {
-        const added = await queueClient.addSong(songInput(video), key("add"));
+        await queueClient.addSong(songInput(video), key("add"));
         markCommitted(video.id.videoId);
-        if (playNow) {
-          const play: PendingPlay = { songId: added.id, youtubeId: video.id.videoId, title: video.snippet.title, phase: "play" };
-          setPendingPlay(play);
-          try {
-            const outcome = onPlaybackRequested
-              ? await onPlaybackRequested(added.id, requestId, "search")
-              : (await queueClient.setPlaying(added.id, key("play")), "acknowledged");
-            if (outcome === "superseded") { setPendingPlay(null); await reconcile(); return; }
-            await refreshCommitted(play);
-          }
-          catch { setMutationError("queue"); await reconcile(); return; }
-          return;
-        }
       }
       try { await onChanged(); }
       catch {
@@ -208,11 +170,12 @@ export function MusicSearch({ searchClient, queueClient, onChanged, beginPlaybac
     <div role="status" aria-live="polite" aria-label={mutationTarget === "playlist" ? "Playlist update status" : "Queue update status"} className="sr-only">{mutationBusy ? `Updating ${mutationTarget}` : ""}</div>
     {results?.length === 0 && <p>No music found.</p>}
     {results && results.length > 0 && <>
-      <ul className="space-y-2">{results.map((video) => { const pending = pendingPlay?.youtubeId === video.id.videoId ? pendingPlay : null; return <li key={video.id.videoId} className="flex items-center gap-3">
-        <input type="checkbox" aria-label={`Select ${video.snippet.title}`} checked={selected.has(video.id.videoId)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(video.id.videoId)) next.delete(video.id.videoId); else next.add(video.id.videoId); return next; })} className="min-h-11 min-w-11" />
-        <span className="flex-1"><strong>{video.snippet.title}</strong> <span>{video.snippet.channelTitle}</span></span>
-        <button type="button" disabled={mutationBusy || pending?.phase === "refresh"} onClick={() => pending?.phase === "play" ? void retryPlaying(pending) : void add([video], true)} aria-label={pending?.phase === "play" ? `Retry playing ${video.snippet.title}` : pending?.phase === "refresh" ? `${video.snippet.title} is playing` : `Play ${video.snippet.title} now`} className="min-h-11 min-w-11 px-3">{pending?.phase === "play" ? "Retry play" : pending?.phase === "refresh" ? "Playing" : "Play now"}</button>
-      </li>; })}</ul>
+      <ul className="space-y-2">{results.map((video) => <li key={video.id.videoId}>
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashboard px-3 py-2 hover:bg-dashboard-sidebar">
+          <input type="checkbox" aria-label={`Select ${video.snippet.title}`} checked={selected.has(video.id.videoId)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(video.id.videoId)) next.delete(video.id.videoId); else next.add(video.id.videoId); return next; })} className="min-h-11 min-w-11" />
+          <span className="flex-1"><strong>{video.snippet.title}</strong> <span>{video.snippet.channelTitle}</span></span>
+        </label>
+      </li>)}</ul>
       <div className="flex flex-col gap-2 sm:flex-row">
         {playlists.length > 0 && <label className="text-sm">Add selected to<select aria-label="Add selected to" value={target} onChange={(event) => setTarget(event.target.value)} className="ml-2 min-h-11 rounded-xl border border-dashboard bg-dashboard-bg px-3"><option value="queue">Queue</option>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name}</option>)}</select></label>}
         <button type="button" disabled={mutationBusy || selectedVideos.length === 0} onClick={() => target === "queue" ? void add(selectedVideos) : void addToPlaylist(selectedVideos, Number(target))} className="min-h-11 px-4">Add {selectedVideos.length} selected to {target === "queue" ? "queue" : playlists.find((playlist) => String(playlist.id) === target)?.name}</button>

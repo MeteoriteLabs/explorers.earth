@@ -1,38 +1,53 @@
-import { useState, useEffect } from "react";
-import { Outlet, useLocation, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import PublicNav from "../components/PublicNav";
-import { EarthLoader } from "../components/EarthLoader";
-import { PublicMusicAvailabilityProvider } from "../features/music/PublicMusicAvailabilityProvider";
+import {
+  usePublicAccountIdentity,
+} from "../features/music/PublicMusicAvailabilityProvider";
 import PublicProfileThemeProvider from "../features/PublicHome/components/PublicProfileThemeProvider";
+import { usePublicColdEntry } from "./PublicColdEntryBoundary";
+import PublicRouteErrorBoundary from "./PublicRouteErrorBoundary";
 
-const PublicLayout = () => {
+function PublicLayoutInner() {
   const location = useLocation();
-  const { username } = useParams();
-  const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const accountIdentity = usePublicAccountIdentity();
+  const cold = usePublicColdEntry();
 
-  // Check if current route is a map route
-  const isMapRoute = location.pathname.includes('/map') || location.pathname.includes('/placesmap');
-
-  // Readiness belongs to the route, so a prior child cannot reveal the next one.
   useEffect(() => {
-    setIsPageLoaded(false);
-  }, [username, location.pathname]);
+    cold.reportIdentity(accountIdentity.status);
+  }, [accountIdentity.status, cold.reportIdentity]);
 
-  return (
-    <PublicMusicAvailabilityProvider>
-      <PublicProfileThemeProvider>
-      {isPageLoaded && !isMapRoute && <PublicNav />}
-      <main>
-        <Outlet context={{ isPageLoaded, setIsPageLoaded }} />
-      </main>
-      {!isPageLoaded && (
-        <div className="bg-black min-h-screen fixed inset-0 z-50 flex items-center justify-center">
-          <EarthLoader context="general" size="default" />
-        </div>
-      )}
-      </PublicProfileThemeProvider>
-    </PublicMusicAvailabilityProvider>
-  );
-};
+  const setIsPageLoaded = useCallback((loaded: boolean) => {
+    cold.reportRouteReady(loaded);
+  }, [cold.reportRouteReady]);
+  const outletContext = useMemo(() => ({
+    isPageLoaded: cold.routeReady,
+    isShellRevealed: cold.shellRevealed,
+    setIsPageLoaded,
+  }), [cold.routeReady, cold.shellRevealed, setIsPageLoaded]);
+  const reportTerminal = useCallback((caughtRouteKey: string) => {
+    if (caughtRouteKey === cold.contentRouteKey) cold.reportRouteReady(true);
+  }, [cold.contentRouteKey, cold.reportRouteReady]);
+  const isMapRoute = location.pathname.includes("/map") || location.pathname.includes("/placesmap");
+
+  return <PublicProfileThemeProvider
+    showShellChrome={cold.shellRevealed}
+    navigation={cold.shellRevealed && !isMapRoute ? <PublicNav /> : undefined}
+  >
+    <main>
+      <PublicRouteErrorBoundary
+        key={cold.contentRouteKey}
+        contentRouteKey={cold.contentRouteKey}
+        usernameKey={cold.usernameKey}
+        shellRevealed={cold.shellRevealed}
+        reportTerminal={reportTerminal}
+      >
+        <Outlet context={outletContext} />
+      </PublicRouteErrorBoundary>
+    </main>
+  </PublicProfileThemeProvider>;
+}
+
+const PublicLayout = () => <PublicLayoutInner />;
 
 export default PublicLayout;

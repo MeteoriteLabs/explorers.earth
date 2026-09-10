@@ -4,6 +4,12 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { aroundAll, describe, expect, it } from "vitest";
 import { createEnvironmentFingerprint, readGitSha, redactStructuredData, resolveNpmCommand, terminateBeforeCheckpoint, validateRetainedFixtureVolume } from "../../../scripts/music-cli.ts";
+import {
+  assertMusicCliContractDockerEnvironment,
+  musicCliContractChildEnvironment,
+  readMusicCliContractDockerTrace,
+  type MusicCliContractAuthority,
+} from "../../../scripts/music-cli-contract-authority.ts";
 import { cleanupAllFixtureMusicTokenSecrets, persistFixtureMusicEnvironment, readFixtureMusicEnvironment, rotateFixtureMusicAuthority, withAllFixtureMusicSecretsCleanup } from "../../../scripts/music-fixture-secret.ts";
 import { withIsolatedMusicCliContractRepository } from "./helpers/music-cli-contract-isolation.ts";
 
@@ -12,6 +18,7 @@ const sourceRepositoryRoot = resolve(sourceTunesRoot, "..");
 const tsxCli = join(sourceTunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
 let tunesRoot: string;
 let repositoryRoot: string;
+let cliAuthority: MusicCliContractAuthority;
 
 function ensureSupportedCliFixtureAuthority(): void {
   try {
@@ -50,6 +57,7 @@ aroundAll(async (runSuite) => {
   await withIsolatedMusicCliContractRepository(sourceRepositoryRoot, async (isolated) => {
     repositoryRoot = isolated.repositoryRoot;
     tunesRoot = isolated.tunesRoot;
+    cliAuthority = isolated.cliAuthority;
     ensureSupportedCliFixtureAuthority();
     await runSuite();
   });
@@ -61,8 +69,8 @@ function npmCliArgs(args: string[]): string[] {
 }
 
 function runCli(args: string[], env?: NodeJS.ProcessEnv) {
-  const boundedEnvironment = { ...(env ?? process.env) };
-  if (env !== undefined) delete boundedEnvironment.MUSIC_C10_ISOLATED_NPM_EXECPATH;
+  const boundedEnvironment = musicCliContractChildEnvironment(cliAuthority, env);
+  assertMusicCliContractDockerEnvironment(boundedEnvironment);
   try {
     const stdout = execFileSync(process.execPath, [tsxCli, "scripts/music-cli.ts", ...args], {
       cwd: tunesRoot,
@@ -330,6 +338,7 @@ describe("music CLI output contract", () => {
     const output = execFileSync(process.execPath, npmCliArgs(["run", "--silent", "music:fixtures:capture", "--", "--format", "json"]), {
       cwd: repositoryRoot,
       encoding: "utf8",
+      env: musicCliContractChildEnvironment(cliAuthority),
     });
     const envelope = JSON.parse(output.trim());
     expect(envelope).toMatchObject({ schemaVersion: "music-cli/v1", command: "fixtures:capture", status: "success", phase: "fixture-capture" });
@@ -452,7 +461,7 @@ describe("music CLI output contract", () => {
       execFileSync(process.execPath, [tsxCli, "scripts/music-cli.ts", "bootstrap", "--resume", checkpoint, "--format", "json"], {
         cwd: tunesRoot,
         encoding: "utf8",
-        env: process.env,
+        env: musicCliContractChildEnvironment(cliAuthority),
         stdio: ["ignore", "pipe", "pipe"],
       });
       throw new Error("expected the resume safety refusal");
@@ -552,10 +561,23 @@ describe("music CLI output contract", () => {
   });
 
   it("reaches the guarded cleanup action on a second down after authority is already retired", () => {
+    const traceOffset = readMusicCliContractDockerTrace(cliAuthority.dockerTrace).length;
     cleanupAllFixtureMusicTokenSecrets(repositoryRoot);
     const result = runCli(["down", "--format", "json"]);
+    const calls = readMusicCliContractDockerTrace(cliAuthority.dockerTrace).slice(traceOffset);
     const lines = result.stdout.trim().split(/\r?\n/);
 
+    expect(calls).toEqual([
+      {
+        kind: "compose-config",
+        args: ["compose", "-p", "explorers-music-fixture", "-f", "docker-compose.music-test.yml", "config", "--format", "json"],
+      },
+      {
+        kind: "compose-ps",
+        args: ["compose", "-p", "explorers-music-fixture", "-f", "docker-compose.music-test.yml", "ps", "-a", "-q"],
+      },
+    ]);
+    expect(calls.some(({ kind }) => kind === "blocked")).toBe(false);
     expect(result.exitCode).toBe(5);
     expect(result.stderr).toBe("");
     expect(lines).toHaveLength(1);

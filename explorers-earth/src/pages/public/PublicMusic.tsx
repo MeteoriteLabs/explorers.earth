@@ -4,6 +4,9 @@ import { Music2 } from "lucide-react";
 import SEO from "../../components/SEO";
 import { type PublicMusicResource } from "../../features/music/publicMusicClient";
 import { PublicMusicSections } from "../../features/music/components/PublicMusicSections";
+import { PublicMusicProfileHeader } from '../../features/music/components/PublicMusicProfileHeader';
+import { PublicMusicSkeleton } from '../../features/music/components/PublicMusicSkeleton';
+import '../../features/music/components/PublicMusicPresentation.css';
 import { usePublicMusicResource } from "../../features/music/usePublicMusicResource";
 import { createPublicMusicAnalyticsOccurrence, usePublicMusicProductAnalytics, type PublicMusicProductEvent } from "../../features/music/publicMusicAnalytics";
 
@@ -40,8 +43,11 @@ export function PublicMusicContent({
   resource,
   retryAfterSeconds = 60,
   stale = false,
+  revalidating = false,
+  guestActionsEnabled = true,
   onRetry,
   standalone = true,
+  initialOverlayActive = false,
   returnTo = "/",
   publicSlug,
   capability,
@@ -52,8 +58,11 @@ export function PublicMusicContent({
   resource?: PublicMusicResource;
   retryAfterSeconds?: number;
   stale?: boolean;
+  revalidating?: boolean;
+  guestActionsEnabled?: boolean;
   onRetry?: () => void;
   standalone?: boolean;
+  initialOverlayActive?: boolean;
   returnTo?: string;
   publicSlug?: string;
   capability?: string;
@@ -81,60 +90,72 @@ export function PublicMusicContent({
   }, [analyticsRoute, onAnalytics, state]);
   if (state === "loading") {
     return (
-      <Frame className="min-h-screen bg-dashboard-bg px-4 py-20 text-dashboard-text">
-        <div className="mx-auto max-w-4xl" role="status" aria-live="polite">Loading Music…</div>
+      <Frame className="public-music public-music__frame">
+        <div className="public-music__content"><PublicMusicSkeleton announce={!initialOverlayActive} /></div>
       </Frame>
     );
   }
   if (state === "not-found") {
     return (
-      <Frame className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
-        <section className="max-w-md text-center">
-          <Music2 aria-hidden="true" className="mx-auto mb-4 h-10 w-10 text-dashboard-accent" />
+      <Frame className="public-music public-music__frame public-music__state-frame">
+        <section className="public-music__state public-music__surface">
+          <Music2 aria-hidden="true" className="public-music__state-icon mx-auto mb-4 h-10 w-10" />
           <h1 className="text-2xl font-semibold">Music page unavailable</h1>
-          {onRetry ? <button className="mt-6 min-h-11 rounded-lg bg-dashboard-accent px-5" type="button" onClick={onRetry}>Retry</button> : null}
-          <Link className="mt-6 ml-3 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link>
+          <div className="public-music__state-actions"><Link className="public-music__secondary" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link></div>
         </section>
       </Frame>
     );
   }
   if (state === "rate-limited") {
-    return <RateLimitedMusic retryAfterSeconds={retryAfterSeconds} onRetry={onRetry} />;
+    return <RateLimitedMusic retryAfterSeconds={retryAfterSeconds} onRetry={onRetry} standalone={standalone} />;
   }
   if (state === "unavailable" || !resource) {
     return (
-      <Frame className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
-        <section className="max-w-md text-center" role="alert">
+      <Frame className="public-music public-music__frame public-music__state-frame">
+        <section className="public-music__state public-music__surface" role="alert">
           <h1 className="text-2xl font-semibold">Music is temporarily unavailable.</h1>
-          {onRetry ? <button className="mt-6 min-h-11 rounded-lg bg-dashboard-accent px-5" type="button" onClick={onRetry}>Retry</button> : null}
-          <Link className="mt-6 ml-3 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link>
+          <div className="public-music__state-actions">{onRetry ? <button className="public-music__primary" type="button" onClick={onRetry}>Retry</button> : null}
+          <Link className="public-music__secondary" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link></div>
         </section>
       </Frame>
     );
   }
 
   return (
-    <Frame className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <h1 id="public-music-heading" tabIndex={-1} className="text-3xl font-semibold">Music</h1>
+    <Frame className="public-music public-music__frame">
+      <div className="public-music__content">
+        {standalone && <PublicMusicProfileHeader name={resource.user.venueName || resource.user.username} username={resource.user.username} />}
+        <h1 id="public-music-heading" tabIndex={-1} className={standalone ? "public-music__heading" : "sr-only"}>Music</h1>
         {stale ? (
           <p
             role="status"
             aria-label="Music connection status"
             aria-live="polite"
             aria-atomic="true"
-            className="mt-4 rounded-xl border border-dashboard-border bg-dashboard-card/60 px-4 py-3 text-sm text-dashboard-text-muted"
+            className="public-music__surface public-music__connection"
           >
             Reconnecting… Your last Music update remains visible.
           </p>
         ) : null}
-        <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} onReconcile={onRetry} onAnalytics={onAnalytics} />
+        {revalidating ? (
+          <p
+            role="status"
+            aria-label="Music availability status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="public-music__surface public-music__connection"
+          >
+            Checking Music availability…
+          </p>
+        ) : null}
+        <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} guestActionsEnabled={guestActionsEnabled} onReconcile={onRetry} onAnalytics={onAnalytics} />
       </div>
     </Frame>
   );
 }
 
-function RateLimitedMusic({ retryAfterSeconds, onRetry }: { retryAfterSeconds: number; onRetry?: () => void }) {
+function RateLimitedMusic({ retryAfterSeconds, onRetry, standalone }: { retryAfterSeconds: number; onRetry?: () => void; standalone: boolean }) {
+  const Frame = standalone ? 'main' : 'div';
   const [ready, setReady] = useState(retryAfterSeconds <= 0);
   useEffect(() => {
     setReady(retryAfterSeconds <= 0);
@@ -143,12 +164,12 @@ function RateLimitedMusic({ retryAfterSeconds, onRetry }: { retryAfterSeconds: n
     return () => window.clearTimeout(timer);
   }, [retryAfterSeconds]);
   return (
-    <main className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
-      <section className="max-w-md text-center" role="alert">
+    <Frame className="public-music public-music__frame public-music__state-frame">
+      <section className="public-music__state public-music__surface" role="alert">
         <h1 className="text-2xl font-semibold">Too many requests. Try again in {retryAfterSeconds} seconds.</h1>
-        <button type="button" disabled={!ready} onClick={onRetry} className="mt-6 min-h-11 min-w-11 rounded-lg bg-dashboard-accent px-5 text-base font-semibold text-[var(--dash-accent-text)] disabled:cursor-not-allowed disabled:opacity-50">Retry</button>
+        <div className="public-music__state-actions"><button type="button" disabled={!ready} onClick={onRetry} className="public-music__primary">Retry</button></div>
       </section>
-    </main>
+    </Frame>
   );
 }
 

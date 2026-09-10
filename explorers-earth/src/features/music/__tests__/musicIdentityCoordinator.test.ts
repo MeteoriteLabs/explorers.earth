@@ -15,6 +15,19 @@ const account = {
 };
 
 describe("automatic Music identity coordinator", () => {
+  it("does not lend completed readiness to another account or user before reconciliation", async () => {
+    const ensureIdentity = vi.fn(async () => undefined);
+    const coordinator = createMusicIdentityCoordinator({ ensureIdentity });
+    await coordinator.reconcile({ provider: "google", authenticated: true, verified: true, userDocumentId: "user-a", account: { documentId: "account-a" } });
+    const readyFor = (coordinator as any).isReadyFor;
+    expect(readyFor).toBeTypeOf("function");
+    expect(readyFor({ userDocumentId: "user-a", accountDocumentId: "account-a" })).toBe(true);
+    expect(readyFor({ userDocumentId: "user-a", accountDocumentId: "account-b" })).toBe(false);
+    expect(readyFor({ userDocumentId: "user-b", accountDocumentId: "account-a" })).toBe(false);
+    expect(ensureIdentity).toHaveBeenCalledTimes(1);
+    coordinator.reset();
+    expect(readyFor({ userDocumentId: "user-a", accountDocumentId: "account-a" })).toBe(false);
+  });
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();

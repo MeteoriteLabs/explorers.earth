@@ -1,4 +1,5 @@
 import type { UTMParameters } from '../utils/urlHelpers';
+import { createMusicDevelopmentFetch } from '../features/music/musicDevelopmentTransport';
 
 const CONSENT_STORAGE_KEY = 'explorers-cookie-consent';
 export const ANALYTICS_CONSENT_CHANGED_EVENT =
@@ -53,10 +54,10 @@ const endpoint = (baseUrl: string) =>
   `${baseUrl.replace(/\/+$/, '')}/api/explorers/analytics/events`;
 
 export function hasAnalyticsConsent(
-  storage: Pick<Storage, 'getItem'> = localStorage,
+  storage?: Pick<Storage, 'getItem'>,
 ): boolean {
   try {
-    const stored = storage.getItem(CONSENT_STORAGE_KEY);
+    const stored = (storage ?? window.localStorage).getItem(CONSENT_STORAGE_KEY);
     if (!stored) return false;
     return JSON.parse(stored)?.analytics === true;
   } catch {
@@ -79,7 +80,7 @@ export async function postExplorersAnalyticsEvent(
   payload: ExplorersAnalyticsWritePayload,
   {
     baseUrl = DEFAULT_LOCAL_TUNES_URL,
-    fetchImpl = fetch,
+    fetchImpl,
     retryCount = 1,
     pendingPollCount = 7,
     pendingPollBaseDelayMs = 250,
@@ -88,6 +89,11 @@ export async function postExplorersAnalyticsEvent(
       new Promise<void>((resolve) => window.setTimeout(resolve, delayMs)),
   }: WriteOptions = {},
 ): Promise<void> {
+  const analyticsFetch = fetchImpl ?? createMusicDevelopmentFetch(
+    fetch,
+    import.meta.env.DEV,
+    DEFAULT_LOCAL_TUNES_URL,
+  );
   const body = JSON.stringify(payload);
   let lastError: unknown;
   let transientRetries = 0;
@@ -95,7 +101,7 @@ export async function postExplorersAnalyticsEvent(
 
   while (true) {
     try {
-      const response = await fetchImpl(endpoint(baseUrl), {
+      const response = await analyticsFetch(endpoint(baseUrl), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         referrerPolicy: 'no-referrer',
@@ -153,7 +159,7 @@ export async function readExplorersAnalyticsEvents(
   scope: AnalyticsReadScope,
   {
     baseUrl = DEFAULT_LOCAL_TUNES_URL,
-    fetchImpl = fetch,
+    fetchImpl,
   }: ClientOptions = {},
 ): Promise<ExplorersAnalyticsRecord[]> {
   if (!scope.token) {
@@ -163,13 +169,19 @@ export async function readExplorersAnalyticsEvents(
     throw new Error('Analytics dashboard date-only scope is required');
   }
 
+  const analyticsFetch = fetchImpl ?? createMusicDevelopmentFetch(
+    fetch,
+    import.meta.env.DEV,
+    DEFAULT_LOCAL_TUNES_URL,
+  );
+
   const url = new URL(endpoint(baseUrl));
   url.searchParams.set('accountId', scope.accountId);
   url.searchParams.set('fromDate', scope.fromDate);
   url.searchParams.set('toDate', scope.toDate);
   url.searchParams.set('timeZone', scope.timeZone);
 
-  const response = await fetchImpl(url.toString(), {
+  const response = await analyticsFetch(url.toString(), {
     method: 'GET',
     headers: { Authorization: `Bearer ${scope.token}` },
     signal: AbortSignal.timeout(10_000),

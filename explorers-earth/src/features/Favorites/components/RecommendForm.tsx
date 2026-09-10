@@ -18,6 +18,7 @@ import { AddIcon } from "../../../assets/icons/AddIcon";
 import CrossIcon from "../../../assets/icons/CrossIcon";
 import StarIcon from "../../../assets/icons/StarIcon";
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import Modal from "../../../components/ui/Modal";
 import { useTaggableFields } from "../hooks/useTaggableFields";
 import axios from "axios";
@@ -1718,4 +1719,4 @@ const RecommendationForm = memo(
   )
 );
 
-export default RecommendationForm;
+export default withGoogleMapsProvider(RecommendationForm);

@@ -1,12 +1,12 @@
 import { createServer } from "node:http";
 import express from "express";
-import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 import { setupMusicFixtureProbeRoute } from "../../routes/musicFixtureProbe.ts";
+import { createLoopbackSupertestScope } from "../helpers/loopback-supertest";
 
 describe("actual Tunes application fixture probe", () => {
-  const servers: ReturnType<typeof createServer>[] = [];
-  afterEach(() => servers.splice(0).forEach((server) => server.close()));
+  const loopback = createLoopbackSupertestScope();
+  afterEach(async () => loopback.closeAll());
 
   it("mediates one request across the Strapi and PostgreSQL boundaries", async () => {
     // Production break caught: smoke hits a renamed fixture server and never
@@ -26,11 +26,8 @@ describe("actual Tunes application fixture probe", () => {
         is_subscribed: false,
         accounts: [{ documentId: "fixture-account", Account_Name: "Fixture", Account_Type: "Personal", mobile_number: "+10000000000", localtunes_integrated: "No" }],
       }));
-    }).listen(0, "127.0.0.1");
-    servers.push(strapi);
-    await new Promise<void>((resolveListen) => strapi.once("listening", resolveListen));
-    const address = strapi.address();
-    if (!address || typeof address === "string") throw new Error("fixture Strapi did not bind");
+    });
+    const strapiSession = await loopback.open({ server: strapi });
 
     const queries: string[] = [];
     const app = express();
@@ -38,12 +35,13 @@ describe("actual Tunes application fixture probe", () => {
       mode: "fixture",
       databaseQuery: async (sql) => { queries.push(sql); return { rows: [{ database: "music_fixture", ready: 1 }] }; },
       migrationReadiness: async () => ({ ready: true, currentId: "0020_public_snapshot_revision" }),
-      strapiUrl: `http://127.0.0.1:${address.port}`,
+      strapiUrl: `http://127.0.0.1:${strapiSession.address.port}`,
       strapiReadToken: "fixture-read-only-token",
       fetchImpl: fetch,
     });
 
-    const response = await request(app).get("/api/music-fixture/readiness").expect(200);
+    const appSession = await loopback.open({ app });
+    const response = await appSession.request.get("/api/music-fixture/readiness").expect(200);
     expect(queries).toEqual(["SELECT current_database() AS database, 1 AS ready"]);
     expect(upstreamRequests).toEqual([
       { url: "/health", authorization: undefined },

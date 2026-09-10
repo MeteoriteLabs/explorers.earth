@@ -4,6 +4,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearPublicMusicAnalyticsReceiptsForTests, usePublicMusicProductAnalytics } from "../publicMusicAnalytics";
 
 describe("usePublicMusicProductAnalytics", () => {
+  it("delivers consented default-client events through the Music proxy in development", async () => {
+    vi.stubEnv("DEV", true);
+    const requests: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      requests.push(String(input)); return new Response(null, { status: 201 });
+    });
+    try {
+      const { result } = renderHook(() => usePublicMusicProductAnalytics({ publicSlug: "public-owner", route: "friendly" }));
+      await act(async () => { await result.current({ name: "playlist_opened" }, "proxy-occurrence-123"); });
+      expect(requests).toEqual(["/__localtunes/api/explorers/analytics/music/public-owner/events"]);
+    } finally { vi.unstubAllGlobals(); }
+  });
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.setItem("explorers-cookie-consent", JSON.stringify({ necessary: true, analytics: true }));

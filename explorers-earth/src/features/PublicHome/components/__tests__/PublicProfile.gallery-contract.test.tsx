@@ -6,9 +6,22 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixtureProfileController } from "../../../../../../tunes/scripts/music-fixture-profile";
 import PublicProfile from "../PublicProfile";
+import { getPublicAccountBasicQuery } from "../../api/query";
+
+const publicGateway = vi.hoisted(() => ({
+  shell: vi.fn(),
+  category: vi.fn(),
+  peekCategory: vi.fn(),
+  detail: vi.fn(),
+}));
+
+vi.mock("../../api/publicProfileGatewayClient", () => ({
+  publicProfileGatewayClient: publicGateway,
+}));
 
 // Analytics is the external write boundary. Profile, FeedLayout, Gallery,
-// Apollo queries, and the fixture's exact checked-in document registry stay real.
+// and the fixture's checked-in document registry stay real. Anonymous public
+// reads are now served by the public gateway rather than Apollo.
 vi.mock("../../../../services/analyticsService", () => ({
   createAnalyticsOptions: { profile: () => ({}) },
   useTrackAnalytics: () => ({ trackClick: () => undefined }),
@@ -26,6 +39,23 @@ afterEach(() => {
 });
 
 describe("populated fixture Gallery with the real public profile renderer", () => {
+  it("serves the shared PublicAccountBasic document and denies the obsolete CheckUsername operation", () => {
+    const controller = createFixtureProfileController({
+      username: "e2e-public-music-gallery-contract-owner",
+      accountDocumentId: "e2e-public-music-gallery-contract-account",
+      userDocumentId: "e2e-public-music-gallery-contract-user",
+      baseUser: { provider: "local", confirmed: true, blocked: false },
+      baseAccount: { mobile_number: "+10000000000" },
+    });
+
+    expect(controller.graphql(print(getPublicAccountBasicQuery), {
+      filters: { username: { eq: "e2e-public-music-gallery-contract-owner" } },
+    }).status).toBe(200);
+    expect(controller.graphql(`query CheckUsername($username: String!) {
+      accounts(filters: { username: { eq: $username } }) { documentId Account_Name }
+    }`, { username: "e2e-public-music-gallery-contract-owner" }).status).toBe(403);
+  });
+
   it.each([
     { label: "mobile", width: 375, height: 667 },
     { label: "desktop", width: 1280, height: 720 },
@@ -69,6 +99,21 @@ describe("populated fixture Gallery with the real public profile renderer", () =
       url: "/images/tuneslogo.png", fileName: "tuneslogo.png", type: "image",
       aspectRatio: "1:1", width: 512, height: 512, uploadSource: "fixture",
     }]);
+    publicGateway.shell.mockResolvedValue(baseline);
+    publicGateway.category.mockResolvedValue({
+      recommendationLists: [{
+        documentId: "fixture-places-list",
+        List_Name: "Fixture places",
+        slug: "fixture-places",
+        Visibility: true,
+        recommended_places: [{
+          documentId: "fixture-place",
+          Place_Details: { name: "Fixture place" },
+          recommendation_category: { Category_Name: "Places" },
+          Media: null,
+        }],
+      }],
+    });
     const operations: string[] = [];
     const client = new ApolloClient({
       cache: new InMemoryCache(),
@@ -93,8 +138,10 @@ describe("populated fixture Gallery with the real public profile renderer", () =
       const root = await screen.findByTestId("public-profile-theme-root");
       expect(root).toHaveAttribute("data-theme-preset", "cinematic-dark");
       expect(root).toHaveAttribute("data-wallpaper-mode", "banner-top");
+      const recommendations = screen.getByRole("tab", { name: "Recommendations", exact: true });
+      fireEvent.click(recommendations);
       expect(await screen.findByTestId("recommendations-shelves")).toBeVisible();
-      expect(screen.getByRole("tab", { name: "Recommendations", exact: true })).toHaveAttribute("aria-selected", "true");
+      expect(recommendations).toHaveAttribute("aria-selected", "true");
       const gallery = screen.getByRole("tab", { name: "Gallery", exact: true });
       expect(screen.getAllByRole("tab", { name: "Gallery", exact: true })).toHaveLength(1);
       expect(gallery).toBeVisible();
@@ -110,7 +157,9 @@ describe("populated fixture Gallery with the real public profile renderer", () =
       expect(image).toHaveAttribute("src", "/images/tuneslogo.png");
       expect(panel.querySelector(".ReactGridGallery")).not.toBeNull();
       expect(router.state.location.pathname).toBe("/e2e-public-music-gallery-contract-owner");
-      expect(operations).toContain("PublicProfileData");
+      expect(publicGateway.shell).toHaveBeenCalledWith("e2e-public-music-gallery-contract-owner", expect.any(AbortSignal), false);
+      expect(publicGateway.category).toHaveBeenCalled();
+      expect(operations).not.toContain("CheckUsername");
       expect(operations.some((name) => name.startsWith("Update"))).toBe(false);
       expect(JSON.stringify(controller.account())).toBe(rawBefore);
       expect(network).not.toHaveBeenCalled();

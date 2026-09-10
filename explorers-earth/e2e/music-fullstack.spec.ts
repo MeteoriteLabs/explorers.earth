@@ -79,7 +79,7 @@ test("an outage preserves the Explorer shell and explicit retry resumes sharing"
   expect(audit.ensureCalls()).toBe(2);
 });
 
-test("an expired owner credential refreshes once and safely replays the workspace read", async ({ page }) => {
+test("an expired owner credential refreshes once, safely replays, and performs the authenticated live-sync read", async ({ page }) => {
   const audit = await installMusicQualificationMocks(page, {
     playlists: [qualificationPlaylist],
     ownerExpiredFailures: 1,
@@ -89,6 +89,7 @@ test("an expired owner credential refreshes once and safely replays the workspac
   expect(audit.ensureCalls()).toBe(2);
   expect(audit.requests.filter(({ path }) => path === "/api/playlists")).toEqual([
     expect.objectContaining({ authorization: `Bearer ${audit.credential}`, xUsername: undefined }),
+    expect.objectContaining({ authorization: `Bearer ${audit.renewedCredential}`, xUsername: undefined }),
     expect.objectContaining({ authorization: `Bearer ${audit.renewedCredential}`, xUsername: undefined }),
   ]);
 });

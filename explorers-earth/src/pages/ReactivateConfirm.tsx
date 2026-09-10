@@ -4,8 +4,10 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createMusicDevelopmentFetch } from "../features/music/musicDevelopmentTransport";
 
-const TUNES_API = import.meta.env.VITE_LOCAL_TUNES_API_URL || "http://localhost:5000";
+const TUNES_API = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
+const musicFetch: typeof fetch = (input, init) => createMusicDevelopmentFetch(fetch, import.meta.env.DEV, TUNES_API)(input, init);
 
 type Status = "loading" | "success" | "error";
 
@@ -34,7 +36,7 @@ const ReactivateConfirm = () => {
 
     const verify = async () => {
       try {
-        const response = await fetch(
+        const response = await musicFetch(
           `${TUNES_API}/api/user/reactivate?token=${encodeURIComponent(token)}`
         );
         const data = await response.json();

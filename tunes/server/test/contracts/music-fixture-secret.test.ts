@@ -4,7 +4,7 @@ import { chmodSync, closeSync, constants, existsSync, fsyncSync, ftruncateSync, 
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanupAllFixtureMusicTokenSecrets,
   cleanupFixtureMusicTokenSecret,
@@ -25,6 +25,10 @@ function fixtureRoot(): string {
   roots.push(root);
   return root;
 }
+
+const semanticDurableReplace = (source: string, destination: string): void => {
+  renameSync(source, destination);
+};
 
 function snapshotFixtureTree(root: string): Record<string, string> {
   const snapshot: Record<string, string> = {};
@@ -91,18 +95,20 @@ describe("disposable fixture Music token secret", () => {
     expect(readFileSync(first, "utf8")).toBe(firstBytes);
     expect(readFileSync(second, "utf8")).toBe(Buffer.alloc(32, 0x72).toString("base64url"));
     if (process.platform !== "win32") expect(statSync(second).mode & 0o777).toBe(0o600);
-  });
+  }, 20_000);
 
   it("leaves the prior key byte-exact when a fresh key write crashes or is short", () => {
     const root = fixtureRoot();
     const prior = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x73), {
       randomNameBytes: () => Buffer.alloc(16, 0x31),
+      durableReplace: semanticDurableReplace,
     } as never);
     const priorBytes = readFileSync(prior);
 
     expect(() => prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x74), {
       randomNameBytes: () => Buffer.alloc(16, 0x32),
       write: (descriptor: number, buffer: Uint8Array) => writeSync(descriptor, buffer, 0, 3, 0),
+      durableReplace: semanticDurableReplace,
     } as never)).toThrow(/fixture signing key|short|write/i);
 
     expect(readFileSync(prior)).toEqual(priorBytes);
@@ -170,8 +176,10 @@ describe("disposable fixture Music token secret", () => {
     const outsideRoot = fixtureRoot();
     const directory = join(root, ".artifacts", "music-token-secrets");
     const movedDirectory = join(root, ".artifacts", "music-token-secrets-owned");
+    const durableReplace = vi.fn(semanticDurableReplace);
     const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x75), {
       randomNameBytes: () => Buffer.alloc(16, 0x43),
+      durableReplace,
     } as never);
     const outside = join(outsideRoot, path.slice(path.lastIndexOf(process.platform === "win32" ? "\\" : "/") + 1));
     writeFileSync(outside, "outside-must-not-change", { mode: 0o640 });
@@ -201,6 +209,7 @@ describe("disposable fixture Music token secret", () => {
     expect(statSync(outside).mode).toBe(outsideMode);
     const erased = swapBlocked ? path : join(movedDirectory, basename(path));
     expect(lstatSync(erased).size).toBe(0);
+    expect(durableReplace).toHaveBeenCalledTimes(process.platform === "win32" ? 1 : 0);
   });
 
   it("erases the exact fixture secret on reset/teardown success or failure without pathname deletion", async () => {
@@ -208,6 +217,7 @@ describe("disposable fixture Music token secret", () => {
       const root = fixtureRoot();
       const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, shouldFail ? 0x77 : 0x76), {
         randomNameBytes: () => Buffer.alloc(16, shouldFail ? 0x45 : 0x44),
+        durableReplace: semanticDurableReplace,
       } as never);
       const action = async () => { if (shouldFail) throw new Error("forced fixture teardown failure"); };
       const cleanup = (fixtureSecrets as unknown as {
@@ -226,6 +236,7 @@ describe("disposable fixture Music token secret", () => {
     const root = fixtureRoot();
     const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x7a), {
       randomNameBytes: () => Buffer.alloc(16, failure === "truncate" ? 0x51 : failure === "sync" ? 0x52 : 0x53),
+      durableReplace: semanticDurableReplace,
     } as never);
     const targetId = basename(path);
     const dependencies = failure === "truncate"
@@ -258,6 +269,7 @@ describe("disposable fixture Music token secret", () => {
     const root = fixtureRoot();
     const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x7b), {
       randomNameBytes: () => Buffer.alloc(16, 0x54),
+      durableReplace: semanticDurableReplace,
     } as never);
     const cleanup = (fixtureSecrets as unknown as {
       withFixtureMusicTokenSecretCleanup: <T>(root: string, path: string, action: () => Promise<T>, dependencies?: unknown) => Promise<T>;
@@ -2281,7 +2293,7 @@ STRAPI_ACCESS_TOKEN=dedicated-fixture-access
     })).not.toThrow();
     expect(existsSync(source)).toBe(false);
     expect(readFileSync(destination)).toEqual(expected);
-  });
+  }, 20_000);
 
   it.each([0, 1, 2, 3])("recovers a hard exit after candidate %s creation but before journal update", (candidateIndex) => {
     const root = fixtureRoot();

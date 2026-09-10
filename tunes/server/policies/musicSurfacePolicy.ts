@@ -86,6 +86,12 @@ const PUBLIC_PATHS = new Set([
   "/api-docs",
 ]);
 
+const PUBLIC_PROFILE_GET_PATHS = new Set([
+  "/api/explorers/v1/profiles/:username",
+  "/api/explorers/v1/profiles/:username/recommendations/:category",
+  "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
+]);
+
 const PAID_PREFIXES = [
   "/api/payments/",
   "/api/subscriptions/",
@@ -112,6 +118,7 @@ const OWNER_PREFIXES = [
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification">): MusicSurfaceDecision {
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
+  if (route.method === "GET" && PUBLIC_PROFILE_GET_PATHS.has(route.path)) return "public";
   if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard" || route.path === "/api/music/features" || route.path === "/api/music/guest-controls") return "owner";

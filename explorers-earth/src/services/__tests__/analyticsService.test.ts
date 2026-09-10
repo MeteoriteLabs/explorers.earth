@@ -424,6 +424,70 @@ describe('analyticsService', () => {
       });
     });
 
+    it('preserves bounded list and sector share metadata while stripping unsafe keys', async () => {
+      window.history.replaceState({}, '', '/tk2727/people/sector/film');
+      const { result } = renderHook(() =>
+        useTrackAnalytics({ accountId: 'acc1', pageName: 'public-people', autoTrackView: false }),
+      );
+
+      await act(async () =>
+        result.current.trackClick('share-button', {
+          context: 'people-sector-header',
+          listId: 'list-1',
+          listName: 'Film makers',
+          sector: 'film',
+          token: 'private-token',
+          authorization: 'Bearer secret',
+          email: 'visitor@example.com',
+          url: 'https://explorers.earth/tk2727/people/sector/film?access=secret',
+          unknownFutureKey: 'not-approved',
+        }),
+      );
+      await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(1));
+
+      expect(postEvent.mock.calls[0][0].event.metadata).toEqual({
+        context: 'people-sector-header',
+        listId: 'list-1',
+        listName: 'Film makers',
+        sector: 'film',
+        originalElement: 'share-button',
+      });
+    });
+
+    it('preserves every bounded public-header route key while dropping unknown and private values', async () => {
+      window.history.replaceState({}, '', '/tk2727/guides/weekend-in-goa');
+      const { result } = renderHook(() =>
+        useTrackAnalytics({ accountId: 'acc1', pageName: 'public-guides', autoTrackView: false }),
+      );
+
+      await act(async () =>
+        result.current.trackClick('share-button', {
+          context: 'guide-detail-header',
+          city: 'Goa',
+          genre: 'documentary',
+          subject: 'design',
+          guideId: 'guide-1',
+          guideName: `Weekend guide ${'x'.repeat(600)}`,
+          token: 'private-token',
+          url: 'https://explorers.earth/tk2727/guides/weekend-in-goa?access=secret',
+          unknownFutureKey: 'not-approved',
+        }),
+      );
+      await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(1));
+
+      expect(postEvent.mock.calls[0][0].event.metadata).toEqual({
+        context: 'guide-detail-header',
+        city: 'Goa',
+        genre: 'documentary',
+        subject: 'design',
+        guideId: 'guide-1',
+        guideName: `Weekend guide ${'x'.repeat(498)}`,
+        originalElement: 'share-button',
+      });
+      expect(JSON.stringify(postEvent.mock.calls[0][0])).not.toContain('private-token');
+      expect(JSON.stringify(postEvent.mock.calls[0][0])).not.toContain('not-approved');
+    });
+
     it('exposes a write failure and does not mark the event as sent', async () => {
       postEvent.mockRejectedValueOnce(new Error('Local Tunes unavailable'));
       const { result } = renderHook(() =>

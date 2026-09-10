@@ -7,6 +7,7 @@ import {
   MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES,
   MUSIC_UAT_DATABASE_TEST_FILES,
   buildUatDatabaseTestCommand,
+  executeOwnedUatEvidence,
   parseUatDatabaseAuthority,
   runUatDatabaseTestChild,
   startOwnedUatDatabase,
@@ -288,14 +289,44 @@ describe("owned Task-4 UAT database lane", () => {
   });
 
   it("scopes the verified ten-second timeout to the exact owned database child command", () => {
-    expect(buildUatDatabaseTestCommand("C:\\node\\npm-cli.js")).toEqual({
+    expect(buildUatDatabaseTestCommand("C:\\node\\npm-cli.js", "C:\\owned\\vitest.json")).toEqual({
       file: process.execPath,
       args: [
         "C:\\node\\npm-cli.js", "run", "test:integration", "--",
         ...MUSIC_UAT_DATABASE_TEST_FILES,
         "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=10000",
+        "--reporter=default", "--reporter=json", "--outputFile.json=C:\\owned\\vitest.json",
       ],
     });
+  });
+
+  it("releases owned authority before constructing and writing successful UAT evidence", async () => {
+    const events: string[] = [];
+    const vitestRaw = JSON.stringify({ success: true });
+    const written: unknown[] = [];
+    const result = await executeOwnedUatEvidence({
+      acquire: async () => { events.push("acquire"); return { id: "owned" }; },
+      run: async () => { events.push("run"); return { exitCode: 0, signal: null }; },
+      release: async () => { events.push("release"); },
+      readRaw: () => { events.push("read"); return vitestRaw; },
+      buildEnvelope: (input) => { events.push("build"); return { ...input, ok: true }; },
+      writeEnvelope: async (envelope) => { events.push("write"); written.push(envelope); },
+    });
+    expect(events).toEqual(["acquire", "run", "release", "read", "build", "write"]);
+    expect(result).toEqual(written[0]);
+  });
+
+  it("does not construct or write successful UAT evidence when cleanup fails", async () => {
+    const events: string[] = [];
+    await expect(executeOwnedUatEvidence({
+      acquire: async () => ({ id: "owned" }),
+      run: async () => ({ exitCode: 0, signal: null }),
+      release: async () => { events.push("release"); throw new Error("cleanup failed"); },
+      readRaw: () => { events.push("read"); return "{}"; },
+      buildEnvelope: () => { events.push("build"); return { ok: true }; },
+      writeEnvelope: async () => { events.push("write"); },
+    })).rejects.toThrow("cleanup failed");
+    expect(events).toEqual(["release"]);
   });
 
   it("redacts hostile database and configured secrets before child output reaches writers", async () => {

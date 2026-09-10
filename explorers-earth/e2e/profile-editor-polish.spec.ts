@@ -480,6 +480,33 @@ class SyntheticProfileFixture {
         return this.handleGraphQL(route);
       }
 
+      const publicProfilePrefix = "/api/explorers/v1/profiles/synthetic-explorer";
+      if (pathname === publicProfilePrefix || pathname.startsWith(`${publicProfilePrefix}/recommendations/`)) {
+        if (request.method() !== "GET" || request.headers().authorization) {
+          this.unhandledRequests.push(`${request.method()} ${request.url()}`);
+          return route.abort("blockedbyclient");
+        }
+        if (pathname === publicProfilePrefix) return fulfillJson(route, clone(this.account));
+        const categoryOperation: Record<string, string> = {
+          places: "GetPlacesLists",
+          movies: "GetMoviesLists",
+          books: "GetBooksLists",
+          games: "GetGamesLists",
+          guides: "GetGuidesLists",
+          apps: "GetAppsLists",
+          products: "GetProductsLists",
+          people: "GetPeopleLists",
+        };
+        const category = pathname.slice(`${publicProfilePrefix}/recommendations/`.length);
+        const operation = categoryOperation[category];
+        const payload = operation && categoryPayload(operation);
+        if (!payload) {
+          this.unhandledRequests.push(`${request.method()} ${request.url()}`);
+          return route.abort("blockedbyclient");
+        }
+        return fulfillJson(route, clone(payload));
+      }
+
       if (pathname === "/api/instagram/account-posts") {
         const result = this.instagramQueue.length
           ? await this.instagramQueue.shift()!.promise
@@ -549,7 +576,8 @@ class SyntheticProfileFixture {
         });
       }
 
-      if (pathname === "/api/music/public-profile/fixture-account") {
+      if (pathname === "/api/music/public-profile/fixture-account" ||
+          pathname === "/__localtunes/api/music/public-profile/fixture-account") {
         this.descriptorAbortExpected = true;
         return route.abort("blockedbyclient");
       }
@@ -658,6 +686,7 @@ class SyntheticProfileFixture {
       operation === "SidebarAccount" ||
       operation === "MusicIdentityEligibility" ||
       operation === "SettingsAccount" ||
+      operation === "CategoryNavigationAccount" ||
       operation === "user" ||
       operation === "UsersPermissionsUser"
     ) {

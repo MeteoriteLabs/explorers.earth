@@ -52,7 +52,9 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
   const normalizedUsername = username?.trim().toLowerCase();
   const identity = usePublicAccountIdentity();
   const loading = identity.status === "loading";
-  const error = identity.status === "terminal-error" ? new Error("PROFILE_UNAVAILABLE") : undefined;
+  const error = identity.status === "terminal-error"
+    ? identity.error ?? new Error("PROFILE_UNAVAILABLE")
+    : undefined;
   const account = identity.account as { username?: unknown } | undefined;
   const canonicalUsername = typeof account?.username === "string"
     ? account.username.trim().toLowerCase()
@@ -65,6 +67,7 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
   const validPath = isValidPublicPath(location.pathname);
   const [, routeSegment, ...remainingSegments] = decodedLowerSegments(location.pathname);
   const allowsInlineRecovery = Boolean(error)
+    && !String(error).includes("PUBLIC_PROFILE_404")
     && routeSegment === "music"
     && remainingSegments.length === 0;
 

@@ -65,6 +65,28 @@ function success(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
 }
 
+it("routes every public operation through the injected fetch transport", async () => {
+  const paths: string[] = [];
+  const responses = [publicDescriptor, publicResource, { items: [publicVideo], nextPageToken: null }, publicVideo, { accepted: true }];
+  const client = createPublicMusicClient("https://music.example", undefined, async (input) => {
+    paths.push(String(input));
+    return success(responses.shift());
+  });
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("unexpected global network")));
+  expect(await client.discover("account123")).toEqual(publicDescriptor);
+  expect(await client.load("public_slug-123")).toEqual(publicResource);
+  expect((await client.search("public_slug-123", "song")).items).toEqual([publicVideo]);
+  expect(await client.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk")).toEqual(publicVideo);
+  expect(await client.requestSong("public_slug-123", publicRequestSong, undefined, "request-key-123")).toEqual({ accepted: true });
+  expect(paths).toEqual([
+    "https://music.example/api/music/public-profile/account123",
+    "https://music.example/api/music/public-resource/v1/public_slug-123",
+    "https://music.example/api/playlist/public_slug-123/youtube/search",
+    "https://music.example/api/playlist/public_slug-123/youtube/video-from-url",
+    "https://music.example/api/playlist/public_slug-123/requests",
+  ]);
+});
+
 function streamedSuccess(chunks: string[], contentLength?: string) {
   const encoder = new TextEncoder();
   let index = 0;
@@ -190,6 +212,19 @@ describe("public Music client", () => {
     await expect(client.videoFromUrl("public_slug-123", "not a url")).rejects.toMatchObject({ code: "REQUEST_INVALID" });
     expect(fetcher).not.toHaveBeenCalled();
     await expect(client.search("public_slug-123", "valid")).rejects.toMatchObject({ code: "RATE_LIMITED", retryAfterSeconds: 12 });
+  });
+
+  it.each([
+    "https://youtube.com.evil.example/watch?v=abcdefghijk",
+    "https://youtu.be.evil.example/abcdefghijk",
+    "https://youtube.com@evil.example/watch?v=abcdefghijk",
+    "https://evil.example/youtube.com/watch?v=abcdefghijk",
+    "javascript:alert(1)",
+  ])("rejects a lookalike or malformed media URL before transmission: %s", async (url) => {
+    const fetchImpl = vi.fn();
+    const client = createPublicMusicClient("https://music.example", undefined, fetchImpl);
+    await expect(client.videoFromUrl("public_slug-123", url)).rejects.toMatchObject({ code: "REQUEST_INVALID" });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -815,6 +850,7 @@ describe("public Music client", () => {
   ])("uses the %s module base without leaking it into resource data", async (_label, configuredBase, expectedBase) => {
     // Break caught: the singleton ignores deployment configuration or loses its safe packaged fallback.
     vi.stubEnv("VITE_LOCAL_TUNES_API_URL", configuredBase);
+    vi.stubEnv("DEV", false);
     vi.resetModules();
     const fetcher = vi.fn().mockResolvedValue(success(publicResource));
     vi.stubGlobal("fetch", fetcher);
@@ -826,5 +862,41 @@ describe("public Music client", () => {
       headers: { Accept: "application/json" },
     });
     expect(JSON.stringify(resource)).not.toContain(expectedBase);
+  });
+
+  it.each([
+    ["production", false, "https://configured-music.example"],
+    ["development proxy", true, "/__localtunes"],
+  ] as const)("forwards all singleton operations through the %s transport", async (_label, development, prefix) => {
+    vi.stubEnv("VITE_LOCAL_TUNES_API_URL", "https://configured-music.example/");
+    vi.stubEnv("DEV", development);
+    vi.resetModules();
+    const staleFetch = vi.fn().mockRejectedValue(new Error("fetch captured during import"));
+    vi.stubGlobal("fetch", staleFetch);
+    const { publicMusicClient: moduleClient } = await import("../publicMusicClient");
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(success(publicDescriptor))
+      .mockResolvedValueOnce(success(publicResource))
+      .mockResolvedValueOnce(success({ items: [publicVideo], nextPageToken: null }))
+      .mockResolvedValueOnce(success(publicVideo))
+      .mockResolvedValueOnce(success({ accepted: true }));
+    vi.stubGlobal("fetch", fetcher);
+    const signal = new AbortController().signal;
+    const capability = "a".repeat(43);
+    const headers = { Accept: "application/json", "Content-Type": "application/json", "X-Music-Guest-Capability": capability };
+
+    expect(await moduleClient.discover("account123", signal)).toEqual(publicDescriptor);
+    expect(await moduleClient.load("public_slug-123", capability, signal)).toEqual(publicResource);
+    expect(await moduleClient.search("public_slug-123", "  song  ", capability, signal)).toEqual({ items: [publicVideo], nextPageToken: null });
+    expect(await moduleClient.videoFromUrl("public_slug-123", "https://youtu.be/abcdefghijk", capability, signal)).toEqual(publicVideo);
+    expect(await moduleClient.requestSong("public_slug-123", publicRequestSong, capability, "request-key-123")).toEqual({ accepted: true });
+
+    expect(staleFetch).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledTimes(5);
+    expect(fetcher).toHaveBeenNthCalledWith(1, `${prefix}/api/music/public-profile/account123`, { headers: { Accept: "application/json" }, signal });
+    expect(fetcher).toHaveBeenNthCalledWith(2, `${prefix}/api/music/public-resource/v1/public_slug-123`, { headers: { Accept: "application/json", "X-Music-Guest-Capability": capability }, signal });
+    expect(fetcher).toHaveBeenNthCalledWith(3, `${prefix}/api/playlist/public_slug-123/youtube/search`, { method: "POST", headers, body: JSON.stringify({ query: "song" }), signal });
+    expect(fetcher).toHaveBeenNthCalledWith(4, `${prefix}/api/playlist/public_slug-123/youtube/video-from-url`, { method: "POST", headers, body: JSON.stringify({ url: "https://youtu.be/abcdefghijk" }), signal });
+    expect(fetcher).toHaveBeenNthCalledWith(5, `${prefix}/api/playlist/public_slug-123/requests`, { method: "POST", headers: { ...headers, "Idempotency-Key": "request-key-123" }, body: JSON.stringify(publicRequestSong) });
   });
 });

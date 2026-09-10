@@ -1,6 +1,5 @@
 import express from "express";
-import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupMusicIdentityBodylessPreflight, setupMusicIdentityRoutes } from "../routes/musicIdentityRoutes";
 import {
   MUSIC_IDENTITY_RESPONSE_STATUSES,
@@ -9,6 +8,10 @@ import {
   parseMusicIdentityClientResponse,
 } from "../../shared/musicError";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
+import { createLoopbackSupertestScope } from "./helpers/loopback-supertest";
+
+const loopback = createLoopbackSupertestScope();
+afterEach(async () => loopback.closeAll());
 
 const routeCredentialDependencies = {
   mintCredential: () => ({ token: `fixture.${"x".repeat(64)}`, expiresAt: 1_800_000_600_000 }),
@@ -81,7 +84,8 @@ function proxyAppFor(ensure: ReturnType<typeof vi.fn>) {
 describe("POST /api/music/identity/ensure", () => {
   it("fails closed before proof resolution while the server entry kill switch is active", async () => {
     const { app, ensure } = appFor(undefined, false);
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/music/identity/ensure")
       .set("authorization", "Bearer proof-with-enough-entropy");
     expect(response.status).toBe(503);
@@ -110,7 +114,8 @@ describe("POST /api/music/identity/ensure", () => {
       limiter: new BoundedIdentityRateLimiter({ limit: 20, windowMs: 1_000, maxEntries: 100 }),
     });
 
-    const rejected = await request(app).post("/api/music/identity/ensure")
+    const { request } = await loopback.open({ app });
+    const rejected = await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer outsider-proof-with-entropy")
       .set("x-request-id", "cohort-request");
     expect(rejected.status).toBe(503);
@@ -118,7 +123,7 @@ describe("POST /api/music/identity/ensure", () => {
     expect(ensure).not.toHaveBeenCalled();
     expect(entryEnabled).toHaveBeenCalledWith("outsider-proof-with-entropy", "cohort-request");
 
-    const admitted = await request(app).post("/api/music/identity/ensure")
+    const admitted = await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer member-proof-with-entropy")
       .set("x-request-id", "cohort-request");
     expect(admitted.status).toBe(200);
@@ -127,7 +132,8 @@ describe("POST /api/music/identity/ensure", () => {
 
   it("accepts only one strict bearer and an absent body/query/owner identity", async () => {
     const { app, ensure } = appFor();
-    const ok = await request(app)
+    const { request } = await loopback.open({ app });
+    const ok = await request
       .post("/api/music/identity/ensure")
       .set("authorization", "Bearer proof-with-enough-entropy")
       .set("x-request-id", "bounded-request-1");
@@ -141,15 +147,15 @@ describe("POST /api/music/identity/ensure", () => {
     expect(ensure).toHaveBeenCalledWith("proof-with-enough-entropy", "bounded-request-1");
 
     const invalidRequests = [
-      request(app).post("/api/music/identity/ensure"),
-      request(app).post("/api/music/identity/ensure").set("cookie", "cosmic.sid=forged-native-session"),
-      request(app).post("/api/music/identity/ensure").set("authorization", "bearer proof-with-enough-entropy"),
-      request(app).post("/api/music/identity/ensure").set("authorization", "Bearer proof one two"),
-      request(app).post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").send({}),
-      request(app).post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").set("content-type", "application/json").send('{"unterminated"'),
-      request(app).post("/api/music/identity/ensure?username=forged").set("authorization", "Bearer proof-with-enough-entropy"),
-      request(app).post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").set("x-owner-id", "forged"),
-      request(app).post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").set("x-username", "forged"),
+      request.post("/api/music/identity/ensure"),
+      request.post("/api/music/identity/ensure").set("cookie", "cosmic.sid=forged-native-session"),
+      request.post("/api/music/identity/ensure").set("authorization", "bearer proof-with-enough-entropy"),
+      request.post("/api/music/identity/ensure").set("authorization", "Bearer proof one two"),
+      request.post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").send({}),
+      request.post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").set("content-type", "application/json").send('{"unterminated"'),
+      request.post("/api/music/identity/ensure?username=forged").set("authorization", "Bearer proof-with-enough-entropy"),
+      request.post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").set("x-owner-id", "forged"),
+      request.post("/api/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").set("x-username", "forged"),
     ];
     for (const operation of invalidRequests) {
       const response = await operation;
@@ -162,12 +168,13 @@ describe("POST /api/music/identity/ensure", () => {
 
   it("rejects duplicate Authorization fields and non-exact path aliases", async () => {
     const { app, ensure } = appFor();
-    const duplicate = await request(app)
+    const { request } = await loopback.open({ app });
+    const duplicate = await request
       .post("/api/music/identity/ensure")
       .set("authorization", ["Bearer proof-with-enough-entropy", "Bearer second-proof-with-entropy"]);
     expect(duplicate.status).toBe(401);
-    await request(app).post("/api/music/identity/ensure/").set("authorization", "Bearer proof-with-enough-entropy").expect(404);
-    await request(app).post("/API/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").expect(404);
+    await request.post("/api/music/identity/ensure/").set("authorization", "Bearer proof-with-enough-entropy").expect(404);
+    await request.post("/API/music/identity/ensure").set("authorization", "Bearer proof-with-enough-entropy").expect(404);
     expect(ensure).not.toHaveBeenCalled();
   });
 
@@ -176,7 +183,8 @@ describe("POST /api/music/identity/ensure", () => {
       throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, 3);
     });
     const { app, logs } = appFor(unavailable);
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/music/identity/ensure")
       .set("authorization", "Bearer sentinel-secret-proof")
       .set("x-request-id", "unsafe/value");
@@ -193,7 +201,8 @@ describe("POST /api/music/identity/ensure", () => {
     const timestamps = [10_000, 10_037];
     const { app, logs } = appWithClock(() => timestamps.shift() ?? 10_037);
 
-    await request(app).post("/api/music/identity/ensure")
+    const { request } = await loopback.open({ app });
+    await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer sentinel-secret-proof")
       .set("x-request-id", "qualified-request-1")
       .expect(200);
@@ -221,22 +230,30 @@ describe("POST /api/music/identity/ensure", () => {
       [502, async () => { throw new MusicIdentityError("UPSTREAM_MALFORMED", 502, "Malformed upstream.", "retry", true); }],
       [503, async () => { throw new MusicIdentityError("UPSTREAM_UNAVAILABLE", 503, "Unavailable.", "retry", true, 9); }],
     ];
-    const success = await request(appFor().app).post("/api/music/identity/ensure")
+    const successHarness = appFor();
+    const { request: successRequest } = await loopback.open({ app: successHarness.app });
+    const success = await successRequest.post("/api/music/identity/ensure")
       .set("authorization", "Bearer parity-proof-with-entropy");
     expect(parseMusicIdentityClientResponse(success.status, success.headers, success.body).status).toBe(200);
     for (const [status, operation] of cases) {
-      const response = await request(appFor(vi.fn(operation)).app).post("/api/music/identity/ensure")
+      const statusHarness = appFor(vi.fn(operation));
+      const { request: statusRequest } = await loopback.open({ app: statusHarness.app });
+      const response = await statusRequest.post("/api/music/identity/ensure")
         .set("authorization", `Bearer parity-proof-${status}-with-entropy`);
       expect(response.status).toBe(status);
       expect(parseMusicIdentityClientResponse(response.status, response.headers, response.body).status).toBe(status);
     }
-    const internal = await request(appFor(vi.fn(async () => { throw new Error("sentinel stack"); })).app)
+    const internalHarness = appFor(vi.fn(async () => { throw new Error("sentinel stack"); }));
+    const { request: internalRequest } = await loopback.open({ app: internalHarness.app });
+    const internal = await internalRequest
       .post("/api/music/identity/ensure").set("authorization", "Bearer parity-internal-proof");
     expect(internal.status).toBe(500);
     expect(parseMusicIdentityClientResponse(internal.status, internal.headers, internal.body).status).toBe(500);
-    const undocumented = await request(appFor(vi.fn(async () => {
+    const undocumentedHarness = appFor(vi.fn(async () => {
       throw new MusicIdentityError("REQUEST_INVALID", 418, "Undocumented.", "none", false);
-    })).app).post("/api/music/identity/ensure").set("authorization", "Bearer undocumented-proof-with-entropy");
+    }));
+    const { request: undocumentedRequest } = await loopback.open({ app: undocumentedHarness.app });
+    const undocumented = await undocumentedRequest.post("/api/music/identity/ensure").set("authorization", "Bearer undocumented-proof-with-entropy");
     expect(undocumented.status).toBe(500);
     expect(MUSIC_IDENTITY_RESPONSE_STATUSES).toEqual([200, 400, 401, 403, 409, 429, 500, 502, 503]);
     expect(() => parseMusicIdentityClientResponse(503, { "x-request-id": "request" }, {
@@ -341,7 +358,8 @@ describe("POST /api/music/identity/ensure", () => {
       limiter: new BoundedIdentityRateLimiter({ limit: 3, windowMs: 60_000, maxEntries: 8 }),
       fingerprint: (proof) => proof,
     });
-    const responses = await Promise.all(Array.from({ length: 20 }, (_, index) => request(app)
+    const { request } = await loopback.open({ app });
+    const responses = await Promise.all(Array.from({ length: 20 }, (_, index) => request
       .post("/api/music/identity/ensure")
       .set("authorization", `Bearer invalid-proof-${index}-with-entropy`)));
     expect(ensure).toHaveBeenCalledTimes(3);
@@ -358,14 +376,15 @@ describe("POST /api/music/identity/ensure", () => {
       sessionVersion: 1,
     }));
     const app = proxyAppFor(ensure);
+    const { request } = await loopback.open({ app });
     const bearer = "Bearer proof-with-proxy-entropy";
-    await request(app).post("/api/music/identity/ensure")
+    await request.post("/api/music/identity/ensure")
       .set("authorization", bearer).set("x-forwarded-for", "192.0.2.10, 203.0.113.20").expect(200);
-    const forged = await request(app).post("/api/music/identity/ensure")
+    const forged = await request.post("/api/music/identity/ensure")
       .set("authorization", bearer).set("x-forwarded-for", "198.51.100.99, 203.0.113.20");
     expect(forged.status).toBe(429);
     expect(forged.headers["retry-after"]).toBeTruthy();
-    await request(app).post("/api/music/identity/ensure")
+    await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer second-proof-with-proxy-entropy")
       .set("x-forwarded-for", "192.0.2.10, 203.0.113.21").expect(200);
     expect(ensure).toHaveBeenCalledTimes(2);
@@ -388,10 +407,11 @@ describe("POST /api/music/identity/ensure", () => {
       isTrustedProxy: () => false,
       limiter: new BoundedIdentityRateLimiter({ limit: 1, windowMs: 60_000, maxEntries: 10 }),
     });
-    await request(app).post("/api/music/identity/ensure")
+    const { request } = await loopback.open({ app });
+    await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer direct-proof-with-enough-entropy")
       .set("x-forwarded-for", "203.0.113.10").expect(200);
-    await request(app).post("/api/music/identity/ensure")
+    await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer direct-proof-with-enough-entropy")
       .set("x-forwarded-for", "203.0.113.11").expect(429);
   });
@@ -433,7 +453,8 @@ describe("POST /api/music/identity/ensure", () => {
       isTrustedProxy,
       limiter: new BoundedIdentityRateLimiter({ limit: 100, globalLimit: 100, windowMs: 60_000, maxEntries: 100 }),
     });
-    const responses = await Promise.all(Array.from({ length: 20 }, (_, index) => request(app)
+    const { request } = await loopback.open({ app });
+    const responses = await Promise.all(Array.from({ length: 20 }, (_, index) => request
       .post("/api/music/identity/ensure")
       .set("authorization", `Bearer rotating-proxy-proof-${index}-entropy`)
       .set("x-forwarded-for", `192.0.2.${index + 1}, 203.0.113.${index + 1}`)));

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import {
   createAnalyticsEventId,
   hasAnalyticsConsent,
@@ -38,6 +38,12 @@ type LegacyAnalyticsReadScope = {
 describe('explorersAnalyticsClient', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 
   it('enables analytics only after an explicit analytics consent', () => {
@@ -91,6 +97,115 @@ describe('explorersAnalyticsClient', () => {
     expect(JSON.parse(init.body as string)).toEqual(payload);
     expect(init.body).not.toContain('ipAddress');
     expect(init.body).not.toContain('rawIp');
+  });
+
+  it.runIf(import.meta.env.DEV)('routes the default development POST through the same-origin Music proxy', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'committed', duplicate: false }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+
+    await postExplorersAnalyticsEvent(payload, { retryCount: 0 });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe('/__localtunes/api/explorers/analytics/events');
+    expect(init).toMatchObject({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      referrerPolicy: 'no-referrer',
+      body: JSON.stringify(payload),
+    });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('keeps an explicitly injected HTTPS transport direct', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'committed' }), { status: 201 }),
+    );
+
+    await postExplorersAnalyticsEvent(payload, {
+      baseUrl: 'https://analytics.example.test',
+      fetchImpl,
+      retryCount: 0,
+    });
+
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      'https://analytics.example.test/api/explorers/analytics/events',
+    );
+  });
+
+  it('keeps an omitted production POST fetch on the configured HTTPS origin', async () => {
+    vi.stubEnv('DEV', false);
+    vi.stubEnv('VITE_LOCAL_TUNES_API_URL', 'https://analytics-production.example');
+    vi.resetModules();
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'committed' }), { status: 201 }),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+    const { postExplorersAnalyticsEvent: postWithProductionDefaults } =
+      await import('../explorersAnalyticsClient');
+
+    await postWithProductionDefaults(payload, { retryCount: 0 });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://analytics-production.example/api/explorers/analytics/events',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        referrerPolicy: 'no-referrer',
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
+
+  it('keeps an omitted production GET fetch on the configured HTTPS origin', async () => {
+    vi.stubEnv('DEV', false);
+    vi.stubEnv('VITE_LOCAL_TUNES_API_URL', 'https://analytics-production.example');
+    vi.resetModules();
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ events: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+    const { readExplorersAnalyticsEvents: readWithProductionDefaults } =
+      await import('../explorersAnalyticsClient');
+
+    await readWithProductionDefaults({
+      accountId: 'production-account',
+      fromDate: '2026-08-01',
+      toDate: '2026-08-24',
+      timeZone: 'Europe/London',
+      token: 'synthetic-production-token',
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://analytics-production.example/api/explorers/analytics/events?accountId=production-account&fromDate=2026-08-01&toDate=2026-08-24&timeZone=Europe%2FLondon',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer synthetic-production-token' },
+        signal: expect.any(AbortSignal),
+      },
+    );
+  });
+
+  it.runIf(import.meta.env.DEV)('rejects an unexpected default analytics origin before network I/O', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchImpl);
+
+    await expect(
+      postExplorersAnalyticsEvent(payload, {
+        baseUrl: 'https://unexpected.example.test',
+        retryCount: 0,
+      }),
+    ).rejects.toThrow('unexpected origin');
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('retries a transient failure once with the identical event ID', async () => {
@@ -247,6 +362,41 @@ describe('explorersAnalyticsClient', () => {
     expect(url).not.toContain('private-user-token');
   });
 
+  it.runIf(import.meta.env.DEV)('routes the default development GET through the proxy with its query and authorization intact', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ events: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+
+    await readExplorersAnalyticsEvents({
+      accountId: 'account-query-value',
+      fromDate: '2026-08-01',
+      toDate: '2026-08-24',
+      timeZone: 'America/New_York',
+      token: 'synthetic-dashboard-token',
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [rawUrl, init] = fetchImpl.mock.calls[0];
+    const url = new URL(rawUrl, window.location.origin);
+    expect(url.pathname).toBe('/__localtunes/api/explorers/analytics/events');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      accountId: 'account-query-value',
+      fromDate: '2026-08-01',
+      toDate: '2026-08-24',
+      timeZone: 'America/New_York',
+    });
+    expect(init).toMatchObject({
+      method: 'GET',
+      headers: { Authorization: 'Bearer synthetic-dashboard-token' },
+    });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(rawUrl).not.toContain('synthetic-dashboard-token');
+  });
+
   it('rejects dashboard reads without a user token before any request', async () => {
     const fetchImpl = vi.fn();
     await expect(
@@ -262,6 +412,27 @@ describe('explorersAnalyticsClient', () => {
       ),
     ).rejects.toThrow('authentication');
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it.each(['null', 'false', '1', '"true"', '{"analytics":"false"}', '{"analytics":"true"}', '{"analytics":1}'])('rejects non-boolean opt-in: %s', (stored) => {
+    expect(hasAnalyticsConsent({ getItem: () => stored })).toBe(false);
+  });
+
+  it('fails closed for a denied injected storage reader', () => {
+    expect(hasAnalyticsConsent({ getItem() { throw new Error('denied'); } })).toBe(false);
+  });
+
+  it('fails closed when resolving the default localStorage property throws', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')!;
+    Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new Error('property denied'); } });
+    try {
+      expect(() => hasAnalyticsConsent()).not.toThrow();
+      expect(hasAnalyticsConsent()).toBe(false);
+      // Injected readers remain usable without touching unavailable defaults.
+      expect(hasAnalyticsConsent({ getItem: () => '{"analytics":true}' })).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'localStorage', descriptor);
+    }
   });
 
   it('rejects legacy instant read scopes before a request', async () => {

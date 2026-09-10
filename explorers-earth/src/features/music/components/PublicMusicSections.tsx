@@ -1,9 +1,13 @@
-import { useLayoutEffect, useRef, useState, type ComponentProps, type FocusEvent, type PointerEvent } from "react";
+import { useLayoutEffect, useRef, useState, type ComponentProps, type FocusEvent } from "react";
 import type { PublicMusicResource, PublicMusicSong } from "../publicMusicClient";
 import { derivePublicMusicViewPolicy } from "../publicMusicViewPolicy";
 import { PublicMusicPlayer } from "./PublicMusicPlayer";
-import { PublicMusicRequest } from "./PublicMusicRequest";
+import { PublicMusicRequest, type PublicMusicRequestSelection } from "./PublicMusicRequest";
 import type { PublicMusicProductEvent } from "../publicMusicAnalytics";
+import { getMusicFeaturedCards } from "../publicMusicPresentation";
+import { PublicMusicNowPlaying } from "./PublicMusicNowPlaying";
+import { PublicMusicAccordion, type MusicAccordionId } from "./PublicMusicAccordion";
+import { PublicMusicArtwork } from "./PublicMusicArtwork";
 
 function useSectionEngagement(section: "player" | "request" | "queue" | "playlists" | "history", enabled: boolean, onAnalytics?: (event: PublicMusicProductEvent) => void) {
   const engaged = useRef(false);
@@ -21,8 +25,8 @@ function useSectionEngagement(section: "player" | "request" | "queue" | "playlis
     onAnalytics?.({ name: "section_opened", section });
   };
   return {
-    onPointerEnter: (_event: PointerEvent<HTMLElement>) => { pointerInside.current = true; enter(); },
-    onPointerLeave: (_event: PointerEvent<HTMLElement>) => {
+    onPointerEnter: () => { pointerInside.current = true; enter(); },
+    onPointerLeave: () => {
       pointerInside.current = false;
       if (!focusInside.current) engaged.current = false;
     },
@@ -44,42 +48,41 @@ function useSectionEngagement(section: "player" | "request" | "queue" | "playlis
 function CollectionSummary({ shown, total, noun }: { shown: number; total: number; noun?: string }) {
   if (total <= shown) return null;
   return (
-    <p className="text-sm text-dashboard-text-muted">
+    <p className="text-sm public-music__muted">
       Showing {shown} of {total}{noun ? ` ${noun}` : ""}
     </p>
   );
 }
 
 function SongArtwork({ song }: { song: PublicMusicSong }) {
-  return song.thumbnailUrl ? (
-    <img className="h-11 w-11 shrink-0 rounded object-cover" src={song.thumbnailUrl} alt="" />
-  ) : null;
+  return <PublicMusicArtwork url={song.thumbnailUrl} className="public-music__song-art" />;
 }
 
 function SongDetails({ song }: { song: PublicMusicSong }) {
   return (
     <span className="min-w-0">
       <span className="block truncate font-medium">{song.title}</span>
-      <span className="block truncate text-sm text-dashboard-text-muted">{song.artist}</span>
+      <span className="block truncate text-sm public-music__muted">{song.artist}</span>
     </span>
   );
 }
 
-function SongRow({ song, playable = false, selected = false, onSelect }: {
+function SongRow({ song, playable = false, selected = false, onSelect, onRequest }: {
   song: PublicMusicSong;
   playable?: boolean;
   selected?: boolean;
   onSelect?: (song: PublicMusicSong) => void;
+  onRequest?: (song: PublicMusicSong) => void;
 }) {
   return (
-    <li className="flex min-h-11 min-w-0 items-center gap-3 py-3">
+    <li className="public-music__song-row">
       {playable ? (
         <button
           type="button"
           aria-label={`Choose ${song.title} to play on this device`}
           aria-current={selected ? "true" : undefined}
           onClick={() => onSelect?.(song)}
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dashboard-accent"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left"
         >
           <SongArtwork song={song} />
           <SongDetails song={song} />
@@ -91,27 +94,48 @@ function SongRow({ song, playable = false, selected = false, onSelect }: {
           <SongDetails song={song} />
         </>
       )}
+      {onRequest && <button type="button" className="public-music__row-request" aria-label={`Prepare request for ${song.title}`} onClick={() => onRequest(song)}>Request</button>}
     </li>
   );
 }
 
-export function PublicMusicSections({ resource, publicSlug, capability, headingId = "public-music-heading", onReconcile, requestClient, onAnalytics }: {
+type PublicMusicSectionsProps = {
   resource: PublicMusicResource;
   publicSlug?: string;
   capability?: string;
   headingId?: string;
   onReconcile?: () => void;
   requestClient?: ComponentProps<typeof PublicMusicRequest>["client"];
+  guestActionsEnabled?: boolean;
   onAnalytics?: (event: PublicMusicProductEvent) => void;
-}) {
+};
+export function PublicMusicSections(props: PublicMusicSectionsProps) {
+  return <MusicSections key={JSON.stringify([props.publicSlug ?? props.resource.user.username, props.capability])} {...props} />;
+}
+function MusicSections({ resource, publicSlug, capability, headingId = "public-music-heading", onReconcile, requestClient, guestActionsEnabled = true, onAnalytics }: PublicMusicSectionsProps) {
+  const policy = derivePublicMusicViewPolicy(resource);
+  const [open, setOpen] = useState<Record<MusicAccordionId, boolean>>(() => ({
+    queue: policy.queueVisible,
+    history: !policy.queueVisible && policy.historyVisible,
+    playlists: !policy.queueVisible && !policy.historyVisible && policy.playlistsVisible,
+    player: false,
+  }));
+  const [playlistId, setPlaylistId] = useState<string>();
+  const [requestSelection, setRequestSelection] = useState<PublicMusicRequestSelection>();
+  const selectionSequence = useRef(0);
   const [selectedSong, setSelectedSong] = useState<{ id: string; source: "queue" | "playlist" } | null>(null);
   const [revocationAnnouncement, setRevocationAnnouncement] = useState("");
   const playerHasFocus = useRef(false);
   const previousPlayerEligible = useRef(false);
   const requestHasFocus = useRef(false);
   const previousRequestEligible = useRef(false);
-  const [requestRevoked, setRequestRevoked] = useState(false);
-  const policy = derivePublicMusicViewPolicy(resource);
+  const [requestRevocation, setRequestRevocation] = useState<{
+    publicSlug?: string; capability?: string; revision: number;
+  }>();
+  const committedRequestScope = useRef({ publicSlug, capability, revision: resource.revision });
+  useLayoutEffect(() => {
+    committedRequestScope.current = { publicSlug, capability, revision: resource.revision };
+  }, [publicSlug, capability, resource.revision]);
   const firstPlaylistSong = policy.playlistsVisible
     ? resource.playlists.items.find((playlist) => playlist.songs.items.length > 0)?.songs.items[0]
     : undefined;
@@ -133,17 +157,44 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
     : undefined;
   const playableSong = playableSelection?.song;
   const selectedSource = playableSelection?.source ?? "current";
+  // A denied request invalidates this canonical generation, not every future
+  // publication. Only a newer snapshot (or a different resource) can recover it.
+  const requestRevoked = requestRevocation !== undefined
+    && requestRevocation.publicSlug === publicSlug
+    && requestRevocation.capability === capability
+    && resource.revision <= requestRevocation.revision;
   const requestEligible = policy.requestEligible && Boolean(publicSlug) && !requestRevoked;
+  const requestActionsEnabled = requestEligible && guestActionsEnabled;
   const hasVisibleContent = requestEligible
     || policy.currentVisible
     || (policy.queueVisible && resource.queue.items.length > 0)
     || (policy.historyVisible && resource.recentlyPlayed.items.length > 0)
     || (policy.playlistsVisible && resource.playlists.items.length > 0);
-  const requestEngagement = useSectionEngagement("request", requestEligible, onAnalytics);
-  const playerEngagement = useSectionEngagement("player", Boolean(playableSong), onAnalytics);
-  const queueEngagement = useSectionEngagement("queue", hasVisibleContent && policy.queueVisible, onAnalytics);
-  const playlistsEngagement = useSectionEngagement("playlists", hasVisibleContent && policy.playlistsVisible, onAnalytics);
-  const historyEngagement = useSectionEngagement("history", hasVisibleContent && policy.historyVisible, onAnalytics);
+  const requestEngagement = useSectionEngagement("request", requestActionsEnabled, onAnalytics);
+
+  useLayoutEffect(() => {
+    setOpen((previous) => {
+      const eligible = {
+        queue: policy.queueVisible,
+        history: policy.historyVisible,
+        playlists: policy.playlistsVisible,
+        player: policy.playerEligible && Boolean(playableSong),
+      };
+      const next = {
+        queue: previous.queue && eligible.queue,
+        history: previous.history && eligible.history,
+        playlists: previous.playlists && eligible.playlists,
+        player: previous.player && eligible.player,
+      };
+      if (!Object.values(next).some(Boolean)) {
+        const fallback = (["queue", "history", "playlists"] as const).find((id) => eligible[id]);
+        if (fallback) next[fallback] = true;
+      }
+      return Object.keys(next).some((id) => next[id as MusicAccordionId] !== previous[id as MusicAccordionId])
+        ? next
+        : previous;
+    });
+  }, [playableSong, policy.historyVisible, policy.playerEligible, policy.playlistsVisible, policy.queueVisible]);
 
   useLayoutEffect(() => {
     if (!selectedSong) return;
@@ -165,6 +216,8 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
   useLayoutEffect(() => {
     const revoked = previousRequestEligible.current && !requestEligible;
     previousRequestEligible.current = requestEligible;
+    if (requestEligible) setRevocationAnnouncement("");
+    if (!requestEligible) setRequestSelection(undefined);
     if (!revoked) return;
     setRevocationAnnouncement("Song requests are no longer available.");
     if (!requestHasFocus.current) return;
@@ -172,125 +225,80 @@ export function PublicMusicSections({ resource, publicSlug, capability, headingI
     document.getElementById(headingId)?.focus();
   }, [headingId, requestEligible]);
   const revokeRequest = () => {
-    setRequestRevoked(true);
+    const current = committedRequestScope.current;
+    // Denials carry no server revision: a same-scope late denial remains
+    // authoritative even if another snapshot arrived while it was in flight.
+    // Reconciliation must advance beyond BOTH snapshots before restoring UI.
+    if (current.publicSlug !== publicSlug || current.capability !== capability) return;
+    setRequestRevocation({ publicSlug, capability, revision: Math.max(resource.revision, current.revision) });
     onReconcile?.();
   };
   const revocationStatus = revocationAnnouncement
     ? <p role="status" aria-live="polite" className="sr-only">{revocationAnnouncement}</p>
     : null;
 
-  if (!hasVisibleContent) {
-    return (
-      <>
-        <div className="mt-8 rounded-xl bg-dashboard-card/60 px-5 py-10 text-center">
-          <p className="text-base text-dashboard-text-muted">Nothing has been shared here yet</p>
-        </div>
-        {revocationStatus}
-      </>
-    );
-  }
-
-  return (
-    <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
-      {requestEligible && publicSlug ? <div {...requestEngagement} onFocusCapture={(event) => { requestHasFocus.current = true; requestEngagement.onFocusCapture(event); }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; requestEngagement.onBlurCapture(event); }}><PublicMusicRequest publicSlug={publicSlug} capability={capability} allowed client={requestClient} onCanonicalRevoked={revokeRequest} onRequestOutcome={(outcome) => onAnalytics?.({ name: "request_submitted", outcome })} /></div> : null}
-      {playableSong ? (
-        <section
-          className="min-w-0"
-          data-testid="public-music-player"
-          aria-labelledby="public-music-player-heading"
-          {...playerEngagement}
-          onFocusCapture={(event) => { playerHasFocus.current = true; playerEngagement.onFocusCapture(event); }}
-          onBlurCapture={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playerHasFocus.current = false;
-            playerEngagement.onBlurCapture(event);
-          }}
-        >
-          <h2 id="public-music-player-heading" className="text-xl font-semibold">Play on this device</h2>
-          {playableSong ? <PublicMusicPlayer key={`${selectedSource}:${playableSong.id}`} song={playableSong} allowed={policy.playerEligible} onPlaybackStart={() => onAnalytics?.({ name: "playback_started", source: selectedSource })} /> : null}
-        </section>
-      ) : null}
-
-      {revocationStatus}
-
-      {policy.queueVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-queue-heading" {...queueEngagement}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="public-music-queue-heading" className="text-xl font-semibold">Up next</h2>
-            <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
-          </div>
-          {!policy.playerEligible && policy.currentVisible && resource.currentlyPlaying ? (
-            <div className="mt-3 flex min-h-16 min-w-0 items-center gap-3 rounded-xl bg-dashboard-card p-4">
-              <SongArtwork song={resource.currentlyPlaying} />
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold uppercase tracking-wide text-dashboard-accent">Playing now</span>
-                <SongDetails song={resource.currentlyPlaying} />
-              </span>
-            </div>
-          ) : null}
-          {resource.queue.items.length > 0 ? (
-            <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
-              {resource.queue.items.map((song) => (
-                <SongRow
-                  key={song.id}
-                  song={song}
-                  playable={policy.playerEligible}
-                  selected={selectedSong?.source === "queue" && selectedSong.id === song.id}
-                  onSelect={(selection) => { setSelectedSong({ id: selection.id, source: "queue" }); onAnalytics?.({ name: "song_selected", source: "queue" }); }}
-                />
-              ))}
-            </ol>
-          ) : <p className="mt-3 text-dashboard-text-muted">Nothing queued yet</p>}
-        </section>
-      ) : null}
-
-      {policy.playlistsVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-playlists-heading" {...playlistsEngagement}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="public-music-playlists-heading" className="text-xl font-semibold">Shared playlists</h2>
-            <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
-          </div>
-          {resource.playlists.items.length === 0 ? (
-            <p className="mt-3 text-dashboard-text-muted">No shared playlists yet</p>
-          ) : (
-            <div className="mt-4 grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-1">
-              {resource.playlists.items.map((playlist) => (
-                <article key={playlist.id} className="min-w-0 rounded-xl bg-dashboard-card p-5">
-                  <h3 className="truncate text-lg font-semibold">{playlist.name}</h3>
-                  {playlist.description ? <p className="mt-1 break-words text-sm text-dashboard-text-muted">{playlist.description}</p> : null}
-                  <CollectionSummary shown={playlist.songs.items.length} total={playlist.songs.total} noun="songs" />
-                  {playlist.songs.items.length > 0 ? (
-                    <ol className="mt-3 divide-y divide-dashboard-border" aria-label={`${playlist.name} songs`}>
-                      {playlist.songs.items.map((song) => (
-                        <SongRow
-                          key={song.id}
-                          song={song}
-                          playable={policy.playerEligible}
-                          selected={selectedSong?.source === "playlist" && selectedSong.id === song.id}
-                          onSelect={(selection) => { setSelectedSong({ id: selection.id, source: "playlist" }); onAnalytics?.({ name: "playlist_opened" }); onAnalytics?.({ name: "song_selected", source: "playlist" }); }}
-                        />
-                      ))}
-                    </ol>
-                  ) : <p className="mt-3 text-sm text-dashboard-text-muted">No songs in this playlist yet</p>}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
-
-      {policy.historyVisible ? (
-        <section className="min-w-0" aria-labelledby="public-music-history-heading" {...historyEngagement}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="public-music-history-heading" className="text-xl font-semibold">Recently played</h2>
-            <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />
-          </div>
-          {resource.recentlyPlayed.items.length > 0 ? (
-            <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Recently played">
-              {resource.recentlyPlayed.items.map((song) => <SongRow key={song.id} song={song} />)}
-            </ol>
-          ) : <p className="mt-3 text-dashboard-text-muted">Nothing played recently</p>}
-        </section>
-      ) : null}
+  const selectedPlaylist = policy.playlistsVisible
+    ? resource.playlists.items.find(playlist => playlist.id === playlistId) ?? resource.playlists.items[0]
+    : undefined;
+  useLayoutEffect(() => {
+    if (!policy.playerEligible) setOpen(previous => previous.player ? { ...previous, player: false } : previous);
+    if (playlistId !== selectedPlaylist?.id) setPlaylistId(selectedPlaylist?.id);
+  }, [policy.playerEligible, playlistId, selectedPlaylist?.id]);
+  const changeOpen = (id: MusicAccordionId, value: boolean) => {
+    if (value && !open[id]) {
+      onAnalytics?.({ name: "section_opened", section: id });
+      if (id === "playlists" && selectedPlaylist) onAnalytics?.({ name: "playlist_opened" });
+    }
+    setOpen(previous => ({ ...previous, [id]: value }));
+  };
+  const choose = (song: PublicMusicSong, source: "current" | "queue" | "playlist") => {
+    if (!policy.playerEligible || !guestActionsEnabled) return;
+    setSelectedSong(source === "current" ? null : { id: song.id, source });
+    onAnalytics?.({ name: "song_selected", source });
+    changeOpen("player", true);
+  };
+  const prepareRequest = (song: PublicMusicSong) => {
+    if (!requestActionsEnabled) return;
+    setRequestSelection({ youtubeId: song.youtubeId, selectionId: ++selectionSequence.current });
+  };
+  const featured = getMusicFeaturedCards(resource);
+  if (!hasVisibleContent) return <div className="public-music__sections">
+    <PublicMusicNowPlaying cards={[]} canListen={false} onListen={() => undefined} />
+    <p className="public-music__muted text-center">Nothing has been shared here yet</p>{revocationStatus}
+  </div>;
+  return <div className="public-music__sections">
+    {requestEligible && publicSlug ? <div {...requestEngagement} onFocusCapture={event => { requestHasFocus.current = true; requestEngagement.onFocusCapture(event); }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestHasFocus.current = false; requestEngagement.onBlurCapture(event); }}>
+      <PublicMusicRequest publicSlug={publicSlug} capability={capability} selection={requestSelection} allowed actionsEnabled={guestActionsEnabled} client={requestClient} onCanonicalRevoked={revokeRequest} onRequestOutcome={outcome => onAnalytics?.({ name: "request_submitted", outcome })} />
+    </div> : null}
+    <PublicMusicNowPlaying cards={featured} canListen={policy.playerEligible && guestActionsEnabled} onListen={card => choose(card.song, card.source)} />
+    {revocationStatus}
+    <div className="public-music__accordions">
+      {policy.queueVisible && <PublicMusicAccordion id="queue" title="Queue" open={open.queue} onOpenChange={value => changeOpen("queue", value)}>
+        <CollectionSummary shown={resource.queue.items.length} total={resource.queue.total} />
+        {resource.queue.items.length ? <ol aria-label="Up next" className="public-music__song-list">{resource.queue.items.map(song => <SongRow key={song.id} song={song} playable={policy.playerEligible && guestActionsEnabled} selected={selectedSong?.source === "queue" && selectedSong.id === song.id} onSelect={selection => choose(selection, "queue")} />)}</ol>
+          : <p className="public-music__empty">Nothing queued yet</p>}
+      </PublicMusicAccordion>}
+      {policy.historyVisible && <PublicMusicAccordion id="history" title="Recently played" open={open.history} onOpenChange={value => changeOpen("history", value)}>
+        <CollectionSummary shown={resource.recentlyPlayed.items.length} total={resource.recentlyPlayed.total} />
+        {resource.recentlyPlayed.items.length ? <ol aria-label="Recently played" className="public-music__song-list">{resource.recentlyPlayed.items.map(song => <SongRow key={song.id} song={song} onRequest={requestActionsEnabled ? prepareRequest : undefined} />)}</ol> : <p className="public-music__empty">Nothing played recently</p>}
+      </PublicMusicAccordion>}
+      {policy.playlistsVisible && <PublicMusicAccordion id="playlists" title="Playlists" open={open.playlists} onOpenChange={value => changeOpen("playlists", value)}>
+        <CollectionSummary shown={resource.playlists.items.length} total={resource.playlists.total} noun="playlists" />
+        {selectedPlaylist ? <>
+          <div className="public-music__playlist-choices" aria-label="Choose a playlist">{resource.playlists.items.map(playlist => <button type="button" key={playlist.id} aria-pressed={selectedPlaylist.id === playlist.id} onClick={() => { if (selectedPlaylist.id !== playlist.id) { setPlaylistId(playlist.id); onAnalytics?.({ name: "playlist_opened" }); } }}>{playlist.name}</button>)}</div>
+          <article className="public-music__playlist"><h3 className="sr-only">{selectedPlaylist.name}</h3>
+            {selectedPlaylist.description && <p className="public-music__muted public-music__playlist-description">{selectedPlaylist.description}</p>}
+            <CollectionSummary shown={selectedPlaylist.songs.items.length} total={selectedPlaylist.songs.total} noun="songs" />
+            {selectedPlaylist.songs.items.length ? <ol className="public-music__song-list" aria-label={`${selectedPlaylist.name} songs`}>{selectedPlaylist.songs.items.map(song => <SongRow key={song.id} song={song} playable={policy.playerEligible && guestActionsEnabled} selected={selectedSong?.source === "playlist" && selectedSong.id === song.id} onSelect={selection => choose(selection, "playlist")} onRequest={requestActionsEnabled ? prepareRequest : undefined} />)}</ol> : <p className="public-music__empty">No songs in this playlist yet</p>}
+          </article>
+        </> : <p className="public-music__empty">No shared playlists yet</p>}
+      </PublicMusicAccordion>}
+      {playableSong && <section data-testid="public-music-player" onFocusCapture={() => { playerHasFocus.current = true; }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playerHasFocus.current = false; }}>
+        <PublicMusicAccordion id="player" title="Play on this device" open={open.player} onOpenChange={value => changeOpen("player", value)}>
+          <p className="public-music__muted text-sm">Your own listening session. This does not control the host's playback.</p>
+          {open.player && <PublicMusicPlayer key={`${selectedSource}:${playableSong.id}`} song={playableSong} allowed={policy.playerEligible} actionsEnabled={guestActionsEnabled} onPlaybackStart={() => onAnalytics?.({ name: "playback_started", source: selectedSource })} />}
+        </PublicMusicAccordion>
+      </section>}
     </div>
-  );
+  </div>;
 }

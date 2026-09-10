@@ -22,12 +22,73 @@ const FIRST_TOUCH_UTM_STORAGE_KEY = 'explorers-first-touch-utm';
 const FIRST_TOUCH_REFERRER_STORAGE_KEY = 'explorers-first-touch-referrer';
 const FIRST_TOUCH_UTM_TTL_MS = 30 * 60 * 1000;
 
+const PUBLIC_TOP_LEVEL_PATH_SEGMENTS = new Set([
+  'apps',
+  'books',
+  'games',
+  'guides',
+  'movies',
+  'music',
+  'people',
+  'places',
+  'products',
+]);
+
+const classifyStaticPathSegment = (
+  segment: string | undefined,
+  allowed: ReadonlySet<string>,
+): string | undefined => {
+  if (!segment) return undefined;
+  try {
+    const decoded = decodeURIComponent(segment).toLowerCase();
+    return allowed.has(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const canonicalizePublicPathname = (pathname: string, username: string): string => {
+  const segments = pathname.split(/\/+/).filter(Boolean);
+  const canonicalUsername = username.trim().toLowerCase();
+  const tail = segments.slice(1);
+  const category = classifyStaticPathSegment(tail[0], PUBLIC_TOP_LEVEL_PATH_SEGMENTS);
+  if (category) tail[0] = category;
+
+  const nestedPrefix = classifyStaticPathSegment(
+    tail[1],
+    new Set(category === 'books'
+      ? ['subject']
+      : category === 'movies' || category === 'games'
+        ? ['genre']
+        : category === 'people'
+          ? ['sector']
+          : []),
+  );
+  if (
+    tail.length >= 3
+    && nestedPrefix
+  ) tail[1] = nestedPrefix;
+
+  if (category === 'places') {
+    const directMap = classifyStaticPathSegment(tail[1], new Set(['map']));
+    if (tail.length === 2 && directMap) tail[1] = directMap;
+    const suffix = classifyStaticPathSegment(tail[2], new Set(['map', 'placesmap']));
+    if (tail.length === 3 && suffix) tail[2] = suffix;
+  }
+  return `/${[canonicalUsername, ...tail].filter(Boolean).join('/')}`;
+};
+
 export const appendAttributionParamsToPath = (path: string, search: string): string => {
-  const source = new URLSearchParams(search);
+  const source = new URLSearchParams(search.split('#', 1)[0]);
   const target = new URLSearchParams();
   for (const key of UTM_KEYS) {
-    const value = source.get(key)?.trim().slice(0, 100);
-    if (value) target.set(key, value.replace(/[<>"']/g, ''));
+    for (const candidate of source.getAll(key)) {
+      const value = candidate.trim().slice(0, 100).replace(/[<>"']/g, '').trim();
+      if (value) {
+        target.set(key, value);
+        break;
+      }
+    }
   }
   const query = target.toString();
   return query ? `${path}?${query}` : path;

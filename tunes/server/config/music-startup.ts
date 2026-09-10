@@ -9,13 +9,22 @@ import {
 import { resolveMusicDatabaseConnection } from "./music-database-config";
 import type { MusicDatabaseConnection } from "./music-database-config";
 import {
+  LOCAL_MUSIC_TARGET,
+  assertValidatedLocalMusicProfile,
+  type ValidatedLocalMusicProfile,
+} from "./music-local-profile";
+import {
   verifyMusicRuntimeDatabaseConnection,
 } from "../db/music-runtime-role";
 
 type Environment = Record<string, string | undefined>;
 
 export interface MusicServerRuntime {
-  createApp: (config: MusicIdentityRuntimeConfig) => Promise<{ app: Express; server: Server }>;
+  createApp: (config: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile) => Promise<{
+    app: Express;
+    server: Server;
+    shutdown?: () => Promise<void>;
+  }>;
   setupVite: (app: Express, server: Server) => Promise<void>;
   serveStatic: (app: Express) => void;
 }
@@ -25,6 +34,7 @@ export interface MusicStartupDependencies extends MusicIdentityConfigDependencie
   ensureAnalyticsSchema?: () => Promise<void>;
   resolveDatabaseConnection?: typeof resolveMusicDatabaseConnection;
   verifyDatabaseConnection?: (connection: MusicDatabaseConnection) => Promise<void>;
+  resolveIdentityConfig?: typeof resolveMusicIdentityRuntimeConfig;
   host?: string;
   port?: number;
 }
@@ -58,9 +68,12 @@ export async function validateMusicStartupEnvironment(
   environment: Environment,
   dependencies: MusicStartupDependencies = {},
 ): Promise<MusicIdentityRuntimeConfig> {
+  if (environment.MUSIC_RUNTIME_PROFILE !== undefined) {
+    throw new Error("A local runtime profile is accepted only by the validated local launcher");
+  }
   if (environment.MUSIC_MODE === "fixture") parseMusicRuntimeFixtureEnvironment(environment);
   else if (environment.MUSIC_MODE !== "live") throw new Error("MUSIC_MODE must be live or fixture");
-  const config = await resolveMusicIdentityRuntimeConfig(environment, dependencies);
+  const config = await (dependencies.resolveIdentityConfig ?? resolveMusicIdentityRuntimeConfig)(environment, dependencies);
   const database = await (dependencies.resolveDatabaseConnection ?? resolveMusicDatabaseConnection)(
     environment,
     "runtime",
@@ -114,4 +127,70 @@ export async function startMusicServer(
     });
   });
   return { app, server, config };
+}
+
+async function validateLocalStartupEnvironment(
+  environment: Environment,
+  profile: ValidatedLocalMusicProfile,
+  dependencies: MusicStartupDependencies,
+): Promise<MusicIdentityRuntimeConfig> {
+  assertValidatedLocalMusicProfile(profile, environment);
+  if (environment.MUSIC_MODE !== "live"
+      || environment.MUSIC_RUNTIME_PROFILE !== "local-music"
+      || environment.HOST !== LOCAL_MUSIC_TARGET.apiHost
+      || environment.PORT !== String(LOCAL_MUSIC_TARGET.apiPort)
+      || environment.MUSIC_DATABASE_HOST !== LOCAL_MUSIC_TARGET.databaseHost
+      || environment.MUSIC_DATABASE_PORT !== String(LOCAL_MUSIC_TARGET.databasePort)
+      || environment.MUSIC_DATABASE_NAME !== LOCAL_MUSIC_TARGET.databaseName
+      || environment.MUSIC_DATABASE_USER !== LOCAL_MUSIC_TARGET.runtimeUser) {
+    throw new Error("Local Music environment target is invalid");
+  }
+  const config = await (dependencies.resolveIdentityConfig ?? resolveMusicIdentityRuntimeConfig)(environment, dependencies);
+  const database = await (dependencies.resolveDatabaseConnection ?? resolveMusicDatabaseConnection)(environment, "runtime", dependencies);
+  if (dependencies.verifyDatabaseConnection) await dependencies.verifyDatabaseConnection(database);
+  else await verifyMusicRuntimeDatabaseConnection(database, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
+  environment.DATABASE_URL = database.connectionString;
+  return config;
+}
+
+function closeServer(server: Server): Promise<void> {
+  if (!server.listening) return Promise.resolve();
+  return new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+}
+
+/** Local-only entry. The opaque profile cannot be selected through process environment. */
+export async function startLocalMusicServer(
+  environment: Environment,
+  profile: ValidatedLocalMusicProfile,
+  dependencies: MusicStartupDependencies = {},
+): Promise<{
+  app: Express;
+  server: Server;
+  config: MusicIdentityRuntimeConfig;
+  shutdown: () => Promise<void>;
+}> {
+  const config = await validateLocalStartupEnvironment(environment, profile, dependencies);
+  const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
+  const constructed = await runtime.createApp(config, profile);
+  let stopped = false;
+  const shutdown = async () => {
+    if (stopped) return;
+    stopped = true;
+    if (constructed.shutdown) await constructed.shutdown();
+    else await closeServer(constructed.server);
+  };
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => reject(error);
+      constructed.server.once("error", onError);
+      constructed.server.listen(LOCAL_MUSIC_TARGET.apiPort, LOCAL_MUSIC_TARGET.apiHost, () => {
+        constructed.server.off("error", onError);
+        resolve();
+      });
+    });
+  } catch (error) {
+    await shutdown().catch(() => undefined);
+    throw error;
+  }
+  return { app: constructed.app, server: constructed.server, config, shutdown };
 }

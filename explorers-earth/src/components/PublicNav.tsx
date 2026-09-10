@@ -60,7 +60,10 @@ const PublicNav = memo(() => {
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
   const showPeopleTab = accountData?.public_people === "Yes";
-  const showMusicTab = accountData?.public_music === "Yes" && ["available", "revalidating", "revoked"].includes(availability.state);
+  // A transient Music probe must not reshuffle an owner's saved navigation.
+  // The persisted public preference is the visibility authority; only a
+  // conclusive publication revocation hides an already-public Music tab.
+  const showMusicTab = accountData?.public_music === "Yes" && availability.state !== "not-public";
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
@@ -165,7 +168,12 @@ const PublicNav = memo(() => {
   // Don't render tabs until account data is loaded to prevent flash of default tabs
   if (loading || !accountData) {
     return (
-      <nav aria-label="Public navigation" className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center p-1  shadow-md">
+      <nav
+        aria-label="Public navigation"
+        data-public-nav-state="loading"
+        className="fixed md:rounded-lg z-50 w-full md:w-[33%] md:translate-x-[102%] bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center px-1 shadow-md"
+        style={{ bottom: 'var(--public-nav-edge-offset)', paddingTop: '0.25rem', paddingBottom: 'calc(0.25rem + var(--public-safe-bottom, env(safe-area-inset-bottom, 0px)))', zIndex: 'var(--z-public-nav)' }}
+      >
         <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">
           {/* Empty placeholder to maintain layout height while loading */}
           <div style={{ height: '2.5rem' }} />
@@ -275,8 +283,13 @@ const PublicNav = memo(() => {
 
 
   return (
-    <nav aria-label="Public navigation" className="fixed bottom-0 md:bottom-2 md:rounded-lg z-50 w-full md:w-[33%]  md:translate-x-[102%]  bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center py-0.5 px-1  shadow-md">
-      <div className="flex mx-[1.5rem] md:border-0 flex-row justify-around w-full">
+    <nav
+      aria-label="Public navigation"
+      data-public-nav-state="ready"
+      className="fixed md:rounded-lg z-50 w-full md:w-[33%] md:translate-x-[102%] bg-[#2a2a2a] text-white flex md:flex-row md:justify-center md:items-center justify-center px-1 shadow-md"
+      style={{ bottom: 'var(--public-nav-edge-offset)', paddingTop: '0.125rem', paddingBottom: 'calc(0.125rem + var(--public-safe-bottom, env(safe-area-inset-bottom, 0px)))', zIndex: 'var(--z-public-nav)' }}
+    >
+      <div className="flex h-11 mx-[1.5rem] md:border-0 flex-row justify-around w-full">
         {finalNavItems.map((item, index) => {
           // Check if current path matches the nav item path
           const itemPathname = item.path.split("?")[0];

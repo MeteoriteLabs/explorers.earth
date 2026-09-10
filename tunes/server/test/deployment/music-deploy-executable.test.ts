@@ -394,7 +394,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0020_public_snapshot_revision",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0021_explorers_analytics_receipts",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -433,7 +433,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0020_public_snapshot_revision",
+          "migration=0021_explorers_analytics_receipts",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -621,7 +621,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
 
   it("keeps additive 0020 at the 0019 floor after readiness failure and refuses an older digest", () => {
     seedVersionedAuthority("0019_queue_visibility_control");
-    const failed = run("deploy", digest("b"), commit("b"), { candidateReadinessFailure: true });
+    const failed = run("deploy", digest("b"), commit("b"), { candidateReadinessFailure: true, expectedMarkerOverride: "0020_public_snapshot_revision" });
     expect(failed.status).not.toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
       .toContain("\t0019_queue_visibility_control\tcurrent\t");
@@ -632,9 +632,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
 
   it("accepts repeated successful 0020 images and an authorized compatible 0020 rollback", () => {
     seedVersionedAuthority("0019_queue_visibility_control");
-    const first = run("deploy", digest("b"), commit("b"));
+    const first = run("deploy", digest("b"), commit("b"), { expectedMarkerOverride: "0020_public_snapshot_revision" });
     expect(first.status, first.stderr).toBe(0);
-    const second = run("deploy", digest("c"), commit("c"), { slot: "blue" });
+    const second = run("deploy", digest("c"), commit("c"), { slot: "blue", expectedMarkerOverride: "0020_public_snapshot_revision" });
     expect(second.status, second.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
       .toContain(`\t${digest("c")}\t${commit("c")}\t0020_public_snapshot_revision\t`);
@@ -643,6 +643,17 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ociCommit: commit("b"),
     });
     expect(rollback.status, rollback.stderr).toBe(0);
+  }, deploymentProcessRecoveryTimeoutMs);
+
+  it("deploys analytics migration 0021 from an authenticated 0020 image", () => {
+    // Omitting 0020 from the engine's historical ranks rejects 0021's compatibility floor.
+    seedVersionedAuthority("0020_public_snapshot_revision");
+    const result = run("deploy", digest("b"), commit("b"));
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0021_explorers_analytics_receipts\t`);
+    expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
+      .toContain("\t0020_public_snapshot_revision\tcurrent\t");
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -662,7 +673,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     "0014_durable_reactivation_authority",
     "0015_publication_operation_archive",
     "0016_publication_operation_retention",
-  ])("upgrades authenticated historical marker %s directly to production 0020", (historicalMarker) => {
+  ])("upgrades authenticated historical marker %s directly to production 0021", (historicalMarker) => {
     if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
     else seedHistoricalAuthority(historicalMarker);
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -670,7 +681,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0019_queue_visibility_control\tpending\t");
+      .toContain("\t0020_public_snapshot_revision\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -683,7 +694,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0019_queue_visibility_control\tcurrent\t");
+      .toContain("\t0020_public_snapshot_revision\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -743,8 +754,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0019_queue_visibility_control", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0019_queue_visibility_control", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0020_public_snapshot_revision", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0020_public_snapshot_revision", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -752,9 +763,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0019_queue_visibility_control\tcurrent\t");
+      .toContain("\t0020_public_snapshot_revision\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0020_public_snapshot_revision\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0021_explorers_analytics_receipts\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1149,7 +1160,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0020_public_snapshot_revision", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0021_explorers_analytics_receipts", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

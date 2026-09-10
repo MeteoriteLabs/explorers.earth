@@ -101,6 +101,17 @@ describe("PublicMusicPlayer", () => {
     expect(screen.getByRole("button", { name: "Play Selected song on this device" })).toBeInTheDocument();
   });
 
+  it("passes YouTube the current origin and a referrer policy", () => {
+    render(<PublicMusicPlayer song={song} />);
+    expect(mediaProps.config).toEqual({
+      youtube: {
+        origin: window.location.origin,
+        widget_referrer: window.location.href,
+        referrerpolicy: "strict-origin-when-cross-origin",
+      },
+    });
+  });
+
   it("contains a real play promise NotAllowedError without hiding the explicit play control", async () => {
     const user = userEvent.setup();
     mediaPlay.mockRejectedValueOnce(new DOMException("blocked", "NotAllowedError"));
@@ -126,6 +137,14 @@ describe("PublicMusicPlayer", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(message);
   });
 
+  it("offers the exact YouTube watch link after an embed rejection", async () => {
+    const user = userEvent.setup();
+    render(<PublicMusicPlayer song={song} />);
+    await user.click(screen.getByRole("button", { name: /Play Public signal/ }));
+    act(() => (mediaProps.onError as (event: unknown) => void)({ currentTarget: { error: { code: 153 } } }));
+    expect(screen.getByRole("link", { name: "Watch Public signal on YouTube" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=abcdefghijk");
+  });
+
   it("contains a non-policy play rejection as a retryable network failure", async () => {
     mediaPlay.mockRejectedValueOnce(new TypeError("network failed"));
     render(<PublicMusicPlayer song={song} />);
@@ -142,6 +161,56 @@ describe("PublicMusicPlayer", () => {
     expect(screen.queryByTestId("guest-media")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Public signal/ })).not.toBeInTheDocument();
     expect(mediaCleanup).toHaveBeenCalledOnce();
+  });
+
+  it("rejects embedded playback attempts while availability is being checked", () => {
+    const onPlaybackStart = vi.fn();
+    render(<PublicMusicPlayer song={song} actionsEnabled={false} onPlaybackStart={onPlaybackStart} />);
+    expect(screen.getByRole("button", { name: /Play Public signal/ })).toBeDisabled();
+    act(() => (mediaProps.onPlay as () => void)());
+    expect(mediaPause).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
+    expect(onPlaybackStart).not.toHaveBeenCalled();
+  });
+
+  it("retains playback intent when the revalidation pause acknowledgement arrives after availability returns", async () => {
+    const view = render(<PublicMusicPlayer song={song} actionsEnabled />);
+    await userEvent.click(screen.getByRole("button", { name: /Play Public signal/ }));
+    act(() => (mediaProps.onPlay as () => void)());
+    const media = screen.getByTestId("guest-media");
+    view.rerender(<PublicMusicPlayer song={song} actionsEnabled={false} />);
+    expect(media).toHaveAttribute("data-playing", "false");
+    view.rerender(<PublicMusicPlayer song={song} actionsEnabled />);
+    act(() => (mediaProps.onPause as () => void)());
+    expect(screen.getByTestId("guest-media")).toBe(media);
+    expect(media).toHaveAttribute("data-playing", "true");
+    act(() => (mediaProps.onPlay as () => void)());
+    act(() => (mediaProps.onPause as () => void)());
+    expect(media).toHaveAttribute("data-playing", "false");
+  });
+
+  it("keeps a delayed play completion paused until availability returns", async () => {
+    let finish!: () => void;
+    mediaPlay.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    const view = render(<PublicMusicPlayer song={song} actionsEnabled />);
+    await userEvent.click(screen.getByRole("button", { name: /Play Public signal/ }));
+    view.rerender(<PublicMusicPlayer song={song} actionsEnabled={false} />);
+    await act(async () => finish());
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
+    view.rerender(<PublicMusicPlayer song={song} actionsEnabled />);
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "true");
+  });
+
+  it("does not revive playback after a pending play is revoked and permission returns", async () => {
+    let finish!: () => void;
+    mediaPlay.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    const view = render(<PublicMusicPlayer song={song} allowed />);
+    await userEvent.click(screen.getByRole("button", { name: /Play Public signal/ }));
+    view.rerender(<PublicMusicPlayer song={song} allowed={false} />);
+    await act(async () => finish());
+    expect(screen.queryByTestId("guest-media")).not.toBeInTheDocument();
+    view.rerender(<PublicMusicPlayer song={song} allowed />);
+    expect(screen.getByTestId("guest-media")).toHaveAttribute("data-playing", "false");
   });
 
   it("destroys local media on unmount", () => {

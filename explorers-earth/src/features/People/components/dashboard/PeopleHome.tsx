@@ -1,3 +1,6 @@
+import { NavigationStatus } from "../../../navigation/NavigationStatus";
+import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
+import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
@@ -266,6 +269,8 @@ export const PersonListCard = ({
 // PeopleHome Main Component
 // ─────────────────────────────────────────────────────────────
 const PeopleHome = () => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_people === "Yes";
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -275,7 +280,8 @@ const PeopleHome = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean; categoryName: string; visibilityField: string; defaultValue: boolean;
+    isOpen: boolean; categoryName: string; visibilityField: string;
+    origin?: IntentAuthority; defaultValue: boolean;
   } | null>(null);
 
   const { data: accountData } = useQuery(MY_ACCOUNT, {
@@ -296,35 +302,9 @@ const PeopleHome = () => {
 
   const [updatePersonList] = useMutation(UPDATE_PERSON_LIST);
 
-  const [updateAccountVisibility] = useMutation(gql`
-    mutation UpdatePeopleVisibility($documentId: ID!, $data: AccountInput!) {
-      updateAccount(documentId: $documentId, data: $data) {
-        documentId
-        public_people
-      }
-    }
-  `);
-
-  const handleVisibilityToggle = async () => {
-    const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-    if (!acc?.documentId) return;
-    const newValue = acc.public_people === "Yes" ? "No" : "Yes";
-    if (newValue === "Yes") {
-      const hasPublishedList = lists.some((l) => l.Visibility === true);
-      if (!hasPublishedList) {
-        toast.error("You must have at least one published people list to make People public.");
-        return;
-      }
-    }
-    try {
-      await updateAccountVisibility({
-        variables: { documentId: acc.documentId, data: { public_people: newValue } },
-        refetchQueries: [{ query: MY_ACCOUNT, variables: { documentId: user?.documentId } }],
-      });
-      toast.success(`People visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch {
-      toast.error("Failed to update visibility");
-    }
+  const handleVisibilityToggle = () => {
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_people", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
   const lists: PersonList[] = data?.personLists || [];
@@ -368,12 +348,14 @@ const PeopleHome = () => {
 
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
+      <NavigationStatus navigation={navigation} />
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
-            isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_people === "Yes"}
+            isChecked={categoryVisible}
             onChange={handleVisibilityToggle}
+            disabled={navigation.busy || !navigation.authority}
             variant="blue"
           />
           <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">Public Visibility</span>
@@ -400,7 +382,8 @@ const PeopleHome = () => {
         {dropdownOpen && (
           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
-            <SwitchButton isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_people === "Yes"} onChange={handleVisibilityToggle} variant="blue" />
+            <SwitchButton isChecked={categoryVisible} onChange={handleVisibilityToggle}
+ disabled={navigation.busy || !navigation.authority} variant="blue" />
           </div>
         )}
       </div>
@@ -502,8 +485,8 @@ const PeopleHome = () => {
         />
       )}
 
-      {visibilityPrompt && accountDocumentId && (
-        <CategoryVisibilityModal isOpen={visibilityPrompt.isOpen} onClose={() => setVisibilityPrompt(null)} categoryName={visibilityPrompt.categoryName} visibilityField={visibilityPrompt.visibilityField} accountDocumentId={accountDocumentId} onSuccess={() => refetch()} />
+      {visibilityPrompt && (
+        <CategoryVisibilityModal isOpen={visibilityPrompt.isOpen} onClose={() => setVisibilityPrompt(null)} categoryName={visibilityPrompt.categoryName} visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin} accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""} onSuccess={() => refetch()} />
       )}
     </div>
   );

@@ -83,12 +83,12 @@ const EXPECTED_LIVE_JOURNEYS = [
 
 const EXPECTED_LIVE_READ_ONLY = [
   { id: "music.read-only.owner-view-as-guest", title: "owner View as guest link opens public Music in a separate logged-out browser context", source: "e2e/music-public-contract.spec.ts" },
-  { id: "music.read-only.permission-matrix", title: "pairwise permission matrix changes each concrete guest surface", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.permission-matrix", title: "all 32 permission masks expose exactly the independently expected guest surfaces", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.first-view-fallback", title: "first-view fallback selects the first permitted content and then the explicit empty state", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.a11y-announcements", title: "screen readers receive actual loading and request-success announcements", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.share-privacy", title: "public and unlisted shares preserve canonical and capability privacy", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.cache-isolation", title: "public and unlisted caches stay isolated and invalid capabilities recover generically", source: "e2e/music-public-contract.spec.ts" },
-  { id: "music.read-only.generic-recovery", title: "invalid, private, and unavailable resources converge on generic recovery", source: "e2e/music-public-contract.spec.ts" },
+  { id: "music.read-only.generic-recovery", title: "invalid, private, and missing resources converge on generic nonretryable recovery", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.viewport-320x700", title: "accessible public structure reflows at 320x700", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.viewport-375x667", title: "accessible public structure reflows at 375x667", source: "e2e/music-public-contract.spec.ts" },
   { id: "music.read-only.viewport-390x844", title: "accessible public structure reflows at 390x844", source: "e2e/music-public-contract.spec.ts" },
@@ -144,12 +144,12 @@ const EXACT_PUBLIC_C14_AUTHORITY_ARGS = [
 const EXPECTED_PREBROWSER_PUBLIC_FLOW_STAGES = [
   "visibility", "owner", "playlist", "saved-song-1", "saved-song-2", "saved-song-3",
   "playlist-visible", "queue", "playback-1", "playback-2", "controls", "publication",
-  "direct-public-profile-data", "direct-public-category-list-counts", "direct-get-places-lists",
-  "direct-get-movies-lists", "direct-get-books-lists", "direct-get-games-lists", "direct-get-apps-lists",
-  "direct-get-products-lists", "direct-get-people-lists", "direct-get-guides-lists",
-  "proxy-public-profile-data", "proxy-public-category-list-counts", "proxy-get-places-lists",
-  "proxy-get-movies-lists", "proxy-get-books-lists", "proxy-get-games-lists", "proxy-get-apps-lists",
-  "proxy-get-products-lists", "proxy-get-people-lists", "proxy-get-guides-lists",
+  "direct-public-profile", "direct-public-category-places", "direct-public-category-movies",
+  "direct-public-category-books", "direct-public-category-games", "direct-public-category-apps",
+  "direct-public-category-products", "direct-public-category-people", "direct-public-category-guides",
+  "proxy-public-profile", "proxy-public-category-places", "proxy-public-category-movies",
+  "proxy-public-category-books", "proxy-public-category-games", "proxy-public-category-apps",
+  "proxy-public-category-products", "proxy-public-category-people", "proxy-public-category-guides",
   "direct-public-music", "proxy-public-music",
 ] as const;
 const EXPECTED_PREBROWSER_PUBLIC_FLOW_FAILURE_CODES = [
@@ -255,7 +255,7 @@ function passedPrebrowserQualification() {
       staleRejected: true, publicProjection: true, musicPrerequisites: true,
       baselineRestored: true, ephemeralOwnerRetired: true, guardClear: true,
     },
-    counts: { identityRows: 1, categoryQueries: 20, musicPrerequisites: 9 },
+    counts: { identityRows: 1, categoryQueries: 18, musicPrerequisites: 9 },
     hashes: {
       populatedDatabase: "1".repeat(64), rollbackDatabase: "1".repeat(64),
       populatedProfile: "2".repeat(64), rollbackProfile: "2".repeat(64),
@@ -467,7 +467,7 @@ function validJourneyEvidenceRecords() {
 }
 
 function inertLiveCollectionEnvironment() {
-  return {
+  const environment = {
     ...process.env,
     PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173",
     PLAYWRIGHT_PR_SAFE: "false",
@@ -482,6 +482,10 @@ function inertLiveCollectionEnvironment() {
     E2E_PROFILE_STORAGE_STATE: resolve(".artifacts/inert-profile-storage-state.json"),
     E2E_PROFILE_USERNAME: "e2e-profile-sentinel",
   };
+  delete environment.PLAYWRIGHT_JSON_OUTPUT_FILE;
+  delete environment.PLAYWRIGHT_JSON_OUTPUT_NAME;
+  delete environment.PLAYWRIGHT_JSON_OUTPUT_DIR;
+  return environment;
 }
 
 function writeLifecycleContractShims(sandbox: string) {
@@ -1212,6 +1216,10 @@ test("live preflight runner invokes package-resolved authority before exact JSON
 });
 
 test("real inert live-project JSON collection classifies exactly 17 mutations and 32 read-only cases", () => {
+  const environment = inertLiveCollectionEnvironment();
+  expect(environment).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_FILE");
+  expect(environment).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_NAME");
+  expect(environment).not.toHaveProperty("PLAYWRIGHT_JSON_OUTPUT_DIR");
   const result = spawnSync(process.execPath, [
     "node_modules/@playwright/test/cli.js",
     "test",
@@ -1221,7 +1229,7 @@ test("real inert live-project JSON collection classifies exactly 17 mutations an
   ], {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: inertLiveCollectionEnvironment(),
+    env: environment,
     maxBuffer: 16 * 1024 * 1024,
   });
   expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
@@ -1235,12 +1243,13 @@ test("real inert live-project JSON collection classifies exactly 17 mutations an
   expect(mutationSpecs).toHaveLength(17);
   expect(readOnlySpecs).toHaveLength(32);
   expect(specs.every(({ tags }) => Number(tags.includes(mutationTag)) + Number(tags.includes(readOnlyTag)) === 1)).toBe(true);
-  expect(classifyLivePreflight({
+  const classification = classifyLivePreflight({
     authorityResult: preflightChild(0, JSON.stringify({ skipReason: null })),
     collectionResult: result,
     workspaceRoot: process.cwd(),
     knownSecrets: ["sentinel-authority-value"],
-  })).toMatchObject({
+  });
+  expect(classification, JSON.stringify(classification)).toMatchObject({
     ok: true,
     manifestVersion: LIVE_JOURNEY_MANIFEST_VERSION,
     journeyIds: EXPECTED_LIVE_JOURNEYS.map(({ id }) => id),
@@ -1316,8 +1325,10 @@ test("live journey child is fail-fast with retries disabled without masking fina
   const module = await import("../scripts/music-public-live-preflight.mjs") as unknown as Record<string, unknown>;
   const execute = module.runPlaywrightJourneyExecution as (input: Record<string, unknown>) => { status: number };
   const root = resolve(".artifacts", "journey-fail-fast-contract");
+  rmSync(root, { recursive: true, force: true });
   const calls: string[][] = [];
-  execute({
+  try {
+    execute({
     spawn: (_file: string, args: string[]) => { calls.push(args); return { status: 1 }; },
     processExecPath: process.execPath,
     playwrightCli: "playwright-cli",
@@ -1331,10 +1342,13 @@ test("live journey child is fail-fast with retries disabled without masking fina
     outcomeLedgerPath: join(root, "journey-outcomes.json"),
     privateArtifactIo: { exists: () => false },
     persistOutcomeLedger: () => ({ status: "persisted" }),
-  });
-  expect(calls).toHaveLength(1);
-  expect(calls[0]).toContain("--max-failures=1");
-  expect(calls[0]).toContain("--retries=0");
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("--max-failures=1");
+    expect(calls[0]).toContain("--retries=0");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("runner separates orchestration authority from worker authority and binds final recovery to the run", () => {
@@ -1673,6 +1687,16 @@ test("the fixture exposes only the exact Socket.IO ws boundary through Explorer"
   expect(nginx.match(/proxy_pass http:\/\/tunes:5000;/g)).toHaveLength(3);
   expect(nginx).not.toMatch(/location\s+(?:\^~\s+)?\/ws(?:\/|\s)/);
   expect(nginx).not.toMatch(/location\s+\/\s*\{\s*proxy_pass\s+http:\/\/tunes:5000;/);
+});
+
+test("the fixture proxies the current public profile REST gateway through Explorer without authority headers", () => {
+  const nginx = readFileSync(resolve("nginx.music-fixture.conf"), "utf8");
+  const location = /location\s+\^~\s+\/api\/explorers\/v1\/profiles\/\s*\{([\s\S]*?)\}/.exec(nginx)?.[1];
+  expect(location).toBeTruthy();
+  expect(location).toContain("proxy_pass http://strapi:1337;");
+  expect(location).toMatch(/proxy_set_header\s+Authorization\s+"";/);
+  expect(location).toMatch(/proxy_set_header\s+Cookie\s+"";/);
+  expect(location).not.toMatch(/\$http_authorization|MUSIC_E2E|STRAPI_ACCESS_TOKEN/i);
 });
 
 test("restored permission failures write one safe substage terminal after exact restoration", async () => {
@@ -4628,10 +4652,11 @@ test("the documented root public E2E command is the hard-gated live orchestratio
     .toBeLessThan(runner.indexOf("journeyOutcomeCleanupRequired = journeyExecutionOutcome.outcomeLedgerStatus"));
   expect(runner).toContain("writeReport: async () => undefined");
   expect(runner).not.toContain("function writeLiveReport");
-  expect(runner).toContain('"--reporter=json"');
-  expect(runner).toMatch(/privatePlaywrightOutputDirectory[\s\S]+--output=/);
-  expect(runner).toMatch(/rmSync\(privatePlaywrightOutputDirectory, \{ recursive: true, force: true \}\)/);
-  expect(runner).toMatch(/const result = spawnSync[\s\S]+finalizeCurrentQualification\(\{[\s\S]+stage: "execution-finished"/);
+  const livePreflight = readFileSync("scripts/music-public-live-preflight.mjs", "utf8");
+  expect(livePreflight).toContain('"--reporter=json"');
+  expect(livePreflight).toMatch(/"--output",\s*exactOutputDirectory/);
+  expect(livePreflight).toContain("io.removeDirectory(exactOutputDirectory)");
+  expect(runner).toMatch(/const executionOutcome = runPlaywrightJourneyExecution\(\{[\s\S]+requireJourneyLedger: false,[\s\S]+finalizeCurrentQualification\(\{[\s\S]+stage: "execution-finished"/);
   expect(runner).toMatch(/const finalized = await qualificationCoordinator\.runFinalization[\s\S]+return finalized\.exitCode/);
   expect(runner).toContain("process.exit(await runLiveQualification())");
   const stateService = readFileSync("../tunes/scripts/music-e2e-state-service.mjs", "utf8");
@@ -6755,7 +6780,7 @@ function passingPrebrowserQualificationAdapter(events: string[]) {
     },
     verifyPublicProfileAndMusic: async () => {
       events.push("public-profile-category-music");
-      return { publicSlug: "actual-fixture-public-slug", categoryQueries: 20, musicPrerequisites: 9 };
+      return { publicSlug: "actual-fixture-public-slug", categoryQueries: 18, musicPrerequisites: 9 };
     },
     restoreBaseline: async (snapshot: QualificationSnapshot) => {
       events.push("restore:initial-baseline");
@@ -6823,7 +6848,7 @@ test("pre-browser qualifier proves populated rollback, public/category/music cap
         ephemeralOwnerRetired: true,
         guardClear: true,
       },
-      counts: { identityRows: 1, categoryQueries: 20, musicPrerequisites: 9 },
+      counts: { identityRows: 1, categoryQueries: 18, musicPrerequisites: 9 },
       hashes: {
         populatedDatabase: "b".repeat(64),
         rollbackDatabase: "b".repeat(64),
@@ -7023,18 +7048,6 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     | "allow-song-requests" | "allow-guest-play-on-device" | "allow-playlist-sharing"
     | "allow-recently-played-visibility" | "allow-queue-visibility"
     | undefined;
-  const graphqlStageSuffix: Record<string, string> = {
-    PublicProfileData: "public-profile-data",
-    PublicCategoryListCounts: "public-category-list-counts",
-    GetPlacesLists: "get-places-lists",
-    GetMoviesLists: "get-movies-lists",
-    GetBooksLists: "get-books-lists",
-    GetGamesLists: "get-games-lists",
-    GetAppsLists: "get-apps-lists",
-    GetProductsLists: "get-products-lists",
-    GetPeopleLists: "get-people-lists",
-    GetGuidesLists: "get-guides-lists",
-  };
   const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
     status, headers: { "content-type": "application/json" },
   });
@@ -7071,8 +7084,11 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       else if (url.pathname === "/api/playlist/currently-playing") publicStage = `playback-${++playbackPublicCalls}`;
       else if (url.pathname === "/api/music/guest-controls") publicStage = "controls";
       else if (url.pathname === "/api/music/publication") publicStage = "publication";
-      else if (url.pathname === "/graphql" && operation && graphqlStageSuffix[operation]) {
-        publicStage = `${url.origin === "http://127.0.0.1:51337" ? "direct" : "proxy"}-${graphqlStageSuffix[operation]}`;
+      else if (url.pathname === "/api/explorers/v1/profiles/e2e-public-music-qualification-owner") {
+        publicStage = `${url.origin === "http://127.0.0.1:51337" ? "direct" : "proxy"}-public-profile`;
+      } else if (url.pathname.startsWith("/api/explorers/v1/profiles/e2e-public-music-qualification-owner/recommendations/")) {
+        const category = url.pathname.split("/").at(-1);
+        publicStage = `${url.origin === "http://127.0.0.1:51337" ? "direct" : "proxy"}-public-category-${category}`;
       } else if (url.pathname.startsWith("/api/music/public-resource/v1/")) {
         publicStage = url.origin === "http://127.0.0.1:55000" ? "direct-public-music" : "proxy-public-music";
       }
@@ -7171,6 +7187,33 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
       }
       return json({ error: "unknown operation" }, 403);
     }
+    const gatewayPrefix = "/api/explorers/v1/profiles/e2e-public-music-qualification-owner";
+    if (["http://127.0.0.1:51337", "http://localhost:55173"].includes(url.origin) && url.pathname === gatewayPrefix) {
+      return json({
+        documentId: "e2e-public-music-qualification-account", username: "e2e-public-music-qualification-owner",
+        Account_Name: "Fixture Explorer", public_profile: "Yes", public_recommendations: "Yes", public_music: "Yes",
+      });
+    }
+    const gatewayCategory = url.pathname.startsWith(`${gatewayPrefix}/recommendations/`)
+      ? url.pathname.slice(`${gatewayPrefix}/recommendations/`.length)
+      : undefined;
+    const gatewayDefinitions: Record<string, { root: string; contentKey: string }> = {
+      places: { root: "recommendationLists", contentKey: "recommended_places" },
+      movies: { root: "movieLists", contentKey: "recommended_movies" },
+      books: { root: "bookLists", contentKey: "recommended_books" },
+      games: { root: "gameLists", contentKey: "recommended_games" },
+      apps: { root: "appLists", contentKey: "recommended_apps" },
+      products: { root: "productLists", contentKey: "recommended_products" },
+      people: { root: "personLists", contentKey: "recommended_people" },
+      guides: { root: "guides", contentKey: "Title" },
+    };
+    if (gatewayCategory && gatewayDefinitions[gatewayCategory]) {
+      const { root, contentKey } = gatewayDefinitions[gatewayCategory];
+      const documentId = `e2e-public-music-qualification-${gatewayCategory}-list`;
+      return json({ [root]: [{ documentId, ...(contentKey === "Title"
+        ? { Title: "Fixture Guide" }
+        : { [contentKey]: [{ documentId: `${documentId}-item` }] }) }] });
+    }
     if (url.origin === "http://127.0.0.1:55000" && url.pathname === "/api/playlists" && method === "POST") {
       return json({ id: ++playlistId, name: decoded.name }, 201);
     }
@@ -7267,17 +7310,16 @@ test("loopback qualifier adapter exercises exact fixture profile, stale, public 
     userDocumentId: "e2e-public-music-qualification-user",
   };
   const result = await runLoopback({ authority, initialSnapshot: initial, fetchImpl });
-  expect(result, JSON.stringify(result.record)).toMatchObject({ ok: true, record: { status: "passed", counts: { categoryQueries: 20, musicPrerequisites: 9 } } });
+  expect(result, JSON.stringify(result.record)).toMatchObject({ ok: true, record: { status: "passed", counts: { categoryQueries: 18, musicPrerequisites: 9 } } });
   expect(result.record).toMatchObject({
     schemaVersion: "explorers-public-prebrowser-qualification/v4",
     publicFlowFailure: { stage: "none", code: "none" },
     publicFlowSubstage: "none",
   });
   expect(calls.filter(({ operation }) => operation === "UsersPermissionsUser")).toHaveLength(2);
-  expect(calls.filter(({ operation }) => operation && [
-    "PublicProfileData", "PublicCategoryListCounts", "GetPlacesLists", "GetMoviesLists", "GetBooksLists",
-    "GetGamesLists", "GetAppsLists", "GetProductsLists", "GetPeopleLists", "GetGuidesLists",
-  ].includes(operation))).toHaveLength(20);
+  expect(calls.filter(({ path }) => path === "/api/explorers/v1/profiles/e2e-public-music-qualification-owner"
+    || path.startsWith("/api/explorers/v1/profiles/e2e-public-music-qualification-owner/recommendations/")))
+    .toHaveLength(18);
   expect(calls.filter(({ expectedRevision }) => expectedRevision !== undefined)).toEqual(expect.arrayContaining([
     expect.objectContaining({ origin: "http://127.0.0.1:51337", operation: "UpdateAccount", expectedRevision: "3" }),
     expect.objectContaining({ origin: "http://localhost:55173", operation: "UpdateAccount", expectedRevision: "3" }),
@@ -7800,7 +7842,7 @@ test("pre-browser qualification records have one exact fixed safe schema and rej
   expect(validate(result.record)).toBe(true);
   expect(validate({ ...result.record, token: "header.payload.secret" })).toBe(false);
   expect(validate({ ...result.record, code: "C:\\Users\\private\\raw.txt" })).toBe(false);
-  expect(validate({ ...result.record, counts: { identityRows: 1, categoryQueries: 19, musicPrerequisites: 9 } })).toBe(false);
+  expect(validate({ ...result.record, counts: { identityRows: 1, categoryQueries: 17, musicPrerequisites: 9 } })).toBe(false);
   expect(validate({ ...result.record, hashes: { ...(result.record.hashes as object), publicSlug: "actual-private-slug" } })).toBe(false);
   expect(validate({ ...failedPrebrowserQualification(), publicFlowFailure: {
     stage: "queue", code: "http-failed", detail: "Bearer hostile.private.detail",
@@ -7890,50 +7932,45 @@ test("pre-browser qualification top codes exclusively own public-flow failure me
   }
 });
 
-test("public qualification accepts only the exact profile, all counts, and every namespaced category fixture", async () => {
+test("public qualification accepts only the exact gateway shell and every namespaced category fixture", async () => {
   const contract = await loadPrebrowserQualificationContract();
-  const validate = contract.validateMusicQualificationPublicGraphql as undefined | ((input: {
-    operation: string; root: string; body: unknown; namespace: string; accountDocumentId: string;
+  const validate = contract.validateMusicQualificationPublicGateway as undefined | ((input: {
+    category?: string; root?: string; body: unknown; namespace: string; accountDocumentId: string;
   }) => boolean);
   expect(typeof validate).toBe("function");
   if (!validate) return;
   const namespace = "e2e-public-music-qualification";
   const accountDocumentId = `${namespace}-account`;
   const profile = {
-    data: { accounts: [{
-      documentId: accountDocumentId, Account_Name: "Fixture Explorer",
-      public_profile: "Yes", public_recommendations: "Yes", public_music: "Yes",
-    }] },
+    documentId: accountDocumentId, username: `${namespace}-owner`, Account_Name: "Fixture Explorer",
+    public_profile: "Yes", public_recommendations: "Yes", public_music: "Yes",
   };
-  expect(validate({ operation: "PublicProfileData", root: "accounts", body: profile, namespace, accountDocumentId })).toBe(true);
-  expect(validate({ operation: "PublicProfileData", root: "accounts", body: {
-    data: { accounts: [{ ...profile.data.accounts[0], documentId: `${namespace}-other-account` }] },
-  }, namespace, accountDocumentId })).toBe(false);
-
-  const roots = ["recommendationLists", "movieLists", "bookLists", "gameLists", "appLists", "productLists", "personLists", "guides"];
-  const counts = { data: Object.fromEntries(roots.map((root) => [root, [{ documentId: `${namespace}-${root}-count` }]])) };
-  expect(validate({ operation: "PublicCategoryListCounts", root: "recommendationLists", body: counts, namespace, accountDocumentId })).toBe(true);
-  expect(validate({ operation: "PublicCategoryListCounts", root: "recommendationLists", body: {
-    data: { ...counts.data, guides: [] },
-  }, namespace, accountDocumentId })).toBe(false);
+  expect(validate({ body: profile, namespace, accountDocumentId })).toBe(true);
+  expect(validate({ body: { ...profile, documentId: `${namespace}-other-account` }, namespace, accountDocumentId })).toBe(false);
+  expect(validate({ body: { ...profile, password: "must-not-pass" }, namespace, accountDocumentId })).toBe(false);
 
   const categoryCases = [
-    ["GetPlacesLists", "recommendationLists", "places", "recommended_places"],
-    ["GetMoviesLists", "movieLists", "movies", "recommended_movies"],
-    ["GetBooksLists", "bookLists", "books", "recommended_books"],
-    ["GetGamesLists", "gameLists", "games", "recommended_games"],
-    ["GetAppsLists", "appLists", "apps", "recommended_apps"],
-    ["GetProductsLists", "productLists", "products", "recommended_products"],
-    ["GetPeopleLists", "personLists", "people", "recommended_people"],
-    ["GetGuidesLists", "guides", "guides", "Title"],
+    ["places", "recommendationLists", "places", "recommended_places"],
+    ["movies", "movieLists", "movies", "recommended_movies"],
+    ["books", "bookLists", "books", "recommended_books"],
+    ["games", "gameLists", "games", "recommended_games"],
+    ["apps", "appLists", "apps", "recommended_apps"],
+    ["products", "productLists", "products", "recommended_products"],
+    ["people", "personLists", "people", "recommended_people"],
+    ["guides", "guides", "guides", "Title"],
   ] as const;
-  for (const [operation, root, subject, contentKey] of categoryCases) {
+  for (const [category, root, subject, contentKey] of categoryCases) {
     const item = {
       documentId: `${namespace}-${subject}-list`,
       ...(contentKey === "Title" ? { Title: "Fixture Guide" } : { [contentKey]: [{ documentId: `${namespace}-${subject}-list-item` }] }),
     };
-    expect(validate({ operation, root, body: { data: { [root]: [item] } }, namespace, accountDocumentId })).toBe(true);
-    expect(validate({ operation, root, body: { data: { [root]: [{ ...item, documentId: "foreign-list" }] } }, namespace, accountDocumentId })).toBe(false);
+    expect(validate({ category, root, body: { [root]: [item] }, namespace, accountDocumentId })).toBe(true);
+    expect(validate({ category, root, body: { [root]: [item], secretRoot: [] }, namespace, accountDocumentId })).toBe(false);
+    expect(validate({ category, root, body: { [root]: [{ ...item, privateField: "must-not-pass" }] }, namespace, accountDocumentId })).toBe(false);
+    if (contentKey !== "Title") {
+      expect(validate({ category, root, body: { [root]: [{ ...item, [contentKey]: [{ documentId: `${namespace}-${subject}-list-item`, token: "must-not-pass" }] }] }, namespace, accountDocumentId })).toBe(false);
+    }
+    expect(validate({ category, root, body: { [root]: [{ ...item, documentId: "foreign-list" }] }, namespace, accountDocumentId })).toBe(false);
   }
 });
 

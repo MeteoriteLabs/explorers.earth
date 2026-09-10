@@ -2,6 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import { createYouTubeReadService } from "../services/youtubeReadService";
 
 describe("typed YouTube read service", () => {
+  it.each([
+    "https://youtube.com.evil.example/watch?v=abcdefghijk",
+    "https://youtu.be.evil.example/abcdefghijk",
+    "https://youtube.com@evil.example/watch?v=abcdefghijk",
+    "https://evil.example/youtube.com/watch?v=abcdefghijk",
+    "not-a-url",
+  ])("does not call upstream for lookalike or malformed URL %s", async (url) => {
+    const fetchImpl = vi.fn();
+    const service = createYouTubeReadService("fixture-only-key", fetchImpl);
+    await expect(service.videoFromUrl(url)).resolves.toBeUndefined();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
   it("aborts a stalled upstream connection within five seconds", async () => {
     vi.useFakeTimers();
     try {
@@ -51,16 +63,33 @@ describe("typed YouTube read service", () => {
       } }],
     });
     expect(String(fetchImpl.mock.calls[0][0])).toContain("key=server-secret");
+    const requestUrl = new URL(String(fetchImpl.mock.calls[0][0]));
+    expect(requestUrl.searchParams.get("type")).toBe("video");
+    expect(requestUrl.searchParams.get("videoEmbeddable")).toBe("true");
+    expect(requestUrl.searchParams.get("videoSyndicated")).toBe("true");
   });
 
   it("extracts an exact video ID and maps the typed video response", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
       items: [{ id: "abcdefghijk", snippet: {
         title: "title", channelTitle: "artist", thumbnails: { default: { url: "https://img" } },
-      } }],
+      }, status: { embeddable: true } }],
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
     const service = createYouTubeReadService("server-secret", fetchImpl as typeof fetch);
     await expect(service.videoFromUrl("https://youtu.be/abcdefghijk")).resolves.toMatchObject({ id: { videoId: "abcdefghijk" } });
+    const requestUrl = new URL(String(fetchImpl.mock.calls[0][0]));
+    expect(requestUrl.searchParams.get("part")).toBe("snippet,status");
     await expect(service.videoFromUrl("https://example.com/abcdefghijk")).resolves.toBeUndefined();
+  });
+
+  it("does not make a non-embeddable pasted video selectable", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      items: [{ id: "abcdefghijk", snippet: {
+        title: "title", channelTitle: "artist", thumbnails: { default: { url: "https://img" } },
+      }, status: { embeddable: false } }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const service = createYouTubeReadService("server-secret", fetchImpl as typeof fetch);
+
+    await expect(service.videoFromUrl("https://youtube.com/watch?v=abcdefghijk")).resolves.toBeUndefined();
   });
 });

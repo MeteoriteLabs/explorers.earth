@@ -87,28 +87,28 @@ const PublicMovieGenre = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white" aria-busy={loading || undefined}>
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]" aria-busy={loading || undefined}>
       {/* Header */}
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/40 to-[#0d1117] pointer-events-none h-48" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--category-page,rgba(23,37,84,0.4))] to-[var(--category-page,#0d1117)] pointer-events-none h-48" />
 
         <div className="relative max-w-5xl mx-auto px-4 pt-6 pb-4">
           <Link
             to={`/${username}/movies`}
-            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,rgba(255,255,255,0.8))] transition-colors mb-6"
           >
             <ArrowLeft size={14} /> {username}'s Movies
           </Link>
 
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 relative">
             <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{genreName}</h1>
+              <h1 className="text-xl md:text-2xl font-poppins font-bold text-[color:var(--category-text,#fff)] mb-1">{genreName}</h1>
               {!loading || hasUsableData ? (
-                <p className="text-gray-400 font-poppins text-xs md:text-sm mt-1">
+                <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-1">
                   {filteredMovies.length} movie{filteredMovies.length !== 1 ? "s" : ""}
                 </p>
               ) : (
-                <div className="h-3 w-32 bg-white/5 animate-pulse rounded mt-2" />
+                <div className="h-3 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mt-2" />
               )}
             </div>
           </div>
@@ -125,7 +125,7 @@ const PublicMovieGenre = () => {
           {loading && !hasUsableData ? (
             <MoviePosterSkeleton count={12} />
           ) : filteredMovies.length === 0 ? (
-            <p className="col-span-full text-white/40 text-sm py-8 text-center">
+            <p className="col-span-full text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-8 text-center">
               No movies found in this genre.
             </p>
           ) : (

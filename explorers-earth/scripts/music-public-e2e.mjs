@@ -845,40 +845,35 @@ if (mode.lane === "live") {
   process.exit(await runLiveQualification());
 } else {
 const playwrightCli = path.resolve("node_modules/@playwright/test/cli.js");
-const args = [
-  playwrightCli, "test", ...mode.files, `--project=${mode.project}`, "--reporter=json",
-  `--output=${privatePlaywrightOutputDirectory}`,
-];
 const childEnvironment = {
   ...process.env,
-  PLAYWRIGHT_EXTERNAL_BASE_URL: externalUrl,
   PLAYWRIGHT_PR_SAFE: mode.lane === "pr-safe" ? "true" : "false",
   MUSIC_E2E_LIVE_WRITE: "false",
   MUSIC_E2E_RESTORE_EVIDENCE_PATH: restoreEvidencePath,
 };
-const result = spawnSync(process.execPath, args, {
+if (process.env.PLAYWRIGHT_EXTERNAL_BASE_URL) {
+  childEnvironment.PLAYWRIGHT_EXTERNAL_BASE_URL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
+} else {
+  delete childEnvironment.PLAYWRIGHT_EXTERNAL_BASE_URL;
+}
+const executionOutcome = runPlaywrightJourneyExecution({
+  spawn: spawnSync,
+  processExecPath: process.execPath,
+  playwrightCli,
+  files: mode.files,
+  project: mode.project,
   cwd: process.cwd(),
-  encoding: "utf8",
-  env: childEnvironment,
-  windowsHide: true,
-  maxBuffer: 4 * 1024 * 1024,
+  environment: childEnvironment,
+  reportPath: journeyReportPath,
+  outputDirectory: privatePlaywrightOutputDirectory,
+  terminalEvidencePath: restoreEvidencePath,
+  outcomeLedgerPath: journeyOutcomeLedgerPath,
+  requireJourneyLedger: false,
 });
-let executionReport;
-try {
-  executionReport = JSON.parse(String(result.stdout ?? ""));
-} catch { /* represented as an explicit execution evidence gap below */ }
-const executionOutcome = {
-  status: Number.isInteger(result.status) ? result.status : 1,
-  ...(executionReport ? { executionReport } : {}),
-};
-let cleanup = "not-required";
-try { if (existsSync(restoreEvidencePath)) unlinkSync(restoreEvidencePath); }
-catch { cleanup = "evidence-delete-failed"; }
-try { rmSync(privatePlaywrightOutputDirectory, { recursive: true, force: true }); }
-catch { cleanup = "evidence-delete-failed"; }
+const cleanup = executionOutcome.privateArtifactCleanup === "deleted" ? "not-required" : "evidence-delete-failed";
 const exitCode = cleanup === "not-required" ? executionOutcome.status : 5;
 const report = { ...baseReport, result: exitCode === 0 ? "passed" : "failed", cleanup };
-if (result.error || result.signal || executionOutcome.status !== 0 || !executionReport) {
+if (executionOutcome.status !== 0 || executionOutcome.reportStatus !== "accepted") {
   writePublicStderr("Public Music Playwright execution or structured result collection failed; details redacted.\n");
 }
 writePublicStdout(`${JSON.stringify(report)}\n`);

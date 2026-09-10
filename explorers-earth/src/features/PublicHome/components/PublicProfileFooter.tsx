@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
+import { PublicBrandWordmark } from "./PublicBranding";
 
 interface PublicProfileFooterProps {
   brandingStyle?: 'enabled' | 'minimal' | 'disabled';
@@ -10,21 +11,21 @@ export const PublicProfileFooter = memo(({ brandingStyle = 'enabled' }: PublicPr
   if (brandingStyle === 'disabled') return null;
 
   return (
-    <footer className="relative z-10 mt-auto w-full border-t border-slate-200 bg-white px-4 pb-8 pt-10 text-center text-slate-900">
-      <div className="inline-flex min-h-12 items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-2.5 shadow-sm">
-        <span className="font-poppins text-sm font-medium text-slate-600">
+    <footer className="public-brand-footer relative z-0 mt-auto w-full px-4 pt-10 text-center">
+      <div className="inline-flex min-h-12 flex-col items-center gap-1 px-5 py-2.5">
+        <span className="font-poppins text-sm font-medium" style={{ color: "var(--public-chrome-muted)" }}>
           Powered by
         </span>
-        <img src="/eoe-full.svg" alt="Explorers.Earth" className="h-7 w-auto sm:h-8" />
+        <PublicBrandWordmark />
       </div>
 
       {brandingStyle === 'enabled' && (
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 font-poppins text-xs text-slate-600 sm:gap-4">
-          <Link to="/" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:text-slate-950">Create your profile</Link>
+        <div data-public-footer-links className="mt-4 flex flex-wrap items-center justify-center gap-3 font-poppins text-xs sm:gap-4">
+          <Link to="/" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors">Create your profile</Link>
           <span>•</span>
-          <a href="mailto:support@explorers.earth" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:text-slate-950">Report</a>
+          <a href="mailto:support@explorers.earth" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors">Report</a>
           <span>•</span>
-          <Link to="/privacy" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:text-slate-950">Privacy</Link>
+          <Link to="/privacy" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors">Privacy</Link>
         </div>
       )}
     </footer>

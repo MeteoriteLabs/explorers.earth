@@ -1,4 +1,5 @@
-import { memo, useMemo, useState, useEffect } from "react";
+import { memo, useMemo, useState, useEffect, useRef, type CSSProperties } from "react";
+import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
 import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
@@ -8,7 +9,8 @@ import { useTrackAnalytics } from "../../../services/analyticsService";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../../../utils/geoHelpers";
-import { toUrlSlug } from "../../../utils/formatAddress";
+import { guideDescriptionText } from "../../../utils/guideDescriptionText";
+import { publicGuideSlug } from "../../../utils/publicGuideSlug";
 import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 import Button from "../../../components/ui/Button";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -17,6 +19,8 @@ import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
 import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "./PublicScrollContinuation";
+import PublicBlockingOverlay from "./PublicBlockingOverlay";
 
 interface FilterState {
   guideType: string | null;
@@ -38,6 +42,7 @@ const isRenderableGuide = (value: unknown): value is Guide =>
   isNonNullObject(value) && typeof value.documentId === "string" && typeof value.Title === "string";
 
 const PublicGuides = memo(() => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const { username } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,15 +55,37 @@ const PublicGuides = memo(() => {
     budgetType: null,
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => (
+    typeof window !== "undefined"
+      && (typeof window.matchMedia === "function"
+        ? window.matchMedia("(max-width: 767px)").matches
+        : window.innerWidth < 768)
+  ));
+  const filterOpenerRef = useRef<HTMLElement | null>(null);
   const [isMultiCityFilter, setIsMultiCityFilter] = useState<boolean>(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeHeroIndex, setActiveHeroIndex] = useState<number>(0);
 
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      const updateFromWidth = () => setIsMobileViewport(window.innerWidth < 768);
+      window.addEventListener("resize", updateFromWidth);
+      return () => window.removeEventListener("resize", updateFromWidth);
+    }
+
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const updateFromQuery = () => setIsMobileViewport(mobileQuery.matches);
+    updateFromQuery();
+    mobileQuery.addEventListener("change", updateFromQuery);
+    return () => mobileQuery.removeEventListener("change", updateFromQuery);
+  }, []);
+
   const { data: rawAccount, loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
   const account = rawAccount as PublicGuideAccount | undefined;
   const accountDocumentId = typeof account?.documentId === "string" ? account.documentId : undefined;
-  const { data: guidesData, loading: guidesLoading, error: guidesError, refetch: refetchGuides } = usePublicRecommendationCategory(username, "guides", account?.public_guides === "Yes");
+  const query = usePublicRecommendationCategory(username, "guides", account?.public_guides === "Yes");
+  const { data: guidesData, loading: guidesLoading, error: guidesError, refetch: refetchGuides } = query;
   const loading = Boolean(accountLoading || guidesLoading);
   const queryError = accountError || guidesError;
   const rawGuides = guidesData?.guides;
@@ -142,18 +169,6 @@ const PublicGuides = memo(() => {
     }
 
     return locations.filter(loc => loc && loc.trim() !== "");
-  };
-
-  // Helper function to extract plain text from Description (which can be a string or rich text block array)
-  const getDescriptionText = (description: any): string => {
-    if (!description) return "";
-    if (typeof description === "string") return description;
-    if (Array.isArray(description)) {
-      return description
-        .map((block: any) => block.children?.map((child: any) => child.text).join(" ") || "")
-        .join(" ");
-    }
-    return "";
   };
 
   // Extract unique filter values from guides
@@ -268,7 +283,7 @@ const PublicGuides = memo(() => {
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const titleMatch = guide.Title?.toLowerCase().includes(query);
-        const descriptionText = getDescriptionText(guide.Description);
+        const descriptionText = guideDescriptionText(guide.Description);
         const descMatch = descriptionText.toLowerCase().includes(query);
         const locations = extractLocationNames(guide);
         const locationMatch = locations.some((loc) =>
@@ -410,8 +425,7 @@ const PublicGuides = memo(() => {
       guideType: guide.Guide_Type,
       category: Array.isArray(guide.Category) ? guide.Category[0] : guide.Category,
     });
-    // Use slug if available, otherwise use documentId as fallback
-    const slug = guide.slug || toUrlSlug(guide.Title) || guide.documentId;
+    const slug = publicGuideSlug(guide);
     navigate(`/${username}/guides/${slug}`);
   };
 
@@ -421,7 +435,7 @@ const PublicGuides = memo(() => {
   const totalGuidesCount = allGuides.length;
   const pageTitle = `${profileName} | Travel Guides | explorers`;
   const metaDescription = guidesCount > 0
-    ? `Explore ${guidesCount} travel guide${guidesCount > 1 ? 's' : ''} by ${profileName} on explorers. Discover curated itineraries, travel tips, and destination insights.`
+    ? `Explore ${guidesCount}${query.hasMore || query.error ? '+' : ''} travel guide${guidesCount > 1 ? 's' : ''} by ${profileName} on explorers. Discover curated itineraries, travel tips, and destination insights.`
     : `Browse travel guides by ${profileName} on explorers. Discover curated itineraries and destination insights.`;
 
   const keywords = useMemo(() => [
@@ -493,7 +507,7 @@ const PublicGuides = memo(() => {
         geoData={geoData}
       />
 
-      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loading || undefined}>
+      <div data-category-page="guides" style={categoryStyles ? { '--skeleton-bg': 'var(--category-card)' } as CSSProperties : undefined} className="h-full bg-[var(--category-page,#000000)] min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loading || undefined}>
         {/* Guides Content */}
         <div className="md:max-w-5xl md:mx-auto">
           
@@ -528,7 +542,7 @@ const PublicGuides = memo(() => {
             <>
               {/* Carousel Hero Section - Desktop Layout */}
               <div className="hidden md:block w-full mb-6 mt-4 px-4">
-                <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero max-w-4xl mx-auto">
+                <div data-public-category-artwork className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero max-w-4xl mx-auto">
                   {/* Background Presentation */}
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -616,7 +630,7 @@ const PublicGuides = memo(() => {
                           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                           className="text-white/70 text-sm md:text-base leading-relaxed line-clamp-3 max-w-xl"
                         >
-                          {getDescriptionText(pinnedGuides[activeHeroIndex].Description)}
+                          {guideDescriptionText(pinnedGuides[activeHeroIndex].Description)}
                         </motion.p>
 
                         <motion.div
@@ -704,6 +718,7 @@ const PublicGuides = memo(() => {
                       return (
                         <motion.div
                           key={guide.documentId}
+                          data-public-category-artwork={diff === 0 ? true : undefined}
                           variants={variants}
                           initial={false}
                           animate={position}
@@ -775,32 +790,32 @@ const PublicGuides = memo(() => {
             </>
           )}
 
-          <div className="bg-black rounded-lg pt-2 px-4 pb-2 mx-4 mb-0">
+          <div className="bg-[var(--category-page,#000000)] rounded-lg pt-2 px-4 pb-2 mx-4 mb-0">
             
             {/* Header Title & Side-by-side search row */}
             <div className="flex flex-col gap-3.5 mb-2">
               <div>
-                <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
+                <h1 className="text-xl md:text-2xl font-poppins font-bold text-[var(--category-text,#FFFFFF)] mb-1">
                   Travel Guides
                 </h1>
-                <p className="text-gray-400 font-poppins text-xs md:text-sm">
+                <p className="text-[var(--category-muted,#9CA3AF)] font-poppins text-xs md:text-sm">
                   {hasActiveFilters
-                    ? `${guidesCount} of ${totalGuidesCount} guide${totalGuidesCount !== 1 ? 's' : ''}`
+                    ? `${guidesCount}${query.hasMore || query.error ? '+' : ''} of ${totalGuidesCount}${query.hasMore || query.error ? '+' : ''} guide${totalGuidesCount !== 1 ? 's' : ''}`
                     : guidesCount > 0
-                      ? `${guidesCount} guide${guidesCount !== 1 ? 's' : ''} available`
+                      ? `${guidesCount}${query.hasMore || query.error ? '+' : ''} guide${guidesCount !== 1 ? 's' : ''} available`
                       : "No guides available yet"}
                 </p>
               </div>
 
               {/* Search Box & Filters Toggle Button */}
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-xl px-2.5 h-9">
-                  <svg className="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex-1 flex items-center gap-1.5 bg-[var(--category-card,rgba(255,255,255,0.04))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded-xl px-2.5 h-9">
+                  <svg className="w-3.5 h-3.5 text-[var(--category-muted,rgba(255,255,255,0.4))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                   </svg>
                   <input
                     type="text"
-                    className="bg-transparent border-none text-white text-xs font-poppins w-full outline-none placeholder:text-white/45"
+                    className="bg-transparent border-none text-[var(--category-text,#FFFFFF)] text-xs font-poppins w-full outline-none placeholder:text-[var(--category-muted,rgba(255,255,255,0.45))]"
                     placeholder="Search guides, cities..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -808,15 +823,18 @@ const PublicGuides = memo(() => {
                 </div>
 
                 <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`relative w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/85 hover:bg-white/[0.08] transition-colors cursor-pointer`}
+                  onClick={(event) => {
+                    if (!showFilters) filterOpenerRef.current = event.currentTarget;
+                    setShowFilters(!showFilters);
+                  }}
+                  className={`relative w-9 h-9 flex items-center justify-center rounded-xl bg-[var(--category-card,rgba(255,255,255,0.04))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] text-[var(--category-muted,rgba(255,255,255,0.85))] hover:bg-[var(--category-hover,rgba(255,255,255,0.08))] transition-colors cursor-pointer`}
                   aria-label="Filters"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
                   {hasActiveFilters && (
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[var(--category-accent,#3B82F6)] rounded-full" />
                   )}
                 </button>
               </div>
@@ -824,17 +842,17 @@ const PublicGuides = memo(() => {
 
             {/* Desktop Filter Panel - Inline */}
             {showFilters && (
-              <div className="hidden md:block bg-[#1a2332] border border-white/[0.08] rounded-[14px] p-4 mb-4 mt-1">
+              <div className="hidden md:block bg-[var(--category-panel,#1a2332)] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded-[14px] p-4 mb-4 mt-1">
                 <div className="grid grid-cols-4 gap-3">
                   {/* Guide Type Filter */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                       Guide Type
                     </label>
                     <select
                       value={filters.guideType || ""}
                       onChange={(e) => handleFilterChange("guideType", e.target.value || null)}
-                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
+                      className="w-full bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded px-2 py-1.5 text-[var(--category-text,#FFFFFF)] text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Types</option>
                       {filterOptions.guideTypes.map((type) => (
@@ -847,13 +865,13 @@ const PublicGuides = memo(() => {
 
                   {/* Category Filter */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                       Category
                     </label>
                     <select
                       value={filters.category || ""}
                       onChange={(e) => handleFilterChange("category", e.target.value || null)}
-                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
+                      className="w-full bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded px-2 py-1.5 text-[var(--category-text,#FFFFFF)] text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Categories</option>
                       {filterOptions.categories.map((category) => (
@@ -866,13 +884,13 @@ const PublicGuides = memo(() => {
 
                   {/* Number of Days Filter */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                       Duration
                     </label>
                     <select
                       value={filters.numberOfDays !== null ? filters.numberOfDays.toString() : ""}
                       onChange={(e) => handleFilterChange("numberOfDays", e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
+                      className="w-full bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded px-2 py-1.5 text-[var(--category-text,#FFFFFF)] text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Durations</option>
                       {filterOptions.numberOfDays.map((days) => (
@@ -885,13 +903,13 @@ const PublicGuides = memo(() => {
 
                   {/* Budget Type Filter */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                    <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                       Budget
                     </label>
                     <select
                       value={filters.budgetType || ""}
                       onChange={(e) => handleFilterChange("budgetType", e.target.value || null)}
-                      className="w-full bg-black/20 border border-white/[0.08] rounded px-2 py-1.5 text-white text-[0.72rem] font-poppins outline-none cursor-pointer"
+                      className="w-full bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded px-2 py-1.5 text-[var(--category-text,#FFFFFF)] text-[0.72rem] font-poppins outline-none cursor-pointer"
                     >
                       <option value="">All Budget Types</option>
                       {filterOptions.budgetTypes.map((budgetType) => (
@@ -904,21 +922,21 @@ const PublicGuides = memo(() => {
                 </div>
 
                 {/* Additional Inline Controls */}
-                <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-3">
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--category-control-border,rgba(255,255,255,0.08))] pt-3">
                   <div className="flex items-center gap-2">
                     <SwitchButton
                       isChecked={isMultiCityFilter}
                       onChange={() => setIsMultiCityFilter(!isMultiCityFilter)}
                       variant="purple"
                     />
-                    <span className="text-white/70 font-poppins text-xs">
+                    <span className="text-[var(--category-muted,rgba(255,255,255,0.7))] font-poppins text-xs">
                       {isMultiCityFilter ? "Multi-City Only" : "All Guides"}
                     </span>
                   </div>
                   {hasActiveFilters && (
                     <button
                       onClick={handleClearFilters}
-                      className="px-3 py-1 bg-gray-800 hover:bg-gray-700 border border-white/10 rounded-lg text-white font-poppins text-xs transition-colors cursor-pointer"
+                      className="px-3 py-1 bg-[var(--category-card,#1F2937)] hover:bg-[var(--category-hover,#374151)] border border-[var(--category-control-border,rgba(255,255,255,0.1))] rounded-lg text-[var(--category-text,#FFFFFF)] font-poppins text-xs transition-colors cursor-pointer"
                     >
                       Clear All Filters
                     </button>
@@ -929,27 +947,39 @@ const PublicGuides = memo(() => {
           </div>
 
           {/* Mobile Filter Sidebar Drawer */}
-          <>
-            {/* Backdrop Shroud */}
-            <div
-              className={`md:hidden fixed inset-0 bg-black/60 z-[10000] transition-all duration-300 ease-out ${
-                showFilters ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
-              }`}
-              onClick={() => setShowFilters(false)}
-            />
+          {isMobileViewport && (
+            <AnimatePresence>
+              {showFilters && (
+                <PublicBlockingOverlay
+                  key="public-guide-filters"
+                  label="Guide filters"
+                  onClose={() => setShowFilters(false)}
+                  returnFocusRef={filterOpenerRef}
+                >
+                {/* Backdrop Shroud */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="fixed inset-0 bg-black/60 z-[10000]"
+                  onClick={() => setShowFilters(false)}
+                />
 
-            {/* Slide-out Drawer Panel */}
-            <div
-              className={`md:hidden fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-[#111622] z-[10001] shadow-2xl border-r border-white/10 transform transition-transform duration-300 ease-out flex flex-col ${
-                showFilters ? "translate-x-0" : "-translate-x-full"
-              }`}
-            >
+                {/* Slide-out Drawer Panel */}
+                <motion.div
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-[var(--category-panel,#111622)] z-[10001] shadow-2xl border-r border-[var(--category-control-border,rgba(255,255,255,0.1))] flex flex-col"
+                >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <h2 className="text-white font-poppins font-semibold text-lg">Filters</h2>
+              <div className="flex items-center justify-between p-4 border-b border-[var(--category-control-border,rgba(255,255,255,0.1))]">
+                <h2 className="text-[var(--category-text,#FFFFFF)] font-poppins font-semibold text-lg">Filters</h2>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className="p-2 text-white/60 hover:text-white rounded-lg transition-colors text-xl font-light cursor-pointer"
+                  className="min-h-11 min-w-11 p-2 text-[var(--category-muted,rgba(255,255,255,0.6))] hover:text-[var(--category-text,#FFFFFF)] rounded-lg transition-colors text-xl font-light cursor-pointer"
                   aria-label="Close filters"
                 >
                   &times;
@@ -960,13 +990,13 @@ const PublicGuides = memo(() => {
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {/* Guide Type Filter */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                  <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                     Guide Type
                   </label>
                   <select
                     value={filters.guideType || ""}
                     onChange={(e) => handleFilterChange("guideType", e.target.value || null)}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded-lg text-[var(--category-text,#FFFFFF)] font-poppins text-sm focus:outline-none cursor-pointer"
                   >
                     <option value="">All Types</option>
                     {filterOptions.guideTypes.map((type) => (
@@ -979,13 +1009,13 @@ const PublicGuides = memo(() => {
 
                 {/* Category Filter */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                  <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                     Category
                   </label>
                   <select
                     value={filters.category || ""}
                     onChange={(e) => handleFilterChange("category", e.target.value || null)}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded-lg text-[var(--category-text,#FFFFFF)] font-poppins text-sm focus:outline-none cursor-pointer"
                   >
                     <option value="">All Categories</option>
                     {filterOptions.categories.map((category) => (
@@ -998,13 +1028,13 @@ const PublicGuides = memo(() => {
 
                 {/* Number of Days Filter */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                  <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                     Duration
                   </label>
                   <select
                     value={filters.numberOfDays !== null ? filters.numberOfDays.toString() : ""}
                     onChange={(e) => handleFilterChange("numberOfDays", e.target.value ? parseInt(e.target.value) : null)}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded-lg text-[var(--category-text,#FFFFFF)] font-poppins text-sm focus:outline-none cursor-pointer"
                   >
                     <option value="">All Durations</option>
                     {filterOptions.numberOfDays.map((days) => (
@@ -1017,13 +1047,13 @@ const PublicGuides = memo(() => {
 
                 {/* Budget Type Filter */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                  <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                     Budget
                   </label>
                   <select
                     value={filters.budgetType || ""}
                     onChange={(e) => handleFilterChange("budgetType", e.target.value || null)}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/[0.08] rounded-lg text-white font-poppins text-sm focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-[var(--category-card,rgba(0,0,0,0.2))] border border-[var(--category-control-border,rgba(255,255,255,0.08))] rounded-lg text-[var(--category-text,#FFFFFF)] font-poppins text-sm focus:outline-none cursor-pointer"
                   >
                     <option value="">All Budget Types</option>
                     {filterOptions.budgetTypes.map((budgetType) => (
@@ -1036,7 +1066,7 @@ const PublicGuides = memo(() => {
 
                 {/* Multi-City Filter */}
                 <div className="flex flex-col gap-2 pt-2">
-                  <label className="text-[0.62rem] text-white/50 font-bold uppercase tracking-wider font-poppins">
+                  <label className="text-[0.62rem] text-[var(--category-muted,rgba(255,255,255,0.5))] font-bold uppercase tracking-wider font-poppins">
                     Multi City
                   </label>
                   <div className="flex items-center gap-3">
@@ -1045,7 +1075,7 @@ const PublicGuides = memo(() => {
                       onChange={() => setIsMultiCityFilter(!isMultiCityFilter)}
                       variant="purple"
                     />
-                    <span className="text-white/70 font-poppins text-sm">
+                    <span className="text-[var(--category-muted,rgba(255,255,255,0.7))] font-poppins text-sm">
                       {isMultiCityFilter ? "Multi-City Only" : "All Guides"}
                     </span>
                   </div>
@@ -1053,24 +1083,27 @@ const PublicGuides = memo(() => {
               </div>
 
               {/* Sidebar Footer */}
-              <div className="p-4 border-t border-white/10 space-y-3 bg-black/20">
+              <div className="p-4 border-t border-[var(--category-control-border,rgba(255,255,255,0.1))] space-y-3 bg-[var(--category-card,rgba(0,0,0,0.2))]">
                 {hasActiveFilters && (
                   <button
                     onClick={handleClearFilters}
-                    className="w-full px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-poppins text-sm transition-colors cursor-pointer"
+                    className="w-full px-4 py-2.5 bg-[var(--category-card,#1F2937)] hover:bg-[var(--category-hover,#374151)] text-[var(--category-text,#FFFFFF)] rounded-lg font-poppins text-sm transition-colors cursor-pointer"
                   >
                     Clear All Filters
                   </button>
                 )}
                 <button
                   onClick={() => setShowFilters(false)}
-                  className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-poppins text-sm font-medium transition-colors cursor-pointer"
+                  className="min-h-11 w-full px-4 py-2.5 bg-[var(--category-accent,#2563EB)] hover:bg-[var(--category-accent,#1D4ED8)] rounded-lg text-[var(--category-accent-ink,#FFFFFF)] font-poppins text-sm font-medium transition-colors cursor-pointer"
                 >
                   Apply Filters
                 </button>
               </div>
-            </div>
-          </>
+                </motion.div>
+                </PublicBlockingOverlay>
+              )}
+            </AnimatePresence>
+          )}
 
           {/* Error State */}
           {Boolean(queryError) && !hasUsableData && (
@@ -1107,7 +1140,7 @@ const PublicGuides = memo(() => {
           {/* Guides Grid */}
           {!(Boolean(queryError) && !hasUsableData) && (
             <div className="px-4 mb-14">
-              <div className="bg-black rounded-lg py-4">
+              <div className="bg-[var(--category-page,#000000)] rounded-lg py-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 overflow-visible">
                   {loading && !hasUsableData ? (
                     // Skeleton cards — same grid, public (dark) variant
@@ -1122,10 +1155,10 @@ const PublicGuides = memo(() => {
                     ))
                   ) : (
                     <div className="col-span-2 md:col-span-3 flex flex-col items-center justify-center min-h-[30vh] py-10 text-center">
-                      <h1 className="text-white font-poppins font-semibold text-lg md:text-xl mb-2">
+                      <h1 className="text-[var(--category-text,#FFFFFF)] font-poppins font-semibold text-lg md:text-xl mb-2">
                         No Guides Yet
                       </h1>
-                      <p className="text-gray-400 font-poppins text-sm md:text-base max-w-md">
+                      <p className="text-[var(--category-muted,#9CA3AF)] font-poppins text-sm md:text-base max-w-md">
                         {account?.Account_Name} has no guides matching these filters. Check back later for amazing travel insights!
                       </p>
                     </div>
@@ -1134,6 +1167,7 @@ const PublicGuides = memo(() => {
               </div>
             </div>
           )}
+          <PublicScrollContinuation {...query} label="guides" />
         </div>
       </div>
     </>

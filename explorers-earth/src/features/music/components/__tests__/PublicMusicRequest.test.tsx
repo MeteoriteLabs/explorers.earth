@@ -2,12 +2,89 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
+import { StrictMode } from 'react';
 import { PublicMusicRequest } from "../PublicMusicRequest";
 import { PublicMusicError } from "../../publicMusicClient";
 
 const video = { id: { videoId: "abcdefghijk" }, snippet: { title: "Song", channelTitle: "Artist", thumbnails: { default: { url: "https://img.example/song.jpg" } } } };
 
 describe("PublicMusicRequest", () => {
+  it("ignores Enter while composing text and ignores invalid selected video IDs", async () => {
+    const client = { search: vi.fn().mockResolvedValue({ items: [], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn() };
+    render(<PublicMusicRequest publicSlug="public-owner" allowed client={client} selection={{ youtubeId: "invalid", selectionId: 1 }} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "composed text" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter", isComposing: true });
+    expect(client.search).not.toHaveBeenCalled();
+    expect(client.videoFromUrl).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    await screen.findByText("No songs found.");
+    expect(client.search).toHaveBeenCalledOnce();
+  });
+  it("renders result markup as literal text and replaces broken result artwork", async () => {
+    const title = '<img src=x onerror=alert(1)>';
+    const result = { ...video, snippet: { ...video.snippet, title } };
+    const client = { search: vi.fn().mockResolvedValue({ items: [result], nextPageToken: null }), videoFromUrl: vi.fn(), requestSong: vi.fn() };
+    const view = render(<PublicMusicRequest publicSlug="public-owner" allowed client={client} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "song" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByRole("button", { name: "Request " + title + " by Artist" });
+    expect(screen.getByText(title)).toBeInTheDocument();
+    expect(view.container.querySelectorAll("img")).toHaveLength(1);
+    fireEvent.error(view.container.querySelector("img")!);
+    expect(view.container.querySelector("img")).not.toBeInTheDocument();
+    expect(client.requestSong).not.toHaveBeenCalled();
+  });
+  it("does not strand a manual search when a row selection is skipped during submission", async () => {
+    let finishRequest!: (value: { accepted: true }) => void;
+    let finishSearch!: (value: { items: typeof video[]; nextPageToken: null }) => void;
+    const client = {
+      videoFromUrl: vi.fn().mockResolvedValue(video),
+      requestSong: vi.fn(() => new Promise<{ accepted: true }>(resolve => { finishRequest = resolve; })),
+      search: vi.fn<(slug: string, query: string, cap?: string, signal?: AbortSignal) => Promise<{ items: typeof video[]; nextPageToken: null }>>(() => new Promise(resolve => { finishSearch = resolve; })),
+    };
+    const view = render(<PublicMusicRequest publicSlug="public-owner" allowed client={client} selection={{ youtubeId: "abcdefghijk", selectionId: 1 }} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "another song" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const signal = client.search.mock.calls[0][3];
+    view.rerender(<PublicMusicRequest publicSlug="public-owner" allowed client={client} selection={{ youtubeId: "lmnopqrstuv", selectionId: 2 }} />);
+    await act(async () => { finishRequest({ accepted: true }); finishSearch({ items: [video], nextPageToken: null }); });
+    expect(signal?.aborted).toBe(false);
+    expect(screen.getByRole("button", { name: "Search" })).toBeEnabled();
+    expect(client.videoFromUrl).toHaveBeenCalledTimes(1);
+  });
+  it('searches on Enter and exposes no invented remaining-request quota', async () => {
+    const client = { search: vi.fn().mockResolvedValue({items: [video], nextPageToken: null}), videoFromUrl: vi.fn(), requestSong: vi.fn() };
+    render(<PublicMusicRequest publicSlug="public-owner" allowed client={client} />);
+    await userEvent.type(screen.getByRole('textbox'), 'song{Enter}');
+    expect(await screen.findByRole('button', {name: 'Request Song by Artist'})).toBeInTheDocument();
+    expect(client.search).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/requests left/i)).not.toBeInTheDocument();
+  });
+  it('resolves a chosen existing song and waits for explicit confirmation in StrictMode', async () => {
+    const client = {search: vi.fn(), videoFromUrl: vi.fn().mockResolvedValue(video), requestSong: vi.fn().mockResolvedValue({accepted: true})};
+    render(<StrictMode><PublicMusicRequest publicSlug="public-owner" allowed client={client} selection={{youtubeId: 'abcdefghijk', selectionId: 1}} /></StrictMode>);
+    const confirm = await screen.findByRole('button', {name: 'Request Song by Artist'});
+    expect(client.videoFromUrl).toHaveBeenLastCalledWith('public-owner', 'https://www.youtube.com/watch?v=abcdefghijk', undefined, expect.any(AbortSignal));
+    expect(client.requestSong).not.toHaveBeenCalled();
+    await userEvent.click(confirm);
+    expect(client.requestSong).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('status')).toHaveTextContent('Song requested.');
+  });
+  it('does not replay a chosen row automatically after a rate-limit expires', async () => {
+    vi.useFakeTimers();
+    try {
+      const client = {search: vi.fn().mockRejectedValue(new PublicMusicError('RATE_LIMITED', 2)), videoFromUrl: vi.fn(), requestSong: vi.fn()};
+      const view = render(<PublicMusicRequest publicSlug="public-owner" allowed client={client} />);
+      fireEvent.change(screen.getByRole('textbox'), {target: {value: 'song'}});
+      fireEvent.click(screen.getByRole('button', {name: 'Search'}));
+      await act(async () => {});
+      view.rerender(<PublicMusicRequest publicSlug="public-owner" allowed client={client} selection={{youtubeId: 'abcdefghijk', selectionId: 1}} />);
+      await act(async () => vi.advanceTimersByTime(3000));
+      expect(client.videoFromUrl).not.toHaveBeenCalled();
+      expect(client.requestSong).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
   it.each([
     [new PublicMusicError("REQUEST_INVALID"), "invalid"],
     [new PublicMusicError("RATE_LIMITED", 2), "rate_limited"],
@@ -246,5 +323,46 @@ describe("PublicMusicRequest", () => {
     await act(async () => { await Promise.resolve(); });
     expect(onRequestOutcome).not.toHaveBeenCalled();
     expect(onCanonicalRevoked).not.toHaveBeenCalled();
+  });
+
+  it("ignores an in-flight request result after live guest actions are revoked", async () => {
+    let resolveSubmit!: () => void;
+    const onOutcome = vi.fn();
+    const onRequestOutcome = vi.fn();
+    const client = {
+      search: vi.fn().mockResolvedValue({ items: [video], nextPageToken: null }),
+      videoFromUrl: vi.fn(),
+      requestSong: vi.fn(() => new Promise<void>((resolve) => { resolveSubmit = resolve; })),
+    };
+    const view = render(
+      <PublicMusicRequest
+        publicSlug="public_slug-123"
+        allowed
+        actionsEnabled
+        client={client as never}
+        onOutcome={onOutcome}
+        onRequestOutcome={onRequestOutcome}
+      />,
+    );
+    await userEvent.type(screen.getByLabelText("Search for a song or paste a YouTube URL"), "song");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Request Song by Artist" }));
+
+    view.rerender(
+      <PublicMusicRequest
+        publicSlug="public_slug-123"
+        allowed
+        actionsEnabled={false}
+        client={client as never}
+        onOutcome={onOutcome}
+        onRequestOutcome={onRequestOutcome}
+      />,
+    );
+    resolveSubmit();
+    await act(async () => { await Promise.resolve(); });
+
+    expect(screen.queryByText("Song requested.")).not.toBeInTheDocument();
+    expect(onOutcome.mock.calls.filter(([event]) => event.action === "request")).toHaveLength(0);
+    expect(onRequestOutcome).not.toHaveBeenCalled();
   });
 });

@@ -51,4 +51,68 @@ describe("read-only public Music socket", () => {
     publicSocket.emit("guest_request", { type: "song", externalId: "yt:abc" });
     await expect(denied).resolves.toMatchObject({ error: { code: "SOCKET_EVENT_FORBIDDEN" } });
   });
+
+  it("publishes canonical invalidations to the matching authorized owner without leaking across owners", async () => {
+    const registry = new MusicPublicSocketRegistry();
+    server = createMusicSocketServer(express(), {
+      allowedOrigins: ["https://explorers.example"],
+      ownerCredentials: {
+        handshake: async ({ token }) => ({ token, principal: { musicUserId: token === "owner.one.token" ? 1 : 2, subject: token, accountDocumentId: token, sessionVersion: 1 } }),
+        recheck: async (context) => context.principal,
+      },
+      resolveGuestCapability: async () => undefined,
+      resolvePublicMusicAuthority: async () => undefined,
+      publicRegistry: registry,
+    });
+    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("no address");
+    const connect = (token: string) => new Promise<Socket>((resolve, reject) => {
+      const socket = connectSocket(`http://127.0.0.1:${address.port}`, { path: "/ws", transports: ["websocket"], reconnection: false, auth: { token }, extraHeaders: { Origin: "https://explorers.example" } });
+      sockets.push(socket); socket.once("connect", () => resolve(socket)); socket.once("connect_error", reject);
+    });
+    const owner = await connect("owner.one.token");
+    const otherOwner = await connect("owner.two.token");
+    const received = new Promise((resolve) => owner.once("music_owner_change", resolve));
+    let leaked = false; otherOwner.once("music_owner_change", () => { leaked = true; });
+
+    await registry.publish({ musicUserId: 1, kind: "queue_changed", revision: 9 });
+
+    await expect(received).resolves.toEqual({ version: "music-owner-change/v1", kind: "queue_changed", revision: 9 });
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    expect(leaked).toBe(false);
+  });
+
+  it("rechecks owner authority before delivering an invalidation", async () => {
+    const registry = new MusicPublicSocketRegistry();
+    let revoked = false;
+    server = createMusicSocketServer(express(), {
+      allowedOrigins: ["https://explorers.example"],
+      ownerCredentials: {
+        handshake: async ({ token }) => ({ token, principal: { musicUserId: 1, subject: "owner", accountDocumentId: "account", sessionVersion: 1 } }),
+        recheck: async (context) => {
+          if (revoked) throw new Error("revoked");
+          return context.principal;
+        },
+      },
+      resolveGuestCapability: async () => undefined,
+      resolvePublicMusicAuthority: async () => undefined,
+      publicRegistry: registry,
+    });
+    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("no address");
+    const owner = await new Promise<Socket>((resolve, reject) => {
+      const socket = connectSocket(`http://127.0.0.1:${address.port}`, { path: "/ws", transports: ["websocket"], reconnection: false, auth: { token: "owner.one.token" }, extraHeaders: { Origin: "https://explorers.example" } });
+      sockets.push(socket); socket.once("connect", () => resolve(socket)); socket.once("connect_error", reject);
+    });
+    let delivered = false; owner.once("music_owner_change", () => { delivered = true; });
+    const disconnected = new Promise<void>((resolve) => owner.once("disconnect", () => resolve()));
+    revoked = true;
+
+    await registry.publish({ musicUserId: 1, kind: "queue_changed", revision: 10 });
+
+    await expect(disconnected).resolves.toBeUndefined();
+    expect(delivered).toBe(false);
+  });
 });

@@ -52,6 +52,8 @@ export function createYouTubeReadService(apiKey: string | undefined, fetchImpl: 
         maxResults: "20",
         q: input.query,
         type: "video",
+        videoEmbeddable: "true",
+        videoSyndicated: "true",
         ...(input.pageToken ? { pageToken: input.pageToken } : {}),
       });
       return {
@@ -62,7 +64,7 @@ export function createYouTubeReadService(apiKey: string | undefined, fetchImpl: 
     async videoFromUrl(url: string) {
       const videoId = youtubeVideoId(url);
       if (!videoId) return undefined;
-      const value = await request("videos", { id: videoId });
+      const value = await request("videos", { id: videoId, part: "snippet,status" });
       const item = value.items[0];
       return item ? mapVideoItem(item) : undefined;
     },
@@ -90,7 +92,8 @@ function mapSearchItem(value: any) {
 function mapVideoItem(value: any) {
   const videoId = value?.id;
   const snippet = safeSnippet(value?.snippet);
-  return typeof videoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(videoId) && snippet
+  return value?.status?.embeddable === true
+    && typeof videoId === "string" && /^[A-Za-z0-9_-]{11}$/.test(videoId) && snippet
     ? { id: { videoId }, snippet }
     : undefined;
 }

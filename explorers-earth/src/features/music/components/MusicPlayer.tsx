@@ -3,6 +3,7 @@ import ReactPlayer from "react-player";
 import { Eye, EyeOff, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import type { MusicSong } from "../musicWorkspaceClient";
 import type { MusicPlaybackCommand } from "./musicPlaybackCommand";
+import { createYouTubePlayerConfig, isYouTubeEmbedRejection, youTubeWatchUrl } from "./youtubePlayerConfig";
 
 interface PlayerQueueClient {
   setPlaying(songId: number | null, idempotencyKey: string): Promise<void | MusicSong>;
@@ -37,6 +38,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
   const [duration, setDuration] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [embedRejected, setEmbedRejected] = useState(false);
   const [transitionPending, setTransitionPending] = useState(false);
   const recoveryAttempts = useRef(0);
   const skippedSongId = useRef<number | null>(null);
@@ -74,7 +76,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
     if (externalPlay) handledPlaybackRequest.current = requestKey;
     const shouldPlay = currentSongId !== null && (playAfterChange.current === currentSongId || externalPlay);
     playAfterChange.current = null;
-    setPlaying(shouldPlay); setProgress(0); setDuration(0); setMessage(""); setError("");
+    setPlaying(shouldPlay); setProgress(0); setDuration(0); setMessage(""); setError(""); setEmbedRejected(false);
     recoveryAttempts.current = 0; skippedSongId.current = null;
   }, [authorityGeneration, clearRecovery, currentSongId]);
 
@@ -165,6 +167,9 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
     if (cause instanceof DOMException && cause.name === "NotAllowedError") {
       clearRecovery(); setPlaying(false); setMessage("Press play to start this song."); return;
     }
+    if (isYouTubeEmbedRejection(cause)) {
+      clearRecovery(); setPlaying(false); setMessage(""); setError("This video cannot be played here. Watch it on YouTube instead."); setEmbedRejected(true); return;
+    }
     if (readOnly) {
       clearRecovery(); setPlaying(false); setMessage("Playback changed elsewhere. Refresh to reconnect."); return;
     }
@@ -209,6 +214,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
       <ReactPlayer
         ref={mediaRef}
         src={`https://www.youtube.com/watch?v=${currentSong.youtubeId}`}
+        config={createYouTubePlayerConfig()}
         playing={playing}
         volume={volume}
         muted={muted}
@@ -236,6 +242,7 @@ export function MusicPlayer({ currentSong, queuedSongs, playedSongs, queueClient
       </div>
       {message && <p role="status" aria-live="polite">{message}</p>}
       {error && <p role="alert">{error}</p>}
+      {embedRejected && <a href={youTubeWatchUrl(currentSong.youtubeId)} target="_blank" rel="noreferrer">Watch {currentSong.title} on YouTube</a>}
     </section>
   );
 }

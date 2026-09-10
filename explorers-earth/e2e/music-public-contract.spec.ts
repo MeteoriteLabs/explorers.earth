@@ -6,6 +6,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { Kind, parse, print } from "graphql";
 import { LIVE_MUTATION_TAG, LIVE_READ_ONLY_TAG } from "../scripts/music-public-live-preflight.mjs";
 import { setupMockAuthentication } from "./setup/auth";
+import { musicPermissionOracle } from "../../test-fixtures/music-permission-oracle";
+import { fixtureState, installContainedRoutes } from './setup/category-navigation';
 import {
   assertLivePermissionGuestControlVisible,
   attachLiveFailureScreenshotBestEffort,
@@ -14,7 +16,6 @@ import {
   LiveReconnectJourneyFailure,
   musicLiveAuthorityFromEnvironment,
   musicOwnerCredentialFromAuthState,
-  buildPairwisePermissionMatrix,
   musicLiveWriteSkipReason,
   musicLiveStrapiTokenFromEnvironment,
   musicLiveTest,
@@ -71,6 +72,11 @@ async function installFriendlyMusicFixture(page: Page, options: {
     bg_picture: options.failedImage ? { url: "/missing-fixture-image.png", alternativeText: "Missing fixture" } : null,
     social_media: { theme_settings: { preset: options.preset ?? "minimal-light", wallpaperMode: options.wallpaperMode ?? "solid-color", accentColor: "#2563eb", landingTab: "music", visibleTabs: { recommendations: true, gallery: false, business: false }, footerBranding: "disabled", recommendations: { layout: "grid", categoryOrder: [] } } },
   };
+  await page.route("**/api/explorers/v1/profiles/fixture-owner", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ...account, username: "fixture-owner" }),
+  }));
   await page.route("**/graphql", async (route) => {
     const body = route.request().postDataJSON() as { operationName?: string; query?: string };
     const operation = body.operationName ?? body.query?.match(/(?:query|mutation)\s+(\w+)/)?.[1] ?? "Unknown";
@@ -121,7 +127,9 @@ test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG },
     }));
 
     await page.goto("/recommendations/music");
-    const viewAsGuest = page.getByRole("link", { name: "View as guest" });
+    await page.getByRole("button", { name: "Open playlist and sharing menu" }).click();
+    await page.getByRole("menuitem", { name: "Sharing settings" }).click();
+    const viewAsGuest = page.getByRole("link", { name: "Preview public Music page" });
     await expect(viewAsGuest).toBeVisible();
     const guestUrl = await viewAsGuest.evaluate((link: HTMLAnchorElement) => link.href);
     expect(new URL(guestUrl).pathname).toBe("/music/share/qualification-public");
@@ -156,39 +164,57 @@ test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG },
     }
   });
 
-  test("pairwise permission matrix changes each concrete guest surface", async ({ page }) => {
+  test("all 32 permission masks expose exactly the independently expected guest surfaces", async ({ page, context, baseURL }, testInfo) => {
+    const guard = await installContainedRoutes(context, baseURL!, fixtureState());
+    try {
     await page.route("**/socket.io/**", (route) => route.abort());
-    for (const row of buildPairwisePermissionMatrix()) {
-      const { key: _key, ...permissions } = row;
+    for (const [mask, requests, playback, playlists, history, queue, current] of musicPermissionOracle) {
+      const permissions = {
+        allowSongRequests: Boolean(mask & 1), allowGuestPlayOnDevice: Boolean(mask & 2),
+        allowPlaylistSharing: Boolean(mask & 4), allowRecentlyPlayedVisibility: Boolean(mask & 8),
+        allowQueueVisibility: Boolean(mask & 16),
+      };
       await page.unroute("**/api/music/public-resource/v1/public_slug-123");
       await page.route("**/api/music/public-resource/v1/public_slug-123", (route) => route.fulfill({
         status: 200, contentType: "application/json", body: JSON.stringify({
           ...publicResourceFixture,
           permissions,
-          currentlyPlaying: row.allowQueueVisibility || row.allowGuestPlayOnDevice ? publicResourceFixture.currentlyPlaying : null,
-          queue: row.allowQueueVisibility ? publicResourceFixture.queue : { items: [], total: 0, truncated: false },
-          recentlyPlayed: row.allowRecentlyPlayedVisibility ? {
+          currentlyPlaying: permissions.allowQueueVisibility || permissions.allowGuestPlayOnDevice ? publicResourceFixture.currentlyPlaying : null,
+          queue: permissions.allowQueueVisibility ? publicResourceFixture.queue : { items: [], total: 0, truncated: false },
+          recentlyPlayed: permissions.allowRecentlyPlayedVisibility ? {
             items: [{ ...publicResourceFixture.queue.items[0], id: "H".repeat(43), status: "played", playedAt: "2026-08-28T00:00:00.000Z" }], total: 1, truncated: false,
           } : { items: [], total: 0, truncated: false },
-          playlists: row.allowPlaylistSharing ? {
+          playlists: permissions.allowPlaylistSharing ? {
             items: [{ id: "L".repeat(43), name: "Matrix playlist", description: null, songs: { items: [], total: 0, truncated: false } }], total: 1, truncated: false,
           } : { items: [], total: 0, truncated: false },
         }),
       }));
-      await page.goto(`/music/share/public_slug-123?matrix=${row.key}`);
+      await page.goto(`/music/share/public_slug-123?matrix=${mask}`);
+      await expect(page.getByRole("heading", { name: "Music", exact: true })).toBeVisible();
+      for (const name of ["Queue", "Recently played", "Playlists", "Play on this device"]) {
+        const trigger = page.getByRole("button", { name, exact: true });
+        if (await trigger.count() && await trigger.getAttribute("aria-expanded") === "false") await trigger.click();
+      }
       const effects = [
-        [row.allowSongRequests, page.getByRole("region", { name: "Request a song" })],
-        [row.allowQueueVisibility, page.getByRole("region", { name: "Up next" })],
-        [row.allowPlaylistSharing, page.getByRole("region", { name: "Shared playlists" })],
-        [row.allowRecentlyPlayedVisibility, page.getByRole("region", { name: "Recently played" })],
+        [requests, page.getByRole("region", { name: "Request a song" })],
+        [queue, page.getByRole("region", { name: "Queue" })],
+        [playlists, page.getByRole("region", { name: "Playlists" })],
+        [history, page.getByRole("region", { name: "Recently played" })],
       ] as const;
       for (const [enabled, locator] of effects) {
-        if (enabled) await expect(locator, `row ${row.key}`).toBeVisible();
-        else await expect(locator, `row ${row.key}`).toHaveCount(0);
+        if (enabled) await expect(locator, `mask ${mask}`).toBeVisible();
+        else await expect(locator, `mask ${mask}`).toHaveCount(0);
       }
-      const playControl = page.getByRole("button", { name: /play .*device/i });
-      if (row.allowGuestPlayOnDevice) await expect(playControl.first(), `row ${row.key}`).toBeVisible();
-      else await expect(playControl, `row ${row.key}`).toHaveCount(0);
+      const playControl = page.getByRole("button", { name: /^Play .+ on this device$/ });
+      if (playback) await expect(playControl.first(), `mask ${mask}`).toBeVisible();
+      else await expect(playControl, `mask ${mask}`).toHaveCount(0);
+      const currentTitle = page.getByText("Playing now", { exact: true });
+      if (current) await expect(currentTitle.first(), `mask ${mask}`).toBeVisible();
+      else await expect(currentTitle, `mask ${mask}`).toHaveCount(0);
+    }
+    } finally {
+      await testInfo.attach('permission-boundary', { contentType: 'application/json', body: JSON.stringify({ denied: guard.denied, unexpectedConsole: guard.errors }) });
+      guard.assertClean();
     }
   });
 
@@ -284,7 +310,7 @@ test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG },
     await expect(page.getByText("Unlisted-only queue song")).toHaveCount(0);
   });
 
-  test("invalid, private, and unavailable resources converge on generic recovery", async ({ page }) => {
+  test("invalid, private, and missing resources converge on generic nonretryable recovery", async ({ page }) => {
     await page.route("**/api/music/public-resource/v1/**", (route) => route.fulfill({
       status: 404,
       contentType: "application/json",
@@ -292,7 +318,7 @@ test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG },
     }));
     await page.goto("/music/share/private_slug-123");
     await expect(page.getByText(/unavailable|not found/i).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /retry/i })).toHaveCount(0);
   });
 
   for (const viewport of [
@@ -380,8 +406,14 @@ test.describe("PR-safe friendly public Music routes", { tag: LIVE_READ_ONLY_TAG 
     test(`explicit friendly recovery: preference=${row.profileMusic} descriptor=${row.descriptor}`, async ({ page }) => {
       await installFriendlyMusicFixture(page, row);
       await page.goto("/fixture-owner/music");
-      await expect(page.getByText(/unavailable|not shared|not found/i).first()).toBeVisible();
-      await expect(page.getByRole("link", { name: /return to profile/i }).or(page.getByRole("button", { name: /retry/i })).first()).toBeVisible();
+      if (row.descriptor === "outage") {
+        await expect(page).toHaveURL(/\/fixture-owner\/music$/);
+        await expect(page.getByText("Music is temporarily unavailable.")).toBeVisible();
+        await expect(page.getByRole("button", { name: /retry/i })).toBeVisible();
+      } else {
+        await expect(page).toHaveURL(/\/fixture-owner$/);
+        await expect(page.getByRole("heading", { name: "Music page unavailable" })).toHaveCount(0);
+      }
     });
   }
 
@@ -398,7 +430,8 @@ test.describe("PR-safe friendly public Music routes", { tag: LIVE_READ_ONLY_TAG 
       await installFriendlyMusicFixture(page, { profileMusic: true, descriptor: "available", ...visual });
       await page.goto("/fixture-owner/music");
       await expect(page.getByText("Queued song")).toBeVisible();
-      await expect(page.locator("main")).toHaveScreenshot(`${visual.name}.png`, {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(page).toHaveScreenshot(`${visual.name}.png`, {
         animations: "disabled",
         maxDiffPixelRatio: 0.03,
         mask: [page.locator("img"), page.locator("iframe")],

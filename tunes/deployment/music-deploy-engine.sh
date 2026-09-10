@@ -38,6 +38,7 @@ readonly -a known_markers=(
   "0017_publication_idempotency_key_retirement"
   "0018_transactional_queue_replacement"
   "0019_queue_visibility_control"
+  "0020_public_snapshot_revision"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"

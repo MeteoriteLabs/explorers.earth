@@ -17,6 +17,7 @@ import { usePublicHeaderDescriptor } from "../../../PublicHome/components/Public
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const isRenderableMovieList = (value: unknown): value is MovieList =>
   isNonNullObject(value) && Array.isArray(value.recommended_movies);
@@ -31,7 +32,8 @@ const PublicMovies = () => {
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
-  const { data: movieData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes");
+  const query = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes");
+  const { data: movieData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = query;
 
   const loading = userLoading || moviesLoading;
   const queryError = userError || moviesError;
@@ -100,7 +102,7 @@ const PublicMovies = () => {
   
   const pageTitle = `${profileName} | Favorite Movies & Shows | explorers`;
   const metaDescription = movieCount > 0
-    ? `Browse curated movie lists and recommended shows shared by ${profileName} on explorers. Explore ${listCount} movie list${listCount !== 1 ? 's' : ''} containing ${movieCount} favorite film${movieCount !== 1 ? 's' : ''}.`
+    ? `Browse curated movie lists and recommended shows shared by ${profileName} on explorers. Explore ${listCount}${query.hasMore || query.error ? '+' : ''} movie list${listCount !== 1 ? 's' : ''} containing ${movieCount} loaded favorite film${movieCount !== 1 ? 's' : ''}.`
     : `Explore movie and show recommendations shared by ${profileName} on explorers.`;
 
   const seoKeywords = [
@@ -127,7 +129,7 @@ const PublicMovies = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white">
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
         {loading && !hasUsableData ? (
@@ -146,8 +148,8 @@ const PublicMovies = () => {
                 <section key={i} className="mb-8">
                   {/* Row header */}
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                    <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                    <div className="w-1.5 h-[22px] bg-[var(--category-skeleton,rgba(255,255,255,0.1))] rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                    <div className="h-5 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                   </div>
                   {/* Poster strip */}
                   <div className="flex gap-3 overflow-hidden">
@@ -165,9 +167,9 @@ const PublicMovies = () => {
             {/* Empty state */}
             {allMovies.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <Film size={48} className="text-white/20 mb-4" />
-                <p className="text-white/40 text-lg font-medium">No movies shared yet</p>
-                <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                <Film size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No movies shared yet</p>
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
               </div>
             ) : (
               <>
@@ -213,6 +215,7 @@ const PublicMovies = () => {
             )}
           </>
         )}
+      <PublicScrollContinuation {...query} label="movie lists" />
       </div>
 
       {/* Movie detail modal */}

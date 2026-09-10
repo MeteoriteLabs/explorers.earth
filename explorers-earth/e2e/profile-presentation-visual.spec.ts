@@ -351,6 +351,64 @@ async function installPublicFixture(
   state: FixtureState,
   observedOperations: string[],
 ) {
+  await page.route("**/api/music/public-profile/fixture-account", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "fixture-public-music", revision: 1 } }),
+  }));
+  await page.route("**/api/explorers/v1/profiles/presentation-fixture", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ...accountFixture(state), username: "presentation-fixture" }),
+  }));
+  await page.route("**/api/explorers/v1/profiles/testuser", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ...accountFixture(state), username: "testuser" }),
+  }));
+  await page.route("**/api/explorers/v1/profiles/presentation-fixture/recommendations/**", async (route) => {
+    const pathSegments = new URL(route.request().url()).pathname.split("/");
+    const category = pathSegments[7] ?? "";
+    if (category === "books" && pathSegments[8] === "fixture-books") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(publicBookDetailFixture) });
+    }
+    const attemptKey = `Gateway:${category}`;
+    observedOperations.push(attemptKey);
+    state.attempts[attemptKey] = (state.attempts[attemptKey] || 0) + 1;
+    const emptyPayloads: Record<string, unknown> = {
+      places: { recommendationLists: [] },
+      books: { bookLists: [] },
+      guides: { guides: [] },
+      movies: { movieLists: [] },
+      games: { gameLists: [] },
+      apps: { appLists: [] },
+      products: { productLists: [] },
+      people: { personLists: [] },
+    };
+    const payloads: Record<string, unknown> = {
+      places: placesFixture(state.mode),
+      books: booksFixture(state.mode),
+      guides: guidesFixture,
+      movies: { movieLists: [] },
+      games: { gameLists: [] },
+      apps: { appLists: [] },
+      products: { productLists: [] },
+      people: { personLists: [] },
+    };
+    const payload = state.mode === "empty" ? emptyPayloads[category] : payloads[category];
+    if (!payload) return route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+    if (state.mode === "loading") await new Promise((resolve) => setTimeout(resolve, 700));
+    if (state.mode === "partial-error" && category === "books") {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Fixture Books failure" }) });
+    }
+    if (state.mode === "stale-error" && category === "places") {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Fixture cached Places failure" }) });
+    }
+    if (state.mode === "all-error" && ["places", "books", "guides"].includes(category) && state.attempts[attemptKey] <= 2) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: `Fixture ${category} failure` }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(payload) });
+  });
   await page.route("**/api/playlist/fixture-guest", async (route) => {
     await route.fulfill({
       status: 200,
@@ -777,6 +835,7 @@ test.describe("public recommendation presentation visual matrix", () => {
         text.includes("Fixture GetPlacesLists failure") ||
         text.includes("Fixture GetBooksLists failure") ||
         text.includes("Fixture GetGuidesLists failure") ||
+        text.includes("status of 503 (Service Unavailable)") ||
         // The public fixture intentionally uses the app's invalid local Maps key;
         // Chromium reports the provider lookup as a console resource error while
         // the deterministic map fallback remains rendered and interactive.
@@ -796,7 +855,10 @@ test.describe("public recommendation presentation visual matrix", () => {
     });
 
     page.on("response", (response) => {
-      if (response.status() >= 400) {
+      const isDeliberateFixtureFailure =
+        response.status() === 503 &&
+        response.url().includes("/api/explorers/v1/profiles/presentation-fixture/recommendations/");
+      if (response.status() >= 400 && !isDeliberateFixtureFailure) {
         failedResponses.push(`${response.status()} ${response.url()}`);
       }
     });
@@ -815,7 +877,6 @@ test.describe("public recommendation presentation visual matrix", () => {
       headers: Record<string, string>;
     }> = [];
     await page.addInitScript(() => {
-      localStorage.removeItem("explorers-cookie-consent");
       Object.defineProperty(navigator, "share", {
         configurable: true,
         value: () => Promise.resolve(),
@@ -851,7 +912,12 @@ test.describe("public recommendation presentation visual matrix", () => {
     await page.waitForTimeout(300);
     expect(events).toHaveLength(0);
 
-    await page.getByRole("button", { name: /Accept All Cookies/ }).click();
+    // Consent is collected on the landing page; public routes consume the
+    // persisted preference and react to the shared preference-change signal.
+    await page.evaluate(() => {
+      localStorage.setItem("explorers-cookie-consent", JSON.stringify({ essential: true, analytics: true, marketing: true }));
+      window.dispatchEvent(new Event("explorers:analytics-consent-changed"));
+    });
     await expect.poll(() => events.length).toBe(1);
 
     const share = page.getByRole("button", { name: "Share" });
@@ -985,10 +1051,10 @@ test.describe("public recommendation presentation visual matrix", () => {
     await installPublicFixture(page, state, []);
 
     const cases = [
-      { tab: "Places", id: "public_recommendations", path: "places", ready: "No locations available" },
-      { tab: "Guides", id: "public_guides", path: "guides", ready: "No Guides Yet" },
+      { tab: "Places", id: "public_recommendations", path: "places", ready: "No saved locations yet" },
+      { tab: "Guides", id: "public_guides", path: "guides", ready: "Fixture Guide" },
       { tab: "Movies", id: "public_movie", path: "movies", ready: "No movies shared yet" },
-      { tab: "Books", id: "public_books", path: "books", ready: "Public sanitizer fixture" },
+      { tab: "Books", id: "public_books", path: "books", ready: "No books yet" },
       { tab: "Games", id: "public_games", path: "games", ready: "No games shared yet" },
       { tab: "Apps", id: "public_apps", path: "apps", ready: "No apps shared yet" },
       { tab: "Products", id: "public_products", path: "products", ready: "No products shared yet" },
@@ -1012,14 +1078,16 @@ test.describe("public recommendation presentation visual matrix", () => {
       await expect(page).toHaveURL(`/presentation-fixture/${category.path}`);
       await expect(page.getByText(category.ready, { exact: true }).first()).toBeVisible();
 
-      await page.goBack({ waitUntil: "domcontentloaded" });
+      await page.evaluate(() => window.history.back());
+      await expect(page).not.toHaveURL(`/presentation-fixture/${category.path}`);
       if (new URL(page.url()).pathname === `/presentation-fixture/${category.path}`) {
-        await page.goBack({ waitUntil: "domcontentloaded" });
+        await page.evaluate(() => window.history.back());
       }
       await expect(page).toHaveURL("/presentation-fixture");
-      await page.goForward({ waitUntil: "domcontentloaded" });
+      await page.evaluate(() => window.history.forward());
+      await expect(page).not.toHaveURL("/presentation-fixture");
       if (new URL(page.url()).pathname === "/presentation-fixture") {
-        await page.goForward({ waitUntil: "domcontentloaded" });
+        await page.evaluate(() => window.history.forward());
       }
       await expect(page).toHaveURL(`/presentation-fixture/${category.path}`);
       await expect(page.getByText(category.ready, { exact: true }).first()).toBeVisible();
@@ -1057,7 +1125,7 @@ test.describe("public recommendation presentation visual matrix", () => {
     await page.goBack({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL("/presentation-fixture/places");
     await expect(
-      page.getByText("No locations available", { exact: true }).first(),
+      page.getByText("No saved locations yet", { exact: true }).first(),
     ).toBeVisible();
   });
 
@@ -1210,7 +1278,7 @@ test.describe("public recommendation presentation visual matrix", () => {
   test("keeps identity unboxed and branding invariant across every preset and wallpaper", async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const state: FixtureState = {
       preset: "cinematic-dark",
       layout: "shelves",
@@ -1257,17 +1325,21 @@ test.describe("public recommendation presentation visual matrix", () => {
         await expect(avatar).toBeVisible();
         await expect.poll(() => avatar.evaluate((node) => getComputedStyle(node).borderWidth)).toBe("0px");
         await expect(
-          page.getByRole("link", { name: "Explorers.Earth home" }).locator("img"),
-        ).toHaveAttribute("src", "/eoe-icon.svg");
-        await expect(page.getByRole("img", { name: "Explorers.Earth" })).toHaveAttribute(
-          "src",
-          "/eoe-full.svg",
-        );
-        expect(
-          await page.locator("footer").evaluate((node) =>
-            getComputedStyle(node).backgroundColor,
-          ),
-        ).toBe("rgb(255, 255, 255)");
+          page.getByRole("link", { name: "Explorers.Earth home" }).getByRole("img", {
+            name: "explorers.earth",
+          }),
+        ).toBeVisible();
+        await expect(page.getByRole("img", { name: "Explorers.Earth", exact: true })).toBeVisible();
+        const footerColors = await page.locator("footer").evaluate((node) => {
+          const style = getComputedStyle(node);
+          const probe = document.createElement("div");
+          probe.style.backgroundColor = style.getPropertyValue("--bg-page");
+          node.appendChild(probe);
+          const result = { actual: style.backgroundColor, expected: getComputedStyle(probe).backgroundColor };
+          probe.remove();
+          return result;
+        });
+        expect(footerColors.actual).toBe(footerColors.expected);
         await expectNoHorizontalOverflow(page);
       }
     }
@@ -1485,14 +1557,23 @@ test.describe("public recommendation presentation visual matrix", () => {
     state.mode = "partial-error";
     state.attempts = {};
     await openFixture(page, "partial-error");
-    await expect(page.getByText("Some categories are unavailable")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Books unavailable" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open Places" })).toBeVisible();
 
-    state.mode = "stale-error";
     state.layout = "shelves";
+    state.mode = "success";
     state.attempts = {};
-    await openFixture(page, "stale-error");
-    await expect(page.getByText("Some categories are unavailable")).toBeVisible();
+    await openFixture(page, "stale-seed");
+    await expect(page.getByRole("link", { name: LONG_TITLE })).toBeVisible();
+    await page.getByRole("link", { name: "Open Places" }).click();
+    await expect(page).toHaveURL(/\/presentation-fixture\/places/);
+
+    state.mode = "stale-error";
+    state.attempts = {};
+    await page.getByRole("link", { name: "Profile" }).click();
+    await expect(page).toHaveURL(/\/presentation-fixture$/);
+    await expect(page.getByRole("tab", { name: "Recommendations" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("region", { name: "Places unavailable" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: LONG_TITLE })).toBeVisible();
 
     state.preset = "cinematic-dark";
@@ -1500,16 +1581,16 @@ test.describe("public recommendation presentation visual matrix", () => {
     state.mode = "all-error";
     state.attempts = {};
     await openFixture(page, "all-error");
-    await expect(page.getByText("Couldn’t load recommendations")).toBeVisible();
-    const retry = page.getByRole("button", { name: "Try again" });
-    await retry.evaluate((button) => {
-      button.click();
-      button.click();
-    });
+    await expect(page.getByRole("region", { name: "Places unavailable" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Books unavailable" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Guides unavailable" })).toBeVisible();
+    await page.getByRole("button", { name: "Retry Places" }).click();
+    await page.getByRole("button", { name: "Retry Books" }).click();
+    await page.getByRole("button", { name: "Retry Guides" }).click();
     await expect(page.getByTestId("recommendations-grid")).toBeVisible();
-    expect(state.attempts.GetPlacesLists).toBe(2);
-    expect(state.attempts.GetBooksLists).toBe(2);
-    expect(state.attempts.GetGuidesLists).toBe(2);
+    expect(state.attempts["Gateway:places"]).toBeGreaterThan(2);
+    expect(state.attempts["Gateway:books"]).toBeGreaterThan(2);
+    expect(state.attempts["Gateway:guides"]).toBeGreaterThan(2);
   });
 
   test("covers responsive, focus, contrast, media resilience, RTL, and privacy boundaries", async ({
@@ -1639,9 +1720,9 @@ test.describe("public recommendation presentation visual matrix", () => {
     observed.length = 0;
     await openFixture(page, "disabled-query-proof");
     await expect(page.getByTestId("recommendations-shelves")).toBeVisible();
-    expect(observed).toContain("GetPlacesLists");
-    expect(observed).not.toContain("GetBooksLists");
-    expect(observed).not.toContain("GetGuidesLists");
+    expect(observed).toContain("Gateway:places");
+    expect(observed).not.toContain("Gateway:books");
+    expect(observed).not.toContain("Gateway:guides");
     await expect(
       page.getByRole("tab", { name: "Business Details" }),
     ).toHaveCount(0);

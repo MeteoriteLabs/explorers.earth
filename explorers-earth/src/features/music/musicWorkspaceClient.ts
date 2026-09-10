@@ -177,6 +177,9 @@ export function parseMusicDashboard(value: unknown): MusicDashboardResponse {
 
 export function createMusicWorkspaceClient(request: MusicRequest) {
   return {
+    loadDashboard() {
+      return requestMusicJson<MusicDashboardResponse>(request, { method: 'GET', path: '/api/music/dashboard' }, parseMusicDashboard);
+    },
     async load() {
       const [playlists, dashboard, entitlement] = await Promise.all([
         requestMusicJson<MusicPlaylist[]>(request, { method: "GET", path: "/api/playlists" }, (value) => {

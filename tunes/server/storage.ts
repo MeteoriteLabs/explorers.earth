@@ -28,6 +28,7 @@ import {
   type InsertTeamMember,
   type Playlist,
   type InsertPlaylist,
+  type InsertPlaylistSong,
   type InsertSong,
   type PlaylistSong,
   emailTemplates,
@@ -60,6 +61,10 @@ export type AdminUserListRow = Record<string, any> & {
   accountManager: { name: string; role: string } | null;
 };
 
+type UserCreationIdentity = Pick<typeof users.$inferInsert,
+  "strapiUserDocumentId" | "strapiAccountDocumentId" | "lifecycleOperationId" | "guestCapabilityHash">;
+type UserCreationInput = InsertUser & UserCreationIdentity;
+
 const MemoryStore = createMemoryStore(session);
 const PgStore = connectPgSimple(session);
 
@@ -68,7 +73,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByGuestUrl(guestUrl: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: UserCreationInput): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: number, newPassword: string): Promise<void>;
   getSongs(userId: number): Promise<Song[]>;
@@ -125,9 +130,9 @@ export interface IStorage {
   createPlaylist(userId: number, playlist: InsertPlaylist): Promise<Playlist>;
   updatePlaylist(id: number, updates: Partial<Playlist>): Promise<Playlist>;
   deletePlaylist(id: number): Promise<void>;
-  addSongToPlaylist(playlistId: number, songId: number, position: number): Promise<void>;
+  addSongToPlaylist(playlistId: number, song: InsertPlaylistSong): Promise<void>;
   removeSongFromPlaylist(playlistId: number, songId: number): Promise<void>;
-  getPlaylistSongs(playlistId: number): Promise<Song[]>;
+  getPlaylistSongs(playlistId: number): Promise<PlaylistSong[]>;
   addSongsToPlaylist(playlistId: number, songsToAdd: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }[]): Promise<void>;
   reorderPlaylistSong(playlistId: number, songId: number, newPosition: number): Promise<void>;
   logUserActivity(userId: number, path: string, method: string): Promise<void>;
@@ -276,13 +281,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    console.log('Creating new user:', { ...insertUser, password: '[REDACTED]' });
+  async createUser(insertUser: UserCreationInput): Promise<User> {
+    console.log('Creating user with server-owned identity:', { username: insertUser.username });
+    const { strapiUserDocumentId, strapiAccountDocumentId, lifecycleOperationId, guestCapabilityHash } = insertUser;
+    if (!strapiUserDocumentId || !strapiAccountDocumentId || !lifecycleOperationId || !guestCapabilityHash) {
+      throw new Error('Legacy user creation requires server-owned identity fields');
+    }
     const guestUrl = randomBytes(16).toString('hex');
     const [user] = await db.insert(users)
-      .values({ ...insertUser, guestUrl, theme: { primary: '#6E56CF' } })
+      .values({ ...insertUser, strapiUserDocumentId, strapiAccountDocumentId, lifecycleOperationId,
+        guestCapabilityHash, guestUrl, theme: { primary: '#6E56CF' } })
       .returning();
-    console.log('Created user:', { ...user, password: '[REDACTED]' });
+    console.log('Created user:', { id: user.id, username: user.username });
     return user;
   }
 
@@ -588,7 +598,7 @@ export class DatabaseStorage implements IStorage {
     const offset = (page - 1) * limit;
 
     try {
-      let query = db.select().from(users);
+      let query = db.select().from(users).$dynamic();
 
       // Apply search if term is provided
       if (searchTerm) {
@@ -614,7 +624,8 @@ export class DatabaseStorage implements IStorage {
           manager: teamMembers
         })
         .from(users)
-        .leftJoin(teamMembers, eq(users.accountManagerId, teamMembers.id));
+        .leftJoin(teamMembers, eq(users.accountManagerId, teamMembers.id))
+        .$dynamic();
 
       // Apply search if term is provided
       if (searchTerm) {
@@ -998,10 +1009,11 @@ export class DatabaseStorage implements IStorage {
   async getActiveConnections(): Promise<number> {
     try {
       // Get active connection count from pg_stat_activity
-      const [result] = await db.execute(
+      const result = await db.execute(
         sql`SELECT count(*) as count FROM pg_stat_activity WHERE state = 'active'`
       );
-      return Number(result?.count) || 0;
+      const rows = Array.isArray(result) ? result : result.rows;
+      return Number(rows[0]?.count) || 0;
     } catch (error) {
       console.error('Error getting active connections:', error);
       return 0;
@@ -1154,10 +1166,10 @@ export class DatabaseStorage implements IStorage {
     console.log('Playlist deleted successfully');
   }
 
-  async addSongToPlaylist(playlistId: number, songId: number, position: number): Promise<void> {
-    console.log('Adding song to playlist:', { playlistId, songId, position });
+  async addSongToPlaylist(playlistId: number, song: InsertPlaylistSong): Promise<void> {
+    console.log('Adding song to playlist:', { playlistId, youtubeId: song.youtubeId, position: song.position });
     await db.insert(playlistSongs)
-      .values({ playlistId, songId, position });
+      .values({ playlistId, ...song });
     console.log('Song added to playlist successfully');
   }
 
@@ -1259,7 +1271,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getPlaylistSongs(playlistId: number): Promise<Song[]> {
+  async getPlaylistSongs(playlistId: number): Promise<PlaylistSong[]> {
     console.log('Getting songs for playlist:', playlistId);
 
     // Get all songs directly from playlist_songs table
@@ -1759,7 +1771,7 @@ export class DatabaseStorage implements IStorage {
     console.log('Getting API tokens', userId ? `for user ${userId}` : 'for all users');
 
     try {
-      let query = db.select().from(apiTokens);
+      let query = db.select().from(apiTokens).$dynamic();
 
       if (userId) {
         query = query.where(eq(apiTokens.userId, userId));
@@ -2104,7 +2116,7 @@ export class DatabaseStorage implements IStorage {
 
       // Get daily stats
       const dailyStats = await db.select({
-        date: sql`to_char(${emailLogs.createdAt}, 'YYYY-MM-DD')`.as('date'),
+        date: sql<string>`to_char(${emailLogs.createdAt}, 'YYYY-MM-DD')`.as('date'),
         status: emailLogs.status,
         count: sql`count(*)`.mapWith(Number)
       })
@@ -2315,7 +2327,7 @@ export class DatabaseStorage implements IStorage {
   async getSystemSettings(category?: string): Promise<SystemSetting[]> {
     console.log('Getting all system settings', category ? `for category: ${category}` : '');
     try {
-      let query = db.select().from(systemSettings);
+      let query = db.select().from(systemSettings).$dynamic();
 
       if (category) {
         query = query.where(eq(systemSettings.category, category));

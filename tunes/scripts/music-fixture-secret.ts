@@ -258,6 +258,7 @@ export interface FixtureMusicTokenSecretDependencies {
   close?: typeof closeSync;
   beforeErase?: () => void;
   syncDirectory?: (path: string) => void;
+  durableReplace?: FixtureDurableReplace;
 }
 
 export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicTokenSecretDependencies {
@@ -269,7 +270,6 @@ export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicT
   afterReferenceRename?: () => void;
   retainPreviousAuthority?: boolean;
   prewrittenGeneration?: { path: string; stat: BigIntStats };
-  durableReplace?: FixtureDurableReplace;
 }
 
 export interface FixtureEnvironmentReadDependencies {
@@ -370,7 +370,7 @@ export function prepareFixtureMusicTokenSecret(
       fsyncSync(descriptor);
       closeSync(descriptor);
       descriptor = undefined;
-      replaceFixtureMetadataDurably(creationPath, tokenPath);
+      (dependencies.durableReplace ?? replaceFixtureMetadataDurably)(creationPath, tokenPath);
       descriptor = openFile(tokenPath, constants.O_RDWR, 0o600);
       const reopened = fstatSync(descriptor, { bigint: true });
       if (!sameIdentity(opened, reopened) || reopened.size !== BigInt(0)) throw fixtureSecretError();

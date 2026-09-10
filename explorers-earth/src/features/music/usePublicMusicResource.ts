@@ -4,6 +4,27 @@ import { subscribeToPublicMusic, type PublicMusicConnectionState } from "./publi
 
 export type PublicMusicResourceState = "loading" | "ready" | "not-found" | "rate-limited" | "unavailable";
 
+function waitForTransientRetry(delayMs: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(new DOMException("Aborted", "AbortError")); return; }
+    const abort = () => { window.clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); };
+    const timer = window.setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, delayMs);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
+export async function loadPublicMusicWithTransientRetry(publicSlug: string, capability: string | undefined, signal: AbortSignal): Promise<PublicMusicResource> {
+  for (const delayMs of [0, 200, 500]) {
+    if (delayMs > 0) await waitForTransientRetry(delayMs, signal);
+    try {
+      return await publicMusicClient.load(publicSlug, capability, signal);
+    } catch (reason) {
+      if (signal.aborted || !(reason instanceof PublicMusicError) || reason.code !== "PUBLIC_UNAVAILABLE" || delayMs === 500) throw reason;
+    }
+  }
+  throw new PublicMusicError("PUBLIC_UNAVAILABLE");
+}
+
 export function usePublicMusicResource(options: {
   publicSlug?: string;
   capability?: string;
@@ -45,7 +66,7 @@ export function usePublicMusicResource(options: {
     }
     const controller = new AbortController();
     setConnectionState("connecting"); setResource(undefined); setState("loading");
-    publicMusicClient.load(options.publicSlug, options.capability, controller.signal).then((value) => {
+    loadPublicMusicWithTransientRetry(options.publicSlug, options.capability, controller.signal).then((value) => {
       if (!controller.signal.aborted) { renderedRevision.current = value.revision; setResource(value); setState("ready"); options.onSettled?.(); }
     }).catch((error: unknown) => { if (!controller.signal.aborted) fail(error); });
     return () => controller.abort();

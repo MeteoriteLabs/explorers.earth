@@ -1,9 +1,12 @@
 import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import pg from "pg";
+import { buildUatEvidenceEnvelope, MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence";
+export { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence";
 import {
   cleanupFixtureMusicTokenSecret,
   prepareFixtureMusicTokenSecret,
@@ -19,21 +22,7 @@ export const MUSIC_UAT_DATABASE_REPORT_VERSION = "explorers-music-uat-database/v
 // Each child stream is retained independently and is emitted only after the
 // complete process exit. Overflow discards the entire raw stream.
 export const MUSIC_UAT_DATABASE_CHILD_OUTPUT_MAX_BYTES = 8 * 1024 * 1024;
-export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
-  "server/test/migrations/music-migration.integration.test.ts",
-  "server/test/music-credential.integration.test.ts",
-  "server/test/music-domain-repository.integration.test.ts",
-  "server/test/music-identity-projection.integration.test.ts",
-  "server/test/music-publication-operation.integration.test.ts",
-  "server/test/music-runtime-role.integration.test.ts",
-  "server/test/musicLifecycle.integration.test.ts",
-  "server/test/musicReconciler.integration.test.ts",
-  "server/test/reconciliationRepository.integration.test.ts",
-  "server/test/load/music-load-postgres.integration.test.ts",
-  "server/test/music-e2e-state-restore.integration.test.ts",
-  "server/test/music-e2e-initial-capture.integration.test.ts",
-  "server/test/music-e2e-identity-count-adapter.integration.test.ts",
-] as const);
+export const MUSIC_UAT_DATABASE_RAW_REPORT_MAX_BYTES = 4 * 1024 * 1024;
 
 const FIXTURE_PROJECT = "explorers-music-fixture";
 const POSTGRES_IMAGE = "postgres:15-alpine";
@@ -410,16 +399,50 @@ export async function withOwnedUatDatabase<T, A>(input: {
   finally { await input.release(authority); }
 }
 
-export function buildUatDatabaseTestCommand(npmCli: string): { file: string; args: string[] } {
+export function buildUatDatabaseTestCommand(npmCli: string, outputPath: string): { file: string; args: string[] } {
   if (!npmCli) throw authorityError("the invoking npm CLI is required");
+  if (!outputPath) throw authorityError("the owned Vitest output path is required");
   return {
     file: process.execPath,
     args: [
       npmCli, "run", "test:integration", "--",
       ...MUSIC_UAT_DATABASE_TEST_FILES,
       "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=10000",
+      "--reporter=default", "--reporter=json", `--outputFile.json=${outputPath}`,
     ],
   };
+}
+
+export async function executeOwnedUatEvidence<A, E>(input: {
+  acquire: () => Promise<A>;
+  run: (authority: A) => Promise<UatDatabaseTestChildResult>;
+  release: (authority: A) => Promise<void>;
+  readRaw: () => string;
+  buildEnvelope: (input: {
+    result: UatDatabaseTestChildResult;
+    vitestRaw: string;
+    cleanup: "database-dropped-container-removed";
+  }) => E;
+  writeEnvelope: (envelope: E) => Promise<void>;
+}): Promise<E> {
+  const authority = await input.acquire();
+  let result: UatDatabaseTestChildResult;
+  try {
+    result = await input.run(authority);
+  } finally {
+    await input.release(authority);
+  }
+  const vitestRaw = input.readRaw();
+  if (Buffer.byteLength(vitestRaw, "utf8") > MUSIC_UAT_DATABASE_RAW_REPORT_MAX_BYTES) {
+    throw authorityError("raw Vitest report exceeded the retained evidence limit");
+  }
+  const envelope = input.buildEnvelope({
+    result,
+    vitestRaw,
+    cleanup: "database-dropped-container-removed",
+  });
+  await input.writeEnvelope(envelope);
+  return envelope;
 }
 
 function uatDatabaseEnvironment(
@@ -478,6 +501,7 @@ async function allocatePort(): Promise<number> {
 }
 
 async function dropDatabase(authority: OwnedUatDatabaseAuthority, password: string): Promise<void> {
+  const { default: pg } = await import("pg");
   const admin = new URL("postgresql://127.0.0.1/postgres");
   admin.username = POSTGRES_USER;
   admin.password = password;
@@ -640,6 +664,8 @@ export async function runUatDatabaseCli(
   const port = await allocatePort();
   const repositoryRoot = resolve(import.meta.dirname, "../..");
   const passwordFile = prepareFixtureMusicTokenSecret(repositoryRoot);
+  const rawReportDirectory = mkdtempSync(join(tmpdir(), "explorers-music-uat-"));
+  const rawReportPath = join(rawReportDirectory, "vitest.json");
   try {
     const password = await readSecureMusicSecretFile(passwordFile, { mode: "fixture" });
     let activeChild: ChildProcess | undefined;
@@ -653,10 +679,11 @@ export async function runUatDatabaseCli(
     process.once("SIGINT", onSigint);
     process.once("SIGTERM", onSigterm);
     try {
-      const result = await withOwnedUatDatabase({
+      let terminalEnvelope: ReturnType<typeof buildUatEvidenceEnvelope> | undefined;
+      const result = await executeOwnedUatEvidence({
         acquire: async () => await startOwnedUatDatabase({ runId, database, commit, port, passwordFile }),
         run: async (authority) => await runUatDatabaseTestChild(
-          buildUatDatabaseTestCommand(npmCli),
+          buildUatDatabaseTestCommand(npmCli, rawReportPath),
           uatDatabaseEnvironment(environment, authority, password),
           {
             setChild: (child) => { activeChild = child; },
@@ -666,23 +693,26 @@ export async function runUatDatabaseCli(
         release: async (authority) => await stopOwnedUatDatabase(authority, {
           dropDatabase: async (owned) => await dropDatabase(owned, password),
         }),
+        readRaw: () => readFileSync(rawReportPath, "utf8"),
+        buildEnvelope: ({ result: childResult, vitestRaw, cleanup }) => buildUatEvidenceEnvelope({
+          runId,
+          commit,
+          exitCode: interrupted ? 130 : childResult.exitCode,
+          childSignal: childResult.signal,
+          cleanup,
+          vitestRaw,
+          root: resolve(repositoryRoot, "tunes"),
+        }),
+        writeEnvelope: async (envelope) => { terminalEnvelope = envelope; },
       });
-      process.stdout.write(`${JSON.stringify({
-        version: MUSIC_UAT_DATABASE_REPORT_VERSION,
-        runId,
-        database,
-        commit,
-        result: result.exitCode === 0 && !interrupted ? "passed" : "failed",
-        exitCode: interrupted ? 130 : result.exitCode,
-        childSignal: result.signal,
-        cleanup: "database-dropped-container-removed",
-      })}\n`);
+      process.stdout.write(`${JSON.stringify({ ...terminalEnvelope, database })}\n`);
       return interrupted ? 130 : result.exitCode;
     } finally {
       process.removeListener("SIGINT", onSigint);
       process.removeListener("SIGTERM", onSigterm);
     }
   } finally {
+    rmSync(rawReportDirectory, { recursive: true, force: true });
     cleanupFixtureMusicTokenSecret(repositoryRoot, passwordFile);
   }
 }

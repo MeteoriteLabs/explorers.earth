@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
 import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
 
 export const PUBLIC_MUSIC_RESOURCE_MAX_BYTES = 512 * 1_024;
@@ -215,7 +216,7 @@ async function readBoundedPublicMusicBody(response: Response, maxBytes = PUBLIC_
   }
 }
 
-export function createPublicMusicClient(baseUrl: string, observability: PublicMusicObservability = publicMusicObservability) {
+export function createPublicMusicClient(baseUrl: string, observability: PublicMusicObservability = publicMusicObservability, fetchImpl: typeof fetch = fetch) {
   const base = normalizedBaseUrl(baseUrl);
   const requestHeaders = (capability?: string, idempotencyKey?: string) => ({
     Accept: "application/json", "Content-Type": "application/json",
@@ -225,7 +226,7 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
   return {
     async discover(accountDocumentId: string, signal?: AbortSignal): Promise<PublicMusicDescriptor> {
       if (!/^[A-Za-z0-9_-]{1,255}$/.test(accountDocumentId)) throw new PublicMusicError("PUBLIC_NOT_FOUND");
-      const response = await fetch(`${base}/api/music/public-profile/${encodeURIComponent(accountDocumentId)}`, {
+      const response = await fetchImpl(`${base}/api/music/public-profile/${encodeURIComponent(accountDocumentId)}`, {
         headers: { Accept: "application/json" },
         ...(signal ? { signal } : {}),
       });
@@ -247,7 +248,7 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       if (!publicSlugSchema.safeParse(publicSlug).success) throw new PublicMusicError("PUBLIC_NOT_FOUND");
       const headers: Record<string, string> = { Accept: "application/json" };
       if (capability && /^[A-Za-z0-9_-]{43}$/.test(capability)) headers["X-Music-Guest-Capability"] = capability;
-      const response = await fetch(`${base}/api/music/public-resource/v1/${encodeURIComponent(publicSlug)}`, {
+      const response = await fetchImpl(`${base}/api/music/public-resource/v1/${encodeURIComponent(publicSlug)}`, {
         headers,
         ...(signal ? { signal } : {}),
       });
@@ -276,7 +277,7 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       if (!publicSlugSchema.safeParse(publicSlug).success) throw new PublicMusicError("PUBLIC_NOT_FOUND");
       const normalized = query.trim();
       if (normalized.length < 1 || query.length > 200) throw new PublicMusicError("REQUEST_INVALID");
-      const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/search`, {
+      const response = await fetchImpl(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/search`, {
         method: "POST", headers: requestHeaders(capability), body: JSON.stringify({ query: normalized }), ...(signal ? { signal } : {}),
       });
       const parsed = publicRequestSearchSchema.safeParse(await publicRequestJson(response, observability));
@@ -287,7 +288,7 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       if (!publicSlugSchema.safeParse(publicSlug).success) throw new PublicMusicError("PUBLIC_NOT_FOUND");
       const parsedUrl = z.string().url().max(2_048).safeParse(url);
       if (!parsedUrl.success || !/^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(parsedUrl.data)) throw new PublicMusicError("REQUEST_INVALID");
-      const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/video-from-url`, {
+      const response = await fetchImpl(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/youtube/video-from-url`, {
         method: "POST", headers: requestHeaders(capability), body: JSON.stringify({ url: parsedUrl.data }), ...(signal ? { signal } : {}),
       });
       const parsed = publicRequestVideoSchema.safeParse(await publicRequestJson(response, observability));
@@ -298,7 +299,7 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
       if (!publicSlugSchema.safeParse(publicSlug).success || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw new PublicMusicError("REQUEST_INVALID");
       const canonical = canonicalRequestSongSchema.safeParse(song);
       if (!canonical.success) throw new PublicMusicError("REQUEST_INVALID");
-      const response = await fetch(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/requests`, {
+      const response = await fetchImpl(`${base}/api/playlist/${encodeURIComponent(publicSlug)}/requests`, {
         method: "POST", headers: requestHeaders(capability, idempotencyKey), body: JSON.stringify(canonical.data),
       });
       const parsed = z.object({ accepted: z.literal(true) }).strict().safeParse(await publicRequestJson(response, observability));
@@ -309,4 +310,12 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
 }
 
 const musicBaseUrl = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
-export const publicMusicClient = createPublicMusicClient(musicBaseUrl);
+const getPublicMusicClient = () => createPublicMusicClient(musicBaseUrl, undefined,
+  createMusicDevelopmentFetch(fetch, import.meta.env.DEV, musicBaseUrl));
+export const publicMusicClient: ReturnType<typeof createPublicMusicClient> = {
+  async discover(...args) { return getPublicMusicClient().discover(...args); },
+  async load(...args) { return getPublicMusicClient().load(...args); },
+  async search(...args) { return getPublicMusicClient().search(...args); },
+  async videoFromUrl(...args) { return getPublicMusicClient().videoFromUrl(...args); },
+  async requestSong(...args) { return getPublicMusicClient().requestSong(...args); },
+};

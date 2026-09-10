@@ -12,19 +12,23 @@ import PublicGuideStayView from "./PublicGuideViews/PublicGuideStayView";
 import PublicGuideBudgetView from "./PublicGuideViews/PublicGuideBudgetView";
 import PublicGuideTipsView from "./PublicGuideViews/PublicGuideTipsView";
 import GuideMapView from "./PublicGuideViews/GuideMapView";
+import PublicGuideControlPortal from "./PublicGuideControlPortal";
 import Button from "../../../components/ui/Button";
 import WhiteMap from "../../../assets/icons/WhiteMap";
 import { parseTimeline, parseStay, parseBudget } from "../../Guides/utils/guideDataParser";
 import { getTransportSegments } from "../../Guides/utils/guideHelpers";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl, getBaseUrl } from "../../../utils/getCurrentDomain";
-import { toUrlSlug } from "../../../utils/formatAddress";
+import { guideDescriptionText } from "../../../utils/guideDescriptionText";
+import { publicGuideSlug } from "../../../utils/publicGuideSlug";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
 import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
 import { measureGuideDayTabsStickyGeometry, measureGuideMainTabsStickyGeometry } from "./guideStickyGeometry";
 import { isNonNullObject, PublicRouteErrorState, PublicRouteLoadingState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
 import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
+import { PublicScrollContinuation } from "./PublicScrollContinuation";
+import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
 
 const hasNonEmptyString = (value: unknown): value is string => (
   typeof value === "string" && value.trim().length > 0
@@ -69,9 +73,7 @@ const normalizeRenderableGuide = (value: unknown) => {
 
   return {
     ...value,
-    slug: hasNonEmptyString(value.slug)
-      ? value.slug
-      : toUrlSlug(value.Title) || value.documentId,
+    slug: publicGuideSlug({ slug: value.slug, documentId: value.documentId }),
     Guide_Media: Array.isArray(value.Guide_Media)
       ? value.Guide_Media.filter((media) => isNonNullObject(media) && typeof media.url === "string")
       : [],
@@ -93,10 +95,16 @@ const PublicGuideDetailPage = memo(() => {
   const mainTabsRef = useRef<HTMLDivElement>(null);
   const coverImageRef = useRef<HTMLDivElement>(null);
   const dayTabsRef = useRef<HTMLDivElement>(null);
-  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
+  const [dayScrollRoot, setDayScrollRoot] = useState<HTMLDivElement | null>(null);
+  const setTabsScrollRef = useCallback((node: HTMLDivElement | null) => {
+    tabsScrollRef.current = node;
+    setDayScrollRoot(node);
+  }, []);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [isDayTabsSticky, setIsDayTabsSticky] = useState(false);
   const [stickyMainTabsHeight, setStickyMainTabsHeight] = useState(0);
+  const categoryStyles = usePublicCategoryThemeStyles();
 
   const handleBack = () => {
     navigate(`/${username}/guides`);
@@ -104,7 +112,8 @@ const PublicGuideDetailPage = memo(() => {
 
 
   const { loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
-  const { data, loading, error, refetch: refetchGuide } = usePublicProfileDetail(username, "guides", guideSlug);
+  const page = usePublicProfileDetail(username, "guides", guideSlug);
+  const { data, loading, error, refetch: refetchGuide } = page;
   const guide = useMemo(() => normalizeRenderableGuide((Array.isArray(data?.guides) ? data.guides : [])[0]), [data?.guides]);
   const hasUsableData = Boolean(guide);
   const queryError = accountError || error;
@@ -128,9 +137,9 @@ const PublicGuideDetailPage = memo(() => {
   const handleRetry = useCallback(async () => {
     await settlePublicRouteRetries(
       refetchAccount,
-      guide ? refetchGuide : undefined,
+      refetchGuide,
     );
-  }, [guide, refetchAccount, refetchGuide]);
+  }, [refetchAccount, refetchGuide]);
 
   // Scroll detection for sticky tabs inside the page-owned overflow root.
   // This effect needs to run after guide data is loaded and DOM is ready
@@ -516,15 +525,9 @@ const PublicGuideDetailPage = memo(() => {
   const seoTitle = guide
     ? `${guide.Title} | Travel Guide | explorers`
     : "Travel Guide | explorers";
-  const seoDescription = guide?.Description
-    ? typeof guide.Description === "string"
-      ? guide.Description
-      : Array.isArray(guide.Description)
-        ? guide.Description
-          .map((block: any) => block.children?.map((child: any) => child.text).join(" "))
-          .join(" ")
-        : ""
-    : `Explore ${guide?.Title || "this travel guide"} on explorers. Discover curated itineraries, travel tips, and destination insights.`;
+  const descriptionText = guideDescriptionText(guide?.Description);
+  const seoDescription = descriptionText
+    || `Explore ${guide?.Title || "this travel guide"} on explorers. Discover curated itineraries, travel tips, and destination insights.`;
 
   const seoKeywords = useMemo(() => {
     const keywords = [
@@ -608,7 +611,7 @@ const PublicGuideDetailPage = memo(() => {
           enableGEO={true}
           geoData={geoData}
         />
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-[var(--category-page,#000000)] text-[var(--category-text,#FFFFFF)]">
           <PublicRouteErrorState
             title="Guide unavailable"
             error={queryError}
@@ -617,7 +620,7 @@ const PublicGuideDetailPage = memo(() => {
               <button
                 type="button"
                 onClick={() => navigate(`/${username}/guides`)}
-                className="min-h-11 rounded-xl border border-white/15 px-5 py-2 text-sm font-semibold text-white"
+                className="min-h-11 rounded-xl border border-[var(--category-control-border,rgba(255,255,255,0.15))] px-5 py-2 text-sm font-semibold text-[var(--category-text,#FFFFFF)]"
               >
                 Back to Guides
               </button>
@@ -630,9 +633,9 @@ const PublicGuideDetailPage = memo(() => {
 
   if (!guide) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black p-8">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--category-page,#000000)] p-8">
         <p className="text-red-400 font-poppins text-lg mb-4">Failed to load guide</p>
-        <button onClick={handleBack} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
+        <button onClick={handleBack} className="px-4 py-2 bg-[var(--category-card,#374151)] text-[var(--category-text,#FFFFFF)] rounded-lg hover:bg-[var(--category-hover,#4B5563)] transition-colors">
           Back to Guides
         </button>
       </div>
@@ -668,13 +671,14 @@ const PublicGuideDetailPage = memo(() => {
         }
       `}</style>
 
-      <div ref={scrollContainerRef} className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loadingState || undefined}>
+      <div data-category-page="guides" ref={scrollContainerRef} className="h-full bg-[var(--category-page,#000000)] min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loadingState || undefined}>
         {Boolean(queryError) && <PublicRoutePartialNotice message="Some guide data is unavailable." />}
         {/* Centered Container - Matching other public pages */}
         <div className="md:max-w-5xl md:mx-auto px-4 sm:px-6">
           {/* Guide Header with Cover Image and Badges */}
           <div
             ref={coverImageRef}
+            data-public-category-artwork
             className="relative w-full h-64 sm:h-80 md:h-96 lg:h-[500px] bg-cover bg-center flex-shrink-0 overflow-hidden mt-4 mb-4 rounded-lg"
             style={{
               backgroundImage: guide.Guide_Media?.[0]?.url
@@ -918,7 +922,8 @@ const PublicGuideDetailPage = memo(() => {
           {/* Tabs - Sticky when scrolled - Centered - Below header */}
           <div
             ref={mainTabsRef}
-            className={`z-40 bg-black border-b border-gray-700 flex-shrink-0 shadow-lg transition-all duration-200 ${isMainTabsSticky
+            data-public-guide-main-tabs
+            className={`z-40 bg-[var(--category-page,#000000)] border-b border-[var(--category-control-border,#374151)] flex-shrink-0 shadow-lg transition-all duration-200 ${isMainTabsSticky
               ? 'fixed left-0 right-0 top-[var(--public-header-reserved-offset)]'
               : 'relative'
               }`}
@@ -940,8 +945,8 @@ const PublicGuideDetailPage = memo(() => {
                       flex items-center justify-center
                       transition-all duration-300
                       ${isActive
-                            ? "bg-blue-500 border-2 border-blue-500"
-                            : "bg-gray-800 border-2 border-gray-600 group-hover:border-blue-500/60"
+                            ? "bg-[var(--category-accent,#3B82F6)] border-2 border-[var(--category-control-border,#3B82F6)]"
+                            : "bg-[var(--category-card,#1F2937)] border-2 border-[var(--category-control-border,#4B5563)] group-hover:border-[var(--category-control-border,rgba(59,130,246,0.6))]"
                           }
                     `}
                         whileHover={{ scale: 1.05 }}
@@ -959,7 +964,7 @@ const PublicGuideDetailPage = memo(() => {
                         >
                           <IconComponent
                             size={isActive ? "5" : "4"}
-                            color={isActive ? "#ffffff" : "#9CA3AF"}
+                            color={isActive ? "var(--category-accent-ink,#ffffff)" : "var(--category-muted,#9CA3AF)"}
                           />
                         </motion.div>
                       </motion.div>
@@ -968,15 +973,15 @@ const PublicGuideDetailPage = memo(() => {
                       mt-1 sm:mt-1.5 md:mt-2 lg:mt-2.5 text-[10px] sm:text-xs md:text-sm lg:text-base font-poppins font-semibold
                       transition-all duration-300 text-center whitespace-nowrap
                       ${isActive
-                            ? "text-blue-400"
-                            : "text-gray-400 group-hover:text-gray-300"
+                            ? "text-[var(--category-text,#60A5FA)]"
+                            : "text-[var(--category-muted,#9CA3AF)] group-hover:text-[var(--category-muted,#D1D5DB)]"
                           }
                     `}
                       >
                         {tab.label}
                       </motion.p>
                       {isActive && (
-                        <div className="mt-0.5 sm:mt-0.5 md:mt-1 w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-400" />
+                        <div className="mt-0.5 sm:mt-0.5 md:mt-1 w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[var(--category-accent,#60A5FA)]" />
                       )}
                     </div>
                   );
@@ -986,12 +991,12 @@ const PublicGuideDetailPage = memo(() => {
           </div>
 
           {/* Day Navigation Tabs - Scrollable and Centered - Sticky below main tabs */}
-          {daysWithData.length > 0 && (
+          {(daysWithData.length > 0 || page.hasMore || page.loadMoreError != null) && (
             <div
               ref={dayTabsRef}
               style={{ "--guide-main-tabs-height": `${stickyMainTabsHeight}px` } as CSSProperties}
               className={`z-30 py-2 sm:py-3 transition-all duration-200 ${isDayTabsSticky
-                ? `fixed left-0 right-0 bg-gray-900/95 backdrop-blur-md shadow-lg border-b border-gray-800 ${isMainTabsSticky
+                ? `fixed left-0 right-0 bg-[var(--category-card,rgba(17,24,39,0.95))] backdrop-blur-md shadow-lg border-b border-[var(--category-control-border,#1F2937)] ${isMainTabsSticky
                   ? 'top-[calc(var(--public-header-reserved-offset)+var(--guide-main-tabs-height))]'
                   : 'top-[var(--public-header-reserved-offset)]'
                 }`
@@ -1006,10 +1011,10 @@ const PublicGuideDetailPage = memo(() => {
                       tabsScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
                     }
                   }}
-                  className={`md:hidden absolute left-0 z-10 w-8 h-8 rounded-full bg-gray-800/90 backdrop-blur-md border border-gray-700/60 flex items-center justify-center transition-opacity duration-200 ${showLeftArrow ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  className={`md:hidden absolute left-0 z-10 w-8 h-8 rounded-full bg-[var(--category-card,rgba(31,41,55,0.9))] backdrop-blur-md border border-[var(--category-control-border,rgba(55,65,81,0.6))] flex items-center justify-center transition-opacity duration-200 ${showLeftArrow ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}
                 >
-                  <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-[var(--category-muted,#D1D5DB)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
@@ -1017,7 +1022,7 @@ const PublicGuideDetailPage = memo(() => {
                 {/* Scrollable Tabs Container - Enhanced */}
                 <div
                   className="overflow-x-auto scrollbar-hide max-w-full"
-                  ref={tabsScrollRef}
+                  ref={setTabsScrollRef}
                   onScroll={() => {
                     if (tabsScrollRef.current) {
                       const { scrollLeft } = tabsScrollRef.current;
@@ -1025,12 +1030,12 @@ const PublicGuideDetailPage = memo(() => {
                     }
                   }}
                 >
-                  <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 rounded-2xl border border-gray-700/80 backdrop-blur-md p-2 sm:p-3 shadow-xl inline-flex items-center gap-2 sm:gap-3 min-w-max mx-auto">
+                  <div className="bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.95))] to-[var(--category-card,rgba(31,41,55,0.95))] rounded-2xl border border-[var(--category-control-border,rgba(55,65,81,0.8))] backdrop-blur-md p-2 sm:p-3 shadow-xl inline-flex items-center gap-2 sm:gap-3 min-w-max mx-auto">
                     <button
                       onClick={() => setSelectedDay("overview")}
-                      className={`px-3 py-1.5 sm:px-6 sm:py-3 md:px-7 md:py-3.5 rounded-lg sm:rounded-xl font-poppins font-bold text-xs sm:text-sm md:text-base whitespace-nowrap transition-all duration-300 flex-shrink-0 ${selectedDay === "overview"
-                        ? "bg-gradient-to-r from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] text-white shadow-xl shadow-[hsl(var(--blue-cta))]/40 ring-2 ring-[hsl(var(--blue-cta))]/30 scale-105"
-                        : "bg-gray-800/80 text-gray-300 hover:bg-gray-700/90 hover:text-white hover:scale-105 border border-gray-700/50"
+                      className={`px-3 py-1.5 sm:px-6 sm:py-3 md:px-7 md:py-3.5 rounded-lg sm:rounded-xl font-poppins font-bold text-xs sm:text-sm md:text-base whitespace-nowrap transition-all duration-300 flex-shrink-0 ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""} ${selectedDay === "overview"
+                        ? "bg-gradient-to-r from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] text-[var(--category-accent-ink,#FFFFFF)] shadow-xl shadow-[hsl(var(--blue-cta))]/40 ring-2 ring-[hsl(var(--blue-cta))]/30 scale-105"
+                        : "bg-[var(--category-card,rgba(31,41,55,0.8))] text-[var(--category-muted,#D1D5DB)] hover:bg-[var(--category-hover,rgba(55,65,81,0.9))] hover:text-[var(--category-text,#FFFFFF)] hover:scale-105 border border-[var(--category-control-border,rgba(55,65,81,0.5))]"
                         }`}
                     >
                       Overview
@@ -1042,15 +1047,16 @@ const PublicGuideDetailPage = memo(() => {
                         <button
                           key={day.documentId || dayId}
                           onClick={() => setSelectedDay(dayId)}
-                          className={`px-3 py-1.5 sm:px-6 sm:py-3 md:px-7 md:py-3.5 rounded-lg sm:rounded-xl font-poppins font-bold text-xs sm:text-sm md:text-base whitespace-nowrap transition-all duration-300 flex-shrink-0 ${selectedDay === dayId
-                            ? "bg-gradient-to-r from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] text-white shadow-xl shadow-[hsl(var(--blue-cta))]/40 ring-2 ring-[hsl(var(--blue-cta))]/30 scale-105"
-                            : "bg-gray-800/80 text-blue-500 hover:bg-gray-700/90 hover:text-blue-400 hover:scale-105 border border-gray-700/50"
+                          className={`px-3 py-1.5 sm:px-6 sm:py-3 md:px-7 md:py-3.5 rounded-lg sm:rounded-xl font-poppins font-bold text-xs sm:text-sm md:text-base whitespace-nowrap transition-all duration-300 flex-shrink-0 ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""} ${selectedDay === dayId
+                            ? "bg-gradient-to-r from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] text-[var(--category-accent-ink,#FFFFFF)] shadow-xl shadow-[hsl(var(--blue-cta))]/40 ring-2 ring-[hsl(var(--blue-cta))]/30 scale-105"
+                            : "bg-[var(--category-card,rgba(31,41,55,0.8))] text-[var(--category-text,#3B82F6)] hover:bg-[var(--category-hover,rgba(55,65,81,0.9))] hover:text-[var(--category-text,#60A5FA)] hover:scale-105 border border-[var(--category-control-border,rgba(55,65,81,0.5))]"
                             }`}
                         >
                           Day {dayNum}
                         </button>
                       );
                     })}
+                    <PublicScrollContinuation {...page} label="days" root={dayScrollRoot} className="!w-auto shrink-0" />
                   </div>
                 </div>
               </div>
@@ -1058,7 +1064,7 @@ const PublicGuideDetailPage = memo(() => {
           )}
 
           {/* Tab Content - Centered Layout */}
-          <div className="bg-black flex-1">
+          <div className="bg-[var(--category-page,#000000)] flex-1">
             <div className="py-4 sm:py-6 md:py-8">
               <AnimatePresence mode="wait">
                 {activeTab === "journey" && (
@@ -1117,6 +1123,7 @@ const PublicGuideDetailPage = memo(() => {
                   </motion.div>
                 )}
               </AnimatePresence>
+              {selectedDay === "overview" && <PublicScrollContinuation {...page} label="days" className="mt-6" />}
             </div>
           </div>
         </div>
@@ -1124,21 +1131,23 @@ const PublicGuideDetailPage = memo(() => {
 
       {/* Floating Map Button - Only show if guide has places with coordinates */}
       {hasPlacesForMap && !isMapView && (
-        <div className="fixed bottom-[4.2rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/20 rounded-lg p-0.5 backdrop-blur-sm">
+        <PublicGuideControlPortal kind="launcher">
+        <div className="min-h-11 bg-[var(--category-card,rgba(0,0,0,0.2))] rounded-lg p-0.5 backdrop-blur-sm">
           <Button
             startIcon={<WhiteMap />}
             btnText="Map View"
             variant="primary"
             size="xsmall"
             onClickHandler={() => setIsMapView(true)}
-            className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))] shadow-lg shadow-blue-500/20"
+            className="bg-[var(--category-accent,hsl(var(--blue-cta)))] hover:bg-[var(--category-accent,hsl(var(--blue-final)))] shadow-lg shadow-blue-500/20"
           />
         </div>
+        </PublicGuideControlPortal>
       )}
 
       {/* Map View */}
       {isMapView && (
-        <div className="fixed inset-0 z-50 bg-black">
+        <PublicGuideControlPortal kind="map">
           <GuideMapView
             sections={sections}
             guide={guide}
@@ -1154,7 +1163,7 @@ const PublicGuideDetailPage = memo(() => {
             }}
             highlightedPlaceId={highlightedPlaceId}
           />
-        </div>
+        </PublicGuideControlPortal>
       )}
 
     </>

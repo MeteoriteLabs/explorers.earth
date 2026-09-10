@@ -1,3 +1,5 @@
+import { useCategoryNavigation } from "../../navigation/CategoryNavigationProvider";
+import type { IntentAuthority } from "../../navigation/categoryNavigationPolicy";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
@@ -67,10 +69,12 @@ const GuideDetailsPage = () => {
   const { shouldDisableGeneration, disableReason, refetch: refetchQuota } = useAIGuideQuota();
 
   const { user } = useAuthStore();
+  const navigation = useCategoryNavigation();
   const [visibilityPrompt, setVisibilityPrompt] = useState<{
     isOpen: boolean;
     categoryName: string;
     visibilityField: string;
+    origin?: IntentAuthority;
     defaultValue: boolean;
   } | null>(null);
 
@@ -79,19 +83,19 @@ const GuideDetailsPage = () => {
     listName: string;
   } | null>(null);
 
-  const { data: accountData, refetch: refetchAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
+  const { refetch: refetchAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
   });
 
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
+  const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
-    if (location.state?.justCreatedGuide && accountData) {
-      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_guides === "Yes";
-      if (!isPublic) {
+    if (location.state?.justCreatedGuide && navigation.authority && promptedLocation.current !== location.key) {
+      promptedLocation.current = location.key;
+      const isPublic = navigation.snapshot?.visibility.public_guides === "Yes";
+      if (!isPublic && navigation.authority) {
         setVisibilityPrompt({
+          origin: navigation.authority,
           isOpen: true,
           categoryName: "Guides",
           visibilityField: "public_guides",
@@ -100,7 +104,7 @@ const GuideDetailsPage = () => {
       }
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, accountData]);
+  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
   // Get sidebar width from CSS variable
   useEffect(() => {
@@ -717,13 +721,13 @@ const GuideDetailsPage = () => {
         isDanger={true}
         isLoading={!!deletingSection}
       />
-      {visibilityPrompt && accountDocumentId && (
+      {visibilityPrompt && (
         <CategoryVisibilityModal
           isOpen={visibilityPrompt.isOpen}
           onClose={() => setVisibilityPrompt(null)}
           categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
+          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
+          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
           onSuccess={() => {
             refetchAccount();
           }}

@@ -7,8 +7,10 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import { createMusicDevelopmentFetch } from "../features/music/musicDevelopmentTransport";
 
-const TUNES_API = import.meta.env.VITE_LOCAL_TUNES_API_URL || "http://localhost:5000";
+const TUNES_API = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
+const musicFetch: typeof fetch = (input, init) => createMusicDevelopmentFetch(fetch, import.meta.env.DEV, TUNES_API)(input, init);
 
 const ReactivateAccount = () => {
   const { t } = useTranslation();
@@ -36,7 +38,7 @@ const ReactivateAccount = () => {
 
   const handleSubmit = async (values: { email: string }) => {
     try {
-      const response = await fetch(`${TUNES_API}/api/user/request-reactivation`, {
+      const response = await musicFetch(`${TUNES_API}/api/user/request-reactivation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: values.email.trim().toLowerCase() }),
@@ -58,7 +60,7 @@ const ReactivateAccount = () => {
     if (cooldown > 0 || resending) return;
     setResending(true);
     try {
-      await fetch(`${TUNES_API}/api/user/request-reactivation`, {
+      await musicFetch(`${TUNES_API}/api/user/request-reactivation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: submittedEmail }),

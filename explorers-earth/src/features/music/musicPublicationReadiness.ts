@@ -1,3 +1,25 @@
+import type { MusicPinVerifier } from '../navigation/accountNavigationWriter';
+import { musicIdentityCoordinator } from './musicApi';
+import { musicWorkspaceClient } from '../../hooks/useTunesDashboard';
+import { publicMusicClient } from './publicMusicClient';
+
+/** Runs inside the existing pin transaction: read-only, no reentrant writer/coordinator. */
+export const verifyMusicPin: MusicPinVerifier = async (transaction, origin) => {
+  const current = () => transaction.isCurrent() && musicIdentityCoordinator.isReadyFor(origin);
+  if (!current()) return 'unknown';
+  try {
+    const account = await transaction.read();
+    if (!current() || account.scope.userDocumentId !== origin.userDocumentId || account.scope.accountDocumentId !== origin.accountDocumentId) return 'unknown';
+    if (account.visibility.public_music !== 'Yes') return 'not-public';
+    const dashboard = await musicWorkspaceClient.loadDashboard();
+    if (!current()) return 'unknown';
+    if (dashboard.publication.mode !== 'public') return 'not-public';
+    const descriptor = await publicMusicClient.discover(origin.accountDocumentId);
+    if (!current()) return 'unknown';
+    return descriptor.publication.mode === 'public' && descriptor.publication.publicSlug === dashboard.publication.publicSlug ? 'public' : 'unknown';
+  } catch { return 'unknown'; }
+};
+
 export type MusicPublicationReadinessState = "hidden" | "setup-required" | "published-hidden" | "live" | "unavailable";
 
 export interface MusicPublicationReadiness {

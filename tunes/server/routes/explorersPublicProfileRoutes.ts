@@ -11,7 +11,7 @@ const rateLimited = { version: "explorers-public-error/v1", error: { code: "RATE
 
 export function setupExplorersPublicProfileRoutes(
   app: Express,
-  dependencies: { shell?(username: string, options?: { bypassCache?: boolean }): Promise<unknown | undefined>; category(username: string, category: PublicCategory, limit: number, options?: { bypassCache?: boolean }): Promise<unknown | undefined>; detail?(username: string, category: PublicCategory, slug: string, limit: number, options?: { bypassCache?: boolean }): Promise<unknown | undefined> },
+  dependencies: { shell?(username: string, options?: { bypassCache?: boolean }): Promise<unknown | undefined>; category(username: string, category: PublicCategory, limit: number, options?: { bypassCache?: boolean; cursor?: string }): Promise<unknown | undefined>; detail?(username: string, category: PublicCategory, slug: string, limit: number, options?: { bypassCache?: boolean; cursor?: string }): Promise<unknown | undefined> },
   options: { rateLimit?: { windowMs?: number; limit?: number } } = {},
 ): void {
   app.use("/api/explorers/v1/profiles", rateLimit({
@@ -36,11 +36,11 @@ export function setupExplorersPublicProfileRoutes(
     return res.status(200).json(value);
   });
   app.get("/api/explorers/v1/profiles/:username/recommendations/:category", async (req, res) => {
-    let parsed: { username: string; category: PublicCategory; limit: number };
-    try { parsed = parsePublicProfileRequest({ username: req.params.username, category: req.params.category, limit: req.query.limit }); }
+    let parsed: { username: string; category: PublicCategory; limit: number; cursor?: string };
+    try { parsed = parsePublicProfileRequest({ username: req.params.username, category: req.params.category, limit: req.query.limit, cursor: req.query.cursor }); }
     catch { return res.status(400).json(badRequest); }
     let value: unknown | undefined;
-    try { value = await dependencies.category(parsed.username, parsed.category, parsed.limit, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? "") }); }
+    try { value = await dependencies.category(parsed.username, parsed.category, parsed.limit, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? ""), cursor: parsed.cursor }); }
     catch {
       return res.status(503).json(unavailable);
     }
@@ -52,11 +52,11 @@ export function setupExplorersPublicProfileRoutes(
     return res.status(200).json(value);
   });
   app.get("/api/explorers/v1/profiles/:username/recommendations/:category/:slug", async (req, res) => {
-    let parsed: { username: string; category: PublicCategory; slug: string; limit: number };
-    try { parsed = parsePublicProfileDetailRequest({ username: req.params.username, category: req.params.category, slug: req.params.slug, limit: req.query.limit }); }
+    let parsed: { username: string; category: PublicCategory; slug: string; limit: number; cursor?: string };
+    try { parsed = parsePublicProfileDetailRequest({ username: req.params.username, category: req.params.category, slug: req.params.slug, limit: req.query.limit, cursor: req.query.cursor }); }
     catch { return res.status(400).json(badRequest); }
     let value: unknown | undefined;
-    try { value = await dependencies.detail?.(parsed.username, parsed.category, parsed.slug, parsed.limit, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? "") }); }
+    try { value = await dependencies.detail?.(parsed.username, parsed.category, parsed.slug, parsed.limit, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? ""), cursor: parsed.cursor }); }
     catch { return res.status(503).json(unavailable); }
     if (!value) return res.status(404).json(notFound);
     const etag = `"${createHash("sha256").update(JSON.stringify(value)).digest("base64url")}"`;

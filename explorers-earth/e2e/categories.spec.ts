@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { setupMockAuthentication } from "./setup/auth";
+import { denyHostedEgress } from "./setup/deny-hosted-egress";
 
 const consoleIssues = new WeakMap<Page, string[]>();
 const failedResponses = new WeakMap<Page, string[]>();
@@ -49,6 +50,7 @@ const user = {
 };
 
 test.beforeEach(async ({ context, page }) => {
+  await denyHostedEgress(page);
   await setupMockAuthentication(context);
   await page.route("**/__localtunes/api/music/identity/ensure", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
@@ -93,6 +95,8 @@ test.beforeEach(async ({ context, page }) => {
       operation === "MusicIdentityEligibility" ||
       operation === "SettingsAccount" ||
       operation === "RecommendationsHubAccount" ||
+      operation === "CategoryNavigationAccount" ||
+      operation === "GetCurrentUser" ||
       operation === "user"
     ) {
       return route.fulfill({

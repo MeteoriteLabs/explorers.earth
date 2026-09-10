@@ -9,10 +9,8 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
-import { useQuery as useApolloQuery } from "@apollo/client";
 import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { getUserMobileNumberQuery } from "../api/query";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -108,6 +106,7 @@ ProfileSkeleton.displayName = "ProfileSkeleton";
 const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
   const musicAvailability = usePublicMusicAvailability();
   const musicLandingHandled = useRef<string>();
@@ -126,11 +125,11 @@ const PublicProfile = memo(() => {
   const themeStyles = getThemeTokenStyles(themeSettings);
 
   useEffect(() => {
-    if (loading || themeSettings.landingTab !== "music" || musicAvailability.state === "loading") return;
+    if (location.key !== "default" || loading || themeSettings.landingTab !== "music" || musicAvailability.state === "loading") return;
     if (musicLandingHandled.current === username) return;
     musicLandingHandled.current = username;
     if (musicAvailability.state === "available") navigate(`/${username}/music`, { replace: true });
-  }, [loading, musicAvailability.state, navigate, themeSettings.landingTab, username]);
+  }, [loading, location.key, musicAvailability.state, navigate, themeSettings.landingTab, username]);
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {
@@ -139,16 +138,10 @@ const PublicProfile = memo(() => {
     }
   }, [hasUsableData, loading, outletContext]);
 
-  // Fetch mobile number ONLY when visibility is explicitly enabled
-  // This prevents the mobile number from ever being in the response unless visibility is set
-  const { data: mobileData } = useApolloQuery(getUserMobileNumberQuery, {
-    variables: {
-      documentId: accountData?.documentId,
-    },
-    skip: !accountData?.documentId || !accountData?.mobile_number_visibility,
-  });
-
-  const mobileNumber = mobileData?.account?.mobile_number;
+  // The protected public-profile gateway includes this field only when the
+  // account has opted into mobile-number visibility. Never fall back to a
+  // browser-side Strapi request for it.
+  const mobileNumber = accountData?.mobile_number;
 
   // Analytics tracking - initialize after accountData is available
   const analytics = useTrackAnalytics(
@@ -692,7 +685,7 @@ const PublicProfile = memo(() => {
               )}
             {showMobileIcon && (
               <a
-                href={`sms:+${mobileNumber}`}
+                href={`sms:${mobileNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Send SMS"

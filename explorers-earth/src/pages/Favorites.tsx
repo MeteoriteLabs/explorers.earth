@@ -1,3 +1,6 @@
+import { NavigationStatus } from "../features/navigation/NavigationStatus";
+import type { IntentAuthority } from "../features/navigation/categoryNavigationPolicy";
+import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Recommendations from "../features/Favorites/components/Recommendations";
@@ -18,7 +21,7 @@ import RecommendationCardSkeleton from "../components/ui/RecommendationCardSkele
 import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
 import { KeyValuePair } from "../features/Favorites/components/RecommendForm";
-import { updateRecommendedListMutation, updateAccountVisibility } from "../features/Favorites/api/mutation";
+import { updateRecommendedListMutation } from "../features/Favorites/api/mutation";
 import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
@@ -110,6 +113,8 @@ const FavoritesSkeleton = () => {
 };
 
 const Favorites = memo(() => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_recommendations === "Yes";
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
   const location = useLocation();
@@ -140,6 +145,7 @@ const Favorites = memo(() => {
     isOpen: boolean;
     categoryName: string;
     visibilityField: string;
+    origin?: IntentAuthority;
     defaultValue: boolean;
   } | null>(null);
 
@@ -149,12 +155,14 @@ const Favorites = memo(() => {
     listDocumentId: string;
   } | null>(null);
 
+  const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
-    if (location.state?.justCreatedList && accountById) {
-      const acc = accountById?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_recommendations === "Yes"; // strict opt-in
-      if (!isPublic) {
+    if (location.state?.justCreatedList && navigation.authority && promptedLocation.current !== location.key) {
+      promptedLocation.current = location.key;
+      const isPublic = navigation.snapshot?.visibility.public_recommendations === "Yes"; // strict opt-in
+      if (!isPublic && navigation.authority) {
         setVisibilityPrompt({
+          origin: navigation.authority,
           isOpen: true,
           categoryName: "Places",
           visibilityField: "public_recommendations",
@@ -164,7 +172,7 @@ const Favorites = memo(() => {
       // Clear location state
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, accountById]);
+  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
   useEffect(() => {
     const handleWindowClick = () => {
@@ -239,44 +247,9 @@ const Favorites = memo(() => {
     fetchPolicy: "network-only",
   });
 
-  const [updateVisibility] = useMutation(updateAccountVisibility);
-
-  const handleVisibilityToggle = async () => {
-    const accountData = accountById?.usersPermissionsUser?.accounts?.[0];
-    if (!accountData?.documentId) return;
-
-    const currentValue = accountData.public_recommendations;
-    const newValue = currentValue === "Yes" ? "No" : "Yes";
-
-    if (newValue === "Yes") {
-      const lists = cities?.recommendationLists || [];
-      const hasPublishedList = lists.some((l: any) => l.Visibility === true);
-      if (!hasPublishedList) {
-        toast.error("You must have at least one published place list to make Recommendations public.");
-        return;
-      }
-    }
-
-    try {
-      await updateVisibility({
-        variables: {
-          documentId: accountData.documentId,
-          data: { public_recommendations: newValue }
-        },
-        optimisticResponse: {
-          updateAccount: {
-            __typename: 'Account',
-            documentId: accountData.documentId,
-            public_recommendations: newValue
-          }
-        },
-        refetchQueries: [{ query: accountDataQuery, variables: { documentId: user?.documentId } }]
-      });
-      toast.success(`Public visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch (error) {
-      console.error("Error updating visibility:", error);
-      toast.error("Failed to update visibility");
-    }
+  const handleVisibilityToggle = () => {
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_recommendations", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
   const handleCityVisibilityToggle = async () => {
@@ -498,10 +471,10 @@ const Favorites = memo(() => {
       setActiveTab(t("dashboard.recommendations.recommendationsTab"));
       setStep(2);
 
-      const acc = accountById?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_recommendations === "Yes"; // strict opt-in
-      if (!isPublic) {
+      const isPublic = navigation.snapshot?.visibility.public_recommendations === "Yes"; // strict opt-in
+      if (!isPublic && navigation.authority) {
         setVisibilityPrompt({
+          origin: navigation.authority,
           isOpen: true,
           categoryName: "Places",
           visibilityField: "public_recommendations",
@@ -1071,6 +1044,7 @@ const Favorites = memo(() => {
       />
 
       <div className="bg-dashboard-bg">
+        <NavigationStatus navigation={navigation} />
         <div className="bg-dashboard-bg min-h-screen max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4">
           {(loading || !accountById) ? (
             <div className="flex items-center justify-center min-h-screen">
@@ -1086,8 +1060,9 @@ const Favorites = memo(() => {
                       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
                         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
                           <SwitchButton
-                            isChecked={accountById?.usersPermissionsUser?.accounts?.[0]?.public_recommendations === "Yes"}
+                            isChecked={categoryVisible}
                             onChange={handleVisibilityToggle}
+                            disabled={navigation.busy || !navigation.authority}
                             variant="blue"
                           />
                           <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">Public Visibility</span>
@@ -1127,12 +1102,13 @@ const Favorites = memo(() => {
                           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
                             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
                             <div className="flex items-center gap-2">
-                              <span className={`text-[10px] font-bold uppercase ${accountById?.usersPermissionsUser?.accounts?.[0]?.public_recommendations === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                                {accountById?.usersPermissionsUser?.accounts?.[0]?.public_recommendations === "Yes" ? "Pub" : "Draft"}
+                              <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                                {categoryVisible ? "Pub" : "Draft"}
                               </span>
                               <SwitchButton
-                                isChecked={accountById?.usersPermissionsUser?.accounts?.[0]?.public_recommendations === "Yes"}
+                                isChecked={categoryVisible}
                                 onChange={handleVisibilityToggle}
+                                disabled={navigation.busy || !navigation.authority}
                                 variant="blue"
                               />
                             </div>
@@ -1884,13 +1860,13 @@ const Favorites = memo(() => {
             },
           }}
         />
-        {visibilityPrompt && accountById?.usersPermissionsUser?.accounts?.[0]?.documentId && (
+        {visibilityPrompt && (
           <CategoryVisibilityModal
             isOpen={visibilityPrompt.isOpen}
             onClose={() => setVisibilityPrompt(null)}
             categoryName={visibilityPrompt.categoryName}
-            visibilityField={visibilityPrompt.visibilityField}
-            accountDocumentId={accountById.usersPermissionsUser.accounts[0].documentId}
+            visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
+            accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
             onSuccess={() => {
               refetchCities();
             }}

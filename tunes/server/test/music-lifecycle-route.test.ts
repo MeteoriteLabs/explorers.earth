@@ -1,10 +1,13 @@
 import express from "express";
-import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { setupMusicIdentityBodylessPreflight, setupMusicIdentityRoutes } from "../routes/musicIdentityRoutes";
 import { decisionForRoute } from "../policies/musicSurfacePolicy";
 import { MusicIdentityError } from "../../shared/musicError";
+import { createLoopbackSupertestScope } from "./helpers/loopback-supertest";
+
+const loopback = createLoopbackSupertestScope();
+afterEach(async () => loopback.closeAll());
 
 const status = {
   operationId: "e36d710f-a5d3-4476-9d2f-34226a2af4aa",
@@ -51,7 +54,8 @@ describe("mounted Music lifecycle identity boundary", () => {
   it("returns the durable server operation without exposing local owner IDs", async () => {
     // Break caught: a lifecycle route accepts owner input or leaks numeric/local identity authority.
     const { app, lifecycle } = appFor();
-    const response = await request(app)
+    const { request } = await loopback.open({ app });
+    const response = await request
       .post("/api/music/identity/lifecycle/prepare")
       .set("Authorization", `Bearer ${"b".repeat(32)}`)
       .set("X-Request-Id", "request-prepare")
@@ -78,7 +82,8 @@ describe("mounted Music lifecycle identity boundary", () => {
   it("mounts bodyless authoritative suspension for the real Explorer deactivation flow", async () => {
     // Break caught: Settings blocks Strapi while Music remains active and old C5/socket/public authority survives.
     const { app, lifecycle } = appFor();
-    const response = await request(app).post("/api/music/identity/lifecycle/suspend")
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/lifecycle/suspend")
       .set("Authorization", `Bearer ${"b".repeat(32)}`)
       .set("X-Request-Id", "request-suspend")
       .expect(200);
@@ -90,7 +95,8 @@ describe("mounted Music lifecycle identity boundary", () => {
     const { app, lifecycle } = appFor({
       suspendFromProof: vi.fn(async () => ({ identityStatus: "not_present" as const })),
     });
-    const response = await request(app).post("/api/music/identity/lifecycle/suspend")
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/lifecycle/suspend")
       .set("Authorization", `Bearer ${"b".repeat(32)}`)
       .expect(200);
     expect(response.body).toEqual({ version: "music-lifecycle/v1", identity: { status: "not_present" } });
@@ -99,7 +105,8 @@ describe("mounted Music lifecycle identity boundary", () => {
 
   it("mounts a bodyless authoritative resume for failed Explorer-block compensation", async () => {
     const { app, lifecycle } = appFor();
-    const response = await request(app).post("/api/music/identity/lifecycle/resume")
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/lifecycle/resume")
       .set("Authorization", `Bearer ${"b".repeat(32)}`)
       .set("X-Request-Id", "request-resume")
       .expect(200);
@@ -117,7 +124,8 @@ describe("mounted Music lifecycle identity boundary", () => {
         );
       }),
     });
-    const response = await request(app).post("/api/music/identity/lifecycle/suspend")
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/lifecycle/suspend")
       .set("Authorization", `Bearer ${"b".repeat(32)}`).expect(409);
     expect(response.body).toMatchObject({ error: {
       code: "IDENTITY_PENDING_DELETION", retryable: false,
@@ -128,11 +136,12 @@ describe("mounted Music lifecycle identity boundary", () => {
   it("rejects bodies, query owner hints, and Music credentials on every mutation", async () => {
     // Break caught: lifecycle authority falls back to browser-supplied identity or a C5 token.
     const { app } = appFor();
-    await request(app).post("/api/music/identity/lifecycle/prepare?userId=12")
+    const { request } = await loopback.open({ app });
+    await request.post("/api/music/identity/lifecycle/prepare?userId=12")
       .set("Authorization", `Bearer ${"b".repeat(32)}`).expect(400);
-    await request(app).post("/api/music/identity/lifecycle/boundary")
+    await request.post("/api/music/identity/lifecycle/boundary")
       .set("Authorization", `Bearer ${"b".repeat(32)}`).send({ operationId: status.operationId }).expect(400);
-    await request(app).post("/api/music/identity/lifecycle/cancel")
+    await request.post("/api/music/identity/lifecycle/cancel")
       .set("Authorization", "Bearer music.local.owner.token").expect(401);
   });
 
@@ -141,7 +150,8 @@ describe("mounted Music lifecycle identity boundary", () => {
     const { app } = appFor({
       status: vi.fn(async () => ({ ...status, state: "failed", boundaryCrossed: true, deadLetter: true })),
     });
-    const response = await request(app).get("/api/music/identity/lifecycle/status")
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/music/identity/lifecycle/status")
       .set("Authorization", `Bearer ${"b".repeat(32)}`).expect(200);
     expect(response.body.operation).toMatchObject({ state: "failed", deadLetter: true, retryable: false });
   });
@@ -159,9 +169,10 @@ describe("mounted Music lifecycle identity boundary", () => {
     });
     const headers = { Authorization: `Bearer ${"b".repeat(32)}` };
 
-    const cancelledResponse = await request(app).post("/api/music/identity/lifecycle/cancel")
+    const { request } = await loopback.open({ app });
+    const cancelledResponse = await request.post("/api/music/identity/lifecycle/cancel")
       .set(headers).expect(200);
-    const reloadResponse = await request(app).get("/api/music/identity/lifecycle/status")
+    const reloadResponse = await request.get("/api/music/identity/lifecycle/status")
       .set(headers).expect(200);
     const expected = {
       version: "music-lifecycle/v1",
@@ -186,9 +197,10 @@ describe("mounted Music lifecycle identity boundary", () => {
   it("applies new-entry admission to prepare without blocking durable recovery", async () => {
     // Break caught: a disabled cohort can start deletion, or the kill switch strands an existing operation.
     const { app, lifecycle } = appFor({}, { entryEnabled: () => false });
-    await request(app).post("/api/music/identity/lifecycle/prepare")
+    const { request } = await loopback.open({ app });
+    await request.post("/api/music/identity/lifecycle/prepare")
       .set("Authorization", `Bearer ${"b".repeat(32)}`).expect(503);
-    await request(app).get("/api/music/identity/lifecycle/status")
+    await request.get("/api/music/identity/lifecycle/status")
       .set("Authorization", `Bearer ${"b".repeat(32)}`).expect(200);
     expect(lifecycle.prepareDeletion).not.toHaveBeenCalled();
     expect(lifecycle.status).toHaveBeenCalledOnce();

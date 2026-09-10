@@ -1,6 +1,32 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { hashGuestCapability } from "../../policies/musicSurfacePolicy";
 import { resolveAnalyticsStrapiAccessToken, resolveFriendlyMusicAnalyticsTarget, resolvePublicMusicAnalyticsTarget } from "../explorers-analytics-composition";
+
+vi.mock("dotenv", () => {
+  throw new Error("DEFAULT_TEST_DOTENV_IMPORT_FORBIDDEN");
+});
+
+const databaseBoundary = vi.hoisted(() => {
+  const unexpected: string[] = [];
+  const reject = (operation: string) => (..._args: unknown[]): never => {
+    unexpected.push(operation);
+    throw new Error(`Unexpected database use: ${operation}`);
+  };
+  return {
+    unexpected,
+    pool: {
+      query: reject("pool.query"),
+      connect: reject("pool.connect"),
+      end: reject("pool.end"),
+    },
+  };
+});
+
+vi.mock("../../db", () => ({ pool: databaseBoundary.pool }));
+
+afterEach(() => {
+  expect(databaseBoundary.unexpected).toEqual([]);
+});
 
 describe("resolveAnalyticsStrapiAccessToken", () => {
   it("uses the dedicated analytics token instead of the shared Strapi token", () => {

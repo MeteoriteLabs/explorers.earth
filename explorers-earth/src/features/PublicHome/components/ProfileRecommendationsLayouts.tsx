@@ -1,7 +1,9 @@
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type CSSProperties,
@@ -13,6 +15,9 @@ import type {
   RecommendationsLayout,
 } from "../../Profile/types/themeTypes";
 import PublicPlaceCard from "./PublicPlaceCard";
+import { resolvePublicPlaceImage } from "./publicPlaceMedia";
+import type { PublicPageContinuation } from "../api/usePublicPagedResource";
+import { PublicScrollContinuation } from "./PublicScrollContinuation";
 
 export interface RecommendationListCardViewModel {
   id: string;
@@ -31,6 +36,8 @@ export interface RecommendationCategoryReadyViewModel {
   icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   lists: RecommendationListCardViewModel[];
   listCount: number;
+  listCountIsLowerBound?: boolean;
+  continuation?: PublicPageContinuation;
   itemCountLabel?: string;
   href: string;
 }
@@ -46,6 +53,7 @@ export interface RecommendationCategoryErrorViewModel {
   id: RecommendationCategoryId;
   label: string;
   retry: () => Promise<unknown>;
+  continuation?: PublicPageContinuation;
 }
 
 export type RecommendationCategorySlotViewModel =
@@ -92,10 +100,12 @@ const categoryImages = (
   category: RecommendationCategoryReadyViewModel,
   cap: number,
 ) => {
-  const images = category.lists.flatMap((list) => [
-    list.image,
-    ...(list.previewImages || []),
-  ]);
+  const images = category.lists.flatMap((list) => category.id === "places"
+    ? [resolvePublicPlaceImage({
+        itemMedia: list.image,
+        itemPhotos: list.previewImages,
+      })]
+    : [list.image, ...(list.previewImages || [])]);
   const unique = Array.from(
     new Set(images.filter((image): image is string => Boolean(image))),
   );
@@ -159,6 +169,36 @@ const UnavailableCategory = ({ slot }: { slot: RecommendationCategoryErrorViewMo
   );
 };
 
+const continuationLabel = (id: RecommendationCategoryId) => ({
+  places: "city lists", movies: "movie lists", books: "book lists", games: "game lists",
+  guides: "guides", apps: "app lists", products: "product lists", people: "people lists", music: "music lists",
+})[id];
+
+const ClassicShelf = ({ slot }: { slot: RecommendationCategoryReadyViewModel }) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
+  const mountScrollRoot = useCallback((element: HTMLDivElement | null) => {
+    scrollRef.current = element;
+    setScrollRoot(element);
+  }, []);
+  return (
+    <section data-category-id={slot.id} className="space-y-3">
+      <Link to={slot.href} aria-label={`Open ${slot.label}`} className="profile-presentation-focus inline-flex min-h-12 max-w-full items-center rounded-lg">
+        <CategoryHeading category={slot} />
+      </Link>
+      <div ref={mountScrollRoot} className="flex gap-4 overflow-x-auto px-1 pb-4 pt-2 scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+        {slot.lists.map((list) => (
+          <PublicPlaceCard key={list.id} title={list.title}
+            image={slot.id === "places" ? resolvePublicPlaceImage({ itemMedia: list.image, itemPhotos: list.previewImages }) : list.image}
+            previewImages={slot.id === "places" ? undefined : list.previewImages}
+            subtitle={list.subtitle} href={list.href} />
+        ))}
+        {slot.continuation && scrollRoot && <PublicScrollContinuation {...slot.continuation} root={scrollRoot} label={continuationLabel(slot.id)} className="min-w-48 shrink-0" />}
+      </div>
+    </section>
+  );
+};
+
 const ClassicShelves = ({
   slots,
 }: {
@@ -169,34 +209,13 @@ const ClassicShelves = ({
       if (slot.status === "loading") {
         return <LoadingCategory key={slot.id} slot={slot} />;
       }
-      if (slot.status === "error") return <UnavailableCategory key={slot.id} slot={slot} />;
-
-      return (
-        <section key={slot.id} data-category-id={slot.id} className="space-y-3">
-          <Link
-            to={slot.href}
-            aria-label={`Open ${slot.label}`}
-            className="profile-presentation-focus inline-flex min-h-12 max-w-full items-center rounded-lg"
-          >
-            <CategoryHeading category={slot} />
-          </Link>
-          <div
-            className="flex gap-4 overflow-x-auto px-1 pb-4 pt-2 scrollbar-hide"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {slot.lists.slice(0, 12).map((list) => (
-              <PublicPlaceCard
-                key={list.id}
-                title={list.title}
-                image={list.image}
-                previewImages={list.previewImages}
-                subtitle={list.subtitle}
-                href={list.href}
-              />
-            ))}
-          </div>
-        </section>
+      if (slot.status === "error") return (
+        <div key={slot.id}>
+          <UnavailableCategory slot={slot} />
+          {slot.continuation && <PublicScrollContinuation {...slot.continuation} label={continuationLabel(slot.id)} />}
+        </div>
       );
+      return <ClassicShelf key={slot.id} slot={slot} />;
     })}
   </div>
 );
@@ -249,7 +268,7 @@ const CategoryMosaic = ({
                 {slot.label}
               </h2>
               <span className="mt-1 block font-poppins text-xs text-[var(--text-secondary)]">
-                {slot.listCount.toLocaleString()} {slot.listCount === 1 ? "list" : "lists"}
+                {slot.listCount.toLocaleString()}{slot.listCountIsLowerBound ? "+" : ""} {slot.listCount === 1 ? "list" : "lists"}
                 {slot.itemCountLabel ? ` · ${slot.itemCountLabel}` : ""}
               </span>
             </span>
@@ -309,7 +328,7 @@ const FeaturedCategory = ({
             {category.label}
           </h2>
           <span className="mt-2 block font-poppins text-sm text-white/80">
-            {category.listCount.toLocaleString()} {category.listCount === 1 ? "list" : "lists"}
+            {category.listCount.toLocaleString()}{category.listCountIsLowerBound ? "+" : ""} {category.listCount === 1 ? "list" : "lists"}
             {category.itemCountLabel ? ` · ${category.itemCountLabel}` : ""}
           </span>
         </span>
@@ -366,7 +385,7 @@ const FeaturedFirst = ({
                     {slot.label}
                   </h2>
                   <span className="mt-1 block truncate font-poppins text-xs text-[var(--text-secondary)]">
-                    {slot.listCount.toLocaleString()} {slot.listCount === 1 ? "list" : "lists"}
+                    {slot.listCount.toLocaleString()}{slot.listCountIsLowerBound ? "+" : ""} {slot.listCount === 1 ? "list" : "lists"}
                     {slot.itemCountLabel ? ` · ${slot.itemCountLabel}` : ""}
                   </span>
                 </span>

@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import ReactPlayer from "react-player";
 import type { PublicMusicSong } from "../publicMusicClient";
+import { PublicMusicArtwork } from './PublicMusicArtwork';
+import { createYouTubePlayerConfig, isYouTubeEmbedRejection, youTubeWatchUrl } from "./youtubePlayerConfig";
 
 export interface PublicMusicPlayerProps {
   song: PublicMusicSong;
   allowed?: boolean;
+  actionsEnabled?: boolean;
   onPlaybackStart?: () => void;
 }
 
@@ -28,20 +31,28 @@ function mediaErrorMessage(cause: unknown): string | null {
   return "Playback is unavailable right now. Choose another track or try again.";
 }
 
-export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: PublicMusicPlayerProps) {
+export function PublicMusicPlayer({ song, allowed = true, actionsEnabled = true, onPlaybackStart }: PublicMusicPlayerProps) {
   const [playing, setPlaying] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [embedRejected, setEmbedRejected] = useState(false);
   const mediaRef = useRef<HTMLVideoElement | null>(null);
   const generation = useRef(0);
   const playbackAcknowledged = useRef(false);
+  const pendingAvailabilityPause = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!actionsEnabled && playing) pendingAvailabilityPause.current = true;
+  }, [actionsEnabled, playing]);
 
   useEffect(() => {
     generation.current += 1;
     setPlaying(false);
     setMessage("");
     setError("");
+    setEmbedRejected(false);
     playbackAcknowledged.current = false;
+    pendingAvailabilityPause.current = false;
     return () => { generation.current += 1; };
   }, [allowed, song.id]);
 
@@ -50,12 +61,14 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
   const toggle = async () => {
     setError("");
     if (playing) {
+      pendingAvailabilityPause.current = false;
       mediaRef.current?.pause();
       setPlaying(false);
       playbackAcknowledged.current = false;
       setMessage(`${song.title} is paused`);
       return;
     }
+    if (!actionsEnabled) return;
     const requestGeneration = generation.current;
     try {
       await mediaRef.current?.play();
@@ -69,8 +82,10 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
   };
 
   const handleError = (cause: unknown) => {
+    pendingAvailabilityPause.current = false;
     setPlaying(false);
     playbackAcknowledged.current = false;
+    setEmbedRejected(isYouTubeEmbedRejection(cause));
     const normalized = mediaErrorMessage(cause);
     if (normalized === null) {
       setError("");
@@ -82,19 +97,20 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
   };
 
   return (
-    <div className="mt-3 min-w-0 rounded-xl bg-dashboard-card p-4">
+    <div className="public-music__device">
       <div className="flex min-w-0 items-center gap-3">
-        {song.thumbnailUrl ? <img className="h-14 w-14 shrink-0 rounded object-cover" src={song.thumbnailUrl} alt="" /> : null}
+        <PublicMusicArtwork url={song.thumbnailUrl} className="public-music__song-art" />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{song.title}</p>
-          <p className="truncate text-sm text-dashboard-text-muted">{song.artist}</p>
+          <p className="truncate text-sm public-music__muted">{song.artist}</p>
         </div>
         <button
           type="button"
           aria-label={playing ? `Pause ${song.title}` : `Play ${song.title} on this device`}
           aria-pressed={playing}
+          disabled={!actionsEnabled && !playing}
           onClick={() => { void toggle(); }}
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-dashboard-accent text-[var(--dash-accent-text)]"
+          className="public-music__device-toggle public-music__primary"
         >
           {playing ? <Pause aria-hidden="true" className="h-5 w-5 fill-current" /> : <Play aria-hidden="true" className="h-5 w-5 fill-current" />}
         </button>
@@ -103,17 +119,25 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
         <ReactPlayer
           ref={mediaRef}
           src={`https://www.youtube.com/watch?v=${song.youtubeId}`}
-          playing={playing}
+          config={createYouTubePlayerConfig()}
+          playing={playing && actionsEnabled}
           width="100%"
           height="100%"
           onPlay={() => {
+            if (!actionsEnabled) { pendingAvailabilityPause.current = true; mediaRef.current?.pause(); return; }
+            pendingAvailabilityPause.current = false;
             setPlaying(true);
             if (!playbackAcknowledged.current) {
               playbackAcknowledged.current = true;
               onPlaybackStart?.();
             }
           }}
-          onPause={() => { setPlaying(false); playbackAcknowledged.current = false; }}
+          // YouTube can acknowledge our forced pause after availability returns.
+          // Consume that acknowledgement without cancelling the retained intent.
+          onPause={() => {
+            if (pendingAvailabilityPause.current) { pendingAvailabilityPause.current = false; return; }
+            if (actionsEnabled) { setPlaying(false); playbackAcknowledged.current = false; }
+          }}
           onEnded={() => {
             setPlaying(false);
             playbackAcknowledged.current = false;
@@ -122,8 +146,9 @@ export function PublicMusicPlayer({ song, allowed = true, onPlaybackStart }: Pub
           onError={handleError}
         />
       </div>
-      {message ? <p role="status" aria-live="polite" className="mt-3 text-sm text-dashboard-text-muted">{message}</p> : null}
-      {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
+      {message ? <p role="status" aria-live="polite" className="mt-3 text-sm public-music__muted">{message}</p> : null}
+      {error ? <p role="alert" className="public-music__feedback">{error}</p> : null}
+      {embedRejected ? <a className="public-music__secondary" href={youTubeWatchUrl(song.youtubeId)} target="_blank" rel="noreferrer">Watch {song.title} on YouTube</a> : null}
     </div>
   );
 }

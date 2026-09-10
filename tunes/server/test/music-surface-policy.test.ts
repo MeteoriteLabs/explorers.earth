@@ -14,6 +14,22 @@ const repositoryRoot = resolve(import.meta.dirname, "../../..");
 
 describe("Music surface authorization policy", () => {
   it.each([
+    "/api/explorers/v1/profiles/:username",
+    "/api/explorers/v1/profiles/:username/recommendations/:category",
+    "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
+  ])("classifies only the implemented GET public profile surface: %s", (path) => {
+    expect(decisionForRoute({ method: "GET", path, classification: "private" })).toBe("public");
+    expect(decisionForRoute({ method: "POST", path, classification: "private" })).toBe("tombstone");
+    expect(decisionForRoute({ method: "GET", path, classification: "tombstone" })).toBe("tombstone");
+    expect(decisionForRoute({ method: "GET", path, classification: "admin-tombstone" })).toBe("admin-tombstone");
+  });
+
+  it("does not make unknown public profile paths public", () => {
+    expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles/:username/admin", classification: "private" })).toBe("tombstone");
+    expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles", classification: "private" })).toBe("tombstone");
+  });
+
+  it.each([
     ["entitled", "2026-08-14T09:50:00.000Z", "2026-08-14T10:00:00.000Z", true],
     ["entitled", "2026-08-14T09:49:59.999Z", "2026-08-14T10:00:00.000Z", false],
     ["included", "2026-08-14T09:59:00.000Z", "2026-08-14T10:00:00.000Z", false],

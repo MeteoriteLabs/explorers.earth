@@ -1,11 +1,40 @@
 import express from "express";
-import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildSitemapXml, EXPLORERS_STATIC_SITEMAP_URLS, setupSeoRoutes } from "../../seo-routes";
+import { createLoopbackSupertestScope } from "../../test/helpers/loopback-supertest";
+
+vi.mock("dotenv", () => {
+  throw new Error("DEFAULT_TEST_DOTENV_IMPORT_FORBIDDEN");
+});
+
+const storageBoundary = vi.hoisted(() => {
+  const unexpected: string[] = [];
+  return {
+    unexpected,
+    storage: new Proxy({}, {
+      get(_target, property): never {
+        unexpected.push(String(property));
+        throw new Error(`Unexpected storage use: ${String(property)}`);
+      },
+    }),
+  };
+});
+
+vi.mock("../../storage", () => ({ storage: storageBoundary.storage }));
 
 describe("explorers sitemap static pages", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
+  const loopback = createLoopbackSupertestScope();
+
+  afterEach(async () => {
+    try {
+      expect(storageBoundary.unexpected).toEqual([]);
+    } finally {
+      try {
+        await loopback.closeAll();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    }
   });
 
   it("includes the About and Use Cases marketing routes", () => {
@@ -21,7 +50,8 @@ describe("explorers sitemap static pages", () => {
     const app = express();
     setupSeoRoutes(app);
 
-    const response = await request(app).get("/api/explorers-sitemap.xml");
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/explorers-sitemap.xml");
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toMatch(/application\/xml/);
@@ -36,7 +66,8 @@ describe("explorers sitemap static pages", () => {
       listPublishedMusicPlaylists: async () => [{ guestUrl: "active-public", updatedAt: new Date("2026-08-14T00:00:00Z") }],
     });
 
-    const response = await request(app).get("/sitemap.xml");
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/sitemap.xml");
 
     expect(response.status).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");

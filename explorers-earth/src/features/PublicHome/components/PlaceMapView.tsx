@@ -1,4 +1,5 @@
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { memo, useState, useCallback, useEffect } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import Button from "../../../components/ui/Button";
@@ -160,7 +161,7 @@ const PlaceMapView = memo(() => {
               type="button"
               onClick={() => navigate(`/${username}/places/${place}`)}
               className="min-h-11 rounded-xl border px-4 py-2 font-poppins text-sm font-semibold"
-              style={{ borderColor: "var(--border-card, #ffffff1a)" }}
+              style={{ borderColor: "var(--category-control-border, var(--border-card, #ffffff1a))" }}
             >
               Back to Places
             </button>
@@ -179,7 +180,7 @@ const PlaceMapView = memo(() => {
         <div className="text-center max-w-sm">
           {Boolean(error) && hasUsableData && <PublicRoutePartialNotice message="Some map data is unavailable." />}
           <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
-          <p className="mb-5" style={{ color: "var(--text-secondary, #9ca3af)" }}>
+          <p className="mb-5" style={{ color: "var(--category-muted, var(--text-secondary, #9ca3af))" }}>
             Your saved places are still available in the list while the map service reconnects.
           </p>
           <button
@@ -188,7 +189,7 @@ const PlaceMapView = memo(() => {
             className="min-h-11 rounded-xl border px-4 py-2 font-poppins text-sm font-semibold"
             style={{
               background: "var(--bg-card, #111827)",
-              borderColor: "var(--border-card, #ffffff1a)",
+              borderColor: "var(--category-control-border, var(--border-card, #ffffff1a))",
               color: "var(--text-primary, #fff)",
             }}
           >
@@ -247,19 +248,19 @@ const PlaceMapView = memo(() => {
           onClickHandler={() =>
             navigate(`/${username}/places/${place}`)
           }
-          className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
+          className="bg-[var(--category-accent,hsl(var(--blue-cta)))] hover:bg-[var(--category-accent,hsl(var(--blue-final)))]"
         />
       </div>
       {/* Fullscreen Button (Four Corners Button - Top Right of Second Row / aligned with MapView) */}
       <button
         onClick={toggleFullscreen}
-        className="absolute top-14 right-3 z-50 bg-white hover:bg-gray-100 text-gray-700 p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-gray-200"
+        className="absolute top-14 right-3 z-50 bg-[var(--category-panel,#FFFFFF)] hover:bg-[var(--category-hover,#F3F4F6)] text-[var(--category-muted,#374151)] p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-[var(--category-control-border,#E5E7EB)]"
         aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
       >
         {isFullscreen ? (
-          <Minimize2 className="w-4 h-4 text-gray-700" />
+          <Minimize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
         ) : (
-          <Maximize2 className="w-4 h-4 text-gray-700" />
+          <Maximize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
         )}
       </button>
       <div className="absolute bottom-[13rem] w-full  flex flex-row gap-2 items-center flex-nowrap whitespace-nowrap  py-4 overflow-x-auto " style={{ scrollbarWidth: "none" }}>
@@ -307,4 +308,4 @@ const PlaceMapView = memo(() => {
   );
 });
 
-export default PlaceMapView;
+export default withGoogleMapsProvider(PlaceMapView);

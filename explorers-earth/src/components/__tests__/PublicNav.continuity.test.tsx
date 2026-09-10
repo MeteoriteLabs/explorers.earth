@@ -4,17 +4,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PublicNav from '../PublicNav';
 
 const usePublicRecommendationCategory = vi.hoisted(() => vi.fn(() => ({ data: undefined, loading: false, error: null, refetch: vi.fn() })));
+const musicAvailability = vi.hoisted(() => ({ state: 'available', account: null as Record<string, unknown> | null }));
+const availableAccount = {
+  documentId: 'account-1', username: 'alice', public_profile: 'Yes', public_books: 'Yes',
+  public_recommendations: 'No', public_guides: 'No', public_music: 'Yes', public_movie: 'No',
+  public_games: 'No', public_apps: 'No', public_products: 'No', public_people: 'No',
+  pinned_nav_tabs: ['public_profile', 'public_music', 'public_books'], auto_pinning: false,
+};
 vi.mock('../../features/PublicHome/api/usePublicRecommendationCategory', () => ({ usePublicRecommendationCategory }));
 
 vi.mock('../../features/music/PublicMusicAvailabilityProvider', () => ({
   usePublicMusicAvailability: () => ({
-    state: 'available',
-    account: {
-      documentId: 'account-1', username: 'alice', public_profile: 'Yes', public_books: 'Yes',
-      public_recommendations: 'No', public_guides: 'No', public_music: 'No', public_movie: 'No',
-      public_games: 'No', public_apps: 'No', public_products: 'No', public_people: 'No',
-      pinned_nav_tabs: ['public_profile', 'public_books'], auto_pinning: false,
-    },
+    state: musicAvailability.state,
+    account: musicAvailability.account,
   }),
 }));
 
@@ -52,6 +54,8 @@ describe('PublicNav immediate semantic activation', () => {
   const frameCallbacks: FrameRequestCallback[] = [];
 
   beforeEach(() => {
+    musicAvailability.state = 'available';
+    musicAvailability.account = availableAccount;
     window.history.replaceState(null, '', '/alice/books');
     frameCallbacks.length = 0;
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
@@ -119,5 +123,45 @@ describe('PublicNav immediate semantic activation', () => {
     expect(preventedProfile).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('link', { name: 'Books', exact: true })).toHaveAttribute('aria-current', 'page');
     expect(prevented.pushes).toHaveLength(0);
+  });
+
+  it.each(['loading', 'unavailable'])("keeps a manually pinned Music tab during a transient %s check", state => {
+    musicAvailability.state = state;
+    renderHeldRouter('/alice/books');
+
+    expect(screen.getByRole('link', { name: 'Music', exact: true })).toBeInTheDocument();
+  });
+
+  it('removes Music when the publication is conclusively not public', () => {
+    musicAvailability.state = 'not-public';
+    renderHeldRouter('/alice/books');
+
+    expect(screen.queryByRole('link', { name: 'Music', exact: true })).not.toBeInTheDocument();
+  });
+
+  it('uses the same 48px nav band while the provider has no retained account', () => {
+    musicAvailability.state = 'loading';
+    musicAvailability.account = null;
+    renderHeldRouter('/alice/guides');
+
+    const nav = screen.getByRole('navigation', { name: 'Public navigation' });
+    expect(nav).toHaveAttribute('data-public-nav-state', 'loading');
+    expect(nav).toHaveStyle({
+      bottom: 'var(--public-nav-edge-offset)',
+      paddingBottom: 'calc(0.25rem + var(--public-safe-bottom, env(safe-area-inset-bottom, 0px)))',
+      paddingTop: '0.25rem',
+    });
+    expect(nav.firstElementChild?.firstElementChild).toHaveStyle({ height: '2.5rem' });
+  });
+
+  it('uses the 44px control band plus shared safe-area padding when ready', () => {
+    renderHeldRouter('/alice/books');
+    const nav = screen.getByRole('navigation', { name: 'Public navigation' });
+    expect(nav).toHaveAttribute('data-public-nav-state', 'ready');
+    expect(nav).toHaveStyle({
+      bottom: 'var(--public-nav-edge-offset)',
+      paddingBottom: 'calc(0.125rem + var(--public-safe-bottom, env(safe-area-inset-bottom, 0px)))',
+      paddingTop: '0.125rem',
+    });
   });
 });

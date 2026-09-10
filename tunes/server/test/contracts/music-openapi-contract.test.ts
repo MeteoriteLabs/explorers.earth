@@ -2,13 +2,13 @@ import SwaggerParser from "@apidevtools/swagger-parser";
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import express from "express";
-import request from "supertest";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createMusicPublicationIdempotencyKey } from "../../../shared/musicPublicationContract";
 import { inventoryRuntimeSurfaces } from "../../../scripts/inventory-runtime-surfaces";
 import { MUSIC_OPENAPI_DOCUMENT } from "../../routes/musicOpenApiRoutes";
 import { setupCanonicalMusicRoutes } from "../../routes/musicSurfaceRoutes";
+import { createLoopbackSupertestScope } from "../helpers/loopback-supertest";
 
 type Operation = {
   parameters?: Array<{ name?: string; in?: string; required?: boolean }>;
@@ -20,6 +20,8 @@ type Operation = {
 const METHODS = ["get", "post", "patch", "delete", "put"] as const;
 const root = resolve(import.meta.dirname, "../../../..");
 const inventory = inventoryRuntimeSurfaces(root);
+const loopback = createLoopbackSupertestScope();
+afterEach(async () => loopback.closeAll());
 
 function openApiPath(path: string): string {
   return path.replace(/:([A-Za-z][A-Za-z0-9_]*)/g, "{$1}");
@@ -303,6 +305,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
         videoFromUrl: async () => youtubeVideo,
       },
     });
+    const { request } = await loopback.open({ app });
     const ownerRead = { Authorization: "Bearer aaa.bbb.ccc" };
     const ownerWrite = { ...ownerRead, Origin: "https://explorers.example" };
     const guestWrite = { Origin: "https://explorers.example", "X-Music-Guest-Capability": "G".repeat(43), "Idempotency-Key": "openapi-guest-request" };
@@ -338,7 +341,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     const validator = new Ajv2020({ allErrors: true, strict: false });
     addFormats(validator);
     for (const [method, documentedPath, actualPath, status, requestBody, headers] of cases) {
-      let pending = request(app)[method](actualPath).set(headers as Record<string, string>);
+      let pending = request[method](actualPath).set(headers as Record<string, string>);
       if (requestBody !== undefined) pending = pending.send(requestBody);
       const response = await pending;
       expect(response.status, `${method} ${actualPath}`).toBe(status);
@@ -358,7 +361,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       ["delete", "/api/playlist/history", "/api/playlist/history", undefined],
     ] as const;
     for (const [method, documentedPath, actualPath, requestBody] of noContentCases) {
-      let pending = request(app)[method](actualPath).set(ownerWrite);
+      let pending = request[method](actualPath).set(ownerWrite);
       if (requestBody !== undefined) pending = pending.send(requestBody);
       const response = await pending;
       expect(response.status, `${method} ${actualPath}`).toBe(204);
@@ -366,7 +369,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       expect(dereferenced.paths[documentedPath][method].responses["204"]).not.toHaveProperty("content");
     }
 
-    const historyRemove = await request(app)
+    const historyRemove = await request
       .delete("/api/playlist/history/21")
       .set({ ...ownerWrite, "Idempotency-Key": "openapi-history-remove" });
     expect(historyRemove.status, "delete /api/playlist/history/21").toBe(204);

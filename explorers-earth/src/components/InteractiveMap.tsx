@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useMap } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "./GoogleMapsProvider";
 
 interface InteractiveMapProps {
   locations: { lat: number; lng: number }[];
@@ -361,5 +362,5 @@ const InteractiveMap = memo(({ locations, onToggleExpand, defaultMapTypeId = "ro
 
 InteractiveMap.displayName = "InteractiveMap";
 
-export default InteractiveMap;
+export default withGoogleMapsProvider(InteractiveMap);
 

@@ -8,6 +8,7 @@ const harness = vi.hoisted(() => ({
       ) => { headers: Record<string, string> })
     | undefined,
   render: vi.fn(),
+  mapsProvider: vi.fn(({ children }: { children: React.ReactNode }) => children),
 }));
 
 vi.mock("react-dom/client", () => ({
@@ -33,7 +34,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@vis.gl/react-google-maps", () => ({
-  APIProvider: ({ children }: { children: React.ReactNode }) => children,
+  APIProvider: harness.mapsProvider,
 }));
 
 vi.mock("react-helmet-async", () => ({
@@ -56,6 +57,20 @@ describe("Apollo authorization headers", () => {
 
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  it("does not eagerly initialize Google Maps for every application route", () => {
+    const containsMapsProvider = (node: unknown): boolean => {
+      if (!node || typeof node !== "object") return false;
+      const element = node as { type?: unknown; props?: { children?: unknown } };
+      if (element.type === harness.mapsProvider) return true;
+      const children = element.props?.children;
+      return Array.isArray(children)
+        ? children.some(containsMapsProvider)
+        : containsMapsProvider(children);
+    };
+
+    expect(containsMapsProvider(harness.render.mock.calls[0]?.[0])).toBe(false);
   });
 
   it("omits authorization when a public visitor has no session token", () => {

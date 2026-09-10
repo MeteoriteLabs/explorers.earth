@@ -89,7 +89,7 @@ export default function CookieConsent() {
 
     try {
       const consent = JSON.parse(storedConsent);
-      if (consent.analytics) {
+      if (consent?.analytics === true) {
         loadAnalytics();
       }
     } catch {

@@ -257,6 +257,10 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     handleFileChange,
     handleDeleteUserImage,
     handleUploadMedia,
+    mediaStatus,
+    mediaFeedback,
+    retryMediaUpload,
+    continueWithoutImage,
   } = useAddRecommendation({
     places,
     googlePlaceRefId,
@@ -274,6 +278,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     userInputRef,
     fetchedPlace,
   });
+  const hasMediaFailure = mediaStatus === "upload-failed" || mediaStatus === "metadata-failed";
 
   // fetching the created categories
   const {
@@ -962,6 +967,37 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             />
           </div>
 
+          {hasMediaFailure && (
+            <div
+              role="alert"
+              data-media-status={mediaStatus}
+              className="w-full max-w-3xl rounded-xl border border-amber-400/50 bg-amber-400/10 p-4 text-dashboard"
+            >
+              <h2 className="font-poppins text-sm font-semibold">
+                Place saved; image needs attention
+              </h2>
+              <p className="mt-1 font-poppins text-xs text-dashboard-light">
+                {mediaFeedback}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void retryMediaUpload()}
+                  className="min-h-11 rounded-lg bg-dashboard-accent px-4 font-poppins text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  Retry image save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void continueWithoutImage()}
+                  className="min-h-11 rounded-lg border border-dashboard px-4 font-poppins text-sm font-semibold text-dashboard transition-colors hover:border-dashboard-accent"
+                >
+                  Continue without image
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Recommendation Type Selector - Only show for new recommendations (not edit) */}
           {type !== "edit" && (
             <div className="w-full max-w-3xl mb-4 flex flex-row items-center justify-between gap-4">
@@ -1370,17 +1406,17 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
 
                 }`}
               type="button"
-              onClickHandler={isImagesLoading ? undefined : handleButtonClick}
+              onClickHandler={isImagesLoading || hasMediaFailure ? undefined : handleButtonClick}
               endIcon={isImagesLoading ? (
                 <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               ) : <AddIcon size="4" />}
-              variant={isImagesLoading ? "google" : "primary"}
+              variant={isImagesLoading || hasMediaFailure ? "google" : "primary"}
               size="medium"
               className={`w-auto text-sm md:text-base py-2 md:py-3 transition-all duration-300 ${isImagesLoading ? "opacity-60 cursor-not-allowed pointer-events-none" : ""
-                }`}
+                } ${hasMediaFailure ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
             />
           </div>
         </div>

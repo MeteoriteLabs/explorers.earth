@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 
-export interface ChildResult { exitCode: number; stdout: string; stderr: string; }
+export interface ChildResult { exitCode: number; signal: NodeJS.Signals | null; stdout: string; stderr: string; }
 
 export interface OwnedProcessRunnerOptions {
   platform?: NodeJS.Platform;
@@ -47,7 +47,10 @@ export class OwnedProcessRunner {
       child.stdout?.on("data", (chunk) => { stdout += chunk; });
       child.stderr?.on("data", (chunk) => { stderr += chunk; });
       child.once("error", (error) => { this.children.delete(child); reject(error); });
-      child.once("close", (code) => { this.children.delete(child); resolve({ exitCode: code ?? 1, stdout, stderr }); });
+      child.once("close", (code, signal) => {
+        this.children.delete(child);
+        resolve({ exitCode: code ?? 1, signal, stdout, stderr });
+      });
     });
   }
 

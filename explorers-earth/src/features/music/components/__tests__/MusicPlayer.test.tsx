@@ -45,6 +45,17 @@ describe("MusicPlayer", () => {
     expect(screen.getByTestId("primary-media-controls")).toContainElement(screen.getByRole("button", { name: "Play" }));
   });
 
+  it("passes YouTube the current origin and a referrer policy", () => {
+    setup();
+    expect(playerProps.config).toEqual({
+      youtube: {
+        origin: window.location.origin,
+        widget_referrer: window.location.href,
+        referrerpolicy: "strict-origin-when-cross-origin",
+      },
+    });
+  });
+
   it("starts audio-first and reveals video only on request", async () => {
     setup();
     expect(screen.getByTestId("video-surface")).toHaveAttribute("aria-hidden", "true");
@@ -178,6 +189,13 @@ describe("MusicPlayer", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Press play to start this song.");
     await user.click(screen.getByRole("button", { name: "Play" }));
     expect(screen.getByTestId("media")).toHaveAttribute("data-playing", "true");
+  });
+
+  it("keeps the canonical queue intact and offers a direct link after YouTube rejects embedding", () => {
+    const { props } = setup();
+    act(() => (playerProps.onError as (event: unknown) => void)({ currentTarget: { error: { code: 153 } } }));
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "Watch First song on YouTube" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=abcdefghijk");
   });
 
   it("makes exactly two bounded recovery attempts, then skips an unavailable song once", async () => {

@@ -9,8 +9,9 @@ import BookDetailModal from "./BookDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
-import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
+import { isNonNullObject, isPublicProfileNotFound, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileDetail } from "../../../PublicHome/api/usePublicProfileDetail";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const PublicBookList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -21,7 +22,8 @@ const PublicBookList = () => {
     book: null,
   });
 
-  const { data, loading, error, refetch } = usePublicProfileDetail(username, "books", listSlug);
+  const page = usePublicProfileDetail(username, "books", listSlug);
+  const { data, loading, error, refetch } = page;
 
   const rawList = (Array.isArray(data?.bookLists) ? data.bookLists : []).find(
     (value: unknown): value is BookList =>
@@ -58,7 +60,7 @@ const PublicBookList = () => {
   const metaDescription = rawList?.list_description 
     ? rawList.list_description 
     : rawList 
-      ? `Explore the curated book list "${rawList.List_Name}" containing ${books.length} books recommended by ${username} on explorers.`
+      ? `Explore the curated book list "${rawList.List_Name}" containing ${books.length}${page.hasMore ? "+" : ""} books recommended by ${username} on explorers.`
       : "Explore book recommendations on explorers.";
 
   const seoKeywords = rawList 
@@ -81,11 +83,11 @@ const PublicBookList = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-black text-white" aria-busy={loading || undefined}>
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#000)] text-[color:var(--category-text,#fff)]" aria-busy={loading || undefined}>
       <div className="pb-20 px-4 md:px-8 max-w-6xl mx-auto">
         {/* Back link */}
         <div className="py-4">
-          <Link to={`/${username}/books`} className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
+          <Link to={`/${username}/books`} className="flex items-center gap-2 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,#fff)] transition-colors">
             <ArrowLeft size={14} /> All Books
           </Link>
         </div>
@@ -94,28 +96,28 @@ const PublicBookList = () => {
 
         {loading && !hasUsableData ? (
           <div className="space-y-6">
-            <div className="h-8 w-64 bg-white/5 rounded-lg animate-pulse" />
+            <div className="h-8 w-64 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] rounded-lg animate-pulse" />
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
               {[...Array(12)].map((_, i) => (
-                <div key={i} className="aspect-[2/3] bg-white/8 rounded-xl animate-pulse" />
+                <div key={i} className="aspect-[2/3] bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded-xl animate-pulse" />
               ))}
             </div>
           </div>
-        ) : error && !hasUsableData ? (
+        ) : error && !hasUsableData && !isPublicProfileNotFound(error) ? (
           <PublicRouteErrorState title="Book list unavailable" error={error} onRetry={refetch} />
         ) : !rawList ? (
           <div className="text-center py-24">
-            <p className="text-white/40">This list doesn't exist or isn't publicly visible.</p>
+            <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))]">This list doesn't exist or isn't publicly visible.</p>
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold text-white">{rawList.List_Name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-[color:var(--category-text,#fff)]">{rawList.List_Name}</h1>
               {rawList.list_description && (
-                <p className="text-white/50 text-sm mt-1">{rawList.list_description}</p>
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.5))] text-sm mt-1">{rawList.list_description}</p>
               )}
-              <p className="text-white/30 text-xs mt-2">{books.length} book{books.length !== 1 ? "s" : ""}</p>
+              <p className="text-[color:var(--category-muted,rgba(255,255,255,0.3))] text-xs mt-2">{books.length}{page.hasMore ? "+" : ""} book{books.length !== 1 ? "s" : ""}</p>
             </div>
 
             {/* Pinned / Top Reads section */}
@@ -123,8 +125,8 @@ const PublicBookList = () => {
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1.5 h-5 bg-amber-400 rounded-sm" />
-                  <h2 className="text-lg font-bold text-white flex items-center gap-1.5">
-                    <Star size={16} className="text-amber-400" fill="currentColor" /> Top Reads
+                  <h2 className="text-lg font-bold text-[color:var(--category-text,#fff)] flex items-center gap-1.5">
+                    <Star size={16} className="text-[color:var(--category-text,#fbbf24)]" fill="currentColor" /> Top Reads
                   </h2>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -140,8 +142,8 @@ const PublicBookList = () => {
               <div className="mb-8">
                 {pinnedBooks.length > 0 && (
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1.5 h-5 bg-white/30 rounded-sm" />
-                    <h2 className="text-lg font-bold text-white">All Books</h2>
+                    <div className="w-1.5 h-5 bg-[var(--category-skeleton,rgba(255,255,255,0.3))] rounded-sm" />
+                    <h2 className="text-lg font-bold text-[color:var(--category-text,#fff)]">All Books</h2>
                   </div>
                 )}
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -153,10 +155,11 @@ const PublicBookList = () => {
             )}
 
             {books.length === 0 && (
-              <p className="text-center text-white/30 py-16">No books in this list yet.</p>
+              <p className="text-center text-[color:var(--category-muted,rgba(255,255,255,0.3))] py-16">No books in this list yet.</p>
             )}
           </>
         )}
+        <PublicScrollContinuation {...page} label="books" className="mt-6" />
       </div>
 
       <BookDetailModal

@@ -46,6 +46,32 @@ function resource(overrides: Partial<PublicMusicResource> = {}): PublicMusicReso
 }
 
 describe("public Music page", () => {
+  it("hides only the friendly decorative Music title while retaining the focus target", () => {
+    const friendly = render(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} standalone={false} /></MemoryRouter>);
+    const friendlyHeading = screen.getByRole("heading", { name: "Music", level: 1 });
+    expect(friendlyHeading).toHaveAttribute("id", "public-music-heading");
+    expect(friendlyHeading).toHaveAttribute("tabindex", "-1");
+    expect(friendlyHeading).toHaveClass("sr-only");
+    friendly.unmount();
+
+    render(<MemoryRouter><PublicMusicContent state="ready" resource={resource()} standalone /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "Music", level: 1 })).toHaveClass("public-music__heading");
+  });
+  it('reserves music geometry without fabricated data during loading', () => {
+    const view = render(<MemoryRouter><PublicMusicContent state="loading" /></MemoryRouter>);
+    expect(screen.getByRole('status')).toHaveTextContent(/Loading Music/i);
+    expect(view.container.querySelector('[data-music-skeleton]')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+  it('leaves the first loading announcement to the Earth overlay', () => {
+    render(<MemoryRouter><PublicMusicContent state="loading" initialOverlayActive /></MemoryRouter>);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+  it('uses only the existing main on friendly rate-limited routes', () => {
+    render(<MemoryRouter><main><PublicMusicContent state="rate-limited" standalone={false} retryAfterSeconds={10} /></main></MemoryRouter>);
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getByRole('button', {name: 'Retry'})).toBeDisabled();
+  });
   afterEach(() => {
     loadPublicMusic.mockReset();
     subscribeToPublicMusic.mockClear();
@@ -55,9 +81,19 @@ describe("public Music page", () => {
   });
 
   it("uses the unified public 404 for private, missing, and invalid links", () => {
-    render(<MemoryRouter><PublicMusicContent state="not-found" /></MemoryRouter>);
+    render(<MemoryRouter><PublicMusicContent state="not-found" onRetry={vi.fn()} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Music page unavailable" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Return to Explorers" })).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  });
+  it.each(["private", "missing", "invalid"])("renders an actual %s standalone resource failure without Retry or owner detail", async (scenario) => {
+    const { PublicMusicError } = await import("../../features/music/publicMusicClient");
+    loadPublicMusic.mockRejectedValue(new PublicMusicError("PUBLIC_NOT_FOUND"));
+    render(<MemoryRouter initialEntries={[`/music/share/${scenario}-public-slug`]}><Routes><Route path="/music/share/:publicSlug" element={<PublicMusic />} /></Routes></MemoryRouter>);
+    await screen.findByRole("heading", { name: "Music page unavailable" });
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to Explorers" })).toHaveAttribute("href", "/");
+    expect(document.body.textContent).not.toMatch(/account|private|suspended|tombstone|display/i);
   });
 
   it("uses the approved page-level empty copy when nothing is shared", () => {
@@ -90,9 +126,11 @@ describe("public Music page", () => {
       permissions: { ...resource().permissions, allowPlaylistSharing: true },
       playlists: { items: [{ id: "L".repeat(43), name: "Roads", description: null, songs: { items: [saved], total: 1, truncated: false } }], total: 1, truncated: false },
     })} /></MemoryRouter>);
+    const playlists = screen.getByRole("button", { name: "Playlists", exact: true });
+    if (playlists.getAttribute("aria-expanded") !== "true") fireEvent.click(playlists);
     expect(screen.getByRole("heading", { name: "Roads" })).toBeInTheDocument();
     expect(screen.getByText("North")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit|delete|request|choose .* to play/i })).not.toBeInTheDocument();
   });
 
   it("tracks ready navigation and unavailable acknowledgement once per visible transition", async () => {
@@ -129,7 +167,7 @@ describe("public Music page", () => {
       currentlyPlaying: playing,
       queue: { items: [queued], total: 1, truncated: false },
     })} /></MemoryRouter>);
-    expect(screen.getByRole("heading", { name: "Up next" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Queue" })).toBeInTheDocument();
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Up next" })).toHaveTextContent("Next");
     expect(screen.getByRole("list", { name: "Up next" })).not.toHaveTextContent("Now");
@@ -148,6 +186,7 @@ describe("public Music page", () => {
     expect(screen.getByRole("heading", { name: "Music" })).toHaveAttribute("tabindex", "-1");
     expect(screen.getByText("Now")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Up next" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Play on this device", exact: true }));
     expect(screen.getByRole("button", { name: "Play Now on this device" })).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
@@ -226,6 +265,13 @@ describe("public Music page", () => {
     expect(update.revision).toBe(4);
     update.apply();
     expect(loadPublicMusic).toHaveBeenCalledTimes(2);
+    const { PublicMusicError } = await import("../../features/music/publicMusicClient");
+    loadPublicMusic.mockRejectedValue(new PublicMusicError("PUBLIC_NOT_FOUND"));
+    await act(async () => options.onError(new PublicMusicError("PUBLIC_NOT_FOUND")));
+    await screen.findByRole("heading", { name: "Music page unavailable" });
+    expect(screen.queryByRole("heading", { name: "Music" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(window.sessionStorage.getItem("explorers.music.unlisted-capability.v1:public-slug")).toBeNull();
   });
 
   it("retains the standalone resource and subscription after a transient live failure", async () => {

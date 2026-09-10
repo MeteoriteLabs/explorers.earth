@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { resolveMusicSocketTransport } from "./musicDevelopmentTransport";
 import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
 
 const EVENT_KINDS = new Set([
@@ -34,13 +35,17 @@ export function subscribeToPublicMusic(
 ): PublicMusicSubscription {
   const random = dependencies.random ?? Math.random;
   const observability = dependencies.observability ?? publicMusicObservability;
-  const socketFactory = dependencies.socketFactory ?? ((auth) => io(
-    import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
-    {
-      path: "/ws", transports: ["websocket", "polling"], auth,
+  const socketFactory = dependencies.socketFactory ?? ((auth) => {
+    const transport = resolveMusicSocketTransport({
+      development: import.meta.env.DEV,
+      musicOrigin: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
+      browserOrigin: window.location.origin,
+    });
+    return io(transport.origin, {
+      path: transport.path, transports: ["websocket", "polling"], auth,
       reconnection: true, reconnectionDelay: 1_000, reconnectionDelayMax: 30_000, randomizationFactor: 0.2,
-    },
-  ));
+    });
+  });
   const socket = socketFactory({ publicSlug: options.publicSlug, ...(options.capability ? { guestCapability: options.capability } : {}) });
   observability.record("active_session", { outcome: "started" });
   let stopped = false;

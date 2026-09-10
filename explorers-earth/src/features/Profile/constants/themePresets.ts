@@ -117,11 +117,27 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemeTokenConfig> = {
   },
 };
 
+const PUBLIC_CHROME_TOKENS: Record<ThemePresetId, {
+  surface: string;
+  ink: string;
+  icon: string;
+  border: string;
+  focus: string;
+}> = {
+  'cinematic-dark': { surface: '#111827', ink: '#FFFFFF', icon: '#FFFFFF', border: '#9CA3AF', focus: '#10B981' },
+  glassmorphism: { surface: '#0F172A', ink: '#FFFFFF', icon: '#FFFFFF', border: '#94A3B8', focus: '#38BDF8' },
+  'sunset-glow': { surface: '#2D124D', ink: '#FFFFFF', icon: '#FFFFFF', border: '#E9D5FF', focus: '#EC4899' },
+  'minimal-light': { surface: '#FFFFFF', ink: '#0F172A', icon: '#0F172A', border: '#64748B', focus: '#0F172A' },
+  'emerald-nature': { surface: '#064E3B', ink: '#FFFFFF', icon: '#FFFFFF', border: '#A7F3D0', focus: '#A7F3D0' },
+  'neon-cyber': { surface: '#111827', ink: '#FFFFFF', icon: '#FFFFFF', border: '#F43F5E', focus: '#F43F5E' },
+};
+
 export function getThemeTokenStyles(settings?: Partial<ThemeSettings>): Record<string, string> {
   const safeSettings = { ...DEFAULT_THEME_SETTINGS, ...settings };
   const presetConfig = THEME_PRESETS[safeSettings.preset] || THEME_PRESETS['cinematic-dark'];
   const accent = safeSettings.accentColor || presetConfig.defaultAccent;
   const textPrimary = safeSettings.customTextColor || presetConfig.styles.textPrimary;
+  const publicChrome = PUBLIC_CHROME_TOKENS[presetConfig.id];
 
   return {
     '--bg-page': presetConfig.styles.bgPage,
@@ -131,5 +147,24 @@ export function getThemeTokenStyles(settings?: Partial<ThemeSettings>): Record<s
     '--text-secondary': presetConfig.styles.textSecondary,
     '--accent-color': accent,
     '--nav-bg': presetConfig.styles.navBg,
+    '--public-chrome-surface': publicChrome.surface,
+    '--public-chrome-ink': publicChrome.ink,
+    '--public-chrome-icon': publicChrome.icon,
+    '--public-chrome-border': publicChrome.border,
+    '--public-chrome-focus': publicChrome.focus,
+    '--public-chrome-muted': presetConfig.styles.textSecondary,
+    '--public-surface-blur': safeSettings.preset === 'glassmorphism' ? '12px' : '0px',
+    '--public-safe-top': 'env(safe-area-inset-top, 0px)',
+    '--public-safe-right': 'env(safe-area-inset-right, 0px)',
+    '--public-safe-bottom': 'env(safe-area-inset-bottom, 0px)',
+    '--public-safe-left': 'env(safe-area-inset-left, 0px)',
+    '--public-header-reserved-offset': 'calc(var(--public-safe-top) + 80px)',
+    '--z-public-content': '0',
+    '--z-public-map-controls': '40',
+    '--z-public-nav': '80',
+    '--z-public-header': '90',
+    '--z-public-toast': '1000',
+    '--z-public-modal': '2000',
+    '--z-public-cold-overlay': '3000',
   };
 }

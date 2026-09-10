@@ -123,12 +123,12 @@ const PublicPersonSector = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white" aria-busy={loading || undefined}>
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]" aria-busy={loading || undefined}>
         {/* Header content section */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
           <Link
             to={`/${username}/people`}
-            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,rgba(255,255,255,0.8))] transition-colors mb-6"
           >
             <ArrowLeft size={14} /> {creatorName}'s People
           </Link>
@@ -137,18 +137,18 @@ const PublicPersonSector = () => {
 
           {loading && !hasUsableData ? (
             <>
-              <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-              <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
+              <div className="h-7 w-48 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mb-2" />
+              <div className="h-4 w-64 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded" />
             </>
           ) : queryError && !hasUsableData ? (
             <PublicRouteErrorState title="People sector unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
+                <h1 className="text-xl md:text-2xl font-poppins font-bold text-[color:var(--category-text,#fff)] mb-1">
                   {sectorName}
                 </h1>
-                <p className="text-gray-400 font-poppins text-xs md:text-sm mt-2">
+                <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-2">
                   {sectorPeople.length} person{sectorPeople.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -162,12 +162,12 @@ const PublicPersonSector = () => {
             {loading && !hasUsableData ? (
               [1, 2, 3, 4, 5, 6].map((idx) => (
                 <div key={idx} className="flex flex-col items-center gap-3">
-                  <div className="w-24 h-24 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                  <div className="w-20 h-3 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                  <div className="w-24 h-24 rounded-full bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
+                  <div className="w-20 h-3 rounded bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                 </div>
               ))
             ) : sectorPeople.length === 0 ? (
-              <div className="col-span-full py-12 text-center text-white/40 text-sm">
+              <div className="col-span-full py-12 text-center text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm">
                 No people recommended in this sector.
               </div>
             ) : (
@@ -177,7 +177,7 @@ const PublicPersonSector = () => {
                   onClick={() => handlePersonClick(person)}
                   className="flex flex-col items-center gap-2 text-center group"
                 >
-                  <div className="relative w-24 h-24 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-violet-400/50 transition-all shadow-lg group-hover:scale-105 duration-200">
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden bg-[var(--category-card,rgba(255,255,255,0.05))] ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] group-hover:ring-[color:var(--category-focus,rgba(167,139,250,0.5))] transition-all shadow-lg group-hover:scale-105 duration-200">
                     {person.avatar_url ? (
                       <img
                         src={buildImageUrl(person.avatar_url)}
@@ -187,7 +187,7 @@ const PublicPersonSector = () => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Users size={28} className="text-white/20" />
+                        <Users size={28} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))]" />
                       </div>
                     )}
                     {person.platform && (
@@ -197,14 +197,14 @@ const PublicPersonSector = () => {
                     )}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-white line-clamp-1">
+                    <p className="text-xs font-semibold text-[color:var(--category-text,#fff)] line-clamp-1">
                       {person.full_name}
                     </p>
                     {person.handle && (
-                      <p className="text-[10px] text-white/40 truncate">@{person.handle}</p>
+                      <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.4))] truncate">@{person.handle}</p>
                     )}
                     {person.headline && (
-                      <p className="text-[10px] text-white/30 line-clamp-1 mt-0.5">
+                      <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.3))] line-clamp-1 mt-0.5">
                         {person.headline}
                       </p>
                     )}

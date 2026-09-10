@@ -141,59 +141,81 @@ export const accountsDetailQuery = gql`
           Contact_Name
           media_details
         }
-        person_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+      }
+    }
+  }
+`;
+
+// Optional enrichments for a selected Places list. These are deliberately
+// separate from accountsDetailQuery: anonymous Strapi permissions may reject
+// these relations, and that must never hide the account's core Places data.
+export const linkedListsForRecommendationQuery = gql`
+  query LinkedListsForRecommendation($recommendationListId: ID!) {
+    personLists(
+      filters: {
+        recommendation_list: { documentId: { eq: $recommendationListId } }
+        Visibility: { eq: true }
+      }
+      sort: ["display_order:asc"]
+      pagination: { limit: 50 }
+    ) {
+      documentId
+      List_Name
+      slug
+      Visibility
+      recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+        documentId
+        name
+        username_handle
+        headline
+        location
+        avatar_path
+        media_details
+        primary_platform
+        social_urls
+        skills_tags
+        user_recommendation_note
+        user_rating
+        is_pinned
+        display_order
+        people_category {
           documentId
-          List_Name
-          slug
-          Visibility
-          recommended_people(sort: ["display_order:asc"], pagination: { limit: 200 }) {
-            documentId
-            name
-            username_handle
-            headline
-            location
-            avatar_path
-            media_details
-            primary_platform
-            social_urls
-            skills_tags
-            user_recommendation_note
-            user_rating
-            is_pinned
-            display_order
-            people_category {
-              documentId
-              Category_name
-            }
-          }
+          Category_name
         }
-        product_lists(sort: ["display_order:asc"], pagination: { limit: 50 }) {
+      }
+    }
+    productLists(
+      filters: {
+        recommendation_list: { documentId: { eq: $recommendationListId } }
+        Visibility: { eq: true }
+      }
+      sort: ["display_order:asc"]
+      pagination: { limit: 50 }
+    ) {
+      documentId
+      List_Name
+      slug
+      Visibility
+      recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
+        documentId
+        product_url
+        title
+        brand
+        price
+        currency
+        buy_url
+        logo_url
+        description
+        specifications
+        user_recommendation_note
+        user_rating
+        is_pinned
+        display_order
+        images
+        product_category {
           documentId
-          List_Name
+          name
           slug
-          Visibility
-          recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
-            documentId
-            product_url
-            title
-            brand
-            price
-            currency
-            buy_url
-            logo_url
-            description
-            specifications
-            user_recommendation_note
-            user_rating
-            is_pinned
-            display_order
-            images
-            product_category {
-              documentId
-              name
-              slug
-            }
-          }
         }
       }
     }
@@ -385,6 +407,7 @@ export const getPlaceCoordinatesByListQuery = gql`
 export const getPublicAccountBasicQuery = gql`
   query PublicAccountBasic($filters: AccountFiltersInput) {
     accounts(filters: $filters) {
+      username
       Account_Name
       Account_Type
       Primary_Address

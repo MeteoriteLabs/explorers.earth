@@ -351,6 +351,27 @@ describe("PublicProfile recommendation presentation", () => {
     }
   });
 
+  it("keeps the decorative banner backdrop pointer-inert", () => {
+    state.account = makeAccount({
+      social_media: {
+        theme_settings: themeSettings({ wallpaperMode: "banner-top" }),
+      },
+    });
+
+    const { container } = renderProfile();
+
+    expect(container.querySelector("[data-profile-hero-backdrop]")).toHaveClass(
+      "pointer-events-none",
+    );
+  });
+
+  it("uses the gateway-projected mobile number only when its visibility is enabled", () => {
+    state.account = makeAccount({ mobile_number_visibility: true, mobile_number: "+15555550123" });
+    renderProfile();
+
+    expect(screen.getByRole("link", { name: "Send SMS" })).toHaveAttribute("href", "sms:+15555550123");
+  });
+
   it("treats a saved Music landing destination as unavailable to recommendation ordering", () => {
     state.account = makeAccount({
       public_music: "Yes",

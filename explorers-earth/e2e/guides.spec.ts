@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 const createMockGuide = (overrides = {}) => ({
   documentId: 'guide-123',
@@ -51,7 +52,16 @@ const createMockGuide = (overrides = {}) => ({
 });
 
 test.beforeEach(async ({ context, page }) => {
-  await setupMockAuthentication(context);
+  await denyHostedEgress(page);
+  await setupMockAuthentication(context, {
+    user: {
+      id: 'fixture-user',
+      documentId: 'fixture-user',
+      username: 'testuser',
+      email: 'test@explorers.earth',
+      blocked: false,
+    },
+  });
 
   // Inject Google Maps Autocomplete Mock
   await context.addInitScript(() => {

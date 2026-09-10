@@ -3,6 +3,7 @@
 // pool on import). Pure-unit tests (sanitize-user) don't import the app. The
 // C0 fixture contract deliberately fixes its test database to loopback:55432.
 import { randomBytes } from "node:crypto";
+import { EXPECTED_MUSIC_MIGRATION_ID } from "../../shared/music-migration-contract";
 
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-at-least-32-characters';
@@ -42,7 +43,7 @@ process.env.MUSIC_CIRCUIT_FAILURE_THRESHOLD = '3';
 process.env.MUSIC_RATE_LIMIT_PER_MINUTE = '60';
 process.env.MUSIC_PROVISIONING_KILL_SWITCH = 'true';
 process.env.MUSIC_PROVISIONING_COHORT = 'disabled';
-process.env.MUSIC_EXPECTED_MIGRATION_ID = '0020_public_snapshot_revision';
+process.env.MUSIC_EXPECTED_MIGRATION_ID = EXPECTED_MUSIC_MIGRATION_ID;
 process.env.MUSIC_RECONCILIATION_ENABLED = 'false';
 process.env.MUSIC_RECONCILIATION_MAX_ROWS = '0';
 // The integration suite CREATES + DELETES a user. NEVER inherit an ambient

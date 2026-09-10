@@ -5,6 +5,7 @@ import type {
 import { randomUUID } from "node:crypto";
 
 interface QueryResult {
+  rowCount?: number | null;
   rows: Array<{
     event_id: string;
     payload_hash: string;
@@ -88,7 +89,7 @@ export class PostgresAnalyticsReceiptRepository
   }
 
   async commit(eventId: string, documentId: string, leaseId: string): Promise<void> {
-    await this.executor.query(
+    const committed = await this.executor.query(
       `
         UPDATE explorers_analytics_receipts
         SET status = 'committed', strapi_document_id = $2,
@@ -97,10 +98,13 @@ export class PostgresAnalyticsReceiptRepository
       `,
       [eventId, documentId, leaseId],
     );
+    if ((committed.rowCount ?? committed.rows.length) !== 1) {
+      throw new Error("Analytics receipt lease was lost before commit");
+    }
   }
 
   async fail(eventId: string, message: string, leaseId: string): Promise<void> {
-    await this.executor.query(
+    const failed = await this.executor.query(
       `
         UPDATE explorers_analytics_receipts
         SET status = 'failed', last_error = $2, updated_at = NOW()
@@ -108,5 +112,8 @@ export class PostgresAnalyticsReceiptRepository
       `,
       [eventId, message.slice(0, 500), leaseId],
     );
+    if ((failed.rowCount ?? failed.rows.length) !== 1) {
+      throw new Error("Analytics receipt lease was lost before failure recording");
+    }
   }
 }

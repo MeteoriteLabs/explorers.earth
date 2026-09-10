@@ -9,8 +9,9 @@ import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
-import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
+import { isNonNullObject, isPublicProfileNotFound, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileDetail } from "../../../PublicHome/api/usePublicProfileDetail";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const PublicMovieList = () => {
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
@@ -19,7 +20,8 @@ const PublicMovieList = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const { data, loading, error, refetch } = usePublicProfileDetail(username, "movies", listSlug);
+  const page = usePublicProfileDetail(username, "movies", listSlug);
+  const { data, loading, error, refetch } = page;
 
   const list = (Array.isArray(data?.movieLists) ? data.movieLists : []).find(
     (value: unknown): value is MovieList =>
@@ -55,7 +57,7 @@ const PublicMovieList = () => {
   const metaDescription = list?.list_description 
     ? list.list_description 
     : list 
-      ? `Explore the curated list "${list.List_Name}" containing ${movies.length} movies recommended by ${username} on explorers.`
+      ? `Explore the curated list "${list.List_Name}" containing ${movies.length}${page.hasMore ? "+" : ""} movies recommended by ${username} on explorers.`
       : "Explore movie recommendations on explorers.";
 
   const seoKeywords = list 
@@ -78,12 +80,12 @@ const PublicMovieList = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white" aria-busy={loading || undefined}>
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]" aria-busy={loading || undefined}>
       {/* Header */}
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
         <Link
           to={`/${username}/movies`}
-          className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,rgba(255,255,255,0.8))] transition-colors mb-6"
         >
           <ArrowLeft size={14} /> {username}'s Movies
         </Link>
@@ -92,23 +94,23 @@ const PublicMovieList = () => {
 
         {loading && !hasUsableData ? (
           <>
-            <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-            <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
+            <div className="h-7 w-48 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mb-2" />
+            <div className="h-4 w-64 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded" />
           </>
-        ) : error && !hasUsableData ? (
+        ) : error && !hasUsableData && !isPublicProfileNotFound(error) ? (
           <PublicRouteErrorState title="Movie list unavailable" error={error} onRetry={refetch} />
         ) : list ? (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">{list.List_Name}</h1>
+              <h1 className="text-xl md:text-2xl font-poppins font-bold text-[color:var(--category-text,#fff)] mb-1">{list.List_Name}</h1>
               {list.list_description && (
-                <p className="text-gray-400 font-poppins text-xs md:text-sm mt-1 max-w-xl">{list.list_description}</p>
+                <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-1 max-w-xl">{list.list_description}</p>
               )}
-              <p className="text-gray-400 font-poppins text-xs md:text-sm mt-2">{movies.length} movie{movies.length !== 1 ? "s" : ""}</p>
+              <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-2">{movies.length}{page.hasMore ? "+" : ""} movie{movies.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
         ) : (
-          <p className="text-white/40">List not found or not published.</p>
+          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))]">List not found or not published.</p>
         )}
       </div>
 
@@ -128,6 +130,7 @@ const PublicMovieList = () => {
             ))
           )}
         </div>
+        <PublicScrollContinuation {...page} label="movies" className="mt-6" />
       </div>
 
       {/* Movie detail modal */}

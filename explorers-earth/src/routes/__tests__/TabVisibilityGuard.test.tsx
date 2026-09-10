@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { useQuery } from "@apollo/client";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,7 @@ import {
   usePublicColdEntry,
 } from "../../layouts/PublicColdEntryBoundary";
 import TabVisibilityGuard from "../validators/TabVisibilityGuard";
+import { publishPublicProfileInvalidation } from "../../features/PublicHome/api/publicProfileInvalidation";
 
 const usePublicAccountIdentity = vi.hoisted(() => vi.fn());
 
@@ -117,7 +118,7 @@ describe("TabVisibilityGuard", () => {
     renderBooksRoute();
 
     expect(screen.getByText("Books category")).toBeInTheDocument();
-    expect(await screen.findByTestId("public-cold-entry-shell")).not.toHaveAttribute("inert");
+    await waitFor(() => expect(screen.getByTestId("public-cold-entry-shell")).not.toHaveAttribute("inert"));
     expect(screen.queryByTestId("public-cold-entry-overlay")).not.toBeInTheDocument();
   });
 
@@ -193,6 +194,29 @@ describe("TabVisibilityGuard", () => {
     expect(await screen.findByText("Profile root")).toBeInTheDocument();
     expect(screen.getByLabelText("current path")).toHaveTextContent(
       "/tk2727?utm_source=newsletter&utm_campaign=spring#profile",
+    );
+  });
+
+  it("fails closed immediately when the owner confirms this category was unpublished while stale shell data remains", async () => {
+    mockUseQuery.mockReturnValue({
+      data: { accounts: [{ public_books: "Yes" }] },
+      loading: false,
+    } as ReturnType<typeof useQuery>);
+
+    renderBooksRoute("/tk2727/books?utm_source=owner#books");
+    expect(screen.getByText("Books category")).toBeInTheDocument();
+
+    publishPublicProfileInvalidation({
+      accountDocumentId: "account-tk2727",
+      username: "tk2727",
+      category: "public_books",
+      action: "unpublish",
+      eventId: "books-unpublished-while-shell-stale",
+    });
+
+    expect(await screen.findByText("Profile root")).toBeInTheDocument();
+    expect(screen.getByLabelText("current path")).toHaveTextContent(
+      "/tk2727?utm_source=owner#books",
     );
   });
 });

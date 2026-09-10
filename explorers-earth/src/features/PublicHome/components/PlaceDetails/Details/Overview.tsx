@@ -13,6 +13,7 @@ import { getCurrentLocation } from "../../../../../utils/getCurrentLocation";
 import { coordinatesState } from "./Address";
 import SafePublicRichText from "../../SafePublicRichText";
 import { normalizePublicWebHref } from "../../../utils/publicProfileContent";
+import { buildGoogleMapsDirectionsUrl } from "../../../../../utils/googleMapsDirections";
 
 interface OverviewProps {
   fetchedPlace: {
@@ -34,9 +35,10 @@ interface OverviewProps {
     };
   };
   onTabChange?: (tabName: string) => void;
+  isPublicCategory?: boolean;
 }
 
-const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
+const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange, isPublicCategory = false }) => {
   const [coordinates, setCoordinates] = useState<coordinatesState | undefined>(
     undefined
   );
@@ -75,12 +77,15 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
       }
     };
 
-    fetchLocation();
+    void fetchLocation().catch(() => undefined);
   }, []);
 
   const handleDirections = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${coordinates?.lat},${coordinates?.lng}&destination=${fetchedPlace.Place_Details.Geometry?.lat},${fetchedPlace.Place_Details.Geometry?.lng}&travelmode=driving`;
-    window.open(url, "_blank");
+    const url = buildGoogleMapsDirectionsUrl(
+      fetchedPlace.Place_Details.Geometry,
+      coordinates,
+    );
+    if (url) window.open(url, "_blank");
   };
 
   const handlePhoneCall = () => {
@@ -123,7 +128,7 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
           <button
             onClick={handlePhoneCall}
             disabled={!fetchedPlace.Contact_Number}
-            className="w-12 h-12 rounded-full border border-dashboard flex items-center justify-center hover:bg-dashboard-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={isPublicCategory ? "w-12 h-12 rounded-full border border-dashboard flex items-center justify-center hover:bg-dashboard-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed [&_svg_path]:fill-[var(--category-text)]" : "w-12 h-12 rounded-full border border-dashboard flex items-center justify-center hover:bg-dashboard-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"}
           >
             <Dailer size="20" />
           </button>

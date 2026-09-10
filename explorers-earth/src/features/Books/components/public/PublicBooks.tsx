@@ -17,6 +17,7 @@ import { usePublicHeaderDescriptor } from "../../../PublicHome/components/Public
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const isRenderableBookList = (value: unknown): value is BookList =>
   isNonNullObject(value) && Array.isArray(value.recommended_books);
@@ -35,7 +36,8 @@ const PublicBooks = () => {
     book: null,
   });
 
-  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = usePublicRecommendationCategory(username, "books", accountData?.public_books === "Yes");
+  const query = usePublicRecommendationCategory(username, "books", accountData?.public_books === "Yes");
+  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = query;
 
   const loading = userLoading || booksLoading;
   const queryError = userError || booksError;
@@ -100,7 +102,7 @@ const PublicBooks = () => {
   
   const pageTitle = `${profileName} | Favorite Books | explorers`;
   const metaDescription = bookCount > 0
-    ? `Explore curated book recommendations and reading lists shared by ${profileName} on explorers. Browse ${listCount} reading list${listCount !== 1 ? 's' : ''} containing ${bookCount} book${bookCount !== 1 ? 's' : ''}.`
+    ? `Explore curated book recommendations and reading lists shared by ${profileName} on explorers. Browse ${listCount}${query.hasMore || query.error ? '+' : ''} reading list${listCount !== 1 ? 's' : ''} containing ${bookCount} loaded book${bookCount !== 1 ? 's' : ''}.`
     : `Explore book recommendations shared by ${profileName} on explorers.`;
 
   const seoKeywords = [
@@ -126,7 +128,7 @@ const PublicBooks = () => {
           siteName="explorers"
         />
       )}
-      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loading || undefined}>
+      <div data-category-page className="h-full bg-[var(--category-page,#000)] min-h-screen overflow-auto preview-scroll pb-20" aria-busy={loading || undefined}>
       {/* ── LOADING SKELETON — shown while books resolve ── */}
       {loading && !hasUsableData && (
         outletContext?.isShellRevealed ? (
@@ -146,15 +148,15 @@ const PublicBooks = () => {
                   {/* Row header */}
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-1.5 h-[22px] bg-amber-400/20 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                    <div className="h-5 w-36 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                    <div className="h-5 w-36 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                   </div>
                   {/* Book cover strip */}
                   <div className="flex gap-3 overflow-hidden">
                     {[0, 1, 2, 3, 4].map((j) => (
                       <div key={j} className="flex-shrink-0 w-[120px]">
-                        <div className="w-full aspect-[2/3] bg-white/6 rounded-xl skeleton-shimmer relative overflow-hidden mb-2" />
-                        <div className="h-3 bg-white/8 rounded w-3/4 skeleton-shimmer relative overflow-hidden mb-1" />
-                        <div className="h-3 bg-white/5 rounded w-1/2 skeleton-shimmer relative overflow-hidden" />
+                        <div className="w-full aspect-[2/3] bg-[var(--category-skeleton,rgba(255,255,255,0.06))] rounded-xl skeleton-shimmer relative overflow-hidden mb-2" />
+                        <div className="h-3 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded w-3/4 skeleton-shimmer relative overflow-hidden mb-1" />
+                        <div className="h-3 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] rounded w-1/2 skeleton-shimmer relative overflow-hidden" />
                       </div>
                     ))}
                   </div>
@@ -216,9 +218,9 @@ const PublicBooks = () => {
           {/* Empty state */}
           {hasUsableData && !hasContent && (
             <div className="text-center py-32">
-              <BookOpen size={56} className="text-white/15 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-white/40 mb-2">No books yet</h2>
-              <p className="text-white/25 text-sm">
+              <BookOpen size={56} className="text-[color:var(--category-muted,rgba(255,255,255,0.15))] mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.4))] mb-2">No books yet</h2>
+              <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm">
                 Check back soon for book recommendations.
               </p>
             </div>
@@ -234,6 +236,7 @@ const PublicBooks = () => {
       />
         </>
       )}
+      <PublicScrollContinuation {...query} label="book lists" />
     </div>
     </>
   );

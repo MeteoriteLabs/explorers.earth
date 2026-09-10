@@ -1,4 +1,24 @@
 {
+  "music": {
+    "publication": {
+      "label": "Music public visibility",
+      "visibility": "Public Visibility",
+      "checking": "Checking Music publication…",
+      "published": "Music is public.",
+      "private": "Music is private.",
+      "saving": "Saving and verifying Music publication…",
+      "attention": "Music sharing needs attention. Review or make it private.",
+      "notReady": "Music is not ready for this account. Other settings remain available.",
+      "unknown": "Music publication was not confirmed. Refresh or retry the previous action.",
+      "conflict": "Music changed or the previous action expired. Confirm a new action after reviewing the current state.",
+      "refresh": "Refresh Music status",
+      "retry": "Retry previous action",
+      "makePrivate": "Make private",
+      "confirm_private": "Confirm new private action",
+      "confirm_public": "Confirm new public action",
+      "confirm_unlisted": "Confirm new unlisted action"
+    }
+  },
   "about": {
     "closing": "If you're curious.\nIf you're thoughtful.\nIf you're willing to slow down and look closer —\nyou already belong here.",
     "heroEyebrow": "Our shared perspective",
@@ -1919,6 +1939,36 @@
     }
   },
   "settings": {
+    "publicNavigation": {
+      "saving": "Saving category settings…",
+      "verifying": "Verifying your account before changing category settings…",
+      "refresh": "Refresh",
+      "not-public": "Publish this category before pinning it.",
+      "no-content": "Publish at least one list in this category before making it public.",
+      "unknown": "Could not verify publication. Refresh and try again.",
+      "slot-limit": "You can select up to 5 tabs, including Profile. Unpin another tab first.",
+      "manual-required": "Choose Manual mode in Settings before changing saved pins.",
+      "invalid-pins": "Saved navigation could not be verified. Refresh before changing pins.",
+      "title": "Pinned Navigation Tabs",
+      "summary": "Navigation · Manage your 5 public navigation slots, including Profile",
+      "musicVisibility": "Music profile visibility",
+      "on": "On",
+      "off": "Off",
+      "musicHelp": "This saved preference does not confirm Music is published or available. Manage publication in Music.",
+      "available": "Music is available on your public profile.",
+      "loading": "Checking Music publication…",
+      "unavailable": "Music is temporarily unavailable. Your saved settings are unchanged.",
+      "notPublic": "Music is not shown publicly. Enable visibility and publish from Music.",
+      "retry": "Retry Music availability",
+      "autoPin": "Auto-pin navigation tabs",
+      "autoDescription": "Available Music is prioritized, followed by public categories ranked by list count.",
+      "autoHelp": "Auto-pinning is active. Available Music comes first, then categories with the most lists, within 5 tabs including Profile.",
+      "manualHelp": "Select up to 5 saved tabs including Profile. Unavailable Music keeps its saved pin and returns when available.",
+      "musicTab": "Music Tab",
+      "pinMusic": "Pin Music Tab",
+      "slotLimit": "You can select up to 5 tabs, including Profile. Unpin another tab first.",
+      "saveFailed": "Could not confirm navigation settings were saved. Showing your last confirmed settings. Reload to check."
+    },
     "account": {
       "changePassword": {
         "accountDetailsRequired": "Enter your account Details to proceed further!!",

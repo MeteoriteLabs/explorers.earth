@@ -1,10 +1,10 @@
-import { FC, MouseEventHandler, ReactElement } from "react";
+import { FC, MouseEvent, ReactElement } from "react";
 import { Link } from "react-router-dom";
 
 interface NavButtonProps {
   icon: ReactElement;
   text: string;
-  onClickHandler: MouseEventHandler<HTMLButtonElement>;
+  onClickHandler: (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void;
   isActive: boolean;
   type?: "default" | "public";
   href?: string;
@@ -19,7 +19,7 @@ const NavButton: FC<NavButtonProps> = ({
   href,
 }) => {
   const className = `
-        relative flex-1 flex font-poppins flex-col items-center justify-center gap-0.5
+        relative min-h-11 min-w-11 flex-1 flex font-poppins flex-col items-center justify-center gap-0.5
         pt-1.5 pb-1 px-1 rounded-xl transition-all duration-300 ease-in-out
         hover:scale-105 active:scale-95
         ${isActive ? "" : "hover:bg-dashboard-muted/50"}
@@ -39,7 +39,7 @@ const NavButton: FC<NavButtonProps> = ({
         {text}
       </span>
     </>;
-  if (type === "public" && href) return <Link to={href} aria-current={isActive ? "page" : undefined} className={className}>{content}</Link>;
+  if (type === "public" && href) return <Link to={href} onClick={onClickHandler} aria-current={isActive ? "page" : undefined} className={className}>{content}</Link>;
   return <button onClick={onClickHandler} className={className}>{content}</button>;
 };
 

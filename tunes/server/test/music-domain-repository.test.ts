@@ -1043,9 +1043,9 @@ describe("MusicDomainRepository owner predicates", () => {
     return new MusicDomainRepository(harness.pool as never, undefined, key);
   }
 
-  it.each(Array.from({ length: 32 }, (_, mask) => mask))(
+  it.each(musicPermissionOracle)(
     "enforces public resource field exposure and interactivity for permission mask %i",
-    async (mask) => {
+    async (mask, requests, playback, playlists, history, queue, currentVisible) => {
       // Break caught: any permission combination leaks a protected collection or upgrades queue visibility into playback authority.
       const harness = publicResourceHarness(mask);
       const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
@@ -1053,17 +1053,19 @@ describe("MusicDomainRepository owner predicates", () => {
       expect(result?.state).toBe("public");
       expect(resource?.version).toBe("music-public-resource/v1");
       expect(resource?.revision).toBe(17);
-      expect(resource?.permissions).toEqual(harness.permissions);
-      expect(resource?.currentlyPlaying !== null).toBe(
-        harness.permissions.allowGuestPlayOnDevice || harness.permissions.allowQueueVisibility,
-      );
-      expect(resource?.queue.items.length).toBe(harness.permissions.allowQueueVisibility ? 1 : 0);
-      expect(resource?.recentlyPlayed.items.length).toBe(harness.permissions.allowRecentlyPlayedVisibility ? 1 : 0);
+      expect(resource?.permissions).toEqual({
+        allowSongRequests: Boolean(requests), allowGuestPlayOnDevice: Boolean(playback),
+        allowPlaylistSharing: Boolean(playlists), allowRecentlyPlayedVisibility: Boolean(history),
+        allowQueueVisibility: Boolean(queue),
+      });
+      expect(resource?.currentlyPlaying !== null).toBe(Boolean(currentVisible));
+      expect(resource?.queue.items.length).toBe(queue);
+      expect(resource?.recentlyPlayed.items.length).toBe(history);
       expect(resource?.playlists.items.map((playlist: { name: string }) => playlist.name)).toEqual(
-        harness.permissions.allowPlaylistSharing ? ["Public playlist 0"] : [],
+        playlists ? ["Public playlist 0"] : [],
       );
-      expect(resource?.permissions.allowGuestPlayOnDevice).toBe((mask & 2) !== 0);
-      if (!harness.permissions.allowGuestPlayOnDevice && harness.permissions.allowQueueVisibility) {
+      expect(resource?.permissions.allowGuestPlayOnDevice).toBe(Boolean(playback));
+      if (!playback && queue) {
         expect(resource?.currentlyPlaying).not.toBeNull();
         expect(resource?.permissions.allowGuestPlayOnDevice).toBe(false);
       }
@@ -1176,3 +1178,4 @@ describe("MusicDomainRepository owner predicates", () => {
     ]) expect(publicId).not.toContain("1001");
   });
 });
+import { musicPermissionOracle } from "../../../test-fixtures/music-permission-oracle";

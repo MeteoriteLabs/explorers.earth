@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 test.beforeEach(async ({ context, page }) => {
+  await denyHostedEgress(page);
   await setupMockAuthentication(context);
   let recommendationCreated = false;
 

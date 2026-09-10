@@ -178,6 +178,21 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
         recipient.disconnect(true);
       }
     }));
+    const owners = await io.in(`music-owner:${musicUserId}`).fetchSockets();
+    await Promise.all(owners.map(async (recipient) => {
+      const authority = recipient.data.musicAuthority as SocketAuthority | undefined;
+      if (authority?.role !== "owner") return;
+      try {
+        const principal = await dependencies.ownerCredentials.recheck(authority.owner);
+        if (principal.musicUserId !== musicUserId) throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+        recipient.emit("music_owner_change", { version: "music-owner-change/v1", kind, revision });
+        dependencies.observability?.socket("invalidation_sent", { role: "owner", kind });
+      } catch (cause) {
+        recipient.emit("music_error", musicErrorEnvelope(safeSocketError(cause), randomUUID()));
+        dependencies.observability?.socket("revocation_enforced", { role: "owner", reason: "revoked" });
+        recipient.disconnect(true);
+      }
+    }));
   });
   const eventLimit = dependencies.eventLimit ?? 10;
   const eventWindowMs = dependencies.eventWindowMs ?? 60_000;

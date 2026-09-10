@@ -2,11 +2,11 @@ import { canReadPublicCategory, type PublicCategory } from "./publicProfilePolic
 
 export interface PublicProfileGateway {
   resolveAccount(username: string): Promise<Record<string, unknown> | undefined>;
-  resolveCategory(username: string, category: PublicCategory, limit: number): Promise<unknown>;
-  resolveDetail(username: string, category: PublicCategory, slug: string, limit: number): Promise<unknown>;
+  resolveCategory(username: string, category: PublicCategory, limit: number, cursor?: string): Promise<unknown>;
+  resolveDetail(username: string, category: PublicCategory, slug: string, limit: number, cursor?: string): Promise<unknown>;
 }
 
-export type PublicProfileReadOptions = { bypassCache?: boolean };
+export type PublicProfileReadOptions = { bypassCache?: boolean; cursor?: string };
 
 type CacheEntry<T> = { value: T; expiresAt: number };
 
@@ -71,12 +71,12 @@ export class PublicProfileService {
   }
 
   async category(username: string, category: PublicCategory, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
-    const key = `${username}:${category}:${limit}`;
+    const key = `${username}:${category}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
     const account = await this.account(username, Boolean(options.bypassCache));
     if (!account || !canReadPublicCategory(account, category)) return undefined;
-    const value = await this.categoryRead(key, () => this.gateway.resolveCategory(username, category, limit));
+    const value = await this.categoryRead(key, () => this.gateway.resolveCategory(username, category, limit, options.cursor));
     this.write(this.categories, key, value);
     return value;
   }
@@ -87,12 +87,12 @@ export class PublicProfileService {
   }
 
   async detail(username: string, category: PublicCategory, slug: string, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
-    const key = `${username}:${category}:${slug}:${limit}`;
+    const key = `${username}:${category}:${slug}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
     const account = await this.account(username, Boolean(options.bypassCache));
     if (!account || !canReadPublicCategory(account, category)) return undefined;
-    const value = await this.categoryRead(key, () => this.gateway.resolveDetail(username, category, slug, limit));
+    const value = await this.categoryRead(key, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
     this.write(this.categories, key, value);
     return value;
   }

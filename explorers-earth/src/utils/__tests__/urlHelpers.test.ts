@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   appendAttributionParamsToPath,
+  canonicalizePublicPathname,
   appendUtmParams,
   extractUtmParams,
   extractUtmParamsFromCurrentUrl,
@@ -15,6 +16,60 @@ import {
 describe('appendAttributionParamsToPath', () => {
   it('preserves only bounded UTM attribution through friendly Music navigation', () => {
     expect(appendAttributionParamsToPath('/alice/music', '?utm_source=newsletter&utm_medium=email&access=secret&query=raw')).toBe('/alice/music?utm_source=newsletter&utm_medium=email');
+  });
+
+  it('uses the first non-empty sanitized duplicate for each of exactly five UTM keys', () => {
+    expect(appendAttributionParamsToPath(
+      '/alice/books',
+      '?utm_source=%3C%22%22%3E&utm_source=%20qr%20&utm_source=later&utm_medium=email&utm_campaign=launch&utm_term=maps&utm_content=hero&access=secret&token=credential&unknown=value#private',
+    )).toBe('/alice/books?utm_source=qr&utm_medium=email&utm_campaign=launch&utm_term=maps&utm_content=hero');
+  });
+});
+
+describe('canonicalizePublicPathname', () => {
+  it('replaces the requested username, lowercases only known static segments, and preserves encoded slugs', () => {
+    expect(canonicalizePublicPathname(
+      '//Requested//BOOKS//SUBJECT//Sci%2DFi%20Classics//',
+      'ReturnedUser',
+    )).toBe('/returneduser/books/subject/Sci%2DFi%20Classics');
+  });
+
+  it.each([
+    ['guide detail MAP slug', '/Requested/GUIDES/MAP/', '/returned/guides/MAP'],
+    ['guide detail encoded MAP slug', '/Requested/GUIDES/%4D%41%50/', '/returned/guides/%4D%41%50'],
+    ['guide detail encoded Sector slug', '/Requested/GUIDES/%53ector/', '/returned/guides/%53ector'],
+    ['book list Music slug', '/Requested/BOOKS/Music/', '/returned/books/Music'],
+    ['book list encoded Music slug', '/Requested/BOOKS/%4Dusic/', '/returned/books/%4Dusic'],
+    ['movie genre Guides slug', '/Requested/MOVIES/GENRE/Guides/', '/returned/movies/genre/Guides'],
+    ['movie genre encoded Guides slug', '/Requested/MOVIES/GENRE/%47uides/', '/returned/movies/genre/%47uides'],
+    ['book subject Genre slug', '/Requested/BOOKS/SUBJECT/Genre/', '/returned/books/subject/Genre'],
+    ['book subject encoded Genre slug', '/Requested/BOOKS/SUBJECT/%47enre/', '/returned/books/subject/%47enre'],
+    ['people sector Subject slug', '/Requested/PEOPLE/SECTOR/Subject/', '/returned/people/sector/Subject'],
+    ['people sector encoded Subject slug', '/Requested/PEOPLE/SECTOR/%53ubject/', '/returned/people/sector/%53ubject'],
+    ['place MAP slug before map suffix', '/Requested/PLACES/MAP/MAP/', '/returned/places/MAP/map'],
+    ['place Guides slug before placesmap suffix', '/Requested/PLACES/Guides/PLACESMAP/', '/returned/places/Guides/placesmap'],
+    ['encoded place Sector slug before map suffix', '//Requested//PLACES//%53ector//MAP//', '/returned/places/%53ector/map'],
+    ['list slug equal to another nested prefix', '/Requested/GAMES/Sector/', '/returned/games/Sector'],
+  ])('preserves dynamic bytes for the %s while lowercasing only route syntax', (_name, pathname, expected) => {
+    expect(canonicalizePublicPathname(pathname, 'Returned')).toBe(expected);
+  });
+
+  it.each([
+    ['top-level category', '/Requested/%42OOKS/%4Dusic/', '/returned/books/%4Dusic'],
+    ['subject prefix', '/Requested/%42OOKS/%53UBJECT/%47enre/', '/returned/books/subject/%47enre'],
+    ['genre prefix', '/Requested/%4DOVIES/%47ENRE/%47uides/', '/returned/movies/genre/%47uides'],
+    ['sector prefix', '/Requested/%50EOPLE/%53ECTOR/%53ubject/', '/returned/people/sector/%53ubject'],
+    ['direct map suffix', '/Requested/%50LACES/%4DAP/', '/returned/places/map'],
+    ['place map suffix', '/Requested/%50LACES/%53ector/%4DAP/', '/returned/places/%53ector/map'],
+    ['place placesmap suffix', '/Requested/%50LACES/%47uides/%50LACESMAP/', '/returned/places/%47uides/placesmap'],
+  ])('decodes only the encoded static %s and preserves adjacent dynamic bytes', (_name, pathname, expected) => {
+    expect(canonicalizePublicPathname(pathname, 'Returned')).toBe(expected);
+  });
+
+  it('preserves malformed percent encoding instead of guessing that it is static syntax', () => {
+    expect(canonicalizePublicPathname('/Requested/%BO%4FKS/%53ubject/', 'Returned')).toBe(
+      '/returned/%BO%4FKS/%53ubject',
+    );
   });
 });
 

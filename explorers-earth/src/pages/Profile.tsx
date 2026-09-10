@@ -1442,17 +1442,17 @@ const Profile = memo(() => {
     accountType: getAccountTypeKey(account?.Account_Type || "", t),
     bio: account?.Bio || "",
     address:
-      currentLocation?.formatted_address || account?.Addresss.address || "",
+      currentLocation?.formatted_address || account?.Addresss?.address || "",
     primaryAddressCombined:
       account?.Primary_Address?.address || // Use backend value
       (account?.Addresss?.city || "") +
       (account?.Addresss?.city && account?.Addresss?.country ? ", " : "") +
       (account?.Addresss?.country || ""),
-    streetName: updatedPlaces.street_name || account?.Addresss.streetName || "",
-    postalCode: updatedPlaces.postal_code || account?.Addresss.postalCode,
-    state: updatedPlaces.state || account?.Addresss.state || "",
-    city: updatedPlaces.city || account?.Addresss.city || "",
-    country: updatedPlaces.country || account?.Addresss.country || "",
+    streetName: updatedPlaces.street_name || account?.Addresss?.streetName || "",
+    postalCode: updatedPlaces.postal_code || account?.Addresss?.postalCode,
+    state: updatedPlaces.state || account?.Addresss?.state || "",
+    city: updatedPlaces.city || account?.Addresss?.city || "",
+    country: updatedPlaces.country || account?.Addresss?.country || "",
     instagramLink: account?.social_media?.instagram?.link || "",
     whatsappLink: account?.social_media?.whatsapp?.link || "",
     websiteLink: account?.social_media?.website?.link || "",
@@ -1948,7 +1948,7 @@ const Profile = memo(() => {
                   <ImageCropper
                     onFileUpload={handleBackgroundUpload}
                     cropType="backgroundCrop"
-                    buttonTitle={t('dashboard.profile.common.editBackground')}
+                    buttonTitle={t('dashboard.profile.common.editImage')}
                   />
                 </div>
 
