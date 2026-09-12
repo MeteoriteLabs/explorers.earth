@@ -16,17 +16,26 @@ describe("Tunes host preflight authority", () => {
     const section = (script.split("# Migration inventory\n")[1] ?? "").split("# End migration inventory")[0];
     const result = spawnSync(process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash", ["-c", `
       set -euo pipefail
+      expected_format='name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} image={{.Image}} mounts={{range .Mounts}}type={{.Type}} volume={{.Name}} destination={{.Destination}};{{end}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}};{{end}}'
       docker() {
+        if [[ "$1" == inspect && "$2" == --format && "$3" == "$expected_format" && "$#" == 4 ]]; then
+          case "$4" in
+            app-id) printf '%s\\n' 'name=/tunes-app-1 project=tunes service=app image=sha256:abc networks=tunes_cosmic-network;' ;;
+            db-id) printf '%s\\n' 'name=/tunes-db-1 project=tunes service=db image=sha256:def volume=tunes_postgres-data networks=tunes_cosmic-network;' ;;
+            *) return 92 ;;
+          esac
+          return
+        fi
         case "$*" in
           'ps --filter label=com.docker.compose.project=tunes --format {{.ID}}') printf '%s\\n' app-id db-id ;;
-          'inspect --format '*app-id) printf '%s\\n' 'name=/tunes-app-1 project=tunes service=app image=sha256:abc' ;;
-          'inspect --format '*db-id) printf '%s\\n' 'name=/tunes-db-1 project=tunes service=db image=sha256:def volume=tunes_postgres-data' ;;
-          'image inspect --format '*) printf '%s\\n' 'platform=linux/arm64' ;;
+          'inspect --format {{.Image}} app-id') printf '%s\\n' sha256:abc ;;
+          'inspect --format {{.Image}} db-id') printf '%s\\n' sha256:def ;;
+          'image inspect --format platform={{.Os}}/{{.Architecture}} sha256:abc'|'image inspect --format platform={{.Os}}/{{.Architecture}} sha256:def') printf '%s\\n' 'platform=linux/arm64' ;;
           *) printf 'unexpected command\\n' >&2; return 91 ;;
         esac
       }
-      node() { printf 'v22.12.0\\n'; }
-      ss() { printf 'LISTEN 0 128 0.0.0.0:5001 0.0.0.0:*\\n'; }
+      node() { [[ "$#" == 1 && "$1" == --version ]] || return 93; printf 'v22.12.0\\n'; }
+      ss() { [[ "$#" == 1 && "$1" == -lnt ]] || return 94; printf 'LISTEN 0 128 0.0.0.0:5001 0.0.0.0:*\\n'; }
       ${section}
     `], { encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
@@ -34,6 +43,9 @@ describe("Tunes host preflight authority", () => {
     expect(result.stdout).toContain("service=db");
     expect(result.stdout).toContain("platform=linux/arm64");
     expect(result.stdout).toContain("volume=tunes_postgres-data");
+    expect(result.stdout.match(/networks=tunes_cosmic-network;/g)).toHaveLength(2);
+    expect(result.stdout).toContain("v22.12.0");
+    expect(result.stdout).toContain("LISTEN 0 128 0.0.0.0:5001");
     expect(section).not.toMatch(/\.Config\.Env|docker compose config|cat .*\.env/);
   });
   it("is manual, uses the proven SSH connection, and cannot deploy", () => {

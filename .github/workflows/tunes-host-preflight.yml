@@ -81,7 +81,7 @@ jobs:
             if command -v ss; then ss -lnt; else printf '%s\n' 'ss=absent'; fi
             printf '%s\n' '=== existing Tunes project identity and mounts ==='
             for container in $(docker ps --filter label=com.docker.compose.project=tunes --format '{{.ID}}'); do
-              docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} image={{.Image}} mounts={{range .Mounts}}type={{.Type}} volume={{.Name}} destination={{.Destination}};{{end}}' "$container"
+              docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} image={{.Image}} mounts={{range .Mounts}}type={{.Type}} volume={{.Name}} destination={{.Destination}};{{end}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}};{{end}}' "$container"
               docker image inspect --format 'platform={{.Os}}/{{.Architecture}}' "$(docker inspect --format '{{.Image}}' "$container")"
             done
             # End migration inventory
