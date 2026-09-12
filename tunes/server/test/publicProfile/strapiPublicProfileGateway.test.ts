@@ -212,6 +212,33 @@ describe("StrapiPublicProfileGateway", () => {
     expect(query).toMatch(/\bmobile_number\b/);
   });
 
+  it("projects only visible social links while preserving a visible email entry", async () => {
+    const fetchImpl = vi.fn().mockImplementation(async (_url, init) => {
+      const payload = JSON.parse(String(init?.body));
+      if (String(payload.query).includes("PublicNavigationCounts")) return graphqlResponse({});
+      return graphqlResponse({ accounts: [{
+        documentId: "account-1",
+        social_media: {
+          instagram: { link: "https://instagram.example/private", visibility: false },
+          email: { link: "hello@example.test", visibility: true },
+          website: { link: "https://example.test", visibility: true, token: "must-not-leak" },
+        },
+      }] });
+    });
+
+    await expect(new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl })
+      .resolveAccount("tk2727")).resolves.toMatchObject({
+        social_media: {
+          email: { link: "hello@example.test", visibility: true },
+          website: { link: "https://example.test", visibility: true },
+        },
+      });
+    const account = await new StrapiPublicProfileGateway({ origin: "https://cms.example", token: "server-only-token", fetchImpl })
+      .resolveAccount("tk2727");
+    expect(account?.social_media).not.toHaveProperty("instagram");
+    expect(account?.social_media).not.toHaveProperty("website.token");
+  });
+
   it("projects exact published-list totals for navigation ranking without loading list rows", async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(graphqlResponse({ accounts: [{ documentId: "account-1", public_profile: "Yes" }] }))

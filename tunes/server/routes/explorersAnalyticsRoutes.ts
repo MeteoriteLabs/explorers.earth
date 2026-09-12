@@ -29,6 +29,14 @@ const musicAnalyticsInputSchema = z.object({
   }).strict().optional(),
 }).strict();
 
+const isStandaloneMusicCanonicalPath = (canonicalPath: string): boolean => {
+  const segments = canonicalPath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => decodeURIComponent(segment).trim().toLowerCase());
+  return segments.length === 2 && segments[0] === "music" && segments[1] === "share";
+};
+
 type MusicAnalyticsEvent = z.infer<typeof musicAnalyticsEventSchema>;
 
 function normalizedMusicEvent(event: MusicAnalyticsEvent) {
@@ -274,6 +282,12 @@ export function setupExplorersAnalyticsRoutes(
           message: issue.message,
         })),
       });
+    }
+    if (
+      parsed.data.event.page === "public-music" &&
+      isStandaloneMusicCanonicalPath(parsed.data.event.canonicalPath)
+    ) {
+      return res.status(400).json({ message: "Invalid analytics event" });
     }
 
     try {

@@ -223,6 +223,33 @@ describe("explorers analytics routes", () => {
     expect(service.ingest).not.toHaveBeenCalled();
   });
 
+  it.each(["/music/share", "/Music/SHARE", "/%6dusic/share"])(
+    "rejects standalone Music attribution on the generic analytics endpoint for %s",
+    async (canonicalPath) => {
+      const { app, service, validatePublicTarget } = buildApp();
+      const { request } = await loopback.open({ app });
+      const response = await request
+        .post("/api/explorers/analytics/events")
+        .send({
+          consent: true,
+          eventId: "evt-standalone-music-generic",
+          accountId: "attacker-selected-account",
+          event: {
+            type: "interaction",
+            timestamp: "2026-08-24T03:30:00.000Z",
+            page: "public-music",
+            element: "navigation-opened",
+            canonicalPath,
+            metadata: { action: "navigation_opened" },
+          },
+        });
+
+      expect(response.status).toBe(400);
+      expect(validatePublicTarget).not.toHaveBeenCalled();
+      expect(service.ingest).not.toHaveBeenCalled();
+    },
+  );
+
   it("returns 404 for an analytics target that is not a real public account", async () => {
     const { app, service, validatePublicTarget } = buildApp();
     validatePublicTarget.mockResolvedValue(false);

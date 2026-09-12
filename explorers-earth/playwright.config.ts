@@ -6,7 +6,7 @@ const externalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
 const prSafeTestMatch = /\.spec\.ts$/;
 const musicFixtureTestMatch = /music-(?:fixture-fullstack|public-contract)\.spec\.ts$/;
 const musicLiveTestMatch = /(?:music-fixture-fullstack|music-public-contract|profile-theme)\.spec\.ts$/;
-const musicVisualTestMatch = /(?:music-accessibility|profile-presentation-visual)\.spec\.ts$/;
+const musicVisualTestMatch = /(?:music|music-accessibility|profile-presentation-visual)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: './e2e',

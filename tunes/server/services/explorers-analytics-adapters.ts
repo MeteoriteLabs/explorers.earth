@@ -371,10 +371,12 @@ export class StrapiAnalyticsTargetValidator {
           : Array.isArray(account?.recommendationOwnerLists) &&
             account.recommendationOwnerLists.length === 1;
     const valid = accountValid && locationValid && recommendationValid;
-    this.cache.set(cacheKey, {
-      valid,
-      expiresAt: Date.now() + (valid ? 5 * 60_000 : 30_000),
-    });
+    if (!valid) {
+      this.cache.set(cacheKey, {
+        valid: false,
+        expiresAt: Date.now() + 30_000,
+      });
+    }
     if (this.cache.size > 10_000) {
       this.cache.delete(this.cache.keys().next().value as string);
     }

@@ -54,8 +54,8 @@ const bookTargetInput = {
 };
 
 describe("StrapiAnalyticsTargetValidator", () => {
-  it("validates and caches a real account without exposing Strapi data", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
+  it("validates a real account without exposing Strapi data", async () => {
+    const fetchImpl = vi.fn().mockImplementation(async () =>
       new Response(
         JSON.stringify({ data: { accounts: [{ documentId: "account-1", username: "tk2727", public_profile: "Yes" }] } }),
         { status: 200, headers: { "content-type": "application/json" } },
@@ -69,7 +69,7 @@ describe("StrapiAnalyticsTargetValidator", () => {
 
     await expect(validator.validate(targetInput)).resolves.toBe(true);
     await expect(validator.validate(targetInput)).resolves.toBe(true);
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe("https://cms.example/graphql");
     expect(init.headers.Authorization).toBe("Bearer server-only-token");
@@ -77,6 +77,36 @@ describe("StrapiAnalyticsTargetValidator", () => {
     const body = JSON.parse(init.body);
     expect(body.variables).toEqual({ accountId: "account-1", username: "tk2727" });
     expect(body.query).toContain("documentId: { eq: $accountId }");
+  });
+
+  it("revalidates a previously public target so unpublishing takes effect immediately", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ data: { accounts: [{
+          documentId: "account-1",
+          username: "tk2727",
+          public_profile: "Yes",
+        }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ))
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ data: { accounts: [{
+          documentId: "account-1",
+          username: "tk2727",
+          public_profile: "No",
+        }] } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ));
+    const validator = new StrapiAnalyticsTargetValidator({
+      strapiUrl: "https://cms.example",
+      accessToken: "server-only-token",
+      fetchImpl,
+    });
+
+    await expect(validator.validate(targetInput)).resolves.toBe(true);
+    await expect(validator.validate(targetInput)).resolves.toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("rejects an unknown account and briefly caches the negative result", async () => {

@@ -26,6 +26,19 @@ function redactPublicValue(value: unknown): unknown {
     .map(([key, nested]) => [key, redactPublicValue(nested)]));
 }
 
+function projectPublicSocialMedia(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).flatMap(([key, entry]) => {
+    if (key.startsWith("__")) return [];
+    if (entry && typeof entry === "object" && !Array.isArray(entry) && "visibility" in entry) {
+      if ((entry as Record<string, unknown>).visibility !== true) return [];
+      return [[key, redactPublicValue(entry)]];
+    }
+    if (SENSITIVE_PUBLIC_KEYS.has(key.toLowerCase())) return [];
+    return [[key, redactPublicValue(entry)]];
+  }));
+}
+
 const PUBLIC_ACCOUNT_SELECTION = `
   username
   Account_Name
@@ -232,6 +245,9 @@ export class StrapiPublicProfileGateway {
     const account = data.accounts?.[0];
     if (!account) return undefined;
     const projected = redactPublicValue(account) as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(account, "social_media")) {
+      projected.social_media = projectPublicSocialMedia(account.social_media);
+    }
     try {
       const countData = await this.request<Record<string, unknown>>(
         `query PublicNavigationCounts($username: String!) { ${PUBLIC_NAVIGATION_COUNT_SELECTION} }`,

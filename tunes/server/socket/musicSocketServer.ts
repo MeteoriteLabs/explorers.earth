@@ -210,9 +210,10 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
     }
     await Promise.all(Array.from(musicUserIds, async (musicUserId) => {
       const revision = await dependencies.resolvePublicMusicRevision?.(musicUserId);
-      if (revision !== undefined) {
-        await dependencies.publicRegistry!.publish({ musicUserId, kind: "publication_changed", revision });
-      }
+      // A missing revision is itself meaningful: the identity may have been
+      // suspended or deleted while LISTEN was disconnected. Publish a stale
+      // sentinel so the normal authority recheck disconnects those sockets.
+      await dependencies.publicRegistry!.publish({ musicUserId, kind: "publication_changed", revision: revision ?? 0 });
     }));
   });
   const eventLimit = dependencies.eventLimit ?? 10;

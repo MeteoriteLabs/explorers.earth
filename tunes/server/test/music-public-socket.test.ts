@@ -115,4 +115,64 @@ describe("read-only public Music socket", () => {
     await expect(disconnected).resolves.toBeUndefined();
     expect(delivered).toBe(false);
   });
+
+  it("disconnects sockets for deleted identities during listener catch-up", async () => {
+    const registry = new MusicPublicSocketRegistry();
+    let active = true;
+    server = createMusicSocketServer(express(), {
+      allowedOrigins: ["https://explorers.example"],
+      ownerCredentials: { handshake: async () => { throw new Error("unused"); }, recheck: async () => { throw new Error("unused"); } },
+      resolveGuestCapability: async () => undefined,
+      resolvePublicMusicAuthority: async (slug) => active && slug === "public-one"
+        ? { musicUserId: 1, active: true }
+        : undefined,
+      resolvePublicMusicRevision: async () => active ? 7 : undefined,
+      publicRegistry: registry,
+    });
+    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("no address");
+    const publicSocket = await new Promise<Socket>((resolve, reject) => {
+      const socket = connectSocket(`http://127.0.0.1:${address.port}`, { path: "/ws", transports: ["websocket"], reconnection: false, auth: { publicSlug: "public-one" }, extraHeaders: { Origin: "https://explorers.example" } });
+      sockets.push(socket); socket.once("connect", () => resolve(socket)); socket.once("connect_error", reject);
+    });
+    const disconnected = new Promise<void>((resolve) => publicSocket.once("disconnect", () => resolve()));
+
+    active = false;
+    await registry.catchUp();
+
+    await expect(disconnected).resolves.toBeUndefined();
+  });
+
+  it("disconnects revoked owner sockets when catch-up has no identity revision", async () => {
+    const registry = new MusicPublicSocketRegistry();
+    let active = true;
+    server = createMusicSocketServer(express(), {
+      allowedOrigins: ["https://explorers.example"],
+      ownerCredentials: {
+        handshake: async ({ token }) => ({ token, principal: { musicUserId: 1, subject: "owner", accountDocumentId: "account", sessionVersion: 1 } }),
+        recheck: async (context) => {
+          if (!active) throw new Error("deleted");
+          return context.principal;
+        },
+      },
+      resolveGuestCapability: async () => undefined,
+      resolvePublicMusicAuthority: async () => undefined,
+      resolvePublicMusicRevision: async () => active ? 7 : undefined,
+      publicRegistry: registry,
+    });
+    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("no address");
+    const ownerSocket = await new Promise<Socket>((resolve, reject) => {
+      const socket = connectSocket(`http://127.0.0.1:${address.port}`, { path: "/ws", transports: ["websocket"], reconnection: false, auth: { token: "owner.token" }, extraHeaders: { Origin: "https://explorers.example" } });
+      sockets.push(socket); socket.once("connect", () => resolve(socket)); socket.once("connect_error", reject);
+    });
+    const disconnected = new Promise<void>((resolve) => ownerSocket.once("disconnect", () => resolve()));
+
+    active = false;
+    await registry.catchUp();
+
+    await expect(disconnected).resolves.toBeUndefined();
+  });
 });

@@ -264,5 +264,11 @@ jobs:
           server/test/deployment/music-publication-authority-verifier.test.ts
           server/test/deployment/music-readiness.test.ts
           server/test/deployment/registration-compat-process.test.ts
-          server/test/deployment/registration-compat-traefik.test.ts
+          --maxWorkers=1 --fileParallelism=false
+      - name: Prove Traefik registration compatibility with the real tool
+        env:
+          MUSIC_C3_TRAEFIK_TEST: "1"
+        run: >-
+          npm run test:real-tool --prefix tunes --
+          server/test/deployment/registration-compat-traefik.real-tool.test.ts
           --maxWorkers=1 --fileParallelism=false
