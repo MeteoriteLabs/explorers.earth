@@ -72,6 +72,28 @@ jobs:
     environment: tunes-production
     runs-on: ubuntu-24.04
     steps:
+      - name: Validate production credentials before deployment
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.TUNES_DEPLOY_KNOWN_HOSTS }}
+          STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
+        run: |
+          set -euo pipefail
+          invalid=0
+          for name in DEPLOY_HOST DEPLOY_KEY KNOWN_HOSTS STATE_HMAC_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Required production credential $name is unavailable in tunes-production."
+              invalid=1
+            fi
+          done
+          if [[ -n "$STATE_HMAC_KEY" && ${#STATE_HMAC_KEY} -lt 32 ]]; then
+            echo "::error::Production state signing key must contain at least 32 characters."
+            invalid=1
+          fi
+          [[ "$invalid" = 0 ]]
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
