@@ -22,6 +22,24 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - name: Check protected deployment credential availability
+        shell: bash
+        env:
+          KNOWN_HOSTS: ${{ secrets.TUNES_DEPLOY_KNOWN_HOSTS }}
+          STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
+        run: |
+          set -euo pipefail
+          invalid=0
+          if [[ -z "$KNOWN_HOSTS" ]]; then
+            echo "::error::TUNES_DEPLOY_KNOWN_HOSTS is unavailable in tunes-production."
+            invalid=1
+          fi
+          if [[ ${#STATE_HMAC_KEY} -lt 32 ]]; then
+            echo "::error::MUSIC_DEPLOY_STATE_HMAC_KEY is unavailable or shorter than 32 characters."
+            invalid=1
+          fi
+          [[ "$invalid" = 0 ]]
+
       - name: Inspect Tunes host without mutation
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
