@@ -268,7 +268,12 @@ jobs:
       - name: Prove Traefik registration compatibility with the real tool
         env:
           MUSIC_C3_TRAEFIK_TEST: "1"
-        run: >-
-          npm run test:real-tool --prefix tunes --
-          server/test/deployment/registration-compat-traefik.real-tool.test.ts
-          --maxWorkers=1 --fileParallelism=false
+        # The real-tool test is intentionally fail-closed and uses --pull=never.
+        # Provision the reviewed linux/amd64 image explicitly so clean hosted
+        # runners exercise the same immutable Traefik build as local CI.
+        run: |
+          docker pull traefik@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174
+          docker tag traefik@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174 traefik:v3.1
+          npm run test:real-tool --prefix tunes -- \
+            server/test/deployment/registration-compat-traefik.real-tool.test.ts \
+            --maxWorkers=1 --fileParallelism=false
