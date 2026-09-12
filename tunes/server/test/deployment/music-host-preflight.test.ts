@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -9,6 +10,32 @@ const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Tunes host preflight authority", () => {
+  it("reports app and database metadata without reading container secrets", () => {
+    const workflow = parseYaml(read(".github/workflows/tunes-host-preflight.yml"));
+    const script = workflow.jobs.preflight.steps.find((s: any) => s.with?.script).with.script;
+    const section = (script.split("# Migration inventory\n")[1] ?? "").split("# End migration inventory")[0];
+    const result = spawnSync(process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash", ["-c", `
+      set -euo pipefail
+      docker() {
+        case "$*" in
+          'ps --filter label=com.docker.compose.project=tunes --format {{.ID}}') printf '%s\\n' app-id db-id ;;
+          'inspect --format '*app-id) printf '%s\\n' 'name=/tunes-app-1 project=tunes service=app image=sha256:abc' ;;
+          'inspect --format '*db-id) printf '%s\\n' 'name=/tunes-db-1 project=tunes service=db image=sha256:def volume=tunes_postgres-data' ;;
+          'image inspect --format '*) printf '%s\\n' 'platform=linux/arm64' ;;
+          *) printf 'unexpected command\\n' >&2; return 91 ;;
+        esac
+      }
+      node() { printf 'v22.12.0\\n'; }
+      ss() { printf 'LISTEN 0 128 0.0.0.0:5001 0.0.0.0:*\\n'; }
+      ${section}
+    `], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("service=app");
+    expect(result.stdout).toContain("service=db");
+    expect(result.stdout).toContain("platform=linux/arm64");
+    expect(result.stdout).toContain("volume=tunes_postgres-data");
+    expect(section).not.toMatch(/\.Config\.Env|docker compose config|cat .*\.env/);
+  });
   it("is manual, uses the proven SSH connection, and cannot deploy", () => {
     const source = read(".github/workflows/tunes-host-preflight.yml");
     const workflow = parseYaml(source);
