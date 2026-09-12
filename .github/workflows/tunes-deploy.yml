@@ -155,7 +155,7 @@ jobs:
         run: >-
           gh attestation verify "oci://${IMAGE_REPOSITORY}@${DIGEST}"
           --repo "$GITHUB_REPOSITORY"
-          --signer-workflow "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/tunes.yml"
+          --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/tunes.yml"
           --source-ref refs/heads/main
           --source-digest "$COMMIT"
 
