@@ -258,6 +258,7 @@ export interface FixtureMusicTokenSecretDependencies {
   close?: typeof closeSync;
   beforeErase?: () => void;
   syncDirectory?: (path: string) => void;
+  durableReplace?: FixtureDurableReplace;
 }
 
 export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicTokenSecretDependencies {
@@ -269,7 +270,6 @@ export interface FixtureEnvironmentPersistenceDependencies extends FixtureMusicT
   afterReferenceRename?: () => void;
   retainPreviousAuthority?: boolean;
   prewrittenGeneration?: { path: string; stat: BigIntStats };
-  durableReplace?: FixtureDurableReplace;
 }
 
 export interface FixtureEnvironmentReadDependencies {
@@ -370,7 +370,7 @@ export function prepareFixtureMusicTokenSecret(
       fsyncSync(descriptor);
       closeSync(descriptor);
       descriptor = undefined;
-      replaceFixtureMetadataDurably(creationPath, tokenPath);
+      (dependencies.durableReplace ?? replaceFixtureMetadataDurably)(creationPath, tokenPath);
       descriptor = openFile(tokenPath, constants.O_RDWR, 0o600);
       const reopened = fstatSync(descriptor, { bigint: true });
       if (!sameIdentity(opened, reopened) || reopened.size !== BigInt(0)) throw fixtureSecretError();
@@ -462,6 +462,13 @@ interface FixtureAggregateCleanupAuthority {
   currentGenerationName?: string;
 }
 
+export interface RetiredFixtureMusicAuthorityAttestation {
+  schemaVersion: "music-fixture-authority-attestation/v1";
+  state: "absent" | "tombstone";
+  safeToBootstrap: true;
+  usableRecords: 0;
+}
+
 function fixtureAggregateCleanupError(targetId = "aggregate-authority"): FixtureSecretCleanupError {
   return new FixtureSecretCleanupError(targetId);
 }
@@ -478,7 +485,12 @@ function listAggregateCleanupTargets(root: string, currentGenerationName?: strin
     assertOwnedDirectory(directory);
     for (const name of readdirSync(directory).sort()) {
       if (!matcher.test(name)) continue;
-      targets.push({ path: join(directory, name), targetId: name, phase });
+      const path = join(directory, name);
+      // Only regular files can be authenticated fixture authority. A stale or
+      // hostile directory using the filename pattern is never followed and
+      // must not prevent recovery of exact labeled disposable resources.
+      if (!lstatSync(path, { bigint: true }).isFile()) continue;
+      targets.push({ path, targetId: name, phase });
     }
   };
   addDirectory(join(root, FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH), fixtureTokenName, "credentials");
@@ -580,6 +592,67 @@ function authenticateAggregateCleanupAuthority(root: string): FixtureAggregateCl
     if (inspectFixtureEnvironmentAuthority(root) === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
     throw fixtureAggregateCleanupError(currentEnvironment?.generationName);
   }
+}
+
+function assertRetiredFixtureAuthorityInventoryShapes(root: string): void {
+  const observed = (path: string): BigIntStats | undefined => {
+    try { return lstatSync(path, { bigint: true }); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw fixtureAggregateCleanupError();
+    }
+  };
+  const directory = (path: string, matcher?: RegExp): void => {
+    const stat = observed(path);
+    if (!stat) return;
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw fixtureAggregateCleanupError();
+    assertNoLinkedAncestors(path);
+    assertOwnedDirectory(path);
+    if (!matcher) return;
+    for (const name of readdirSync(path)) {
+      if (!matcher.test(name)) continue;
+      const leaf = observed(join(path, name));
+      if (!leaf?.isFile() || leaf.isSymbolicLink()) throw fixtureAggregateCleanupError();
+    }
+  };
+  assertNoLinkedAncestors(root);
+  assertOwnedDirectory(root);
+  directory(join(root, ".artifacts"));
+  directory(join(root, FIXTURE_MUSIC_TOKEN_SECRET_DIRECTORY_RELATIVE_PATH), fixtureTokenName);
+  directory(join(root, FIXTURE_MUSIC_ENVIRONMENT_DIRECTORY_RELATIVE_PATH), fixtureEnvironmentGenerationName);
+  directory(
+    join(root, ".artifacts", "music-rotation-journals"),
+    /^(?:rotation-[a-f0-9]{32}\.json|\.rotation-(?:update|intent)-[a-f0-9]{32}\.tmp)$/,
+  );
+  for (const name of readdirSync(root)) {
+    if (name !== ".env.music.test"
+        && !fixtureEnvironmentTemporaryName.test(name)
+        && !fixtureEnvironmentReferenceTemporaryName.test(name)) continue;
+    const leaf = observed(join(root, name));
+    if (!leaf?.isFile() || leaf.isSymbolicLink()) throw fixtureAggregateCleanupError();
+  }
+}
+
+export function attestRetiredFixtureMusicAuthority(
+  repositoryRoot: string,
+): RetiredFixtureMusicAuthorityAttestation {
+  const root = resolve(repositoryRoot);
+  assertRetiredFixtureAuthorityInventoryShapes(root);
+  const state = inspectFixtureEnvironmentAuthority(root);
+  if (state === "unsupported") throw new FixtureUnsupportedLegacyEnvironmentError();
+  if (state === "reference") throw fixtureAggregateCleanupError();
+  const authority = authenticateAggregateCleanupAuthority(root);
+  if (authority.state !== "empty") throw fixtureAggregateCleanupError();
+  revalidateAggregateCleanupAuthority(root, authority);
+  if (inspectFixtureEnvironmentAuthority(root) !== state) throw fixtureAggregateCleanupError();
+  assertRetiredFixtureAuthorityInventoryShapes(root);
+  revalidateAggregateCleanupAuthority(root, authority);
+  return {
+    schemaVersion: "music-fixture-authority-attestation/v1",
+    state: state === "missing" ? "absent" : "tombstone",
+    safeToBootstrap: true,
+    usableRecords: 0,
+  };
 }
 
 function retireAggregateCleanupTarget(
@@ -2122,7 +2195,9 @@ export async function withAllFixtureMusicSecretsCleanup<T>(
   action: () => Promise<T>,
   dependencies: FixtureAggregateCleanupDependencies = {},
 ): Promise<T> {
-  authenticateAggregateCleanupAuthority(resolve(repositoryRoot));
+  const root = resolve(repositoryRoot);
+  const entryAuthority = authenticateAggregateCleanupAuthority(root);
+  revalidateAggregateCleanupAuthority(root, entryAuthority);
   let result: T | undefined;
   let actionError: unknown;
   try {
@@ -2141,6 +2216,16 @@ export async function withAllFixtureMusicSecretsCleanup<T>(
   }
   if (actionError !== undefined) throw actionError;
   return result as T;
+}
+
+export async function withRetiredFixtureMusicAuthority<T>(
+  repositoryRoot: string,
+  action: () => Promise<T>,
+  dependencies: FixtureAggregateCleanupDependencies = {},
+): Promise<T> {
+  const result = await withAllFixtureMusicSecretsCleanup(repositoryRoot, action, dependencies);
+  attestRetiredFixtureMusicAuthority(repositoryRoot);
+  return result;
 }
 
 function fixtureDirectories(repositoryRoot: string) {

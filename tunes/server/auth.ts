@@ -11,6 +11,15 @@ import { getGeoInfo } from "./utils/geolocation";
 import { emailService } from "./services/email-service";
 import { sanitizeUser } from "./utils/sanitize-user"; import { requestIdFor, sendContainmentError } from "./security-containment";
 
+function retiredRegistrationIdentity(): {
+  strapiUserDocumentId: string;
+  strapiAccountDocumentId: string;
+  lifecycleOperationId: string;
+  guestCapabilityHash: string;
+} {
+  throw new Error("Native registration cannot establish a server-owned identity");
+}
+
 // Helper functions for device detection
 export function extractBrowserInfo(userAgent: string): { name: string, version: string } {
   const browserRegexes = [
@@ -481,6 +490,8 @@ export function setupAuth(app: Express) {
 
   // Registration endpoint
   app.post("/api/register", async (req, res) => {
+    return sendContainmentError(res, 410, "LEGACY_IDENTITY_ROUTE_REMOVED", requestIdFor(req));
+    /* c8 ignore start -- retained only until the retired registration body is removed. */
     try {
       console.log('Registration attempt:', {
         username: req.body.username,
@@ -529,6 +540,7 @@ export function setupAuth(app: Express) {
 
       const user = await storage.createUser({
         ...userData,
+        ...retiredRegistrationIdentity(),
         password: hashedPassword,
         isEmailVerified: false // Ensure new users start with unverified email
       });
@@ -650,9 +662,10 @@ export function setupAuth(app: Express) {
       console.error('Registration error:', error);
       res.status(500).json({
         message: "Registration failed",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: "Unknown error"
       });
     }
+    /* c8 ignore stop */
   });
 
   app.post("/api/logout", (req, res, next) => {

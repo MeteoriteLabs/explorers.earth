@@ -59,7 +59,7 @@ test("an ambiguous Account result is contained as one terminal identity conflict
     ensureCode: "ACCOUNT_AMBIGUOUS",
   });
   await page.goto("/recommendations/music");
-  await expect(page.getByText("We couldn’t finish setting up Music for this account.")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Music is temporarily unavailable.");
   await expect(page.getByRole("button", { name: "Get help" })).toBeVisible();
   expect(audit.ensureCalls()).toBe(1);
   await expect(page.getByRole("heading", { name: "Create your first playlist" })).toHaveCount(0);
@@ -68,26 +68,28 @@ test("an ambiguous Account result is contained as one terminal identity conflict
 test("an outage preserves the Explorer shell and explicit retry resumes sharing", async ({ page }) => {
   const audit = await installMusicQualificationMocks(page, { ensureFailures: 1 });
   await page.goto("/recommendations/music");
-  await expect(page.getByText("Music is taking longer than expected. Your Explorers account is ready.")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Music is temporarily unavailable.");
   await expect(page.getByRole("link", { name: /Home/i }).or(page.getByRole("button", { name: /Home/i })).first()).toBeVisible();
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
-  await page.getByRole("button", { name: "Sharing settings" }).click();
+  await page.getByRole("button", { name: "Open playlist and sharing menu" }).click();
+  await page.getByRole("menuitem", { name: "Sharing settings" }).click();
   await page.getByRole("radio", { name: "Unlisted" }).check();
   await page.getByRole("button", { name: "Save sharing" }).click();
   expect(audit.ensureCalls()).toBe(2);
 });
 
-test("an expired owner credential refreshes once and safely replays the workspace read", async ({ page }) => {
+test("an expired owner credential refreshes once, safely replays, and performs the authenticated live-sync read", async ({ page }) => {
   const audit = await installMusicQualificationMocks(page, {
     playlists: [qualificationPlaylist],
     ownerExpiredFailures: 1,
   });
   await page.goto("/recommendations/music");
-  await expect(page.getByRole("tab", { name: "Road songs" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Road songs/ }).first()).toBeVisible();
   expect(audit.ensureCalls()).toBe(2);
   expect(audit.requests.filter(({ path }) => path === "/api/playlists")).toEqual([
     expect.objectContaining({ authorization: `Bearer ${audit.credential}`, xUsername: undefined }),
+    expect.objectContaining({ authorization: `Bearer ${audit.renewedCredential}`, xUsername: undefined }),
     expect.objectContaining({ authorization: `Bearer ${audit.renewedCredential}`, xUsername: undefined }),
   ]);
 });
@@ -95,10 +97,11 @@ test("an expired owner credential refreshes once and safely replays the workspac
 test("an owner renames a playlist with one credential-bound idempotent mutation", async ({ page }) => {
   const audit = await installMusicQualificationMocks(page, { playlists: [qualificationPlaylist] });
   await page.goto("/recommendations/music");
+  await page.getByRole("button", { name: /^Road songs/ }).first().click();
   await page.getByRole("button", { name: "Rename playlist" }).click();
   await page.getByRole("textbox", { name: "Playlist name" }).fill("Night roads");
   await page.getByRole("button", { name: "Save playlist" }).click();
-  await expect(page.getByRole("tab", { name: "Night roads" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Night roads" })).toBeVisible();
   expect(audit.requests.find(({ method, path }) => method === "PATCH" && path === "/api/playlists/7"))
     .toMatchObject({
       authorization: `Bearer ${audit.credential}`,

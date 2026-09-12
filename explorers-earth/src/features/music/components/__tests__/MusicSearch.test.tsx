@@ -152,16 +152,28 @@ describe("MusicSearch", () => {
     expect(props.searchClient.searchYouTube).toHaveBeenLastCalledWith("roads", "next");
   });
 
-  it("looks up a URL and supports play now without an unhandled rejection", async () => {
+  it("selects a result when its row is clicked and does not render a play-now action", async () => {
+    const props = clients();
+    render(<MusicSearch {...props} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await userEvent.click(await screen.findByText("First song"));
+    expect(screen.getByRole("checkbox", { name: "Select First song" })).toBeChecked();
+    expect(screen.queryByRole("button", { name: /Play First song now/i })).not.toBeInTheDocument();
+  });
+
+  it("looks up a URL and adds the selected result to queue", async () => {
     const props = clients();
     render(<MusicSearch {...props} />);
     await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "https://youtu.be/abcdefghijk");
     await userEvent.click(screen.getByRole("button", { name: "Open discovery actions" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Add from URL" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
-    await waitFor(() => expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select First song" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to queue" }));
+    await waitFor(() => expect(props.queueClient.addSong).toHaveBeenCalledTimes(1));
     expect(props.onChanged).toHaveBeenCalledTimes(1);
-    expect(props.onPlaybackRequested).toHaveBeenCalledWith(7, 43, "search");
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
   });
 
   it("contains retryable failures, announces them, and can retry", async () => {
@@ -191,18 +203,6 @@ describe("MusicSearch", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to queue" }));
     await waitFor(() => expect(props.queueClient.addSong).toHaveBeenCalledTimes(3));
     expect(props.queueClient.addSong.mock.calls[2][0]).toMatchObject({ youtubeId: "lmnopqrstuv" });
-  });
-
-  it("retries only playback after add succeeded", async () => {
-    const props = clients();
-    props.queueClient.setPlaying.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ id: 7 });
-    render(<MusicSearch {...props} />);
-    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
-    await userEvent.click(screen.getByRole("button", { name: "Search" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Retry playing First song" }));
-    await waitFor(() => expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(2));
-    expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
   });
 
   it("invalidates pagination when the query changes and ignores stale results", async () => {
@@ -291,32 +291,30 @@ describe("MusicSearch", () => {
     expect(playlistClient.addPlaylistSong.mock.calls.filter(([, song]) => song.youtubeId === "abcdefghijk")).toHaveLength(1);
   });
 
-  it("treats refresh failure after successful play-now as committed and retries refresh only", async () => {
+  it("treats refresh failure after a selected queue add as committed and retries refresh only", async () => {
     const props = clients();
     props.onChanged.mockRejectedValueOnce(new Error("refresh failed")).mockResolvedValueOnce(undefined);
     render(<MusicSearch {...props} />);
     await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("played, but the latest queue could not be loaded");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select First song" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to queue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Song was added, but the latest queue could not be loaded");
     await userEvent.click(screen.getByRole("button", { name: "Retry refreshing queue" }));
     await waitFor(() => expect(props.onChanged).toHaveBeenCalledTimes(2));
     expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
-    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
   });
 
-  it("keeps a successful retry-play committed when only its refresh fails", async () => {
+  it("does not start playback as part of a selected queue add", async () => {
     const props = clients();
-    props.queueClient.setPlaying.mockRejectedValueOnce(new Error("play failed")).mockResolvedValueOnce({ id: 7 });
-    props.onChanged.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("refresh failed")).mockResolvedValueOnce(undefined);
     render(<MusicSearch {...props} />);
     await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "roads");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Retry playing First song" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Retry refreshing queue" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select First song" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to queue" }));
     expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
-    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(2);
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
   });
 
   it("synchronously locks duplicate search submits", async () => {
@@ -345,15 +343,16 @@ describe("MusicSearch", () => {
     expect(screen.getByLabelText("Music discovery status")).toHaveTextContent("Searching");
   });
 
-  it("preserves committed refresh recovery across mode, input, and discovery changes", async () => {
+  it("preserves queue refresh recovery across mode, input, and discovery changes", async () => {
     const props = clients();
     props.onChanged.mockRejectedValueOnce(new Error("refresh failed")).mockResolvedValueOnce(undefined);
     render(<MusicSearch {...props} />);
     const input = screen.getByRole("searchbox", { name: "Search music or paste a URL" });
     await userEvent.type(input, "roads");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Play First song now" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("played, but the latest queue could not be loaded");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select First song" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 selected to queue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Song was added, but the latest queue could not be loaded");
 
     await userEvent.clear(input);
     await userEvent.type(input, "https://youtu.be/abcdefghijk");
@@ -363,6 +362,6 @@ describe("MusicSearch", () => {
     await userEvent.click(screen.getByRole("button", { name: "Retry refreshing queue" }));
     await waitFor(() => expect(screen.queryByRole("button", { name: "Retry refreshing queue" })).not.toBeInTheDocument());
     expect(props.queueClient.addSong).toHaveBeenCalledTimes(1);
-    expect(props.queueClient.setPlaying).toHaveBeenCalledTimes(1);
+    expect(props.queueClient.setPlaying).not.toHaveBeenCalled();
   });
 });

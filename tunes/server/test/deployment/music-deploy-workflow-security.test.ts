@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -25,6 +26,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(source).toContain("github.ref == 'refs/heads/main'");
     expect(source).toContain("platforms: linux/arm64");
     expect(source).toContain("0019_queue_visibility_control");
+    expect(source).not.toContain("0020_public_snapshot_revision");
     expect(source).toContain("pg_dumpall");
     expect(source).toContain("rollback_image");
     expect(source).toContain("trap rollback ERR");
@@ -79,6 +81,33 @@ describe("Tunes workflow provenance and input boundary", () => {
       }
     };
     visit(workflow);
+  });
+
+  it("executes the temporary direct-deploy preflight as a refusal after its declared expiry", () => {
+    // Break caught: an expired emergency path remains runnable because its
+    // deadline is documentation-only or uses a permissive comparison.
+    const workflow = parseYaml(read(".github/workflows/tunes-test-direct-deploy.yml"));
+    const expiry = workflow.env.TEMPORARY_DIRECT_DEPLOY_EXPIRES as string;
+    const nextDay = new Date(`${expiry}T00:00:00.000Z`);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const afterExpiry = nextDay.toISOString().slice(0, 10);
+    const metadata = workflow.jobs["build-arm64"].steps.find(
+      (step: { id?: string }) => step.id === "meta",
+    ).run as string;
+    const guard = metadata.slice(0, metadata.indexOf('commit="'))
+      .replace('today="$(date -u +%F)"', `today="${afterExpiry}"`);
+    const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
+    const result = spawnSync(bash, ["-c", guard], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { ...process.env, TEMPORARY_DIRECT_DEPLOY_EXPIRES: expiry },
+      windowsHide: true,
+    });
+    expect({ expiry, afterExpiry, status: result.status }).toEqual({
+      expiry: "2026-08-28",
+      afterExpiry: "2026-08-29",
+      status: 1,
+    });
   });
 
   it("pins every privileged production action to an immutable commit", () => {

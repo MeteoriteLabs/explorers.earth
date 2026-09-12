@@ -21,6 +21,7 @@ x-tunes-environment: &tunes-environment
   TRUST_PROXY_HOPS: "1"
   MUSIC_TRUSTED_PROXY_IP: ${TRAEFIK_PROXY_IP:-172.31.250.2}
   STRAPI_ACCESS_TOKEN: ${STRAPI_ACCESS_TOKEN:?STRAPI_ACCESS_TOKEN is required}
+  STRAPI_ANALYTICS_ACCESS_TOKEN: ${STRAPI_ANALYTICS_ACCESS_TOKEN:?STRAPI_ANALYTICS_ACCESS_TOKEN is required}
   STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: /run/secrets/strapi-lifecycle-proof
   STRAPI_JWT_SECRET: ${STRAPI_JWT_SECRET:?STRAPI_JWT_SECRET is required}
   STRAPI_GRAPHQL_ENDPOINT: ${STRAPI_GRAPHQL_ENDPOINT:-}
@@ -85,6 +86,7 @@ x-tunes-environment: &tunes-environment
   MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID:-}
   MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE:-}
   MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL:-}
+  MUSIC_PUBLIC_ID_HMAC_KEY_FILE: /run/secrets/music-publication-response/public-id
   ALLOWED_ORIGINS: https://localtunes.earth,https://explorers.earth
 
 x-tunes-service: &tunes-service
@@ -160,13 +162,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0019_queue_visibility_control}
+      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0021_explorers_analytics_receipts}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}.json
     labels:
       com.explorers.music.slot: blue
       com.explorers.music.commit: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
       com.explorers.music.digest: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0019_queue_visibility_control}
+      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0021_explorers_analytics_receipts}
 
   tunes-green:
     <<: *tunes-service
@@ -175,13 +177,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0019_queue_visibility_control}
+      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0021_explorers_analytics_receipts}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}.json
     labels:
       com.explorers.music.slot: green
       com.explorers.music.commit: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
       com.explorers.music.digest: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0019_queue_visibility_control}
+      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0021_explorers_analytics_receipts}
 
   tunes-gate:
     profiles: [deployment]
@@ -199,7 +201,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: ${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_CANDIDATE_COMMIT:?TUNES_CANDIDATE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0019_queue_visibility_control}
+      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0021_explorers_analytics_receipts}
       MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}.json
     depends_on:

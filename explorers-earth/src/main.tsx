@@ -11,7 +11,6 @@ import {
 import { setContext } from "@apollo/client/link/context";
 import { typePolicies } from "./lib/apolloCache";
 import { Toaster } from "sonner";
-import { APIProvider } from "@vis.gl/react-google-maps";
 import {HelmetProvider} from "react-helmet-async";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -23,22 +22,13 @@ const authLink = setContext((_, { headers }) => {
   // get the authentication token from local storage if it exists
   const token = localStorage.getItem("qrtoken");
   
-  // For login/register operations and public operations, don't send any authorization header
-  // Check if this is an authentication operation by looking at the operation name
-  const operationName = _.operationName;
-  const isAuthOperation = operationName === 'login' || operationName === 'register' || operationName === 'forgotPassword' || operationName === 'resetPassword' || operationName === 'CheckUsernameAvailability';
-  const isPublicOperation = operationName === 'Faqs' || operationName === 'PlatformTerms' || operationName === 'SubscriptionPlanBases';
-  
   // return the headers to the context so httpLink can read them
   return {
     headers: {
       ...headers,
-      // Only add authorization header for non-auth and non-public operations
-      ...(isAuthOperation || isPublicOperation ? {} : {
-        authorization: token
-          ? `Bearer ${token}`
-          : `Bearer ${import.meta.env.VITE_PUBLIC_ACCESS_TOKEN}`,
-      }),
+      // Public GraphQL permissions handle anonymous requests. Sending a stale
+      // fallback token turns otherwise valid public queries into HTTP 401s.
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
   };
 });
@@ -62,7 +52,6 @@ initAnalytics();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <HelmetProvider>
-    <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
       <ApolloProvider client={client}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
@@ -71,7 +60,6 @@ createRoot(document.getElementById("root")!).render(
           </ThemeProvider>
         </QueryClientProvider>
       </ApolloProvider>
-    </APIProvider>
     </HelmetProvider>
   </StrictMode>
 );

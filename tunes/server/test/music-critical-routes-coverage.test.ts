@@ -1,6 +1,5 @@
 import express, { type Request, type Response } from "express";
-import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MusicIdentityError } from "../../shared/musicError";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { MusicPrincipalError } from "../middleware/musicPrincipal";
@@ -8,6 +7,10 @@ import {
   setupMusicIdentityRoutes,
   type MusicIdentityRouteDependencies,
 } from "../routes/musicIdentityRoutes";
+import { createLoopbackSupertestScope } from "./helpers/loopback-supertest";
+
+const loopback = createLoopbackSupertestScope();
+afterEach(async () => loopback.closeAll());
 
 const projection = {
   id: 41,
@@ -73,7 +76,8 @@ describe("C4/C5 identity route critical coverage", () => {
   it.each(["suspended", "pending_deletion"] as const)("refuses projected %s identity before minting", async (identityStatus) => {
     const mintCredential = vi.fn();
     const app = appFor({ ensure: async () => ({ ...projection, identityStatus }), mintCredential });
-    const response = await request(app).post("/api/music/identity/ensure").set(bearer());
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/ensure").set(bearer());
     expect(response.status).toBe(identityStatus === "suspended" ? 403 : 409);
     expect(response.body.error.code).toBe(identityStatus === "suspended" ? "IDENTITY_SUSPENDED" : "IDENTITY_PENDING_DELETION");
     expect(mintCredential).not.toHaveBeenCalled();
@@ -82,9 +86,10 @@ describe("C4/C5 identity route critical coverage", () => {
   it("executes the lifecycle boundary operation and rejects Music proof on suspension", async () => {
     const lifecycle = dependencies().lifecycle!;
     const app = appFor({ lifecycle, isMusicCredential: (proof) => proof.startsWith("music.") });
-    const boundary = await request(app).post("/api/music/identity/lifecycle/boundary").set(bearer()).expect(200);
+    const { request } = await loopback.open({ app });
+    const boundary = await request.post("/api/music/identity/lifecycle/boundary").set(bearer()).expect(200);
     expect(boundary.body.operation).toMatchObject({ boundaryCrossed: true, state: "requested" });
-    const rejected = await request(app).post("/api/music/identity/lifecycle/suspend")
+    const rejected = await request.post("/api/music/identity/lifecycle/suspend")
       .set(bearer("music.local.credential.with.entropy"));
     expect(rejected.status).toBe(401);
     expect(rejected.body.error.code).toBe("AUTH_INVALID");
@@ -93,8 +98,9 @@ describe("C4/C5 identity route critical coverage", () => {
   it("rate-limits ordinary and suspension lifecycle work with a bounded default retry", async () => {
     const limiter = { check: vi.fn(() => ({ allowed: false, retryAfterSeconds: undefined })) };
     const app = appFor({ limiter: limiter as never });
+    const { request } = await loopback.open({ app });
     for (const path of ["identity/ensure", "identity/lifecycle/prepare", "identity/lifecycle/suspend"]) {
-      const response = await request(app).post(`/api/music/${path}`).set(bearer());
+      const response = await request.post(`/api/music/${path}`).set(bearer());
       expect(response.status).toBe(429);
       expect(response.headers["retry-after"]).toBe("1");
     }
@@ -113,11 +119,12 @@ describe("C4/C5 identity route critical coverage", () => {
       lifecycle,
       resolvePrincipal: async () => { throw unavailable; },
     });
+    const { request } = await loopback.open({ app });
     for (const operation of [
-      request(app).post("/api/music/identity/ensure").set(bearer()),
-      request(app).post("/api/music/identity/lifecycle/prepare").set(bearer()),
-      request(app).post("/api/music/identity/lifecycle/suspend").set(bearer()),
-      request(app).get("/api/music/identity/current").set("Authorization", "Bearer valid.music.credential"),
+      request.post("/api/music/identity/ensure").set(bearer()),
+      request.post("/api/music/identity/lifecycle/prepare").set(bearer()),
+      request.post("/api/music/identity/lifecycle/suspend").set(bearer()),
+      request.get("/api/music/identity/current").set("Authorization", "Bearer valid.music.credential"),
     ]) {
       const response = await operation;
       expect(response.status).toBe(503);
@@ -131,7 +138,8 @@ describe("C4/C5 identity route critical coverage", () => {
     [new MusicPrincipalError("IDENTITY_PENDING_DELETION", 409, "Pending"), "IDENTITY_PENDING_DELETION"],
   ] as const)("maps principal state %s", async (failure, code) => {
     const app = appFor({ resolvePrincipal: async () => { throw failure; } });
-    const response = await request(app).get("/api/music/identity/current")
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/music/identity/current")
       .set("Authorization", "Bearer valid.music.credential");
     expect(response.status).toBe(failure.status);
     expect(response.body.error.code).toBe(code);
@@ -142,7 +150,8 @@ describe("C4/C5 identity route critical coverage", () => {
     const app = appFor({
       ensure: async () => { throw new MusicIdentityError("INTERNAL_ERROR", 200, "unsafe", "retry", true); },
     });
-    const response = await request(app).post("/api/music/identity/ensure").set(bearer());
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/ensure").set(bearer());
     expect(response.status).toBe(500);
     expect(response.body.error.code).toBe("INTERNAL_ERROR");
     expect(response.body.error.message).not.toContain("unsafe");
@@ -150,8 +159,9 @@ describe("C4/C5 identity route critical coverage", () => {
 
   it("rejects route-local transfer encoding and owner input", async () => {
     const app = appFor();
-    await request(app).post("/api/music/identity/ensure").set(bearer()).set("Transfer-Encoding", "chunked").send("x").expect(400);
-    await request(app).post("/api/music/identity/ensure").set(bearer()).set("X-Owner-Id", "41").expect(400);
+    const { request } = await loopback.open({ app });
+    await request.post("/api/music/identity/ensure").set(bearer()).set("Transfer-Encoding", "chunked").send("x").expect(400);
+    await request.post("/api/music/identity/ensure").set(bearer()).set("X-Owner-Id", "41").expect(400);
   });
 
   it("defaults missing retry metadata on every retryable route response", async () => {
@@ -168,11 +178,12 @@ describe("C4/C5 identity route critical coverage", () => {
       lifecycle,
       resolvePrincipal: async () => { throw unavailable; },
     });
+    const { request } = await loopback.open({ app });
     for (const operation of [
-      request(app).post("/api/music/identity/ensure").set(bearer()),
-      request(app).post("/api/music/identity/lifecycle/prepare").set(bearer()),
-      request(app).post("/api/music/identity/lifecycle/suspend").set(bearer()),
-      request(app).get("/api/music/identity/current").set("Authorization", "Bearer valid.music.credential"),
+      request.post("/api/music/identity/ensure").set(bearer()),
+      request.post("/api/music/identity/lifecycle/prepare").set(bearer()),
+      request.post("/api/music/identity/lifecycle/suspend").set(bearer()),
+      request.get("/api/music/identity/current").set("Authorization", "Bearer valid.music.credential"),
     ]) {
       const response = await operation;
       expect(response.status).toBe(503);
@@ -293,7 +304,8 @@ describe("C4/C5 identity route critical coverage", () => {
       const telemetry = vi.fn().mockReturnValueOnce(item.before).mockReturnValueOnce(item.after);
       const metrics = vi.fn();
       const app = appFor({ telemetry, metrics, ensure: item.ensure });
-      await request(app).post("/api/music/identity/ensure").set(bearer());
+      const { request } = await loopback.open({ app });
+      await request.post("/api/music/identity/ensure").set(bearer());
       expect(metrics).toHaveBeenCalledWith(expect.objectContaining(item.expected));
     }
   });
@@ -306,7 +318,8 @@ describe("C4/C5 identity route critical coverage", () => {
     delete values.fingerprint;
     delete values.requestIdFactory;
     setupMusicIdentityRoutes(app, values);
-    const response = await request(app).post("/api/music/identity/ensure").set(bearer());
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/ensure").set(bearer());
     expect(response.status).toBe(200);
     expect(response.headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
     expect(logger).toHaveBeenCalledOnce();

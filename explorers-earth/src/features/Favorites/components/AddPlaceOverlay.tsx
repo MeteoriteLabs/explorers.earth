@@ -10,6 +10,7 @@ import { createPlaceQueryParams } from "../../../utils/transformGooglePlace";
 import { toast } from "sonner";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import axios from "axios";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { instagramService } from "../../../services/instagramService";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -451,4 +452,4 @@ const AddPlaceOverlay = memo(
     }
 );
 
-export default AddPlaceOverlay;
+export default withGoogleMapsProvider(AddPlaceOverlay);

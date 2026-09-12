@@ -30,12 +30,16 @@ describe("rendered public guest request journey", () => {
     const user = userEvent.setup();
     setGuestMusicCapability("A".repeat(43), "owner-a");
     mounted(<GuestCapabilityImport guestUrl="owner-a" onImported={() => undefined} />);
-    await user.type(screen.getByLabelText("Guest access handoff"), guestCapabilityHandoff("N".repeat(43), "owner-a", "https://music.example"));
+    const handoffInput = screen.getByLabelText("Guest access handoff");
+    await user.click(handoffInput);
+    await user.paste(guestCapabilityHandoff("N".repeat(43), "owner-a", "https://music.example"));
     await user.click(screen.getByRole("button", { name: "Import guest access" }));
     expect(getGuestMusicCapability("owner-a")).toBe("N".repeat(43));
     cleanup();
     mounted(<GuestCapabilityImport guestUrl="owner-b" onImported={() => undefined} />);
-    await user.type(screen.getByLabelText("Guest access handoff"), guestCapabilityHandoff("A".repeat(43), "owner-a", "https://music.example"));
+    const wrongSlugHandoffInput = screen.getByLabelText("Guest access handoff");
+    await user.click(wrongSlugHandoffInput);
+    await user.paste(guestCapabilityHandoff("A".repeat(43), "owner-a", "https://music.example"));
     await user.click(screen.getByRole("button", { name: "Import guest access" }));
     expect((await screen.findByRole("alert")).textContent).toContain("invalid for this playlist");
     expect(getGuestMusicCapability("owner-b")).toBeUndefined();

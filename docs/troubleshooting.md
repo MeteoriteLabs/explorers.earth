@@ -122,6 +122,29 @@ netstat -ano | findstr :5000
 
 **This is expected behavior** — users without geolocation data are counted in the "Unknown" category.
 
+### Public Music is stale or reconnecting
+
+Filter operational logs by `version = music-public-ops/v1`; use the browser
+stream `music-public-browser-ops/v1` only for client/parser and fallback-poll
+diagnosis. Compare low-cardinality `event`, `outcome`, `operation`, `status`,
+`kind`, `role`, and bounded duration fields. A validated support reference can
+be matched to backend `requestId`. Never request or paste a public slug,
+capability, Account/User identifier, raw search, media URL, credential, IP
+address, or socket room into a ticket or query.
+
+Check in order: HTTP 5xx and parser rejection, listener reconnect/fatal events,
+socket admission/disconnect churn, notification fanout lag, then fallback poll
+activation. Revocation enforcement is expected after a permission/publication
+change; missing enforcement or cross-owner delivery requires containment.
+
+### Public Music fixture cleanup failed
+
+Do not rerun an authorized live-write lane after a restoration mismatch. Keep
+the sanitized recovery artifact, compare its normalized `beforeHash` and
+`afterHash`, and inspect only namespaced `e2e-public-music-<run>` records. Never
+delete an unnamespaced playlist/account to force the comparison green. PR-safe
+and mocked lanes remain usable because they cannot acquire write authority.
+
 ## Getting Help
 
 If your issue isn't listed here:

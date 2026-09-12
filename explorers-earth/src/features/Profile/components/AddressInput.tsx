@@ -6,6 +6,7 @@ import CurrLocation from "../../../assets/icons/CurrLocation";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 
 interface AddressInputProps {
   value?: string;
@@ -431,4 +432,4 @@ const AddressInput: FC<AddressInputProps> = ({
   );
 };
 
-export default AddressInput;
+export default withGoogleMapsProvider(AddressInput);

@@ -86,8 +86,10 @@ test("confirmed email login completes real onboarding before the sole observer e
 test("actual authentication triggers contain incomplete, unconfirmed, and ambiguous authority", async ({ page }) => {
   const incomplete = await installMusicAuthTriggerHarness(page, { provider: "google", accounts: [] });
   await page.goto(`/google-auth/callback?access_token=${incomplete.applicationToken}`);
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect.poll(incomplete.eligibilityQueries).toBeGreaterThan(0);
   expect(incomplete.ensureCalls()).toBe(0);
+  await page.goto("/recommendations/music");
+  await expect(page.getByText("Finish your Explorer profile to use Music.")).toBeVisible();
 
   await page.context().clearCookies();
   await page.evaluate(() => localStorage.clear());

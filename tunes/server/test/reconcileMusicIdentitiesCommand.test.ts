@@ -720,7 +720,7 @@ describe("reconcileMusicIdentities", () => {
     expect(run).not.toHaveBeenCalled();
     await expect(readMusicReconciliationCheckpoint(checkpointPath)).resolves.toEqual(existing);
     await expect(readMusicReconciliationCheckpoint(resumePath)).resolves.toEqual(checkpoint());
-  });
+  }, checkpointFilesystemTimeoutMs);
 
   it("refuses to overwrite the reviewed resume evidence", async () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconcile-preserve-review-"));

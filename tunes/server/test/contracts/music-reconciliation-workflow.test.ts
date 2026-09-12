@@ -147,6 +147,7 @@ describe("Music reconciliation automation contract", () => {
     const tunes = parseYaml(read(".github/workflows/tunes.yml"));
     const testStep = tunes.jobs["build-test-scan-push"].steps.find((step: any) => step.name === "Test Tunes");
     expect(testStep.env.MUSIC_C8_POSTGRES_TEST).toBe("1");
+    expect(testStep.env.STRAPI_ANALYTICS_ACCESS_TOKEN).toBe("fixture-analytics-token");
     expect(testStep.run).toContain("npm run test:music-c8:coverage");
     expect(testStep.run).toContain("npm run test:music-c8:repository-coverage");
 

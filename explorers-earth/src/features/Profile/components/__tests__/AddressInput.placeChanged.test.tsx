@@ -22,6 +22,7 @@ class FakeAutocomplete {
 vi.mock("@vis.gl/react-google-maps", () => {
   let lib: { Autocomplete: typeof FakeAutocomplete } | null = null;
   return {
+    APIProvider: ({ children }: { children?: React.ReactNode }) => children,
     useMapsLibrary: () => {
       if (!lib) lib = { Autocomplete: FakeAutocomplete };
       return lib;

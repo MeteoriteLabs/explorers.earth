@@ -1,5 +1,5 @@
 import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, aroundEach, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { setupMusicFixtureProbeRoute } from "../../routes/musicFixtureProbe";
@@ -13,13 +13,22 @@ import {
   migrateMusicDatabase,
   verifyMusicDatabase,
 } from "../../db/migrate";
-import { EXPECTED_MUSIC_MIGRATION_ID } from "../../../shared/music-migration-contract";
+import {
+  EXPECTED_MUSIC_MIGRATION_CHAIN,
+  EXPECTED_MUSIC_MIGRATION_ID,
+} from "../../../shared/music-migration-contract";
+import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
+import {
+  MusicMigrationTestResources,
+  nextSyntheticMusicMigrationId,
+} from "./music-migration-test-resources";
 import manifest from "../../../../fixtures/db/music-runtime-table-manifest.json";
 
-const adminUrl = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
+const adminUrl = process.env.DATABASE_URL_TEST ?? "";
 const runIntegration = process.env.MUSIC_C3_POSTGRES_TEST === "1";
 const describePostgres = runIntegration ? describe.sequential : describe.skip;
 const databases: string[] = [];
+const resources = new MusicMigrationTestResources();
 let admin: pg.Pool;
 
 function databaseUrl(name: string): string {
@@ -32,7 +41,7 @@ async function freshDatabase(label: string): Promise<pg.Pool> {
   const name = `music_c3_${label}_${process.pid}_${databases.length}`.replace(/[^a-z0-9_]/g, "_");
   await admin.query(`CREATE DATABASE ${name}`);
   databases.push(name);
-  return new pg.Pool({ connectionString: databaseUrl(name), max: 4 });
+  return resources.trackPool(new pg.Pool({ connectionString: databaseUrl(name), max: 4 }));
 }
 
 async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []): Promise<void> {
@@ -40,28 +49,31 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 }
 
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
+  aroundEach(async (runTest) => {
+    await resources.runWithCleanup(runTest);
+  });
+
   beforeAll(async () => {
-    const exactTarget = new URL(adminUrl);
-    const expectedPort = process.env.MUSIC_C10_STANDALONE_POSTGRES_ACK === "C10_LABELED_LOCAL_PG15"
-      ? process.env.MUSIC_C10_STANDALONE_POSTGRES_PORT
-      : "55432";
-    expect({ protocol: exactTarget.protocol, hostname: exactTarget.hostname, port: exactTarget.port,
-      pathname: exactTarget.pathname, username: exactTarget.username }).toEqual({
-      protocol: "postgresql:", hostname: "127.0.0.1", port: expectedPort,
-      pathname: "/music_fixture", username: "music_migrator",
-    });
-    expect(exactTarget.password).not.toBe("");
-    admin = new pg.Pool({ connectionString: adminUrl, max: 4 });
+    const exactTarget = validateIntegrationDatabaseTarget(adminUrl);
+    admin = new pg.Pool({ connectionString: exactTarget.toString(), max: 4 });
     const version = await admin.query<{ server_version: string }>("SHOW server_version");
     expect(version.rows[0].server_version).toMatch(/^15\./);
   });
 
   afterAll(async () => {
-    for (const name of databases.reverse()) {
-      await admin.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()", [name]);
-      await admin.query(`DROP DATABASE ${name}`);
+    if (!admin) return;
+    try {
+      try {
+        await resources.closeAllPools();
+      } finally {
+        for (const name of databases.reverse()) {
+          await admin.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()", [name]);
+          await admin.query(`DROP DATABASE ${name}`);
+        }
+      }
+    } finally {
+      await admin.end();
     }
-    await admin.end();
   });
 
   it("migrates a fresh database, creates all 28 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
@@ -73,10 +85,13 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const present = new Set(tables.rows.map(({ table_name }) => table_name));
     for (const table of manifest.tables) expect(present.has(table.name), table.name).toBe(true);
     expect(first.currentId).toBe(EXPECTED_MUSIC_MIGRATION_ID);
-    expect(first.appliedIds).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive", "0016_publication_operation_retention", "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement", "0019_queue_visibility_control"]);
+    expect(first.appliedIds).toEqual(EXPECTED_MUSIC_MIGRATION_CHAIN);
+    expect((await pool.query(`SELECT data_type,is_nullable,column_default FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='users' AND column_name='public_snapshot_revision'`)).rows[0])
+      .toEqual({ data_type: "bigint", is_nullable: "NO", column_default: "0" });
     expect(second.appliedIds).toEqual([]);
     expect(verified.ready).toBe(true);
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("persists hash-only reactivation authority with recoverable leases and atomic single use", async () => {
@@ -120,7 +135,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       .map(({ column_name }) => column_name);
     expect(columns).not.toContain("email");
     expect(JSON.stringify(await pool.query("SELECT * FROM music_reactivation_tokens"))).not.toContain("reactivation-token");
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("upgrades a populated committed 0002 database through appended 0003 without rewriting history", async () => {
@@ -139,7 +154,48 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     expect((await pool.query("SELECT checksum FROM music_schema_migrations WHERE id='0002_identity_lifecycle'")).rows[0].checksum).toBe(original0002);
     expect((await pool.query("SELECT operation_kind,operation_state FROM music_identity_lifecycle_operations WHERE operation_id='pre-hardening-operation'")).rows[0])
       .toEqual({ operation_kind: "provision", operation_state: "completed" });
-    await pool.end();
+    await resources.closePool(pool);
+  });
+
+  it("upgrades a populated 0019 database without breaking the old queue-visible binary contract", async () => {
+    // Break caught: the additive column rewrites prior history, lacks its zero
+    // default, or makes an old binary's explicit user projection/update fail.
+    const pool = await freshDatabase("upgrade_from_0019");
+    const chain = loadMusicMigrations();
+    const idsThrough0019 = ["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive", "0016_publication_operation_retention", "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement", "0019_queue_visibility_control"];
+    await migrateMusicDatabase(pool, { migrations: chain.slice(0, 19), testOnlyExpectedIds: idsThrough0019 });
+    const inserted = await pool.query<{ id: number }>(`INSERT INTO users
+      (username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
+       guest_capability_hash,lifecycle_operation_id,music_queue_revision,allow_queue_visibility)
+      VALUES ('old-public-binary','disabled','old-public-slug','Old Venue','old-public-person',
+        'old-public-account',$1,'old-public-operation',7,true) RETURNING id`, ["d".repeat(64)]);
+    const id = inserted.rows[0].id;
+    const before = (await pool.query(
+      "SELECT username,music_queue_revision,allow_queue_visibility FROM users WHERE id=$1",
+      [id],
+    )).rows[0];
+    const oldChecksum = (await pool.query(
+      "SELECT checksum FROM music_schema_migrations WHERE id='0019_queue_visibility_control'",
+    )).rows[0].checksum;
+
+    await migrateMusicDatabase(pool);
+
+    expect((await pool.query(
+      "SELECT username,music_queue_revision,allow_queue_visibility FROM users WHERE id=$1",
+      [id],
+    )).rows[0]).toEqual(before);
+    expect((await pool.query(
+      "SELECT public_snapshot_revision FROM users WHERE id=$1",
+      [id],
+    )).rows[0].public_snapshot_revision).toBe("0");
+    expect((await pool.query(
+      "UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1 RETURNING music_queue_revision",
+      [id],
+    )).rows[0].music_queue_revision).toBe("8");
+    expect((await pool.query(
+      "SELECT checksum FROM music_schema_migrations WHERE id='0019_queue_visibility_control'",
+    )).rows[0].checksum).toBe(oldChecksum);
+    await resources.closePool(pool);
   });
 
   it("enforces immutable identities, selected Account, lifecycle, owners, and hashed guest capabilities in PostgreSQL", async () => {
@@ -163,7 +219,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await expectRejected(pool, insert, ["duplicate-hash", "dup-slug", "person-4", "account-4", hash, "operation-4"]);
     await expectRejected(pool, "UPDATE users SET identity_status='pending_deletion' WHERE id=$1", [id]);
     await expectRejected(pool, "UPDATE users SET identity_status='suspended' WHERE id=$1", [id]);
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("keeps tombstones independent of deleted user rows and never adopts by username/email", async () => {
@@ -184,7 +240,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     })).rejects.toThrow(/tombstoned/i);
     expect(await repository.findByExternalIdentity("person-missing")).toBeUndefined();
     expect(Object.getOwnPropertyNames(MusicIdentityRepository.prototype)).not.toEqual(expect.arrayContaining(["findByUsername", "findByEmail", "assertCanCreate"]));
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("atomically prevents recreation by either immutable user or Account ID, including direct SQL", async () => {
@@ -241,7 +297,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       .toEqual({ strapi_account_document_id: "account-direct-delete" });
     await expectRejected(pool, insertUser, ["direct-recreate-user", "direct-recreate-user-slug", "person-direct-delete", "account-other", "f".repeat(64), "recreate-direct-user"]);
     await expectRejected(pool, insertUser, ["direct-recreate-account", "direct-recreate-account-slug", "person-other", "account-direct-delete", "0".repeat(64), "recreate-direct-account"]);
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("serializes concurrent direct create-vs-tombstone in both lock-queue orderings", async () => {
@@ -267,21 +323,22 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       const suffix = first;
       const userDocumentId = `person-race-${suffix}`;
       const accountDocumentId = `account-race-${suffix}`;
-      const blocker = await pool.connect();
-      await blocker.query("BEGIN");
-      await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${userDocumentId}`]);
-      await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
       const create = () => pool.query(insertUser, [
         `race-${suffix}`, `race-slug-${suffix}`, userDocumentId, accountDocumentId,
         (first === "create" ? "6" : "7").repeat(64), `provision-race-${suffix}`,
       ]);
       const tombstone = () => pool.query(insertTombstone, [userDocumentId, accountDocumentId, `delete-race-${suffix}`]);
-      const firstPromise = first === "create" ? create() : tombstone();
-      await waitForWaiters(1);
-      const secondPromise = first === "create" ? tombstone() : create();
-      await waitForWaiters(2);
-      await blocker.query("COMMIT");
-      blocker.release();
+      const [firstPromise, secondPromise] = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
+        await blocker.query("BEGIN");
+        await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${userDocumentId}`]);
+        await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
+        const firstPending = first === "create" ? create() : tombstone();
+        await waitForWaiters(1);
+        const secondPending = first === "create" ? tombstone() : create();
+        await waitForWaiters(2);
+        await blocker.query("COMMIT");
+        return [firstPending, secondPending] as const;
+      });
       const [firstResult, secondResult] = await Promise.allSettled([firstPromise, secondPromise]);
       expect(firstResult.status).toBe("fulfilled");
       expect(secondResult.status).toBe("rejected");
@@ -290,7 +347,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
         (SELECT count(*)::int FROM music_identity_tombstones WHERE strapi_user_document_id=$1) AS tombstone`, [userDocumentId]);
       expect(state.rows[0]).toEqual(first === "create" ? { live: 1, tombstone: 0 } : { live: 0, tombstone: 1 });
     }
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("enforces lifecycle edge/session rules and operation replay at the repository boundary", async () => {
@@ -390,7 +447,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       .toEqual(expect.arrayContaining(["provision-lifecycle", "suspend-1", "reactivate-1", "delete-1", "cancel-1", "reactivate-2", "delete-again", "cancel-again", "reactivate-again"]));
     await expectRejected(pool, "UPDATE users SET identity_status='suspended' WHERE strapi_user_document_id='person-lifecycle'");
     await expectRejected(pool, "UPDATE users SET identity_status='pending_deletion' WHERE strapi_user_document_id='person-lifecycle'");
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("uses one advisory-before-row delete primitive without deadlock in create/delete and tombstone/delete orderings", async () => {
@@ -420,9 +477,6 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
         const userId = await seed(suffix);
         const userDocumentId = `person-lock-${suffix}`;
         const accountDocumentId = `account-lock-${suffix}`;
-        const blocker = await pool.connect();
-        await blocker.query("BEGIN");
-        await blocker.query("SELECT lock_music_identity_pair($1,$2)", [userDocumentId, accountDocumentId]);
         const competitor = family === "create"
           ? () => repository.createIdentity({
             username: `duplicate-${suffix}`, password: "disabled", guestUrl: `duplicate-${suffix}-slug`, venueName: "Venue",
@@ -433,12 +487,16 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
             (strapi_user_document_id,strapi_account_document_id,reason,lifecycle_operation_id)
             VALUES ($1,$2,'direct-race',$3)`, [userDocumentId, accountDocumentId, `direct-tombstone-${suffix}`]);
         const deletion = () => pool.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [userId, `delete-${suffix}`, "race-delete"]);
-        const firstPromise = first === "delete" ? deletion() : competitor();
-        await waitForWaiters(1);
-        const secondPromise = first === "delete" ? competitor() : deletion();
-        await waitForWaiters(2);
-        await blocker.query("COMMIT");
-        blocker.release();
+        const [firstPromise, secondPromise] = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
+          await blocker.query("BEGIN");
+          await blocker.query("SELECT lock_music_identity_pair($1,$2)", [userDocumentId, accountDocumentId]);
+          const firstPending = first === "delete" ? deletion() : competitor();
+          await waitForWaiters(1);
+          const secondPending = first === "delete" ? competitor() : deletion();
+          await waitForWaiters(2);
+          await blocker.query("COMMIT");
+          return [firstPending, secondPending] as const;
+        });
         const settled = await Promise.race([
           Promise.allSettled([firstPromise, secondPromise]),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("delete lock-order deadlock")), 5_000)),
@@ -450,7 +508,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
           .toEqual({ live: 0, tombstone: 1 });
       }
     }
-    await pool.end();
+    await resources.closePool(pool);
   }, 30_000);
 
   it("serializes numeric user IDs across authorized deletion, explicit inserts, and sequence reset", async () => {
@@ -466,19 +524,20 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     // Delete-first: the delete has removed the old row but has not committed.
     // A different external identity using the same numeric ID must wait on the
     // numeric advisory key, then observe the committed tombstone and lose.
-    const deleting = await pool.connect();
-    await deleting.query("BEGIN");
-    await deleting.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [original.id, "delete-numeric-lock-old", "numeric-race"]);
-    const reuse = pool.query(`INSERT INTO users
-      (id,username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
-       guest_capability_hash,lifecycle_operation_id)
-      VALUES ($1,'numeric-lock-reuse','disabled','numeric-lock-reuse-slug','Venue',
-        'person-numeric-lock-new','account-numeric-lock-new',$2,'provision-numeric-lock-new')`, [original.id, "7".repeat(64)]);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const numericLockWaiters = (await pool.query<{ count: number }>(`SELECT count(*)::int AS count FROM pg_locks
-      WHERE locktype='advisory' AND NOT granted AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`)).rows[0].count;
-    await deleting.query("COMMIT");
-    deleting.release();
+    const { reuse, numericLockWaiters } = await resources.withClient(pool, async (deleting: pg.PoolClient) => {
+      await deleting.query("BEGIN");
+      await deleting.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [original.id, "delete-numeric-lock-old", "numeric-race"]);
+      const reuse = pool.query(`INSERT INTO users
+        (id,username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
+         guest_capability_hash,lifecycle_operation_id)
+        VALUES ($1,'numeric-lock-reuse','disabled','numeric-lock-reuse-slug','Venue',
+          'person-numeric-lock-new','account-numeric-lock-new',$2,'provision-numeric-lock-new')`, [original.id, "7".repeat(64)]);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const numericLockWaiters = (await pool.query<{ count: number }>(`SELECT count(*)::int AS count FROM pg_locks
+        WHERE locktype='advisory' AND NOT granted AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`)).rows[0].count;
+      await deleting.query("COMMIT");
+      return { reuse, numericLockWaiters };
+    });
     const reuseResult = await reuse.then(() => ({ accepted: true, message: "" }), (error: Error) => ({ accepted: false, message: error.message }));
     expect(numericLockWaiters).toBeGreaterThanOrEqual(1);
     expect(reuseResult).toMatchObject({ accepted: false });
@@ -492,19 +551,19 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     // stays live until a later authorized deletion; PostgreSQL's PK means an
     // insert cannot "win" first against an already-existing numeric ID.
     const explicitId = original.id + 50_000;
-    const inserting = await pool.connect();
-    await inserting.query("BEGIN");
-    await inserting.query(`INSERT INTO users
-      (id,username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
-       guest_capability_hash,lifecycle_operation_id)
-      VALUES ($1,'numeric-lock-first','disabled','numeric-lock-first-slug','Venue',
-        'person-numeric-lock-first','account-numeric-lock-first',$2,'provision-numeric-lock-first')`, [explicitId, "8".repeat(64)]);
-    // A delete that cannot yet observe the uncommitted identity must not
-    // speculate or create history for it.
-    await expect(pool.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [explicitId, "premature-delete-numeric-lock-first", "numeric-race"]))
-      .rejects.toThrow(/resource-bound deletion history not found/i);
-    await inserting.query("COMMIT");
-    inserting.release();
+    await resources.withClient(pool, async (inserting: pg.PoolClient) => {
+      await inserting.query("BEGIN");
+      await inserting.query(`INSERT INTO users
+        (id,username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
+         guest_capability_hash,lifecycle_operation_id)
+        VALUES ($1,'numeric-lock-first','disabled','numeric-lock-first-slug','Venue',
+          'person-numeric-lock-first','account-numeric-lock-first',$2,'provision-numeric-lock-first')`, [explicitId, "8".repeat(64)]);
+      // A delete that cannot yet observe the uncommitted identity must not
+      // speculate or create history for it.
+      await expect(pool.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [explicitId, "premature-delete-numeric-lock-first", "numeric-race"]))
+        .rejects.toThrow(/resource-bound deletion history not found/i);
+      await inserting.query("COMMIT");
+    });
     expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [explicitId])).rows[0].count).toBe(1);
     await pool.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [explicitId, "delete-numeric-lock-first", "numeric-race"]);
     expect((await pool.query("SELECT count(*)::int AS count FROM users WHERE id=$1", [explicitId])).rows[0].count).toBe(0);
@@ -517,7 +576,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       VALUES ('numeric-lock-sequence','disabled','numeric-lock-sequence-slug','Venue',
         'person-numeric-lock-sequence','account-numeric-lock-sequence',$1,'provision-numeric-lock-sequence')`, ["9".repeat(64)]))
       .rejects.toThrow(/retired|tombstone/i);
-    await pool.end();
+    await resources.closePool(pool);
   }, 30_000);
 
   it("enforces the complete lifecycle operation-state edge matrix", async () => {
@@ -545,33 +604,71 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
         else await expect(update).rejects.toThrow(/invalid lifecycle operation transition/i);
       }
     }
-    await pool.end();
+    await resources.closePool(pool);
+  });
+
+  it("serializes concurrent public snapshot revision increments without losing a commit", async () => {
+    // Break caught: read-then-write revision updates collapse two committed
+    // public changes into one revision or use a non-integer counter.
+    const pool = await freshDatabase("public_revision_concurrency");
+    await migrateMusicDatabase(pool);
+    const inserted = await pool.query<{ id: number }>(`INSERT INTO users
+      (username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
+       guest_capability_hash,lifecycle_operation_id)
+      VALUES ('revision-owner','disabled','revision-slug','Revision Venue','revision-person',
+        'revision-account',$1,'revision-operation') RETURNING id`, ["e".repeat(64)]);
+    const id = inserted.rows[0].id;
+    const secondPool = resources.trackPool(new pg.Pool({
+      connectionString: (pool as unknown as { options: { connectionString: string } }).options.connectionString,
+      max: 2,
+    }));
+    const increment = (database: pg.Pool) => database.query<{ public_snapshot_revision: string }>(
+      `UPDATE users SET public_snapshot_revision=public_snapshot_revision+1
+       WHERE id=$1 RETURNING public_snapshot_revision`,
+      [id],
+    );
+    const revisions = (await Promise.all([increment(pool), increment(secondPool)]))
+      .map(({ rows }) => Number(rows[0].public_snapshot_revision)).sort((left, right) => left - right);
+    expect(revisions).toEqual([1, 2]);
+    expect((await pool.query(
+      "SELECT public_snapshot_revision FROM users WHERE id=$1",
+      [id],
+    )).rows[0].public_snapshot_revision).toBe("2");
+    await resources.closePool(secondPool);
+    await resources.closePool(pool);
   });
 
   it("serializes concurrent migrators and rolls a deliberately failing migration back atomically", async () => {
     const pool = await freshDatabase("concurrency");
-    const secondPool = new pg.Pool({ connectionString: (pool as unknown as { options: { connectionString: string } }).options.connectionString, max: 2 });
+    const secondPool = resources.trackPool(new pg.Pool({
+      connectionString: (pool as unknown as { options: { connectionString: string } }).options.connectionString,
+      max: 2,
+    }));
     const [left, right] = await Promise.all([migrateMusicDatabase(pool), migrateMusicDatabase(secondPool)]);
-    expect([...left.appliedIds, ...right.appliedIds].sort()).toEqual(["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive", "0016_publication_operation_retention", "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement", "0019_queue_visibility_control"]);
-    const failure = createMigrationDefinition("0020_deliberate_failure", "CREATE TABLE must_rollback(id integer); SELECT missing_function();");
+    expect([...left.appliedIds, ...right.appliedIds].sort()).toEqual([...EXPECTED_MUSIC_MIGRATION_CHAIN].sort());
+    const failureId = nextSyntheticMusicMigrationId(EXPECTED_MUSIC_MIGRATION_CHAIN, "deliberate_failure");
+    const failure = createMigrationDefinition(failureId, "CREATE TABLE must_rollback(id integer); SELECT missing_function();");
     await expect(migrateMusicDatabase(pool, {
       migrations: [...loadMusicMigrations(), failure],
-      testOnlyExpectedIds: ["0001_runtime_baseline", "0002_identity_lifecycle", "0003_identity_lifecycle_hardening", "0004_identity_delete_saga", "0005_resource_bound_deletion_history", "0006_numeric_identity_lock", "0007_identity_provider_snapshot", "0008_credential_revocation_operations", "0009_credential_revocation_history_immutability", "0010_least_privilege_runtime_role", "0011_durable_publication_idempotency", "0012_publication_replay_expiry_guard", "0013_publication_operation_database_clock", "0014_durable_reactivation_authority", "0015_publication_operation_archive", "0016_publication_operation_retention", "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement", "0019_queue_visibility_control", "0020_deliberate_failure"],
+      testOnlyExpectedIds: [...EXPECTED_MUSIC_MIGRATION_CHAIN, failureId],
     })).rejects.toThrow();
     expect((await pool.query("SELECT to_regclass('public.must_rollback') AS value")).rows[0].value).toBeNull();
-    expect((await pool.query("SELECT count(*)::int AS count FROM music_schema_migrations WHERE id='0020_deliberate_failure'")).rows[0].count).toBe(0);
-    await secondPool.end();
-    await pool.end();
+    expect((await pool.query("SELECT count(*)::int AS count FROM music_schema_migrations WHERE id=$1", [failureId])).rows[0].count).toBe(0);
+    await resources.closePool(secondPool);
+    await resources.closePool(pool);
   });
 
   it("rejects an appended production chain before any fresh or migrated database write", async () => {
-    const appended = createMigrationDefinition("0020_unapproved", "CREATE TABLE forbidden_chain_write(id integer);\n");
+    const appended = createMigrationDefinition(
+      nextSyntheticMusicMigrationId(EXPECTED_MUSIC_MIGRATION_CHAIN, "unapproved"),
+      "CREATE TABLE forbidden_chain_write(id integer);\n",
+    );
     const chain = [...loadMusicMigrations(), appended];
     const fresh = await freshDatabase("appended_fresh");
     await expect(migrateMusicDatabase(fresh, { migrations: chain })).rejects.toThrow(/exact production migration chain/i);
     expect((await fresh.query("SELECT to_regclass('public.music_schema_migrations') AS journal, to_regclass('public.forbidden_chain_write') AS ddl")).rows[0])
       .toEqual({ journal: null, ddl: null });
-    await fresh.end();
+    await resources.closePool(fresh);
 
     const migrated = await freshDatabase("appended_migrated");
     await migrateMusicDatabase(migrated);
@@ -579,7 +676,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await expect(migrateMusicDatabase(migrated, { migrations: chain })).rejects.toThrow(/exact production migration chain/i);
     expect((await migrated.query("SELECT id,checksum,schema_checksum,applied_at FROM music_schema_migrations ORDER BY id")).rows).toEqual(before.rows);
     expect((await migrated.query("SELECT to_regclass('public.forbidden_chain_write') AS ddl")).rows[0].ddl).toBeNull();
-    await migrated.end();
+    await resources.closePool(migrated);
   });
 
   it("fails closed on checksum changes, catalog drift, missing/future migrations, and unversioned application tables", async () => {
@@ -592,21 +689,21 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     ] })).rejects.toThrow("checksum");
     await pool.query("ALTER TABLE users ADD COLUMN unreviewed_drift text");
     await expect(verifyMusicDatabase(pool)).rejects.toThrow("drift");
-    await pool.end();
+    await resources.closePool(pool);
 
     const existing = await freshDatabase("unversioned");
     await existing.query("CREATE TABLE users(id integer primary key, username text, email text)");
     await existing.query("INSERT INTO users VALUES (1,'legacy-name','legacy@example.test')");
     await expect(migrateMusicDatabase(existing)).rejects.toThrow("unversioned application tables");
     expect((await existing.query("SELECT to_regclass('public.music_schema_migrations') AS value")).rows[0].value).toBeNull();
-    await existing.end();
+    await resources.closePool(existing);
 
     const future = await freshDatabase("future");
     await migrateMusicDatabase(future);
     await future.query("INSERT INTO music_schema_migrations(id,checksum,schema_checksum) VALUES ('9999_future',$1,$1)", ["f".repeat(64)]);
     await expect(migrateMusicDatabase(future)).rejects.toThrow("unknown future migration");
     await expect(migrateMusicDatabase(future, { migrations: loadMusicMigrations().slice(1) })).rejects.toThrow("missing migration");
-    await future.end();
+    await resources.closePool(future);
   });
 
   it("fingerprints trigger function bodies and complete sequence metadata", async () => {
@@ -616,14 +713,14 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$`);
     await expect(verifyMusicDatabase(functionPool)).rejects.toThrow("drift");
     expect(await checkMusicDatabaseReadiness(functionPool)).toMatchObject({ ready: false, reason: "migration-state-invalid" });
-    await functionPool.end();
+    await resources.closePool(functionPool);
 
     const sequencePool = await freshDatabase("sequence_drift");
     await migrateMusicDatabase(sequencePool);
     await sequencePool.query("ALTER SEQUENCE users_id_seq INCREMENT BY 2");
     await expect(verifyMusicDatabase(sequencePool)).rejects.toThrow("drift");
     expect(await checkMusicDatabaseReadiness(sequencePool)).toMatchObject({ ready: false, reason: "migration-state-invalid" });
-    await sequencePool.end();
+    await resources.closePool(sequencePool);
   });
 
   it("keeps readiness closed before migration and opens only for the exact journal/checksum state", async () => {
@@ -633,7 +730,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     expect(await checkMusicDatabaseReadiness(pool)).toMatchObject({ ready: true, currentId: EXPECTED_MUSIC_MIGRATION_ID });
     await pool.query("UPDATE music_schema_migrations SET checksum=$1 WHERE id=$2", ["0".repeat(64), EXPECTED_MUSIC_MIGRATION_ID]);
     expect(await checkMusicDatabaseReadiness(pool)).toMatchObject({ ready: false, reason: "migration-state-invalid" });
-    await pool.end();
+    await resources.closePool(pool);
   });
 
   it("smokes every runtime family plus the real fixture/readiness routes on the migrated database", async () => {
@@ -673,6 +770,6 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     });
     await request(app).get("/api/music-fixture/readiness").expect(200);
     await request(app).get("/health/ready").expect(200);
-    await pool.end();
+    await resources.closePool(pool);
   });
 });

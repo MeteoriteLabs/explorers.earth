@@ -1,4 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { NavigationStatus } from "../../../navigation/NavigationStatus";
+import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
+import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -310,6 +313,8 @@ export const AppListCard = ({
 // AppsHome Main Component
 // ─────────────────────────────────────────────────────────────
 const AppsHome = () => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_apps === "Yes";
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
@@ -323,6 +328,7 @@ const AppsHome = () => {
     isOpen: boolean;
     categoryName: string;
     visibilityField: string;
+    origin?: IntentAuthority;
     defaultValue: boolean;
   } | null>(null);
 
@@ -332,12 +338,14 @@ const AppsHome = () => {
   });
   const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
 
+  const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
-    if (location.state?.justCreatedList && accountData) {
-      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_apps === "Yes";
-      if (!isPublic) {
+    if (location.state?.justCreatedList && navigation.authority && promptedLocation.current !== location.key) {
+      promptedLocation.current = location.key;
+      const isPublic = navigation.snapshot?.visibility.public_apps === "Yes";
+      if (!isPublic && navigation.authority) {
         setVisibilityPrompt({
+          origin: navigation.authority,
           isOpen: true,
           categoryName: "Apps & Tools",
           visibilityField: "public_apps",
@@ -346,7 +354,7 @@ const AppsHome = () => {
       }
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, accountData]);
+  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
   const { data, loading, refetch } = useQuery(APP_LISTS_BY_ACCOUNT, {
     variables: { accountDocumentId },
@@ -362,40 +370,9 @@ const AppsHome = () => {
 
   const [updateAppList] = useMutation(UPDATE_APP_LIST);
 
-  const [updateAccountVisibility] = useMutation(gql`
-    mutation UpdateAppsVisibility($documentId: ID!, $data: AccountInput!) {
-      updateAccount(documentId: $documentId, data: $data) {
-        documentId
-        public_recommendations
-        public_movie
-        public_books
-        public_games
-        public_music
-        public_apps
-      }
-    }
-  `);
-
-  const handleVisibilityToggle = async () => {
-    const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-    if (!acc?.documentId) return;
-    const newValue = acc.public_apps === "Yes" ? "No" : "Yes";
-    if (newValue === "Yes") {
-      const hasPublishedList = lists.some((l) => l.Visibility === true);
-      if (!hasPublishedList) {
-        toast.error("You must have at least one published app list to make Apps & Tools public.");
-        return;
-      }
-    }
-    try {
-      await updateAccountVisibility({
-        variables: { documentId: acc.documentId, data: { public_apps: newValue } },
-        refetchQueries: [{ query: MY_ACCOUNT, variables: { documentId: user?.documentId } }],
-      });
-      toast.success(`Apps visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch {
-      toast.error("Failed to update visibility");
-    }
+  const handleVisibilityToggle = () => {
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_apps", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
   const lists: AppList[] = data?.appLists || [];
@@ -440,12 +417,14 @@ const AppsHome = () => {
 
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
+      <NavigationStatus navigation={navigation} />
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
-            isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_apps === "Yes"}
+            isChecked={categoryVisible}
             onChange={handleVisibilityToggle}
+            disabled={navigation.busy || !navigation.authority}
             variant="blue"
           />
           <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">
@@ -482,12 +461,13 @@ const AppsHome = () => {
           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_apps === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {accountData?.usersPermissionsUser?.accounts?.[0]?.public_apps === "Yes" ? "Pub" : "Draft"}
+              <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {categoryVisible ? "Pub" : "Draft"}
               </span>
               <SwitchButton
-                isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_apps === "Yes"}
+                isChecked={categoryVisible}
                 onChange={handleVisibilityToggle}
+                disabled={navigation.busy || !navigation.authority}
                 variant="blue"
               />
             </div>
@@ -619,13 +599,13 @@ const AppsHome = () => {
         />
       )}
 
-      {visibilityPrompt && accountDocumentId && (
+      {visibilityPrompt && (
         <CategoryVisibilityModal
           isOpen={visibilityPrompt.isOpen}
           onClose={() => setVisibilityPrompt(null)}
           categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
+          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
+          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
           onSuccess={() => refetch()}
         />
       )}

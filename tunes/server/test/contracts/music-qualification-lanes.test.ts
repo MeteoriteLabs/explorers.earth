@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import ts from "typescript";
 import * as musicCli from "../../../scripts/music-cli";
 import * as musicQualification from "../../../scripts/music-qualification";
 import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
@@ -14,6 +15,7 @@ import {
   validateC10StandalonePostgresInspect,
 } from "../../../scripts/music-qualification-postgres";
 import {
+  defaultMusicTestChildEnvironment,
   parseMusicCliArguments,
   qualificationChildAmbientEnvironment,
   resolveC10IsolatedDockerExecutable,
@@ -25,9 +27,11 @@ import {
   sanitizeMusicCliText,
   selectMusicTimeToFirstGreen,
   withQualificationPostgresAuthority,
+  writeOwnerOnlyAtomicFile,
 } from "../../../scripts/music-cli";
 import {
   attachMusicQualificationMeasurements,
+  finalizeMusicQualificationReport,
   MUSIC_QUALIFICATION_LANES,
   MUSIC_QUALIFICATION_REQUIREMENTS,
   MUSIC_QUALIFICATION_TASKS,
@@ -41,11 +45,309 @@ import {
   runMusicQualificationLane,
   sanitizeQualificationText,
   type MusicQualificationReport,
+  type MusicQualificationMeasurements,
+  type MusicQualificationTaskEvidence,
+  type QualificationOutcome,
   qualificationTelemetryIsBounded,
   qualificationReportMatchesAuthority,
 } from "../../../scripts/music-qualification";
 
+const repositoryRoot = resolve(import.meta.dirname, "../../../..");
+
+const EXPECTED_INTEGRATION_FILES = [
+  "server/test/google-sync.integration.test.ts",
+  "server/test/load/music-load-http-postgres.integration.test.ts",
+  "server/test/load/music-load-postgres.integration.test.ts",
+  "server/test/migrations/music-migration.integration.test.ts",
+  "server/test/migrations/music-runtime.integration.test.ts",
+  "server/test/music-credential.integration.test.ts",
+  "server/test/music-domain-repository.integration.test.ts",
+  "server/test/music-e2e-identity-count-adapter.integration.test.ts",
+  "server/test/music-e2e-initial-capture.integration.test.ts",
+  "server/test/music-e2e-state-restore.integration.test.ts",
+  "server/test/music-identity-projection.integration.test.ts",
+  "server/test/music-identity-repository-coverage.integration.test.ts",
+  "server/test/music-publication-operation.integration.test.ts",
+  "server/test/music-runtime-role.integration.test.ts",
+  "server/test/musicLifecycle.integration.test.ts",
+  "server/test/musicReconciler.integration.test.ts",
+  "server/test/reconciliationRepository.integration.test.ts",
+  "server/test/user-leak.integration.test.ts",
+] as const;
+
+const EXPECTED_DEPLOYMENT_FILES = [
+  "server/test/deployment/music-command-plan.test.ts",
+  "server/test/deployment/music-deploy-executable.test.ts",
+  "server/test/deployment/music-deploy-workflow-security.test.ts",
+  "server/test/deployment/music-deployment-files.test.ts",
+  "server/test/deployment/music-deployment.test.ts",
+  "server/test/deployment/music-health-routes.test.ts",
+  "server/test/deployment/music-docker-release-authority.test.ts",
+  "server/test/deployment/music-production-policy.test.ts",
+  "server/test/deployment/music-publication-authority-verifier.test.ts",
+  "server/test/deployment/music-readiness.test.ts",
+  "server/test/deployment/registration-compat-process.test.ts",
+  "server/test/deployment/registration-compat-traefik.real-tool.test.ts",
+] as const;
+
+describe("canonical qualification evidence contract", () => {
+  it("builds clean authority-scoped child environments", () => {
+    const builder = (musicCli as typeof musicCli & Record<string, any>).buildQualificationChildEnvironment;
+    expect(builder).toBeTypeOf("function");
+    const ambient = {
+      PATH: "bounded-path", DATABASE_URL: "postgresql://ambient", database_url_test: "ambient-test",
+      PgPassword: "ambient-password", MUSIC_C13_IDENTITY_COUNT_ADAPTER_POSTGRES_TEST: "1",
+      MUSIC_UAT_DATABASE_ACK: "ambient-uat", music_c10_standalone_postgres_ack: "ambient-c10",
+      Docker_Context: "remote", HTTPS_PROXY: "http://proxy", NODE_OPTIONS: "--require hostile",
+    };
+    const before = { ...ambient };
+    for (const authority of ["default", "real-tool", "uat-postgres"] as const) {
+      expect(builder({ authority, ambient })).toEqual({
+        PATH: "bounded-path",
+        NPM_CONFIG_USERCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
+        NPM_CONFIG_GLOBALCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
+      });
+    }
+    const ownedDatabase = { DATABASE_URL_TEST: "postgresql://owned-loopback", MUSIC_C10_POSTGRES_TEST: "1" };
+    expect(builder({ authority: "c10-postgres", ambient, ownedDatabase })).toEqual({
+      PATH: "bounded-path",
+      NPM_CONFIG_USERCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
+      NPM_CONFIG_GLOBALCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
+      ...ownedDatabase,
+    });
+    expect(() => builder({ authority: "c10-postgres", ambient })).toThrow(/owned C10 database/i);
+    expect(() => builder({ authority: "default", ambient, ownedDatabase })).toThrow(/foreign database authority/i);
+    expect(ambient).toEqual(before);
+  });
+
+  it("exports the exact integration and split deployment manifests", () => {
+    const contract = musicQualification as typeof musicQualification & Record<string, unknown>;
+    expect(contract.MUSIC_INTEGRATION_FILES).toEqual(EXPECTED_INTEGRATION_FILES);
+    expect(contract.MUSIC_DEPLOYMENT_FILES).toEqual(EXPECTED_DEPLOYMENT_FILES);
+    expect(contract.MUSIC_DEFAULT_DEPLOYMENT_FILES).toEqual(EXPECTED_DEPLOYMENT_FILES.slice(0, 11));
+    expect(contract.MUSIC_REAL_TOOL_FILES).toEqual([
+      "server/test/contracts/music-compose-safety.real-tool.test.ts",
+      "server/test/contracts/music-production-compose.real-tool.test.ts",
+      "server/test/music-startup-bootstrap.real-tool.test.ts",
+      "server/test/contracts/music-clean-bootstrap.real-tool.test.ts",
+      "server/test/deployment/registration-compat-traefik.real-tool.test.ts",
+    ]);
+  });
+
+  it("derives canonical PASS, FAIL, BLOCKED, and NOT RUN outcomes", () => {
+    const contract = musicQualification as typeof musicQualification & Record<string, any>;
+    const source = {
+      commitBefore: "a".repeat(40), commitAfter: "a".repeat(40), cleanBefore: true, cleanAfter: true,
+      rootLockSha256: "b".repeat(64), sourceRoot: "C:/fixture",
+    };
+    const pass: QualificationOutcome = { started: true, nativeExit: 0, nativeSignal: null, timedOut: false, interrupted: false, source, cleanup: "verified" };
+    expect(contract.qualificationStatus(pass, false)).toBe("PASS");
+    expect(contract.qualificationStatus({ ...pass, nativeExit: 1 }, false)).toBe("FAIL");
+    expect(contract.qualificationStatus({ ...pass, started: false, nativeExit: null, prerequisite: "missing-image-or-cache", cleanup: "not-needed" }, false)).toBe("BLOCKED");
+    expect(contract.qualificationStatus({ ...pass, started: false, nativeExit: null, cleanup: "not-needed" }, false)).toBe("NOT RUN");
+    expect(contract.aggregateStatuses(["PASS", "BLOCKED"])).toBe("BLOCKED");
+    expect(contract.aggregateStatuses(["PASS", "FAIL", "BLOCKED"])).toBe("FAIL");
+    expect(contract.aggregateStatuses([])).toBe("NOT RUN");
+  });
+
+  it("aggregates the complete backend only from validated task outcomes", () => {
+    const contract = musicQualification as typeof musicQualification & Record<string, any>;
+    const source = {
+      commitBefore: "a".repeat(40), commitAfter: "a".repeat(40), cleanBefore: true, cleanAfter: true,
+      rootLockSha256: "b".repeat(64), sourceRoot: "C:/fixture",
+    };
+    const taskEvidence = (id: string, files: readonly string[]): MusicQualificationTaskEvidence => {
+      const records = files.map((file) => ({
+        file, status: "passed" as const, assertions: { selected: 1, passed: 1, failed: 0, skipped: 0, todo: 0 },
+      }));
+      const testEvidence = {
+        finalized: true as const, success: true, nativeExit: 0, files: records,
+        fileCounts: { selected: records.length, passed: records.length, failed: 0, skipped: 0 },
+        assertions: { selected: records.length, passed: records.length, failed: 0, skipped: 0, todo: 0 },
+      };
+      return {
+        id, title: id, originalStatus: "success", qualificationStatus: "PASS", attempts: 1,
+        durationMs: 1, artifacts: [`${id}.json`],
+        outcome: { started: true, nativeExit: 0, nativeSignal: null, timedOut: false, interrupted: false,
+          source, cleanup: "verified" as const, json: { path: `${id}.json`, sha256: "c".repeat(64) }, testEvidence },
+      };
+    };
+    const tasks = [
+      taskEvidence("default-backend-gate", ["server/test/default.test.ts"]),
+      taskEvidence("real-tool-contracts", contract.MUSIC_REAL_TOOL_FILES),
+      taskEvidence("release-rehearsal", contract.MUSIC_DEFAULT_DEPLOYMENT_FILES),
+      taskEvidence("postgres-integration", MUSIC_QUALIFICATION_TASKS["postgres-integration"].testEvidenceSource!.expectedFiles!),
+      taskEvidence("load-postgres", MUSIC_QUALIFICATION_TASKS["load-postgres"].testEvidenceSource!.expectedFiles!),
+      taskEvidence("tunes-identity-repository-coverage", MUSIC_QUALIFICATION_TASKS["tunes-identity-repository-coverage"].testEvidenceSource!.expectedFiles!),
+      taskEvidence("uat-postgres-integration", MUSIC_QUALIFICATION_TASKS["uat-postgres-integration"].testEvidenceSource!.expectedFiles!),
+    ];
+    expect(contract.completeBackendFromTasks(tasks)).toMatchObject({
+      status: "PASS", default: "PASS", realTool: "PASS", postgres: "PASS",
+      deployment: { status: "PASS", expectedFiles: [...EXPECTED_DEPLOYMENT_FILES] },
+      integration: { status: "PASS", expectedFiles: [...EXPECTED_INTEGRATION_FILES] },
+    });
+    const explicitFailure: MusicQualificationTaskEvidence[] = tasks.map((item) => item.id === "default-backend-gate"
+      ? { ...item, qualificationStatus: "FAIL" as const } : item);
+    expect(contract.completeBackendFromTasks(explicitFailure)).toMatchObject({ status: "FAIL", default: "FAIL" });
+    const missingTraefik = tasks.map((item) => item.id === "real-tool-contracts"
+      ? taskEvidence(item.id, contract.MUSIC_REAL_TOOL_FILES.slice(0, -1)) : item);
+    expect(contract.completeBackendFromTasks(missingTraefik)).toMatchObject({
+      status: "FAIL", realTool: "FAIL", deployment: { status: "FAIL" },
+    });
+    const explicitPostgresFailure: MusicQualificationTaskEvidence[] = tasks.map((item) => item.id === "load-postgres"
+      ? { ...item, qualificationStatus: "FAIL" as const } : item);
+    expect(contract.completeBackendFromTasks(explicitPostgresFailure)).toMatchObject({
+      status: "FAIL", postgres: "FAIL", integration: { status: "FAIL" },
+    });
+    expect(contract.completeBackendFromTasks(tasks.filter(({ id }) => id !== "load-postgres"))).toMatchObject({
+      status: "NOT RUN", postgres: "NOT RUN", integration: { status: "NOT RUN" },
+    });
+    const blockedRealTool: MusicQualificationTaskEvidence[] = tasks.map((item) => item.id === "real-tool-contracts" ? {
+      ...item,
+      qualificationStatus: "PASS" as const,
+      outcome: { ...item.outcome!, started: false, nativeExit: null, nativeSignal: null,
+        timedOut: false, interrupted: false, source: item.outcome!.source,
+        prerequisite: "missing-buildkit-isolation" as const, cleanup: "not-needed" as const, json: undefined, testEvidence: undefined },
+    } : item);
+    expect(contract.completeBackendFromTasks(blockedRealTool)).toMatchObject({
+      status: "BLOCKED", realTool: "BLOCKED", deployment: { status: "BLOCKED" },
+    });
+  });
+
+  it("covers the exact integration manifest through release-selected PostgreSQL authorities", () => {
+    const contract = musicQualification as typeof musicQualification & Record<string, any>;
+    const ids = ["postgres-integration", "load-postgres", "tunes-identity-repository-coverage", "uat-postgres-integration"];
+    const selected = new Set(contract.stagesForLane("release").flatMap((stage: any) => stage.taskIds));
+    expect(ids.every((id) => selected.has(id))).toBe(true);
+    const union = new Set(ids.flatMap((id) => MUSIC_QUALIFICATION_TASKS[id as keyof typeof MUSIC_QUALIFICATION_TASKS]
+      .testEvidenceSource!.expectedFiles ?? []));
+    expect([...union].sort()).toEqual([...EXPECTED_INTEGRATION_FILES].sort());
+    expect(MUSIC_QUALIFICATION_LANES.release.inherits).toEqual(["pr"]);
+  });
+});
+
+it("requires the Traefik deployment proof only in the real-tool selector", () => {
+  const defaultPath = resolve(repositoryRoot, "tunes/server/test/deployment/registration-compat-traefik.test.ts");
+  const realPath = resolve(repositoryRoot, "tunes/server/test/deployment/registration-compat-traefik.real-tool.test.ts");
+  expect(existsSync(defaultPath)).toBe(false);
+  expect(existsSync(realPath)).toBe(true);
+  const source = readFileSync(realPath, "utf8");
+  expect(source).not.toContain("MUSIC_C3_TRAEFIK_TEST");
+  expect(source).toContain('"--pull=never"');
+  expect(source).toContain('"inspect", "--type", "container"');
+});
+
+describe("exact container absence proof", () => {
+  const containerId = "a".repeat(64);
+  const otherContainerId = "b".repeat(64);
+  type AbsenceResult = {
+    error?: unknown;
+    status: number | null;
+    signal?: string | null;
+    stdout: string;
+    stderr: string;
+  };
+  const requireAbsence = (result: AbsenceResult, id = containerId): void => {
+    expect(musicQualification.requireExactContainerAbsent).toBeTypeOf("function");
+    (musicQualification as typeof musicQualification & {
+      requireExactContainerAbsent(result: AbsenceResult, containerId: string): void;
+    }).requireExactContainerAbsent(result, id);
+  };
+
+  it.each([
+    ["plain Docker not-found response", "", `Error: No such container: ${containerId}`],
+    ["daemon not-found response", "[]\n", `Error response from daemon: No such container: ${containerId}\n`],
+  ])("accepts a recognized %s", (_name, stdout, stderr) => {
+    expect(() => requireAbsence({ status: 1, signal: null, stdout, stderr })).not.toThrow();
+  });
+
+  it.each([
+    ["a remaining container", { status: 0, signal: null, stdout: `[{"Id":"${containerId}"}]`, stderr: "" }, containerId],
+    ["Docker executable ENOENT", { error: Object.assign(new Error("spawn docker ENOENT"), { code: "ENOENT" }), status: null, signal: null, stdout: "", stderr: "" }, containerId],
+    ["a Docker timeout", { error: Object.assign(new Error("spawn docker ETIMEDOUT"), { code: "ETIMEDOUT" }), status: null, signal: null, stdout: "", stderr: "" }, containerId],
+    ["daemon permission or disconnect output", { status: 1, signal: null, stdout: "", stderr: "permission denied while trying to connect to the Docker daemon socket" }, containerId],
+    ["malformed inspect output", { status: 1, signal: null, stdout: "[", stderr: `Error: No such container: ${containerId}` }, containerId],
+    ["an arbitrary nonzero status", { status: 125, signal: null, stdout: "", stderr: `Error: No such container: ${containerId}` }, containerId],
+    ["a not-found response for the wrong ID", { status: 1, signal: null, stdout: "", stderr: `Error: No such container: ${otherContainerId}` }, containerId],
+    ["an invalid exact container ID", { status: 1, signal: null, stdout: "", stderr: "Error: No such container: short-id" }, "short-id"],
+    ["a native signal", { status: 1, signal: "SIGTERM", stdout: "", stderr: `Error: No such container: ${containerId}` }, containerId],
+  ] satisfies Array<[string, AbsenceResult, string]>)
+  ("rejects %s", (_name, result, id) => {
+    expect(() => requireAbsence(result, id)).toThrow(id === "short-id" ? "exact container ID required" : "container absence not proven");
+  });
+});
+
 describe("portable Music qualification lanes", () => {
+  it("keeps nested install out of the default clean-bootstrap contract", () => {
+    const source = readFileSync(resolve(repositoryRoot, "tunes/server/test/contracts/music-clean-bootstrap.test.ts"), "utf8");
+    expect(source).not.toContain('"ci", "--ignore-scripts"');
+    expect(source).toContain('"up", "--build"');
+  });
+
+  it("keeps the public all-test dispatcher default-only and gives real-tool files one serial selector", () => {
+    const rootPackage = JSON.parse(readFileSync(resolve(repositoryRoot, "package.json"), "utf8"));
+    const tunesPackage = JSON.parse(readFileSync(resolve(repositoryRoot, "tunes/package.json"), "utf8"));
+    const defaultConfig = readFileSync(resolve(repositoryRoot, "tunes/vitest.config.ts"), "utf8");
+    const realToolConfig = readFileSync(resolve(repositoryRoot, "tunes/vitest.real-tool.config.ts"), "utf8");
+
+    expect(rootPackage.scripts["music:test:all"]).toBe("npm run --silent music-cli -- test:all");
+    expect(tunesPackage.scripts.test).toBe("vitest run");
+    expect(tunesPackage.scripts["test:real-tool"]).toBe("vitest run --config vitest.real-tool.config.ts");
+    expect(defaultConfig).toContain("**/*.integration.test.ts");
+    expect(defaultConfig).toContain("**/*.real-tool.test.ts");
+    expect(realToolConfig).toMatch(/include:\s*\[\s*["']\*\*\/\*\.real-tool\.test\.ts["']\s*\]/);
+    expect(realToolConfig).toContain("fileParallelism: false");
+    expect(realToolConfig).toContain("maxWorkers: 1");
+  });
+
+  it("filters inherited authority from the default test child", () => {
+    const ambient: NodeJS.ProcessEnv = {
+      PATH: "path-value",
+      npm_execpath: "npm-execpath-value",
+      HOME: "home-value",
+      LANG: "en_US.UTF-8",
+      TEMP: undefined,
+      DaTaBaSe_URL: "postgresql://ambient-authority",
+      pGHoSt: "ambient-postgres",
+      mUsIc_C3_POSTGRES_TEST: "1",
+      MuSiC_C4_POSTGRES_TEST: "1",
+      MuSiC_C5_POSTGRES_TEST: "1",
+      mUsIc_C6_POSTGRES_TEST: "1",
+      MuSiC_C7_POSTGRES_TEST: "1",
+      mUsIc_C8_POSTGRES_TEST: "1",
+      MuSiC_C9_PUBLICATION_POSTGRES_TEST: "1",
+      mUsIc_C10_POSTGRES_TEST: "1",
+      MuSiC_C11_STATE_RESTORE_POSTGRES_TEST: "1",
+      mUsIc_C12_INITIAL_CAPTURE_POSTGRES_TEST: "1",
+      MuSiC_C13_IDENTITY_COUNT_ADAPTER_POSTGRES_TEST: "1",
+      mUsIc_UaT_DaTaBaSe_ACK: "MUSIC_UAT_DATABASE_ACK",
+      dOcKeR_HoSt: "tcp://ambient-docker",
+      hTtP_PrOxY: "http://ambient-proxy",
+      nOdE_OpTiOnS: "--require ambient-hook",
+    };
+    const before = { ...ambient };
+
+    expect(defaultMusicTestChildEnvironment(ambient)).toEqual({
+      PATH: "path-value",
+      npm_execpath: "npm-execpath-value",
+      HOME: "home-value",
+      LANG: "en_US.UTF-8",
+    });
+    expect(ambient).toEqual(before);
+    expect(() => defaultMusicTestChildEnvironment({ PATH: "first", path: "duplicate" }))
+      .toThrow("duplicate case-insensitive child environment key");
+  });
+
+  it("keeps host Compose rendering out of default-selected files", () => {
+    for (const relative of [
+      "tunes/server/test/contracts/music-credential-config-contract.test.ts",
+      "tunes/server/test/music-startup-bootstrap.test.ts",
+    ]) {
+      const source = readFileSync(resolve(repositoryRoot, relative), "utf8");
+      expect(source).not.toMatch(/execFileSync\(["']docker["']/);
+    }
+  });
+
   it("dispatches release rehearsal through the canonical native launcher", () => {
     const windows = resolveNativeMusicReleaseLauncher("rehearsal", "win32");
     expect(windows.file).toBe("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
@@ -324,11 +626,13 @@ describe("portable Music qualification lanes", () => {
   });
 
   it("runs the isolated CLI contract behind a Docker mutation boundary", () => {
-    const helper = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-isolated-cli-contract.ts"), "utf8");
-    expect(helper).toContain("fixture Docker mutation blocked");
-    expect(helper).toContain("fakeDockerDirectory");
-    expect(helper).toContain("MUSIC_C10_ISOLATED_DOCKER_SCRIPT");
-    expect(helper).toContain("compose-config fixture model");
+    const launcher = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-isolated-cli-contract.ts"), "utf8");
+    const authority = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-cli-contract-authority.ts"), "utf8");
+    expect(launcher).toContain("acquireMusicCliContractAuthority");
+    expect(launcher).toContain("compose-config fixture model");
+    expect(authority).toContain("fixture Docker mutation blocked");
+    expect(authority).toContain("fake-docker.cjs");
+    expect(authority).toContain("MUSIC_C10_ISOLATED_DOCKER_SCRIPT");
   });
 
   it("resolves the isolated Docker script explicitly on Windows and rejects ambient daemon authority", () => {
@@ -421,38 +725,17 @@ describe("portable Music qualification lanes", () => {
       "--maxWorkers=2",
       "--testTimeout=15000",
     ]));
-    const deploymentContracts = [
-      "music-command-plan.test.ts",
-      "music-deploy-executable.test.ts",
-      "music-deploy-workflow-security.test.ts",
-      "music-deployment-files.test.ts",
-      "music-deployment.test.ts",
-      "music-health-routes.test.ts",
-      "music-docker-release-authority.test.ts",
-      "music-production-policy.test.ts",
-      "music-publication-authority-verifier.test.ts",
-      "music-readiness.test.ts",
-      "registration-compat-process.test.ts",
-      "registration-compat-traefik.test.ts",
-    ].map((name) => `server/test/deployment/${name}`);
+    const deploymentContracts = EXPECTED_DEPLOYMENT_FILES.slice(0, 11);
     const releaseArgs = MUSIC_QUALIFICATION_TASKS["release-rehearsal"].npmArgs;
     expect(deploymentContracts.every((path) => releaseArgs.includes(path))).toBe(true);
     expect(releaseArgs.filter((value) => value.startsWith("server/test/deployment/")))
       .toEqual(deploymentContracts);
-    expect(qualificationTaskEnvironment("release-rehearsal")).toEqual({ MUSIC_C3_TRAEFIK_TEST: "1" });
-    const outputFailure = (musicQualification as unknown as {
-      qualificationTaskOutputFailure?: (taskId: string, stdout: string, stderr: string) => string | undefined;
-    }).qualificationTaskOutputFailure;
-    expect(outputFailure?.(
-      "release-rehearsal",
-      "Test Files  11 passed | 1 skipped (12)\nTests 172 passed | 3 skipped (175)",
-      "",
-    )).toContain("all 12 deployment test files");
-    expect(outputFailure?.(
-      "release-rehearsal",
-      "Test Files  12 passed (12)\nTests 175 passed (175)",
-      "",
-    )).toBeUndefined();
+    expect(qualificationTaskEnvironment("release-rehearsal")).toEqual({});
+    expect(musicQualification).not.toHaveProperty("qualificationTaskOutputFailure");
+    expect(MUSIC_QUALIFICATION_TASKS["release-rehearsal"].testEvidenceSource?.expectedFiles)
+      .toEqual(EXPECTED_DEPLOYMENT_FILES.slice(0, 11));
+    expect(MUSIC_QUALIFICATION_TASKS["real-tool-contracts"].testEvidenceSource?.expectedFiles)
+      .toContain(EXPECTED_DEPLOYMENT_FILES[11]);
     expect(MUSIC_QUALIFICATION_TASKS["isolated-cli-contract"].npmArgs)
       .toContain("tunes/scripts/music-isolated-cli-contract.ts");
     expect(MUSIC_QUALIFICATION_LANES.pr.stages.flatMap((stage) => stage.taskIds))
@@ -528,7 +811,7 @@ describe("portable Music qualification lanes", () => {
     expect(qualificationTaskEnvironment("load-postgres")).toMatchObject({ MUSIC_C10_POSTGRES_TEST: "1" });
   });
 
-  it("builds the five-service Explorer against the fixture Tunes authority", () => {
+  it("builds the five-service Explorer against the fixture Tunes authority", async () => {
     const root = resolve(import.meta.dirname, "../../../..");
     const productionCompose = readFileSync(resolve(root, "docker-compose.yml"), "utf8");
     const compose = readFileSync(resolve(root, "docker-compose.music-test.yml"), "utf8");
@@ -556,7 +839,26 @@ describe("portable Music qualification lanes", () => {
     expect(browserFixture).toContain('const fixtureOrigin = "http://localhost:55173"');
     expect(browserFixture).toContain('url.pathname === "/api/playlist/songs" && response.request().method() === "POST"');
     expect(browserFixture).not.toContain('context.route("https://music-fixture.invalid/**"');
-    expect(browserFixture).toContain('/google-auth/callback?access_token=fixture-read-only-token');
+    // Exercise the callback URL expressions with delimiter-bearing authority:
+    // a hardcoded token or missing URL encoding must fail this boundary check.
+    const source = ts.createSourceFile("fixture.ts", browserFixture, ts.ScriptTarget.Latest, true);
+    const callbackExpressions: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && node.expression.getText(source) === "page.goto"
+          && node.arguments[0]?.getText(source).includes("/google-auth/callback")) {
+        callbackExpressions.push(node.arguments[0].getText(source));
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    expect(callbackExpressions).toHaveLength(2);
+    for (const expression of callbackExpressions) {
+      const token = "fixture-token/+?&=sentinel";
+      const callback = new Function("fixtureStrapiToken", `return (${expression});`)(token);
+      const url = new URL(callback, "http://localhost:55173");
+      expect(url.pathname).toBe("/google-auth/callback");
+      expect([...url.searchParams]).toEqual([["access_token", token]]);
+    }
     expect(browserFixture).not.toContain("setupMockAuthentication");
     // Login and authoritative account reads must traverse the fixture proxy,
     // not be fulfilled by Playwright; mutation cleanup makes repeat runs
@@ -565,7 +867,27 @@ describe("portable Music qualification lanes", () => {
     expect(browserFixture).not.toContain('context.route("**/graphql"');
     expect(browserFixture).toContain("insertedQueueSongIds");
     expect(browserFixture).toContain("fixture-cleanup-song-");
-    expect(browserFixture).toContain("fixture-cleanup-guest-controls");
+    const restoreCallbacks: string[] = [];
+    const findRestore = (node: ts.Node): void => {
+      if (ts.isPropertyAssignment(node) && node.name.getText(source) === "restore") restoreCallbacks.push(node.initializer.getText(source));
+      ts.forEachChild(node, findRestore);
+    };
+    findRestore(source);
+    expect(restoreCallbacks).toHaveLength(1);
+    const restoreCode = ts.transpileModule(`const restore = ${restoreCallbacks[0]};`, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const writes: unknown[] = [];
+    const fixtureState = { guestControls: { allowSongRequests: false } };
+    const restore = new Function("page", "guardedMutation", "fixtureOrigin", "fixtureWriteHeaders", "credential", "state", "expect", `${restoreCode}; return restore;`)(
+      { request: { patch: async (url: string, input: unknown) => { writes.push({ url, input }); return { status: () => 200 }; } } },
+      async (_callsite: string, work: () => Promise<unknown>) => work(),
+      "http://localhost:55173", (credential: string) => ({ Authorization: credential }), "fixture-owner-credential", fixtureState, expect,
+    );
+    const permissions = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
+    await restore({ permissions });
+    expect(writes).toEqual([{ url: "http://localhost:55173/api/music/guest-controls", input: { headers: { Authorization: "fixture-owner-credential" }, data: permissions } }]);
+    expect(fixtureState.guestControls).toBeUndefined();
   });
 
   it("runs the complete Explorer unit suite in PR while fast remains affected-only", () => {
@@ -666,6 +988,22 @@ describe("portable Music qualification lanes", () => {
           stderr: "",
           durationMs: 2,
           artifact: `artifact-${task.id}`,
+          ...(task.testEvidenceSource ? { outcome: (() => {
+            const files = task.testEvidenceSource.expectedFiles?.map((file) => ({
+              file, status: "passed" as const,
+              assertions: { selected: 1, passed: 1, failed: 0, skipped: 0, todo: 0 },
+            })) ?? [];
+            return {
+              started: true, nativeExit: 0, nativeSignal: null, timedOut: false, interrupted: false,
+              source: { commitBefore: "a".repeat(40), commitAfter: "a".repeat(40), cleanBefore: true,
+                cleanAfter: true, rootLockSha256: "b".repeat(64), sourceRoot: "C:/fixture" },
+              cleanup: "verified" as const,
+              json: { path: `${task.id}.json`, sha256: "c".repeat(64) },
+              testEvidence: { finalized: true as const, success: true, nativeExit: 0, files,
+                fileCounts: { selected: files.length, passed: files.length, failed: 0, skipped: 0 },
+                assertions: { selected: files.length, passed: files.length, failed: 0, skipped: 0, todo: 0 } },
+            };
+          })() } : {}),
         };
       },
       writeReport: async () => "qualification-report.json",
@@ -717,6 +1055,35 @@ describe("portable Music qualification lanes", () => {
     expect(report.telemetry.taskStatus).toEqual(expect.objectContaining({ failure: 1 }));
   });
 
+
+  it("propagates a canonical blocked outcome without a diagnostic rerun", async () => {
+    const calls = new Map<string, number>();
+    const report = await runMusicQualificationLane("fast", {
+      artifactDirectory: "unused",
+      execute: async (task) => {
+        calls.set(task.id, (calls.get(task.id) ?? 0) + 1);
+        const blocked = task.id === "music-types-scoped";
+        return {
+          exitCode: 0, stdout: "", stderr: "", durationMs: 1, artifact: `${task.id}.log`,
+          ...(blocked ? { outcome: {
+            started: false, nativeExit: null, nativeSignal: null, timedOut: false, interrupted: false,
+            prerequisite: "missing-external-authorization" as const,
+            source: { commitBefore: "a".repeat(40), commitAfter: "a".repeat(40), cleanBefore: true,
+              cleanAfter: true, rootLockSha256: "b".repeat(64), sourceRoot: "C:/fixture" },
+            cleanup: "not-needed" as const,
+          } } : {}),
+        };
+      },
+      writeReport: async () => "qualification-report.json",
+    });
+    expect(report.status).toBe("blocked");
+    expect(report.tasks.find(({ id }) => id === "music-types-scoped")).toMatchObject({
+      originalStatus: "blocked", qualificationStatus: "BLOCKED", attempts: 1,
+    });
+    expect(calls.get("music-types-scoped")).toBe(1);
+    expect(report.telemetry.taskStatus).toMatchObject({ blocked: 1 });
+  });
+
   it("fails a budget overrun with timing evidence", async () => {
     const report = await runMusicQualificationLane("fast", {
       artifactDirectory: "unused",
@@ -734,6 +1101,21 @@ describe("portable Music qualification lanes", () => {
     expect(report.failureCodes).toContain("QUALIFICATION_BUDGET_EXCEEDED");
     expect(report.timing).toMatchObject({ budgetMs: 180_000 });
     expect(report.timing.wallClockMs).toBeGreaterThan(180_000);
+  });
+
+  it("records every scheduled-but-unstarted task after a budget stop", async () => {
+    const report = await runMusicQualificationLane("pr", {
+      artifactDirectory: "unused",
+      execute: async (task) => ({
+        exitCode: 0, stdout: "", stderr: "", durationMs: 901_000, artifact: `${task.id}.log`,
+      }),
+      writeReport: async () => "qualification-report.json",
+    });
+    const selectedIds = new Set((musicQualification as any).stagesForLane("pr")
+      .flatMap((stage: any) => stage.taskIds));
+    expect(new Set(report.tasks.map(({ id }) => id))).toEqual(selectedIds);
+    expect(report.tasks.some(({ originalStatus }) => originalStatus === "not-run")).toBe(true);
+    expect(report.telemetry.taskStatus["not-run"]).toBeGreaterThan(0);
   });
 
   it("records cross-run lane percentiles and concrete release measurements", async () => {
@@ -790,7 +1172,7 @@ describe("portable Music qualification lanes", () => {
       failureCodes: [],
       timing: { budgetMs: 1, wallClockMs: 1, taskP50Ms: 1, taskP95Ms: 1, laneSamples: 1, laneP50Ms: 1, laneP95Ms: 1 },
       tasks: [],
-      telemetry: { taskStatus: { success: 0, failure: 0, timeout: 0 }, flakyDiagnosticReruns: 0 },
+      telemetry: { taskStatus: { success: 0, failure: 0, timeout: 0, blocked: 0, "not-run": 0 }, flakyDiagnosticReruns: 0 },
     };
     attachMusicQualificationMeasurements(report, {
       fixtureAgeMs: 1,
@@ -891,7 +1273,42 @@ describe("portable Music qualification lanes", () => {
     const source = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-cli.ts"), "utf8");
     expect(source).toContain('"command-result.json"');
     expect(source).toContain("readQualificationLaneHistory(lane, context)");
-    expect(source).toContain("attachMusicQualificationMeasurements(report, collectQualificationMeasurements(report.tasks, context))");
+    expect(source).toContain("finalizeMusicQualificationReport(report, collectQualificationMeasurements(report.tasks, context)");
+  });
+
+  it("attaches measurements before the sole final qualification report write", async () => {
+    const report = { lane: "fast", tasks: [] } as unknown as MusicQualificationReport;
+    const writes: MusicQualificationReport[] = [];
+    const measurements: MusicQualificationMeasurements = { telemetryCardinality: "bounded", documentationContractFailures: 0, fixtureAgeMs: 0,
+      interruptCleanup: "verified", resume: "verified", compatibilityRouteUsage: 0, operations: [], load: [] };
+    await finalizeMusicQualificationReport(report, measurements, async (value) => {
+      writes.push(structuredClone(value));
+      return ".artifacts/music-cli/run/qualification-fast.json";
+    });
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.measurements).toEqual(measurements);
+    expect(report.evidenceArtifact).toContain("qualification-fast.json");
+  });
+
+  it("writes final evidence atomically with owner-only Unix permissions", () => {
+    const directory = mkdtempSync(join(tmpdir(), "music-report-mode-"));
+    const target = join(directory, "private", "report.json");
+    try {
+      writeOwnerOnlyAtomicFile(target, '{"ok":true}');
+      expect(readFileSync(target, "utf8")).toBe('{"ok":true}');
+      if (process.platform !== "win32") {
+        expect((statSync(join(directory, "private")).mode & 0o777)).toBe(0o700);
+        expect((statSync(target).mode & 0o777)).toBe(0o600);
+      }
+      expect(readdirSync(join(directory, "private"))).toEqual(["report.json"]);
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+
+  it("keeps raw qualification evidence outside durable artifacts and deletes it in finally", () => {
+    const source = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-cli.ts"), "utf8");
+    expect(source).toContain('mkdtempSync(join(tmpdir(), "explorers-music-evidence-"))');
+    expect(source).toContain("if (rawEvidenceDirectory) rmSync(rawEvidenceDirectory, { recursive: true, force: true })");
+    expect(source).not.toContain("attempt-${attempt}-raw.json");
   });
 
   it("uses stable percentiles and redacts bounded evidence", () => {
@@ -1033,7 +1450,7 @@ describe("portable Music qualification lanes", () => {
   it("keeps qualification artifact paths portable and developer-anonymous", () => {
     const source = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-cli.ts"), "utf8");
     expect(source).toContain("portableQualificationArtifact(artifact)");
-    expect(source).toContain("portableQualificationArtifact(writeArtifact(");
+    expect(source).toContain("portableQualificationArtifact(writeAtomicArtifact(");
     expect(source).toContain("checkpoint: checkpoint ? portableQualificationArtifact(checkpoint) : undefined");
     expect(source).toContain("portableQualificationArtifact(commandResult)");
     expect(source).toContain("if (!suppressEvidence)");

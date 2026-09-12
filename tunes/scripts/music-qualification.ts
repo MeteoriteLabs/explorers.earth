@@ -1,4 +1,97 @@
+import {
+  requireExactFileManifest,
+  unionFileEvidence,
+  type Counts,
+  type MusicVitestEvidence,
+} from "./music-vitest-evidence.ts";
+import { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence.ts";
+
 export type MusicQualificationLaneName = "fast" | "pr" | "nightly" | "release";
+
+export const MUSIC_INTEGRATION_FILES = [
+  "server/test/google-sync.integration.test.ts",
+  "server/test/load/music-load-http-postgres.integration.test.ts",
+  "server/test/load/music-load-postgres.integration.test.ts",
+  "server/test/migrations/music-migration.integration.test.ts",
+  "server/test/migrations/music-runtime.integration.test.ts",
+  "server/test/music-credential.integration.test.ts",
+  "server/test/music-domain-repository.integration.test.ts",
+  "server/test/music-e2e-identity-count-adapter.integration.test.ts",
+  "server/test/music-e2e-initial-capture.integration.test.ts",
+  "server/test/music-e2e-state-restore.integration.test.ts",
+  "server/test/music-identity-projection.integration.test.ts",
+  "server/test/music-identity-repository-coverage.integration.test.ts",
+  "server/test/music-publication-operation.integration.test.ts",
+  "server/test/music-runtime-role.integration.test.ts",
+  "server/test/musicLifecycle.integration.test.ts",
+  "server/test/musicReconciler.integration.test.ts",
+  "server/test/reconciliationRepository.integration.test.ts",
+  "server/test/user-leak.integration.test.ts",
+] as const;
+
+export const MUSIC_DEPLOYMENT_FILES = [
+  "server/test/deployment/music-command-plan.test.ts",
+  "server/test/deployment/music-deploy-executable.test.ts",
+  "server/test/deployment/music-deploy-workflow-security.test.ts",
+  "server/test/deployment/music-deployment-files.test.ts",
+  "server/test/deployment/music-deployment.test.ts",
+  "server/test/deployment/music-health-routes.test.ts",
+  "server/test/deployment/music-docker-release-authority.test.ts",
+  "server/test/deployment/music-production-policy.test.ts",
+  "server/test/deployment/music-publication-authority-verifier.test.ts",
+  "server/test/deployment/music-readiness.test.ts",
+  "server/test/deployment/registration-compat-process.test.ts",
+  "server/test/deployment/registration-compat-traefik.real-tool.test.ts",
+] as const;
+
+export const MUSIC_DEFAULT_DEPLOYMENT_FILES = MUSIC_DEPLOYMENT_FILES.slice(0, 11);
+
+export const MUSIC_REAL_TOOL_FILES = [
+  "server/test/contracts/music-compose-safety.real-tool.test.ts",
+  "server/test/contracts/music-production-compose.real-tool.test.ts",
+  "server/test/music-startup-bootstrap.real-tool.test.ts",
+  "server/test/contracts/music-clean-bootstrap.real-tool.test.ts",
+  "server/test/deployment/registration-compat-traefik.real-tool.test.ts",
+] as const;
+
+export type QualificationStatus = "PASS" | "FAIL" | "BLOCKED" | "NOT RUN";
+export type SourceEvidence = {
+  commitBefore: string; commitAfter: string; cleanBefore: boolean; cleanAfter: boolean;
+  rootLockSha256: string; sourceRoot: string;
+};
+export type JsonArtifact = { path: string; sha256: string };
+export type QualificationOutcome = {
+  started: boolean; nativeExit: number | null; nativeSignal: string | null;
+  timedOut: boolean; interrupted: boolean;
+  prerequisite?: "missing-external-authorization" | "missing-image-or-cache" | "missing-buildkit-isolation" | "unsupported-platform";
+  validationError?: string;
+  source: SourceEvidence;
+  cleanup: "verified" | "failed" | "unknown" | "not-needed";
+  json?: JsonArtifact; testEvidence?: MusicVitestEvidence;
+  uatRunId?: string;
+};
+
+export function qualificationStatus(outcome: QualificationOutcome, requiresJson: boolean): QualificationStatus {
+  if (outcome.validationError || outcome.timedOut || outcome.interrupted
+      || outcome.cleanup === "failed" || outcome.cleanup === "unknown") return "FAIL";
+  if (!outcome.started) {
+    if (outcome.nativeExit !== null || outcome.nativeSignal !== null || outcome.json || outcome.testEvidence) return "FAIL";
+    return outcome.prerequisite === "unsupported-platform" ? "NOT RUN"
+      : outcome.prerequisite ? "BLOCKED" : "NOT RUN";
+  }
+  if (outcome.prerequisite || outcome.nativeExit !== 0 || outcome.nativeSignal !== null) return "FAIL";
+  if (!/^[a-f0-9]{40}$/.test(outcome.source.commitBefore)
+      || outcome.source.commitBefore !== outcome.source.commitAfter
+      || !outcome.source.cleanBefore || !outcome.source.cleanAfter
+      || !/^[a-f0-9]{64}$/.test(outcome.source.rootLockSha256)) return "FAIL";
+  if (requiresJson && (!outcome.json || !outcome.testEvidence?.finalized || !outcome.testEvidence.success)) return "FAIL";
+  return "PASS";
+}
+
+export function aggregateStatuses(values: QualificationStatus[]): QualificationStatus {
+  return values.includes("FAIL") ? "FAIL" : values.includes("BLOCKED") ? "BLOCKED"
+    : values.length === 0 || values.includes("NOT RUN") ? "NOT RUN" : "PASS";
+}
 
 export const MUSIC_QUALIFICATION_REQUIREMENTS = [
   "portable-harness",
@@ -79,6 +172,25 @@ export interface MusicQualificationTask {
   npmArgs: string[];
   requirements: MusicQualificationRequirement[];
   nativeReleaseMode?: "rehearsal";
+  authority?: "default" | "real-tool" | "c10-postgres" | "uat-postgres" | "existing";
+  testEvidenceSource?: { kind: "vitest-json" | "uat-envelope"; expectedFiles?: readonly string[] };
+}
+
+export function requireExactContainerAbsent(result: {
+  error?: unknown;
+  status: number | null;
+  signal?: string | null;
+  stdout: string;
+  stderr: string;
+}, containerId: string): void {
+  if (!/^[a-f0-9]{64}$/.test(containerId)) throw new Error("exact container ID required");
+  const accepted = [
+    "Error: No such container: " + containerId,
+    "Error response from daemon: No such container: " + containerId,
+  ];
+  if (result.error || result.signal || result.status !== 1
+    || !["", "[]"].includes(result.stdout.trim())
+    || !accepted.includes(result.stderr.trim())) throw new Error("container absence not proven");
 }
 
 export function preferredQualificationPort(taskId: string): number {
@@ -94,7 +206,6 @@ export function qualificationTaskEnvironment(taskId: string): Record<string, str
   if (taskId === "fixture-fullstack-browser") {
     return { PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173" };
   }
-  if (taskId === "release-rehearsal") return { MUSIC_C3_TRAEFIK_TEST: "1" };
   if (!["postgres-integration", "tunes-repository-coverage", "tunes-identity-repository-coverage", "load-postgres", "chaos-postgres", "real-docker-evidence"].includes(taskId)) return {};
   return {
     MUSIC_C3_POSTGRES_TEST: "1",
@@ -106,16 +217,6 @@ export function qualificationTaskEnvironment(taskId: string): Record<string, str
     MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1",
     MUSIC_C10_POSTGRES_TEST: "1",
   };
-}
-
-export function qualificationTaskOutputFailure(taskId: string, stdout: string, stderr: string): string | undefined {
-  if (taskId !== "release-rehearsal") return undefined;
-  const output = `${stdout}\n${stderr}`.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
-  const summary = output.match(/Test Files\s+(\d+) passed(?:\s*\|\s*(\d+) skipped)?\s*\((\d+)\)/);
-  if (!summary || Number(summary[1]) !== 12 || Number(summary[2] ?? 0) !== 0 || Number(summary[3]) !== 12) {
-    return "release rehearsal must execute all 12 deployment test files without a file-level skip";
-  }
-  return undefined;
 }
 
 const FIXTURE_ENVIRONMENT_TASK_IDS = new Set([
@@ -148,7 +249,8 @@ const task = (
   title: string,
   npmArgs: string[],
   requirements: MusicQualificationRequirement[],
-): MusicQualificationTask => ({ id, title, npmArgs, requirements });
+  metadata: Pick<MusicQualificationTask, "authority" | "testEvidenceSource"> = { authority: "existing" },
+): MusicQualificationTask => ({ id, title, npmArgs, requirements, authority: "existing", ...metadata });
 
 export const MUSIC_QUALIFICATION_TASKS = {
   "music-types-scoped": task("music-types-scoped", "Music scoped TypeScript", ["run", "music:types:scoped"], ["portable-harness"]),
@@ -177,8 +279,14 @@ export const MUSIC_QUALIFICATION_TASKS = {
   "tunes-critical-coverage": task("tunes-critical-coverage", "Tunes critical-module coverage", [
     "run", "test:music-critical-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false", "--testTimeout=30000",
   ], ["critical-coverage"]),
-  "tunes-repository-coverage": task("tunes-repository-coverage", "Tunes PostgreSQL repository coverage", ["run", "test:music-c8:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
-  "tunes-identity-repository-coverage": task("tunes-identity-repository-coverage", "Tunes identity PostgreSQL repository coverage", ["run", "test:music-c45:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"]),
+  "tunes-repository-coverage": task("tunes-repository-coverage", "Tunes PostgreSQL repository coverage", ["run", "test:music-c8:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"], { authority: "c10-postgres", testEvidenceSource: { kind: "vitest-json", expectedFiles: ["server/test/musicReconciler.integration.test.ts", "server/test/reconciliationRepository.integration.test.ts"] } }),
+  "tunes-identity-repository-coverage": task("tunes-identity-repository-coverage", "Tunes identity PostgreSQL repository coverage", ["run", "test:music-c45:repository-coverage", "--prefix", "tunes", "--", "--maxWorkers=1", "--fileParallelism=false"], ["critical-coverage", "postgres-repositories"], { authority: "c10-postgres", testEvidenceSource: { kind: "vitest-json", expectedFiles: [
+    "server/test/migrations/music-migration.integration.test.ts", "server/test/music-identity-projection.integration.test.ts",
+    "server/test/music-credential.integration.test.ts", "server/test/music-domain-repository.integration.test.ts",
+    "server/test/musicLifecycle.integration.test.ts", "server/test/musicReconciler.integration.test.ts",
+    "server/test/music-publication-operation.integration.test.ts", "server/test/music-runtime-role.integration.test.ts",
+    "server/test/music-identity-repository-coverage.integration.test.ts",
+  ] } }),
   "explorer-critical-coverage": task("explorer-critical-coverage", "Explorer critical-module coverage", ["run", "test:music-critical-coverage", "--prefix", "explorers-earth"], ["critical-coverage"]),
   "security-matrices": task("security-matrices", "REST, GraphQL, and socket security matrices", [
     "test", "--prefix", "tunes", "--", "server/test/contracts/music-authorization-matrix.test.ts",
@@ -189,6 +297,9 @@ export const MUSIC_QUALIFICATION_TASKS = {
   "postgres-integration": task("postgres-integration", "Real PostgreSQL integration", [
     "run", "test:integration", "--prefix", "tunes", "--",
     "server/test/migrations/music-migration.integration.test.ts",
+    "server/test/migrations/music-runtime.integration.test.ts",
+    "server/test/google-sync.integration.test.ts",
+    "server/test/user-leak.integration.test.ts",
     "server/test/music-credential.integration.test.ts",
     "server/test/music-domain-repository.integration.test.ts",
     "server/test/music-identity-projection.integration.test.ts",
@@ -201,7 +312,15 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "--maxWorkers=1", "--fileParallelism=false",
   ], [
     "postgres-migrations", "postgres-repositories", "postgres-concurrency", "lifecycle", "reconciliation", "owner-predicates",
-  ]),
+  ], { authority: "c10-postgres", testEvidenceSource: { kind: "vitest-json", expectedFiles: [
+    "server/test/migrations/music-migration.integration.test.ts", "server/test/migrations/music-runtime.integration.test.ts",
+    "server/test/google-sync.integration.test.ts", "server/test/user-leak.integration.test.ts",
+    "server/test/music-credential.integration.test.ts", "server/test/music-domain-repository.integration.test.ts",
+    "server/test/music-identity-projection.integration.test.ts", "server/test/music-publication-operation.integration.test.ts",
+    "server/test/music-runtime-role.integration.test.ts", "server/test/musicLifecycle.integration.test.ts",
+    "server/test/musicReconciler.integration.test.ts", "server/test/reconciliationRepository.integration.test.ts",
+    "server/test/load/music-load-postgres.integration.test.ts",
+  ] } }),
   "browser-smoke": task("browser-smoke", "Music browser smoke", [
     "run", "test:e2e", "--prefix", "explorers-earth", "--", "music.spec.ts", "account-lifecycle.spec.ts", "--project=chromium", "--retries=0",
   ], ["refresh-rename-sharing", "lifecycle-outage-e2e", "browser-exit"]),
@@ -222,7 +341,7 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "run", "test:integration", "--prefix", "tunes", "--",
     "server/test/load/music-load-http-postgres.integration.test.ts", "--disableConsoleIntercept", "--pool=threads",
     "--maxWorkers=1", "--fileParallelism=false",
-  ], ["load-db-pool", "postgres-concurrency", "timing-evidence"]),
+  ], ["load-db-pool", "postgres-concurrency", "timing-evidence"], { authority: "c10-postgres", testEvidenceSource: { kind: "vitest-json", expectedFiles: ["server/test/load/music-load-http-postgres.integration.test.ts"] } }),
   "chaos-unit": task("chaos-unit", "Music upstream and credential chaos", [
     "test", "--prefix", "tunes", "--", "server/test/integration/music-chaos-qualification.test.ts",
     "server/test/music-identity-gateway.test.ts", "server/test/music-token-service.test.ts", "server/test/music-reconciler.test.ts",
@@ -250,9 +369,18 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/deployment/music-publication-authority-verifier.test.ts",
     "server/test/deployment/music-readiness.test.ts",
     "server/test/deployment/registration-compat-process.test.ts",
-    "server/test/deployment/registration-compat-traefik.test.ts",
     "--maxWorkers=1", "--fileParallelism=false",
-  ], ["migration-readiness-failure", "rollback-exact-digest", "kill-switch-secure-floor", "compatibility-route", "typed-recovery"]),
+  ], ["migration-readiness-failure", "rollback-exact-digest", "kill-switch-secure-floor", "compatibility-route", "typed-recovery"], { authority: "default", testEvidenceSource: { kind: "vitest-json", expectedFiles: MUSIC_DEFAULT_DEPLOYMENT_FILES } }),
+  "default-backend-gate": task("default-backend-gate", "Complete two-worker default Tunes gate",
+    ["test", "--prefix", "tunes", "--", "--maxWorkers=2"], ["portable-harness", "typed-recovery"],
+    { authority: "default", testEvidenceSource: { kind: "vitest-json" } }),
+  "real-tool-contracts": task("real-tool-contracts", "Serial genuine real-tool contracts",
+    ["run", "test:real-tool", "--prefix", "tunes", "--"], ["portable-harness", "secret-free-evidence"],
+    { authority: "real-tool", testEvidenceSource: { kind: "vitest-json", expectedFiles: MUSIC_REAL_TOOL_FILES } }),
+  "uat-postgres-integration": task("uat-postgres-integration", "Owned disposable PG15 UAT",
+    ["run", "music:test:uat-database", "--", "--ack", "TASK4_FIXTURE_OWNED_DISPOSABLE_PG15"],
+    ["postgres-migrations", "postgres-repositories", "postgres-concurrency"],
+    { authority: "uat-postgres", testEvidenceSource: { kind: "uat-envelope", expectedFiles: MUSIC_UAT_DATABASE_TEST_FILES } }),
   "real-docker-evidence": task("real-docker-evidence", "Disposable real-Docker fixture identity and recovery evidence", [
     "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-fixture-runtime.ts",
   ], ["portable-harness", "postgres-repositories", "owner-predicates", "strapi-db-outage", "secret-free-evidence"]),
@@ -316,6 +444,9 @@ export const MUSIC_QUALIFICATION_LANES: Record<MusicQualificationLaneName, Music
       { id: "release-evidence", parallel: false, taskIds: ["fixture-drift"] },
       { id: "release-real-fixture", parallel: false, taskIds: ["fixture-fullstack-browser", "real-docker-evidence", "interrupt-resume"] },
       { id: "release-recovery", parallel: false, taskIds: ["release-rehearsal", "real-docker-release"] },
+      { id: "release-backend-default", parallel: false, taskIds: ["default-backend-gate"] },
+      { id: "release-backend-real-tool", parallel: false, taskIds: ["real-tool-contracts"] },
+      { id: "release-backend-postgres", parallel: false, taskIds: ["load-postgres", "uat-postgres-integration"] },
     ],
   },
 };
@@ -339,18 +470,88 @@ export interface MusicQualificationExecutionResult {
   durationMs: number;
   artifact: string;
   timedOut?: boolean;
+  outcome?: QualificationOutcome;
 }
 
 export interface MusicQualificationTaskEvidence {
   id: string;
   title: string;
-  originalStatus: "success" | "failure" | "timeout";
-  diagnosticStatus?: "success" | "failure" | "timeout";
+  originalStatus: "success" | "failure" | "timeout" | "blocked" | "not-run";
+  diagnosticStatus?: "success" | "failure" | "timeout" | "blocked" | "not-run";
+  qualificationStatus: QualificationStatus;
+  outcome?: QualificationOutcome;
   attempts: 1 | 2;
   durationMs: number;
   artifacts: string[];
   loadMeasurements?: MusicQualificationLoadMeasurement[];
   operationalMeasurements?: MusicQualificationOperationalMeasurement[];
+}
+
+function statusFor(item: MusicQualificationTaskEvidence | undefined): QualificationStatus {
+  if (!item) return "NOT RUN";
+  if (item.qualificationStatus === "FAIL") return "FAIL";
+  if (!item.outcome) return "FAIL";
+  return qualificationStatus(item.outcome, true);
+}
+
+function requiredUnion(items: Array<MusicQualificationTaskEvidence | undefined>, expected: readonly string[]) {
+  const status = aggregateStatuses(items.map(statusFor));
+  if (status !== "PASS") return { status, expectedFiles: expected, duplicates: [] as string[] };
+  try {
+    const groups = items.map((item) => {
+      if (!item?.outcome?.testEvidence) throw new Error("started task missing finalized evidence");
+      return item.outcome.testEvidence;
+    });
+    const union = unionFileEvidence(groups, expected);
+    return { status: "PASS" as const, expectedFiles: expected, ...union };
+  } catch {
+    return { status: "FAIL" as const, expectedFiles: expected, duplicates: [] as string[] };
+  }
+}
+
+export function completeBackendFromTasks(tasks: MusicQualificationTaskEvidence[]) {
+  const byId = new Map(tasks.map((taskEvidence) => [taskEvidence.id, taskEvidence]));
+  const get = (id: string) => byId.get(id);
+  const statusOf = (id: string): QualificationStatus => statusFor(get(id));
+  const defaultStatus = statusOf("default-backend-gate");
+  let realTool = statusOf("real-tool-contracts");
+  const integration = requiredUnion([
+    get("postgres-integration"), get("load-postgres"),
+    get("tunes-identity-repository-coverage"), get("uat-postgres-integration"),
+  ], MUSIC_INTEGRATION_FILES);
+  let traefik = get("real-tool-contracts");
+  if (realTool === "PASS" && traefik?.outcome?.testEvidence) {
+    try {
+      const full = traefik.outcome.testEvidence;
+      requireExactFileManifest(full, MUSIC_REAL_TOOL_FILES);
+      const files = full.files.filter((file) => file.file === MUSIC_DEPLOYMENT_FILES[11]);
+      const assertions: Counts = { selected: 0, passed: 0, failed: 0, skipped: 0, todo: 0 };
+      for (const file of files) for (const key of Object.keys(assertions) as Array<keyof Counts>) {
+        assertions[key] += file.assertions[key];
+      }
+      const projected: MusicVitestEvidence = {
+        ...full,
+        files,
+        assertions,
+        fileCounts: { selected: files.length, passed: files.length, failed: 0, skipped: 0 },
+      };
+      requireExactFileManifest(projected, [MUSIC_DEPLOYMENT_FILES[11]]);
+      traefik = { ...traefik, outcome: { ...traefik.outcome, testEvidence: projected } };
+    } catch {
+      realTool = "FAIL";
+      traefik = traefik ? { ...traefik, qualificationStatus: "FAIL" } : traefik;
+    }
+  }
+  const deployment = requiredUnion([get("release-rehearsal"), traefik], MUSIC_DEPLOYMENT_FILES);
+  const postgres = integration.status;
+  return {
+    status: aggregateStatuses([defaultStatus, realTool, postgres, deployment.status]),
+    default: defaultStatus,
+    realTool,
+    postgres,
+    deployment,
+    integration,
+  };
 }
 
 export interface MusicQualificationLoadMeasurement {
@@ -368,9 +569,9 @@ export interface MusicQualificationOperationalMeasurement {
 export interface MusicQualificationReport {
   schemaVersion: "music-qualification/v1";
   lane: MusicQualificationLaneName;
-  status: "success" | "failure";
+  status: "success" | "failure" | "blocked" | "not-run";
   authority?: MusicQualificationAuthority;
-  failureCodes: Array<"QUALIFICATION_TASK_FAILED" | "QUALIFICATION_TASK_TIMEOUT" | "QUALIFICATION_BUDGET_EXCEEDED" | "QUALIFICATION_MEASUREMENT_FAILED">;
+  failureCodes: Array<"QUALIFICATION_TASK_FAILED" | "QUALIFICATION_TASK_TIMEOUT" | "QUALIFICATION_BUDGET_EXCEEDED" | "QUALIFICATION_MEASUREMENT_FAILED" | "QUALIFICATION_EVIDENCE_FAILED">;
   timing: {
     budgetMs: number;
     wallClockMs: number;
@@ -382,7 +583,7 @@ export interface MusicQualificationReport {
   };
   tasks: MusicQualificationTaskEvidence[];
   telemetry: {
-    taskStatus: { success: number; failure: number; timeout: number };
+    taskStatus: { success: number; failure: number; timeout: number; blocked: number; "not-run": number };
     flakyDiagnosticReruns: number;
   };
   measurements?: MusicQualificationMeasurements;
@@ -434,7 +635,18 @@ export interface MusicQualificationRunOptions {
     task: MusicQualificationTask,
     context: { attempt: 1 | 2; remainingBudgetMs: number; artifactDirectory: string },
   ) => Promise<MusicQualificationExecutionResult>;
-  writeReport: (report: MusicQualificationReport) => Promise<string>;
+  /** Deprecated: the CLI owns the sole final report write after measurements. */
+  writeReport?: (report: MusicQualificationReport) => Promise<string>;
+}
+
+export async function finalizeMusicQualificationReport(
+  report: MusicQualificationReport,
+  measurements: MusicQualificationMeasurements,
+  writeReport: (report: MusicQualificationReport) => Promise<string>,
+): Promise<MusicQualificationReport> {
+  attachMusicQualificationMeasurements(report, measurements);
+  report.evidenceArtifact = await writeReport(report);
+  return report;
 }
 
 function validDuration(value: number | undefined, maximumMs: number): boolean {
@@ -474,7 +686,7 @@ export function attachMusicQualificationMeasurements(
   report.status = "failure";
 }
 
-function stagesForLane(name: MusicQualificationLaneName): MusicQualificationStage[] {
+export function stagesForLane(name: MusicQualificationLaneName): MusicQualificationStage[] {
   const lane = MUSIC_QUALIFICATION_LANES[name];
   return [...lane.inherits.flatMap(stagesForLane), ...lane.stages];
 }
@@ -626,6 +838,7 @@ export async function runMusicQualificationLane(
   const evidence: MusicQualificationTaskEvidence[] = [];
   const seen = new Set<string>();
   let wallClockMs = 0;
+  const selectedStages = stagesForLane(laneName);
 
   const runTask = async (taskId: keyof typeof MUSIC_QUALIFICATION_TASKS): Promise<MusicQualificationTaskEvidence> => {
     const selected = MUSIC_QUALIFICATION_TASKS[taskId];
@@ -634,10 +847,17 @@ export async function runMusicQualificationLane(
       remainingBudgetMs: Math.max(0, lane.budgetMs - wallClockMs),
       artifactDirectory: options.artifactDirectory,
     });
-    const originalStatus = executionStatus(original);
+    const canonical = original.outcome
+      ? qualificationStatus(original.outcome, Boolean(selected.testEvidenceSource))
+      : selected.testEvidenceSource ? "FAIL"
+      : original.timedOut || original.exitCode !== 0 ? "FAIL" : "PASS";
+    const originalStatus = original.timedOut ? "timeout"
+      : canonical === "PASS" ? "success" : canonical === "FAIL" ? "failure"
+      : canonical === "BLOCKED" ? "blocked" : "not-run";
     const artifacts = [original.artifact];
     let diagnostic: MusicQualificationExecutionResult | undefined;
-    if (originalStatus === "failure") {
+    const mayRetry = !selected.testEvidenceSource && originalStatus === "failure";
+    if (mayRetry) {
       diagnostic = await options.execute(selected, {
         attempt: 2,
         remainingBudgetMs: Math.max(0, lane.budgetMs - wallClockMs - original.durationMs),
@@ -651,6 +871,8 @@ export async function runMusicQualificationLane(
       id: selected.id,
       title: selected.title,
       originalStatus,
+      qualificationStatus: canonical,
+      outcome: original.outcome,
       diagnosticStatus: diagnostic ? executionStatus(diagnostic) : undefined,
       attempts: diagnostic ? 2 : 1,
       durationMs: original.durationMs + (diagnostic?.durationMs ?? 0),
@@ -660,7 +882,7 @@ export async function runMusicQualificationLane(
     };
   };
 
-  for (const stage of stagesForLane(laneName)) {
+  for (const stage of selectedStages) {
     const pending = stage.taskIds.filter((id) => !seen.has(id));
     pending.forEach((id) => seen.add(id));
     if (pending.length === 0) continue;
@@ -677,18 +899,50 @@ export async function runMusicQualificationLane(
     if (wallClockMs > lane.budgetMs) break;
   }
 
+  const executedIds = new Set(evidence.map(({ id }) => id));
+  const scheduledTaskIds: Array<keyof typeof MUSIC_QUALIFICATION_TASKS> = Array.from(
+    new Set<keyof typeof MUSIC_QUALIFICATION_TASKS>(selectedStages.flatMap(({ taskIds }) => taskIds)),
+  );
+  for (const taskId of scheduledTaskIds) {
+    if (executedIds.has(taskId)) continue;
+    const selected = MUSIC_QUALIFICATION_TASKS[taskId];
+    evidence.push({
+      id: selected.id,
+      title: selected.title,
+      originalStatus: "not-run",
+      qualificationStatus: "NOT RUN",
+      attempts: 1,
+      durationMs: 0,
+      artifacts: [],
+      outcome: {
+        started: false,
+        nativeExit: null,
+        nativeSignal: null,
+        timedOut: false,
+        interrupted: false,
+        source: { commitBefore: "", commitAfter: "", cleanBefore: false, cleanAfter: false, rootLockSha256: "", sourceRoot: "" },
+        cleanup: "not-needed",
+      },
+    });
+  }
+
   const failureCodes = new Set<MusicQualificationReport["failureCodes"][number]>();
   for (const item of evidence) {
     if (item.originalStatus === "failure") failureCodes.add("QUALIFICATION_TASK_FAILED");
     if (item.originalStatus === "timeout") failureCodes.add("QUALIFICATION_TASK_TIMEOUT");
   }
   if (wallClockMs > lane.budgetMs) failureCodes.add("QUALIFICATION_BUDGET_EXCEEDED");
+  if (evidence.some((item) => item.qualificationStatus === "FAIL" && item.outcome?.validationError)) {
+    failureCodes.add("QUALIFICATION_EVIDENCE_FAILED");
+  }
+  const canonicalStatus = aggregateStatuses(evidence.map(({ qualificationStatus }) => qualificationStatus));
   const durations = evidence.map(({ durationMs }) => durationMs);
   const laneDurations = [...(options.priorLaneWallClockMs ?? []), wallClockMs];
   const report: MusicQualificationReport = {
     schemaVersion: "music-qualification/v1",
     lane: laneName,
-    status: failureCodes.size === 0 ? "success" : "failure",
+    status: failureCodes.size > 0 || canonicalStatus === "FAIL" ? "failure"
+      : canonicalStatus === "BLOCKED" ? "blocked" : canonicalStatus === "NOT RUN" ? "not-run" : "success",
     ...(options.authority ? { authority: options.authority } : {}),
     failureCodes: Array.from(failureCodes),
     timing: {
@@ -706,11 +960,12 @@ export async function runMusicQualificationLane(
         success: evidence.filter(({ originalStatus }) => originalStatus === "success").length,
         failure: evidence.filter(({ originalStatus }) => originalStatus === "failure").length,
         timeout: evidence.filter(({ originalStatus }) => originalStatus === "timeout").length,
+        blocked: evidence.filter(({ originalStatus }) => originalStatus === "blocked").length,
+        "not-run": evidence.filter(({ originalStatus }) => originalStatus === "not-run").length,
       },
       flakyDiagnosticReruns: evidence.filter(({ originalStatus, diagnosticStatus }) => originalStatus === "failure" && diagnosticStatus === "success").length,
     },
     measurements: options.measurements,
   };
-  report.evidenceArtifact = await options.writeReport(report);
   return report;
 }

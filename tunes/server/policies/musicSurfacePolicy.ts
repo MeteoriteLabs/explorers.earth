@@ -73,6 +73,9 @@ const PUBLIC_PATHS = new Set([
   "/health/live",
   "/health/ready",
   "/api/music-entry/status",
+  "/api/music/public-profile/:accountDocumentId",
+  "/api/music/public-resource/v1/:publicSlug",
+  "/api/explorers/analytics/music-account/:accountDocumentId/events",
   "/robots.txt",
   "/sitemap.xml",
   "/api/explorers-sitemap.xml",
@@ -81,6 +84,12 @@ const PUBLIC_PATHS = new Set([
   "/api/user/reactivate",
   "/api/music-fixture/readiness",
   "/api-docs",
+]);
+
+const PUBLIC_PROFILE_GET_PATHS = new Set([
+  "/api/explorers/v1/profiles/:username",
+  "/api/explorers/v1/profiles/:username/recommendations/:category",
+  "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
 ]);
 
 const PAID_PREFIXES = [
@@ -109,13 +118,15 @@ const OWNER_PREFIXES = [
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification">): MusicSurfaceDecision {
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
+  if (route.method === "GET" && PUBLIC_PROFILE_GET_PATHS.has(route.path)) return "public";
   if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard" || route.path === "/api/music/features" || route.path === "/api/music/guest-controls") return "owner";
   if (route.path === "/api/music/publication" || route.path === "/api/music/queue/replace" || route.path === "/api/music/queue/append") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";
   if (route.path === "/api/playlist/:guestUrl/requests") return "guest";
-  if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "guest";
+  if (route.path === "/api/explorers/analytics/music/:publicSlug/events") return "guest";
+  if (route.path === "/api/playlist/:guestUrl/youtube/search" || route.path === "/api/playlist/:guestUrl/youtube/video-from-url") return "public";
   if (PUBLIC_PATHS.has(route.path) || route.classification === "public") return "public";
   if (route.path.startsWith("/api/admin/")) return "admin-tombstone";
   if (route.path === "/graphql" || route.path === "/api/strapi/graphql"
@@ -161,7 +172,9 @@ export function authorizationMatrixFromInventory(inventory: {
     routes: inventory.routes.map((route) => {
       const decision = decisionForRoute(route);
       const allowed = allowedFor(decision);
-      if (decision === "guest" && route.method !== "GET") allowed.unauthenticated = false;
+      if (decision === "guest" && route.method !== "GET"
+          && route.path !== "/api/playlist/:guestUrl/requests"
+          && route.path !== "/api/explorers/analytics/music/:publicSlug/events") allowed.unauthenticated = false;
       return { method: route.method, path: route.path, source: route.source, decision, allowed };
     }),
     events: inventory.events.map((event) => {

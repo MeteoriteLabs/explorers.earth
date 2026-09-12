@@ -58,10 +58,12 @@ describe("privileged publication authority separation verifier", () => {
     mkdirSync(token);
     secret("publication/current", encoded(0x70));
     secret("publication/previous", encoded(0x71));
+    const publicId = secret("publication/public-id", encoded(0x76));
     secret("token/current", encoded(0x72));
     secret("token/previous", encoded(0x73));
     paths = {
       publication,
+      publicId,
       token,
       runtimeDatabase: secret("database-runtime", "dedicated-runtime-password"),
       migratorDatabase: secret("database-migrator", "dedicated-migrator-password"),
@@ -75,8 +77,26 @@ describe("privileged publication authority separation verifier", () => {
 
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  it("accepts distinct current/previous publication material without exposing any authority", async () => {
+  it("accepts distinct current/previous publication and stable public-ID material without exposing any authority", async () => {
     await expect(verifyPublicationAuthority(environmentPath, hmacPath)).resolves.toBeUndefined();
+  });
+
+  it("requires the stable public-ID authority before candidate Docker activity", async () => {
+    rmSync(paths.publicId);
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath))
+      .rejects.toThrow("Publication authority verification failed.");
+  });
+
+  it.each([
+    ["publication current", () => writeFileSync(paths.publicId, encoded(0x70))],
+    ["token current", () => writeFileSync(paths.publicId, encoded(0x72))],
+    ["migrator database", () => writeFileSync(paths.migratorDatabase, encoded(0x76))],
+    ["deployment HMAC", () => writeFileSync(hmacPath, encoded(0x76))],
+    ["session", () => writeEnvironment({ SESSION_SECRET: encoded(0x76) })],
+  ])("rejects public-ID material shared with %s", async (_label, arrange) => {
+    arrange();
+    await expect(verifyPublicationAuthority(environmentPath, hmacPath))
+      .rejects.toThrow("Publication authority verification failed.");
   });
 
   it("reads the exact configured nested previous publication path instead of a safe decoy", async () => {

@@ -154,6 +154,234 @@
     },
     {
       "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-entry/status",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/publicProfile/localPublicProfileGatewayApp.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/music-account/:accountDocumentId/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/music/:publicSlug/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "guest",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/profiles",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/:category",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
       "path": "/itunes-api/search",
       "source": "tunes/server/routes/index.ts",
       "decision": "public",
@@ -365,6 +593,44 @@
       "method": "GET",
       "path": "/api-docs",
       "source": "tunes/server/routes/musicOpenApiRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-profile/:accountDocumentId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-resource/v1/:publicSlug",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "decision": "public",
       "allowed": {
         "unauthenticated": true,
@@ -916,15 +1182,15 @@
       "method": "POST",
       "path": "/api/playlist/:guestUrl/youtube/search",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "decision": "guest",
+      "decision": "public",
       "allowed": {
-        "unauthenticated": false,
+        "unauthenticated": true,
         "owner": false,
         "otherUser": false,
         "suspended": false,
         "pendingDeletion": false,
         "staleEntitlement": false,
-        "guestValid": true,
+        "guestValid": false,
         "guestInvalid": false,
         "guestRevoked": false,
         "internalAdmin": false,
@@ -935,15 +1201,15 @@
       "method": "POST",
       "path": "/api/playlist/:guestUrl/youtube/video-from-url",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
-      "decision": "guest",
+      "decision": "public",
       "allowed": {
-        "unauthenticated": false,
+        "unauthenticated": true,
         "owner": false,
         "otherUser": false,
         "suspended": false,
         "pendingDeletion": false,
         "staleEntitlement": false,
-        "guestValid": true,
+        "guestValid": false,
         "guestInvalid": false,
         "guestRevoked": false,
         "internalAdmin": false,
@@ -956,7 +1222,7 @@
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",
       "decision": "guest",
       "allowed": {
-        "unauthenticated": false,
+        "unauthenticated": true,
         "owner": false,
         "otherUser": false,
         "suspended": false,
@@ -1106,6 +1372,63 @@
     },
     {
       "direction": "emit",
+      "event": "music_public_change",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_owner_change",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
       "event": "music_error",
       "source": "tunes/server/socket/musicSocketServer.ts",
       "decision": "public",
@@ -1145,6 +1468,25 @@
     {
       "direction": "emit",
       "event": "connection_status",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "receive",
+      "event": "disconnect",
       "source": "tunes/server/socket/musicSocketServer.ts",
       "decision": "public",
       "allowed": {
@@ -1319,9 +1661,31 @@
       }
     },
     {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/strapiPublicProfileGateway.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/musicPublicChangeListener.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,

@@ -1,4 +1,5 @@
-import { FC, memo, useState, useEffect, useRef } from "react";
+import { FC, memo, useState, useEffect, useRef, type CSSProperties } from "react";
+import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
 import CrossIcon from "../../../../assets/icons/CrossIcon";
 import Button from "../../../../components/ui/Button";
 import StarIcon from "../../../../assets/icons/StarIcon";
@@ -18,6 +19,7 @@ interface GooglePlaceModalProps {
 
 const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
   ({ place, isOpen, onClose, sections = [] }) => {
+    const categoryStyles = usePublicCategoryThemeStyles();
     const [activeTab, setActiveTab] = useState("Overview");
     const [fetchedPlace, setFetchedPlace] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -202,7 +204,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
     // tabs with data - exactly like PlaceOverview
     const tabs = {
       Overview: fetchedPlace ? (
-        <Overview fetchedPlace={fetchedPlace} onTabChange={handleTabChange} />
+        <Overview fetchedPlace={fetchedPlace} onTabChange={handleTabChange} isPublicCategory={Boolean(categoryStyles)} />
       ) : null,
       Media: fetchedPlace ? (
         <MediaGallery Media={fetchedPlace?.media_details?.imageDetails} />
@@ -222,7 +224,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
 
     if (loading)
       return (
-        <div className="flex bg-dashboard-bg items-center justify-center min-h-screen">
+        <div className={categoryStyles ? "flex bg-[var(--category-page)] items-center justify-center min-h-screen" : "flex bg-dashboard-bg items-center justify-center min-h-screen"}>
           <EarthLoader context="general" size="small" />
         </div>
       );
@@ -230,8 +232,10 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
     return (
       <>
         <div
-          className={`dashboard-theme bg-[#2a2a2a]/90 h-full overflow-y-auto overflow-x-hidden scrollbar-hide rounded-t-2xl shadow-dashboard-elevated flex flex-col transition-transform duration-200 ease-out`}
+          data-category-google-place={categoryStyles ? true : undefined}
+          className={`${categoryStyles ? 'public-place-detail bg-[var(--category-panel)] text-[var(--category-text)]' : 'dashboard-theme bg-[#2a2a2a]/90'} h-full overflow-y-auto overflow-x-hidden scrollbar-hide rounded-t-2xl shadow-dashboard-elevated flex flex-col transition-transform duration-200 ease-out`}
           style={{
+            ...(categoryStyles ? { ...categoryStyles, '--dash-text': 'var(--category-text)', '--text-secondary': 'var(--category-muted)', '--dash-text-light': 'var(--category-muted)', '--dash-border': 'var(--category-control-border)', '--border-card': 'var(--category-control-border)', '--dash-accent': 'var(--category-accent)', '--dash-muted': 'var(--category-hover)' } as CSSProperties : {}),
             transform: `translateY(${dragY}px)`,
             opacity: isDragging ? Math.max(0.7, 1 - dragY / 300) : 1,
           }}
@@ -291,7 +295,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
                           key={i}
                           fillColor={`${fetchedPlace?.Place_Details?.Rating &&
                             i < Math.floor(fetchedPlace.Place_Details.Rating)
-                            ? "#FFEE58"
+                            ? categoryStyles ? "var(--category-rating)" : "#FFEE58"
                             : "#BDBDBD"
                             }`}
                         />
@@ -320,7 +324,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
           <div className="md:flex md:justify-center md:items-center">
             <Tab
               tabs={tabs}
-              type={"public"}
+              type="public"
               activeTab={activeTab}
               onTabChange={handleTabChange}
             />

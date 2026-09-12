@@ -7,7 +7,10 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   resolveMusicIdentityRuntimeConfig,
   type MusicIdentityAddressResolver,
+  type MusicIdentityConfigDependencies,
 } from "../config/music-identity-config";
+import { readSecureMusicSecretFile } from "../config/secure-music-secret-file";
+import { semanticWindowsSecurityInspection } from "./helpers/semantic-windows-security";
 
 const windowsEffectiveUserSid = process.platform === "win32"
   ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
@@ -30,14 +33,17 @@ const externalSecretRoot = mkdtempSync(join(tmpdir(), "music-key-external-"));
 const validCurrentPath = join(secretRoot, "current");
 const validProofPath = join(secretRoot, "lifecycle-proof");
 const validPublicationPath = join(secretRoot, "publication-current");
+const validPublicIdPath = join(secretRoot, "public-id-hmac");
 const validDatabasePath = join(secretRoot, "database-runtime");
 writeFileSync(validCurrentPath, Buffer.alloc(32, 0x51).toString("base64url"), { mode: 0o600 });
 writeFileSync(validProofPath, "dedicated-read-only-proof-token", { mode: 0o600 });
 writeFileSync(validPublicationPath, Buffer.alloc(32, 0x52).toString("base64url"), { mode: 0o600 });
+writeFileSync(validPublicIdPath, Buffer.alloc(32, 0x54).toString("base64url"), { mode: 0o600 });
 writeFileSync(validDatabasePath, "dedicated-runtime-database-password", { mode: 0o600 });
 chmodSync(validCurrentPath, 0o600);
 chmodSync(validProofPath, 0o600);
 chmodSync(validPublicationPath, 0o600);
+chmodSync(validPublicIdPath, 0o600);
 chmodSync(validDatabasePath, 0o600);
 
 afterAll(() => {
@@ -71,6 +77,7 @@ const liveBase = {
   MUSIC_TOKEN_CURRENT_SECRET_FILE: validCurrentPath,
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "publication-current-2026-08",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: validPublicationPath,
+  MUSIC_PUBLIC_ID_HMAC_KEY_FILE: validPublicIdPath,
   MUSIC_DATABASE_PASSWORD_FILE: validDatabasePath,
   SESSION_SECRET: "dedicated-session-secret-at-least-thirty-two-bytes",
   COOKIE_SECRET: "dedicated-cookie-secret-at-least-thirty-two-bytes",
@@ -82,13 +89,93 @@ const liveBase = {
 
 const publicResolver: MusicIdentityAddressResolver = vi.fn(async () => ["8.8.8.8", "2606:4700:4700::1111"]);
 
+const nativeWindowsOperationTimeoutMs = 20_000;
+
+function semanticLiveDependencies(
+  overrides: MusicIdentityConfigDependencies = {},
+): MusicIdentityConfigDependencies {
+  return {
+    resolveAddresses: publicResolver,
+    windowsSecurityInspection: semanticWindowsSecurityInspection,
+    ...overrides,
+  };
+}
+
 describe("central Music identity startup configuration", () => {
+  describe("injected Windows security inspection", () => {
+    it("validates injected Windows output at both real secure-read boundaries", async () => {
+      const inspect = vi.fn(semanticWindowsSecurityInspection);
+      await expect(readSecureMusicSecretFile(validCurrentPath, {
+        mode: "live", platform: "win32", windowsSecurityInspection: inspect,
+      })).resolves.toBe(Buffer.alloc(32, 0x51).toString("base64url"));
+      expect(inspect).toHaveBeenCalledTimes(2);
+    });
+
+    it("rejects changed second-boundary Windows inspection output", async () => {
+      const inspect = vi.fn(semanticWindowsSecurityInspection)
+        .mockImplementationOnce(semanticWindowsSecurityInspection)
+        .mockImplementationOnce(() => "not-json");
+      await expect(readSecureMusicSecretFile(validCurrentPath, {
+        mode: "live", platform: "win32", windowsSecurityInspection: inspect,
+      })).rejects.toThrow();
+      expect(inspect).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      ["owner", { ownerMatchesEffectiveUser: false }],
+      ["writer", { unsafeWritePrincipalCount: 1 }],
+      ["inode", {}],
+    ])("rejects invalid injected Windows %s evidence", async (_name, invalid) => {
+      const inspect = (paths: readonly string[]) =>
+        semanticWindowsSecurityInspection(paths).split("\n")
+          .map(line => {
+            const evidence = JSON.parse(line);
+            return JSON.stringify(_name === "inode"
+              ? { ...evidence, nativeIno: (BigInt(evidence.nativeIno) + 1n).toString() }
+              : { ...evidence, ...invalid });
+          }).join("\n");
+      await expect(readSecureMusicSecretFile(validCurrentPath, {
+        mode: "live", platform: "win32", windowsSecurityInspection: inspect,
+      })).rejects.toThrow();
+    });
+  });
+
   it("loads one dedicated 256-bit publication-response key with exact 24-hour retention", async () => {
-    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
+    const inspect = vi.fn(semanticWindowsSecurityInspection);
+    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, semanticLiveDependencies({
+      windowsSecurityInspection: inspect,
+    }));
     expect(resolved.publicationResponse).toEqual({
       current: { kid: "publication-current-2026-08", key: Buffer.alloc(32, 0x52) },
       retentionSeconds: 86_400,
     });
+    expect(inspect).toHaveBeenCalledTimes(process.platform === "win32" ? 8 : 0);
+  });
+
+  it("loads a dedicated stable 256-bit public-ID HMAC key without exposing encoded material", async () => {
+    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
+    expect(resolved.publicIdHmacKey).toEqual(Buffer.alloc(32, 0x54));
+    expect(JSON.stringify(resolved)).not.toContain(Buffer.alloc(32, 0x54).toString("base64url"));
+  }, nativeWindowsOperationTimeoutMs);
+
+  it.each([
+    ["missing live key file", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined }],
+    ["inline live key", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined, MUSIC_PUBLIC_ID_HMAC_KEY: Buffer.alloc(32, 0x54).toString("base64url") }],
+    ["publication path alias", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: validPublicationPath }],
+    ["token path alias", { MUSIC_PUBLIC_ID_HMAC_KEY_FILE: validCurrentPath }],
+  ])("rejects an unsafe %s for public IDs before route registration", async (_label, overrides) => {
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, semanticLiveDependencies()))
+      .rejects.toThrow(/public.?id|HMAC|dedicated|distinct|alias|secure file/i);
+  });
+
+  it("rejects public-ID HMAC material shared with another protected authority", async () => {
+    const duplicatePath = join(secretRoot, "public-id-duplicate-content");
+    writeFileSync(duplicatePath, Buffer.alloc(32, 0x52).toString("base64url"), { mode: 0o600 });
+    chmodSync(duplicatePath, 0o600);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...liveBase,
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: duplicatePath,
+    }, semanticLiveDependencies())).rejects.toThrow(/public.?id|HMAC|dedicated|distinct|authority/i);
   });
 
   it("allows an all-or-none previous publication key only through its bounded UTC replay deadline", async () => {
@@ -102,7 +189,7 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: "publication-previous-2026-08",
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: previousPath,
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: acceptUntil,
-    }, { resolveAddresses: publicResolver, now: () => now });
+    }, semanticLiveDependencies({ now: () => now }));
     expect(resolved.publicationResponse.previous).toEqual({
       kid: "publication-previous-2026-08", key: Buffer.alloc(32, 0x53), acceptUntil: now + 86_400_000,
     });
@@ -120,7 +207,7 @@ describe("central Music identity startup configuration", () => {
     }],
     ["native token file alias", { MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: validCurrentPath }],
   ])("rejects %s publication response authority before route registration", async (_label, overrides) => {
-    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, semanticLiveDependencies()))
       .rejects.toThrow(/publication|response|key|file|dedicated|alias/i);
   });
 
@@ -131,7 +218,7 @@ describe("central Music identity startup configuration", () => {
     await expect(resolveMusicIdentityRuntimeConfig({
       ...liveBase,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: duplicatePath,
-    }, { resolveAddresses: publicResolver })).rejects.toThrow(/publication|distinct|dedicated|key material/i);
+    }, semanticLiveDependencies())).rejects.toThrow(/publication|distinct|dedicated|key material/i);
   });
 
   it.each([
@@ -141,7 +228,7 @@ describe("central Music identity startup configuration", () => {
     ["Strapi JWT content", { STRAPI_JWT_SECRET: Buffer.alloc(32, 0x52).toString("base64url") }],
     ["gate attestation content", { MUSIC_GATE_ATTESTATION_KEY: Buffer.alloc(32, 0x52).toString("base64url") }],
   ])("rejects publication authority shared with the app-accessible %s", async (_label, overrides) => {
-    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, semanticLiveDependencies()))
       .rejects.toThrow(/publication|distinct|dedicated|authority|alias/i);
   });
 
@@ -160,6 +247,8 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined,
+      MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
     };
     await expect(resolveMusicIdentityRuntimeConfig(fixtureBase)).resolves.toMatchObject({
       publicationResponse: { current: { kid: "fixture-publication-v1" }, retentionSeconds: 86_400 },
@@ -172,25 +261,33 @@ describe("central Music identity startup configuration", () => {
       ...fixtureBase,
       MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY: Buffer.alloc(32, 0x72).toString("base64url"),
     })).rejects.toThrow(/fixture publication|deterministic|key/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...fixtureBase,
+      MUSIC_PUBLIC_ID_HMAC_KEY: Buffer.alloc(32, 0x71).toString("base64url"),
+    })).rejects.toThrow(/fixture public.?id|deterministic|HMAC|key/i);
+    await expect(resolveMusicIdentityRuntimeConfig({
+      ...fixtureBase,
+      MUSIC_PUBLIC_ID_HMAC_KEY: undefined,
+    })).rejects.toThrow(/fixture public.?id|deterministic|HMAC|key/i);
   });
 
   it("requires a dedicated file-backed live lifecycle proof credential and rejects generic authority aliasing", async () => {
     // Break caught: the destructive worker starts with a generic write-capable Strapi token.
-    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: publicResolver });
+    const resolved = await resolveMusicIdentityRuntimeConfig(liveBase, semanticLiveDependencies());
     expect(resolved.lifecycleProofToken).toBe("dedicated-read-only-proof-token");
     await expect(resolveMusicIdentityRuntimeConfig({
       ...liveBase,
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
-    }, { resolveAddresses: publicResolver })).rejects.toThrow(/lifecycle proof|STRAPI_LIFECYCLE_PROOF_TOKEN/i);
+    }, semanticLiveDependencies())).rejects.toThrow(/lifecycle proof|STRAPI_LIFECYCLE_PROOF_TOKEN/i);
     await expect(resolveMusicIdentityRuntimeConfig({
       ...liveBase,
       STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: undefined,
       STRAPI_LIFECYCLE_PROOF_TOKEN: "inline-live-proof",
-    }, { resolveAddresses: publicResolver })).rejects.toThrow(/secure file|live mode/i);
+    }, semanticLiveDependencies())).rejects.toThrow(/secure file|live mode/i);
     await expect(resolveMusicIdentityRuntimeConfig({
       ...liveBase,
       STRAPI_ACCESS_TOKEN: "dedicated-read-only-proof-token",
-    }, { resolveAddresses: publicResolver })).rejects.toThrow(/dedicated|alias|separate/i);
+    }, semanticLiveDependencies())).rejects.toThrow(/dedicated|alias|separate/i);
   });
 
   it.each([
@@ -204,7 +301,7 @@ describe("central Music identity startup configuration", () => {
     ["malformed", { STRAPI_URL: "https://[broken" }],
     ["malformed trusted proxy", { MUSIC_TRUSTED_PROXY_IP: "not-an-ip" }],
   ])("rejects live %s before route registration", async (_label, overrides) => {
-    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, semanticLiveDependencies()))
       .rejects.toThrow(/STRAPI|origin|URL|proxy/i);
   });
 
@@ -213,7 +310,9 @@ describe("central Music identity startup configuration", () => {
     "192.0.2.1", "192.88.99.1", "224.0.0.1",
     "::1", "64:ff9b::1", "100::1", "2001:1::1", "2001:db8::1", "2002:c0a8:101::", "fe80::1", "fd00::1",
   ])("rejects a live hostname resolving to non-public address %s", async (address) => {
-    await expect(resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: async () => [address] }))
+    await expect(resolveMusicIdentityRuntimeConfig(liveBase, semanticLiveDependencies({
+      resolveAddresses: async () => [address],
+    })))
       .rejects.toThrow(/public|address|STRAPI/i);
   });
 
@@ -233,7 +332,7 @@ describe("central Music identity startup configuration", () => {
     ["MUSIC_IDENTITY_RATE_MAX_ENTRIES", "1"],
     ["TRUST_PROXY_HOPS", "2"],
   ])("rejects invalid bounded control %s=%s", async (name, value) => {
-    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, [name]: value }, { resolveAddresses: publicResolver }))
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, [name]: value }, semanticLiveDependencies()))
       .rejects.toThrow(new RegExp(name));
   });
 
@@ -244,14 +343,14 @@ describe("central Music identity startup configuration", () => {
       { MUSIC_IDENTITY_OVERALL_TIMEOUT_MS: "1000", MUSIC_READ_TIMEOUT_MS: "4000" },
       { MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: "10", MUSIC_RATE_LIMIT_PER_MINUTE: "30" },
     ]) {
-      await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+      await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, semanticLiveDependencies()))
         .rejects.toThrow(/bounded|must be|configuration/i);
     }
   });
 
   it("accepts only the exact declared fixture origin without DNS and pins every live DNS answer", async () => {
     const resolver = vi.fn(async () => ["8.8.8.8", "2606:4700:4700::1111"]);
-    const live = await resolveMusicIdentityRuntimeConfig(liveBase, { resolveAddresses: resolver });
+    const live = await resolveMusicIdentityRuntimeConfig(liveBase, semanticLiveDependencies({ resolveAddresses: resolver }));
     expect(live.strapiOrigin).toBe("https://cms.example.com");
     expect(live.isTrustedProxy("::ffff:172.31.250.2")).toBe(true);
     expect(live.isTrustedProxy("172.31.250.3")).toBe(false);
@@ -279,6 +378,8 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined,
+      MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
     }, { resolveAddresses: vi.fn(async () => { throw new Error("fixture DNS must not run"); }) });
     expect(fixture.strapiOrigin).toBe("http://strapi:1337");
     expect(fixture.lifecycleProofToken).toBe("fixture-read-only-token");
@@ -296,13 +397,15 @@ describe("central Music identity startup configuration", () => {
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: undefined,
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
       MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+      MUSIC_PUBLIC_ID_HMAC_KEY_FILE: undefined,
+      MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
     })).rejects.toThrow(/fixture origin/i);
   });
 
   it("rejects the entire live answer set when even one resolved address is non-public", async () => {
-    await expect(resolveMusicIdentityRuntimeConfig(liveBase, {
+    await expect(resolveMusicIdentityRuntimeConfig(liveBase, semanticLiveDependencies({
       resolveAddresses: async () => ["8.8.8.8", "127.0.0.1"],
-    })).rejects.toThrow(/public addresses/i);
+    }))).rejects.toThrow(/public addresses/i);
   });
 
   it.each([
@@ -332,7 +435,7 @@ describe("central Music identity startup configuration", () => {
       MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(Date.now() + 3_600_000).toISOString(),
     }],
   ])("rejects %s before route registration", async (_label, overrides) => {
-    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, { resolveAddresses: publicResolver }))
+    await expect(resolveMusicIdentityRuntimeConfig({ ...liveBase, ...overrides }, semanticLiveDependencies()))
       .rejects.toThrow(/token|key|kid|secret|lifetime|skew|overlap|UTC/i);
   });
 
@@ -352,7 +455,7 @@ describe("central Music identity startup configuration", () => {
       MUSIC_TOKEN_PREVIOUS_KID: "music-previous-2026-08",
       MUSIC_TOKEN_PREVIOUS_SECRET_FILE: previousPath,
       MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: new Date(now + 300_000).toISOString(),
-    }, { resolveAddresses: publicResolver, now: () => now });
+    }, semanticLiveDependencies({ now: () => now }));
     expect(config.musicToken).toEqual({
       current: { kid: "music-current-2026-08", secret: current },
       previous: {
@@ -410,8 +513,7 @@ describe("central Music identity startup configuration", () => {
     const failure = resolveMusicIdentityRuntimeConfig({
       ...liveBase,
       MUSIC_TOKEN_CURRENT_SECRET_FILE: path,
-    }, {
-      resolveAddresses: publicResolver,
+    }, semanticLiveDependencies({
       secretFileSystem: {
         lstat: (target: string) => lstat(target, { bigint: true }),
         open: async (target: string, flags: number) => {
@@ -421,7 +523,7 @@ describe("central Music identity startup configuration", () => {
           return handle;
         },
       },
-    });
+    }));
     await expect(failure).rejects.toThrow(/changed|secret|secure/i);
     expect(changed).toBe(true);
   });

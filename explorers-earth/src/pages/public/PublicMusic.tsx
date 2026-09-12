@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { Music2 } from "lucide-react";
 import SEO from "../../components/SEO";
-import {
-  publicMusicClient,
-  PublicMusicError,
-  type PublicMusicResource,
-} from "../../features/music/publicMusicClient";
+import { type PublicMusicResource } from "../../features/music/publicMusicClient";
+import { PublicMusicSections } from "../../features/music/components/PublicMusicSections";
+import { PublicMusicProfileHeader } from '../../features/music/components/PublicMusicProfileHeader';
+import { PublicMusicSkeleton } from '../../features/music/components/PublicMusicSkeleton';
+import '../../features/music/components/PublicMusicPresentation.css';
+import { usePublicMusicResource } from "../../features/music/usePublicMusicResource";
+import { createPublicMusicAnalyticsOccurrence, usePublicMusicProductAnalytics, type PublicMusicProductEvent } from "../../features/music/publicMusicAnalytics";
 
 type PublicMusicViewState = "loading" | "ready" | "not-found" | "rate-limited" | "unavailable";
 
@@ -40,102 +42,120 @@ export function PublicMusicContent({
   state,
   resource,
   retryAfterSeconds = 60,
+  stale = false,
+  revalidating = false,
+  guestActionsEnabled = true,
   onRetry,
+  standalone = true,
+  initialOverlayActive = false,
+  returnTo = "/",
+  publicSlug,
+  capability,
+  analyticsRoute = "direct",
+  onAnalytics,
 }: {
   state: PublicMusicViewState;
   resource?: PublicMusicResource;
   retryAfterSeconds?: number;
+  stale?: boolean;
+  revalidating?: boolean;
+  guestActionsEnabled?: boolean;
   onRetry?: () => void;
+  standalone?: boolean;
+  initialOverlayActive?: boolean;
+  returnTo?: string;
+  publicSlug?: string;
+  capability?: string;
+  analyticsRoute?: "friendly" | "direct";
+  onAnalytics?: (event: PublicMusicProductEvent, occurrenceId?: string) => void | Promise<void>;
 }) {
+  const Frame = standalone ? "main" : "div";
+  const acknowledgedState = useRef<PublicMusicViewState>();
+  const stateOccurrence = useRef<string>();
+  useEffect(() => {
+    if (acknowledgedState.current === state) return;
+    stateOccurrence.current = createPublicMusicAnalyticsOccurrence();
+    if (state === "ready") {
+      acknowledgedState.current = state;
+      void onAnalytics?.({ name: "navigation_opened", route: analyticsRoute }, stateOccurrence.current);
+    } else if (state === "not-found" || state === "rate-limited" || state === "unavailable") {
+      acknowledgedState.current = state;
+      void onAnalytics?.({
+        name: "unavailable",
+        reason: state === "not-found" ? "not_public" : state === "rate-limited" ? "rate_limited" : "service_unavailable",
+      }, stateOccurrence.current);
+    } else {
+      acknowledgedState.current = state;
+    }
+  }, [analyticsRoute, onAnalytics, state]);
   if (state === "loading") {
     return (
-      <main className="min-h-screen bg-dashboard-bg px-4 py-20 text-dashboard-text">
-        <div className="mx-auto max-w-4xl" role="status" aria-live="polite">Loading Music…</div>
-      </main>
+      <Frame className="public-music public-music__frame">
+        <div className="public-music__content"><PublicMusicSkeleton announce={!initialOverlayActive} /></div>
+      </Frame>
     );
   }
   if (state === "not-found") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
-        <section className="max-w-md text-center">
-          <Music2 aria-hidden="true" className="mx-auto mb-4 h-10 w-10 text-dashboard-accent" />
+      <Frame className="public-music public-music__frame public-music__state-frame">
+        <section className="public-music__state public-music__surface">
+          <Music2 aria-hidden="true" className="public-music__state-icon mx-auto mb-4 h-10 w-10" />
           <h1 className="text-2xl font-semibold">Music page unavailable</h1>
-          <Link className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-dashboard-accent px-5 text-[var(--dash-accent-text)]" to="/">Return to Explorers</Link>
+          <div className="public-music__state-actions"><Link className="public-music__secondary" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link></div>
         </section>
-      </main>
+      </Frame>
     );
   }
   if (state === "rate-limited") {
-    return <RateLimitedMusic retryAfterSeconds={retryAfterSeconds} onRetry={onRetry} />;
+    return <RateLimitedMusic retryAfterSeconds={retryAfterSeconds} onRetry={onRetry} standalone={standalone} />;
   }
   if (state === "unavailable" || !resource) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
-        <section className="max-w-md text-center" role="alert">
+      <Frame className="public-music public-music__frame public-music__state-frame">
+        <section className="public-music__state public-music__surface" role="alert">
           <h1 className="text-2xl font-semibold">Music is temporarily unavailable.</h1>
-          <Link className="mt-6 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to="/">Return to Explorers</Link>
+          <div className="public-music__state-actions">{onRetry ? <button className="public-music__primary" type="button" onClick={onRetry}>Retry</button> : null}
+          <Link className="public-music__secondary" to={returnTo}>{standalone ? "Return to Explorers" : "Return to Profile"}</Link></div>
         </section>
-      </main>
+      </Frame>
     );
   }
 
-  const publicPlaylists = resource.playlists.filter((playlist) => playlist.isVisibleToGuests);
-  const showQueue = resource.allowQueueVisibility === true;
-  const upNextSongs = resource.songs.filter((song) => song.id !== resource.currentlyPlaying?.id);
   return (
-    <main className="min-h-screen bg-dashboard-bg px-4 py-12 text-dashboard-text sm:px-6">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="text-3xl font-semibold">Music</h1>
-        {showQueue && (resource.currentlyPlaying || resource.songs.length > 0) ? (
-          <section className="mt-8 rounded-xl border border-dashboard-border bg-dashboard-card p-5" aria-labelledby="public-music-queue">
-            <h2 id="public-music-queue" className="text-xl font-semibold">Playing now &amp; up next</h2>
-            {resource.currentlyPlaying ? (
-              <div className="mt-4 flex min-h-14 items-center gap-3 rounded-lg bg-dashboard-bg p-3">
-                <img className="h-12 w-12 rounded object-cover" src={resource.currentlyPlaying.thumbnailUrl} alt="" />
-                <span><span className="block text-xs font-semibold uppercase tracking-wide text-dashboard-accent">Playing now</span><span className="block font-medium">{resource.currentlyPlaying.title}</span><span className="block text-sm text-dashboard-text-muted">{resource.currentlyPlaying.artist}</span></span>
-              </div>
-            ) : null}
-            {upNextSongs.length > 0 ? (
-              <ol className="mt-3 divide-y divide-dashboard-border" aria-label="Up next">
-                {upNextSongs.map((song) => (
-                  <li key={song.id} className="flex min-h-11 items-center gap-3 py-3">
-                    <img className="h-11 w-11 rounded object-cover" src={song.thumbnailUrl} alt="" />
-                    <span><span className="block font-medium">{song.title}</span><span className="block text-sm text-dashboard-text-muted">{song.artist}</span></span>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-          </section>
+    <Frame className="public-music public-music__frame">
+      <div className="public-music__content">
+        {standalone && <PublicMusicProfileHeader name={resource.user.venueName || resource.user.username} username={resource.user.username} />}
+        <h1 id="public-music-heading" tabIndex={-1} className={standalone ? "public-music__heading" : "sr-only"}>Music</h1>
+        {stale ? (
+          <p
+            role="status"
+            aria-label="Music connection status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="public-music__surface public-music__connection"
+          >
+            Reconnecting… Your last Music update remains visible.
+          </p>
         ) : null}
-        {publicPlaylists.length === 0 ? (
-          <div className="mt-8">
-            <p className="text-base text-dashboard-text-muted">No public playlists yet.</p>
-            <Link className="mt-5 inline-flex min-h-11 items-center rounded-lg border border-dashboard-border px-5" to="/">Return to Explorers</Link>
-          </div>
-        ) : (
-          <div className="mt-8 space-y-6">
-            {publicPlaylists.map((playlist) => (
-              <section key={playlist.id} className="rounded-xl border border-dashboard-border bg-dashboard-card p-5">
-                <h2 className="text-xl font-semibold">{playlist.name}</h2>
-                {playlist.description ? <p className="mt-1 text-dashboard-text-muted">{playlist.description}</p> : null}
-                <ol className="mt-4 divide-y divide-dashboard-border">
-                  {playlist.songs.map((song) => (
-                    <li key={song.id} className="flex min-h-11 items-center gap-3 py-3">
-                      <img className="h-11 w-11 rounded object-cover" src={song.thumbnailUrl} alt="" />
-                      <span><span className="block font-medium">{song.title}</span><span className="block text-sm text-dashboard-text-muted">{song.artist}</span></span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ))}
-          </div>
-        )}
+        {revalidating ? (
+          <p
+            role="status"
+            aria-label="Music availability status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="public-music__surface public-music__connection"
+          >
+            Checking Music availability…
+          </p>
+        ) : null}
+        <PublicMusicSections resource={resource} publicSlug={publicSlug} capability={capability} guestActionsEnabled={guestActionsEnabled} onReconcile={onRetry} onAnalytics={onAnalytics} />
       </div>
-    </main>
+    </Frame>
   );
 }
 
-function RateLimitedMusic({ retryAfterSeconds, onRetry }: { retryAfterSeconds: number; onRetry?: () => void }) {
+function RateLimitedMusic({ retryAfterSeconds, onRetry, standalone }: { retryAfterSeconds: number; onRetry?: () => void; standalone: boolean }) {
+  const Frame = standalone ? 'main' : 'div';
   const [ready, setReady] = useState(retryAfterSeconds <= 0);
   useEffect(() => {
     setReady(retryAfterSeconds <= 0);
@@ -144,57 +164,46 @@ function RateLimitedMusic({ retryAfterSeconds, onRetry }: { retryAfterSeconds: n
     return () => window.clearTimeout(timer);
   }, [retryAfterSeconds]);
   return (
-    <main className="flex min-h-screen items-center justify-center bg-dashboard-bg px-4 text-dashboard-text">
-      <section className="max-w-md text-center" role="alert">
+    <Frame className="public-music public-music__frame public-music__state-frame">
+      <section className="public-music__state public-music__surface" role="alert">
         <h1 className="text-2xl font-semibold">Too many requests. Try again in {retryAfterSeconds} seconds.</h1>
-        <button type="button" disabled={!ready} onClick={onRetry} className="mt-6 min-h-11 min-w-11 rounded-lg bg-dashboard-accent px-5 text-base font-semibold text-[var(--dash-accent-text)] disabled:cursor-not-allowed disabled:opacity-50">Retry</button>
+        <div className="public-music__state-actions"><button type="button" disabled={!ready} onClick={onRetry} className="public-music__primary">Retry</button></div>
       </section>
-    </main>
+    </Frame>
   );
 }
 
 export default function PublicMusic() {
   const { publicSlug } = useParams<{ publicSlug: string }>();
   const location = useLocation();
-  const [state, setState] = useState<PublicMusicViewState>(publicSlug ? "loading" : "not-found");
-  const [resource, setResource] = useState<PublicMusicResource>();
-  const [retryAfterSeconds, setRetryAfterSeconds] = useState(60);
-  const [attempt, setAttempt] = useState(0);
+  const capability = publicSlug ? capabilityFromFragment(location.hash || window.location.hash) ?? retainedCapability(publicSlug) : undefined;
+  const revoke = useCallback(() => { if (publicSlug) forgetCapability(publicSlug); }, [publicSlug]);
 
   useEffect(() => {
     if (!publicSlug) return;
-    const controller = new AbortController();
     const fragment = location.hash || window.location.hash;
     const fragmentCapability = capabilityFromFragment(fragment);
     if (fragmentCapability) retainCapability(publicSlug, fragmentCapability);
-    const capability = fragmentCapability ?? retainedCapability(publicSlug);
     if (window.location.hash) {
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
     }
-    setResource(undefined);
-    setState("loading");
-    publicMusicClient.load(publicSlug, capability, controller.signal).then((value) => {
-      if (controller.signal.aborted) return;
-      setResource(value);
-      setState("ready");
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted) return;
-      if (error instanceof PublicMusicError && error.code === "PUBLIC_NOT_FOUND") {
-        forgetCapability(publicSlug);
-        setState("not-found");
-      }
-      else if (error instanceof PublicMusicError && error.code === "RATE_LIMITED") {
-        setRetryAfterSeconds(error.retryAfterSeconds ?? 60);
-        setState("rate-limited");
-      } else setState("unavailable");
-    });
-    return () => { controller.abort(); };
-  }, [attempt, location.hash, location.pathname, publicSlug]);
+  }, [location.hash, location.pathname, publicSlug]);
+
+  const music = usePublicMusicResource({
+    publicSlug, capability, enabled: Boolean(publicSlug), disabledState: "not-found", onRevoked: revoke,
+  });
+  const trackMusic = usePublicMusicProductAnalytics({ publicSlug, capability, route: "direct" });
 
   return (
     <>
-      <SEO title="Music | Explorers" description="Public Music playlists on Explorers." />
-      <PublicMusicContent state={state} resource={resource} retryAfterSeconds={retryAfterSeconds} onRetry={() => setAttempt((value) => value + 1)} />
+      <SEO
+        title="Music | Explorers"
+        description="Public Music playlists on Explorers."
+        canonical={publicSlug ? `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}` : undefined}
+        noIndex={Boolean(capability)}
+        noFollow={Boolean(capability)}
+      />
+      <PublicMusicContent state={music.state} resource={music.resource} stale={music.stale} publicSlug={publicSlug} capability={capability} retryAfterSeconds={music.retryAfterSeconds} onRetry={music.retry} analyticsRoute="direct" onAnalytics={trackMusic} />
     </>
   );
 }

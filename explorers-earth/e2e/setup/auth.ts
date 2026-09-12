@@ -28,6 +28,7 @@ export async function setupMockAuthentication(context: BrowserContext, options: 
         state: {
           isAuthenticated: true,
           token: fixtureToken,
+          jwt: fixtureToken,
           user: fixtureUser,
         }
       }));
@@ -43,7 +44,7 @@ export async function setupMockAuthentication(context: BrowserContext, options: 
         essential: true,
         analytics: false,
         marketing: false,
-        timestamp: '2026-01-01T00:00:00.000Z',
+          timestamp: '2026-01-01T00:00:00.000Z',
       }));
     } catch (e) {
       // Safe to ignore on about:blank, will run again on target origin

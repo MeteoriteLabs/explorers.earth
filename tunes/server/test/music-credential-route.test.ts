@@ -1,6 +1,5 @@
 import express from "express";
-import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
 import { MusicPrincipalError, type MusicPrincipal } from "../middleware/musicPrincipal";
 import { setupMusicIdentityBodylessPreflight, setupMusicIdentityRoutes } from "../routes/musicIdentityRoutes";
@@ -11,6 +10,10 @@ import {
   musicPrincipalOpenApi,
   musicPrincipalResponseSchema,
 } from "../../shared/musicError";
+import { createLoopbackSupertestScope } from "./helpers/loopback-supertest";
+
+const loopback = createLoopbackSupertestScope();
+afterEach(async () => loopback.closeAll());
 
 const projection = {
   id: 41,
@@ -67,7 +70,8 @@ function appFor(overrides: {
 describe("C5 Music credential routes", () => {
   it("mints only after successful projection and returns the token only in the explicit response field", async () => {
     const { app, mintCredential, logs, metrics } = appFor();
-    const response = await request(app).post("/api/music/identity/ensure")
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer authoritative-strapi-proof")
       .set("x-request-id", "credential-request");
     expect(response.status).toBe(200);
@@ -92,7 +96,8 @@ describe("C5 Music credential routes", () => {
     new MusicIdentityError("DATABASE_UNAVAILABLE", 503, "Unavailable.", "retry", true, 2),
   ])("never mints after a failed projection: $code", async (failure) => {
     const { app, mintCredential } = appFor({ ensure: async () => { throw failure; } });
-    await request(app).post("/api/music/identity/ensure")
+    const { request } = await loopback.open({ app });
+    await request.post("/api/music/identity/ensure")
       .set("authorization", "Bearer rejected-strapi-proof")
       .expect(failure.status);
     expect(mintCredential).not.toHaveBeenCalled();
@@ -100,7 +105,8 @@ describe("C5 Music credential routes", () => {
 
   it("accepts only a single local Music bearer on the protected endpoint", async () => {
     const { app, resolvePrincipal } = appFor();
-    const accepted = await request(app).get("/api/music/identity/current")
+    const { request } = await loopback.open({ app });
+    const accepted = await request.get("/api/music/identity/current")
       .set("authorization", "Bearer valid.music.credential")
       .set("cookie", "cosmic.sid=native-session")
       .set("x-request-id", "local-current-request");
@@ -113,10 +119,10 @@ describe("C5 Music credential routes", () => {
     expect(resolvePrincipal).toHaveBeenCalledWith("valid.music.credential");
 
     const denied = [
-      request(app).get("/api/music/identity/current"),
-      request(app).get("/api/music/identity/current").set("cookie", "cosmic.sid=native-session"),
-      request(app).get("/api/music/identity/current").set("authorization", "Bearer authoritative-strapi-proof"),
-      request(app).get("/api/music/identity/current").set("authorization", ["Bearer valid.music.credential", "Bearer other.music.credential"]),
+      request.get("/api/music/identity/current"),
+      request.get("/api/music/identity/current").set("cookie", "cosmic.sid=native-session"),
+      request.get("/api/music/identity/current").set("authorization", "Bearer authoritative-strapi-proof"),
+      request.get("/api/music/identity/current").set("authorization", ["Bearer valid.music.credential", "Bearer other.music.credential"]),
     ];
     for (const operation of denied) {
       const response = await operation;
@@ -142,7 +148,8 @@ describe("C5 Music credential routes", () => {
         throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
       },
     });
-    const response = await request(app).get("/api/music/identity/current")
+    const { request } = await loopback.open({ app });
+    const response = await request.get("/api/music/identity/current")
       .set("authorization", "Bearer revoked.sentinel.credential");
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("TOKEN_REVOKED");

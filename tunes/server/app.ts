@@ -4,11 +4,14 @@ import { log } from "./runtime";
 import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
 import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
 import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config";
 import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
 import { StrapiIdentityAbsenceProof } from "./services/strapiIdentityAbsenceProof";
+import { assertValidatedLocalMusicProfile, type ValidatedLocalMusicProfile } from "./config/music-local-profile";
+import { createLocalMusicRuntimeShutdown, failAfterLocalMusicOwnedCleanup } from "./config/music-local-shutdown";
 
 export function sanitizedRequestLogTarget(request: Pick<Request, "path">): string {
   return request.path;
@@ -29,9 +32,19 @@ export function sanitizedRequestLogTarget(request: Pick<Request, "path">): strin
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig): Promise<{ app: express.Express; server: Server }> {
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile): Promise<{
+  app: express.Express;
+  server: Server;
+  shutdown?: () => Promise<void>;
+}> {
   installSafeConsole();
-  assertContainmentStartup(process.env);
+  if (localProfile) {
+    assertValidatedLocalMusicProfile(localProfile, process.env);
+    if (!process.env.COOKIE_SECRET || !process.env.SESSION_SECRET
+        || process.env.COOKIE_SECRET === process.env.SESSION_SECRET) {
+      throw new Error("Local runtime cookie and session authorities are required");
+    }
+  } else assertContainmentStartup(process.env);
   const app = express();
 
   // Enable trust proxy FIRST, before any middleware
@@ -60,8 +73,10 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
 
   // Serve favicon and related files directly from root and public directories
   // This ensures maximum browser compatibility for favicon display
-  app.use(express.static('.')); // Serve files from root directory
-  app.use(express.static('public')); // Serve files from public directory
+  if (!localProfile) {
+    app.use(express.static('.')); // Serve files from root directory
+    app.use(express.static('public')); // Serve files from public directory
+  }
 
   // Enhanced CORS configuration for all environments
   // This is critical for cookie persistence and cross-origin requests
@@ -153,10 +168,20 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
     fetchImpl: musicIdentityConfig.fetchImpl,
     timeoutMs: Math.min(musicIdentityConfig.overallTimeoutMs, 30_000),
   });
-  const server = await registerRoutes(app, storage, routeMusicConfig, {
-    proveAbsence: (identity) => identityAbsenceProof.prove(identity),
-    fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
-  });
+  let registered: Awaited<ReturnType<typeof registerRoutes>>;
+  try {
+    registered = await registerRoutes(app, storage, routeMusicConfig, {
+      proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+      fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
+    }, localProfile);
+  } catch (error) {
+    if (localProfile) return failAfterLocalMusicOwnedCleanup(error, {
+      closeSessionStore: closeLocalSessionStore,
+      closePool: async () => { await pool.end(); },
+    });
+    throw error;
+  }
+  const { server } = registered;
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)
@@ -164,5 +189,24 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig)
     containmentErrorHandler(err, req, res);
   });
 
-  return { app, server };
+  if (!localProfile) return { app, server };
+  return {
+    app,
+    server,
+    shutdown: createLocalMusicRuntimeShutdown({
+      server,
+      stopRoutes: registered.shutdown,
+      closeSessionStore: closeLocalSessionStore,
+      closePool: async () => { await pool.end(); },
+    }),
+  };
+}
+
+async function closeLocalSessionStore(): Promise<void> {
+  const sessionStore = storage.sessionStore as typeof storage.sessionStore & {
+    close?: () => void | Promise<void>;
+    stopInterval?: () => void;
+  };
+  if (sessionStore.close) await sessionStore.close();
+  else sessionStore.stopInterval?.();
 }

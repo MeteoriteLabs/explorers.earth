@@ -6,6 +6,9 @@ import { DashboardRouteValidator } from "../routes/validators";
 import { DashboardThemeProvider } from "../contexts/DashboardThemeContext";
 import RouteLoader from "../components/RouteLoader";
 import { EarthLoader } from "../components/EarthLoader";
+import { CategoryNavigationProvider } from "../features/navigation/CategoryNavigationProvider";
+import { MusicPublishProvider } from "../features/music/MusicPublishProvider";
+import { verifyMusicPin } from "../features/music/musicPublicationReadiness";
 
 const isMainLandingPage = (path: string): boolean => {
   const mainPaths = [
@@ -126,7 +129,9 @@ const DashboardLayout = () => {
               className="flex-1 overflow-auto pt-[72px] md:pt-[54px]"
               onScroll={handleScroll}
             >
-              <Outlet />
+              <CategoryNavigationProvider verifyMusicPin={verifyMusicPin}>
+                <MusicPublishProvider><Outlet /></MusicPublishProvider>
+              </CategoryNavigationProvider>
             </div>
           </div>
         </div>

@@ -37,10 +37,10 @@ const responseHeaders = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const success = (description: string, schema?: Schema, extraHeaders: Record<string, unknown> = {}) => ({
+const success = (description: string, schema?: Schema, extraHeaders: Record<string, unknown> = {}, example?: unknown) => ({
   description,
   headers: responseHeaders(extraHeaders),
-  ...(schema ? { content: { "application/json": { schema } } } : {}),
+  ...(schema ? { content: { "application/json": { schema, ...(example === undefined ? {} : { examples: { success: { value: example } } }) } } } : {}),
 });
 
 const failure = (description: string, codes: string[], retryAfter = false) => ({
@@ -95,6 +95,14 @@ const ownerOperation = (options: {
 const playlistId = pathParameter("playlistId", "Owner-predicated saved playlist identifier");
 const songId = pathParameter("songId", "Owner-predicated song identifier");
 const guestUrl = pathParameter("guestUrl", "Public playlist slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
+const publicSlug = pathParameter("publicSlug", "Stable public Music resource slug; never a capability", "^[A-Za-z0-9_-]{8,128}$");
+const accountDocumentId = {
+  name: "accountDocumentId",
+  in: "path" as const,
+  required: true,
+  description: "Stable Account document ID used only to discover an active public Music publication.",
+  schema: { type: "string", minLength: 1, maxLength: 512 },
+};
 const idempotencyKeyParameter = {
   name: "Idempotency-Key", in: "header" as const, required: true,
   description: "Owner-scoped, issuance-timestamped UUIDv4 replay key for one atomic publication command. Keys older than 30 days are permanently retired.",
@@ -109,6 +117,11 @@ const queueIdempotencyKeyParameter = {
   name: "Idempotency-Key", in: "header" as const, required: true,
   description: "Opaque owner-scoped replay key for one atomic queue replacement. Exact same-key replay returns the stored response; different input conflicts.",
   schema: { type: "string", minLength: 1, maxLength: 128 },
+};
+const guestRequestIdempotencyKeyParameter = {
+  name: "Idempotency-Key", in: "header" as const, required: true,
+  description: "Opaque guest replay key retained for 24 hours. Exact same-key replay returns the acknowledgement; different canonical song input conflicts.",
+  schema: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" },
 };
 const playlistCreateIdempotencyKeyParameter = {
   name: "Idempotency-Key", in: "header" as const, required: true,
@@ -348,6 +361,117 @@ const paths = {
   "/api/music/entitlement": {
     get: ownerOperation({ summary: "Read server-derived entitlement freshness", status: "200", response: ref("EntitlementResponse"), description: "Core personal Music remains readable and mutable for every retained state. Local reads never refresh sourceUpdatedAt; paidMutation is true only for a fresh entitled state within the 600-second maximum freshness window. Eligible is not upgrade authority, and revoked is not lifecycle suspension or core read-only state." }),
   },
+  "/api/music/public-profile/{accountDocumentId}": {
+    get: {
+      summary: "Discover one active public Music publication by stable Account identity",
+      description: "The path value is the only accepted discovery input. Username, email, User ID, owner headers, query parameters, request bodies, private/unlisted publication, lifecycle state, tombstones, unknown identity, and collisions never establish authority and never disclose account state.",
+      security: [],
+      parameters: [requestIdParameter, accountDocumentId],
+      responses: {
+        "200": success("Active discoverable public Music descriptor.", ref("PublicMusicDescriptor"), {}, { version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "public_slug-123", revision: 7 } }),
+        "400": failure("The descriptor request contains an unexpected authority input.", ["REQUEST_INVALID"]),
+        "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
+        "413": failure("The request exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
+        "429": failure("The public descriptor rate limit was exceeded.", ["RATE_LIMITED"], true),
+        "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
+      },
+      "x-authority-policy": "stable-account-document-id-discovery-only",
+    },
+  },
+  "/api/music/public-resource/v1/{publicSlug}": {
+    get: {
+      summary: "Read one strict bounded public Music resource",
+      description: "Additive versioned resource for public or header-authorized unlisted access. Permission-protected fields are empty or null, collections are deterministically ordered and bounded, and the encoded response never exceeds 512 KiB. The legacy guest endpoint remains unchanged.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, publicSlug, guestCapabilityOptional],
+      responses: {
+        "200": success("Strict music-public-resource/v1 snapshot. X-Robots-Tag is present only for unlisted capability access.", ref("PublicMusicResource"), { "X-Robots-Tag": { $ref: "#/components/headers/RobotsTag" } }, { version: "music-public-resource/v1", revision: 7, user: { username: "fixture-owner", venueName: "Fixture Venue" }, permissions: { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false }, currentlyPlaying: null, queue: { items: [], total: 0, truncated: false }, recentlyPlayed: { items: [], total: 0, truncated: false }, playlists: { items: [], total: 0, truncated: false } }),
+        "400": failure("The public resource request is invalid.", ["REQUEST_INVALID"]),
+        "404": failure("The Music resource was not found.", ["PUBLIC_NOT_FOUND"]),
+        "413": failure("The public resource exceeds its 512 KiB encoded contract.", ["PAYLOAD_TOO_LARGE"]),
+        "429": failure("The public read rate limit was exceeded.", ["RATE_LIMITED"], true),
+        "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
+      },
+      "x-publication-modes": ["public/discoverable", "unlisted capability; noindex/no-sitemap"],
+      "x-max-encoded-bytes": 524288,
+    },
+  },
+  "/api/explorers/analytics/music/{publicSlug}/events": {
+    post: {
+      summary: "Record one privacy-safe public Music product interaction",
+      description: "The route resolves analytics ownership internally from current public or header-authorized unlisted publication state. The strict body accepts only normalized low-cardinality interaction names, bounded outcome properties, consent, an idempotency key, and approved campaign attribution.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, publicSlug, guestCapabilityOptional],
+      requestBody: body({
+        type: "object",
+        additionalProperties: false,
+        required: ["consent", "eventId", "event"],
+        properties: {
+          consent: { type: "boolean", const: true },
+          eventId: { type: "string", minLength: 8, maxLength: 128 },
+          event: {
+            oneOf: [
+              { type: "object", additionalProperties: false, required: ["name", "route"], properties: { name: { const: "navigation_opened" }, route: { enum: ["friendly", "direct"] } } },
+              { type: "object", additionalProperties: false, required: ["name", "section"], properties: { name: { const: "section_opened" }, section: { enum: ["player", "request", "queue", "playlists", "history"] } } },
+              { type: "object", additionalProperties: false, required: ["name"], properties: { name: { const: "playlist_opened" } } },
+              { type: "object", additionalProperties: false, required: ["name", "source"], properties: { name: { const: "song_selected" }, source: { enum: ["current", "queue", "playlist"] } } },
+              { type: "object", additionalProperties: false, required: ["name", "source"], properties: { name: { const: "playback_started" }, source: { enum: ["current", "queue", "playlist"] } } },
+              { type: "object", additionalProperties: false, required: ["name", "outcome"], properties: { name: { const: "request_submitted" }, outcome: { enum: ["accepted", "invalid", "rate_limited", "queue_full", "forbidden", "unavailable"] } } },
+              { type: "object", additionalProperties: false, required: ["name", "reason"], properties: { name: { const: "unavailable" }, reason: { enum: ["not_public", "rate_limited", "service_unavailable"] } } },
+            ],
+          },
+          utmParams: {
+            type: "object", additionalProperties: false,
+            properties: Object.fromEntries(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].map((name) => [name, { type: "string", minLength: 1, maxLength: 100 }])),
+          },
+        },
+      }, "Strict privacy-safe product event"),
+      responses: {
+        "200": success("An exact replay was already committed.", { type: "object" }),
+        "201": success("The interaction was committed.", { type: "object" }),
+        "202": success("The same interaction is still being committed.", { type: "object" }),
+        "400": success("The event shape is invalid.", { type: "object" }),
+        "404": success("The Music page is unavailable.", { type: "object" }),
+        "409": success("The event key conflicts with a different payload.", { type: "object" }),
+        "429": success("The analytics write rate limit was exceeded.", { type: "object" }, { "Retry-After": { $ref: "#/components/headers/RetryAfter" } }),
+        "502": success("Analytics ingestion is temporarily unavailable.", { type: "object" }),
+      },
+      "x-privacy-policy": "identity-free-body-server-resolved-owner",
+    },
+  },
+  "/api/explorers/analytics/music-account/{accountDocumentId}/events": {
+    post: {
+      summary: "Record one privacy-safe friendly-route Music interaction",
+      description: "The Account document identifier is URL path authority only. The server resolves one active local binding and the strict body contains no account, publication, capability, query, or media identity.",
+      security: [{}],
+      parameters: [requestIdParameter, { name: "accountDocumentId", in: "path", required: true, schema: { type: "string", minLength: 1, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } }],
+      requestBody: body({
+        type: "object", additionalProperties: false, required: ["consent", "eventId", "event"],
+        properties: {
+          consent: { type: "boolean", const: true }, eventId: { type: "string", minLength: 8, maxLength: 128 },
+          event: { oneOf: [
+            { type: "object", additionalProperties: false, required: ["name", "route"], properties: { name: { const: "navigation_opened" }, route: { enum: ["friendly", "direct"] } } },
+            { type: "object", additionalProperties: false, required: ["name", "section"], properties: { name: { const: "section_opened" }, section: { enum: ["player", "request", "queue", "playlists", "history"] } } },
+            { type: "object", additionalProperties: false, required: ["name"], properties: { name: { const: "playlist_opened" } } },
+            { type: "object", additionalProperties: false, required: ["name", "source"], properties: { name: { const: "song_selected" }, source: { enum: ["current", "queue", "playlist"] } } },
+            { type: "object", additionalProperties: false, required: ["name", "source"], properties: { name: { const: "playback_started" }, source: { enum: ["current", "queue", "playlist"] } } },
+            { type: "object", additionalProperties: false, required: ["name", "outcome"], properties: { name: { const: "request_submitted" }, outcome: { enum: ["accepted", "invalid", "rate_limited", "queue_full", "forbidden", "unavailable"] } } },
+            { type: "object", additionalProperties: false, required: ["name", "reason"], properties: { name: { const: "unavailable" }, reason: { enum: ["not_public", "rate_limited", "service_unavailable"] } } },
+          ] },
+          utmParams: { type: "object", additionalProperties: false, properties: Object.fromEntries(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].map((name) => [name, { type: "string", minLength: 1, maxLength: 100 }])) },
+        },
+      }, "Strict identity-free product event"),
+      responses: {
+        "200": success("An exact replay was already committed.", { type: "object" }), "201": success("The interaction was committed.", { type: "object" }),
+        "202": success("The same interaction is still being committed.", { type: "object" }), "400": success("The event shape is invalid.", { type: "object" }),
+        "404": success("The Music page is unavailable.", { type: "object" }), "409": success("The event key conflicts with a different payload.", { type: "object" }),
+        "429": success("The analytics write rate limit was exceeded.", { type: "object" }, { "Retry-After": { $ref: "#/components/headers/RetryAfter" } }), "502": success("Analytics ingestion is temporarily unavailable.", { type: "object" }),
+      },
+      "x-privacy-policy": "identity-free-body-server-resolved-owner",
+    },
+  },
   "/api/playlist/{guestUrl}": {
     get: {
       summary: "Read an explicit public or unlisted capability playlist",
@@ -360,6 +484,7 @@ const paths = {
         "413": failure("The request exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
         "429": failure("The public read rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
       },
       "x-publication-modes": ["public/discoverable", "unlisted capability; noindex/no-sitemap"],
     },
@@ -367,17 +492,19 @@ const paths = {
   "/api/playlist/{guestUrl}/requests": {
     post: {
       summary: "Submit an allowlisted guest song request bound to this public slug",
-      description: "The header capability and slug are resolved together in one owner-predicated SQL query. The secret is forbidden from URLs, logs, sitemap, and analytics.",
-      security: guestSecurity,
-      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityRequired],
+      description: "Public publications use the slug; unlisted publications bind the header capability and slug atomically. Idempotency receipts, queue insertion, revision, and notification commit together for 24 hours. Secrets are forbidden from URLs, logs, sitemap, and analytics.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional, guestRequestIdempotencyKeyParameter],
       requestBody: body(ref("SongInput"), "Allowlisted guest song request"),
       responses: {
-        "201": success("Guest request inserted only into the capability-and-slug owner queue.", ref("Song")),
+        "201": success("The request was accepted once; exact replays return the same safe acknowledgement.", { type: "object", additionalProperties: false, required: ["accepted"], properties: { accepted: { type: "boolean", enum: [true] } } }, {}, { accepted: true }),
+        "409": failure("The idempotency key was reused with different canonical song input.", ["IDEMPOTENCY_CONFLICT"]),
         "400": failure("The request body is invalid.", ["REQUEST_INVALID"]),
         "403": failure("The capability, slug binding, lifecycle, permission, or origin is invalid.", ["GUEST_CAPABILITY_INVALID", "ORIGIN_FORBIDDEN"]),
-        "413": failure("The request body exceeds 64 KiB.", ["PAYLOAD_TOO_LARGE"]),
+        "413": failure("The request body exceeds 64 KiB or the bounded Music queue is full.", ["PAYLOAD_TOO_LARGE", "REQUEST_INVALID"]),
         "429": failure("The guest request rate limit was exceeded.", ["RATE_LIMITED"], true),
         "500": failure("A safe internal failure occurred.", ["INTERNAL_ERROR"]),
+        "503": failure("The Music service is temporarily unavailable.", ["SERVICE_UNAVAILABLE"], true),
       },
       "x-origin-policy": "required-exact-allowlist-match",
     },
@@ -385,9 +512,9 @@ const paths = {
   "/api/playlist/{guestUrl}/youtube/search": {
     post: {
       summary: "Run bounded YouTube search for an authorized guest request",
-      description: "The per-slug capability is sent only in the header and is resolved with the slug before server-only lookup. No C5 owner credential or browser entitlement is accepted.",
-      security: guestSecurity,
-      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityRequired],
+      description: "Public publications work anonymously. Unlisted publications use the optional per-slug capability header, which is hashed and resolved with the slug. No C5 owner credential or browser entitlement is accepted.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional],
       requestBody: body(ref("YouTubeSearchInput"), "Bounded guest search query"),
       responses: {
         "200": success("Bounded guest search results.", ref("YouTubeSearchResponse")),
@@ -403,9 +530,9 @@ const paths = {
   "/api/playlist/{guestUrl}/youtube/video-from-url": {
     post: {
       summary: "Resolve one YouTube URL for an authorized guest request",
-      description: "The per-slug capability is sent only in the header and is resolved with the slug before server-only lookup. No C5 owner credential or browser entitlement is accepted.",
-      security: guestSecurity,
-      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityRequired],
+      description: "Public publications work anonymously. Unlisted publications use the optional per-slug capability header, which is hashed and resolved with the slug. No C5 owner credential or browser entitlement is accepted.",
+      security: [{}, ...guestSecurity],
+      parameters: [requestIdParameter, originParameter, guestUrl, guestCapabilityOptional],
       requestBody: body(ref("YouTubeUrlInput"), "Bounded guest YouTube URL"),
       responses: {
         "200": success("Resolved guest video.", ref("YouTubeVideo")),
@@ -450,6 +577,24 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       MusicError: musicErrorOpenApiSchema,
       MusicIdentityEnsureResponse: musicEnsureResponseOpenApiSchema,
       MusicPrincipalResponse: musicPrincipalResponseOpenApiSchema,
+      PublicMusicDescriptor: {
+        type: "object",
+        additionalProperties: false,
+        required: ["version", "publication"],
+        properties: {
+          version: { type: "string", const: "music-public-descriptor/v1" },
+          publication: {
+            type: "object",
+            additionalProperties: false,
+            required: ["mode", "publicSlug", "revision"],
+            properties: {
+              mode: { type: "string", const: "public" },
+              publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" },
+              revision: { type: "integer", minimum: 0 },
+            },
+          },
+        },
+      },
       MusicLifecycleResponse: {
         type: "object", additionalProperties: false, required: ["version", "operation"], properties: {
           version: { type: "string", const: "music-lifecycle/v1" },
@@ -503,6 +648,55 @@ export const MUSIC_OPENAPI_DOCUMENT = {
       Dashboard: { type: "object", additionalProperties: false, required: ["queueRevision", "playbackRevision", "songs", "currentlyPlaying", "playedSongs", "publication", "guestControls"], properties: { queueRevision: { type: "integer", minimum: 0 }, playbackRevision: { type: "integer", minimum: 0 }, songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, publication: { type: "object", additionalProperties: false, required: ["mode", "publicSlug"], properties: { mode: { type: "string", enum: ["private", "unlisted", "public"] }, publicSlug: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" } } }, guestControls: ref("GuestControls") } },
       GuestControls: { type: "object", additionalProperties: false, required: ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"], properties: { allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
       GuestControlsUpdate: { type: "object", additionalProperties: false, required: ["allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility"], properties: { allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
+      PublicMusicSong: {
+        type: "object", additionalProperties: false,
+        required: ["id", "youtubeId", "title", "artist", "thumbnailUrl", "position", "status", "playedAt"],
+        properties: {
+          id: { type: "string", minLength: 43, maxLength: 43, pattern: "^[A-Za-z0-9_-]{43}$" },
+          youtubeId: { type: "string", minLength: 11, maxLength: 11, pattern: "^[A-Za-z0-9_-]{11}$" },
+          title: { type: "string", minLength: 1, maxLength: 1_024 },
+          artist: { type: "string", minLength: 1, maxLength: 1_024 },
+          thumbnailUrl: { type: ["string", "null"], format: "uri", minLength: 1, maxLength: 2_048 },
+          position: { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
+          status: { type: "string", enum: ["queued", "playing", "played", "saved"] },
+          playedAt: { type: ["string", "null"], format: "date-time" },
+        },
+      },
+      PublicMusicSongEnvelope100: {
+        type: "object", additionalProperties: false, required: ["items", "total", "truncated"],
+        properties: { items: { type: "array", maxItems: 100, items: ref("PublicMusicSong") }, total: { type: "integer", minimum: 0 }, truncated: { type: "boolean" } },
+      },
+      PublicMusicSongEnvelope50: {
+        type: "object", additionalProperties: false, required: ["items", "total", "truncated"],
+        properties: { items: { type: "array", maxItems: 50, items: ref("PublicMusicSong") }, total: { type: "integer", minimum: 0 }, truncated: { type: "boolean" } },
+      },
+      PublicMusicPlaylist: {
+        type: "object", additionalProperties: false, required: ["id", "name", "description", "songs"],
+        properties: {
+          id: { type: "string", minLength: 43, maxLength: 43, pattern: "^[A-Za-z0-9_-]{43}$" },
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          description: { type: ["string", "null"], maxLength: 2_000 },
+          songs: ref("PublicMusicSongEnvelope50"),
+        },
+      },
+      PublicMusicPlaylistEnvelope: {
+        type: "object", additionalProperties: false, required: ["items", "total", "truncated"],
+        properties: { items: { type: "array", maxItems: 20, items: ref("PublicMusicPlaylist") }, total: { type: "integer", minimum: 0 }, truncated: { type: "boolean" } },
+      },
+      PublicMusicResource: {
+        type: "object", additionalProperties: false,
+        required: ["version", "revision", "user", "permissions", "currentlyPlaying", "queue", "recentlyPlayed", "playlists"],
+        properties: {
+          version: { type: "string", const: "music-public-resource/v1" },
+          revision: { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
+          user: { type: "object", additionalProperties: false, required: ["username", "venueName"], properties: { username: { type: "string", minLength: 1, maxLength: 255 }, venueName: { type: ["string", "null"], maxLength: 255 } } },
+          permissions: ref("GuestControls"),
+          currentlyPlaying: { oneOf: [ref("PublicMusicSong"), { type: "null" }] },
+          queue: ref("PublicMusicSongEnvelope100"),
+          recentlyPlayed: ref("PublicMusicSongEnvelope50"),
+          playlists: ref("PublicMusicPlaylistEnvelope"),
+        },
+      },
       PublicTheme: { type: "object", additionalProperties: false, required: ["primary"], properties: { primary: { type: "string" } } },
       PublicUser: { type: "object", additionalProperties: false, required: ["id", "username", "guestUrl", "venueName", "theme", "allowSongRequests", "allowGuestPlayOnDevice", "allowPlaylistSharing", "allowRecentlyPlayedVisibility", "allowQueueVisibility"], properties: { id: { type: "integer", minimum: 1 }, username: { type: "string" }, guestUrl: { type: "string" }, venueName: { type: ["string", "null"] }, theme: { oneOf: [ref("PublicTheme"), { type: "null" }] }, allowSongRequests: { type: "boolean" }, allowGuestPlayOnDevice: { type: "boolean" }, allowPlaylistSharing: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" } } },
       PublicPlaylist: { type: "object", additionalProperties: false, required: ["songs", "currentlyPlaying", "playedSongs", "user", "allowGuestPlayOnDevice", "allowRecentlyPlayedVisibility", "allowQueueVisibility", "playlists"], properties: { songs: { type: "array", items: ref("Song") }, currentlyPlaying: { oneOf: [ref("Song"), { type: "null" }] }, playedSongs: { type: "array", items: ref("Song") }, user: ref("PublicUser"), allowGuestPlayOnDevice: { type: "boolean" }, allowRecentlyPlayedVisibility: { type: "boolean" }, allowQueueVisibility: { type: "boolean" }, playlists: { type: "array", items: ref("Playlist") } } },

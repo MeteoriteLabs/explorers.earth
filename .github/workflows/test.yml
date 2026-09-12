@@ -165,7 +165,7 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci --prefix explorers-earth
-      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium firefox webkit
       - name: Run Music E2E and accessibility contracts
         env:
           VITE_API_URL: http://localhost:5173/graphql
@@ -173,7 +173,7 @@ jobs:
           VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
           VITE_LOCAL_TUNES_ENABLED: "true"
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
-        run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium --retries=0
+        run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
 
   load-chaos:
     needs: browser
@@ -264,5 +264,16 @@ jobs:
           server/test/deployment/music-publication-authority-verifier.test.ts
           server/test/deployment/music-readiness.test.ts
           server/test/deployment/registration-compat-process.test.ts
-          server/test/deployment/registration-compat-traefik.test.ts
           --maxWorkers=1 --fileParallelism=false
+      - name: Prove Traefik registration compatibility with the real tool
+        env:
+          MUSIC_C3_TRAEFIK_TEST: "1"
+        # The real-tool test is intentionally fail-closed and uses --pull=never.
+        # Provision the reviewed linux/amd64 image explicitly so clean hosted
+        # runners exercise the same immutable Traefik build as local CI.
+        run: |
+          docker pull traefik@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174
+          docker tag traefik@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174 traefik:v3.1
+          npm run test:real-tool --prefix tunes -- \
+            server/test/deployment/registration-compat-traefik.real-tool.test.ts \
+            --maxWorkers=1 --fileParallelism=false

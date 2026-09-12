@@ -2,6 +2,7 @@
  * Vitest Global Setup
  * Runs before every test file.
  */
+import './contained-unit-worker-check';
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';

@@ -13,6 +13,7 @@
     "music:bootstrap",
     "music:doctor",
     "music:up",
+    "music:fixture:authority:attest",
     "music:test:smoke",
     "music:test:all",
     "music:test:fast",
@@ -47,7 +48,9 @@
     "0016_publication_operation_retention",
     "0017_publication_idempotency_key_retirement",
     "0018_transactional_queue_replacement",
-    "0019_queue_visibility_control"
+    "0019_queue_visibility_control",
+    "0020_public_snapshot_revision",
+    "0021_explorers_analytics_receipts"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

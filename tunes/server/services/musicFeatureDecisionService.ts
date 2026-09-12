@@ -17,6 +17,7 @@ export interface MusicFeatureDecisionOptions {
   now?: () => number;
   exposureId?: () => string;
   log?: (entry: { flag: MusicFeatureFlag; decision: boolean; cohortVersion: string; exposureId: string }) => void;
+  allowlistIdentity?: (principal: MusicPrincipal) => string;
 }
 
 export class MusicFeatureDecisionService {
@@ -56,7 +57,8 @@ export class MusicFeatureDecisionService {
   }
 
   private flag(flag: MusicFeatureFlag, principal: MusicPrincipal): boolean {
-    if (this.options.allowlists?.[flag]?.has(principal.accountDocumentId)) return true;
+    const allowlistIdentity = this.options.allowlistIdentity?.(principal) ?? principal.accountDocumentId;
+    if (this.options.allowlists?.[flag]?.has(allowlistIdentity)) return true;
     const percentage = Math.min(Math.max(this.options.percentages?.[flag] ?? 0, 0), 100);
     if (percentage === 0 || this.options.salt.trim().length === 0) return false;
     const digest = createHash("sha256").update(`${this.options.salt}:${this.options.cohortVersion}:${flag}:${principal.accountDocumentId}`).digest();

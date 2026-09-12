@@ -81,7 +81,7 @@ const trustedPathEntries = process.platform === "win32"
   : [resolveTrustedSystemDirectory("system tools", "/usr/bin"), resolveTrustedSystemDirectory("base system tools", "/bin")];
 const source = "https://github.com/explorers-earth/explorers.earth";
 const containment = "d226f7e4dc5a54195a59804ec729f72b5e8f10d7";
-const marker = "0019_queue_visibility_control";
+const marker = "0021_explorers_analytics_receipts";
 const resourceScope = "music-c10-release";
 let project = "";
 let registryContainer = "";
@@ -301,6 +301,7 @@ function tunesEnvironment(slot: "blue" | "green") {
     MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15",
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-current-v1",
     MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: "/run/music-secrets/music-publication-response/current",
+    MUSIC_PUBLIC_ID_HMAC_KEY_FILE: "/run/music-secrets/music-publication-response/public-id",
     MUSIC_IMAGE_DIGEST: `\${TUNES_${upper}_DIGEST}`,
     MUSIC_IMAGE_COMMIT: `\${TUNES_${upper}_COMMIT}`,
     MUSIC_MIGRATION_MARKER: `\${TUNES_${upper}_MIGRATION}`,
@@ -568,10 +569,12 @@ async function main(): Promise<void> {
   const migratorPassword = secret();
   const tokenSecret = secret();
   const publicationSecret = secret();
+  const publicIdSecret = secret();
   const runtimePassword = secret();
   const lifecycleSecret = secret();
   privateFile(join(tokenDirectory, "current"), tokenSecret);
   privateFile(join(publicationDirectory, "current"), publicationSecret);
+  privateFile(join(publicationDirectory, "public-id"), publicIdSecret);
   privateFile(secretPaths.runtimePassword, runtimePassword);
   privateFile(secretPaths.migratorPassword, migratorPassword);
   privateFile(secretPaths.lifecycle, lifecycleSecret);
@@ -759,15 +762,16 @@ exec ${shellLiteral(shellPath(curl))} --header "Host: localtunes.earth" "\${mapp
   const writeContainerSecrets = (databaseMigratorPassword: string) => dockerRun("private container secret provisioning", [
     "run", "--pull=never", "--rm", "-i", "-v", `${secretVolume}:/secrets`, immutableBaseImage, "sh", "-c", [
       "set -eu", "umask 077", "mkdir -p /secrets/music-token /secrets/music-publication-response",
-      "IFS= read -r runtime", "IFS= read -r migrator", "IFS= read -r token", "IFS= read -r publication", "IFS= read -r lifecycle",
+      "IFS= read -r runtime", "IFS= read -r migrator", "IFS= read -r token", "IFS= read -r publication", "IFS= read -r public_id", "IFS= read -r lifecycle",
       "printf %s \"$runtime\" > /secrets/database-runtime",
       "printf %s \"$migrator\" > /secrets/database-migrator",
       "printf %s \"$token\" > /secrets/music-token/current",
       "printf %s \"$publication\" > /secrets/music-publication-response/current",
+      "printf %s \"$public_id\" > /secrets/music-publication-response/public-id",
       "printf %s \"$lifecycle\" > /secrets/strapi-lifecycle",
-      "chmod 600 /secrets/database-runtime /secrets/database-migrator /secrets/music-token/current /secrets/music-publication-response/current /secrets/strapi-lifecycle",
+      "chmod 600 /secrets/database-runtime /secrets/database-migrator /secrets/music-token/current /secrets/music-publication-response/current /secrets/music-publication-response/public-id /secrets/strapi-lifecycle",
     ].join("; "),
-  ], { input: `${runtimePassword}\n${databaseMigratorPassword}\n${tokenSecret}\n${publicationSecret}\n${lifecycleSecret}\n` });
+  ], { input: `${runtimePassword}\n${databaseMigratorPassword}\n${tokenSecret}\n${publicationSecret}\n${publicIdSecret}\n${lifecycleSecret}\n` });
   writeContainerSecrets(migratorPassword);
 
   const commonVolumes = [

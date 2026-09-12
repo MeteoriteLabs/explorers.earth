@@ -11,12 +11,12 @@ type LifecycleOperation = {
   deadLetter: boolean;
 };
 
-const envelope = (operation: LifecycleOperation) => ({
+const envelope = (operation: LifecycleOperation, userDocumentId = "mock-user-123") => ({
   version: "music-lifecycle/v1",
   operation: {
     ...operation,
-    upstreamUserDocumentId: "mock-user-123",
-    upstreamAccountDocumentId: "account-document-123",
+    upstreamUserDocumentId: userDocumentId,
+    upstreamAccountDocumentId: userDocumentId === "mock-user-123" ? "account-document-123" : "account-document-b",
   },
 });
 
@@ -38,15 +38,36 @@ async function mockSettings(
     strapiBlockUnconfirmed?: boolean;
     cancelAsNotPresent?: boolean;
     loseCancelResponseOnce?: boolean;
+    resumeFailsOnce?: boolean;
+    accountAbsent?: boolean;
+    beforeLifecycleReply?: (action: string) => Promise<void>;
   } = {},
 ) {
-  let accountPresent = true;
+  let accountPresent = !options.accountAbsent;
   let loseAccountDeleteResponse = options.loseAccountDeleteResponseOnce === true;
   let loseCancelResponse = options.loseCancelResponseOnce === true;
-  await setupMockAuthentication(context);
+  let resumeFails = options.resumeFailsOnce === true;
+  const fixtureOrigin = new URL(String(test.info().project.use.baseURL));
+  if (fixtureOrigin.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(fixtureOrigin.hostname)) {
+    throw new Error("Account lifecycle fixtures require a configured loopback HTTP baseURL.");
+  }
+  // This spec is a synthetic fixture only. Never forward an unhandled data
+  // request, including when someone invokes it outside the isolated config.
+  await context.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    const local = url.origin === fixtureOrigin.origin;
+    const dataRequest = ["fetch", "xhr", "eventsource"].includes(route.request().resourceType());
+    if (local && route.request().method() === "GET" && !dataRequest
+      && !url.pathname.startsWith("/api/") && url.pathname !== "/graphql") await route.continue();
+    else await route.abort("blockedbyclient");
+  });
+  await context.routeWebSocket("**/*", (socket) => socket.close());
+  await setupMockAuthentication(context, { cookieDomain: fixtureOrigin.hostname });
   await context.route("**/api/music/identity/lifecycle/**", async (route) => {
     const action = new URL(route.request().url()).pathname.split("/").at(-1)!;
+    const userDocumentId = route.request().headers().authorization?.includes("fixture-user-b") ? "fixture-user-b" : "mock-user-123";
     events.push(action);
+    await options.beforeLifecycleReply?.(action);
     if (action === "suspend" && options.suspensionUnavailable) {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: {
         code: "LIFECYCLE_UNAVAILABLE", message: "Music lifecycle is unavailable.", retryable: true,
@@ -92,6 +113,13 @@ async function mockSettings(
       return;
     }
     if (action === "resume") {
+      if (resumeFails) {
+        resumeFails = false;
+        await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: {
+          code: "SERVICE_UNAVAILABLE", message: "Fixture Music resume unavailable.", retryable: true,
+        } }) });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -99,20 +127,31 @@ async function mockSettings(
       });
       return;
     }
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(envelope(operation)) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(envelope(operation, userDocumentId)) });
   });
   await context.route("**/graphql", async (route) => {
     const query = String(route.request().postDataJSON()?.query ?? "");
+    const requestedUser = route.request().postDataJSON()?.variables?.documentId;
+    const userDocumentId = requestedUser === "fixture-user-b" ? "fixture-user-b" : "mock-user-123";
     const account = {
+      __typename: "Account",
       Account_Name: "Test", Account_Type: "Explorer", mobile_number: "+15555550100",
       documentId: "account-document-123", username: "testuser", localtunes_integrated: "No",
       localtunes_public: "No", public_profile: "Yes", public_recommendations: "No", public_music: "No",
       public_movie: "No", public_guides: "No", public_books: "No", public_games: "No", public_apps: "No",
       public_products: "No", public_people: "No", pinned_nav_tabs: [], auto_pinning: false,
+      Bio: null, Addresss: null, Primary_Address: null, Public_Profile_Address: null,
+      Feed_Data: null, social_media: [], mobile_number_visibility: false,
+      profile_picture: null, bg_picture: null,
+      createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z",
     };
+    if (userDocumentId === "fixture-user-b") account.documentId = "account-document-b";
     const currentUser = {
-      id: "mock-user-123", documentId: "mock-user-123", username: "testuser", email: "test@explorers.earth",
+      __typename: "UsersPermissionsUser",
+      id: userDocumentId, documentId: userDocumentId, username: "testuser", email: "test@example.test",
       blocked: false, provider: options.provider ?? "google", confirmed: true,
+      mobile_number: "+15555550100", mobile_number_visibility: false,
+      createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z",
       accounts: accountPresent ? [account] : [],
     };
     let data: Record<string, unknown>;
@@ -132,12 +171,12 @@ async function mockSettings(
         await route.abort("connectionreset");
         return;
       }
-      data = { deleteAccount: { documentId: "account-document-123" } };
+      data = { deleteAccount: { __typename: "Account", documentId: "account-document-123" } };
     } else if (query.includes("mutation DeleteExplorerUser")) {
       events.push("user-delete");
       data = {
-        deleteRecommendationList: { documentId: "mock-user-123" },
-        deleteUsersPermissionsUser: { data: { documentId: "mock-user-123", accounts: [{ Account_Name: "Test", Account_Type: "Explorer", documentId: "account-document-123", Bio: null, Addresss: null }] } },
+        deleteRecommendationList: { __typename: "RecommendationList", documentId: "mock-user-123" },
+        deleteUsersPermissionsUser: { data: { __typename: "UsersPermissionsUser", documentId: "mock-user-123", accounts: [{ __typename: "Account", Account_Name: "Test", Account_Type: "Explorer", documentId: "account-document-123", Bio: null, Addresss: null }] } },
       };
     } else if (query.includes("CheckOnboardingStatus")) {
       data = { usersPermissionsUser: currentUser };
@@ -161,6 +200,63 @@ async function mockSettings(
     });
   });
 }
+
+async function switchFixtureIdentity(page: Page, documentId = "fixture-user-b") {
+  await page.evaluate(async (nextDocumentId) => {
+    const path = "/src/store/store.ts";
+    const { default: store } = await import(/* @vite-ignore */ path);
+    store.getState().login({
+      id: nextDocumentId, documentId: nextDocumentId, username: "testuser", email: "test@example.test", blocked: false,
+      token: nextDocumentId === "mock-user-123" ? "mock-jwt-token-xyz" : "mock-jwt-fixture-user-b",
+    });
+  }, documentId);
+}
+
+for (const action of ["cancel", "boundary"] as const) {
+  test(`an in-flight ${action} cannot continue under replacement identity`, async ({ context, page }) => {
+    const events: string[] = [];
+    let release!: () => void;
+    const paused = new Promise<void>((resolve) => { release = resolve; });
+    await mockSettings(context, {
+      operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared",
+      state: action === "cancel" ? "completed" : "requested",
+      boundaryCrossed: action === "boundary", retryable: action === "boundary", deadLetter: false,
+    }, events, { beforeLifecycleReply: async (currentAction) => { if (currentAction === action) await paused; } });
+    await openSettings(page);
+    await page.getByRole("button", { name: action === "cancel" ? "Cancel deletion" : "Retry account deletion" }).click();
+    await expect.poll(() => events.includes(action)).toBe(true);
+    await switchFixtureIdentity(page);
+    await expect(page.getByRole("tab", { name: "Account", exact: true })).toBeVisible();
+    const completion = page.waitForResponse((response) => response.url().endsWith(`/lifecycle/${action}`));
+    release();
+    await (await completion).finished();
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    // Flush the old response and any ensuing microtasks before checking calls.
+    await expect.poll(() => events.filter((event) => event === "status").length).toBeGreaterThanOrEqual(2);
+    await expect(page.getByRole("button", { name: action === "cancel" ? "Cancel deletion" : "Retry account deletion" })).toBeVisible();
+    expect(events.filter((event) => ["resume", "account-delete", "user-delete"].includes(event))).toEqual([]);
+    expect(await page.evaluate(() => localStorage.getItem("auth-storage"))).toContain("fixture-user-b");
+  });
+}
+
+test("same-identity partial cancellation retries only Music resume after token refresh", async ({ context, page }) => {
+  const events: string[] = [];
+  await mockSettings(context, {
+    operationId: "delete-operation-durable", status: "pending_deletion", phase: "prepared", state: "completed",
+    boundaryCrossed: false, retryable: false, deadLetter: false,
+  }, events, { resumeFailsOnce: true });
+  await openSettings(page);
+  await page.getByRole("button", { name: "Cancel deletion" }).click();
+  await expect(page.getByText("Fixture Music resume unavailable.")).toBeVisible();
+  await page.evaluate(async () => {
+    const path = "/src/store/store.ts";
+    const { default: store } = await import(/* @vite-ignore */ path);
+    store.setState({ token: "refreshed-fixture-token-a" });
+  });
+  await page.getByRole("button", { name: "Cancel deletion" }).click();
+  await expect(page.getByText("Account deletion was cancelled and Music was reactivated.")).toBeVisible();
+  expect(events.filter((event) => ["cancel", "resume"].includes(event))).toEqual(["cancel", "resume", "resume"]);
+});
 
 test("a never-provisioned Explorer identity treats exact Music absence as a safe deactivation no-op", async ({ context, page }) => {
   const events: string[] = [];

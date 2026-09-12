@@ -26,13 +26,14 @@ const validEnvironment = {
   MUSIC_SIGNING_KEY_PREVIOUS_SECRET: "fixture-previous-secret-at-least-32-chars",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: "fixture-publication-v1",
   MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI",
+  MUSIC_PUBLIC_ID_HMAC_KEY: "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ",
   MUSIC_CONNECT_TIMEOUT_MS: "5000",
   MUSIC_READ_TIMEOUT_MS: "10000",
   MUSIC_CIRCUIT_FAILURE_THRESHOLD: "3",
   MUSIC_RATE_LIMIT_PER_MINUTE: "60",
   MUSIC_PROVISIONING_KILL_SWITCH: "true",
   MUSIC_PROVISIONING_COHORT: "disabled",
-  MUSIC_EXPECTED_MIGRATION_ID: "0019_queue_visibility_control",
+  MUSIC_EXPECTED_MIGRATION_ID: "0021_explorers_analytics_receipts",
   MUSIC_RECONCILIATION_ENABLED: "false",
   MUSIC_RECONCILIATION_MAX_ROWS: "0",
 };
@@ -42,9 +43,10 @@ describe("server-side Music environment contract", () => {
     const productionExample = readFileSync(resolve(process.cwd(), "../.env.music.example"), "utf8");
     const fixtureExample = readFileSync(resolve(process.cwd(), "../.env.music.test.example"), "utf8");
     for (const example of [productionExample, fixtureExample]) {
-      expect(example).toContain("MUSIC_EXPECTED_MIGRATION_ID=0019_queue_visibility_control");
+      expect(example).toContain("MUSIC_EXPECTED_MIGRATION_ID=0021_explorers_analytics_receipts");
       expect(example).toContain("MUSIC_COHORT_ENABLED=false");
       expect(example).toContain("MUSIC_COHORT_USER_DOCUMENT_IDS=");
+      expect(example).toContain("MUSIC_PUBLIC_ID_HMAC_KEY=VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ");
     }
   });
 

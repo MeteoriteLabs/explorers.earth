@@ -1,4 +1,7 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { NavigationStatus } from "../navigation/NavigationStatus";
+import type { IntentAuthority } from "../navigation/categoryNavigationPolicy";
+import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import Button from "../../components/ui/Button";
@@ -7,7 +10,6 @@ import TopPicksHero from "./components/TopPicksHero";
 import TopPicksMobileHero from "./components/TopPicksMobileHero";
 import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "./api/queries";
 import { DELETE_GUIDE_MUTATION, UPDATE_GUIDE_MUTATION } from "./api/mutations";
-import { updateTabVisibilityMutation } from "../../features/Settings/api/mutation";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import Modal from "../../components/ui/Modal";
@@ -30,6 +32,8 @@ interface FilterState {
 }
 
 const GuidesPage: React.FC = () => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_guides === "Yes";
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -50,6 +54,7 @@ const GuidesPage: React.FC = () => {
     isOpen: boolean;
     categoryName: string;
     visibilityField: string;
+    origin?: IntentAuthority;
     defaultValue: boolean;
   } | null>(null);
 
@@ -64,12 +69,14 @@ const GuidesPage: React.FC = () => {
 
   const location = useLocation();
 
+  const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
-    if (location.state?.justCreatedGuide && accountData) {
-      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_guides === "Yes";
-      if (!isPublic) {
+    if (location.state?.justCreatedGuide && navigation.authority && promptedLocation.current !== location.key) {
+      promptedLocation.current = location.key;
+      const isPublic = navigation.snapshot?.visibility.public_guides === "Yes";
+      if (!isPublic && navigation.authority) {
         setVisibilityPrompt({
+          origin: navigation.authority,
           isOpen: true,
           categoryName: "Guides",
           visibilityField: "public_guides",
@@ -78,7 +85,7 @@ const GuidesPage: React.FC = () => {
       }
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, accountData]);
+  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
 
 
@@ -123,41 +130,9 @@ const GuidesPage: React.FC = () => {
     }
   );
 
-  // Update tab visibility mutation
-  const [updateTabVisibility] = useMutation(updateTabVisibilityMutation, {
-    onCompleted: (data) => {
-      const isPublic = data.updateAccount.public_guides === "Yes";
-      toast.success(`Public visibility updated to ${isPublic ? "Public" : "Private"}`);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to update public visibility: ${error.message}`);
-    }
-  });
-
   const handleVisibilityToggle = () => {
-    if (!accountData?.usersPermissionsUser?.accounts?.[0]) return;
-    
-    const account = accountData.usersPermissionsUser.accounts[0];
-    const currentVisibility = account.public_guides;
-    const newVisibility = currentVisibility === "Yes" ? "No" : "Yes";
-    
-    if (newVisibility === "Yes") {
-      const hasPublishedGuide = allGuides.some((g) => g.Visibility === true);
-      if (!hasPublishedGuide) {
-        toast.error("You must have at least one published guide to make Guides public.");
-        return;
-      }
-    }
-    
-    updateTabVisibility({
-      variables: {
-        documentId: account.documentId,
-        data: {
-          public_guides: newVisibility,
-        }
-      }
-    });
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_guides", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
   const allGuides: Guide[] = guidesData?.guides || [];
@@ -660,6 +635,7 @@ const GuidesPage: React.FC = () => {
         author={username}
       />
       <div className="dashboard-theme bg-dashboard-bg min-h-screen">
+        <NavigationStatus navigation={navigation} />
         <div className="w-full h-full mx-auto max-w-5xl px-4 md:px-6 pt-2 md:pt-4 pb-16 md:pb-6">
           {/* Header row with Add Button and Visibility Toggle (matches Recommendations) */}
           {/* Header row with Add Button and Visibility Toggle */}
@@ -668,8 +644,9 @@ const GuidesPage: React.FC = () => {
             <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
               <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
                 <SwitchButton
-                  isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
+                  isChecked={categoryVisible}
                   onChange={handleVisibilityToggle}
+                  disabled={navigation.busy || !navigation.authority}
                   variant="blue"
                 />
                 <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">Public Visibility</span>
@@ -764,12 +741,13 @@ const GuidesPage: React.FC = () => {
               <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center md:hidden">
                 <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                    {accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes" ? "Pub" : "Draft"}
+                  <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                    {categoryVisible ? "Pub" : "Draft"}
                   </span>
                   <SwitchButton
-                    isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
+                    isChecked={categoryVisible}
                     onChange={handleVisibilityToggle}
+                    disabled={navigation.busy || !navigation.authority}
                     variant="blue"
                   />
                 </div>
@@ -1404,13 +1382,13 @@ const GuidesPage: React.FC = () => {
           )}
         </div >
       </div >
-      {visibilityPrompt && accountDocumentId && (
+      {visibilityPrompt && (
         <CategoryVisibilityModal
           isOpen={visibilityPrompt.isOpen}
           onClose={() => setVisibilityPrompt(null)}
           categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
+          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
+          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
           onSuccess={() => {
             refetch();
           }}

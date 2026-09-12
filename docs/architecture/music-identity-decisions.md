@@ -168,6 +168,21 @@ to operator policy, then externally discard and recreate the disposable
 worktree from a clean checkout; never copy ignored fixture authority into the
 replacement checkout.
 
+Bootstrap safety uses a narrower read-only retired-authority oracle. It accepts
+only a missing pointer or owned zero-byte pointer tombstone while the complete
+recognized inventory is absent/zero, and rejects references, raw or malformed
+bytes, populated/mixed inventories, unreadable entries, and symlinks. Its
+versioned result contains only the allowlisted state, boolean, and zero-count
+fields. `db:reset` first preauthorizes two equal zero-container snapshots of
+the exact mandatory-postgres/optional-gates volume allowlist; hostile or
+changing targets leave authority byte-identical. Only after that boundary does
+it retire fixture authority, revalidate the volume identities, remove the
+single allowlisted set, prove exact-name and dual-label absence, and re-attest
+this condition. A failed deletion attempt remains non-success with authority
+retired for containment. The public live runner invokes the exact fixed-root command
+again before marking lifecycle attempted or calling bootstrap, and retains the
+typed command/cwd/exit/schema result without raw child output.
+
 ## Revisit when
 
 - Music should be created only on first use instead of after onboarding.

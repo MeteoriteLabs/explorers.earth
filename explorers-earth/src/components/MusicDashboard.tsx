@@ -5,11 +5,7 @@ import type { TunesDashboardData } from "../hooks/useTunesDashboard";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 import type { MusicPlaylist, MusicPublicationMode } from "../features/music/musicWorkspaceClient";
 import { MusicClientError } from "../lib/localTunesApiClient";
-import {
-  completeMusicPublicationCommand,
-  getOrCreateMusicPublicationCommand,
-  type MusicPublicationOwnerScope,
-} from "../features/music/musicPublicationCommandRegistry";
+import type { MusicPublicationOwnerScope } from "../features/music/musicPublicationCommandRegistry";
 import { createMusicQueueClient } from "../features/music/musicQueueClient";
 import { createMusicSearchClient } from "../features/music/musicSearchClient";
 import { musicApi } from "../features/music/musicApi";
@@ -23,6 +19,10 @@ import { MusicSectionTabs, type MusicSection } from "../features/music/component
 import { MusicPlaylistCollection } from "../features/music/components/MusicPlaylistCollection";
 import { createMusicPlaybackArbiter, type MusicPlaybackCommand } from "../features/music/components/musicPlaybackCommand";
 import Switch from "./ui/Switch";
+import { useMusicPublish } from "../features/music/MusicPublishProvider";
+import { MusicPublishSwitch } from "../features/music/components/MusicPublishSwitch";
+import { useAccountNavigationWriter, useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
+import type { IntentAuthority } from "../features/navigation/categoryNavigationPolicy";
 
 interface MusicDashboardProps {
   data: TunesDashboardData;
@@ -42,7 +42,7 @@ async function refreshMusicDashboard(refetch: TunesDashboardData["refetch"]): Pr
 function CompleteMusicDashboard({ data, readOnly, playbackRequest, authorityGeneration, beginPlaybackRequest, onPlaybackRequested }: Pick<MusicDashboardProps, "data" | "readOnly"> & { playbackRequest: MusicPlaybackRequest | null; authorityGeneration: string; beginPlaybackRequest: () => number; onPlaybackRequested: MusicPlaybackCommand }) {
   const dashboard = data.dashboard ?? { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: "private" as const, publicSlug: "" } };
   const refresh = () => refreshMusicDashboard(data.refetch);
-  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={data.playlists.map(({ id, name }) => ({ id, name }))} playlistClient={musicWorkspaceClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />;
+  const discovery = <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={data.playlists.map(({ id, name }) => ({ id, name }))} playlistClient={musicWorkspaceClient} onChanged={refresh} />;
   const queue = <MusicQueue songs={dashboard.songs} client={completeQueueClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />;
   const history = <MusicHistory songs={dashboard.playedSongs} loading={data.isLoading} queueClient={completeQueueClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={onPlaybackRequested} />;
   const guestControls = data.guestControls
@@ -264,43 +264,44 @@ const publicationCopy: Record<MusicPublicationMode, string> = {
   public: "Anyone can view shared playlists, and the page can appear in search.",
 };
 
-function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardData; scope: MusicPublicationOwnerScope; onClose: () => void; opener: RefObject<HTMLButtonElement> }) {
-  const current = data.dashboard?.publication;
+function SharingDialog({ data, origin, ready, onClose, opener }: { data: TunesDashboardData; origin: IntentAuthority; ready: boolean; onClose: () => void; opener: RefObject<HTMLButtonElement> }) {
+  const music = useMusicPublish(origin, { ready });
+  const { isCurrent } = useAccountNavigationWriter();
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const [error, setError] = useState("");
+  const current = music.state.confirmed ?? data.dashboard?.publication;
   const [mode, setMode] = useState<MusicPublicationMode>(current?.mode ?? "private");
   const [capability, setCapability] = useState<string>();
   const [saving, setSaving] = useState(false);
   const publicSlug = current?.publicSlug ?? "";
   const base = `${window.location.origin}/music/share/${encodeURIComponent(publicSlug)}`;
-  const shareLink = mode === "public" ? base : mode === "unlisted" && capability ? `${base}#access=${capability}` : undefined;
+  const shareLink = mode === "public" && music.state.kind === "published" ? base
+    : mode === "unlisted" && capability && current?.mode === "unlisted" && music.canRecover ? `${base}#access=${capability}` : undefined;
   const save = async () => {
-    setSaving(true);
-    const command = getOrCreateMusicPublicationCommand(scope, mode);
+    if (!music.canRecover || !isCurrent(origin)) return;
+    setSaving(true); setError(""); setCapability(undefined);
     try {
-      const result = await musicWorkspaceClient.setPublication(mode, command.key);
-      completeMusicPublicationCommand(scope, mode, command.key);
-      setCapability("capability" in result ? result.capability : undefined);
-      await refreshMusicDashboard(data.refetch);
+      const result = await music.request(mode);
+      if (!alive.current || !isCurrent(origin)) return;
+      if (result.status !== "verified") { setError("Music publication was not confirmed. Review the status and retry."); return; }
+      setCapability(result.response && "capability" in result.response ? result.response.capability : undefined);
+      void refreshMusicDashboard(data.refetch).catch(() => undefined);
       toast.success(mode === "public" ? "Music is public." : mode === "unlisted" ? "Private link created." : "Music is private.");
       if (mode !== "unlisted") onClose();
-    } catch (cause) {
-      if (
-        cause instanceof MusicClientError
-        && (cause.code === "REQUEST_INVALID" || cause.upstreamCode === "PUBLICATION_REPLAY_EXPIRED")
-      ) {
-        completeMusicPublicationCommand(scope, mode, command.key);
-      }
-      toast.error("Music is temporarily unavailable.");
     } finally {
-      setSaving(false);
+      if (alive.current && isCurrent(origin)) setSaving(false);
     }
   };
   return (
     <WorkspaceDialog title="Music sharing" description="Choose who can view the playlists you share." onClose={onClose} opener={opener} closeDisabled={saving}>
+      {error && <p role="alert" tabIndex={0} className="mt-3 text-sm text-dashboard-danger">{error}</p>}
+      {music.state.kind === "conflict" && <p role="alert" className="mt-3 text-sm text-dashboard-danger">The previous action conflicts or expired. Review the mode, then confirm a new action.</p>}
       <fieldset className="mt-5 space-y-2">
         <legend className="sr-only">Visibility mode</legend>
         {(["private", "unlisted", "public"] as const).map((value, index) => (
           <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashboard bg-dashboard-bg/40 px-3 text-dashboard focus-within:ring-2 focus-within:ring-dashboard-accent">
-            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} disabled={saving} onChange={() => { setMode(value); setCapability(undefined); }} className="h-5 w-5 accent-[var(--dash-accent)]" />
+            <input data-autofocus={index === 0 || undefined} type="radio" name="music-publication" value={value} checked={mode === value} disabled={saving || !music.canRecover} onChange={() => { setMode(value); setCapability(undefined); }} className="h-5 w-5 accent-[var(--dash-accent)]" />
             <span>{value[0].toUpperCase() + value.slice(1)}</span>
           </label>
         ))}
@@ -320,7 +321,7 @@ function SharingDialog({ data, scope, onClose, opener }: { data: TunesDashboardD
       </div>
       <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" onClick={onClose} disabled={saving} className={`${buttonClass} bg-dashboard-muted text-dashboard`}>Cancel</button>
-        <button type="button" onClick={() => void save()} disabled={saving} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Saving…" : "Save sharing"}</button>
+        <button type="button" onClick={() => void save()} disabled={saving || !music.canRecover} className={`${buttonClass} bg-dashboard-accent text-[var(--dash-accent-text)]`}>{saving ? "Saving…" : music.state.kind === "conflict" ? "Confirm new sharing action" : "Save sharing"}</button>
       </div>
     </WorkspaceDialog>
   );
@@ -528,6 +529,11 @@ function PlaylistPanel({ playlist, queueRevision, readOnly, onChanged, onCommitt
 }
 
 export default function MusicDashboard({ data, scope, readOnly = false, complete = false }: MusicDashboardProps) {
+  const { authority } = useCategoryNavigation();
+  const origin = authority?.userDocumentId === scope.userDocumentId && authority?.accountDocumentId === scope.accountDocumentId ? authority : undefined;
+  const publishReady = !readOnly && !data.error && data.entitlement?.coreMutation === true;
+  const [sharingOrigin, setSharingOrigin] = useState<IntentAuthority>();
+  useEffect(() => { if (sharingOrigin && (!origin || origin.generation !== sharingOrigin.generation)) { setSharingOpen(false); setSharingOrigin(undefined); } }, [origin?.generation, sharingOrigin]);
   const [section, setSection] = useState<MusicSection>("playlists");
   const [createOpen, setCreateOpen] = useState(false);
   const [createPublic, setCreatePublic] = useState(false);
@@ -539,6 +545,8 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
   const [playbackRequest, setPlaybackRequest] = useState<MusicPlaybackRequest | null>(null);
   const authorityGeneration = JSON.stringify([scope.userDocumentId ?? null, scope.accountDocumentId ?? null]);
   const currentAuthorityGeneration = useRef(authorityGeneration);
+  const playbackLifecycleGeneration = useRef(0);
+  const currentPlaybackArbiter = useRef<ReturnType<typeof createMusicPlaybackArbiter> | null>(null);
   currentAuthorityGeneration.current = authorityGeneration;
   const queueRevision = useRef(data.dashboard?.queueRevision ?? 0);
   queueRevision.current = data.dashboard?.queueRevision ?? 0;
@@ -570,6 +578,7 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
     isAuthorityCurrent: () => currentAuthorityGeneration.current === authorityGeneration,
     onAcknowledged: (songId, requestId) => setPlaybackRequest(songId === null ? null : { songId, requestId, authorityGeneration }),
   }), [authorityGeneration, scope.accountDocumentId, scope.userDocumentId]);
+  currentPlaybackArbiter.current = playbackArbiter;
   const beginPlaybackRequest = playbackArbiter.beginPlaybackRequest;
   const requestPlayback: MusicPlaybackCommand = playbackArbiter.requestPlayback;
   const createOpener = useRef<HTMLButtonElement>(null);
@@ -587,8 +596,13 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
   };
 
   useEffect(() => {
+    const lifecycleGeneration = ++playbackLifecycleGeneration.current;
     setPlaybackRequest(null);
-    return () => playbackArbiter.cancel();
+    return () => {
+      queueMicrotask(() => {
+        if (currentPlaybackArbiter.current !== playbackArbiter || playbackLifecycleGeneration.current === lifecycleGeneration) playbackArbiter.cancel();
+      });
+    };
   }, [playbackArbiter]);
 
   useEffect(() => {
@@ -605,14 +619,14 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
     {actionMenuOpen && <div role="menu" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setActionMenuOpen(false); sharingOpener.current?.focus(); } }} className="absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-56 rounded-xl border border-dashboard bg-dashboard-sidebar p-2 shadow-xl">
       <button ref={sharingMenuItem} role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setCreatePublic(false); setCreateDialogOpener(sharingOpener); setCreateOpen(true); }} className={`${buttonClass} w-full bg-dashboard-muted text-left text-dashboard`}><ListMusic className="mr-2 inline h-4 w-4" />Private playlist</button>
       <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setCreatePublic(true); setCreateDialogOpener(sharingOpener); setCreateOpen(true); }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}><ListMusic className="mr-2 inline h-4 w-4" />Public playlist</button>
-      <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); setSharingOpen(true); }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
+      <button role="menuitem" type="button" onClick={() => { setActionMenuOpen(false); if (origin) { setSharingOrigin(origin); setSharingOpen(true); } }} className={`${buttonClass} mt-1 w-full bg-dashboard-muted text-left text-dashboard`}><Settings2 className="mr-2 inline h-4 w-4" />Sharing settings</button>
     </div>}
   </div>;
 
   const playlistWorkspace = active ? <div>
     <button type="button" onClick={() => setActiveId(undefined)} className={`${buttonClass} mb-4 bg-dashboard-muted text-dashboard`}>← All playlists</button>
     {complete && <section aria-label={`Add songs to ${active.name}`} className="mb-5 rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 md:p-5">
-      <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={[{ id: active.id, name: active.name }]} playlistClient={musicWorkspaceClient} onChanged={refresh} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={requestPlayback} />
+      <MusicSearch searchClient={completeSearchClient} queueClient={completeQueueClient} playlists={[{ id: active.id, name: active.name }]} playlistClient={musicWorkspaceClient} onChanged={refresh} />
     </section>}
     <PlaylistPanel playlist={active} queueRevision={data.dashboard?.queueRevision ?? 0} readOnly={readOnly} onChanged={refresh} onCommitted={reconcilePlaylist} announce={setAnnouncement} beginPlaybackRequest={beginPlaybackRequest} onPlaybackRequested={requestPlayback} onQueueRevisionAcknowledged={(revision) => { queueRevision.current = revision; }} />
   </div> : <MusicPlaylistCollection
@@ -625,11 +639,15 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
       try { await refresh(); return undefined; }
       catch { return { reconciliationFailed: true }; }
     }}
-    emptyAction={createAction}
+    emptyAction={null}
   />;
 
   return (
     <div className="space-y-5">
+      <section aria-label="Music publication" className="flex min-w-0 flex-wrap items-start justify-between gap-3 rounded-xl border border-dashboard bg-dashboard-sidebar p-4">
+        <MusicPublishSwitch origin={origin} ready={publishReady} />
+        {createAction}
+      </section>
       {playlistReconciliation && <div role="alert" aria-label="Playlist reconciliation needed" className="rounded-xl border border-dashboard bg-dashboard-sidebar p-4 text-sm text-dashboard-light">
         <p>{playlistReconciliation}</p>
         <button type="button" onClick={() => void refresh().catch(() => undefined)} className={`${buttonClass} mt-3 bg-dashboard-muted text-dashboard`}>Retry loading playlists</button>
@@ -640,7 +658,7 @@ export default function MusicDashboard({ data, scope, readOnly = false, complete
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       {createOpen && <CreatePlaylistDialog makePublic={createPublic} onClose={() => setCreateOpen(false)} opener={createDialogOpener} onCreated={reconcilePlaylist} />}
-      {sharingOpen && <SharingDialog data={data} scope={scope} onClose={() => setSharingOpen(false)} opener={sharingOpener} />}
+      {sharingOpen && sharingOrigin && <SharingDialog data={data} origin={sharingOrigin} ready={publishReady} onClose={() => { setSharingOpen(false); setSharingOrigin(undefined); }} opener={sharingOpener} />}
     </div>
   );
 }

@@ -1,7 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
-import igdbService from '../igdbService';
+import axios from 'axios';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import igdbService, { IgdbError } from '../igdbService';
+
+vi.mock('axios');
 
 describe('igdbService transforming and details error scenarios', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('should transform raw IGDB result correctly', () => {
     const rawItem = {
       id: 123,
@@ -24,13 +29,18 @@ describe('igdbService transforming and details error scenarios', () => {
   });
 
   it('should throw an IgdbError on detail fetching HTTP errors', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      statusText: 'Bad Request'
-    } as unknown as Response);
-
-    await expect(igdbService.getGameDetails(123)).rejects.toThrow('Failed to fetch game details.');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(axios.post).mockRejectedValueOnce(new Error('synthetic IGDB HTTP failure'));
+    try {
+      const request = igdbService.getGameDetails(123);
+      await expect(request).rejects.toBeInstanceOf(IgdbError);
+      await expect(request).rejects.toThrow('Failed to fetch game details.');
+      expect(axios.post).toHaveBeenCalledWith('/igdb-api/v4/games',
+        expect.stringContaining('where id = 123;'), expect.objectContaining({
+          headers: expect.objectContaining({ 'Client-ID': 'test-client-id' }),
+        }));
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

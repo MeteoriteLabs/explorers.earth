@@ -42,7 +42,9 @@ import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
 import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
 import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
-import { GET_PUBLIC_PAGE_ANALYTICS } from "../features/Analytics/api/queries";
+import type { PublicPageAnalyticsData } from "../features/Analytics/api/queries";
+import { getAnalyticsDateRange } from "../features/Analytics/utils/analyticsDateRange";
+import { readExplorersAnalyticsEvents } from "../services/explorersAnalyticsClient";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Loader2 } from "lucide-react";
@@ -65,6 +67,45 @@ import { CategoryEmptyState } from "../components/CategoryEmptyState";
 // Mutations & queries
 import { createRecommendationLinkMutation } from "../features/Favorites/api/mutation";
 import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
+
+type HomeAnalyticsState = "loading" | "ready" | "unavailable";
+
+interface HomeAnalyticsLabels {
+  label: string;
+  loading: string;
+  unavailable: string;
+}
+
+const defaultHomeAnalyticsLabels: HomeAnalyticsLabels = {
+  label: "Views · last 90 days",
+  loading: "Loading",
+  unavailable: "Unavailable",
+};
+
+export function getHomeRecentAnalyticsScope(
+  now = new Date(),
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+) {
+  const range = getAnalyticsDateRange({ type: "last90days" }, now);
+  if (!range) throw new Error("Recent analytics range is unavailable");
+  return { fromDate: range.fromDate, toDate: range.toDate, timeZone };
+}
+
+export function getHomeAnalyticsCard(
+  state: HomeAnalyticsState,
+  analyticsData: PublicPageAnalyticsData[],
+  labels: HomeAnalyticsLabels = defaultHomeAnalyticsLabels,
+) {
+  if (state === "loading") return { label: labels.label, value: labels.loading };
+  if (state === "unavailable") return { label: labels.label, value: labels.unavailable };
+  const totalViews = analyticsData
+    .flatMap((item) => item.Stats || [])
+    .filter((event) => event.type === "view").length;
+  return {
+    label: labels.label,
+    value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}k` : totalViews.toString(),
+  };
+}
 
 // S3 upload helpers
 import {
@@ -152,6 +193,7 @@ HomeSkeleton.displayName = "HomeSkeleton";
 const Home = memo(() => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const { setSelectedCity } = useCityStore();
   const { setSetupStatus } = useSetupStore();
   const location = useLocation();
@@ -167,6 +209,8 @@ const Home = memo(() => {
   const [showGuidesShareModal, setShowGuidesShareModal] = useState<boolean>(false);
   const [showGuideShareModals, setShowGuideShareModals] = useState<{ [key: string]: boolean }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [analyticsData, setAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
+  const [analyticsState, setAnalyticsState] = useState<HomeAnalyticsState>("loading");
   const [activeTab, setActiveTab] = useState<
     "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
   >("places");
@@ -273,7 +317,11 @@ const Home = memo(() => {
   });
 
   // Get account documentId for guides query (reuse existing query pattern)
-  const { data: accountDataForGuides } = useQuery(GET_USER_ACCOUNT_QUERY, {
+  const {
+    data: accountDataForGuides,
+    loading: accountLookupLoading,
+    error: accountLookupError,
+  } = useQuery(GET_USER_ACCOUNT_QUERY, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
     fetchPolicy: "cache-first", // Reuse cache if available
@@ -356,12 +404,49 @@ const Home = memo(() => {
     skip: !accountDocumentId || !user?.username,
   });
 
-  // Fetch analytics data for dynamic view count
-  const { data: analyticsData } = useQuery(GET_PUBLIC_PAGE_ANALYTICS, {
-    errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
-    skip: !user?.documentId || !accountDocumentId,
-  });
+  // Read only the bounded recent local-calendar range through the authenticated
+  // backend boundary. Never download another account's analytics to the browser.
+  useEffect(() => {
+    let active = true;
+    if (accountLookupLoading) {
+      setAnalyticsData([]);
+      setAnalyticsState("loading");
+      return () => {
+        active = false;
+      };
+    }
+
+    if (accountLookupError || !accountDocumentId || !token) {
+      setAnalyticsData([]);
+      setAnalyticsState("unavailable");
+      return () => {
+        active = false;
+      };
+    }
+
+    setAnalyticsState("loading");
+    void readExplorersAnalyticsEvents({
+      accountId: accountDocumentId,
+      ...getHomeRecentAnalyticsScope(),
+      token,
+    })
+      .then((records) => {
+        if (active) {
+          setAnalyticsData(records as PublicPageAnalyticsData[]);
+          setAnalyticsState("ready");
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAnalyticsData([]);
+          setAnalyticsState("unavailable");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accountDocumentId, accountLookupError, accountLookupLoading, token]);
 
   // Refetch guides when navigating back from guide creation/editing (matching Recommendations pattern)
   useEffect(() => {
@@ -499,19 +584,14 @@ const Home = memo(() => {
     return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs + appsRecs + productsRecs + peopleRecs;
   }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
-  const totalViewsCount = useMemo(() => {
-    if (!analyticsData?.publicPageAnalytics || !accountDocumentId) return "0";
-    const accountData = analyticsData.publicPageAnalytics.filter(
-      (item: any) => item.Account_Id === accountDocumentId
-    );
-    const allEvents: any[] = accountData.flatMap((item: any) => item.Stats || []);
-    const totalViews = allEvents.filter(event => event.type === 'view').length;
-
-    if (totalViews >= 1000) {
-      return (totalViews / 1000).toFixed(1) + "k";
-    }
-    return totalViews.toString();
-  }, [analyticsData, accountDocumentId]);
+  const recentViewsCard = useMemo(
+    () => getHomeAnalyticsCard(analyticsState, analyticsData, {
+      label: t("dashboard.home.analytics.viewsLast90Days"),
+      loading: t("dashboard.home.analytics.loading"),
+      unavailable: t("dashboard.home.analytics.unavailable"),
+    }),
+    [analyticsState, analyticsData, t],
+  );
 
   // Update setup store when status changes
   useEffect(() => {
@@ -1013,11 +1093,15 @@ const Home = memo(() => {
                     </div>
                     <div className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl px-2 sm:px-3 py-2 border border-dashboard flex-1 min-w-0">
                       <div className="text-center">
-                        <p className="text-base sm:text-lg md:text-xl font-bold text-dashboard">
-                          {totalViewsCount}
+                        <p
+                          role="status"
+                          aria-label={t("dashboard.home.analytics.ariaLabel", recentViewsCard)}
+                          className="text-base sm:text-lg md:text-xl font-bold text-dashboard"
+                        >
+                          {recentViewsCard.value}
                         </p>
                         <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
-                          Views
+                          {recentViewsCard.label}
                         </p>
                       </div>
                     </div>

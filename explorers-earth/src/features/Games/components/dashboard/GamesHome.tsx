@@ -1,3 +1,5 @@
+import { NavigationStatus } from "../../../navigation/NavigationStatus";
+import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
@@ -305,6 +307,8 @@ export const GameListCard = ({
 };
 
 const GamesHome = () => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_games === "Yes";
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -336,58 +340,9 @@ const GamesHome = () => {
 
   const [updateGameList] = useMutation(UPDATE_GAME_LIST);
 
-  const [updateAccountVisibility] = useMutation(gql`
-    mutation UpdateGamesVisibility($documentId: ID!, $data: AccountInput!) {
-      updateAccount(documentId: $documentId, data: $data) {
-        documentId
-        public_recommendations
-        public_movie
-        public_books
-        public_games
-        public_music
-      }
-    }
-  `);
-
-  const handleVisibilityToggle = async () => {
-    const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-    if (!acc?.documentId) return;
-
-    const currentValue = acc.public_games;
-    const newValue = currentValue === "Yes" ? "No" : "Yes";
-
-    if (newValue === "Yes") {
-      const hasPublishedList = lists.some((l) => l.Visibility === true);
-      if (!hasPublishedList) {
-        toast.error("You must have at least one published game list to make Games public.");
-        return;
-      }
-    }
-
-    try {
-      await updateAccountVisibility({
-        variables: {
-          documentId: acc.documentId,
-          data: { public_games: newValue }
-        },
-        optimisticResponse: {
-          updateAccount: {
-            __typename: 'Account',
-            documentId: acc.documentId,
-            public_games: newValue,
-            public_recommendations: acc.public_recommendations,
-            public_movie: acc.public_movie,
-            public_books: acc.public_books,
-            public_music: acc.public_music
-          }
-        },
-        refetchQueries: [{ query: MY_ACCOUNT, variables: { documentId: user?.documentId } }]
-      });
-      toast.success(`Games visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch (error) {
-      console.error("Error updating visibility:", error);
-      toast.error("Failed to update visibility");
-    }
+  const handleVisibilityToggle = () => {
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_games", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
   const lists: GameList[] = data?.gameLists || [];
@@ -432,13 +387,15 @@ const GamesHome = () => {
 
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
+      <NavigationStatus navigation={navigation} />
       {/* Desktop view header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         {/* Left: Public switch */}
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
-            isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes"}
+            isChecked={categoryVisible}
             onChange={handleVisibilityToggle}
+            disabled={navigation.busy || !navigation.authority}
             variant="blue"
           />
           <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">
@@ -480,12 +437,13 @@ const GamesHome = () => {
           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes" ? "Pub" : "Draft"}
+              <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {categoryVisible ? "Pub" : "Draft"}
               </span>
               <SwitchButton
-                isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_games === "Yes"}
+                isChecked={categoryVisible}
                 onChange={handleVisibilityToggle}
+                disabled={navigation.busy || !navigation.authority}
                 variant="blue"
               />
             </div>

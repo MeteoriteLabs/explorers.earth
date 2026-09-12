@@ -531,9 +531,19 @@ directory read-only and exposes the current file as
 `/run/secrets/music-publication-response/current`; inline live key values are
 forbidden.
 
+The same protected host directory must also contain a distinct mode-0600
+`public-id` file holding a separate canonical base64url-encoded 32-byte HMAC key.
+Compose exposes it only as `/run/secrets/music-publication-response/public-id`.
+This key is a projection dependency, not a capability or authorization secret:
+keep it stable for the lifetime of the public Music identity namespace. Rotating
+it changes every opaque public song and playlist ID, so rotation requires an
+explicit public-ID compatibility event rather than routine token or response-key
+rotation.
+
 Before candidate Docker activity, the privileged deployment verifier reads the
-host-only publication current/optional previous files and compares their identity
-and content against the runtime and migrator database passwords, deployment HMAC,
+host-only publication current/optional previous and public-ID files and compares
+their identity and content against the runtime and migrator database passwords,
+deployment HMAC,
 current/optional previous Music token, lifecycle proof, reconciliation, session,
 cookie, Strapi access/JWT, and gate authorities. Production configuration must
 provide `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST` and
@@ -725,3 +735,50 @@ WHERE youtube_id !~ '^[A-Za-z0-9_-]{11}$';
 ```
 
 Both counts must be zero. Any nonzero result keeps `ownerWorkspace` disabled and requires a separately reviewed, backed-up remediation plan; this rollout does not rewrite or delete historic rows. Clients intentionally fail closed on a dashboard or playlist containing a noncanonical legacy ID, and no mutation is attempted.
+
+## Public Music canary and rollback gates
+
+Use only the structured `music-public-ops/v1` and
+`music-public-browser-ops/v1` streams. Group by the documented enum fields;
+never add a slug, Account/User identifier, capability, query, media URL,
+credential, IP address, user agent, or socket room as a label. Correlate one
+HTTP failure only with a validated `requestId`; it is a log field, never a
+metric label.
+
+Evaluate a minimum five-minute server window and ten-minute active-session
+polling window with `evaluateMusicPublicCanary`:
+
+- descriptor and resource p95 must each be below 500 ms;
+- public Music 5xx rate must remain below 2%;
+- listener disconnect must remain below 30 seconds;
+- notification-to-local-fanout p95 must remain below 2 seconds;
+- fallback polling must remain below 10% of active sessions.
+
+Any authorization leak, cross-owner event, or capability exposure is an
+immediate containment and rollback trigger. A performance threshold breach
+holds promotion and starts containment. Record the sanitized gate input,
+evaluator result, image digest, commit SHA, workflow URL, and operator approval.
+
+Operator query shape: filter exactly on `version`, then aggregate `event`,
+`operation`, `outcome`, `status`, `kind`, `role`, `reason`, `latencyMs`, `lagMs`,
+`retryDelayMs`, and `delayMs`. Reject a query definition that extracts another
+field. Alert separately on 5xx, parser rejection, reconnect/disconnect churn,
+listener fatal/reconnect, revocation enforcement, and fallback polling.
+
+Export those two structured versions as sanitized JSONL in timestamp order.
+Include active-session `started`/`stopped` and fallback-state `entered`/`exited`
+records from each browser collector's current process lifetime (to reconstruct
+the current numerator and denominator), plus HTTP/listener records from the last
+five minutes. Repeated fallback poll attempts do not affect the rate.
+Merge replica exports by concatenating the JSONL files; no identity join is
+needed or allowed. Run the executable gate from `tunes`:
+
+```text
+npm run music:public-canary -- ../.artifacts/music-public-canary.jsonl
+```
+
+Exit `0` means promote, `1` means contain/hold, and `2` means immediate rollback.
+Empty or incomplete windows fail closed with `"missing"` measurements.
+Each versioned backend `security` outcome (`authorization_leak`,
+`cross_owner_event`, or `capability_exposure`) causes exit `2` immediately and
+must contain no additional fields.

@@ -9,6 +9,7 @@ const expectedRuntimeTables = [
   "api_tokens",
   "email_logs",
   "email_templates",
+  "explorers_analytics_receipts",
   "guest_interactions",
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
@@ -462,14 +463,33 @@ export async function assertMusicRuntimeSetRoleBoundary(
   }
 }
 
+export interface MusicRuntimeProvisionOptions {
+  /** Optional provenance written atomically with the role, never after COMMIT. */
+  ownershipComment?: string;
+}
+
 export async function provisionMusicRuntimeLogin(
   ownerPool: Pick<Pool, "connect">,
   input: MusicRuntimeLoginInput,
+  options: MusicRuntimeProvisionOptions = {},
 ): Promise<void> {
   validateInput(input);
+  const ownershipComment = options.ownershipComment;
+  if (ownershipComment !== undefined && (typeof ownershipComment !== "string"
+      || !/^[A-Za-z0-9][A-Za-z0-9:._-]{0,255}$/.test(ownershipComment))) {
+    throw new Error("runtime database ownership comment is invalid");
+  }
   const client = await ownerPool.connect();
   try {
     await client.query("BEGIN");
+    if (ownershipComment !== undefined) {
+      const existing = (await client.query<{ ownership_comment: string | null }>(
+        "SELECT shobj_description(oid,'pg_authid') AS ownership_comment FROM pg_roles WHERE rolname=$1", [input.loginRole],
+      )).rows;
+      if (existing.length && (existing.length !== 1 || existing[0].ownership_comment !== ownershipComment)) {
+        throw new Error("runtime database ownership comment does not match");
+      }
+    }
     const existingMembers = await readMusicRuntimeIncomingMemberships(client, input.loginRole);
     if (!safeMusicRuntimeIncomingMemberships(existingMembers, input.loginRole, true)) {
       throw new Error("runtime capability role has unsafe reverse membership");
@@ -529,6 +549,11 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`GRANT SELECT,INSERT,UPDATE ON music_reactivation_tokens TO ${capabilityRole}`);
     await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION provision_music_runtime_login(name,text) FROM ${capabilityRole}`);
     await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ${publicPrincipal}`);
+    if (ownershipComment !== undefined) {
+      // The validated alphabet excludes quotes/backslashes and the identifier uses
+      // the existing quoting routine. Failure rolls back role creation and grants.
+      await client.query(`COMMENT ON ROLE ${login} IS '${ownershipComment}'`);
+    }
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);

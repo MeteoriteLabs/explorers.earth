@@ -3,6 +3,20 @@ import { createMusicWorkspaceClient } from "../musicWorkspaceClient";
 import { MusicClientError } from "../../../lib/localTunesApiClient";
 
 describe("canonical Music workspace client", () => {
+  it('reads only the parsed dashboard for publication hydration', async () => {
+    const dashboard = { queueRevision: 1, songs: [], playedSongs: [], currentlyPlaying: null, publication: { mode: 'private', publicSlug: 'public-slug' } };
+    const request = vi.fn(async () => new Response(JSON.stringify(dashboard)));
+    const client = createMusicWorkspaceClient(request);
+    expect(typeof client.loadDashboard).toBe('function');
+    await expect(client.loadDashboard()).resolves.toEqual(dashboard);
+    expect(request.mock.calls).toEqual([[{ method: 'GET', path: '/api/music/dashboard' }]]);
+  });
+  it('lightweight publication reads reject missing mode instead of defaulting Private', async () => {
+    const request = vi.fn(async () => new Response(JSON.stringify({ queueRevision: 1, songs: [], playedSongs: [], currentlyPlaying: null, publication: { publicSlug: 'public-slug' } })));
+    const client = createMusicWorkspaceClient(request);
+    expect(typeof client.loadDashboard).toBe('function');
+    await expect(client.loadDashboard()).rejects.toMatchObject({ status: 502, code: 'SERVICE_UNAVAILABLE' });
+  });
   it("uses only owner-derived canonical routes and exact DTO bodies", async () => {
     const playlistSong = { id: 9, playlistId: 7, youtubeId: "abcdefghijk", title: "Saved", artist: "Artist", thumbnailUrl: "https://img", position: 0, addedAt: "2026-08-25T10:00:00.000Z" };
     const playlist = { id: 7, userId: 11, name: "Road songs", description: null, isVisibleToGuests: false, createdAt: "2026-08-25T10:00:00.000Z", updatedAt: "2026-08-25T10:00:00.000Z", songs: [playlistSong] };

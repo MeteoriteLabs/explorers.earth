@@ -5,6 +5,7 @@ import { migrateMusicDatabase } from "../db/migrate";
 import { createGuestCapability, hashGuestCapability } from "../policies/musicSurfacePolicy";
 import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
+import { advancePublicMusicSnapshotRevision } from "../repositories/publicMusicRevision";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C6_POSTGRES_TEST === "1";
@@ -34,7 +35,46 @@ function identityInput(suffix: string): EnsureMusicIdentityInput {
   };
 }
 
+async function withReplicationTriggersDisabled(operation: (client: pg.PoolClient) => Promise<void>): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("SET session_replication_role=replica");
+    await operation(client);
+  } finally {
+    try {
+      await client.query("SET session_replication_role=origin");
+      client.release();
+    } catch (error) {
+      client.release(error as Error);
+      throw error;
+    }
+  }
+}
+
 describePg("C6 owner predicates on real PostgreSQL 15", () => {
+  it("releases exactly one public invalidation after commit and none after rollback", async () => {
+    // Break caught: route callbacks emit before commit, or a rolled-back mutation escapes to another replica.
+    const owner = await identities.ensureIdentity(identityInput("public-notify-commit"));
+    const listener = await pool.connect();
+    await listener.query("LISTEN music_public_change");
+    const messages: string[] = [];
+    listener.on("notification", ({ channel, payload }) => { if (channel === "music_public_change" && payload) messages.push(payload); });
+    const rollback = await pool.connect();
+    await rollback.query("BEGIN");
+    await advancePublicMusicSnapshotRevision(rollback, owner.id, "queue_changed");
+    await rollback.query("ROLLBACK");
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(messages).toEqual([]);
+
+    const commit = await pool.connect();
+    await commit.query("BEGIN");
+    await expect(advancePublicMusicSnapshotRevision(commit, owner.id, "playback_changed")).resolves.toBe(1);
+    await commit.query("COMMIT");
+    await expect.poll(() => messages.length).toBe(1);
+    expect(JSON.parse(messages[0])).toEqual({ musicUserId: owner.id, kind: "playback_changed", revision: 1 });
+    rollback.release(); commit.release();
+    await listener.query("UNLISTEN music_public_change"); listener.release();
+  });
   it("durably replays one saved-playlist song and rejects a changed replay", async () => {
     const owner = await identities.ensureIdentity(identityInput("playlist-song-replay"));
     const playlist = await domain.createPlaylist(owner.id, { name: "Durable songs", description: null }) as { id: number };
@@ -55,10 +95,12 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     const playlist = await domain.createPlaylist(owner.id, { name: "Append source", description: null }) as { id: number };
     const source = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: "appendclean", title: "Append", artist: "A", thumbnailUrl: "https://img/append" }) as { id: number };
     const beforeRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const beforePublicRevision = Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision);
     const beforeOperations = Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count);
 
     await expect(domain.appendQueue(owner.id, "pg-empty-append", beforeRevision, [])).resolves.toEqual({ status: "empty" });
     expect(Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision)).toBe(beforeRevision);
+    expect(Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision)).toBe(beforePublicRevision);
     expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count)).toBe(beforeOperations);
 
     await pool.query(`INSERT INTO music_owner_operations
@@ -100,7 +142,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     target.pathname = `/${databaseName}`;
     pool = new pg.Pool({ connectionString: target.toString(), max: 8 });
     await migrateMusicDatabase(pool);
-    domain = new MusicDomainRepository(pool);
+    domain = new MusicDomainRepository(pool, undefined, Buffer.alloc(32, 0x54));
     identities = new MusicIdentityRepository(pool);
   });
 
@@ -109,6 +151,154 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await admin?.end();
+  });
+
+  it("collapses concurrent public guest requests into one durable queue mutation and permits changed input after 24-hour expiry", async () => {
+    const owner = await identities.ensureIdentity(identityInput("guest-idempotency"));
+    await pool.query("UPDATE users SET guest_discoverable=true,allow_song_requests=true WHERE id=$1", [owner.id]);
+    const song = { youtubeId: "guestreq001", title: "Guest song", artist: "Guest", thumbnailUrl: "https://img/guest" };
+    const [left, right] = await Promise.all([
+      domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.1", "guest-request-concurrent", song),
+      domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.1", "guest-request-concurrent", song),
+    ]);
+    expect([left, right].filter((result) => result.status === "completed" && !result.replayed)).toHaveLength(1);
+    expect([left, right].filter((result) => result.status === "completed" && result.replayed)).toHaveLength(1);
+    expect(Number((await pool.query("SELECT count(*) FROM songs WHERE user_id=$1 AND youtube_id=$2", [owner.id, song.youtubeId])).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision)).toBe(1);
+    await expect(domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.2", "guest-request-concurrent", { ...song, title: "Changed" }))
+      .resolves.toEqual({ status: "conflict" });
+    await pool.query("UPDATE music_owner_operations SET created_at=transaction_timestamp()-interval '25 hours',expires_at=transaction_timestamp()-interval '1 hour' WHERE music_user_id=$1 AND operation LIKE 'guest.song.request:%'", [owner.id]);
+    await expect(domain.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.2", "guest-request-concurrent", { ...song, title: "Changed" }))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+    expect(Number((await pool.query("SELECT count(*) FROM songs WHERE user_id=$1 AND youtube_id=$2", [owner.id, song.youtubeId])).rows[0].count)).toBe(2);
+
+    const replica = new MusicDomainRepository(pool, undefined, Buffer.alloc(32, 0x54));
+    const source = "198.51.100.50";
+    const accepted = await Promise.all(Array.from({ length: 20 }, (_, index) => (index % 2 ? domain : replica)
+      .addGuestSongIdempotent("c6-public-guest-idempotency", undefined, source, `rate-key-${index}`, { ...song, youtubeId: `rate${String(index).padStart(7, "0")}` })));
+    expect(accepted.every((result) => result.status === "completed" && !result.replayed)).toBe(true);
+    await expect(replica.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, source, "rate-key-blocked", { ...song, youtubeId: "rateblocked" }))
+      .resolves.toEqual({ status: "rate_limited" });
+    await expect(replica.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, source, "rate-key-0", { ...song, youtubeId: "rate0000000" }))
+      .resolves.toMatchObject({ status: "completed", replayed: true });
+    await expect(replica.addGuestSongIdempotent("c6-public-guest-idempotency", undefined, "198.51.100.51", "rate-key-other-source", { ...song, youtubeId: "rateother01" }))
+      .resolves.toMatchObject({ status: "completed", replayed: false });
+  });
+
+  it.each(["replace", "append", "add"] as const)("serializes guest requests with owner %s mutations without deadlock", async (kind) => {
+    const owner = await identities.ensureIdentity(identityInput(`guest-owner-lock-${kind}`));
+    await pool.query("UPDATE users SET guest_discoverable=true,allow_song_requests=true WHERE id=$1", [owner.id]);
+    const playlist = await domain.createPlaylist(owner.id, { name: `Lock ${kind}`, description: null }) as { id: number };
+    const saved = await domain.addPlaylistSong(owner.id, playlist.id, { youtubeId: `saved${kind}01`.padEnd(11, "x").slice(0, 11), title: "Saved", artist: "Owner", thumbnailUrl: "https://img/saved" }) as { id: number };
+    const revision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const ownerMutation = kind === "replace"
+      ? domain.replaceQueue(owner.id, `owner-${kind}`, revision, [{ playlistId: playlist.id, songId: saved.id }])
+      : kind === "append"
+        ? domain.appendQueue(owner.id, `owner-${kind}`, revision, [{ playlistId: playlist.id, songId: saved.id }])
+        : domain.addSong(owner.id, { youtubeId: "owneradd001", title: "Owner", artist: "Owner", thumbnailUrl: "https://img/owner" });
+    const guestMutation = domain.addGuestSongIdempotent(`c6-public-guest-owner-lock-${kind}`, undefined, `198.51.100.${kind.length}`, `guest-lock-${kind}`, { youtubeId: `guest${kind}1`.padEnd(11, "x").slice(0, 11), title: "Guest", artist: "Guest", thumbnailUrl: "https://img/guest" });
+    const results = await Promise.race([
+      Promise.allSettled([ownerMutation, guestMutation]),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`guest/${kind} lock order timed out`)), 5_000)),
+    ]);
+    expect(results.every((result) => result.status === "fulfilled")).toBe(true);
+    expect((results[1] as PromiseFulfilledResult<Awaited<typeof guestMutation>>).value).toMatchObject({ status: "completed" });
+    expect(Number((await pool.query("SELECT count(*) FROM songs WHERE user_id=$1 AND status IN ('queued','playing')", [owner.id])).rows[0].count)).toBeGreaterThan(0);
+  });
+
+  it("advances one public snapshot revision per committed visible mutation and never for no-op, replay, stale, conflict, or lifecycle replay", async () => {
+    // Break caught: descriptor/resource/event cursors can advance independently or spend revisions on rejected commands.
+    const owner = await identities.ensureIdentity(identityInput("public-revision-oracle"));
+    const revision = async () => Number((await pool.query(
+      "SELECT public_snapshot_revision FROM users WHERE id=$1",
+      [owner.id],
+    )).rows[0].public_snapshot_revision);
+    expect(await revision()).toBe(0);
+
+    const playlist = await domain.createPlaylist(owner.id, { name: "Revision", description: null }) as { id: number };
+    expect(await revision()).toBe(1);
+    await domain.updatePlaylist(owner.id, playlist.id, { name: "Revision", description: null });
+    await domain.setPlaylistVisibility(owner.id, playlist.id, false);
+    expect(await revision()).toBe(1);
+    await domain.setPlaylistVisibility(owner.id, playlist.id, true);
+    expect(await revision()).toBe(2);
+
+    const savedInput = { youtubeId: "revision001", title: "Saved", artist: "Artist", thumbnailUrl: "https://img/revision" };
+    const saved = await domain.addPlaylistSongIdempotent(owner.id, "revision-saved", playlist.id, savedInput);
+    expect(saved).toMatchObject({ status: "completed", replayed: false });
+    expect(await revision()).toBe(3);
+    await expect(domain.addPlaylistSongIdempotent(owner.id, "revision-saved", playlist.id, savedInput))
+      .resolves.toMatchObject({ status: "completed", replayed: true });
+    await expect(domain.addPlaylistSongIdempotent(owner.id, "revision-saved", playlist.id, { ...savedInput, title: "Conflict" }))
+      .resolves.toEqual({ status: "conflict" });
+    expect(await revision()).toBe(3);
+
+    const queueSong = await domain.addSong(owner.id, {
+      youtubeId: "revision002", title: "Queue", artist: "Artist", thumbnailUrl: "https://img/queue",
+    }) as { id: number };
+    expect(await revision()).toBe(4);
+    await domain.setPlaying(owner.id, queueSong.id);
+    expect(await revision()).toBe(5);
+    await domain.setPlaying(owner.id, queueSong.id);
+    expect(await revision()).toBe(5);
+    const queueRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    await expect(domain.replaceQueue(owner.id, "revision-stale", queueRevision - 1, []))
+      .resolves.toEqual({ status: "stale", revision: queueRevision });
+    expect(await revision()).toBe(5);
+
+    const originalCapabilityHash = identityInput("public-revision-oracle").guestCapabilityHash;
+    await domain.setPublicationMode(owner.id, "unlisted", originalCapabilityHash);
+    expect(await revision()).toBe(5);
+    await domain.setPublicationMode(owner.id, "public");
+    expect(await revision()).toBe(6);
+    await domain.setPublicationMode(owner.id, "public");
+    expect(await revision()).toBe(6);
+    await expect(domain.resolvePublicDescriptor(owner.strapiAccountDocumentId)).resolves.toMatchObject({ revision: 6 });
+    await expect(domain.resolvePublicMusicResource("c6-public-public-revision-oracle")).resolves.toMatchObject({
+      resource: { version: "music-public-resource/v1", revision: 6 },
+    });
+
+    const suspend = {
+      strapiUserDocumentId: owner.strapiUserDocumentId,
+      operationId: "c6-public-revision-suspend",
+      kind: "suspend" as const,
+      targetStatus: "suspended" as const,
+    };
+    await identities.transitionIdentity(suspend);
+    expect(await revision()).toBe(7);
+    await identities.transitionIdentity(suspend);
+    expect(await revision()).toBe(7);
+  });
+
+  it("qualifies the bounded public history count and sort plan at 5,000 played rows", async () => {
+    const owner = await identities.ensureIdentity(identityInput("public-history-plan"));
+    await pool.query(`INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at)
+      SELECT $1,'perf'||lpad(series::text,7,'0'),'History '||series,'Artist','https://img/history',series,'played',
+             transaction_timestamp()-series*interval '1 second'
+        FROM generate_series(1,5000) series`, [owner.id]);
+
+    const explained = await pool.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON)
+      WITH total AS (
+        SELECT count(*)::integer AS total FROM songs WHERE user_id=$1 AND status='played'
+      ), bounded AS (
+        SELECT id,youtube_id,title,artist,thumbnail_url,position,status,played_at
+          FROM songs WHERE user_id=$1 AND status='played'
+         ORDER BY played_at DESC NULLS LAST,id DESC LIMIT 50
+      )
+      SELECT bounded.*,total.total FROM total LEFT JOIN bounded ON true
+       ORDER BY bounded.played_at DESC NULLS LAST,bounded.id DESC`, [owner.id]);
+    const document = explained.rows[0]["QUERY PLAN"][0] as { Plan: Record<string, unknown>; "Execution Time": number };
+    const nodes: Array<Record<string, unknown>> = [];
+    const visit = (node: Record<string, unknown>): void => {
+      nodes.push(node);
+      for (const child of (node.Plans ?? []) as Array<Record<string, unknown>>) visit(child);
+    };
+    visit(document.Plan);
+
+    expect(nodes.some((node) => node["Node Type"] === "Aggregate")).toBe(true);
+    expect(nodes.some((node) => node["Node Type"] === "Sort")).toBe(true);
+    expect(nodes.find((node) => node["Node Type"] === "Limit")?.["Actual Rows"]).toBe(50);
+    expect(document["Execution Time"]).toBeLessThan(1_000);
   });
 
   it("serializes concurrent duplicate queue replacements and durably replays the exact result", async () => {
@@ -184,6 +374,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     await domain.addSong(owner.id, { youtubeId: "original001", title: "Original", artist: "O", thumbnailUrl: "https://img/original" });
     const beforeQueue = (await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows;
     const beforeRevision = Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision);
+    const beforePublicRevision = Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision);
     const beforeOperations = Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count);
     await pool.query(`CREATE OR REPLACE FUNCTION fail_queue_replacement_insert() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN IF NEW.youtube_id='replace0001' THEN RAISE EXCEPTION 'injected queue replacement failure'; END IF; RETURN NEW; END $$`);
@@ -197,6 +388,7 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     }
     expect((await pool.query("SELECT youtube_id,position,status FROM songs WHERE user_id=$1 ORDER BY id", [owner.id])).rows).toEqual(beforeQueue);
     expect(Number((await pool.query("SELECT music_queue_revision FROM users WHERE id=$1", [owner.id])).rows[0].music_queue_revision)).toBe(beforeRevision);
+    expect(Number((await pool.query("SELECT public_snapshot_revision FROM users WHERE id=$1", [owner.id])).rows[0].public_snapshot_revision)).toBe(beforePublicRevision);
     expect(Number((await pool.query("SELECT count(*) FROM music_owner_operations WHERE music_user_id=$1", [owner.id])).rows[0].count)).toBe(beforeOperations);
   });
 
@@ -742,5 +934,98 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       expect.objectContaining({ guestUrl: "c6-public-sitemap-live", updatedAt: expect.any(Date) }),
       expect.objectContaining({ guestUrl: "c6-public-sitemap-revoked", updatedAt: expect.any(Date) }),
     ]);
+  });
+
+  it("resolves only one active discoverable public descriptor by stable Account document ID", async () => {
+    // Break caught: lifecycle, publication mode, tombstone, username, or User document ID can discover a public slug.
+    const suffixes = ["descriptor-public", "descriptor-private", "descriptor-unlisted", "descriptor-suspended", "descriptor-pending", "descriptor-tombstoned"];
+    const rows = new Map<string, Awaited<ReturnType<MusicIdentityRepository["ensureIdentity"]>>>();
+    for (const suffix of suffixes) rows.set(suffix, await identities.ensureIdentity(identityInput(suffix)));
+    await pool.query(
+      "UPDATE users SET guest_discoverable=true,public_snapshot_revision=7 WHERE id=ANY($1::integer[])",
+      [["descriptor-public", "descriptor-suspended", "descriptor-pending", "descriptor-tombstoned"].map((suffix) => rows.get(suffix)!.id)],
+    );
+    await domain.setPublicationMode(rows.get("descriptor-unlisted")!.id, "unlisted", hashGuestCapability("U".repeat(43)));
+    await identities.transitionIdentity({
+      strapiUserDocumentId: "c6-user-descriptor-suspended", operationId: "c6-descriptor-suspend",
+      kind: "suspend", targetStatus: "suspended",
+    });
+    await identities.transitionIdentity({
+      strapiUserDocumentId: "c6-user-descriptor-pending", operationId: "c6-descriptor-pending",
+      kind: "request_deletion", targetStatus: "pending_deletion",
+    });
+    await identities.tombstoneIdentity({
+      strapiUserDocumentId: "c6-user-descriptor-tombstoned",
+      strapiAccountDocumentId: "c6-account-descriptor-tombstoned",
+      reason: "descriptor qualification",
+      operationId: "c6-descriptor-tombstone",
+    });
+
+    await expect(domain.resolvePublicDescriptor("c6-account-descriptor-public"))
+      .resolves.toEqual({ mode: "public", publicSlug: "c6-public-descriptor-public", revision: 7 });
+    for (const accountDocumentId of [
+      "c6-account-descriptor-private",
+      "c6-account-descriptor-unlisted",
+      "c6-account-descriptor-suspended",
+      "c6-account-descriptor-pending",
+      "c6-account-descriptor-tombstoned",
+      "c6-account-descriptor-unknown",
+      "c6-user-descriptor-public",
+    ]) await expect(domain.resolvePublicDescriptor(accountDocumentId)).resolves.toBeUndefined();
+  });
+
+  it("fails closed only while another User document ID collides with a live public Account document ID", async () => {
+    // Break caught: cross-column namespace corruption turns stable Account discovery into ambiguous authority.
+    const target = await identities.ensureIdentity(identityInput("descriptor-cross-column-target"));
+    const collision = await identities.ensureIdentity(identityInput("descriptor-cross-column-holder"));
+    await pool.query("UPDATE users SET guest_discoverable=true,public_snapshot_revision=11 WHERE id=$1", [target.id]);
+    const expected = { mode: "public", publicSlug: "c6-public-descriptor-cross-column-target", revision: 11 };
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
+
+    await withReplicationTriggersDisabled(async (client) => {
+      await client.query("UPDATE users SET strapi_user_document_id=$1 WHERE id=$2", [target.strapiAccountDocumentId, collision.id]);
+    });
+    try {
+      await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toBeUndefined();
+    } finally {
+      await withReplicationTriggersDisabled(async (client) => {
+        await client.query("UPDATE users SET strapi_user_document_id=$1 WHERE id=$2", [collision.strapiUserDocumentId, collision.id]);
+      });
+    }
+
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
+  });
+
+  it("fails closed only while a tombstone collides with a live public Account document ID", async () => {
+    // Break caught: removing the tombstone anti-join would publish an otherwise valid but retired authority tuple.
+    const target = await identities.ensureIdentity(identityInput("descriptor-live-tombstone"));
+    await pool.query("UPDATE users SET guest_discoverable=true,public_snapshot_revision=13 WHERE id=$1", [target.id]);
+    const expected = { mode: "public", publicSlug: "c6-public-descriptor-live-tombstone", revision: 13 };
+    const operationId = "c6-descriptor-live-tombstone-fixture";
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
+
+    await withReplicationTriggersDisabled(async (client) => {
+      await client.query(`INSERT INTO music_identity_lifecycle_operations(
+        operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,
+        operation_kind,requested_identity_status,operation_state,operation_phase,result_session_version
+      ) VALUES ($1,$2,$3,$4,'delete','pending_deletion','completed','finalized',$5)`, [
+        operationId, target.strapiUserDocumentId, target.strapiAccountDocumentId, target.id, target.sessionVersion,
+      ]);
+      await client.query(`INSERT INTO music_identity_tombstones(
+        strapi_user_document_id,strapi_account_document_id,music_user_id,reason,lifecycle_operation_id
+      ) VALUES ($1,$2,$3,'descriptor defensive fixture',$4)`, [
+        target.strapiUserDocumentId, target.strapiAccountDocumentId, target.id, operationId,
+      ]);
+    });
+    try {
+      await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toBeUndefined();
+    } finally {
+      await withReplicationTriggersDisabled(async (client) => {
+        await client.query("DELETE FROM music_identity_tombstones WHERE lifecycle_operation_id=$1", [operationId]);
+        await client.query("DELETE FROM music_identity_lifecycle_operations WHERE operation_id=$1", [operationId]);
+      });
+    }
+
+    await expect(domain.resolvePublicDescriptor(target.strapiAccountDocumentId)).resolves.toEqual(expected);
   });
 });

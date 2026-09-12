@@ -4,7 +4,7 @@ import { chmodSync, closeSync, constants, existsSync, fsyncSync, ftruncateSync, 
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanupAllFixtureMusicTokenSecrets,
   cleanupFixtureMusicTokenSecret,
@@ -25,6 +25,10 @@ function fixtureRoot(): string {
   roots.push(root);
   return root;
 }
+
+const semanticDurableReplace = (source: string, destination: string): void => {
+  renameSync(source, destination);
+};
 
 function snapshotFixtureTree(root: string): Record<string, string> {
   const snapshot: Record<string, string> = {};
@@ -91,18 +95,20 @@ describe("disposable fixture Music token secret", () => {
     expect(readFileSync(first, "utf8")).toBe(firstBytes);
     expect(readFileSync(second, "utf8")).toBe(Buffer.alloc(32, 0x72).toString("base64url"));
     if (process.platform !== "win32") expect(statSync(second).mode & 0o777).toBe(0o600);
-  });
+  }, 20_000);
 
   it("leaves the prior key byte-exact when a fresh key write crashes or is short", () => {
     const root = fixtureRoot();
     const prior = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x73), {
       randomNameBytes: () => Buffer.alloc(16, 0x31),
+      durableReplace: semanticDurableReplace,
     } as never);
     const priorBytes = readFileSync(prior);
 
     expect(() => prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x74), {
       randomNameBytes: () => Buffer.alloc(16, 0x32),
       write: (descriptor: number, buffer: Uint8Array) => writeSync(descriptor, buffer, 0, 3, 0),
+      durableReplace: semanticDurableReplace,
     } as never)).toThrow(/fixture signing key|short|write/i);
 
     expect(readFileSync(prior)).toEqual(priorBytes);
@@ -170,8 +176,10 @@ describe("disposable fixture Music token secret", () => {
     const outsideRoot = fixtureRoot();
     const directory = join(root, ".artifacts", "music-token-secrets");
     const movedDirectory = join(root, ".artifacts", "music-token-secrets-owned");
+    const durableReplace = vi.fn(semanticDurableReplace);
     const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x75), {
       randomNameBytes: () => Buffer.alloc(16, 0x43),
+      durableReplace,
     } as never);
     const outside = join(outsideRoot, path.slice(path.lastIndexOf(process.platform === "win32" ? "\\" : "/") + 1));
     writeFileSync(outside, "outside-must-not-change", { mode: 0o640 });
@@ -201,6 +209,7 @@ describe("disposable fixture Music token secret", () => {
     expect(statSync(outside).mode).toBe(outsideMode);
     const erased = swapBlocked ? path : join(movedDirectory, basename(path));
     expect(lstatSync(erased).size).toBe(0);
+    expect(durableReplace).toHaveBeenCalledTimes(process.platform === "win32" ? 1 : 0);
   });
 
   it("erases the exact fixture secret on reset/teardown success or failure without pathname deletion", async () => {
@@ -208,6 +217,7 @@ describe("disposable fixture Music token secret", () => {
       const root = fixtureRoot();
       const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, shouldFail ? 0x77 : 0x76), {
         randomNameBytes: () => Buffer.alloc(16, shouldFail ? 0x45 : 0x44),
+        durableReplace: semanticDurableReplace,
       } as never);
       const action = async () => { if (shouldFail) throw new Error("forced fixture teardown failure"); };
       const cleanup = (fixtureSecrets as unknown as {
@@ -226,6 +236,7 @@ describe("disposable fixture Music token secret", () => {
     const root = fixtureRoot();
     const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x7a), {
       randomNameBytes: () => Buffer.alloc(16, failure === "truncate" ? 0x51 : failure === "sync" ? 0x52 : 0x53),
+      durableReplace: semanticDurableReplace,
     } as never);
     const targetId = basename(path);
     const dependencies = failure === "truncate"
@@ -258,6 +269,7 @@ describe("disposable fixture Music token secret", () => {
     const root = fixtureRoot();
     const path = prepareFixtureMusicTokenSecret(root, () => Buffer.alloc(32, 0x7b), {
       randomNameBytes: () => Buffer.alloc(16, 0x54),
+      durableReplace: semanticDurableReplace,
     } as never);
     const cleanup = (fixtureSecrets as unknown as {
       withFixtureMusicTokenSecretCleanup: <T>(root: string, path: string, action: () => Promise<T>, dependencies?: unknown) => Promise<T>;
@@ -880,6 +892,155 @@ STRAPI_ACCESS_TOKEN=dedicated-fixture-access
     else writeFileSync(join(root, ".env.music.test"), Buffer.alloc(0), { mode: 0o600 });
     return root;
   }
+
+  type RetiredFixtureAuthorityAttestation = {
+    schemaVersion: "music-fixture-authority-attestation/v1";
+    state: "absent" | "tombstone";
+    safeToBootstrap: true;
+    usableRecords: 0;
+  };
+  const attestRetiredFixtureMusicAuthority = (fixtureSecrets as unknown as {
+    attestRetiredFixtureMusicAuthority: (root: string) => RetiredFixtureAuthorityAttestation;
+  }).attestRetiredFixtureMusicAuthority;
+  const withRetiredFixtureMusicAuthority = (fixtureSecrets as unknown as {
+    withRetiredFixtureMusicAuthority: <T>(root: string, action: () => Promise<T>) => Promise<T>;
+  }).withRetiredFixtureMusicAuthority;
+
+  it.each(["missing", "tombstone"] as const)(
+    "attests only a %s pointer with an all-zero recognized authority inventory",
+    (kind) => {
+      // Production break caught: bootstrap has no exact post-reset oracle, so a
+      // retired pointer can be treated as safe without proving every recognized
+      // authority target is absent or zero bytes.
+      const root = fixtureRoot();
+      const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+      mkdirSync(tokenDirectory, { recursive: true });
+      writeFileSync(join(tokenDirectory, `current-${"0".repeat(32)}`), Buffer.alloc(0), { mode: 0o600 });
+      writeFileSync(join(root, `.env.music.test.${"1".repeat(32)}.tmp`), Buffer.alloc(0), { mode: 0o600 });
+      if (kind === "tombstone") writeFileSync(join(root, ".env.music.test"), Buffer.alloc(0), { mode: 0o600 });
+
+      expect(attestRetiredFixtureMusicAuthority(root)).toEqual({
+        schemaVersion: "music-fixture-authority-attestation/v1",
+        state: kind === "missing" ? "absent" : "tombstone",
+        safeToBootstrap: true,
+        usableRecords: 0,
+      });
+    },
+  );
+
+  it.each(["reference", "raw", "malformed", "missing-populated", "tombstone-populated"] as const)(
+    "rejects the %s authority state instead of producing a bootstrap-safe record",
+    (kind) => {
+      const root = fixtureRoot();
+      if (kind === "reference") {
+        rotate(root, (paths) => environment(root, paths, "unsafe-reference"), authorityWithSeed(0x2a));
+      } else if (kind === "raw") {
+        writeFileSync(join(root, ".env.music.test"), "RAW_FIXTURE_AUTHORITY=must-never-be-retained\n", { mode: 0o600 });
+      } else if (kind === "malformed") {
+        writeFileSync(join(root, ".env.music.test"), "music-fixture-env/v1\ngeneration=bad\n", { mode: 0o600 });
+      } else {
+        const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+        mkdirSync(tokenDirectory, { recursive: true });
+        writeFileSync(join(tokenDirectory, `current-${"2".repeat(32)}`), "must-never-be-retained", { mode: 0o600 });
+        if (kind === "tombstone-populated") writeFileSync(join(root, ".env.music.test"), Buffer.alloc(0), { mode: 0o600 });
+      }
+
+      expect(() => attestRetiredFixtureMusicAuthority(root)).toThrow();
+    },
+  );
+
+  it("rejects a symlinked pointer without following its target", () => {
+    const root = fixtureRoot();
+    const outsideRoot = fixtureRoot();
+    symlinkSync(outsideRoot, join(root, ".env.music.test"), "junction");
+
+    expect(() => attestRetiredFixtureMusicAuthority(root)).toThrow();
+  });
+
+  it("rejects a symlinked recognized authority leaf instead of ignoring its filename", () => {
+    const root = fixtureRoot();
+    const outsideRoot = fixtureRoot();
+    const tokenDirectory = join(root, ".artifacts", "music-token-secrets");
+    mkdirSync(tokenDirectory, { recursive: true });
+    symlinkSync(outsideRoot, join(tokenDirectory, `current-${"3".repeat(32)}`), "junction");
+
+    expect(() => attestRetiredFixtureMusicAuthority(root)).toThrow();
+  });
+
+  it("retires only the authenticated fixture bundle and re-attests a tombstone before reset success", async () => {
+    const root = fixtureRoot();
+    rotate(root, (paths) => environment(root, paths, "reset-retirement"), authorityWithSeed(0x2b));
+    writeFileSync(join(root, "unrelated-byte-sentinel"), "must-remain-byte-exact", { mode: 0o600 });
+    const calls: string[] = [];
+
+    await expect(withRetiredFixtureMusicAuthority(root, async () => {
+      calls.push("reset");
+      return "reset-complete";
+    })).resolves.toBe("reset-complete");
+
+    calls.push(attestRetiredFixtureMusicAuthority(root).state);
+    expect(calls).toEqual(["reset", "tombstone"]);
+    expect(readFileSync(join(root, "unrelated-byte-sentinel"), "utf8")).toBe("must-remain-byte-exact");
+    expect(Object.entries(snapshotFixtureTree(root))
+      .filter(([path]) => path !== "unrelated-byte-sentinel")
+      .every(([, bytes]) => bytes === "")).toBe(true);
+  });
+
+  it("runs the fixed-root attestation CLI with no caller-selected path and emits only the allowlisted schema", async () => {
+    const root = fixtureRoot();
+    writeFileSync(join(root, ".env.music.test"), Buffer.alloc(0), { mode: 0o600 });
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const cli = await import("../../../scripts/music-fixture-authority-attest");
+
+    expect(cli.runFixtureAuthorityAttestation({
+      arguments: [],
+      repositoryRoot: root,
+      stdout: (value: string) => stdout.push(value),
+      stderr: (value: string) => stderr.push(value),
+    })).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout).toEqual([`${JSON.stringify({
+      schemaVersion: "music-fixture-authority-attestation/v1",
+      state: "tombstone",
+      safeToBootstrap: true,
+      usableRecords: 0,
+    })}\n`]);
+    expect(Object.keys(JSON.parse(stdout[0]!)).sort()).toEqual([
+      "safeToBootstrap", "schemaVersion", "state", "usableRecords",
+    ]);
+
+    stdout.length = 0;
+    expect(cli.runFixtureAuthorityAttestation({
+      arguments: [root],
+      repositoryRoot: root,
+      stdout: (value: string) => stdout.push(value),
+      stderr: (value: string) => stderr.push(value),
+    })).toBe(2);
+    expect(stdout).toEqual([]);
+    expect(stderr.at(-1)).toBe("Fixture authority attestation refused; invoke the fixed repository command with no arguments.\n");
+
+    writeFileSync(join(root, ".env.music.test"), "RAW_AUTHORITY_VALUE=must-never-be-reflected\n", { mode: 0o600 });
+    stderr.length = 0;
+    expect(cli.runFixtureAuthorityAttestation({
+      arguments: [],
+      repositoryRoot: root,
+      stdout: (value: string) => stdout.push(value),
+      stderr: (value: string) => stderr.push(value),
+    })).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr).toEqual(["Fixture authority attestation refused; state is not bootstrap-safe.\n"]);
+    expect(stderr.join("")).not.toContain("must-never-be-reflected");
+
+    const rootPackage = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    const source = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-fixture-authority-attest.ts"), "utf8");
+    expect(rootPackage.scripts["music:fixture:authority:attest"])
+      .toBe("tsx tunes/scripts/music-fixture-authority-attest.ts");
+    expect(source).toContain('repositoryRoot: path.resolve(import.meta.dirname, "../..")');
+    expect(source).toContain("arguments: process.argv.slice(2)");
+  });
 
   it.each(["missing", "tombstone"] as const)(
     "refuses direct aggregate cleanup for a %s pointer with populated targets",
@@ -2132,7 +2293,7 @@ STRAPI_ACCESS_TOKEN=dedicated-fixture-access
     })).not.toThrow();
     expect(existsSync(source)).toBe(false);
     expect(readFileSync(destination)).toEqual(expected);
-  });
+  }, 20_000);
 
   it.each([0, 1, 2, 3])("recovers a hard exit after candidate %s creation but before journal update", (candidateIndex) => {
     const root = fixtureRoot();

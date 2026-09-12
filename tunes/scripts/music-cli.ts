@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statfsSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statfsSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, win32 as windowsPath } from "node:path";
@@ -15,6 +15,8 @@ import { MUSIC_COMPOSE_PROJECT, validateComposeModel, validateOwnedResources, ty
 import { OwnedProcessRunner } from "./music-process-runner.ts";
 import { EXPECTED_MUSIC_MIGRATION_ID } from "../shared/music-migration-contract.ts";
 import {
+  attestRetiredFixtureMusicAuthority,
+  cleanupAllFixtureMusicTokenSecrets,
   FixtureSecretCleanupError,
   FixtureUnsupportedLegacyEnvironmentError,
   inspectFixtureEnvironmentAuthority,
@@ -28,12 +30,11 @@ import {
   type SecureMusicSecretAuthorityEvidence,
 } from "../server/config/secure-music-secret-file.ts";
 import {
-  attachMusicQualificationMeasurements,
+  finalizeMusicQualificationReport,
   preferredQualificationPort,
   qualificationTelemetryIsBounded,
   qualificationReportMatchesAuthority,
   qualificationTaskEnvironment,
-  qualificationTaskOutputFailure,
   qualificationTaskUsesFixtureEnvironment,
   qualificationTaskUsesStandalonePostgres,
   runMusicQualificationLane,
@@ -42,9 +43,12 @@ import {
   type MusicQualificationLoadMeasurement,
   type MusicQualificationMeasurements,
   type MusicQualificationOperationalMeasurement,
+  type MusicQualificationReport,
   type MusicQualificationTask,
   type MusicQualificationTaskEvidence,
+  type QualificationOutcome,
 } from "./music-qualification.ts";
+import { parseFinalizedVitestEvidence, parseUatVitestEvidenceFromOutput, requireExactFileManifest } from "./music-vitest-evidence.ts";
 import {
   attestC10StandalonePostgresAuthority,
   parseC10StandalonePostgresAuthority,
@@ -53,6 +57,18 @@ import {
   type OwnedC10StandalonePostgresAuthority,
 } from "./music-qualification-postgres.ts";
 import { requireNativeMusicReleaseLauncher } from "./music-release-channel.mjs";
+import {
+  isSensitiveMusicAuthorityKey,
+  musicSensitiveEnvironmentValues,
+  redactStructuredData,
+  sanitizeMusicCliText,
+} from "./music-output-redaction.ts";
+export {
+  isSensitiveMusicAuthorityKey,
+  musicSensitiveEnvironmentValues,
+  redactStructuredData,
+  sanitizeMusicCliText,
+} from "./music-output-redaction.ts";
 
 export const MUSIC_CLI_SCHEMA_VERSION = "music-cli/v1";
 export const FIXTURE_SCHEMA_VERSION = "strapi-identity-fixture/v1";
@@ -138,7 +154,7 @@ export function validateStrapiFixture(fixture: StrapiIdentityFixture, options: {
 type OutputFormat = "human" | "json";
 type Mode = "fixture" | "live";
 export interface ParsedArgs { command: string; mode: Mode; format: OutputFormat; detach: boolean; wait: boolean; volumes: boolean; confirmProject?: string; confirmReset?: string; target?: string; resume?: string; checkpoint?: string; reconciliationMode: "dry-run" | "apply"; approvalToken?: string; }
-interface RunResult { status: "success" | "failure" | "blocked"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; suppressEvidence?: boolean; }
+interface RunResult { status: "success" | "failure" | "blocked" | "not-run"; phase: string; exitCode: number; artifacts?: string[]; checkpoint?: string; error?: string; details?: unknown; summary?: string; suppressEvidence?: boolean; }
 export interface RunContext { commit: string; fixtureVersion: string; fixtureSchemaVersion: string; gateValues: Record<string, string>; environmentFingerprint: string; }
 
 const root = resolve(import.meta.dirname, "../..");
@@ -162,6 +178,28 @@ export interface RetainedFixtureVolumeInspection {
   Labels?: Record<string, string>;
 }
 
+export interface VolumeOnlyFixtureResetDependencies {
+  listContainerIds: () => Promise<readonly string[]>;
+  listLabeledVolumeNames: () => Promise<readonly string[]>;
+  inspectVolume: (name: string) => Promise<readonly RetainedFixtureVolumeInspection[]>;
+  removeVolumes: (names: readonly string[]) => Promise<string>;
+}
+
+export interface VolumeOnlyFixtureDockerCommandResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  artifact?: string;
+}
+
+interface VolumeOnlyFixtureResetSnapshot {
+  volumes: Array<{
+    logicalName: typeof retainedFixtureVolumes[number];
+    name: string;
+    fingerprint: string;
+  }>;
+}
+
 export function validateRetainedFixtureVolume(
   inspection: RetainedFixtureVolumeInspection,
   logicalName: typeof retainedFixtureVolumes[number],
@@ -179,14 +217,121 @@ export function validateRetainedFixtureVolume(
   }
 }
 
-function sameRetainedFixtureVolume(
-  left: RetainedFixtureVolumeInspection,
-  right: RetainedFixtureVolumeInspection,
+function retainedFixtureVolumeName(logicalName: typeof retainedFixtureVolumes[number]): string {
+  return `${MUSIC_COMPOSE_PROJECT}_${logicalName}`;
+}
+
+function retainedFixtureVolumeFingerprint(inspection: RetainedFixtureVolumeInspection): string {
+  return JSON.stringify({
+    Name: inspection.Name,
+    CreatedAt: inspection.CreatedAt,
+    Mountpoint: inspection.Mountpoint,
+    Labels: Object.fromEntries(Object.entries(inspection.Labels ?? {}).sort(([left], [right]) => left.localeCompare(right))),
+  });
+}
+
+function sameVolumeOnlyFixtureResetSnapshot(
+  left: VolumeOnlyFixtureResetSnapshot,
+  right: VolumeOnlyFixtureResetSnapshot,
 ): boolean {
-  return left.Name === right.Name
-    && left.CreatedAt === right.CreatedAt
-    && left.Mountpoint === right.Mountpoint
-    && JSON.stringify(left.Labels ?? {}) === JSON.stringify(right.Labels ?? {});
+  return left.volumes.length === right.volumes.length
+    && left.volumes.every((volume, index) => {
+      const other = right.volumes[index];
+      return other?.logicalName === volume.logicalName
+        && other.name === volume.name
+        && other.fingerprint === volume.fingerprint;
+    });
+}
+
+async function captureVolumeOnlyFixtureResetSnapshot(
+  dependencies: VolumeOnlyFixtureResetDependencies,
+): Promise<VolumeOnlyFixtureResetSnapshot> {
+  const containers = Array.from(await dependencies.listContainerIds());
+  if (containers.some((value) => typeof value !== "string" || !value.trim())) {
+    throw new SafetyError("volume-only fixture container inventory is malformed", "cleanup-safety");
+  }
+  if (containers.length) throw new SafetyError("volume-only fixture reset requires zero owned fixture containers", "cleanup-safety");
+
+  const names = Array.from(await dependencies.listLabeledVolumeNames());
+  if (names.some((value) => typeof value !== "string" || !value.trim()) || new Set(names).size !== names.length) {
+    throw new SafetyError("labeled fixture volume inventory is malformed or ambiguous", "cleanup-safety");
+  }
+  const allowedNames = new Set(retainedFixtureVolumes.map(retainedFixtureVolumeName));
+  if (names.some((name) => !allowedNames.has(name))) {
+    throw new SafetyError("labeled fixture volume inventory contains an unallowlisted target", "cleanup-safety");
+  }
+  if (!names.includes(retainedFixtureVolumeName("music-fixture-postgres"))) {
+    throw new SafetyError("no retained fixture database volume was found; reset refused", "cleanup-safety");
+  }
+
+  const listedNames = new Set(names);
+  const volumes: VolumeOnlyFixtureResetSnapshot["volumes"] = [];
+  for (const logicalName of retainedFixtureVolumes) {
+    const expectedName = retainedFixtureVolumeName(logicalName);
+    const inspections = Array.from(await dependencies.inspectVolume(expectedName));
+    if (inspections.length > 1) {
+      throw new SafetyError(`retained fixture volume ${expectedName} inspection was ambiguous`, "cleanup-safety");
+    }
+    if (!listedNames.has(expectedName)) {
+      if (inspections.length) {
+        validateRetainedFixtureVolume(inspections[0]!, logicalName);
+        throw new SafetyError(`retained fixture volume ${expectedName} escaped the exact labeled inventory`, "cleanup-safety");
+      }
+      continue;
+    }
+    if (inspections.length !== 1) {
+      throw new SafetyError(`retained fixture volume ${expectedName} changed during authorization`, "cleanup-safety");
+    }
+    validateRetainedFixtureVolume(inspections[0]!, logicalName);
+    volumes.push({
+      logicalName,
+      name: expectedName,
+      fingerprint: retainedFixtureVolumeFingerprint(inspections[0]!),
+    });
+  }
+  if (volumes.length !== names.length) {
+    throw new SafetyError("labeled fixture volume inventory is incomplete or ambiguous", "cleanup-safety");
+  }
+  return { volumes };
+}
+
+async function proveVolumeOnlyFixtureResetAbsent(
+  dependencies: VolumeOnlyFixtureResetDependencies,
+): Promise<void> {
+  const containers = Array.from(await dependencies.listContainerIds());
+  const names = Array.from(await dependencies.listLabeledVolumeNames());
+  const inspections = await Promise.all(retainedFixtureVolumes.map(async (logicalName) =>
+    Array.from(await dependencies.inspectVolume(retainedFixtureVolumeName(logicalName)))));
+  if (containers.length || names.length || inspections.some((entries) => entries.length)) {
+    throw new SafetyError("volume-only fixture reset absence proof failed; owned resources remain", "cleanup-safety");
+  }
+}
+
+export async function resetVolumeOnlyFixtureVolumes(
+  repositoryRoot: string,
+  dependencies: VolumeOnlyFixtureResetDependencies,
+): Promise<{
+  removalArtifact: string;
+  attestation: ReturnType<typeof attestRetiredFixtureMusicAuthority>;
+}> {
+  const first = await captureVolumeOnlyFixtureResetSnapshot(dependencies);
+  const authorized = await captureVolumeOnlyFixtureResetSnapshot(dependencies);
+  if (!sameVolumeOnlyFixtureResetSnapshot(first, authorized)) {
+    throw new SafetyError("retained fixture volume authority changed during preauthorization", "cleanup-safety");
+  }
+
+  cleanupAllFixtureMusicTokenSecrets(repositoryRoot);
+  attestRetiredFixtureMusicAuthority(repositoryRoot);
+
+  const contained = await captureVolumeOnlyFixtureResetSnapshot(dependencies);
+  if (!sameVolumeOnlyFixtureResetSnapshot(authorized, contained)) {
+    throw new SafetyError("retained fixture volume authority changed after authority containment", "cleanup-safety");
+  }
+
+  const removalArtifact = await dependencies.removeVolumes(contained.volumes.map(({ name }) => name));
+  await proveVolumeOnlyFixtureResetAbsent(dependencies);
+  const attestation = attestRetiredFixtureMusicAuthority(repositoryRoot);
+  return { removalArtifact, attestation };
 }
 const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS = [
   "MUSIC_C10_STANDALONE_POSTGRES_ACK",
@@ -197,6 +342,40 @@ const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS = [
 const C10_STANDALONE_POSTGRES_ENVIRONMENT_KEY_SET = new Set<string>(
   C10_STANDALONE_POSTGRES_ENVIRONMENT_KEYS,
 );
+
+const DEFAULT_TEST_CHILD_KEYS = new Set([
+  "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "TMPDIR",
+  "HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "LANG", "LC_ALL", "TZ", "CI",
+  "NPM_EXECPATH", "NPM_NODE_EXECPATH", "NPM_CONFIG_CACHE",
+]);
+export function defaultMusicTestChildEnvironment(ambient: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const child: NodeJS.ProcessEnv = {}, seen = new Set<string>();
+  for (const [key, value] of Object.entries(ambient)) {
+    const normalized = key.toUpperCase();
+    if (!DEFAULT_TEST_CHILD_KEYS.has(normalized) || value === undefined) continue;
+    if (seen.has(normalized)) throw new Error("duplicate case-insensitive child environment key");
+    seen.add(normalized); child[key] = value;
+  }
+  return child;
+}
+
+export function buildQualificationChildEnvironment(input: {
+  authority: "default" | "real-tool" | "c10-postgres" | "uat-postgres";
+  ambient: NodeJS.ProcessEnv;
+  ownedDatabase?: Record<string, string>;
+}): NodeJS.ProcessEnv {
+  const child = defaultMusicTestChildEnvironment(input.ambient);
+  const emptyConfiguration = process.platform === "win32" ? "NUL" : "/dev/null";
+  child.NPM_CONFIG_USERCONFIG = emptyConfiguration;
+  child.NPM_CONFIG_GLOBALCONFIG = emptyConfiguration;
+  if (input.authority === "c10-postgres") {
+    if (!input.ownedDatabase) throw new Error("owned C10 database environment required");
+    Object.assign(child, input.ownedDatabase);
+  } else if (input.ownedDatabase) {
+    throw new Error("foreign database authority");
+  }
+  return child;
+}
 
 export function qualificationChildAmbientEnvironment(
   taskId: string,
@@ -282,64 +461,7 @@ export function parseMusicCliArguments(args: string[]): ParsedArgs {
 
 const parseArgs = parseMusicCliArguments;
 
-export function sanitizeMusicCliText(value: string, exactSensitiveValues: readonly string[] = []): string {
-  const exactRedacted = Array.from(new Set(exactSensitiveValues.filter((candidate) => candidate.length >= 8)))
-    .sort((left, right) => right.length - left.length)
-    .reduce((output, candidate) => output.split(candidate).join("[REDACTED]"), value);
-  const redactAssignment = (match: string, key: string): string => isSensitiveMusicAuthorityKey(key)
-    ? `${key}=[REDACTED]`
-    : match;
-  const redactArgument = (match: string, flag: string): string => isSensitiveMusicAuthorityKey(flag.replace(/^-+/, ""))
-    ? `${flag} [REDACTED]`
-    : match;
-  return exactRedacted
-    .split(root).join("<repository-root>")
-    .split(root.replaceAll("\\", "/")).join("<repository-root>")
-    .replace(/[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\\/\s"',}]+/gi, "<developer-home>")
-    .replace(/\/(?:home|Users)\/[^/\s"',}]+/g, "<developer-home>")
-    .replace(/(postgres(?:ql)?:\/\/)[^:@/\s]+:[^@/\s]+@/gi, "$1[REDACTED]@")
-    .replace(/\b([A-Za-z][A-Za-z0-9_-]*)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/g, redactAssignment)
-    .replace(/\b([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/g, redactAssignment)
-    .replace(/(--?[A-Za-z][A-Za-z0-9_-]*)\s+(?:"[^"]*"|'[^']*'|[^\s,\]}]+)/g, redactArgument)
-    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [REDACTED]");
-}
 const sanitize = sanitizeMusicCliText;
-export function isSensitiveMusicAuthorityKey(key: string): boolean {
-  const segments = key
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  return segments.some((segment) => [
-    "password", "passwords", "secret", "secrets", "token", "tokens", "authorization",
-    "credential", "credentials", "private", "signing", "encryption", "key", "keys",
-  ].includes(segment));
-}
-export function musicSensitiveEnvironmentValues(environment: Record<string, string>): string[] {
-  return Object.entries(environment)
-    .filter(([key, value]) => isSensitiveMusicAuthorityKey(key) && value.length >= 8)
-    .map(([, value]) => value);
-}
-export function redactStructuredData(value: unknown, exactSensitiveValues: readonly string[] = []): unknown {
-  if (Array.isArray(value)) return value.map((entry) => redactStructuredData(entry, exactSensitiveValues));
-  if (value && typeof value === "object") return Object.fromEntries(
-    Object.entries(value).map(([key, nested]) => {
-      const safeNumericTelemetry = [
-        "invalidTokensRejected", "distinctMetricKeySets", "maxMetricKeys", "forbiddenMetricKeys",
-      ].includes(key) && typeof nested === "number" && Number.isFinite(nested) && nested >= 0;
-      const safeMetricKeySet = key === "metricKeySet"
-        && nested === "cache,circuit,conflict,latencyMs,outcome,retryCount,singleFlight,upstreamCallCount";
-      return [
-        key,
-        isSensitiveMusicAuthorityKey(key) && !safeNumericTelemetry && !safeMetricKeySet
-          ? "[REDACTED]"
-          : redactStructuredData(nested, exactSensitiveValues),
-      ];
-    }),
-  );
-  return typeof value === "string" ? sanitizeMusicCliText(value, exactSensitiveValues) : value;
-}
 function sanitizeStructuredOutput(value: string, exactSensitiveValues: readonly string[] = []): string {
   try { return sanitizeMusicCliText(JSON.stringify(redactStructuredData(JSON.parse(value), exactSensitiveValues)), exactSensitiveValues); }
   catch { return sanitizeMusicCliText(value, exactSensitiveValues); }
@@ -357,7 +479,12 @@ export function sanitizeMusicChildArtifactOutput(
 }
 function redactedError(value: unknown): string { return sanitize(value instanceof Error ? value.message : String(value)); }
 function runId(): string { return `${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomBytes(4).toString("hex")}`; }
-function runDirectory(id: string): string { const directory = join(artifactRoot, id); mkdirSync(directory, { recursive: true }); return directory; }
+function runDirectory(id: string): string {
+  const directory = join(artifactRoot, id);
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") chmodSync(directory, 0o700);
+  return directory;
+}
 function currentSensitiveValues(): string[] {
   return musicSensitiveEnvironmentValues(activeFixtureEnvironment);
 }
@@ -895,7 +1022,10 @@ function executable(command: "npm" | "docker" | "node"): { file: string; args: s
 
 async function runChild(id: string, command: "npm" | "docker" | "node", args: string[], phase: string, failureExitCode: number): Promise<{ stdout: string; stderr: string; artifact: string }> {
   const resolved = executable(command);
-  const result = await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: { ...process.env, ...activeFixtureEnvironment } });
+  const result = await runner.run(resolved.file, [...resolved.args, ...args], {
+    cwd: root,
+    env: phase === "all-tests" ? defaultMusicTestChildEnvironment(process.env) : { ...process.env, ...activeFixtureEnvironment },
+  });
   let sensitiveValues = currentSensitiveValues();
   try { sensitiveValues = await qualificationSensitiveValues(activeFixtureEnvironment); } catch { /* bounded fallback */ }
   const artifact = writeArtifact(id, `child-${String(++childSequence).padStart(3, "0")}-${phase}.log`, `$ ${command} ${sanitizeMusicCliText(args.join(" "), sensitiveValues)}\nexit=${result.exitCode}\nstdout:\n${sanitizeMusicChildArtifactOutput(command, phase, result.stdout, sensitiveValues)}\nstderr:\n${sanitizeStructuredOutput(result.stderr, sensitiveValues)}`);
@@ -910,6 +1040,9 @@ async function runQualificationTask(
   remainingBudgetMs: number,
 ): Promise<MusicQualificationExecutionResult> {
   const started = Date.now();
+  const commitBefore = readGitSha();
+  const cleanBefore = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8", windowsHide: true }).trim() === "";
+  const rootLockSha256 = createHash("sha256").update(readFileSync(join(root, "package-lock.json"))).digest("hex");
   const taskRunner = new OwnedProcessRunner();
   qualificationRunners.add(taskRunner);
   const resolved = task.nativeReleaseMode
@@ -918,7 +1051,17 @@ async function runQualificationTask(
   const taskEnvironment = qualificationTaskEnvironment(task.id);
   let playwrightPort: number | undefined;
   let timedOut = remainingBudgetMs <= 0;
-  let result = { exitCode: 124, stdout: "", stderr: "qualification wall-clock budget exhausted" };
+  let childStarted = false;
+  let result: { exitCode: number; signal: NodeJS.Signals | null; stdout: string; stderr: string } = { exitCode: 124, signal: null, stdout: "", stderr: "qualification wall-clock budget exhausted" };
+  const rawEvidenceDirectory = task.testEvidenceSource
+    ? mkdtempSync(join(tmpdir(), "explorers-music-evidence-"))
+    : undefined;
+  if (rawEvidenceDirectory && process.platform !== "win32") chmodSync(rawEvidenceDirectory, 0o700);
+  const rawEvidencePath = rawEvidenceDirectory ? join(rawEvidenceDirectory, "result.json") : undefined;
+  let capturedVitestRaw: string | undefined;
+  if (rawEvidencePath && task.testEvidenceSource?.kind === "vitest-json") {
+    writeFileSync(rawEvidencePath, "", { flag: "wx", mode: 0o600 });
+  }
   let sensitiveValues = Object.entries(activeFixtureEnvironment)
     .filter(([key, value]) => /(?:password|secret|token|authorization|credential|database_url)/i.test(key) && value.length >= 8)
     .map(([, value]) => value);
@@ -929,12 +1072,12 @@ async function runQualificationTask(
       let databaseUrlTest = taskEnvironment.MUSIC_C3_POSTGRES_TEST === "1"
         ? await fixtureMigratorUrl(activeFixtureEnvironment)
         : undefined;
-      const childAmbientEnvironment = qualificationChildAmbientEnvironment(task.id, {
+      const legacyChildEnvironment = qualificationChildAmbientEnvironment(task.id, {
         ...process.env,
         ...activeStandalonePostgresEnvironment,
       });
       const standalonePostgres = databaseUrlTest && qualificationTaskUsesStandalonePostgres(task.id)
-        ? attestC10StandalonePostgresAuthority(childAmbientEnvironment, readGitSha())
+        ? attestC10StandalonePostgresAuthority(activeStandalonePostgresEnvironment, readGitSha())
         : undefined;
       if (databaseUrlTest && standalonePostgres) {
         const standaloneDatabase = new URL(databaseUrlTest);
@@ -942,6 +1085,21 @@ async function runQualificationTask(
         standaloneDatabase.port = String(standalonePostgres.port);
         databaseUrlTest = standaloneDatabase.toString();
       }
+      const boundedAuthority = task.authority && task.authority !== "existing" ? task.authority : undefined;
+      const childEnvironment = boundedAuthority ? buildQualificationChildEnvironment({
+        authority: boundedAuthority,
+        ambient: process.env,
+        ...(boundedAuthority === "c10-postgres" ? { ownedDatabase: {
+          ...activeStandalonePostgresEnvironment,
+          ...taskEnvironment,
+          ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
+        } } : {}),
+      }) : {
+        ...legacyChildEnvironment,
+        ...(qualificationTaskUsesFixtureEnvironment(task.id) ? activeFixtureEnvironment : {}),
+        ...taskEnvironment,
+        ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
+      };
       if (task.npmArgs.includes("test:e2e") && !taskEnvironment.PLAYWRIGHT_EXTERNAL_BASE_URL) {
         const preferred = preferredQualificationPort(task.id);
         for (let offset = 0; offset <= 4_000; offset += 1) {
@@ -954,15 +1112,13 @@ async function runQualificationTask(
         }
         if (!playwrightPort) throw new MusicCommandError("no isolated Playwright port is available", `qualification-${task.id}`, EXIT.prerequisite);
       }
-      const completion = taskRunner.run(resolved.file, [...resolved.args, ...task.npmArgs], {
+      const evidenceArgs = rawEvidencePath && task.testEvidenceSource?.kind === "vitest-json"
+        ? ["--reporter=default", "--reporter=json", `--outputFile.json=${rawEvidencePath}`]
+        : [];
+      childStarted = true;
+      const completion = taskRunner.run(resolved.file, [...resolved.args, ...task.npmArgs, ...evidenceArgs], {
         cwd: root,
-        env: {
-          ...childAmbientEnvironment,
-          ...(qualificationTaskUsesFixtureEnvironment(task.id) ? activeFixtureEnvironment : {}),
-          ...taskEnvironment,
-          ...(databaseUrlTest ? { DATABASE_URL_TEST: databaseUrlTest } : {}),
-          ...(playwrightPort ? { PLAYWRIGHT_PORT: String(playwrightPort) } : {}),
-        },
+        env: { ...childEnvironment, ...(playwrightPort ? { PLAYWRIGHT_PORT: String(playwrightPort) } : {}) },
       });
       if (attempt === 1 && process.env.MUSIC_C10_INTERRUPT_PROBE === "1" && !qualificationInterruptProbeScheduled) {
         qualificationInterruptProbeScheduled = true;
@@ -975,21 +1131,63 @@ async function runQualificationTask(
         }, Math.max(1, remainingBudgetMs));
       });
       result = await Promise.race([completion, timeout]) ?? await completion;
-      const outputFailure = result.exitCode === 0
-        ? qualificationTaskOutputFailure(task.id, result.stdout, result.stderr)
-        : undefined;
-      if (outputFailure) result = { ...result, exitCode: 1, stderr: `${result.stderr}\n${outputFailure}`.trim() };
     } else if (qualificationInterruptionRequested) {
-      result = { exitCode: EXIT.interrupted, stdout: "", stderr: "qualification interrupted before child start" };
+      result = { exitCode: EXIT.interrupted, signal: null, stdout: "", stderr: "qualification interrupted before child start" };
     }
   } catch (error) {
-    result = { exitCode: 1, stdout: "", stderr: redactedError(error) };
+    result = { exitCode: 1, signal: null, stdout: "", stderr: redactedError(error) };
   } finally {
     if (timer) clearTimeout(timer);
     if (playwrightPort) qualificationPorts.delete(playwrightPort);
     qualificationRunners.delete(taskRunner);
+    try {
+      if (rawEvidencePath && task.testEvidenceSource?.kind === "vitest-json" && existsSync(rawEvidencePath)) {
+        capturedVitestRaw = readFileSync(rawEvidencePath, "utf8");
+      }
+    } finally {
+      if (rawEvidenceDirectory) rmSync(rawEvidenceDirectory, { recursive: true, force: true });
+    }
   }
   const durationMs = Date.now() - started;
+  const commitAfter = readGitSha();
+  const cleanAfter = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8", windowsHide: true }).trim() === "";
+  const outcome: QualificationOutcome = {
+    started: childStarted,
+    nativeExit: result.exitCode,
+    nativeSignal: result.signal,
+    timedOut,
+    interrupted: qualificationInterruptionRequested || result.signal !== null,
+    source: { commitBefore, commitAfter, cleanBefore, cleanAfter, rootLockSha256, sourceRoot: join(root, "tunes") },
+    cleanup: taskRunner.activeChildCount === 0 ? "verified" : "unknown",
+  };
+  if (task.testEvidenceSource) {
+    try {
+      if (task.testEvidenceSource.kind === "vitest-json") {
+        if (capturedVitestRaw === undefined) throw new Error("final Vitest JSON evidence is missing");
+        const raw = capturedVitestRaw;
+        if (sanitizeMusicCliText(raw, sensitiveValues) !== raw) throw new Error("raw Vitest evidence contains sensitive data");
+        const evidence = parseFinalizedVitestEvidence(raw, result.exitCode, join(root, "tunes"));
+        if (task.testEvidenceSource.expectedFiles) requireExactFileManifest(evidence, task.testEvidenceSource.expectedFiles);
+        const rawSha256 = createHash("sha256").update(raw, "utf8").digest("hex");
+        outcome.testEvidence = evidence;
+        const metadata = JSON.stringify({ rawSha256, testEvidence: evidence }, null, 2);
+        const metadataPath = writeAtomicArtifact(id, `qualification-${task.id}-attempt-${attempt}-evidence.json`, metadata);
+        outcome.json = { path: portableQualificationArtifact(metadataPath), sha256: createHash("sha256").update(sanitizeStructuredOutput(metadata, currentSensitiveValues()), "utf8").digest("hex") };
+      } else {
+        const envelope = parseUatVitestEvidenceFromOutput(result.stdout, { root: join(root, "tunes"), commit: commitBefore, nativeExit: result.exitCode, nativeSignal: result.signal });
+        const rawEnvelope = result.stdout.trim().split(/\r?\n/).at(-1)!;
+        if (sanitizeMusicCliText(rawEnvelope, sensitiveValues) !== rawEnvelope) throw new Error("raw UAT evidence contains sensitive data");
+        if (task.testEvidenceSource.expectedFiles) requireExactFileManifest(envelope.vitest, task.testEvidenceSource.expectedFiles);
+        outcome.testEvidence = envelope.vitest;
+        outcome.uatRunId = envelope.runId;
+        const metadata = JSON.stringify({ rawSha256: createHash("sha256").update(rawEnvelope, "utf8").digest("hex"), testEvidence: envelope.vitest, uatRunId: envelope.runId }, null, 2);
+        const metadataPath = writeAtomicArtifact(id, `qualification-${task.id}-attempt-${attempt}-evidence.json`, metadata);
+        outcome.json = { path: portableQualificationArtifact(metadataPath), sha256: createHash("sha256").update(sanitizeStructuredOutput(metadata, currentSensitiveValues()), "utf8").digest("hex") };
+      }
+    } catch (error) {
+      outcome.validationError = redactedError(error);
+    }
+  }
   const artifact = writeArtifact(id, `qualification-${task.id}-attempt-${attempt}.log`, [
     `$ npm ${task.npmArgs.join(" ")}`,
     `attempt=${attempt}`,
@@ -999,7 +1197,23 @@ async function runQualificationTask(
     `stdout:\n${sanitizeStructuredOutput(result.stdout, sensitiveValues)}`,
     `stderr:\n${sanitizeStructuredOutput(result.stderr, sensitiveValues)}`,
   ].join("\n"));
-  return { ...result, durationMs, artifact: portableQualificationArtifact(artifact), timedOut };
+  return { ...result, durationMs, artifact: portableQualificationArtifact(artifact), timedOut, outcome };
+}
+function writeAtomicArtifact(id: string, name: string, content: string): string {
+  const target = join(runDirectory(id), name);
+  writeOwnerOnlyAtomicFile(target, sanitizeStructuredOutput(content, currentSensitiveValues()));
+  return target;
+}
+export function writeOwnerOnlyAtomicFile(target: string, content: string): void {
+  mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") chmodSync(dirname(target), 0o700);
+  const temporary = `${target}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+  writeFileSync(temporary, content, { flag: "wx", mode: 0o600 });
+  try {
+    renameSync(temporary, target);
+    if (process.platform !== "win32") chmodSync(target, 0o600);
+  }
+  catch (error) { if (existsSync(temporary)) unlinkSync(temporary); throw error; }
 }
 
 async function qualificationSensitiveValues(environment: Record<string, string>): Promise<string[]> {
@@ -1015,13 +1229,24 @@ async function qualificationSensitiveValues(environment: Record<string, string>)
   return Array.from(new Set(values));
 }
 
+function withFixturePublicIdAuthority(
+  buildEnvironment: Parameters<typeof rotateFixtureMusicAuthority>[1],
+): Parameters<typeof rotateFixtureMusicAuthority>[1] {
+  return (paths) => {
+    const contents = buildEnvironment(paths);
+    return `${contents}${contents.endsWith("\n") ? "" : "\n"}MUSIC_PUBLIC_ID_HMAC_KEY=VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ\n`;
+  };
+}
+
 function createTestEnv(): void {
   const fixtureStrapiHostPort = parseMusicFixtureStrapiHostPort(process.env.MUSIC_STRAPI_HOST_PORT);
   const fixtureStrapiUrl = resolveMusicFixtureStrapiUrl(fixtureStrapiHostPort);
-  rotateFixtureMusicAuthority(root, ({ tokenPath, migratorPasswordPath, runtimePasswordPath }) => {
+  rotateFixtureMusicAuthority(root, withFixturePublicIdAuthority(({ tokenPath, migratorPasswordPath, runtimePasswordPath }) => {
     const fixturePath = (value: string) => `./${relative(root, value).replace(/\\/g, "/")}`;
-    return `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nMUSIC_STRAPI_HOST_PORT=${fixtureStrapiHostPort}\nSTRAPI_FIXTURE_URL=${fixtureStrapiUrl}\nDATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture\nMUSIC_DATABASE_HOST=postgres\nMUSIC_DATABASE_PORT=5432\nMUSIC_DATABASE_NAME=music_fixture\nMUSIC_DATABASE_USER=music_runtime_login\nMUSIC_DATABASE_MIGRATOR_USER=music_migrator\nMUSIC_DATABASE_PASSWORD_FILE=/run/secrets/music-db-runtime\nMUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(runtimePasswordPath)}\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_PUBLICATION_RESPONSE_CURRENT_KID=fixture-publication-v1\nMUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\nMUSIC_RECONCILIATION_ENVIRONMENT=fixture\nMUSIC_RECONCILIATION_APPLY_ENABLED=false\nMUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED=false\nMUSIC_RECONCILIATION_PAGE_SIZE=100\nMUSIC_RECONCILIATION_SCAN_MAX_ROWS=1000\nMUSIC_RECONCILIATION_BATCH_SIZE=100\nMUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE=0\nMUSIC_RECONCILIATION_MAX_CHANGE_PERCENT=0\nMUSIC_RECONCILIATION_MAX_PAGES=100\nMUSIC_RECONCILIATION_SCAN_TIMEOUT_MS=300000\nMUSIC_RECONCILIATION_TIMEOUT_MS=10000\nMUSIC_RECONCILIATION_MAX_RESPONSE_BYTES=1048576\nMUSIC_RECONCILIATION_MAX_CANONICAL_BYTES=16777216\nMUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS=5000\nMUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS=120000\nMUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS=30000\nSTRAPI_RECONCILIATION_TOKEN=fixture-read-only-token\n`;
-  });
+    const identityEnvironment = ["MUSIC_E2E_ACCOUNT_USERNAME", "MUSIC_E2E_ACCOUNT_DOCUMENT_ID", "MUSIC_E2E_USER_DOCUMENT_ID", "MUSIC_E2E_STRAPI_TOKEN"]
+      .map((name) => `${name}=${process.env[name] ?? ""}`).join("\n");
+    return `MUSIC_MODE=fixture\nMUSIC_FIXTURE_VERSION=1\nSTRAPI_URL=http://strapi:1337\nMUSIC_FIXTURE_STRAPI_ORIGIN=http://strapi:1337\nTRUST_PROXY_HOPS=0\nMUSIC_STRAPI_HOST_PORT=${fixtureStrapiHostPort}\nSTRAPI_FIXTURE_URL=${fixtureStrapiUrl}\nDATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture\nMUSIC_DATABASE_HOST=postgres\nMUSIC_DATABASE_PORT=5432\nMUSIC_DATABASE_NAME=music_fixture\nMUSIC_DATABASE_USER=music_runtime_login\nMUSIC_DATABASE_MIGRATOR_USER=music_migrator\nMUSIC_DATABASE_PASSWORD_FILE=/run/secrets/music-db-runtime\nMUSIC_TOKEN_SECRET_FILE_HOST=${fixturePath(tokenPath)}\nMUSIC_DB_MIGRATOR_SECRET_FILE_HOST=${fixturePath(migratorPasswordPath)}\nMUSIC_DB_RUNTIME_SECRET_FILE_HOST=${fixturePath(runtimePasswordPath)}\nSESSION_SECRET=${randomBytes(32).toString("base64url")}\nCOOKIE_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_CURRENT_ID=fixture-current\nMUSIC_SIGNING_KEY_CURRENT_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_SIGNING_KEY_PREVIOUS_ID=fixture-previous\nMUSIC_SIGNING_KEY_PREVIOUS_SECRET=${randomBytes(32).toString("base64url")}\nMUSIC_TOKEN_CURRENT_KID=fixture-current\nMUSIC_TOKEN_CURRENT_SECRET_FILE=/run/secrets/music-token/current\nMUSIC_PUBLICATION_RESPONSE_CURRENT_KID=fixture-publication-v1\nMUSIC_PUBLICATION_RESPONSE_CURRENT_KEY=fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI\nMUSIC_TOKEN_LIFETIME_SECONDS=600\nMUSIC_TOKEN_CLOCK_SKEW_SECONDS=15\nMUSIC_CONNECT_TIMEOUT_MS=5000\nMUSIC_READ_TIMEOUT_MS=10000\nMUSIC_CIRCUIT_FAILURE_THRESHOLD=3\nMUSIC_RATE_LIMIT_PER_MINUTE=60\nMUSIC_PROVISIONING_KILL_SWITCH=true\nMUSIC_PROVISIONING_COHORT=disabled\nMUSIC_EXPECTED_MIGRATION_ID=${EXPECTED_MUSIC_MIGRATION_ID}\nMUSIC_RECONCILIATION_ENABLED=false\nMUSIC_RECONCILIATION_MAX_ROWS=0\nMUSIC_RECONCILIATION_ENVIRONMENT=fixture\nMUSIC_RECONCILIATION_APPLY_ENABLED=false\nMUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED=false\nMUSIC_RECONCILIATION_PAGE_SIZE=100\nMUSIC_RECONCILIATION_SCAN_MAX_ROWS=1000\nMUSIC_RECONCILIATION_BATCH_SIZE=100\nMUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE=0\nMUSIC_RECONCILIATION_MAX_CHANGE_PERCENT=0\nMUSIC_RECONCILIATION_MAX_PAGES=100\nMUSIC_RECONCILIATION_SCAN_TIMEOUT_MS=300000\nMUSIC_RECONCILIATION_TIMEOUT_MS=10000\nMUSIC_RECONCILIATION_MAX_RESPONSE_BYTES=1048576\nMUSIC_RECONCILIATION_MAX_CANONICAL_BYTES=16777216\nMUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS=5000\nMUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS=120000\nMUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS=30000\nSTRAPI_RECONCILIATION_TOKEN=fixture-read-only-token\n${identityEnvironment}\n`;
+  }));
 }
 
 async function fixtureMigratorUrl(environment: Record<string, string>): Promise<string> {
@@ -1036,38 +1261,104 @@ async function portAvailable(port: number): Promise<boolean> {
   return await new Promise((resolvePort) => { const server = createServer(); server.unref(); server.once("error", () => resolvePort(false)); server.listen({ host: "127.0.0.1", port }, () => server.close(() => resolvePort(true))); });
 }
 
+function assertRetainedFixtureVolumeName(name: string): void {
+  if (!retainedFixtureVolumes.map(retainedFixtureVolumeName).includes(name)) {
+    throw new SafetyError("retained fixture volume inspection target is outside the exact allowlist", "cleanup-safety");
+  }
+}
+
+function parseRetainedFixtureVolumeInspection(
+  name: string,
+  result: VolumeOnlyFixtureDockerCommandResult,
+): RetainedFixtureVolumeInspection[] {
+  assertRetainedFixtureVolumeName(name);
+  if (result.exitCode !== 0) {
+    if (/no such volume/i.test(`${result.stdout}\n${result.stderr}`)) return [];
+    throw new MusicCommandError(`docker volume inspection failed for ${name}`, "cleanup-safety", EXIT.dependency);
+  }
+  let parsed: unknown;
+  try { parsed = JSON.parse(result.stdout); }
+  catch { throw new SafetyError(`retained fixture volume ${name} inspection was malformed`, "cleanup-safety"); }
+  if (!Array.isArray(parsed) || parsed.some((entry) => !entry || typeof entry !== "object" || Array.isArray(entry))) {
+    throw new SafetyError(`retained fixture volume ${name} inspection was malformed`, "cleanup-safety");
+  }
+  return parsed as RetainedFixtureVolumeInspection[];
+}
+
+async function inspectRetainedFixtureVolumeByName(
+  name: string,
+): Promise<RetainedFixtureVolumeInspection[]> {
+  assertRetainedFixtureVolumeName(name);
+  const resolved = executable("docker");
+  const result = await runner.run(resolved.file, [...resolved.args, "volume", "inspect", name], { cwd: root, env: process.env });
+  return parseRetainedFixtureVolumeInspection(name, result);
+}
+
 async function inspectRetainedFixtureVolume(
   logicalName: typeof retainedFixtureVolumes[number],
 ): Promise<RetainedFixtureVolumeInspection | undefined> {
-  const resolved = executable("docker");
-  const name = `${MUSIC_COMPOSE_PROJECT}_${logicalName}`;
-  const result = await runner.run(resolved.file, [...resolved.args, "volume", "inspect", name], { cwd: root, env: process.env });
-  if (result.exitCode !== 0) {
-    if (/no such volume/i.test(`${result.stdout}\n${result.stderr}`)) return undefined;
-    throw new MusicCommandError(`docker volume inspection failed for ${name}`, "cleanup-safety", EXIT.dependency);
-  }
-  const parsed = JSON.parse(result.stdout) as RetainedFixtureVolumeInspection[];
+  const name = retainedFixtureVolumeName(logicalName);
+  const parsed = await inspectRetainedFixtureVolumeByName(name);
+  if (!parsed.length) return undefined;
   if (parsed.length !== 1) throw new SafetyError(`retained fixture volume ${name} inspection was ambiguous`, "cleanup-safety");
-  validateRetainedFixtureVolume(parsed[0], logicalName);
-  return parsed[0];
+  validateRetainedFixtureVolume(parsed[0]!, logicalName);
+  return parsed[0]!;
+}
+
+export function createVolumeOnlyFixtureResetDockerAdapter(input: {
+  required: (
+    args: readonly string[],
+    phase: string,
+  ) => Promise<VolumeOnlyFixtureDockerCommandResult & { artifact: string }>;
+  observed: (args: readonly string[]) => Promise<VolumeOnlyFixtureDockerCommandResult>;
+}): { dependencies: VolumeOnlyFixtureResetDependencies; artifacts: string[] } {
+  const artifacts: string[] = [];
+  const required = async (args: readonly string[], phase: string) => {
+    const result = await input.required(args, phase);
+    if (result.exitCode !== 0 || !result.artifact) {
+      throw new MusicCommandError(`docker ${args.join(" ")} failed with exit ${result.exitCode}`, phase, EXIT.dependency);
+    }
+    artifacts.push(result.artifact);
+    return result;
+  };
+  const lines = (output: string) => output.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  return {
+    dependencies: {
+      listContainerIds: async () => lines((await required(
+        [...composeArguments, "ps", "-a", "-q"],
+        "db-reset-volume-only-containers",
+      )).stdout),
+      listLabeledVolumeNames: async () => lines((await required([
+        "volume", "ls", "-q",
+        "--filter", "label=com.explorers.music.fixture=true",
+        "--filter", `label=com.explorers.music.project=${MUSIC_COMPOSE_PROJECT}`,
+      ], "db-reset-volume-only-volumes")).stdout),
+      inspectVolume: async (name) => parseRetainedFixtureVolumeInspection(
+        name,
+        await input.observed(["volume", "inspect", name]),
+      ),
+      removeVolumes: async (names) => (await required(
+        ["volume", "rm", ...names],
+        "db-reset-retained-volumes",
+      )).artifact,
+    },
+    artifacts,
+  };
 }
 
 async function removeRetainedFixtureVolumes(id: string): Promise<string[]> {
-  const inspected = new Map<typeof retainedFixtureVolumes[number], RetainedFixtureVolumeInspection>();
-  for (const logicalName of retainedFixtureVolumes) {
-    const volume = await inspectRetainedFixtureVolume(logicalName);
-    if (volume) inspected.set(logicalName, volume);
-  }
-  if (!inspected.has("music-fixture-postgres")) throw new SafetyError("no retained fixture database volume was found; reset refused", "cleanup-safety");
-  for (const [logicalName, before] of Array.from(inspected.entries())) {
-    const immediatelyBeforeDelete = await inspectRetainedFixtureVolume(logicalName);
-    if (!immediatelyBeforeDelete || !sameRetainedFixtureVolume(before, immediatelyBeforeDelete)) {
-      throw new SafetyError(`retained fixture volume changed before deletion; reset refused`, "cleanup-safety");
-    }
-  }
-  const names = Array.from(inspected.values()).map(({ Name }) => Name!);
-  const removed = await runChild(id, "docker", ["volume", "rm", ...names], "db-reset-retained-volumes", EXIT.dependency);
-  return [removed.artifact];
+  const adapter = createVolumeOnlyFixtureResetDockerAdapter({
+    required: async (args, phase) => ({
+      exitCode: 0,
+      ...await runChild(id, "docker", [...args], phase, EXIT.dependency),
+    }),
+    observed: async (args) => {
+      const resolved = executable("docker");
+      return await runner.run(resolved.file, [...resolved.args, ...args], { cwd: root, env: process.env });
+    },
+  });
+  await resetVolumeOnlyFixtureVolumes(root, adapter.dependencies);
+  return adapter.artifacts;
 }
 
 async function allocateStandalonePostgresPort(): Promise<number> {
@@ -1350,7 +1641,6 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
         authority: { commit: context.commit, environmentFingerprint: context.environmentFingerprint },
         measurements: collectQualificationMeasurements([], context),
         execute: async (task, execution) => await runQualificationTask(id, task, execution.attempt, execution.remainingBudgetMs),
-        writeReport: async (value) => portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))),
       });
     const report = lane === "fast" ? await runLane() : await withQualificationPostgresAuthority({
       existing: attestC10StandalonePostgresAuthority(process.env, context.commit),
@@ -1375,8 +1665,8 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
         finally { activeStandalonePostgresEnvironment = {}; }
       },
     });
-    attachMusicQualificationMeasurements(report, collectQualificationMeasurements(report.tasks, context));
-    report.evidenceArtifact = portableQualificationArtifact(writeArtifact(id, `qualification-${lane}.json`, JSON.stringify(report, null, 2)));
+    await finalizeMusicQualificationReport(report, collectQualificationMeasurements(report.tasks, context), async (value) =>
+      portableQualificationArtifact(writeAtomicArtifact(id, `qualification-${lane}.json`, JSON.stringify(value, null, 2))));
     return {
       status: report.status,
       phase: `qualification-${lane}`,
@@ -1386,37 +1676,30 @@ async function executeCommand(id: string, parsed: ParsedArgs, context: RunContex
       summary: `${lane} lane ${report.status}; wall=${report.timing.wallClockMs}ms budget=${report.timing.budgetMs}ms p50=${report.timing.taskP50Ms}ms p95=${report.timing.taskP95Ms}ms`,
     };
   }
-  if (parsed.command === "down" || parsed.command === "db:reset") {
-    const retiredFixtureAuthority = inspectFixtureEnvironmentAuthority(root) === "tombstone";
-    if (parsed.command === "db:reset" && retiredFixtureAuthority) {
-      if (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT) {
-        throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
-      }
-      const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
-      if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
-      validateDisposableDatabaseTarget({
-        databaseUrlTest: activeFixtureEnvironment.DATABASE_URL_TEST,
-        databaseUrl: process.env.DATABASE_URL,
-        composeProject: parsed.confirmProject,
-        confirmation: parsed.confirmReset,
-      });
-      const artifacts = await removeRetainedFixtureVolumes(id);
-      return { status: "success", phase: "db-reset", exitCode: EXIT.success, artifacts };
+  if (parsed.command === "db:reset") {
+    if (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT) {
+      throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
     }
+    if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
+    const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
+    validateDisposableDatabaseTarget({
+      databaseUrlTest: activeFixtureEnvironment.DATABASE_URL_TEST,
+      databaseUrl: process.env.DATABASE_URL,
+      composeProject: parsed.confirmProject,
+      confirmation: parsed.confirmReset,
+    });
+    const compose = await renderComposeModel(id);
+    const artifacts = [...compose.artifacts, ...(await removeRetainedFixtureVolumes(id))];
+    return { status: "success", phase: "db-reset", exitCode: EXIT.success, artifacts };
+  }
+  if (parsed.command === "down") {
     return await withAllFixtureMusicSecretsCleanup(root, async () => {
-      const destructive = parsed.command === "db:reset" || parsed.volumes;
+      const destructive = parsed.volumes;
       if (destructive && (parsed.mode !== "fixture" || parsed.confirmProject !== MUSIC_COMPOSE_PROJECT)) throw new SafetyError(`destructive cleanup requires --mode fixture --confirm-project ${MUSIC_COMPOSE_PROJECT}`);
-      if (parsed.command === "db:reset") {
-        const { validateDisposableDatabaseTarget } = await import("../server/db/migrate.ts");
-        if (parsed.target !== "test") throw new SafetyError("db:reset requires explicit --target test", "database-target");
-        const environment = readActiveFixtureEnvironment();
-        validateDisposableDatabaseTarget({ databaseUrlTest: environment.DATABASE_URL_TEST, databaseUrl: process.env.DATABASE_URL,
-          composeProject: parsed.confirmProject, confirmation: parsed.confirmReset });
-      }
       const compose = await renderComposeModel(id);
       const artifacts = [...compose.artifacts, ...(await inspectOwnedComposeResources(id, compose.model))];
-      const result = await runChild(id, "docker", [...composeArguments, "down", ...(destructive ? ["--volumes"] : [])], parsed.command === "db:reset" ? "db-reset" : "down", EXIT.dependency);
-      return { status: "success", phase: parsed.command === "db:reset" ? "db-reset" : "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
+      const result = await runChild(id, "docker", [...composeArguments, "down", ...(destructive ? ["--volumes"] : [])], "down", EXIT.dependency);
+      return { status: "success", phase: "down", exitCode: EXIT.success, artifacts: [...artifacts, result.artifact] };
     });
   }
   throw new MusicCommandError(`unhandled command ${parsed.command}`, "arguments", EXIT.usage);

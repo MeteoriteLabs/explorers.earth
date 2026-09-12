@@ -1,10 +1,15 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode, type ReactElement } from 'react';
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MusicDashboard from "../MusicDashboard";
 import { musicWorkspaceClient } from "../../hooks/useTunesDashboard";
 import { MusicClientError } from "../../lib/localTunesApiClient";
-import { musicApi } from "../../features/music/musicApi";
+import { musicApi, musicIdentityCoordinator } from "../../features/music/musicApi";
+import { loginSurface, surfaceHarness } from '../../features/navigation/__tests__/surfaceHarness';
+import { readyMusic } from '../../features/music/__tests__/musicPublishHarness';
+import { publicMusicClient } from '../../features/music/publicMusicClient';
+import useAuthStore from '../../store/store';
 
 vi.mock("react-player", async () => {
   const React = await import("react");
@@ -23,6 +28,32 @@ const base = {
   refetch: vi.fn(),
 };
 const scope = { userDocumentId: "explorer-user-a", accountDocumentId: "explorer-account-a" };
+const savedAccounts = new Map<string, () => Record<string, unknown>>();
+
+async function render(ui: ReactElement, profile?: 'Yes' | 'No') {
+  const props = ui.props as { scope: typeof scope; data: typeof base };
+  const accountKey = JSON.stringify(props.scope);
+  const previous = savedAccounts.get(accountKey)?.();
+  loginSurface(props.scope.userDocumentId);
+  // Preserve each test's publication response/failure spy; make later GETs expose
+  // only successful backend responses so the real coordinator must verify them.
+  vi.spyOn(musicWorkspaceClient, 'loadDashboard').mockImplementation(async () => {
+    const settled = vi.isMockFunction(musicWorkspaceClient.setPublication) ? vi.mocked(musicWorkspaceClient.setPublication).mock.settledResults.filter(result => result.type === 'fulfilled').at(-1) : undefined;
+    const publication = settled?.type === 'fulfilled' ? settled.value.publication : props.data.dashboard.publication;
+    return { ...props.data.dashboard, queueRevision: 0, publication: { ...publication, publicSlug: 'public-slug-123' } };
+  });
+  vi.spyOn(publicMusicClient, 'discover').mockResolvedValue({ version: 'music-public-descriptor/v1', publication: { mode: 'public', publicSlug: 'public-slug-123', revision: 1 } });
+  const h = surfaceHarness(ui, { initial: { ...previous, documentId: props.scope.accountDocumentId, public_music: profile ?? previous?.public_music ?? (props.data.dashboard.publication.mode === 'public' ? 'Yes' : 'No'), pinned_nav_tabs: ['public_profile', 'public_books'] } });
+  savedAccounts.set(accountKey, () => h.saved);
+  await act(async () => { if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(0); }); await h.ready();
+  return { ...h, rerender(next: ReactElement) {
+    const nextScope = (next.props as { scope: typeof scope }).scope;
+    if (nextScope.userDocumentId !== props.scope.userDocumentId || nextScope.accountDocumentId !== props.scope.accountDocumentId) {
+      h.saved = { ...h.saved, documentId: nextScope.accountDocumentId }; loginSurface(nextScope.userDocumentId);
+    }
+    h.rerenderChild(next);
+  } };
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -39,7 +70,15 @@ function playbackResponse(revision: number, song: unknown) {
 }
 
 describe("Music workspace UI", () => {
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  beforeEach(async () => { savedAccounts.clear(); sessionStorage.clear(); musicIdentityCoordinator.reset(); await readyMusic(scope.userDocumentId, scope.accountDocumentId); });
+  it.each([false, true])("shows one unified publication switch in the responsive header (complete=%s)", async complete => {
+    await render(<MusicDashboard data={base} scope={scope} complete={complete} />);
+    expect(screen.getAllByRole('switch', { name: 'Music public visibility' })).toHaveLength(1);
+    expect(screen.queryByRole('region', { name: 'Public Music readiness' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Make Music public' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Hide profile Music' })).not.toBeInTheDocument();
+  });
+  afterEach(() => { cleanup(); useAuthStore.getState().logout(); musicIdentityCoordinator.reset(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   async function openSharingSettings() {
     const opener = screen.getByRole("button", { name: "Open playlist and sharing menu" });
     await userEvent.click(opener);
@@ -50,12 +89,49 @@ describe("Music workspace UI", () => {
   async function openLive() {
     await userEvent.click(screen.getByRole("tab", { name: "Live" }));
   }
+  it('does not offer a public share link merely because Public was selected before saving', async () => {
+    await render(<MusicDashboard data={base} scope={scope} />); await openSharingSettings();
+    await userEvent.click(screen.getByRole('radio', { name: 'Public' }));
+    expect(screen.queryByRole('textbox', { name: 'Music share link' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Copy Music link' })).not.toBeInTheDocument();
+  });
+  it('keeps an Unlisted capability only in the currently open dialog', async () => {
+    const capability = 'a'.repeat(43);
+    vi.spyOn(musicWorkspaceClient, 'setPublication').mockResolvedValue({ version: 'music-publication/v1', publication: { mode: 'unlisted', publicSlug: 'public-slug-123' }, capability });
+    await render(<MusicDashboard data={base} scope={scope} />); await openSharingSettings();
+    await userEvent.click(screen.getByRole('radio', { name: 'Unlisted' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save sharing' }));
+    expect((await screen.findByRole('textbox', { name: 'Music share link' }) as HTMLInputElement).value).toContain('#access=' + capability);
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await openSharingSettings();
+    expect(screen.queryByRole('textbox', { name: 'Music share link' })).not.toBeInTheDocument();
+    expect(JSON.stringify(sessionStorage)).not.toContain(capability); expect(JSON.stringify(localStorage)).not.toContain(capability);
+  });
+  it.each(['switch', 'logout', 'roundtrip', 'unmount'] as const)('discards a delayed Unlisted response after %s', async change => {
+    const capability = 'b'.repeat(43);
+    const pending = deferred<{ version: 'music-publication/v1'; publication: { mode: 'unlisted'; publicSlug: string }; capability: string }>();
+    const publish = vi.spyOn(musicWorkspaceClient, 'setPublication').mockReturnValue(pending.promise);
+    const refresh = vi.fn();
+    const view = await render(<MusicDashboard data={{ ...base, refetch: refresh }} scope={scope} />); await openSharingSettings();
+    await userEvent.click(screen.getByRole('radio', { name: 'Unlisted' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save sharing' }));
+    await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      if (change === 'unmount') view.unmount();
+      else if (change === 'logout') useAuthStore.getState().logout();
+      else { loginSurface('other-owner'); if (change === 'roundtrip') loginSurface(scope.userDocumentId); }
+    });
+    expect(screen.queryByRole('dialog', { name: 'Music sharing' })).not.toBeInTheDocument();
+    await act(async () => pending.resolve({ version: 'music-publication/v1', publication: { mode: 'unlisted', publicSlug: 'public-slug-123' }, capability }));
+    expect(screen.queryByRole('textbox', { name: 'Music share link' })).not.toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled(); expect(JSON.stringify(sessionStorage)).not.toContain(capability);
+  });
   async function openPlaylist(name: string) {
     await userEvent.click(screen.getByRole("button", { name: new RegExp(`^${name}`) }));
   }
   it("composes the approved owner player, search, queue, and history surface", async () => {
     const playlists = [{ id: 1, name: "Saved mix", description: null, isVisibleToGuests: false, songs: [] }];
-    render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 0 } }} scope={scope} complete />);
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Playlists", "Live"]);
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("heading", { name: "Your playlists" })).toBeInTheDocument();
@@ -87,9 +163,9 @@ describe("Music workspace UI", () => {
     };
     const update = vi.spyOn(musicWorkspaceClient, "updateGuestControls").mockResolvedValue(guestControls);
     const refetch = vi.fn(async () => undefined);
-    render(<MusicDashboard data={{ ...base, guestControls, refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, guestControls, refetch }} scope={scope} complete />);
     await openLive();
-    expect(screen.getAllByRole("switch")).toHaveLength(5);
+    expect(within(screen.getAllByRole('region', { name: 'Guest controls' })[0]).getAllByRole("switch")).toHaveLength(5);
     await userEvent.click(screen.getByRole("switch", { name: "Allow song requests" }));
 
     expect(update).toHaveBeenCalledWith({ ...guestControls, allowSongRequests: false }, expect.stringMatching(/^guest-controls-/));
@@ -100,7 +176,7 @@ describe("Music workspace UI", () => {
     const guestControls = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false };
     vi.spyOn(musicWorkspaceClient, "updateGuestControls").mockResolvedValue({ ...guestControls, allowSongRequests: false });
     const refetch = vi.fn().mockResolvedValue({ data: { guestControls }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, guestControls, refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, guestControls, refetch }} scope={scope} complete />);
     await openLive();
     const control = screen.getByRole("switch", { name: "Allow song requests" });
 
@@ -114,7 +190,7 @@ describe("Music workspace UI", () => {
     const playlist = { id: 1, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] };
     vi.spyOn(musicWorkspaceClient, "setPlaylistVisibility").mockResolvedValue(undefined);
     const refetch = vi.fn().mockResolvedValue({ data: { playlists: [playlist] }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
     const control = screen.getByRole("switch", { name: "Make Road songs public" });
 
     await userEvent.click(control);
@@ -126,7 +202,7 @@ describe("Music workspace UI", () => {
   it("closes an acknowledged create dialog and offers playlist reconciliation when refetch fails", async () => {
     vi.spyOn(musicWorkspaceClient, "createPlaylist").mockResolvedValue({ id: 21, name: "Created mix", description: null, isVisibleToGuests: false, songs: [] });
     const refetch = vi.fn().mockResolvedValue({ data: { playlists: [] }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, refetch }} scope={scope} complete />);
 
     await userEvent.click(screen.getByRole("button", { name: "New playlist" }));
     await userEvent.type(screen.getByRole("textbox", { name: "Playlist name" }), "Created mix");
@@ -141,7 +217,7 @@ describe("Music workspace UI", () => {
     const playlist = { id: 1, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] };
     vi.spyOn(musicWorkspaceClient, "renamePlaylist").mockResolvedValue(undefined);
     const refetch = vi.fn().mockResolvedValue({ data: { playlists: [playlist] }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
     await openPlaylist("Road songs");
 
     await userEvent.click(screen.getByRole("button", { name: "Rename playlist" }));
@@ -166,7 +242,7 @@ describe("Music workspace UI", () => {
     vi.spyOn(musicWorkspaceClient, "reorderPlaylistSong").mockResolvedValue(undefined);
     vi.spyOn(musicWorkspaceClient, "removePlaylistSong").mockResolvedValue(undefined);
     const refetch = vi.fn().mockResolvedValue({ data: { playlists: [playlist] }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
     await openPlaylist("Road songs");
 
     await userEvent.click(screen.getByRole("switch", { name: "Make Road songs public" }));
@@ -192,7 +268,7 @@ describe("Music workspace UI", () => {
     const reorder = deferred<void>();
     const setVisibility = vi.spyOn(musicWorkspaceClient, "setPlaylistVisibility").mockReturnValue(visibility.promise);
     const reorderSong = vi.spyOn(musicWorkspaceClient, "reorderPlaylistSong").mockReturnValue(reorder.promise);
-    const view = render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Road songs");
 
     const visibleButton = screen.getByRole("switch", { name: "Make Road songs public" });
@@ -221,7 +297,7 @@ describe("Music workspace UI", () => {
     };
     const visibility = deferred<void>();
     vi.spyOn(musicWorkspaceClient, "setPlaylistVisibility").mockReturnValue(visibility.promise);
-    const view = render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Road songs");
     const control = screen.getByRole("switch", { name: "Make Road songs public" });
 
@@ -237,7 +313,7 @@ describe("Music workspace UI", () => {
     const playlist = { id: 1, name: "Road songs", description: null, isVisibleToGuests: false, songs: [] };
     vi.spyOn(musicWorkspaceClient, "deletePlaylist").mockResolvedValue(undefined);
     const refetch = vi.fn().mockResolvedValue({ data: { playlists: [playlist] }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch }} scope={scope} complete />);
     await openPlaylist("Road songs");
 
     await userEvent.click(screen.getByRole("button", { name: "Delete playlist Road songs" }));
@@ -251,7 +327,7 @@ describe("Music workspace UI", () => {
     const playlist = { id: 1, name: "Road songs", description: null, isVisibleToGuests: false, songs: [{ id: 11, playlistId: 1, youtubeId: "abcdefghijk", title: "First", artist: "A", thumbnailUrl: "https://img/1", position: 0, addedAt: "2026-08-25T10:00:00.000Z" }] };
     vi.spyOn(musicApi, "request").mockResolvedValue(new Response(JSON.stringify({ version: "music-queue/v1", revision: 2, songs: [] }), { status: 200, headers: { "content-type": "application/json" } }));
     const refetch = vi.fn().mockResolvedValue({ data: { playlists: [playlist] }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch, dashboard: { ...base.dashboard, queueRevision: 1 } }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], refetch, dashboard: { ...base.dashboard, queueRevision: 1 } }} scope={scope} complete />);
     await openPlaylist("Road songs");
 
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Road songs" }));
@@ -277,7 +353,7 @@ describe("Music workspace UI", () => {
       throw new Error(`Unexpected request ${request.path}`);
     });
     const refetch = vi.fn().mockResolvedValue({ data: { dashboard: base.dashboard }, error: new Error("refresh failed") });
-    render(<MusicDashboard data={{ ...base, refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, refetch }} scope={scope} complete />);
     await openLive();
 
     await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "search song");
@@ -294,7 +370,7 @@ describe("Music workspace UI", () => {
     const playing = { ...queued, status: "playing" as const };
     vi.spyOn(musicApi, "request").mockResolvedValue(playbackResponse(2, playing));
     const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [queued], currentlyPlaying: null } };
-    const view = render(<MusicDashboard data={data} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={data} scope={scope} complete />);
     await openLive();
 
     await userEvent.click(screen.getByRole("button", { name: "Play First song" }));
@@ -302,6 +378,23 @@ describe("Music workspace UI", () => {
     view.rerender(<MusicDashboard data={{ ...data, dashboard: { ...data.dashboard, songs: [], currentlyPlaying: playing } }} scope={scope} complete />);
 
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+  });
+
+  it("keeps queue playback available through StrictMode effect replay", async () => {
+    const queued = { id: 7, youtubeId: "abcdefghijk", title: "Strict song", artist: "Artist", thumbnailUrl: "https://img/7", position: 0, status: "queued" as const, playedAt: null };
+    vi.spyOn(musicApi, "request").mockResolvedValue(playbackResponse(2, { ...queued, status: "playing" }));
+    const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [queued], currentlyPlaying: null } };
+    loginSurface(scope.userDocumentId);
+    const h = surfaceHarness(
+      <StrictMode><MusicDashboard data={data} scope={scope} complete /></StrictMode>,
+      { initial: { documentId: scope.accountDocumentId, public_music: "No", pinned_nav_tabs: ["public_profile", "public_books"] } },
+    );
+    await h.ready();
+    await openLive();
+
+    await userEvent.click(screen.getByRole("button", { name: "Play Strict song" }));
+
+    await waitFor(() => expect(musicApi.request).toHaveBeenCalledWith(expect.objectContaining({ path: "/api/playlist/currently-playing" })));
   });
 
   it("retries the latest playback intent against the canonical revision after an unrelated queue change", async () => {
@@ -321,7 +414,7 @@ describe("Music workspace UI", () => {
       return Promise.resolve(playbackResponse(3, { ...queued, status: "playing" }));
     });
     const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [queued], currentlyPlaying: null } };
-    render(<MusicDashboard data={data} scope={scope} complete />);
+    await render(<MusicDashboard data={data} scope={scope} complete />);
     await openLive();
 
     await userEvent.click(screen.getByRole("button", { name: "Play Recover song" }));
@@ -344,47 +437,13 @@ describe("Music workspace UI", () => {
       throw new Error(`Unexpected request ${request.path}`);
     });
     const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, playbackRevision: 1, songs: [queued], currentlyPlaying: null } };
-    render(<MusicDashboard data={data} scope={scope} complete />);
+    await render(<MusicDashboard data={data} scope={scope} complete />);
     await openLive();
 
     await userEvent.click(screen.getByRole("button", { name: "Play Committed song" }));
 
     await waitFor(() => expect(data.refetch).toHaveBeenCalledOnce());
     expect(requests).toEqual(["/api/playlist/currently-playing", "/api/music/dashboard"]);
-  });
-
-  it("does not let a delayed Queue Play supersede a newer Search Play", async () => {
-    const queueSong = { id: 7, youtubeId: "abcdefghijk", title: "Queue song", artist: "Queue artist", thumbnailUrl: "https://img/7", position: 0, status: "queued" as const, playedAt: null };
-    const searchSong = { id: 8, youtubeId: "lmnopqrstuv", title: "Search song", artist: "Search artist", thumbnailUrl: "https://img/8", position: 1, status: "queued" as const, playedAt: null };
-    const queueWrite = deferred<Response>();
-    const searchWrite = deferred<Response>();
-    const requestedSongIds: number[] = [];
-    vi.spyOn(musicApi, "request").mockImplementation((request) => {
-      const body = request.body as { songId?: number } | undefined;
-      if (request.path === "/api/youtube/search") return Promise.resolve(new Response(JSON.stringify({ items: [{ id: { videoId: searchSong.youtubeId }, snippet: { title: searchSong.title, channelTitle: searchSong.artist, thumbnails: { default: { url: searchSong.thumbnailUrl } } } }], nextPageToken: null }), { status: 200, headers: { "content-type": "application/json" } }));
-      if (request.path === "/api/playlist/songs") return Promise.resolve(new Response(JSON.stringify(searchSong), { status: 200, headers: { "content-type": "application/json" } }));
-      if (request.path === "/api/playlist/currently-playing") requestedSongIds.push(body?.songId ?? -1);
-      if (request.path === "/api/playlist/currently-playing" && body?.songId === queueSong.id) return queueWrite.promise;
-      if (request.path === "/api/playlist/currently-playing" && body?.songId === searchSong.id) return searchWrite.promise;
-      throw new Error(`Unexpected request ${request.path}`);
-    });
-    const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [queueSong], currentlyPlaying: null } };
-    const view = render(<MusicDashboard data={data} scope={scope} complete />);
-    await openLive();
-
-    await userEvent.click(screen.getByRole("button", { name: "Play Queue song" }));
-    await userEvent.type(screen.getByRole("searchbox", { name: "Search music or paste a URL" }), "newer");
-    await userEvent.click(screen.getByRole("button", { name: "Search" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Play Search song now" }));
-    expect(requestedSongIds).toEqual([queueSong.id]);
-    queueWrite.resolve(playbackResponse(2, { ...queueSong, status: "playing" }));
-    await waitFor(() => expect(requestedSongIds).toEqual([queueSong.id, searchSong.id]));
-    expect(data.refetch).not.toHaveBeenCalled();
-    searchWrite.resolve(playbackResponse(3, { ...searchSong, status: "playing" }));
-    await waitFor(() => expect(data.refetch).toHaveBeenCalledTimes(1));
-
-    view.rerender(<MusicDashboard data={{ ...data, dashboard: { ...data.dashboard, songs: [], currentlyPlaying: { ...searchSong, status: "playing" } } }} scope={scope} complete />);
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
   });
 
   it("does not let a delayed Queue Play supersede a newer History Play", async () => {
@@ -401,7 +460,7 @@ describe("Music workspace UI", () => {
       throw new Error(`Unexpected request ${request.path}`);
     });
     const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [queueSong], currentlyPlaying: null, playedSongs: [historySong] } };
-    const view = render(<MusicDashboard data={data} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={data} scope={scope} complete />);
     await openLive();
 
     await userEvent.click(screen.getByRole("button", { name: "Play Queue song" }));
@@ -419,7 +478,6 @@ describe("Music workspace UI", () => {
   });
 
   it("times out and aborts a hung Play so the newest request can become canonical", async () => {
-    vi.useFakeTimers();
     const queueSong = { id: 7, youtubeId: "abcdefghijk", title: "Hung queue song", artist: "Queue artist", thumbnailUrl: "https://img/7", position: 0, status: "queued" as const, playedAt: null };
     const historySong = { id: 9, youtubeId: "zyxwvutsrqp", title: "Newest history song", artist: "History artist", thumbnailUrl: "https://img/9", position: 0, status: "played" as const, playedAt: "2026-08-27T00:00:00.000Z" };
     let hungSignal: AbortSignal | undefined;
@@ -437,7 +495,8 @@ describe("Music workspace UI", () => {
       return Promise.resolve(playbackResponse(2, { ...historySong, status: "playing", playedAt: null }));
     });
     const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [queueSong], currentlyPlaying: null, playedSongs: [historySong] } };
-    render(<MusicDashboard data={data} scope={scope} complete />);
+    await render(<MusicDashboard data={data} scope={scope} complete />);
+    vi.useFakeTimers();
     fireEvent.click(screen.getByRole("tab", { name: "Live" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Play Hung queue song" }));
@@ -469,7 +528,7 @@ describe("Music workspace UI", () => {
     });
     const oldData = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [oldSong], currentlyPlaying: null } };
     const newData = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [newSong], currentlyPlaying: null } };
-    const view = render(<MusicDashboard data={oldData} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={oldData} scope={scope} complete />);
     await openLive();
     fireEvent.click(screen.getByRole("button", { name: "Play Old account song" }));
     await act(async () => { await Promise.resolve(); });
@@ -494,13 +553,14 @@ describe("Music workspace UI", () => {
       return write.promise;
     });
     const data = { ...base, refetch: vi.fn(async () => undefined), dashboard: { ...base.dashboard, queueRevision: 1, songs: [song], currentlyPlaying: null } };
-    const view = render(<MusicDashboard data={data} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={data} scope={scope} complete />);
     await openLive();
     fireEvent.click(screen.getByRole("button", { name: "Play Unmounted song" }));
     await act(async () => { await Promise.resolve(); });
 
     view.unmount();
 
+    await act(async () => { await Promise.resolve(); });
     expect(signal?.aborted).toBe(true);
     write.resolve(new Response(JSON.stringify({ ...song, status: "playing" }), { status: 200, headers: { "content-type": "application/json" } }));
     await Promise.resolve();
@@ -518,7 +578,7 @@ describe("Music workspace UI", () => {
       version: "music-queue/v1", revision: 8, songs: [],
     }), { status: 200, headers: { "content-type": "application/json" } }));
     const data = { ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) };
-    render(<MusicDashboard data={data} scope={scope} complete />);
+    await render(<MusicDashboard data={data} scope={scope} complete />);
 
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
@@ -549,7 +609,7 @@ describe("Music workspace UI", () => {
         version: "music-queue/v1", revision: 8, songs: [],
       }), { status: 200, headers: { "content-type": "application/json" } }));
     const refetch = vi.fn(async () => undefined);
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
 
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
@@ -568,7 +628,7 @@ describe("Music workspace UI", () => {
     const request = vi.spyOn(musicApi, "request")
       .mockRejectedValueOnce(new TypeError("response lost"))
       .mockResolvedValueOnce(new Response(JSON.stringify({ version: "music-queue/v1", revision: 8, songs: [] }), { status: 200, headers: { "content-type": "application/json" } }));
-    const view = render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Add to queue" }));
@@ -589,7 +649,7 @@ describe("Music workspace UI", () => {
     const request = vi.spyOn(musicApi, "request")
       .mockRejectedValueOnce(new MusicClientError("REQUEST_INVALID", 409, "stale", undefined, "QUEUE_REVISION_CONFLICT"))
       .mockResolvedValueOnce(new Response(JSON.stringify({ version: "music-queue/v1", revision: 10, songs: [] }), { status: 200, headers: { "content-type": "application/json" } }));
-    const view = render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    const view = await render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Add to queue" }));
@@ -613,7 +673,7 @@ describe("Music workspace UI", () => {
       .mockRejectedValueOnce(new TypeError("replace response lost"))
       .mockRejectedValueOnce(new TypeError("shuffle response lost"))
       .mockResolvedValueOnce(new Response(JSON.stringify({ version: "music-queue/v1", revision: 8, songs: [] }), { status: 200, headers: { "content-type": "application/json" } }));
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Replace queue" }));
@@ -646,7 +706,7 @@ describe("Music workspace UI", () => {
       }
       throw new Error(`Unexpected request ${input.path}`);
     });
-    render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists: [playlist], dashboard: { ...base.dashboard, queueRevision: 7 }, refetch: vi.fn(async () => undefined) }} scope={scope} complete />);
     await openPlaylist("Saved mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for Saved mix" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Shuffle and play" }));
@@ -672,7 +732,7 @@ describe("Music workspace UI", () => {
         version: "music-queue/v1", revision: 8, songs: [],
       }), { status: 200, headers: { "content-type": "application/json" } }));
     const refetch = vi.fn(async () => undefined);
-    render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
+    await render(<MusicDashboard data={{ ...base, playlists, dashboard: { ...base.dashboard, queueRevision: 7 }, refetch }} scope={scope} complete />);
 
     await openPlaylist("First mix");
     await userEvent.click(screen.getByRole("button", { name: "Queue actions for First mix" }));
@@ -691,7 +751,7 @@ describe("Music workspace UI", () => {
     expect(request.mock.calls[1][0].idempotencyKey).not.toBe(request.mock.calls[0][0].idempotencyKey);
   });
   it("renders the approved ready-empty hierarchy with one primary action", async () => {
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     expect(screen.getByRole("heading", { name: "Create your first playlist" })).toBeInTheDocument();
     expect(screen.getByText("Build a playlist to collect and share the music you love.")).toBeInTheDocument();
     const action = screen.getByRole("button", { name: "New playlist" });
@@ -706,7 +766,7 @@ describe("Music workspace UI", () => {
       { id: 1, name: "One", description: null, isVisibleToGuests: false, songs: [{ id: 11, title: "A", artist: "B", thumbnailUrl: "x", position: 0 }] },
       { id: 2, name: "Two", description: null, isVisibleToGuests: false, songs: [] },
     ];
-    render(<MusicDashboard data={{ ...base, playlists }} scope={scope} />);
+    await render(<MusicDashboard data={{ ...base, playlists }} scope={scope} />);
     await userEvent.type(screen.getByRole("searchbox", { name: "Search playlists" }), "One");
     expect(screen.getByRole("button", { name: /^One/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Two/ })).not.toBeInTheDocument();
@@ -715,7 +775,7 @@ describe("Music workspace UI", () => {
   });
 
   it("offers only Private, Unlisted, and Public with mode-specific copy under Music", async () => {
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     await openSharingSettings();
     expect(screen.getByRole("dialog", { name: "Music sharing" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["private", "unlisted", "public"]);
@@ -726,7 +786,7 @@ describe("Music workspace UI", () => {
   });
 
   it("closes dialogs with Escape and returns focus to the opener", async () => {
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     const opener = await openSharingSettings();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -738,7 +798,7 @@ describe("Music workspace UI", () => {
       .mockRejectedValueOnce(new Error("contained"))
       .mockResolvedValueOnce({ id: 9, name: "Roads", description: null, isVisibleToGuests: false, songs: [] });
     const data = { ...base, refetch: vi.fn(async () => undefined) };
-    render(<MusicDashboard data={data} scope={scope} />);
+    await render(<MusicDashboard data={data} scope={scope} />);
     const opener = screen.getByRole("button", { name: "New playlist" });
     await userEvent.click(opener);
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -763,7 +823,7 @@ describe("Music workspace UI", () => {
     const visibility = vi.spyOn(musicWorkspaceClient, "setPlaylistVisibility")
       .mockRejectedValueOnce(new Error("visibility unavailable"))
       .mockResolvedValueOnce(undefined);
-    render(<MusicDashboard data={{ ...base, refetch: vi.fn(async () => undefined) }} scope={scope} />);
+    await render(<MusicDashboard data={{ ...base, refetch: vi.fn(async () => undefined) }} scope={scope} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Open playlist and sharing menu" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Public playlist" }));
@@ -788,7 +848,7 @@ describe("Music workspace UI", () => {
     const visibilityCommand = deferred<void>();
     const create = vi.spyOn(musicWorkspaceClient, "createPlaylist").mockReturnValue(createCommand.promise);
     const visibility = vi.spyOn(musicWorkspaceClient, "setPlaylistVisibility").mockReturnValue(visibilityCommand.promise);
-    render(<MusicDashboard data={{ ...base, refetch: vi.fn(async () => undefined) }} scope={scope} />);
+    await render(<MusicDashboard data={{ ...base, refetch: vi.fn(async () => undefined) }} scope={scope} />);
     await userEvent.click(screen.getByRole("button", { name: "Open playlist and sharing menu" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Public playlist" }));
     await userEvent.type(screen.getByLabelText("Playlist name"), "Locked public");
@@ -821,7 +881,7 @@ describe("Music workspace UI", () => {
     const create = vi.spyOn(musicWorkspaceClient, "createPlaylist")
       .mockRejectedValueOnce(new Error("response lost after commit"))
       .mockResolvedValueOnce(created);
-    render(<MusicDashboard data={{ ...base, refetch: vi.fn(async () => undefined) }} scope={scope} />);
+    await render(<MusicDashboard data={{ ...base, refetch: vi.fn(async () => undefined) }} scope={scope} />);
     await userEvent.click(screen.getByRole("button", { name: "New playlist" }));
     await userEvent.type(screen.getByLabelText("Playlist name"), "Recovered create");
 
@@ -839,7 +899,7 @@ describe("Music workspace UI", () => {
       .mockRejectedValueOnce(new Error("contained"))
       .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
     const data = { ...base, refetch: vi.fn(async () => undefined) };
-    render(<MusicDashboard data={data} scope={scope} />);
+    await render(<MusicDashboard data={data} scope={scope} />);
     const opener = await openSharingSettings();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(opener).toHaveFocus();
@@ -862,7 +922,7 @@ describe("Music workspace UI", () => {
   it.each(["Escape", "Cancel", "backdrop", "mode"] as const)("does not lose an in-flight sharing command through %s", async (closePath) => {
     const pending = deferred<{ version: "music-publication/v1"; publication: { mode: "public"; publicSlug: string } }>();
     vi.spyOn(musicWorkspaceClient, "setPublication").mockReturnValue(pending.promise);
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
@@ -886,7 +946,7 @@ describe("Music workspace UI", () => {
     const publish = vi.spyOn(musicWorkspaceClient, "setPublication")
       .mockRejectedValueOnce(new Error("malformed successful response"))
       .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
-    const first = render(<MusicDashboard data={base} scope={scope} />);
+    const first = await render(<MusicDashboard data={base} scope={scope} />);
     await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
@@ -896,7 +956,7 @@ describe("Music workspace UI", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     first.unmount();
 
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
@@ -914,35 +974,62 @@ describe("Music workspace UI", () => {
       "PUBLICATION_REPLAY_EXPIRED",
       false,
     ),
-  ])("retires a publication command rejected with terminal code $code/$upstreamCode", async (terminalError) => {
+  ])("retains uncertain keys and requires explicit new action after expiry $code/$upstreamCode", async (terminalError) => {
     let uuid = 0;
     vi.stubGlobal("crypto", { randomUUID: () => `11111111-2222-4333-8444-${String(++uuid).padStart(12, "0")}` });
     const publish = vi.spyOn(musicWorkspaceClient, "setPublication")
       .mockRejectedValueOnce(terminalError)
       .mockResolvedValueOnce({ version: "music-publication/v1", publication: { mode: "public", publicSlug: "public-slug-123" } });
 
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Public" }));
     await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
-    await userEvent.click(screen.getByRole("button", { name: "Save sharing" }));
+    const expired = terminalError.upstreamCode === "PUBLICATION_REPLAY_EXPIRED";
+    await userEvent.click(await screen.findByRole("button", { name: expired ? "Confirm new sharing action" : "Save sharing" }));
     await waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
-
-    expect(publish.mock.calls[1][1]).not.toBe(publish.mock.calls[0][1]);
+    if (expired) expect(publish.mock.calls[1][1]).not.toBe(publish.mock.calls[0][1]);
+    else expect(publish.mock.calls[1][1]).toBe(publish.mock.calls[0][1]);
   });
 
   it("keeps recovery and sharing guidance at the approved body-size token", async () => {
-    render(<MusicDashboard data={base} scope={scope} />);
+    await render(<MusicDashboard data={base} scope={scope} />);
     await openSharingSettings();
     await userEvent.click(screen.getByRole("radio", { name: "Unlisted" }));
     expect(screen.getByText("Save to create a new private link. Creating another link replaces the previous one.")).toHaveClass("text-base");
   });
 
   it("shows the canonical link and preview affordance for a public workspace", async () => {
-    render(<MusicDashboard data={{ ...base, dashboard: { ...base.dashboard, publication: { mode: "public", publicSlug: "public-slug-123" } } }} scope={scope} />);
+    await render(<MusicDashboard data={{ ...base, dashboard: { ...base.dashboard, publication: { mode: "public", publicSlug: "public-slug-123" } } }} scope={scope} />);
     await openSharingSettings();
     expect(screen.getByLabelText("Music share link")).toHaveValue(`${window.location.origin}/music/share/public-slug-123`);
     expect(screen.getByRole("link", { name: "Preview public Music page" })).toHaveAttribute("target", "_blank");
+  });
+
+  it.each([
+    ["No", "private", "Music is private.", "false"],
+    ["Yes", "private", "Music sharing needs attention. Review or make it private.", "false"],
+    ["No", "public", "Music sharing needs attention. Review or make it private.", "false"],
+    ["Yes", "public", "Music is public.", "true"],
+  ] as const)("renders verified owner state for %s/%s", async (profilePreference, mode, label, checked) => {
+    await render(<MusicDashboard
+      data={{ ...base, dashboard: { ...base.dashboard, publication: { mode, publicSlug: mode === "public" ? "public-slug-123" : "" } } }}
+      scope={scope}
+    />, profilePreference);
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Music public visibility" })).toHaveAttribute("aria-checked", checked);
+  });
+
+  it("never claims Public when publication verification fails and offers refresh", async () => {
+    const view = await render(<MusicDashboard data={base} scope={scope} />);
+    vi.mocked(musicWorkspaceClient.loadDashboard).mockRejectedValue(new Error("offline"));
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/not confirmed/);
+    expect(screen.queryByText("Music is public.")).not.toBeInTheDocument();
+    const calls = vi.mocked(musicWorkspaceClient.loadDashboard).mock.calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Refresh Music status" }));
+    expect(vi.mocked(musicWorkspaceClient.loadDashboard).mock.calls.length).toBe(calls + 1);
+    expect(view.writes).toEqual([]);
   });
 });

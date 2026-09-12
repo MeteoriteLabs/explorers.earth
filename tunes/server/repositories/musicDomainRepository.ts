@@ -1,8 +1,9 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { hashGuestCapability, verifyGuestCapability } from "../policies/musicSurfacePolicy";
 import { MusicPublicationOperationRepository } from "./musicPublicationOperationRepository";
 import type { MusicPublicationMode } from "../services/musicPublicationResponseCrypto";
+import { advancePublicMusicSnapshotRevision } from "./publicMusicRevision";
 
 // playback_states predates the concurrency token and may contain arbitrary
 // legacy JSON. Only cast a canonical, in-range unsigned bigint representation.
@@ -21,12 +22,55 @@ const PLAYLIST_COLLECTION_LOCK = 0x4d54;
 const PUBLICATION_LOCK = 0x4d50;
 const MAX_SAVED_PLAYLISTS = 200;
 const MAX_SONGS_PER_PLAYLIST = 500;
+export const PUBLIC_MUSIC_RESOURCE_MAX_BYTES = 512 * 1_024;
+
+type PublicMusicSongStatus = "queued" | "playing" | "played" | "saved";
+export interface PublicMusicSong {
+  id: string;
+  youtubeId: string;
+  title: string;
+  artist: string;
+  thumbnailUrl: string | null;
+  position: number;
+  status: PublicMusicSongStatus;
+  playedAt: string | null;
+}
+export interface PublicMusicPlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  songs: { items: PublicMusicSong[]; total: number; truncated: boolean };
+}
+export interface PublicMusicResource {
+  version: "music-public-resource/v1";
+  revision: number;
+  user: { username: string; venueName: string | null };
+  permissions: {
+    allowSongRequests: boolean;
+    allowGuestPlayOnDevice: boolean;
+    allowPlaylistSharing: boolean;
+    allowRecentlyPlayedVisibility: boolean;
+    allowQueueVisibility: boolean;
+  };
+  currentlyPlaying: PublicMusicSong | null;
+  queue: { items: PublicMusicSong[]; total: number; truncated: boolean };
+  recentlyPlayed: { items: PublicMusicSong[]; total: number; truncated: boolean };
+  playlists: { items: PublicMusicPlaylist[]; total: number; truncated: boolean };
+}
 
 export class MusicDomainRepository {
+  private readonly publicIdHmacKey?: Buffer;
+
   constructor(
     private readonly pool: QueryPool,
     private readonly publicationOperations?: MusicPublicationOperationRepository,
-  ) {}
+    publicIdHmacKey?: Uint8Array,
+  ) {
+    if (publicIdHmacKey !== undefined && publicIdHmacKey.byteLength !== 32) {
+      throw new Error("Music public ID authority must be exactly 256 bits.");
+    }
+    this.publicIdHmacKey = publicIdHmacKey === undefined ? undefined : Buffer.from(publicIdHmacKey);
+  }
 
   async executePublicationCommand(musicUserId: number, idempotencyKey: string, mode: MusicPublicationMode) {
     if (!this.publicationOperations) throw new Error("Music publication response authority is unavailable.");
@@ -119,22 +163,41 @@ export class MusicDomainRepository {
         [musicUserId],
       )).rows[0]?.count ?? 0);
       if (count >= MAX_SAVED_PLAYLISTS) return undefined;
-      return (await client.query(
+      const playlist = (await client.query(
         "INSERT INTO playlists(user_id,name,description,is_visible_to_guests) VALUES ($1,$2,$3,false) RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at",
         [musicUserId, input.name, input.description],
       )).rows[0];
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
+      return playlist;
     });
   }
 
   async updatePlaylist(musicUserId: number, playlistId: number, input: { name: string; description: string | null }) {
-    return (await this.pool.query(
-      "UPDATE playlists SET name=$3,description=$4,updated_at=now() WHERE user_id=$1 AND id=$2 RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at",
-      [musicUserId, playlistId, input.name, input.description],
-    )).rows[0];
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      const changed = (await client.query(
+        `UPDATE playlists SET name=$3,description=$4,updated_at=now()
+          WHERE user_id=$1 AND id=$2
+            AND (name IS DISTINCT FROM $3 OR description IS DISTINCT FROM $4)
+        RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at`,
+        [musicUserId, playlistId, input.name, input.description],
+      )).rows[0];
+      if (changed) {
+        await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
+        return changed;
+      }
+      return (await client.query(
+        "SELECT id,user_id,name,description,is_visible_to_guests,created_at,updated_at FROM playlists WHERE user_id=$1 AND id=$2",
+        [musicUserId, playlistId],
+      )).rows[0];
+    });
   }
 
   async deletePlaylist(musicUserId: number, playlistId: number): Promise<boolean> {
-    return (await this.pool.query("DELETE FROM playlists WHERE user_id=$1 AND id=$2", [musicUserId, playlistId])).rowCount === 1;
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      const deleted = (await client.query("DELETE FROM playlists WHERE user_id=$1 AND id=$2", [musicUserId, playlistId])).rowCount === 1;
+      if (deleted) await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
+      return deleted;
+    });
   }
 
   async addPlaylistSong(musicUserId: number, playlistId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) {
@@ -148,7 +211,7 @@ export class MusicDomainRepository {
       )).rows[0];
       if (!owned) return undefined;
       if (Number(owned.count) >= MAX_SONGS_PER_PLAYLIST) return null;
-      return (await client.query(
+      const song = (await client.query(
         `WITH owned AS (
            SELECT id FROM playlists WHERE user_id=$1 AND id=$2
          ), ordered AS (
@@ -163,6 +226,8 @@ export class MusicDomainRepository {
          RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
         [musicUserId, playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
       )).rows[0];
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
+      return song;
     });
   }
 
@@ -182,11 +247,15 @@ export class MusicDomainRepository {
   }
 
   async removePlaylistSong(musicUserId: number, playlistId: number, songId: number): Promise<boolean> {
-    return (await this.pool.query(
-      `DELETE FROM playlist_songs ps USING playlists p
-       WHERE p.user_id=$1 AND ps.playlist_id=$2 AND p.id=ps.playlist_id AND ps.id=$3`,
-      [musicUserId, playlistId, songId],
-    )).rowCount === 1;
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      const deleted = (await client.query(
+        `DELETE FROM playlist_songs ps USING playlists p
+         WHERE p.user_id=$1 AND ps.playlist_id=$2 AND p.id=ps.playlist_id AND ps.id=$3`,
+        [musicUserId, playlistId, songId],
+      )).rowCount === 1;
+      if (deleted) await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
+      return deleted;
+    });
   }
 
   async reorderPlaylistSong(musicUserId: number, playlistId: number, songId: number, position: number): Promise<boolean> {
@@ -198,6 +267,8 @@ export class MusicDomainRepository {
       )).rows.map(({ id }) => id as number);
       const current = ids.indexOf(songId);
       if (current < 0) return false;
+      const requestedPosition = Math.max(0, Math.min(position, ids.length - 1));
+      if (current === requestedPosition) return true;
       ids.splice(current, 1);
       ids.splice(Math.max(0, Math.min(position, ids.length)), 0, songId);
       await client.query(
@@ -208,15 +279,24 @@ export class MusicDomainRepository {
           WHERE p.user_id=$1 AND p.id=$2 AND ps.playlist_id=p.id AND ps.id=d.id`,
         [musicUserId, playlistId, ids],
       );
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
       return true;
     });
   }
 
   async setPlaylistVisibility(musicUserId: number, playlistId: number, visible: boolean): Promise<boolean> {
-    return (await this.pool.query(
-      "UPDATE playlists SET is_visible_to_guests=$3,updated_at=now() WHERE user_id=$1 AND id=$2",
-      [musicUserId, playlistId, visible],
-    )).rowCount === 1;
+    return this.withAdvisoryLock(SAVED_PLAYLIST_LOCK, playlistId, async (client) => {
+      const changed = (await client.query(
+        `UPDATE playlists SET is_visible_to_guests=$3,updated_at=now()
+          WHERE user_id=$1 AND id=$2 AND is_visible_to_guests IS DISTINCT FROM $3`,
+        [musicUserId, playlistId, visible],
+      )).rowCount === 1;
+      if (changed) {
+        await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
+        return true;
+      }
+      return (await client.query("SELECT 1 FROM playlists WHERE user_id=$1 AND id=$2", [musicUserId, playlistId])).rowCount === 1;
+    });
   }
 
   async listQueue(musicUserId: number) {
@@ -339,6 +419,9 @@ export class MusicDomainRepository {
           playedAt: row.played_at instanceof Date ? row.played_at.toISOString() : row.played_at ?? null,
         })),
       };
+      if (removedActiveRows.length > 0 || inserted.length > 0) {
+        await advancePublicMusicSnapshotRevision(client, musicUserId, "queue_changed");
+      }
       await client.query(
         `INSERT INTO music_owner_operations(
            music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
@@ -405,6 +488,7 @@ export class MusicDomainRepository {
          RETURNING id,playlist_id,youtube_id,title,artist,thumbnail_url,position,added_at`,
         [playlistId, input.youtubeId, input.title, input.artist, input.thumbnailUrl, Number(owned.count)],
       )).rows[0];
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
       await client.query(
         `INSERT INTO music_owner_operations(
            music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
@@ -499,6 +583,7 @@ export class MusicDomainRepository {
         playedAt: row.played_at instanceof Date ? row.played_at.toISOString() : row.played_at ?? null,
       }));
       const response = { version: "music-queue/v1" as const, revision: nextRevision, songs: queue };
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "queue_changed");
       await client.query(
         `INSERT INTO music_owner_operations(music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at)
          VALUES ($1,$2,$3,$4,200,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
@@ -565,21 +650,35 @@ export class MusicDomainRepository {
   }
 
   async updateGuestControls(musicUserId: number, controls: { allowSongRequests: boolean; allowGuestPlayOnDevice: boolean; allowPlaylistSharing: boolean; allowRecentlyPlayedVisibility: boolean; allowQueueVisibility?: boolean }) {
-    const row = (await this.pool.query(
-      `UPDATE users SET allow_song_requests=$2,allow_guest_play_on_device=$3,
-         allow_playlist_sharing=$4,allow_recently_played_visibility=$5,
-         allow_queue_visibility=COALESCE($6,allow_queue_visibility),updated_at=now()
-       WHERE id=$1 AND identity_status='active'
-       RETURNING allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility`,
-      [musicUserId, controls.allowSongRequests, controls.allowGuestPlayOnDevice, controls.allowPlaylistSharing, controls.allowRecentlyPlayedVisibility, controls.allowQueueVisibility],
-    )).rows[0];
-    return row ? {
-      allowSongRequests: row.allow_song_requests === true,
-      allowGuestPlayOnDevice: row.allow_guest_play_on_device === true,
-      allowPlaylistSharing: row.allow_playlist_sharing === true,
-      allowRecentlyPlayedVisibility: row.allow_recently_played_visibility === true,
-      allowQueueVisibility: row.allow_queue_visibility === true,
-    } : undefined;
+    return this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
+      const row = (await client.query(
+        `UPDATE users SET allow_song_requests=$2,allow_guest_play_on_device=$3,
+           allow_playlist_sharing=$4,allow_recently_played_visibility=$5,
+           allow_queue_visibility=COALESCE($6,allow_queue_visibility),updated_at=now()
+         WHERE id=$1 AND identity_status='active'
+           AND (allow_song_requests IS DISTINCT FROM $2
+             OR allow_guest_play_on_device IS DISTINCT FROM $3
+             OR allow_playlist_sharing IS DISTINCT FROM $4
+             OR allow_recently_played_visibility IS DISTINCT FROM $5
+             OR ($6::boolean IS NOT NULL AND allow_queue_visibility IS DISTINCT FROM $6))
+         RETURNING allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility,true AS changed`,
+        [musicUserId, controls.allowSongRequests, controls.allowGuestPlayOnDevice, controls.allowPlaylistSharing, controls.allowRecentlyPlayedVisibility, controls.allowQueueVisibility],
+      )).rows[0] ?? (await client.query(
+        `SELECT allow_song_requests,allow_guest_play_on_device,allow_playlist_sharing,allow_recently_played_visibility,allow_queue_visibility,false AS changed
+           FROM users WHERE id=$1 AND identity_status='active'`,
+        [musicUserId],
+      )).rows[0];
+      if (!row) return undefined;
+      const result = {
+        allowSongRequests: row.allow_song_requests === true,
+        allowGuestPlayOnDevice: row.allow_guest_play_on_device === true,
+        allowPlaylistSharing: row.allow_playlist_sharing === true,
+        allowRecentlyPlayedVisibility: row.allow_recently_played_visibility === true,
+        allowQueueVisibility: row.allow_queue_visibility === true,
+      };
+      if (row.changed === true) await advancePublicMusicSnapshotRevision(client, musicUserId, "guest_controls_changed");
+      return result;
+    });
   }
 
   async getGuestControls(musicUserId: number) {
@@ -618,6 +717,7 @@ export class MusicDomainRepository {
         [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl],
       )).rows[0];
       await this.advanceQueueRevision(client, musicUserId);
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "queue_changed");
       return song;
     });
   }
@@ -657,25 +757,33 @@ export class MusicDomainRepository {
           )).rows[0];
           const revision = Number(advanced.music_queue_revision);
           await this.recordPlaybackRevision(client, musicUserId, revision);
+          if ((completed.rowCount ?? 0) > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "playback_changed");
           return { status: "completed" as const, revision, playbackRevision: revision, song: null };
         }
         if ((completed.rowCount ?? 0) > 0) {
           const revision = await this.advanceQueueRevision(client, musicUserId);
           await this.recordPlaybackRevision(client, musicUserId, revision);
         }
+        if ((completed.rowCount ?? 0) > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "playback_changed");
         return null;
       }
       const activated = (await client.query(
         `WITH target AS (
            SELECT id FROM songs WHERE user_id=$1 AND id=$2 FOR UPDATE
+         ), was_playing AS (
+           SELECT EXISTS(SELECT 1 FROM songs WHERE user_id=$1 AND id=$2 AND status='playing') AS value
+             FROM target
          ), previous AS (
            UPDATE songs SET status='played',played_at=now()
             WHERE user_id=$1 AND status='playing' AND id<>$2
               AND EXISTS (SELECT 1 FROM target)
+           RETURNING 1
          )
          UPDATE songs SET status='playing',played_at=NULL
           WHERE user_id=$1 AND id=$2 AND EXISTS (SELECT 1 FROM target)
-         RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at`,
+         RETURNING id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at,
+                   (SELECT value FROM was_playing) AS was_playing,
+                   (SELECT count(*)::integer FROM previous) AS retired_count`,
         [musicUserId, songId],
       )).rows[0];
       if (!activated) return expectedRevision === undefined ? undefined : { status: "not_found" as const };
@@ -687,6 +795,9 @@ export class MusicDomainRepository {
         [musicUserId, expectedRevision],
       )).rows[0].music_queue_revision);
       await this.recordPlaybackRevision(client, musicUserId, canonicalRevision!);
+      if (activated.was_playing !== true || Number(activated.retired_count) > 0) {
+        await advancePublicMusicSnapshotRevision(client, musicUserId, "playback_changed");
+      }
       const song = (await client.query(
         "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='playing'",
         [musicUserId, songId],
@@ -760,6 +871,7 @@ export class MusicDomainRepository {
         "INSERT INTO playlists(user_id,name,description,is_visible_to_guests) VALUES ($1,$2,$3,false) RETURNING id,user_id,name,description,is_visible_to_guests,created_at,updated_at",
         [musicUserId, input.name, input.description],
       )).rows[0];
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "playlists_changed");
       await client.query(
         `INSERT INTO music_owner_operations(
            music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
@@ -778,6 +890,8 @@ export class MusicDomainRepository {
       )).rows as Array<{ id: number; status: string }>;
       const current = rows.findIndex(({ id, status }) => id === songId && status === "queued");
       if (current < 0) return undefined;
+      const requestedPosition = Math.max(0, Math.min(position, rows.length - 1));
+      const publicStateChanged = current !== requestedPosition;
       const [target] = rows.splice(current, 1);
       rows.splice(Math.max(0, Math.min(position, rows.length)), 0, target);
       await client.query(
@@ -788,6 +902,7 @@ export class MusicDomainRepository {
         [musicUserId, rows.map(({ id }) => id)],
       );
       await this.advanceQueueRevision(client, musicUserId);
+      if (publicStateChanged) await advancePublicMusicSnapshotRevision(client, musicUserId, "queue_changed");
       return (await client.query(
         "SELECT id,user_id,youtube_id,title,artist,thumbnail_url,position,status,played_at FROM songs WHERE user_id=$1 AND id=$2 AND status='queued'",
         [musicUserId, songId],
@@ -808,6 +923,7 @@ export class MusicDomainRepository {
           await this.recordPlaybackRevision(client, musicUserId, nextRevision);
         }
       }
+      if ((removed.rowCount ?? 0) > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "queue_changed");
       return removed.rowCount === 1;
     });
   }
@@ -825,6 +941,7 @@ export class MusicDomainRepository {
           await this.recordPlaybackRevision(client, musicUserId, nextRevision);
         }
       }
+      if ((removed.rowCount ?? 0) > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "queue_changed");
       return removed.rowCount ?? 0;
     });
   }
@@ -873,6 +990,7 @@ export class MusicDomainRepository {
         [musicUserId, songId],
       );
       if ((removed.rowCount ?? 0) !== 1) return { status: "not_found" as const };
+      await advancePublicMusicSnapshotRevision(client, musicUserId, "playback_changed");
       await client.query(
         `INSERT INTO music_owner_operations(
            music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at
@@ -884,14 +1002,126 @@ export class MusicDomainRepository {
   }
 
   async clearHistory(musicUserId: number): Promise<number> {
-    return (await this.pool.query("DELETE FROM songs WHERE user_id=$1 AND status='played'", [musicUserId])).rowCount ?? 0;
+    return this.withAdvisoryLock(QUEUE_MUTATION_LOCK, musicUserId, async (client) => {
+      const deleted = (await client.query("DELETE FROM songs WHERE user_id=$1 AND status='played'", [musicUserId])).rowCount ?? 0;
+      if (deleted > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "playback_changed");
+      return deleted;
+    });
+  }
+
+  async addGuestSongIdempotent(
+    publicSlug: string,
+    capability: string | undefined,
+    source: string,
+    idempotencyKey: string,
+    input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string },
+  ): Promise<
+    | { status: "completed"; replayed: boolean; response: { accepted: true } }
+    | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+  > {
+    assertCanonicalYouTubeVideoId(input.youtubeId);
+    const operationFamily = "guest.song.request:";
+    const keyHash = createHash("sha256").update(idempotencyKey, "utf8").digest("hex");
+    const requestHash = createHash("sha256").update(JSON.stringify(input), "utf8").digest("hex");
+    const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+    const capabilityHash = capabilityValid ? hashGuestCapability(capability) : null;
+    const rateAuthorityHash = createHash("sha256")
+      .update(`${source}\0${publicSlug}\0${capabilityHash ?? "public"}`, "utf8").digest("hex");
+    const operation = `${operationFamily}${rateAuthorityHash}`;
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const resolved = (await client.query(
+        `SELECT id FROM users WHERE guest_url=$1 AND identity_status='active'
+           AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
+        [publicSlug, capabilityHash, capabilityValid],
+      )).rows[0];
+      if (!resolved) { await client.query("ROLLBACK"); return { status: "forbidden" }; }
+      const musicUserId = Number(resolved.id);
+      await client.query("SELECT pg_advisory_xact_lock($1,$2)", [QUEUE_MUTATION_LOCK, musicUserId]);
+      const owner = (await client.query(
+        `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash
+           FROM users WHERE guest_url=$1 AND identity_status='active'
+              AND id=$4
+              AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))
+           FOR UPDATE`,
+        [publicSlug, capabilityHash, capabilityValid, musicUserId],
+      )).rows[0];
+      const authorized = owner && owner.allow_song_requests === true && (owner.guest_discoverable === true
+        || (capabilityValid && verifyGuestCapability(capability!, owner.guest_capability_hash)));
+      if (!authorized) { await client.query("ROLLBACK"); return { status: "forbidden" }; }
+      await client.query(
+        `DELETE FROM music_owner_operations WHERE music_user_id=$1 AND operation LIKE $2 AND idempotency_key_hash=$3
+           AND expires_at<=transaction_timestamp()`, [musicUserId, operation, keyHash],
+      );
+      await client.query(
+        `WITH expired AS (
+           SELECT ctid FROM music_owner_operations
+            WHERE music_user_id=$1 AND operation LIKE $2 AND expires_at<=transaction_timestamp()
+            ORDER BY expires_at LIMIT 100
+         ) DELETE FROM music_owner_operations operation USING expired WHERE operation.ctid=expired.ctid`,
+        [musicUserId, `${operationFamily}%`],
+      );
+      const existing = (await client.query(
+        `SELECT request_hash,response_body FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation LIKE $2 AND idempotency_key_hash=$3 AND expires_at>transaction_timestamp()`,
+        [musicUserId, `${operationFamily}%`, keyHash],
+      )).rows[0];
+      if (existing) {
+        await client.query("COMMIT");
+        if (existing.request_hash !== requestHash) return { status: "conflict" };
+        return { status: "completed", replayed: true, response: existing.response_body };
+      }
+      const recentForSource = Number((await client.query(
+        `SELECT count(*)::integer AS count FROM music_owner_operations
+          WHERE music_user_id=$1 AND operation=$2 AND created_at>transaction_timestamp()-interval '1 minute'`,
+        [musicUserId, operation],
+      )).rows[0]?.count ?? 0);
+      if (recentForSource >= 20) { await client.query("ROLLBACK"); return { status: "rate_limited" }; }
+      await this.normalizeActiveQueue(client, musicUserId);
+      const activeCount = Number((await client.query(
+        "SELECT count(*)::integer AS count FROM songs WHERE user_id=$1 AND status IN ('queued','playing')", [musicUserId],
+      )).rows[0]?.count ?? 0);
+      if (activeCount >= 500) { await client.query("ROLLBACK"); return { status: "limit" }; }
+      await client.query(
+        `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
+         VALUES ($1,$2,$3,$4,$5,$6,'queued')`,
+        [musicUserId, input.youtubeId, input.title, input.artist, input.thumbnailUrl, activeCount],
+      );
+      await client.query("UPDATE users SET music_queue_revision=music_queue_revision+1 WHERE id=$1", [musicUserId]);
+      const revision = Number((await client.query(
+        "UPDATE users SET public_snapshot_revision=public_snapshot_revision+1 WHERE id=$1 RETURNING public_snapshot_revision", [musicUserId],
+      )).rows[0]?.public_snapshot_revision);
+      if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("Public Music snapshot revision authority is unavailable.");
+      await client.query("SELECT pg_notify('music_public_change',$1)", [JSON.stringify({ musicUserId, kind: "queue_changed", revision })]);
+      const response = { accepted: true as const };
+      await client.query(
+        `INSERT INTO music_owner_operations(music_user_id,operation,idempotency_key_hash,request_hash,status_code,response_body,expires_at)
+         VALUES ($1,$2,$3,$4,201,$5::jsonb,transaction_timestamp()+interval '24 hours')`,
+        [musicUserId, operation, keyHash, requestHash, JSON.stringify(response)],
+      );
+      await client.query("COMMIT");
+      return { status: "completed", replayed: false, response };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally { client.release(); }
   }
 
   async rotateGuestCapability(musicUserId: number, capabilityHash: string) {
-    return (await this.pool.query(
-      "UPDATE users SET guest_capability_hash=$2,guest_capability_rotated_at=now(),guest_capability_revoked_at=NULL WHERE id=$1 RETURNING guest_capability_hash",
-      [musicUserId, capabilityHash],
-    )).rows[0];
+    return this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
+      const changed = (await client.query(
+        `UPDATE users SET guest_capability_hash=$2,guest_capability_rotated_at=now(),guest_capability_revoked_at=NULL
+          WHERE id=$1 AND (guest_capability_hash IS DISTINCT FROM $2 OR guest_capability_revoked_at IS NOT NULL)
+        RETURNING guest_capability_hash`,
+        [musicUserId, capabilityHash],
+      )).rows[0];
+      if (changed) {
+        await advancePublicMusicSnapshotRevision(client, musicUserId, "publication_changed");
+        return changed;
+      }
+      return (await client.query("SELECT guest_capability_hash FROM users WHERE id=$1", [musicUserId])).rows[0];
+    });
   }
 
   async setPublicationMode(
@@ -903,26 +1133,48 @@ export class MusicDomainRepository {
       throw new Error("A valid capability hash is required for unlisted publication.");
     }
     return this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
-      const row = (await client.query(
+      const changed = (await client.query(
         `UPDATE users
             SET guest_discoverable=($2='public'),
                 guest_capability_hash=CASE WHEN $2='unlisted' THEN $3 ELSE guest_capability_hash END,
                 guest_capability_rotated_at=CASE WHEN $2='unlisted' THEN now() ELSE guest_capability_rotated_at END,
                 guest_capability_revoked_at=CASE WHEN $2='unlisted' THEN NULL ELSE now() END
-          WHERE id=$1
+          WHERE id=$1 AND (
+            ($2='unlisted' AND (guest_discoverable IS NOT FALSE
+              OR guest_capability_hash IS DISTINCT FROM $3 OR guest_capability_revoked_at IS NOT NULL))
+            OR ($2='public' AND guest_discoverable IS NOT TRUE)
+            OR ($2='private' AND (guest_discoverable IS NOT FALSE
+              OR (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL)))
+          )
           RETURNING guest_url`,
         [musicUserId, mode, capabilityHash ?? null],
       )).rows[0];
+      if (changed) await advancePublicMusicSnapshotRevision(client, musicUserId, "publication_changed");
+      const row = changed ?? (await client.query("SELECT guest_url FROM users WHERE id=$1", [musicUserId])).rows[0];
       return row ? { mode, publicSlug: String(row.guest_url ?? "") } : undefined;
     });
   }
 
   async revokeGuestCapability(musicUserId: number): Promise<void> {
-    await this.pool.query("UPDATE users SET guest_capability_revoked_at=now(),guest_discoverable=false WHERE id=$1", [musicUserId]);
+    await this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
+      const changed = await client.query(
+        `UPDATE users SET guest_capability_revoked_at=now(),guest_discoverable=false
+          WHERE id=$1 AND (guest_discoverable IS NOT FALSE
+            OR (guest_capability_hash IS NOT NULL AND guest_capability_revoked_at IS NULL))`,
+        [musicUserId],
+      );
+      if ((changed.rowCount ?? 0) > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "publication_changed");
+    });
   }
 
   async setDiscoverable(musicUserId: number, discoverable: boolean): Promise<void> {
-    await this.pool.query("UPDATE users SET guest_discoverable=$2 WHERE id=$1", [musicUserId, discoverable]);
+    await this.withAdvisoryLock(PUBLICATION_LOCK, musicUserId, async (client) => {
+      const changed = await client.query(
+        "UPDATE users SET guest_discoverable=$2 WHERE id=$1 AND guest_discoverable IS DISTINCT FROM $2",
+        [musicUserId, discoverable],
+      );
+      if ((changed.rowCount ?? 0) > 0) await advancePublicMusicSnapshotRevision(client, musicUserId, "publication_changed");
+    });
   }
 
   async resolveEntitlement(musicUserId: number) {
@@ -931,6 +1183,219 @@ export class MusicDomainRepository {
       [musicUserId],
     )).rows[0];
     return row ? { state: row.entitlement_state, sourceUpdatedAt: row.entitlement_source_updated_at } : undefined;
+  }
+
+  async resolvePublicDescriptor(accountDocumentId: string): Promise<{
+    mode: "public";
+    publicSlug: string;
+    revision: number;
+  } | undefined> {
+    const rows = (await this.pool.query(
+      `SELECT u.guest_url AS "publicSlug",u.public_snapshot_revision AS revision
+         FROM users u
+        WHERE u.strapi_account_document_id=$1
+          AND u.identity_status='active'
+          AND u.guest_discoverable=true
+          AND u.guest_url IS NOT NULL
+          AND length(u.guest_url) BETWEEN 8 AND 128
+          AND u.guest_url ~ '^[A-Za-z0-9_-]+$'
+          AND NOT EXISTS (
+            SELECT 1 FROM users collision
+             WHERE collision.strapi_user_document_id=$1
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM music_identity_tombstones tombstone
+             WHERE tombstone.strapi_user_document_id=$1
+                OR tombstone.strapi_account_document_id=$1
+          )
+        LIMIT 2`,
+      [accountDocumentId],
+    )).rows;
+    if (rows.length !== 1) return undefined;
+    const publicSlug = rows[0]?.publicSlug;
+    const revision = Number(rows[0]?.revision);
+    if (typeof publicSlug !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug)
+        || !Number.isSafeInteger(revision) || revision < 0) return undefined;
+    return { mode: "public", publicSlug, revision };
+  }
+
+  async resolvePublicSnapshotRevision(musicUserId: number): Promise<number | undefined> {
+    if (!Number.isSafeInteger(musicUserId) || musicUserId < 1) return undefined;
+    const row = (await this.pool.query(
+      "SELECT public_snapshot_revision AS revision FROM users WHERE id=$1 AND identity_status='active'",
+      [musicUserId],
+    )).rows[0];
+    const revision = Number(row?.revision);
+    return Number.isSafeInteger(revision) && revision >= 0 ? revision : undefined;
+  }
+
+  async resolvePublicMusicResource(
+    publicSlug: string,
+    capability?: string,
+  ): Promise<{ state: string; noindex?: boolean; resource?: PublicMusicResource } | undefined> {
+    if (!this.publicIdHmacKey) throw new Error("Music public ID authority is unavailable.");
+    const publicIdHmacKey = this.publicIdHmacKey;
+    const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+    const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
+    return this.withReadSnapshot(async (client) => {
+      const owner = (await client.query(
+        `SELECT u.id,u.identity_status,u.guest_capability_hash,u.guest_capability_revoked_at,
+                u.guest_discoverable,u.guest_url,u.username,u.venue_name,u.public_snapshot_revision,
+                u.allow_song_requests,u.allow_guest_play_on_device,u.allow_playlist_sharing,
+                u.allow_recently_played_visibility,u.allow_queue_visibility
+           FROM users u
+          WHERE u.guest_url=$2
+            AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
+          LIMIT 1`,
+        [capabilityHash, publicSlug, capabilityValid],
+      )).rows[0];
+      if (!owner) return undefined;
+      const capabilityMatch = capabilityValid && verifyGuestCapability(capability!, owner.guest_capability_hash);
+      const state = owner.identity_status === "suspended" ? "suspended"
+        : owner.identity_status === "pending_deletion" ? "pending_deletion"
+          : owner.guest_discoverable === true ? "public"
+            : owner.guest_capability_revoked_at && capabilityMatch ? "revoked"
+              : capabilityMatch ? "unlisted" : "private";
+      if (state !== "public" && state !== "unlisted") return { state };
+
+      const revision = boundedPublicTotal(owner.public_snapshot_revision);
+      const username = boundedPublicText(owner.username, 255);
+      let venueName: string | null = null;
+      if (owner.venue_name !== null) {
+        const boundedVenueName = boundedPublicText(owner.venue_name, 255);
+        if (!boundedVenueName) return { state };
+        venueName = boundedVenueName;
+      }
+      if (revision === undefined || !username) return { state };
+      const permissions = {
+        allowSongRequests: owner.allow_song_requests === true,
+        allowGuestPlayOnDevice: owner.allow_guest_play_on_device === true,
+        allowPlaylistSharing: owner.allow_playlist_sharing === true,
+        allowRecentlyPlayedVisibility: owner.allow_recently_played_visibility === true,
+        allowQueueVisibility: owner.allow_queue_visibility === true,
+      };
+
+      let currentlyPlaying: PublicMusicSong | null = null;
+      if (permissions.allowGuestPlayOnDevice || permissions.allowQueueVisibility) {
+        const row = (await client.query(
+          `SELECT id,youtube_id,title,artist,thumbnail_url,position,status,played_at
+             FROM songs WHERE user_id=$1 AND status='playing'
+            ORDER BY position,id LIMIT 1`,
+          [owner.id],
+        )).rows[0];
+        currentlyPlaying = row ? publicSongFromRow(publicIdHmacKey, "song", row, "playing") : null;
+      }
+
+      let queueRows: any[] = [];
+      let queueTotal = 0;
+      if (permissions.allowQueueVisibility) {
+        queueRows = (await client.query(
+          `WITH total AS (
+             SELECT count(*)::integer AS total FROM songs WHERE user_id=$1 AND status='queued'
+           ), bounded AS (
+             SELECT id,youtube_id,title,artist,thumbnail_url,position,status,played_at
+               FROM songs WHERE user_id=$1 AND status='queued'
+              ORDER BY position,id LIMIT 100
+           )
+           SELECT bounded.*,total.total FROM total LEFT JOIN bounded ON true ORDER BY bounded.position,bounded.id`,
+          [owner.id],
+        )).rows;
+        queueTotal = publicQueryTotal(queueRows, owner.queue_total);
+      }
+      const queueItems = queueRows.filter((row) => row.id !== null && row.id !== undefined).slice(0, 100)
+        .map((row) => publicSongFromRow(publicIdHmacKey, "song", row, "queued"));
+
+      let historyRows: any[] = [];
+      let historyTotal = 0;
+      if (permissions.allowRecentlyPlayedVisibility) {
+        historyRows = (await client.query(
+          `WITH total AS (
+             SELECT count(*)::integer AS total FROM songs WHERE user_id=$1 AND status='played'
+           ), bounded AS (
+             SELECT id,youtube_id,title,artist,thumbnail_url,position,status,played_at
+               FROM songs WHERE user_id=$1 AND status='played'
+              ORDER BY played_at DESC NULLS LAST,id DESC LIMIT 50
+           )
+           SELECT bounded.*,total.total FROM total LEFT JOIN bounded ON true
+            ORDER BY bounded.played_at DESC NULLS LAST,bounded.id DESC`,
+          [owner.id],
+        )).rows;
+        historyTotal = publicQueryTotal(historyRows, owner.history_total);
+      }
+      const historyItems = historyRows.filter((row) => row.id !== null && row.id !== undefined).slice(0, 50)
+        .map((row) => publicSongFromRow(publicIdHmacKey, "song", row, "played"));
+
+      let playlistRows: any[] = [];
+      let playlistTotal = 0;
+      if (permissions.allowPlaylistSharing) {
+        playlistRows = (await client.query(
+          `WITH total AS (
+             SELECT count(*)::integer AS total FROM playlists
+              WHERE user_id=$1 AND is_visible_to_guests=true
+           ), bounded_playlists AS (
+             SELECT id,name,description,is_visible_to_guests,created_at
+               FROM playlists
+              WHERE user_id=$1 AND is_visible_to_guests=true
+              ORDER BY created_at DESC,id DESC LIMIT 20
+           )
+           SELECT p.id AS playlist_internal_id,p.name AS playlist_name,p.description AS playlist_description,
+                  p.is_visible_to_guests AS playlist_visible,total.total AS playlist_total,
+                  saved.id,saved.youtube_id,saved.title,saved.artist,saved.thumbnail_url,saved.position,
+                  saved.status,saved.played_at,saved.song_total AS playlist_song_total
+             FROM total LEFT JOIN bounded_playlists p ON true
+             LEFT JOIN LATERAL (
+               WITH song_total AS (
+                 SELECT count(*)::integer AS total FROM playlist_songs WHERE playlist_id=p.id
+               ), bounded_songs AS (
+                 SELECT id,youtube_id,title,artist,thumbnail_url,position,'saved'::text AS status,NULL::timestamptz AS played_at
+                   FROM playlist_songs WHERE playlist_id=p.id
+                  ORDER BY position,id LIMIT 50
+               )
+               SELECT bounded_songs.*,song_total.total AS song_total
+                 FROM song_total LEFT JOIN bounded_songs ON true
+                ORDER BY bounded_songs.position,bounded_songs.id
+             ) saved ON p.id IS NOT NULL
+            ORDER BY p.created_at DESC,p.id DESC,saved.position,saved.id`,
+          [owner.id],
+        )).rows;
+        playlistTotal = publicQueryTotal(playlistRows, owner.playlist_total);
+      }
+      const playlists = publicPlaylistsFromRows(publicIdHmacKey, playlistRows).slice(0, 20);
+      const resource: PublicMusicResource = {
+        version: "music-public-resource/v1",
+        revision,
+        user: { username, venueName },
+        permissions,
+        currentlyPlaying,
+        queue: { items: queueItems, total: queueTotal, truncated: queueTotal > queueItems.length },
+        recentlyPlayed: { items: historyItems, total: historyTotal, truncated: historyTotal > historyItems.length },
+        playlists: { items: playlists, total: playlistTotal, truncated: playlistTotal > playlists.length },
+      };
+      boundPublicResourcePayload(resource);
+      return { state, noindex: state === "unlisted", resource };
+    });
+  }
+
+  async resolvePublicMusicSocketAuthority(publicSlug: string, capability?: string): Promise<{
+    musicUserId: number;
+    active: boolean;
+  } | undefined> {
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug)) return undefined;
+    const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
+    const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
+    const row = (await this.pool.query(
+      `SELECT id,identity_status,guest_discoverable,guest_capability_hash,guest_capability_revoked_at
+         FROM users
+        WHERE guest_url=$2
+          AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$1))
+        LIMIT 1`,
+      [capabilityHash, publicSlug, capabilityValid],
+    )).rows[0];
+    if (!row || row.identity_status !== "active") return undefined;
+    const publicAuthority = row.guest_discoverable === true;
+    const unlistedAuthority = row.guest_discoverable !== true && capabilityValid
+      && !row.guest_capability_revoked_at && verifyGuestCapability(capability!, row.guest_capability_hash);
+    return publicAuthority || unlistedAuthority ? { musicUserId: Number(row.id), active: true } : undefined;
   }
 
   async resolveGuestResource(publicSlug: string, capability?: string) {
@@ -1049,6 +1514,148 @@ export class MusicDomainRepository {
         ORDER BY u.guest_url`,
     )).rows;
   }
+}
+
+function boundedPublicText(value: unknown, maxLength: number): string | undefined {
+  return typeof value === "string" && value.length >= 1 && value.length <= maxLength ? value : undefined;
+}
+
+function boundedPublicOptionalText(value: unknown, maxLength: number): string | undefined {
+  return typeof value === "string" && value.length <= maxLength ? value : undefined;
+}
+
+function boundedPublicTotal(value: unknown): number | undefined {
+  const total = Number(value);
+  return Number.isSafeInteger(total) && total >= 0 ? total : undefined;
+}
+
+function publicQueryTotal(rows: any[], fallback: unknown): number {
+  const total = boundedPublicTotal(rows[0]?.total ?? rows[0]?.playlist_total ?? fallback);
+  return total ?? rows.filter((row) => row.id !== null && row.id !== undefined).length;
+}
+
+function publicContentId(
+  key: Buffer,
+  entityType: "song" | "playlist" | "playlist-song",
+  internalIdentity: unknown,
+): string {
+  const identity = canonicalInternalPublicIdentity(internalIdentity);
+  return createHmac("sha256", key)
+    .update("music-public-id/v1\0", "utf8")
+    .update(entityType, "utf8")
+    .update("\0", "utf8")
+    .update(identity, "utf8")
+    .digest("base64url");
+}
+
+function canonicalInternalPublicIdentity(value: unknown): string {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
+  if (typeof value === "bigint" && /^[1-9][0-9]*$/.test(value.toString())) return value.toString();
+  if (typeof value === "string" && /^[1-9][0-9]{0,18}$/.test(value)) return value;
+  throw new Error("The public Music entity identity is invalid.");
+}
+
+function publicThumbnailUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length < 1 || value.length > 2_048) return null;
+  try {
+    const parsed = new URL(value);
+    const canonical = parsed.toString();
+    return (parsed.protocol === "https:" || parsed.protocol === "http:")
+      && parsed.username.length === 0 && parsed.password.length === 0 && canonical.length <= 2_048
+      ? canonical
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function publicSongFromRow(
+  publicIdHmacKey: Buffer,
+  entityType: "song" | "playlist-song",
+  row: any,
+  status: PublicMusicSongStatus,
+): PublicMusicSong {
+  const youtubeId = boundedPublicText(row.youtube_id ?? row.youtubeId, 11);
+  const title = boundedPublicText(row.title, 1_024);
+  const artist = boundedPublicText(row.artist, 1_024);
+  const thumbnailUrl = publicThumbnailUrl(row.thumbnail_url ?? row.thumbnailUrl);
+  const position = boundedPublicTotal(row.position);
+  if (!youtubeId || !/^[A-Za-z0-9_-]{11}$/.test(youtubeId) || !title || !artist || position === undefined) {
+    throw new Error("The public Music song projection is invalid.");
+  }
+  const rawPlayedAt = row.played_at ?? row.playedAt;
+  const playedAt = status === "played"
+    ? rawPlayedAt instanceof Date ? rawPlayedAt.toISOString() : rawPlayedAt ? new Date(rawPlayedAt).toISOString() : undefined
+    : null;
+  if (status === "played" && !playedAt) throw new Error("The public Music history projection is invalid.");
+  return {
+    id: publicContentId(publicIdHmacKey, entityType, row.id),
+    youtubeId,
+    title,
+    artist,
+    thumbnailUrl,
+    position,
+    status,
+    playedAt: playedAt ?? null,
+  };
+}
+
+function publicPlaylistsFromRows(publicIdHmacKey: Buffer, rows: any[]): PublicMusicPlaylist[] {
+  const grouped = new Map<unknown, { playlist: PublicMusicPlaylist; total: number }>();
+  for (const row of rows) {
+    const internalId = row.playlist_internal_id;
+    if (internalId === null || internalId === undefined || row.playlist_visible !== true) continue;
+    let entry = grouped.get(internalId);
+    if (!entry) {
+      const name = boundedPublicText(row.playlist_name, 120);
+      let description: string | null = null;
+      if (row.playlist_description !== null) {
+        const boundedDescription = boundedPublicOptionalText(row.playlist_description, 2_000);
+        if (boundedDescription === undefined) throw new Error("The public Music playlist projection is invalid.");
+        description = boundedDescription;
+      }
+      if (!name) throw new Error("The public Music playlist projection is invalid.");
+      const total = boundedPublicTotal(row.playlist_song_total) ?? 0;
+      entry = {
+        total,
+        playlist: {
+          id: publicContentId(publicIdHmacKey, "playlist", internalId),
+          name,
+          description,
+          songs: { items: [], total, truncated: total > 0 },
+        },
+      };
+      grouped.set(internalId, entry);
+    }
+    const current = entry!;
+    if (row.id !== null && row.id !== undefined && current.playlist.songs.items.length < 50) {
+      current.playlist.songs.items.push(publicSongFromRow(
+        publicIdHmacKey,
+        "playlist-song",
+        row,
+        "saved",
+      ));
+      current.playlist.songs.truncated = current.total > current.playlist.songs.items.length;
+    }
+  }
+  return Array.from(grouped.values()).map(({ playlist }) => playlist);
+}
+
+function boundPublicResourcePayload(resource: PublicMusicResource): void {
+  const size = () => Buffer.byteLength(JSON.stringify(resource), "utf8");
+  while (size() > PUBLIC_MUSIC_RESOURCE_MAX_BYTES && resource.playlists.items.length > 0) {
+    resource.playlists.items.pop();
+    resource.playlists.truncated = resource.playlists.total > resource.playlists.items.length;
+  }
+  while (size() > PUBLIC_MUSIC_RESOURCE_MAX_BYTES && resource.recentlyPlayed.items.length > 0) {
+    resource.recentlyPlayed.items.pop();
+    resource.recentlyPlayed.truncated = resource.recentlyPlayed.total > resource.recentlyPlayed.items.length;
+  }
+  while (size() > PUBLIC_MUSIC_RESOURCE_MAX_BYTES && resource.queue.items.length > 0) {
+    resource.queue.items.pop();
+    resource.queue.truncated = resource.queue.total > resource.queue.items.length;
+  }
+  if (size() > PUBLIC_MUSIC_RESOURCE_MAX_BYTES) throw new Error("The public Music resource exceeds its encoded limit.");
 }
 
 function assertCanonicalYouTubeVideoId(value: string): void {

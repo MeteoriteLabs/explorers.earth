@@ -85,6 +85,21 @@ afterEach(() => {
 });
 
 describe("local Tunes API client", () => {
+  it("prevents conditional browser caching for canonical authenticated JSON reads", async () => {
+    setMusicCredential(freshCredential);
+    const fetchImpl = vi.fn(async () => json({ queueRevision: 1 }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      getStrapiBearer: async () => "authoritative-strapi-proof",
+      now: () => NOW,
+    });
+
+    await client.request({ method: "GET", path: "/api/music/dashboard" });
+
+    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/dashboard", expect.objectContaining({ cache: "no-store" }));
+  });
+
   it("has no caller-flippable fixture HTTP capability in the production client source", () => {
     const source = readFileSync(resolve(import.meta.dirname, "../localTunesApiClient.ts"), "utf8");
     expect(source).not.toMatch(/fixtureMode|fixtureHttpAllowed|http:\/\/127\.0\.0\.1|import\.meta\.env/);

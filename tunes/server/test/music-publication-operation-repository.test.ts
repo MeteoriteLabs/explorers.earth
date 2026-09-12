@@ -28,6 +28,7 @@ function harness(
   idempotencyAuthorityTime: unknown = databaseOperationTime,
 ) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
+  let publicRevision = 0;
   const client = {
     async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim();
@@ -40,6 +41,9 @@ function harness(
       }
       if (normalized.startsWith("SELECT clock_timestamp()::text AS idempotency_authority_time")) {
         return { rows: [{ idempotency_authority_time: idempotencyAuthorityTime }], rowCount: 1 };
+      }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) {
+        return { rows: [{ public_snapshot_revision: ++publicRevision }], rowCount: 1 };
       }
       const handled = { rows: [], rowCount: 0, ...handler(normalized, values) };
       if (normalized.includes("AS global_active_count") && handled.rows.length === 0) {
@@ -101,10 +105,11 @@ describe("durable publication operation repository", () => {
       },
     });
     expect(db.calls.map(({ text }) => text)).toEqual(expect.arrayContaining(["BEGIN", "COMMIT"]));
-    expect(db.calls.filter(({ text }) => text.startsWith("UPDATE users"))).toHaveLength(1);
+    expect(db.calls.filter(({ text }) => text.startsWith("UPDATE users"))).toHaveLength(2);
+    expect(db.calls.filter(({ text }) => /public_snapshot_revision=public_snapshot_revision\+1/.test(text))).toHaveLength(1);
     expect(db.calls.filter(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toHaveLength(1);
     const databaseClock = db.calls.find(({ text }) => text.startsWith("SELECT transaction_timestamp()::text AS operation_time"));
-    const ownerWrite = db.calls.find(({ text }) => text.startsWith("UPDATE users"));
+    const ownerWrite = db.calls.find(({ text }) => text.startsWith("UPDATE users") && !text.includes("public_snapshot_revision"));
     const operationWrite = db.calls.find(({ text }) => text.startsWith("INSERT INTO music_publication_operations"));
     expect(databaseClock).toBeDefined();
     expect(db.calls.indexOf(databaseClock!)).toBeLessThan(db.calls.indexOf(ownerWrite!));
@@ -115,6 +120,24 @@ describe("durable publication operation repository", () => {
     expect(serialized).not.toContain(publicationKey("publication-command-1"));
     expect(serialized).not.toContain(capability);
     expect(serialized).toContain(hashPublicationIdempotencyKey(publicationKey("publication-command-1")));
+  });
+
+  it("persists a new idempotency result without spending a snapshot revision when publication is already effective", async () => {
+    // Break caught: a distinct command key for an already-public owner creates a false invalidation revision.
+    const db = harness((text) => text.includes("FROM music_publication_operations")
+      ? { rows: [] }
+      : text.startsWith("UPDATE users")
+        ? { rows: [], rowCount: 0 }
+        : text.startsWith("SELECT guest_url FROM users")
+          ? { rows: [{ guest_url: "already-public" }], rowCount: 1 }
+          : { rows: [], rowCount: text.startsWith("INSERT INTO music_publication_operations") ? 1 : 0 });
+    const repository = new MusicPublicationOperationRepository(db.pool as never, cipher);
+
+    await expect(repository.execute(41, publicationKey("already-public-command"), "public")).resolves.toMatchObject({
+      status: "completed", replayed: false, response: { publication: { mode: "public", publicSlug: "already-public" } },
+    });
+    expect(db.calls.some(({ text }) => text.includes("public_snapshot_revision"))).toBe(false);
+    expect(db.calls.filter(({ text }) => text.startsWith("INSERT INTO music_publication_operations"))).toHaveLength(1);
   });
 
   it("fails closed before publication mutation when the database transaction clock is unavailable", async () => {

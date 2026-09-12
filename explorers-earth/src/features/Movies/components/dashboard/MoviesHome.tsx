@@ -1,3 +1,5 @@
+import { NavigationStatus } from "../../../navigation/NavigationStatus";
+import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
@@ -322,6 +324,8 @@ export const MovieListCard = ({
 // Main MoviesHome Component
 // ─────────────────────────────────────────────────────────────
 const MoviesHome = () => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_movie === "Yes";
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -354,59 +358,9 @@ const MoviesHome = () => {
 
   const [updateMovieList] = useMutation(UPDATE_MOVIE_LIST);
 
-  const [updateAccountVisibility] = useMutation(gql`
-    mutation UpdateMovieVisibility($documentId: ID!, $data: AccountInput!) {
-      updateAccount(documentId: $documentId, data: $data) {
-        documentId
-        public_recommendations
-        public_movie
-        public_books
-        public_games
-        public_music
-      }
-    }
-  `);
-
-  const handleVisibilityToggle = async () => {
-    const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-    if (!acc?.documentId) return;
-
-    const currentValue = acc.public_movie;
-    const newValue = currentValue === "Yes" ? "No" : "Yes";
-
-    if (newValue === "Yes") {
-      const hasPublishedList = lists.some((l) => l.Visibility === true);
-      if (!hasPublishedList) {
-        toast.error("You must have at least one published movie list to make Movies public.");
-        return;
-      }
-    }
-
-    try {
-      await updateAccountVisibility({
-        variables: {
-          documentId: acc.documentId,
-          data: { public_movie: newValue }
-        },
-        optimisticResponse: {
-          updateAccount: {
-            __typename: 'Account',
-            documentId: acc.documentId,
-            public_movie: newValue,
-            // Including others to satisfy selection set if needed, though usually optimistic only needs the field being updated
-            public_recommendations: acc.public_recommendations,
-            public_books: acc.public_books,
-            public_games: acc.public_games,
-            public_music: acc.public_music
-          }
-        },
-        refetchQueries: [{ query: MY_ACCOUNT, variables: { documentId: user?.documentId } }]
-      });
-      toast.success(`Movies visibility updated to ${newValue === "Yes" ? "Public" : "Private"}`);
-    } catch (error) {
-      console.error("Error updating visibility:", error);
-      toast.error("Failed to update visibility");
-    }
+  const handleVisibilityToggle = () => {
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_movie", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
   const lists: MovieList[] = data?.movieLists ?? [];
@@ -454,13 +408,15 @@ const MoviesHome = () => {
 
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
+      <NavigationStatus navigation={navigation} />
       {/* Desktop view header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         {/* Left: Public switch */}
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
           <SwitchButton
-            isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes"}
+            isChecked={categoryVisible}
             onChange={handleVisibilityToggle}
+            disabled={navigation.busy || !navigation.authority}
             variant="blue"
           />
           <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">
@@ -502,12 +458,13 @@ const MoviesHome = () => {
           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes" ? "Pub" : "Draft"}
+              <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                {categoryVisible ? "Pub" : "Draft"}
               </span>
               <SwitchButton
-                isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_movie === "Yes"}
+                isChecked={categoryVisible}
                 onChange={handleVisibilityToggle}
+                disabled={navigation.busy || !navigation.authority}
                 variant="blue"
               />
             </div>

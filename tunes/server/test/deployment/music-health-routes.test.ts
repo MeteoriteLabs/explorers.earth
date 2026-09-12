@@ -2,10 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import express from "express";
-import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 import { createGateAttestation, type ImageCandidate } from "../../deployment/music-deployment";
 import { setupMusicHealthRoutes } from "../../deployment/music-health";
+import { createLoopbackSupertestScope } from "../helpers/loopback-supertest";
 
 const image: ImageCandidate = {
   digest: `sha256:${"e".repeat(64)}`,
@@ -14,9 +14,14 @@ const image: ImageCandidate = {
 };
 const key = "health-route-attestation-key-long-enough";
 const directories: string[] = [];
+const loopback = createLoopbackSupertestScope();
 
 afterEach(async () => {
-  await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
+  try {
+    await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
+  } finally {
+    await loopback.closeAll();
+  }
 });
 
 async function appWithAttestation(databaseQuery: () => Promise<unknown>, overrides: NodeJS.ProcessEnv = {}) {
@@ -50,28 +55,31 @@ describe("Music health endpoints", () => {
   it("keeps liveness process-only when immutable metadata is invalid", async () => {
     // Production break caught: a serving process is restarted because deployment metadata belongs in readiness.
     const app = await appWithAttestation(async () => ({ rows: [{ ok: 1 }] }), { MUSIC_IMAGE_DIGEST: "invalid" });
-    const liveness = await request(app).get("/health/live");
+    const { request } = await loopback.open({ app });
+    const liveness = await request.get("/health/live");
     expect(liveness.status).toBe(200);
     expect(liveness.body).toEqual({ live: true });
-    const readiness = await request(app).get("/health/ready");
+    const readiness = await request.get("/health/ready");
     expect(readiness.status).toBe(503);
     expect(readiness.body.reason).toBe("image-metadata-invalid");
   });
 
   it("reports liveness while readiness independently fails DB", async () => {
     const app = await appWithAttestation(async () => { throw new Error("db unavailable"); });
-    expect((await request(app).get("/health/live")).status).toBe(200);
-    const readiness = await request(app).get("/health/ready");
+    const { request } = await loopback.open({ app });
+    expect((await request.get("/health/live")).status).toBe(200);
+    const readiness = await request.get("/health/ready");
     expect(readiness.status).toBe(503);
     expect(readiness.body.reason).toBe("database-unreachable");
   });
 
   it("returns immutable metadata and a fail-closed server kill switch", async () => {
     const app = await appWithAttestation(async () => ({ rows: [{ ok: 1 }] }));
-    const readiness = await request(app).get("/health/ready");
+    const { request } = await loopback.open({ app });
+    const readiness = await request.get("/health/ready");
     expect(readiness.status).toBe(200);
     expect(readiness.body).toMatchObject({ ready: true, ...image });
-    const status = await request(app).get("/api/music-entry/status");
+    const status = await request.get("/api/music-entry/status");
     expect(status.body).toMatchObject({
       newMusicEntryEnabled: false,
       legacyMusicEntryEnabled: false,
@@ -86,7 +94,8 @@ describe("Music health endpoints", () => {
       MUSIC_COHORT_ENABLED: "true",
       MUSIC_COHORT_USER_DOCUMENT_IDS: "member-doc-a,member-doc-b",
     });
-    const status = await request(app).get("/api/music-entry/status");
+    const { request } = await loopback.open({ app });
+    const status = await request.get("/api/music-entry/status");
     expect(status.status).toBe(200);
     expect(status.body).toMatchObject({
       newMusicEntryEnabled: true,
@@ -105,7 +114,8 @@ describe("Music health endpoints", () => {
       MUSIC_COHORT_ENABLED: "true",
       MUSIC_COHORT_USER_DOCUMENT_IDS: "",
     });
-    const status = await request(app).get("/api/music-entry/status");
+    const { request } = await loopback.open({ app });
+    const status = await request.get("/api/music-entry/status");
     expect(status.body).toMatchObject({
       newMusicEntryEnabled: false,
       cohortEnabled: true,

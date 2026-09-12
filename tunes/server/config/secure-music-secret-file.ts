@@ -4,7 +4,8 @@ import { constants, type BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, parse, resolve } from "node:path";
 
-const MAX_SECRET_FILE_BYTES = 256;
+const DEFAULT_MAX_SECRET_FILE_BYTES = 256;
+const ABSOLUTE_MAX_SECRET_FILE_BYTES = 512;
 
 export interface SecureMusicSecretFileSystem {
   lstat(path: string): Promise<BigIntStats>;
@@ -12,13 +13,20 @@ export interface SecureMusicSecretFileSystem {
   realpath?(path: string): Promise<string>;
 }
 
+export type WindowsSecretSecurityInspection = (paths: readonly string[]) => string;
+
 export interface SecureMusicSecretFileOptions {
   mode: "live" | "fixture";
+  /** Explicit subprocess authority for isolated launchers; omitted preserves existing callers. */
+  childEnvironment?: NodeJS.ProcessEnv;
   fileSystem?: SecureMusicSecretFileSystem;
   platform?: NodeJS.Platform;
   effectiveUserId?: number;
   requireDistinctValues?: boolean;
   expectedAuthorityValues?: readonly (string | undefined)[];
+  /** The default remains 256; callers must opt in to the bounded 512-byte reader-token allowance. */
+  maxBytes?: number;
+  windowsSecurityInspection?: WindowsSecretSecurityInspection;
 }
 
 export interface SecureMusicSecretAuthorityEvidence {
@@ -85,7 +93,7 @@ export async function readSecureMusicReconciliationAuthorities(
   );
   const [reconciliation, lifecycleProof, access] = bundle.evidence;
   if (!reconciliation || !lifecycleProof || !access || !bundle.values[0]
-      || bundle.values.some((value) => value.length < 16 || value.length > MAX_SECRET_FILE_BYTES)) {
+      || bundle.values.some((value) => value.length < 16 || value.length > DEFAULT_MAX_SECRET_FILE_BYTES)) {
     return invalidSecretFile();
   }
   return {
@@ -102,6 +110,7 @@ async function readSecureMusicSecretAuthorityBundle(
   const openedFiles: OpenedSecureMusicSecretFile[] = [];
   const buffers: Buffer[] = [];
   try {
+    const maxBytes = resolveMaxSecretFileBytes(options);
     const fileSystem = options.fileSystem ?? defaultFileSystem;
     for (const candidate of [path, ...authorityPaths]) {
       openedFiles.push(await openSecureMusicSecretFile(candidate, options, fileSystem));
@@ -113,10 +122,10 @@ async function readSecureMusicSecretAuthorityBundle(
     const values: string[] = [];
     const evidence: SecureMusicSecretAuthorityEvidence[] = [];
     for (const opened of openedFiles) {
-      const buffer = Buffer.alloc(MAX_SECRET_FILE_BYTES + 1);
+      const buffer = Buffer.alloc(maxBytes + 1);
       buffers.push(buffer);
       const { bytesRead } = await opened.handle.read(buffer, 0, buffer.length, 0);
-      if (bytesRead > MAX_SECRET_FILE_BYTES || bytesRead !== Number(opened.opened.size)) return invalidSecretFile();
+      if (bytesRead > maxBytes || bytesRead !== Number(opened.opened.size)) return invalidSecretFile();
       const raw = buffer.subarray(0, bytesRead).toString("ascii");
       if (!/^[A-Za-z0-9_-]+\n?$/.test(raw)) return invalidSecretFile();
       const value = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
@@ -170,9 +179,15 @@ function inspectWindowsSecretSecurities(
   }
   const paths = Array.from(expected.keys());
   const helper = resolve(import.meta.dirname, "../../scripts/windows-write-through.ps1");
-  const output = execFileSync("powershell.exe", [
-    "-NoProfile", "-NonInteractive", "-File", helper, "inspect-security", ...paths,
-  ], { encoding: "utf8", windowsHide: true });
+  const output = options.windowsSecurityInspection
+    ? options.windowsSecurityInspection(paths)
+    : execFileSync("powershell.exe", [
+        "-NoProfile", "-NonInteractive", "-File", helper, "inspect-security", ...paths,
+      ], {
+        encoding: "utf8",
+        windowsHide: true,
+        ...(options.childEnvironment ? { env: options.childEnvironment } : {}),
+      });
   const lines = output.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length !== paths.length) return invalidSecretFile();
   const normalized: string[] = [];
@@ -283,8 +298,9 @@ function sameResolvedPath(left: string, right: string, platform: NodeJS.Platform
 }
 
 function validateMetadata(stat: BigIntStats, options: SecureMusicSecretFileOptions): void {
+  const maxBytes = resolveMaxSecretFileBytes(options);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== BigInt(1)
-      || stat.size < BigInt(1) || stat.size > BigInt(MAX_SECRET_FILE_BYTES)) {
+      || stat.size < BigInt(1) || stat.size > BigInt(maxBytes)) {
     invalidSecretFile();
   }
   if (options.mode !== "live") return;
@@ -294,6 +310,12 @@ function validateMetadata(stat: BigIntStats, options: SecureMusicSecretFileOptio
   if (stat.uid !== BigInt(0) && (effectiveUserId === undefined || stat.uid !== BigInt(effectiveUserId))) {
     invalidSecretFile();
   }
+}
+
+function resolveMaxSecretFileBytes(options: SecureMusicSecretFileOptions): number {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_SECRET_FILE_BYTES;
+  if (!Number.isInteger(maxBytes) || maxBytes < 16 || maxBytes > ABSOLUTE_MAX_SECRET_FILE_BYTES) invalidSecretFile();
+  return maxBytes;
 }
 
 function sameMetadata(left: BigIntStats, right: BigIntStats): boolean {

@@ -1,3 +1,5 @@
+import { createMusicDevelopmentFetch } from "../features/music/musicDevelopmentTransport";
+
 export interface AccountLifecycleStatus {
   version: "music-lifecycle/v1";
   operation: {
@@ -37,7 +39,7 @@ export function createAccountLifecycleService(input: {
   fetchImpl?: typeof fetch;
 }) {
   const origin = normalizeOrigin(input.baseUrl);
-  const fetchImpl = input.fetchImpl ?? fetch;
+  const fetchImpl = input.fetchImpl ?? createMusicDevelopmentFetch(fetch, import.meta.env.DEV, origin);
 
   const request = async <T>(
     method: "GET" | "POST",

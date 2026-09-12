@@ -36,6 +36,7 @@ const musicPageEligibilityQuery = gql`
         Account_Name
         Account_Type
         mobile_number
+        public_music
       }
     }
   }

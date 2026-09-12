@@ -4,9 +4,11 @@ import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 
 function recordingPool(rows: unknown[] = []) {
   const calls: Array<{ text: string; values: unknown[] }> = [];
+  let publicRevision = 0;
   const query = async (text: string, values: unknown[] = []) => {
     calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
     if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
+    if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [{ public_snapshot_revision: ++publicRevision }], rowCount: 1 };
     return { rows, rowCount: rows.length };
   };
   return {
@@ -53,6 +55,55 @@ function dashboardPool(rows: Array<{ status: string; playedAt?: string; id: numb
 }
 
 describe("MusicDomainRepository owner predicates", () => {
+  it("accepts a retained unlisted capability after the same publication becomes public", async () => {
+    // Break caught: promotion from unlisted to public strands the mounted client because its
+    // session-retained capability makes otherwise-public read-only socket admission fail.
+    const capability = "R".repeat(43);
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [{
+      id: 17, identity_status: "active", guest_discoverable: true,
+      guest_capability_hash: hashGuestCapability(capability), guest_capability_revoked_at: null,
+    }], rowCount: 1 }) } as never);
+    await expect(repository.resolvePublicMusicSocketAuthority("public-slug", capability))
+      .resolves.toEqual({ musicUserId: 17, active: true });
+  });
+
+  it("atomically stores and replays one guest request without another queue revision or notification", async () => {
+    let receipt: { request_hash: string; response_body: { accepted: true } } | undefined;
+    let queueInserts = 0;
+    let queueRevisions = 0;
+    let publicRevisions = 0;
+    let notifications = 0;
+    const calls: string[] = [];
+    const client = { async query(text: string, values: unknown[] = []) {
+      const normalized = text.replace(/\s+/g, " ").trim(); calls.push(normalized);
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT id FROM users WHERE guest_url/.test(normalized)) return { rows: [{ id: 7 }], rowCount: 1 };
+      if (/SELECT id,allow_song_requests/.test(normalized)) return { rows: [{ id: 7, allow_song_requests: true, guest_discoverable: true, guest_capability_hash: null }], rowCount: 1 };
+      if (/SELECT request_hash,response_body FROM music_owner_operations/.test(normalized)) return { rows: receipt ? [receipt] : [], rowCount: receipt ? 1 : 0 };
+      if (/WITH ordered AS/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/SELECT count\(\*\)::integer AS count FROM songs/.test(normalized)) return { rows: [{ count: queueInserts }], rowCount: 1 };
+      if (/INSERT INTO songs/.test(normalized)) { queueInserts += 1; return { rows: [], rowCount: 1 }; }
+      if (/music_queue_revision=music_queue_revision\+1/.test(normalized)) { queueRevisions += 1; return { rows: [], rowCount: 1 }; }
+      if (/public_snapshot_revision=public_snapshot_revision\+1/.test(normalized)) { publicRevisions += 1; return { rows: [{ public_snapshot_revision: publicRevisions }], rowCount: 1 }; }
+      if (/pg_notify\('music_public_change'/.test(normalized)) { notifications += 1; return { rows: [], rowCount: 1 }; }
+      if (/INSERT INTO music_owner_operations/.test(normalized)) { receipt = { request_hash: String(values[3]), response_body: JSON.parse(String(values[4])) }; return { rows: [], rowCount: 1 }; }
+      return { rows: [], rowCount: 0 };
+    }, release() {} };
+    const repository = new MusicDomainRepository({ query: async () => ({ rows: [] }), connect: async () => client } as never);
+    const song = { youtubeId: "abcdefghijk", title: "Song", artist: "Artist", thumbnailUrl: "https://img.example/song.jpg" };
+    await expect(repository.addGuestSongIdempotent("public-owner", undefined, "198.51.100.1", "request-key-1", song))
+      .resolves.toEqual({ status: "completed", replayed: false, response: { accepted: true } });
+    await expect(repository.addGuestSongIdempotent("public-owner", undefined, "198.51.100.1", "request-key-1", song))
+      .resolves.toEqual({ status: "completed", replayed: true, response: { accepted: true } });
+    await expect(repository.addGuestSongIdempotent("public-owner", undefined, "198.51.100.2", "request-key-1", { ...song, title: "Different" }))
+      .resolves.toEqual({ status: "conflict" });
+    expect({ queueInserts, queueRevisions, publicRevisions, notifications }).toEqual({ queueInserts: 1, queueRevisions: 1, publicRevisions: 1, notifications: 1 });
+    expect(calls.filter((text) => text === "COMMIT")).toHaveLength(3);
+    expect(calls.findIndex((text) => text.includes("SELECT id FROM users WHERE guest_url")))
+      .toBeLessThan(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")));
+    expect(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")))
+      .toBeLessThan(calls.findIndex((text) => text.includes("SELECT id,allow_song_requests") && text.includes("FOR UPDATE")));
+  });
   it("replays one owner playlist create after its response is lost", async () => {
     // Break caught: retrying an acknowledged-but-lost create response inserts a duplicate playlist.
     const playlist = {
@@ -61,12 +112,17 @@ describe("MusicDomainRepository owner predicates", () => {
     };
     let stored: { request_hash: string; status_code: number; response_body: unknown } | undefined;
     let inserts = 0;
+    let publicRevisionAdvances = 0;
     const client = { async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim();
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
       if (/SELECT request_hash,status_code,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
       if (/SELECT count\(\*\)::integer AS count FROM playlists/.test(normalized)) return { rows: [{ count: inserts }], rowCount: 1 };
       if (/INSERT INTO playlists/.test(normalized)) { inserts += 1; return { rows: [playlist], rowCount: 1 }; }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) {
+        publicRevisionAdvances += 1;
+        return { rows: [{ public_snapshot_revision: publicRevisionAdvances }], rowCount: 1 };
+      }
       if (/INSERT INTO music_owner_operations/.test(normalized)) {
         stored = { request_hash: String(values[3]), status_code: 201, response_body: JSON.parse(String(values[4])) };
         return { rows: [], rowCount: 1 };
@@ -81,6 +137,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(repository.createPlaylistIdempotent(7, "lost-response-key", input))
       .resolves.toEqual({ status: "completed", replayed: true, response: playlist });
     expect(inserts).toBe(1);
+    expect(publicRevisionAdvances).toBe(1);
   });
 
   it("replaces an owner queue in one locked transaction and returns canonical ordered state", async () => {
@@ -88,6 +145,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const calls: Array<{ text: string; values: unknown[] }> = [];
     let select = 0;
     const client = {
+      publicRevision: 0,
       async query(text: string, values: unknown[] = []) {
         calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
         if (/SELECT request_hash,status_code,response_body/.test(text)) return { rows: [], rowCount: 0 };
@@ -101,6 +159,7 @@ describe("MusicDomainRepository owner predicates", () => {
           { id: 102, user_id: 7, youtube_id: "a", title: "A", artist: "Artist A", thumbnail_url: "https://img/a", position: 1, status: "queued", played_at: null },
         ], rowCount: 2 };
         if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 5 }], rowCount: 1 };
+        if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [{ public_snapshot_revision: ++this.publicRevision }], rowCount: 1 };
         if (/SELECT id,user_id/.test(text)) { select += 1; return { rows: [], rowCount: 0 }; }
         return { rows: [], rowCount: 1 };
       },
@@ -121,6 +180,7 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(calls.find(({ text }) => /SELECT request_hash,status_code,response_body/.test(text))?.text).not.toMatch(/FOR UPDATE/);
     expect(calls.some(({ text }) => /JOIN playlists p/.test(text) && /p.user_id=\$1/.test(text))).toBe(true);
     expect(calls.some(({ text }) => /DELETE FROM songs/.test(text) && /status IN \('queued','playing'\)/.test(text))).toBe(true);
+    expect(calls.filter(({ text }) => /UPDATE users SET public_snapshot_revision/.test(text))).toHaveLength(1);
     expect(calls.at(-1)?.text).toBe("COMMIT");
     expect(select).toBe(0);
   });
@@ -140,6 +200,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(repository.replaceQueue(7, "stale", 7, [{ playlistId: 9, songId: 31 }]))
       .resolves.toEqual({ status: "stale", revision: 8 });
     expect(statements.some((text) => /DELETE FROM songs/.test(text))).toBe(false);
+    expect(statements.some((text) => /UPDATE users SET public_snapshot_revision/.test(text))).toBe(false);
 
     const foreignStatements: string[] = [];
     const foreignClient = { async query(text: string) {
@@ -153,6 +214,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(foreign.replaceQueue(7, "foreign", 0, [{ playlistId: 99, songId: 31 }]))
       .resolves.toEqual({ status: "not_found" });
     expect(foreignStatements.some((text) => /DELETE FROM songs/.test(text))).toBe(false);
+    expect(foreignStatements.some((text) => /UPDATE users SET public_snapshot_revision/.test(text))).toBe(false);
   });
 
   it("rolls back an injected queue replacement failure", async () => {
@@ -191,6 +253,7 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(cleanup?.values).toEqual([7]);
     expect(statements.find(({ text }) => /SELECT request_hash/.test(text))?.text)
       .toMatch(/expires_at>transaction_timestamp\(\)/i);
+    expect(statements.some(({ text }) => /UPDATE users SET public_snapshot_revision/.test(text))).toBe(false);
   });
   it("owner-predicates every playlist read/update/delete family", async () => {
     // Break caught: a resource ID alone can observe or mutate another owner's playlist.
@@ -223,6 +286,7 @@ describe("MusicDomainRepository owner predicates", () => {
     await repository.removeSongs(23, [71, 72]);
     await repository.clearHistory(23);
     for (const call of harness.calls) {
+      if (call.text.includes("pg_notify('music_public_change'")) continue;
       if (call.text.toLowerCase().includes("insert into songs")) {
         expect(call.text.toLowerCase()).toContain("insert into songs(user_id");
         expect(call.values[0]).toBe(23);
@@ -301,6 +365,7 @@ describe("MusicDomainRepository owner predicates", () => {
       if (/SELECT request_hash,response_body/.test(normalized)) return { rows: stored ? [stored] : [], rowCount: stored ? 1 : 0 };
       if (/SELECT p\.id,count/.test(normalized)) return { rows: [{ id: 9, count: inserts }], rowCount: 1 };
       if (/INSERT INTO playlist_songs/.test(normalized)) { inserts += 1; return { rows: [song], rowCount: 1 }; }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [{ public_snapshot_revision: 1 }], rowCount: 1 };
       if (/INSERT INTO music_owner_operations/.test(normalized)) {
         stored = { request_hash: String(values[3]), response_body: JSON.parse(String(values[4])) };
         return { rows: [], rowCount: 1 };
@@ -439,6 +504,7 @@ describe("MusicDomainRepository owner predicates", () => {
         if (/DELETE FROM songs/.test(text)) return { rows: [{ status: "queued" }], rowCount: 1 };
         if (/RETURNING id,user_id/.test(text)) return { rows: [{ id: 1, user_id: 7, position: 0, status: "queued" }], rowCount: 1 };
         if (/UPDATE users SET music_queue_revision/.test(text)) return { rows: [{ music_queue_revision: 1 }], rowCount: 1 };
+        if (/UPDATE users SET public_snapshot_revision/.test(text)) return { rows: [{ public_snapshot_revision: 1 }], rowCount: 1 };
         return { rows: [], rowCount: 1 };
       }, release() {} };
       await execute(new MusicDomainRepository({ query: async () => { throw new Error("outside transaction"); }, connect: async () => client } as never));
@@ -525,15 +591,17 @@ describe("MusicDomainRepository owner predicates", () => {
     ["private", undefined],
     ["public", undefined],
     ["unlisted", "f".repeat(64)],
-  ] as const)("changes publication to %s with one owner-predicated write in one transaction", async (mode, capabilityHash) => {
+  ] as const)("changes publication to %s and advances the public snapshot in one transaction", async (mode, capabilityHash) => {
     const harness = recordingPool([{ guest_url: "public-slug" }]);
     const repository = new MusicDomainRepository(harness.pool);
     await repository.setPublicationMode(31, mode, capabilityHash);
     const writes = harness.calls.filter((call) => /update users/i.test(call.text));
-    expect(writes).toHaveLength(1);
+    expect(writes).toHaveLength(2);
     expect(writes[0].text.toLowerCase()).toContain("where id=$1");
     expect(writes[0].values[0]).toBe(31);
     expect(writes[0].values[1]).toBe(mode);
+    expect(writes[1].text).toMatch(/public_snapshot_revision=public_snapshot_revision\+1/);
+    expect(writes[1].values).toEqual([31]);
     expect(JSON.stringify(harness.calls)).not.toContain("capability\":");
   });
 
@@ -700,6 +768,7 @@ describe("MusicDomainRepository owner predicates", () => {
         revision += 1;
         return { rows: [{ music_queue_revision: revision }], rowCount: 1 };
       }
+      if (/UPDATE users SET public_snapshot_revision/.test(normalized)) return { rows: [{ public_snapshot_revision: 1 }], rowCount: 1 };
       if (/^SELECT id,user_id/.test(normalized)) return { rows: [{ id: 71, user_id: 23, youtube_id: "abcdefghijk", title: "Safe", artist: "Artist", thumbnail_url: "https://img", position: 0, status: "playing", played_at: null }], rowCount: 1 };
       return { rows: [], rowCount: 0 };
     }, release() {} };
@@ -814,6 +883,47 @@ describe("MusicDomainRepository owner predicates", () => {
     });
   });
 
+  it("resolves one active discoverable public descriptor by stable Account document ID without projecting internal identity", async () => {
+    // Break caught: username, User document ID, or an internal numeric ID becomes descriptor discovery authority.
+    const harness = recordingPool([{
+      publicSlug: "stable-public-slug",
+      revision: "7",
+    }]);
+
+    await expect(new MusicDomainRepository(harness.pool).resolvePublicDescriptor("account-document-stable"))
+      .resolves.toEqual({ mode: "public", publicSlug: "stable-public-slug", revision: 7 });
+
+    expect(harness.calls).toHaveLength(1);
+    expect(harness.calls[0].values).toEqual(["account-document-stable"]);
+    expect(harness.calls[0].text).toMatch(/strapi_account_document_id=\$1/);
+    expect(harness.calls[0].text).toMatch(/identity_status='active'/);
+    expect(harness.calls[0].text).toMatch(/guest_discoverable=true/);
+    expect(harness.calls[0].text).toMatch(/guest_url IS NOT NULL/);
+    expect(harness.calls[0].text).toMatch(/guest_url ~ '\^\[A-Za-z0-9_-/);
+    expect(harness.calls[0].text).toMatch(/public_snapshot_revision/);
+    const normalizedSql = harness.calls[0].text.replace(/\s+/g, " ");
+    expect(normalizedSql).toContain("AND NOT EXISTS ( SELECT 1 FROM users collision WHERE collision.strapi_user_document_id=$1 )");
+    expect(normalizedSql).toContain("AND NOT EXISTS ( SELECT 1 FROM music_identity_tombstones tombstone WHERE tombstone.strapi_user_document_id=$1 OR tombstone.strapi_account_document_id=$1 )");
+    expect(harness.calls[0].text).not.toMatch(/SELECT\s+u\.id\b/i);
+  });
+
+  it("fails closed when stable Account descriptor lookup is absent, colliding, or malformed", async () => {
+    // Break caught: a corrupt or ambiguous repository result publishes one arbitrary account.
+    const absent = recordingPool();
+    const collision = recordingPool([
+      { publicSlug: "collision-one", revision: "1" },
+      { publicSlug: "collision-two", revision: "2" },
+    ]);
+    const malformed = recordingPool([{ publicSlug: "not canonical!", revision: "3" }]);
+
+    await expect(new MusicDomainRepository(absent.pool).resolvePublicDescriptor("missing-account"))
+      .resolves.toBeUndefined();
+    await expect(new MusicDomainRepository(collision.pool).resolvePublicDescriptor("colliding-account"))
+      .resolves.toBeUndefined();
+    await expect(new MusicDomainRepository(malformed.pool).resolvePublicDescriptor("malformed-account"))
+      .resolves.toBeUndefined();
+  });
+
   it("lists discoverable public playlists independently of revoked guest capabilities", async () => {
     // Break caught: publishing publicly revokes an unlisted capability, but that must not remove the public URL from discovery.
     const harness = recordingPool([{
@@ -829,4 +939,243 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text.toLowerCase()).toContain("u.identity_status='active'");
     expect(harness.calls[0].text.toLowerCase()).not.toContain("guest_capability_revoked_at");
   });
+
+  const permissionKeys = [
+    "allowSongRequests",
+    "allowGuestPlayOnDevice",
+    "allowPlaylistSharing",
+    "allowRecentlyPlayedVisibility",
+    "allowQueueVisibility",
+  ] as const;
+  const publicIdKey = Buffer.alloc(32, 0x54);
+  const alternatePublicIdKey = Buffer.alloc(32, 0x55);
+
+  function publicResourceHarness(mask: number, options: {
+    oversized?: boolean;
+    playlistDescription?: string | null;
+    thumbnailUrl?: string;
+    duplicateQueue?: boolean;
+    queueIds?: number[];
+    currentId?: number;
+    metadataSuffix?: string;
+    positionOffset?: number;
+    playlistNameSuffix?: string;
+    playlistSongBaseId?: number;
+  } = {}) {
+    const {
+      oversized = false,
+      playlistDescription = null,
+      thumbnailUrl,
+      duplicateQueue = false,
+      queueIds,
+      currentId = 9,
+      metadataSuffix = "",
+      positionOffset = 0,
+      playlistNameSuffix = "",
+      playlistSongBaseId = 1_000,
+    } = options;
+    const permissions = Object.fromEntries(permissionKeys.map((key, index) => [key, (mask & (1 << index)) !== 0])) as Record<typeof permissionKeys[number], boolean>;
+    const song = (contentId: number, status: "queued" | "playing" | "played" | "saved", position = 0) => ({
+      id: contentId,
+      youtube_id: `song${contentId}`.padEnd(11, "0").slice(0, 11),
+      title: oversized ? "T".repeat(1_024) : `${status} ${contentId}${metadataSuffix}`,
+      artist: oversized ? "A".repeat(1_024) : `Artist${metadataSuffix}`,
+      thumbnail_url: thumbnailUrl ?? (oversized ? `https://img.example/${"x".repeat(1_900)}${contentId}` : `https://img.example/${contentId}`),
+      position: position + positionOffset,
+      status,
+      played_at: status === "played" ? new Date("2026-08-28T12:00:00.000Z") : null,
+    });
+    const queue = queueIds
+      ? queueIds.map((id, index) => song(id, "queued", index))
+      : duplicateQueue
+      ? [song(10, "queued", 0), { ...song(10, "queued", 0), id: 11 }]
+      : Array.from({ length: oversized ? 101 : 1 }, (_, index) => song(index + 10, "queued", index));
+    const history = Array.from({ length: oversized ? 51 : 1 }, (_, index) => song(index + 200, "played", index));
+    const playlists = Array.from({ length: oversized ? 21 : 2 }, (_, playlistIndex) => {
+      const privatePlaylist = !oversized && playlistIndex === 1;
+      const songCount = oversized ? 51 : 1;
+      return Array.from({ length: songCount }, (_, songIndex) => ({
+        playlist_internal_id: playlistIndex + 500,
+        playlist_name: privatePlaylist ? "Private playlist" : `Public playlist ${playlistIndex}${playlistNameSuffix}`,
+        playlist_description: playlistDescription,
+        playlist_visible: !privatePlaylist,
+        playlist_total: oversized ? 21 : 1,
+        playlist_song_total: songCount,
+        ...song(playlistIndex * 100 + songIndex + playlistSongBaseId, "saved", songIndex),
+      }));
+    }).flat();
+    const calls: string[] = [];
+    const query = async (text: string) => {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      calls.push(normalized);
+      if (/^(?:BEGIN|COMMIT|ROLLBACK)/.test(normalized)) return { rows: [], rowCount: 0 };
+      if (/public_snapshot_revision/.test(normalized) && /FROM users u/.test(normalized)) return { rows: [{
+        identity_status: "active",
+        guest_capability_hash: null,
+        guest_capability_revoked_at: null,
+        guest_discoverable: true,
+        guest_url: "public-slug",
+        username: "display",
+        venue_name: "Venue",
+        public_snapshot_revision: 17,
+        allow_song_requests: permissions.allowSongRequests,
+        allow_guest_play_on_device: permissions.allowGuestPlayOnDevice,
+        allow_playlist_sharing: permissions.allowPlaylistSharing,
+        allow_recently_played_visibility: permissions.allowRecentlyPlayedVisibility,
+        allow_queue_visibility: permissions.allowQueueVisibility,
+        queue_total: queue.length,
+        history_total: history.length,
+        playlist_total: oversized ? 21 : 1,
+      }], rowCount: 1 };
+      if (/status='playing'/.test(normalized)) return { rows: [song(currentId, "playing")], rowCount: 1 };
+      if (/status='queued'/.test(normalized)) return { rows: queue, rowCount: queue.length };
+      if (/status='played'/.test(normalized)) return { rows: history, rowCount: history.length };
+      if (/bounded_playlists/.test(normalized)) return { rows: playlists, rowCount: playlists.length };
+      throw new Error(`Unexpected public resource query: ${normalized}`);
+    };
+    return { calls, permissions, pool: { query, connect: async () => ({ query, release() {} }) } };
+  }
+
+  function publicResourceRepository(
+    harness: ReturnType<typeof publicResourceHarness>,
+    key: Buffer = publicIdKey,
+  ): MusicDomainRepository {
+    return new MusicDomainRepository(harness.pool as never, undefined, key);
+  }
+
+  it.each(musicPermissionOracle)(
+    "enforces public resource field exposure and interactivity for permission mask %i",
+    async (mask, requests, playback, playlists, history, queue, currentVisible) => {
+      // Break caught: any permission combination leaks a protected collection or upgrades queue visibility into playback authority.
+      const harness = publicResourceHarness(mask);
+      const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
+      const resource = result?.resource;
+      expect(result?.state).toBe("public");
+      expect(resource?.version).toBe("music-public-resource/v1");
+      expect(resource?.revision).toBe(17);
+      expect(resource?.permissions).toEqual({
+        allowSongRequests: Boolean(requests), allowGuestPlayOnDevice: Boolean(playback),
+        allowPlaylistSharing: Boolean(playlists), allowRecentlyPlayedVisibility: Boolean(history),
+        allowQueueVisibility: Boolean(queue),
+      });
+      expect(resource?.currentlyPlaying !== null).toBe(Boolean(currentVisible));
+      expect(resource?.queue.items.length).toBe(queue);
+      expect(resource?.recentlyPlayed.items.length).toBe(history);
+      expect(resource?.playlists.items.map((playlist: { name: string }) => playlist.name)).toEqual(
+        playlists ? ["Public playlist 0"] : [],
+      );
+      expect(resource?.permissions.allowGuestPlayOnDevice).toBe(Boolean(playback));
+      if (!playback && queue) {
+        expect(resource?.currentlyPlaying).not.toBeNull();
+        expect(resource?.permissions.allowGuestPlayOnDevice).toBe(false);
+      }
+    },
+  );
+
+  it("bounds every public collection before aggregation, hides nested authority, and caps encoded JSON", async () => {
+    // Break caught: legacy oversized rows or an internal nested identifier can create an unbounded/authority-bearing public response.
+    const harness = publicResourceHarness(31, { oversized: true });
+    const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
+    const resource = result.resource;
+    expect(resource.queue).toMatchObject({ total: 101, truncated: true });
+    expect(resource.queue.items.length).toBeLessThanOrEqual(100);
+    expect(resource.recentlyPlayed).toMatchObject({ total: 51, truncated: true });
+    expect(resource.recentlyPlayed.items.length).toBeLessThanOrEqual(50);
+    expect(resource.playlists).toMatchObject({ total: 21, truncated: true });
+    expect(resource.playlists.items.length).toBeLessThanOrEqual(20);
+    expect(resource.playlists.items.every((playlist: { songs: { items: unknown[] } }) => playlist.songs.items.length <= 50)).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(resource), "utf8")).toBeLessThanOrEqual(512 * 1_024);
+    expect(harness.calls.find((sql) => /status='queued'/.test(sql))).toMatch(/LIMIT 100/);
+    expect(harness.calls.find((sql) => /status='played'/.test(sql))).toMatch(/LIMIT 50/);
+    expect(harness.calls.find((sql) => /bounded_playlists/.test(sql))).toMatch(/LIMIT 20/);
+    expect(harness.calls.find((sql) => /bounded_playlists/.test(sql))).toMatch(/LIMIT 50/);
+
+    const inspect = (value: unknown): void => {
+      if (Array.isArray(value)) return value.forEach(inspect);
+      if (!value || typeof value !== "object") return;
+      for (const [key, nested] of Object.entries(value)) {
+        expect(key).not.toMatch(/^(?:userId|playlistId|accountId|documentId|strapi|capability|credential)/i);
+        if (key === "id") expect(nested).toEqual(expect.stringMatching(/^[A-Za-z0-9_-]{43}$/));
+        inspect(nested);
+      }
+    };
+    inspect(resource);
+  });
+
+  it("preserves empty descriptions and normalizes legacy non-URL thumbnails to null", async () => {
+    // Break caught: valid empty owner text or legacy thumbnail values turn a public resource into a 500/parser mismatch.
+    const harness = publicResourceHarness(31, { playlistDescription: "", thumbnailUrl: "legacy-thumbnail" });
+    const result = await (publicResourceRepository(harness) as any).resolvePublicMusicResource("public-slug");
+
+    expect(result.resource.playlists.items[0].description).toBe("");
+    expect(result.resource.currentlyPlaying.thumbnailUrl).toBeNull();
+    expect(result.resource.queue.items[0].thumbnailUrl).toBeNull();
+    expect(result.resource.recentlyPlayed.items[0].thumbnailUrl).toBeNull();
+    expect(result.resource.playlists.items[0].songs.items[0].thumbnailUrl).toBeNull();
+
+    const canonicalHarness = publicResourceHarness(31, { thumbnailUrl: "HTTP://IMG.EXAMPLE/legacy cover" });
+    const canonical = await (publicResourceRepository(canonicalHarness) as any).resolvePublicMusicResource("public-slug");
+    expect(canonical.resource.currentlyPlaying.thumbnailUrl).toBe("http://img.example/legacy%20cover");
+
+    const credentialHarness = publicResourceHarness(31, { thumbnailUrl: "https://user:secret@img.example/cover" });
+    const credentialSafe = await (publicResourceRepository(credentialHarness) as any).resolvePublicMusicResource("public-slug");
+    expect(credentialSafe.resource.currentlyPlaying.thumbnailUrl).toBeNull();
+  });
+
+  it("keeps entity public IDs stable across metadata, position, status, and ordering changes", async () => {
+    // Break caught: public React keys rotate when owner metadata or ordering changes.
+    const firstHarness = publicResourceHarness(31, { currentId: 9, queueIds: [10, 11] });
+    const changedHarness = publicResourceHarness(31, {
+      currentId: 20,
+      queueIds: [11, 9, 10],
+      metadataSuffix: " edited",
+      positionOffset: 37,
+      playlistNameSuffix: " renamed",
+    });
+    const first = (await (publicResourceRepository(firstHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+    const changed = (await (publicResourceRepository(changedHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+
+    expect(changed.queue.items[1].id).toBe(first.currentlyPlaying.id);
+    expect(changed.queue.items[2].id).toBe(first.queue.items[0].id);
+    expect(changed.queue.items[0].id).toBe(first.queue.items[1].id);
+    expect(changed.playlists.items[0].id).toBe(first.playlists.items[0].id);
+  });
+
+  it("uses opaque keyed identities that distinguish duplicates and never transfer on delete/insert", async () => {
+    // Break caught: ordinal identities let a replacement row inherit a deleted row's public key.
+    const beforeHarness = publicResourceHarness(31, { duplicateQueue: true });
+    const afterHarness = publicResourceHarness(31, { queueIds: [11, 12] });
+    const before = (await (publicResourceRepository(beforeHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+    const after = (await (publicResourceRepository(afterHarness) as any).resolvePublicMusicResource("public-slug")).resource;
+
+    expect(new Set(before.queue.items.map((song: any) => song.id)).size).toBe(2);
+    expect(after.queue.items[0].id).toBe(before.queue.items[1].id);
+    expect(after.queue.items[1].id).not.toBe(before.queue.items[0].id);
+    for (const publicId of [...before.queue.items, ...after.queue.items].map((song: any) => song.id)) {
+      expect(publicId).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(publicId).not.toContain("10");
+      expect(publicId).not.toContain("11");
+      expect(publicId).not.toContain("12");
+    }
+  });
+
+  it("is deterministic only within the same public-ID key and separates entity types", async () => {
+    const harnessA = publicResourceHarness(31, { currentId: 1_001, queueIds: [1_001], playlistSongBaseId: 1_001 });
+    const harnessB = publicResourceHarness(31, { currentId: 1_001, queueIds: [1_001], playlistSongBaseId: 1_001 });
+    const sameKeyA = (await (publicResourceRepository(harnessA) as any).resolvePublicMusicResource("public-slug")).resource;
+    const sameKeyB = (await (publicResourceRepository(harnessB) as any).resolvePublicMusicResource("public-slug")).resource;
+    const differentKey = (await (publicResourceRepository(publicResourceHarness(31, { currentId: 1_001, queueIds: [1_001], playlistSongBaseId: 1_001 }), alternatePublicIdKey) as any)
+      .resolvePublicMusicResource("public-slug")).resource;
+
+    expect(sameKeyA.currentlyPlaying.id).toBe(sameKeyA.queue.items[0].id);
+    expect(sameKeyB.currentlyPlaying.id).toBe(sameKeyA.currentlyPlaying.id);
+    expect(differentKey.currentlyPlaying.id).not.toBe(sameKeyA.currentlyPlaying.id);
+    expect(sameKeyA.currentlyPlaying.id).not.toBe(sameKeyA.playlists.items[0].songs.items[0].id);
+    for (const publicId of [
+      sameKeyA.currentlyPlaying.id,
+      sameKeyA.queue.items[0].id,
+      sameKeyA.playlists.items[0].songs.items[0].id,
+    ]) expect(publicId).not.toContain("1001");
+  });
 });
+import { musicPermissionOracle } from "../../../test-fixtures/music-permission-oracle";

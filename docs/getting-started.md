@@ -32,8 +32,7 @@ Do not inspect, copy, or commit `.env.music.test` or generated credential files.
 - Live API documentation: `http://127.0.0.1:55000/api-docs`
 - Deterministic fixture Strapi: `http://127.0.0.1:51337`
 
-Open `http://127.0.0.1:55173/google-auth/callback?access_token=fixture-read-only-token`
-to complete the deterministic fixture Google callback, then navigate to
+Use `npm run music:test:public-e2e`; its guarded runner generates the scoped callback token and completes the deterministic fixture Google callback without printing owner authority. Then navigate to
 `http://127.0.0.1:55173/recommendations/music`. Explorer loads the fixture's
 authenticated identity and selected Account and forwards its proof only to the bodyless
 `POST /api/music/identity/ensure` boundary. Tunes projects the canonical identity
@@ -43,6 +42,21 @@ The retired native registration journey is not part of embedded Music.
 The smoke command verifies readiness across Explorer, Tunes, PostgreSQL, and the
 fixture identity boundary. For deeper lanes, follow the
 [Music identity testing guide](testing/music-identity-testing.md).
+
+For the public Music browser surface, run these from the repository root:
+
+```text
+npm run music:test:public-fast
+npm run music:test:public-pr
+npm run music:test:public-e2e
+npm run music:fixture:public:verify
+```
+
+The third command is the hard-gated authorized live-write lane, not a default local smoke test. See `docs/testing.md` for the complete disposable-account, loopback-service, scoped Strapi token, and exact-reset environment tuple. The verify command and the public fast/PR commands remain non-mutating.
+
+The first two use read-only or route-mocked coverage. The E2E command accepts
+only the disposable loopback fixture. Each run records a sanitized manifest
+below `.artifacts/music-public/<runId>/`.
 
 When finished, stop the same isolated fixture lifecycle:
 

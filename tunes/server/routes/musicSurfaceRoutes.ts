@@ -11,6 +11,8 @@ import {
   type MusicEntitlementState,
 } from "../policies/musicSurfacePolicy";
 import { matchRetiredMusicSurface } from "../policies/musicRetirementPolicy";
+import type { PublicMusicResource } from "../repositories/musicDomainRepository";
+import type { MusicPublicObservability } from "../observability/musicPublicObservability";
 
 interface CanonicalMusicRepository {
   listPlaylists(ownerId: number): Promise<unknown[]>;
@@ -43,6 +45,10 @@ interface CanonicalMusicRepository {
   getGuestControls(ownerId: number): Promise<GuestControls | undefined>;
   updateGuestControls(ownerId: number, controls: GuestControlsUpdate): Promise<GuestControls | undefined>;
   addSong(ownerId: number, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<unknown>;
+  addGuestSongIdempotent(publicSlug: string, capability: string | undefined, source: string, idempotencyKey: string, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<
+    | { status: "completed"; replayed: boolean; response: { accepted: true } }
+    | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+  >;
   setPlaying(ownerId: number, songId: number | null, expectedRevision?: number, expectedPlaybackRevision?: number): Promise<unknown | null | undefined>;
   updateSongPosition(ownerId: number, songId: number, position: number): Promise<unknown | undefined>;
   removeSong(ownerId: number, songId: number): Promise<boolean>;
@@ -71,6 +77,16 @@ interface CanonicalMusicRepository {
   revokeGuestCapability(ownerId: number): Promise<void>;
   setDiscoverable?(ownerId: number, discoverable: boolean): Promise<void>;
   resolveEntitlement(ownerId: number): Promise<{ state: MusicEntitlementState; sourceUpdatedAt?: Date } | undefined>;
+  resolvePublicDescriptor(accountDocumentId: string): Promise<{
+    mode: "public";
+    publicSlug: string;
+    revision: number;
+  } | undefined>;
+  resolvePublicMusicResource(publicSlug: string, capability?: string): Promise<{
+    state: string;
+    noindex?: boolean;
+    resource?: PublicMusicResource;
+  } | undefined>;
   resolveGuestResource(publicSlug: string, capability?: string): Promise<{ state: string; noindex?: boolean; playlist?: unknown } | undefined>;
   resolveGuestSocketAuthority(capability: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
   resolveGuestRequestAuthority(publicSlug: string, capability?: string): Promise<{ musicUserId: number; active: true; allowSongRequests: boolean } | undefined>;
@@ -89,12 +105,18 @@ export interface CanonicalMusicRouteDependencies {
     search(input: { query: string; pageToken?: string }): Promise<unknown>;
     videoFromUrl(url: string): Promise<unknown | undefined>;
   };
+  observability?: MusicPublicObservability;
 }
 
 const OWNER_KEYS = new Set([
   "username", "email", "userId", "musicUserId", "ownerId", "accountId", "documentId",
   "strapiUser", "strapiUserDocumentId", "strapiAccountDocumentId",
 ]);
+const SAFE_REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const PUBLIC_DESCRIPTOR_PATH_PREFIX = "/api/music/public-profile/";
+const MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE = "malformed-account-document-id";
+const PUBLIC_RESOURCE_PATH_PREFIX = "/api/music/public-resource/v1/";
+const MALFORMED_PUBLIC_RESOURCE = "malformed-public-slug";
 
 export function isExactMusicOriginAllowed(req: Pick<Request, "get">, allowedOrigins: readonly string[]): boolean {
   const origin = req.get("origin");
@@ -106,7 +128,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   const principal = createMusicPrincipalMiddleware(dependencies.resolvePrincipal);
   const identify: RequestHandler = (req, res, next) => {
     const supplied = req.get("x-request-id");
-    const requestId = supplied && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(supplied) ? supplied : requestIdFactory();
+    const requestId = supplied && SAFE_REQUEST_ID.test(supplied) ? supplied : requestIdFactory();
     res.locals.musicRequestId = requestId;
     res.setHeader("X-Request-Id", requestId);
     next();
@@ -130,6 +152,59 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   };
   const owner = (...handlers: RequestHandler[]) => [identify, principal, ownerInputGuard, ...handlers];
   const mutation = (...handlers: RequestHandler[]) => owner(originGuard, ...handlers);
+  const observePublic = (operation: "descriptor" | "resource" | "request"): RequestHandler => (req, res, next) => {
+    const finish = dependencies.observability?.startHttp(operation, res.locals.musicRequestId);
+    res.once("finish", () => finish?.(httpOutcome(res.statusCode), res.statusCode));
+    next();
+  };
+  app.get("/api/music/public-profile/:accountDocumentId", identify, observePublic("descriptor"), async (req, res, next) => {
+    try {
+      if (hasUnexpectedPublicDescriptorAuthority(req)) throw new MusicIdentityError(
+        "REQUEST_INVALID", 400, "The public Music descriptor request is invalid.", "none", false,
+      );
+      const accountDocumentId = boundedIdentityDocumentId(req.params.accountDocumentId);
+      if (!accountDocumentId) throw notFound();
+      const source = publicRequestSource(req, dependencies);
+      const limited = dependencies.publicRateLimited?.({ source, resource: accountDocumentId })
+        ?? consumePublicSurfaceLimit({ source, resource: accountDocumentId });
+      if (limited) throw new MusicIdentityError(
+        "RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60,
+      );
+      const descriptor = await dependencies.repository.resolvePublicDescriptor(accountDocumentId);
+      if (!descriptor) throw notFound();
+      res.status(200).json({
+        version: "music-public-descriptor/v1",
+        publication: {
+          mode: "public",
+          publicSlug: descriptor.publicSlug,
+          revision: descriptor.revision,
+        },
+      });
+    } catch (error) { next(error); }
+  });
+  app.get("/api/music/public-resource/v1/:publicSlug", identify, observePublic("resource"), async (req, res, next) => {
+    try {
+      if (hasUnexpectedPublicResourceAuthority(req) || !/^[A-Za-z0-9_-]{8,128}$/.test(req.params.publicSlug)) throw notFound();
+      const suppliedCapability = req.get("x-music-guest-capability");
+      if (suppliedCapability && !/^[A-Za-z0-9_-]{43}$/.test(suppliedCapability)) throw notFound();
+      const capability = suppliedCapability && /^[A-Za-z0-9_-]{43}$/.test(suppliedCapability)
+        ? suppliedCapability
+        : undefined;
+      const source = publicRequestSource(req, dependencies);
+      const rateInput = { source, resource: req.params.publicSlug, ...(capability ? { capability } : {}) };
+      const limited = dependencies.publicRateLimited?.(rateInput) ?? consumePublicSurfaceLimit(rateInput);
+      if (limited) throw new MusicIdentityError(
+        "RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60,
+      );
+      const result = await dependencies.repository.resolvePublicMusicResource(req.params.publicSlug, capability);
+      if (!result || !["public", "unlisted"].includes(result.state) || !result.resource) throw notFound();
+      if (Buffer.byteLength(JSON.stringify(result.resource), "utf8") > 512 * 1_024) throw new MusicIdentityError(
+        "PAYLOAD_TOO_LARGE", 413, "The public Music resource exceeds its encoded limit.", "none", false,
+      );
+      if (result.noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.status(200).json(result.resource);
+    } catch (error) { next(error); }
+  });
   app.get("/api/playlists", ...owner(async (req, res, next) => {
     try { res.status(200).json((await dependencies.repository.listPlaylists(req.musicPrincipal!.musicUserId)).map(playlistDto)); } catch (error) { next(error); }
   }));
@@ -522,33 +597,88 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
     } catch (error) { next(error); }
   });
 
-  app.post("/api/playlist/:guestUrl/requests", identify, originGuard, async (req, res, next) => {
+  app.post("/api/playlist/:guestUrl/requests", identify, observePublic("request"), originGuard, async (req, res, next) => {
     try {
       const capability = req.get("x-music-guest-capability") ?? "";
       const capabilityValid = /^[A-Za-z0-9_-]{43}$/.test(capability);
-      const authorityKey = capabilityValid ? hashGuestCapability(capability) : `public:${req.params.guestUrl}`;
-      if (consumeContainmentLimit(`c6-guest-request:${authorityKey}`, 20, 60_000)) {
-        throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
-      }
-      const authority = await dependencies.repository.resolveGuestRequestAuthority(req.params.guestUrl, capabilityValid ? capability : undefined);
-      if (!authority?.active || !authority.allowSongRequests) throw invalidGuestCapability();
-      const song = await dependencies.repository.addSong(authority.musicUserId, songInput(req.body));
-      if (!song) throw queueLimitReached();
-      res.status(201).json(songDto(song));
+      const idempotencyKey = req.get("idempotency-key");
+      if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) throw invalidQueue();
+      const result = await dependencies.repository.addGuestSongIdempotent(
+        req.params.guestUrl, capabilityValid ? capability : undefined, publicRequestSource(req, dependencies), idempotencyKey, songInput(req.body),
+      );
+      if (result.status === "conflict") throw new MusicIdentityError("IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used for another Music command.", "none", false);
+      else if (result.status === "limit") throw new MusicIdentityError("REQUEST_INVALID", 413, "The Music request queue is full.", "retry", true);
+      else if (result.status === "forbidden") throw invalidGuestCapability();
+      else if (result.status === "rate_limited") throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
+      if (result.status !== "completed") throw invalidGuestCapability();
+      if (result.replayed) res.setHeader("Idempotency-Replayed", "true");
+      res.status(201).json(result.response);
     } catch (error) { next(error); }
   });
 
-  app.use((cause: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((cause: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (res.headersSent) return;
-    const error = safeRouteError(cause);
+    const malformedPublicResource = malformedPublicDecodeResource(cause, req);
+    const limited = malformedPublicResource !== undefined && (dependencies.publicRateLimited?.({
+      source: publicRequestSource(req, dependencies),
+      // A constant dimension prevents malformed encodings from manufacturing unbounded resource buckets.
+      resource: malformedPublicResource,
+    }) ?? consumePublicSurfaceLimit({
+      source: publicRequestSource(req, dependencies),
+      resource: malformedPublicResource,
+    }));
+    const error = limited
+      ? new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60)
+      : malformedPublicResource !== undefined ? notFound() : safeRouteError(cause);
     if (error.status === 429 || error.status === 503) res.setHeader("Retry-After", String(error.retryAfterSeconds ?? 1));
     const currentHeader = res.getHeader("X-Request-Id");
+    const supplied = malformedPublicResource !== undefined ? req.get("x-request-id") : undefined;
     const requestId = res.locals.musicRequestId
       ?? (typeof currentHeader === "string" ? currentHeader : undefined)
+      ?? (supplied && SAFE_REQUEST_ID.test(supplied) ? supplied : undefined)
       ?? requestIdFactory();
     res.setHeader("X-Request-Id", requestId);
     res.status(error.status).json(musicErrorEnvelope(error, requestId));
   });
+}
+
+function httpOutcome(status: number): "success" | "invalid" | "not_found" | "forbidden" | "rate_limited" | "conflict" | "too_large" | "unavailable" {
+  if (status < 400) return "success";
+  if (status === 404) return "not_found";
+  if (status === 401 || status === 403) return "forbidden";
+  if (status === 409) return "conflict";
+  if (status === 413) return "too_large";
+  if (status === 429) return "rate_limited";
+  if (status >= 500) return "unavailable";
+  return "invalid";
+}
+
+function publicRequestSource(req: Request, dependencies: CanonicalMusicRouteDependencies): string {
+  const peerAddress = req.socket.remoteAddress;
+  return dependencies.trustedProxyHops === 1 && dependencies.isTrustedProxy?.(peerAddress)
+    ? (req.ip ?? peerAddress ?? "unknown")
+    : (peerAddress ?? "unknown");
+}
+
+function malformedPublicDecodeResource(cause: unknown, req: Request): string | undefined {
+  if (!(cause instanceof URIError) || req.method !== "GET") return undefined;
+  const queryOffset = req.originalUrl.indexOf("?");
+  const path = queryOffset === -1 ? req.originalUrl : req.originalUrl.slice(0, queryOffset);
+  for (const [prefix, resource] of [
+    [PUBLIC_DESCRIPTOR_PATH_PREFIX, MALFORMED_PUBLIC_DESCRIPTOR_RESOURCE],
+    [PUBLIC_RESOURCE_PATH_PREFIX, MALFORMED_PUBLIC_RESOURCE],
+  ] as const) {
+    if (!path.startsWith(prefix)) continue;
+    const encodedSegment = path.slice(prefix.length);
+    if (encodedSegment.length === 0 || encodedSegment.includes("/")) return undefined;
+    try {
+      decodeURIComponent(encodedSegment);
+      return undefined;
+    } catch (error) {
+      return error instanceof URIError ? resource : undefined;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -579,6 +709,37 @@ function hasForbiddenOwnerInput(req: Request): boolean {
   return ["x-username", "x-user-id", "x-owner-id", "x-account-id", "x-email"].some((header) => req.get(header) !== undefined)
     || Object.keys(req.query).some((key) => OWNER_KEYS.has(key))
     || !!req.body && typeof req.body === "object" && !Array.isArray(req.body) && Object.keys(req.body).some((key) => OWNER_KEYS.has(key));
+}
+
+const PUBLIC_DESCRIPTOR_AUTHORITY_HEADERS = [
+  "authorization", "x-username", "x-email", "x-user-id", "x-music-user-id", "x-owner-id", "x-account-id",
+  "x-document-id", "x-strapi-user-document-id", "x-strapi-account-document-id", "x-music-guest-capability",
+] as const;
+
+function hasUnexpectedPublicDescriptorAuthority(req: Request): boolean {
+  const contentLength = req.get("content-length");
+  return PUBLIC_DESCRIPTOR_AUTHORITY_HEADERS.some((header) => req.get(header) !== undefined)
+    || Object.keys(req.query).length > 0
+    || req.body !== undefined
+    || contentLength !== undefined && contentLength !== "0"
+    || req.get("transfer-encoding") !== undefined;
+}
+
+function hasUnexpectedPublicResourceAuthority(req: Request): boolean {
+  const contentLength = req.get("content-length");
+  return [
+    "authorization", "x-username", "x-email", "x-user-id", "x-music-user-id", "x-owner-id", "x-account-id",
+    "x-document-id", "x-strapi-user-document-id", "x-strapi-account-document-id",
+  ].some((header) => req.get(header) !== undefined)
+    || Object.keys(req.query).length > 0
+    || req.body !== undefined
+    || contentLength !== undefined && contentLength !== "0"
+    || req.get("transfer-encoding") !== undefined;
+}
+
+function boundedIdentityDocumentId(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized.length >= 1 && normalized.length <= 512 ? normalized : undefined;
 }
 
 type DtoRecord = Record<string, unknown>;

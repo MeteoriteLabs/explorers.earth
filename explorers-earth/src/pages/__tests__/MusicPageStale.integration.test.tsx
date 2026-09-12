@@ -1,6 +1,8 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MusicPageContent } from "../Music";
+import { loginSurface, surfaceHarness } from '../../features/navigation/__tests__/surfaceHarness';
+import useAuthStore from '../../store/store';
 
 vi.mock("../../components/SEO", () => ({ default: () => null }));
 vi.mock("react-player", async () => {
@@ -14,7 +16,8 @@ vi.mock("react-player", async () => {
 });
 
 describe("Music page cached dashboard integration", () => {
-  it("keeps the last good dashboard mounted read-only when a refetch resolves with an error", () => {
+  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
+  it("keeps the last good dashboard mounted read-only when a refetch resolves with an error", async () => {
     const playlist = {
       id: 17,
       name: "Cached road mix",
@@ -44,16 +47,18 @@ describe("Music page cached dashboard integration", () => {
       retryIdentity: vi.fn(),
     };
 
-    render(<MusicPageContent
+    loginSurface('user-17');
+    const view = surfaceHarness(<MusicPageContent
       authenticated
       onboarding="complete"
       data={data}
       scope={{ userDocumentId: "user-17", accountDocumentId: "account-17" }}
       ownerWorkspace
       onAction={vi.fn()}
-    />);
+    />, { initial: { documentId: 'account-17' } });
+    await view.ready();
 
-    expect(screen.getByRole("status")).toHaveTextContent("May be out of date");
+    expect(screen.getByText(/May be out of date/).closest('[role="status"]')).toHaveTextContent("May be out of date");
     expect(screen.getByRole("tab", { name: "Playlists" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Cached road mix/ })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Make Cached road mix public" })).toBeDisabled();

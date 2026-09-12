@@ -22,7 +22,10 @@ async function main(): Promise<void> {
 
 if (process.env.NODE_ENV !== "test") {
   void main().catch((error) => {
-    console.error("Failed to start server:", error);
+    const diagnostic = error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack }
+      : { type: typeof error, constructorName: error?.constructor?.name ?? "unknown" };
+    console.error("Failed to start server:", diagnostic);
     process.exit(1);
   });
 }

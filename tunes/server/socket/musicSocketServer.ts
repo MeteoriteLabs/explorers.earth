@@ -4,6 +4,8 @@ import type { Express } from "express";
 import { Server as SocketIOServer, type Socket } from "socket.io";
 import { MusicIdentityError, musicErrorEnvelope } from "../../shared/musicError";
 import { MusicPrincipalError, type MusicPrincipal, type MusicSocketCredentialContext } from "../middleware/musicPrincipal";
+import type { PublicMusicInvalidationKind } from "../repositories/publicMusicRevision";
+import type { MusicPublicObservability } from "../observability/musicPublicObservability";
 
 interface OwnerCredentialVerifier {
   handshake(input: { token: string }): Promise<MusicSocketCredentialContext>;
@@ -55,6 +57,29 @@ export class MusicOwnerSocketRegistry {
   }
 }
 
+type PublicMusicChange = { musicUserId: number; kind: PublicMusicInvalidationKind; revision: number };
+
+export class MusicPublicSocketRegistry {
+  private publishChange: ((change: PublicMusicChange) => Promise<void>) | undefined;
+  private catchUpChanges: (() => Promise<void>) | undefined;
+
+  bind(publish: (change: PublicMusicChange) => Promise<void>, catchUp: () => Promise<void>): void {
+    if (this.publishChange) throw new Error("Music public socket registry is already bound");
+    this.publishChange = publish;
+    this.catchUpChanges = catchUp;
+  }
+
+  async publish(change: PublicMusicChange): Promise<void> {
+    if (!this.publishChange) throw new Error("Music public socket registry is unavailable");
+    await this.publishChange(change);
+  }
+
+  async catchUp(): Promise<void> {
+    if (!this.catchUpChanges) throw new Error("Music public socket registry is unavailable");
+    await this.catchUpChanges();
+  }
+}
+
 export interface MusicSocketDependencies {
   allowedOrigins: string[];
   ownerCredentials: OwnerCredentialVerifier;
@@ -63,15 +88,23 @@ export interface MusicSocketDependencies {
     active: boolean;
     allowSongRequests: boolean;
   } | undefined>;
+  resolvePublicMusicAuthority?(publicSlug: string, capability?: string): Promise<{
+    musicUserId: number;
+    active: boolean;
+  } | undefined>;
+  resolvePublicMusicRevision?(musicUserId: number): Promise<number | undefined>;
   eventLimit?: number;
   eventWindowMs?: number;
   eventRateMaxEntries?: number;
   ownerRegistry?: MusicOwnerSocketRegistry;
+  publicRegistry?: MusicPublicSocketRegistry;
+  observability?: MusicPublicObservability;
 }
 
 type SocketAuthority =
   | { role: "owner"; musicUserId: number; owner: MusicSocketCredentialContext; rateKey: string }
-  | { role: "guest"; musicUserId: number; capability: string; rateKey: string };
+  | { role: "guest"; musicUserId: number; capability: string; rateKey: string }
+  | { role: "public"; musicUserId: number; publicSlug: string; capability?: string; rateKey: string };
 
 export class BoundedSocketEventLimiter {
   private readonly entries = new Map<string, { count: number; resetAt: number }>();
@@ -140,6 +173,49 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
     },
     async () => { io.disconnectSockets(true); },
   );
+  dependencies.publicRegistry?.bind(async ({ musicUserId, kind, revision }) => {
+    const recipients = await io.in(`music-public:${musicUserId}`).fetchSockets();
+    await Promise.all(recipients.map(async (recipient) => {
+      const authority = recipient.data.musicAuthority as SocketAuthority | undefined;
+      if (authority?.role !== "public") return;
+      const current = await dependencies.resolvePublicMusicAuthority?.(authority.publicSlug, authority.capability).catch(() => undefined);
+      recipient.emit("music_public_change", { version: "music-public-change/v1", kind, revision });
+      dependencies.observability?.socket("invalidation_sent", { role: "public", kind });
+      if (!current?.active || current.musicUserId !== musicUserId) {
+        dependencies.observability?.socket("revocation_enforced", { role: "public", reason: "revoked" });
+        recipient.disconnect(true);
+      }
+    }));
+    const owners = await io.in(`music-owner:${musicUserId}`).fetchSockets();
+    await Promise.all(owners.map(async (recipient) => {
+      const authority = recipient.data.musicAuthority as SocketAuthority | undefined;
+      if (authority?.role !== "owner") return;
+      try {
+        const principal = await dependencies.ownerCredentials.recheck(authority.owner);
+        if (principal.musicUserId !== musicUserId) throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+        recipient.emit("music_owner_change", { version: "music-owner-change/v1", kind, revision });
+        dependencies.observability?.socket("invalidation_sent", { role: "owner", kind });
+      } catch (cause) {
+        recipient.emit("music_error", musicErrorEnvelope(safeSocketError(cause), randomUUID()));
+        dependencies.observability?.socket("revocation_enforced", { role: "owner", reason: "revoked" });
+        recipient.disconnect(true);
+      }
+    }));
+  }, async () => {
+    const sockets = await io.fetchSockets();
+    const musicUserIds = new Set<number>();
+    for (const socket of sockets) {
+      const authority = socket.data.musicAuthority as SocketAuthority | undefined;
+      if (authority) musicUserIds.add(authority.musicUserId);
+    }
+    await Promise.all(Array.from(musicUserIds, async (musicUserId) => {
+      const revision = await dependencies.resolvePublicMusicRevision?.(musicUserId);
+      // A missing revision is itself meaningful: the identity may have been
+      // suspended or deleted while LISTEN was disconnected. Publish a stale
+      // sentinel so the normal authority recheck disconnects those sockets.
+      await dependencies.publicRegistry!.publish({ musicUserId, kind: "publication_changed", revision: revision ?? 0 });
+    }));
+  });
   const eventLimit = dependencies.eventLimit ?? 10;
   const eventWindowMs = dependencies.eventWindowMs ?? 60_000;
   const limiter = new BoundedSocketEventLimiter({
@@ -154,6 +230,10 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       if (authority.role === "owner") {
         const principal = await dependencies.ownerCredentials.recheck(authority.owner);
         return principal.musicUserId === authority.musicUserId;
+      }
+      if (authority.role === "public") {
+        const publication = await dependencies.resolvePublicMusicAuthority?.(authority.publicSlug, authority.capability);
+        return publication?.active === true && publication.musicUserId === authority.musicUserId;
       }
       const guest = await dependencies.resolveGuestCapability(authority.capability);
       return guest?.active === true && guest.musicUserId === authority.musicUserId;
@@ -191,7 +271,8 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       const auth = socket.handshake.auth;
       const token = typeof auth?.token === "string" ? auth.token : undefined;
       const capability = typeof auth?.guestCapability === "string" ? auth.guestCapability : undefined;
-      if ((token ? 1 : 0) + (capability ? 1 : 0) !== 1) throw new MusicPrincipalError("TOKEN_INVALID", 401, "A single Music socket credential is required.");
+      const publicSlug = typeof auth?.publicSlug === "string" ? auth.publicSlug : undefined;
+      if ((token ? 1 : 0) + (publicSlug ? 1 : 0) + (!publicSlug && capability ? 1 : 0) !== 1) throw new MusicPrincipalError("TOKEN_INVALID", 401, "A single Music socket credential is required.");
       let authority: SocketAuthority;
       if (token) {
         const owner = await dependencies.ownerCredentials.handshake({ token });
@@ -200,6 +281,15 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
           musicUserId: owner.principal.musicUserId,
           owner,
           rateKey: `owner:${owner.principal.subject}`,
+        };
+      } else if (publicSlug) {
+        if (!/^[A-Za-z0-9_-]{8,128}$/.test(publicSlug)
+            || capability !== undefined && !/^[A-Za-z0-9_-]{43}$/.test(capability)) throw guestInvalid();
+        const publication = await dependencies.resolvePublicMusicAuthority?.(publicSlug, capability);
+        if (!publication?.active) throw guestInvalid();
+        authority = {
+          role: "public", musicUserId: publication.musicUserId, publicSlug, capability,
+          rateKey: `public:${createHash("sha256").update(`${publicSlug}:${capability ?? "public"}`).digest("hex")}`,
         };
       } else {
         if (!capability || !/^[A-Za-z0-9_-]{43}$/.test(capability)) throw guestInvalid();
@@ -215,11 +305,13 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       if (admissionEpoch !== undefined && !dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch)) throw admissionUnavailable();
       socket.data.musicAuthority = authority;
       socket.data.musicAdmissionEpoch = admissionEpoch;
+      dependencies.observability?.socket("admitted", { role: authority.role });
       next();
     } catch (cause) {
       const error = safeSocketError(cause);
       const failure = new Error(error.message) as Error & { data?: unknown };
       failure.data = musicErrorEnvelope(error, randomUUID());
+      dependencies.observability?.socket("rejected", { reason: error.code === "ORIGIN_FORBIDDEN" ? "origin" : "invalid" });
       next(failure);
     }
   });
@@ -232,7 +324,7 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       || dependencies.ownerRegistry?.isAdmissionCurrent(admissionEpoch) === true;
     const room = authority.role === "owner"
       ? `music-owner:${authority.musicUserId}`
-      : `music-guest:${authority.musicUserId}`;
+      : authority.role === "guest" ? `music-guest:${authority.musicUserId}` : `music-public:${authority.musicUserId}`;
     const ownerEpoch = authority.role === "owner"
       ? dependencies.ownerRegistry?.captureEpoch(authority.musicUserId)
       : undefined;
@@ -253,6 +345,7 @@ export function createMusicSocketServer(app: Express, dependencies: MusicSocketD
       return;
     }
     socket.emit("connection_status", { status: "connected", role: authority.role, requestId: randomUUID() });
+    socket.on("disconnect", () => dependencies.observability?.socket("disconnected", { role: authority.role, reason: "transport" }));
 
     const fail = (cause: unknown) => {
       const error = safeSocketError(cause);

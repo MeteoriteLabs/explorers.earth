@@ -17,6 +17,9 @@ export default defineConfig({
     globalSetup: ['./server/test/integration-global-setup.ts'],
     setupFiles: ['./server/test/setup.ts'],
     hookTimeout: 30_000,
+    // Real PostgreSQL suites create, migrate, fingerprint, and drop multiple
+    // isolated databases. The unit-test 5s default is too short on shared CI.
+    testTimeout: 30_000,
     // Integration files share one disposable PostgreSQL authority and perform
     // schema/database teardown. Keep file order deterministic; concurrency is
     // exercised explicitly inside the projection/migration suites.

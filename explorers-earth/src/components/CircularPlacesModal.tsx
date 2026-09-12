@@ -5,6 +5,8 @@ import Button from "./ui/Button";
 import ImageWithFallback from "./ui/ImageWithFallback";
 import { useTranslation } from "react-i18next";
 
+import { usePublicCategoryThemeStyles } from "../features/PublicHome/components/PublicCategoryThemeContext";
+
 interface Place {
   List_Name: string;
   List_Name_Details?: {
@@ -29,6 +31,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
   handleCitySelect,
 }) => {
   const { t } = useTranslation();
+  const categoryStyles = usePublicCategoryThemeStyles();
   const [visiblePlaces, setVisiblePlaces] = useState<Place[]>([]);
   const [currentIndex, setCurrentIndex] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
@@ -211,7 +214,8 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
         onClick={onClose}
       >
         <motion.div
-          className="relative backdrop-blur-lg bg-black/20 p-6 rounded-lg shadow-lg h-full w-full flex flex-col"
+          data-category-circular-places={categoryStyles ? true : undefined}
+          className={categoryStyles ? "relative backdrop-blur-lg bg-[var(--category-panel)] p-6 rounded-lg shadow-lg h-full w-full flex flex-col" : "relative backdrop-blur-lg bg-black/20 p-6 rounded-lg shadow-lg h-full w-full flex flex-col"}
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           exit={{ scale: 0.8 }}
@@ -219,7 +223,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
         >
           <div className="absolute top-4 right-6">
             <Button
-              startIcon={<CrossIcon size="6" stroke="white" />}
+              startIcon={<CrossIcon size="6" stroke={categoryStyles ? "currentColor" : "white"} />}
               variant="ghost"
               onClickHandler={onClose}
             />
@@ -227,14 +231,14 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
 
           {/* Places count indicator */}
           <div className="text-center mb-4 mt-2">
-            <p className="text-white text-sm font-medium">
+            <p className={categoryStyles ? "text-[var(--category-text)] text-sm font-medium" : "text-white text-sm font-medium"}>
               {t("dashboard.recommendations.placesModal.placesCount", {
                 visible: visiblePlaces.length,
                 total: places.length,
               })}
             </p>
             {!hasLoadedAll && (
-              <p className="text-gray-400 text-xs mt-1">
+              <p className={categoryStyles ? "text-[var(--category-muted)] text-xs mt-1" : "text-gray-400 text-xs mt-1"}>
                 {t("dashboard.recommendations.placesModal.scrollToLoadMore")}
               </p>
             )}
@@ -275,7 +279,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
                       }`}
                     />
                   </motion.div>
-                  <p className="text-white text-sm font-medium mt-2 text-center">
+                  <p className={categoryStyles ? "text-[var(--category-text)] text-sm font-medium mt-2 text-center" : "text-white text-sm font-medium mt-2 text-center"}>
                     {place.List_Name}
                   </p>
                 </motion.div>
@@ -285,13 +289,13 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
               {isLoading && (
                 <div className="col-span-full flex justify-center items-center py-4">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-purple-500 rounded-full animate-bounce"></div>
+                    <div className={categoryStyles ? "w-4 h-4 bg-[var(--category-accent)] rounded-full animate-bounce" : "w-4 h-4 bg-purple-500 rounded-full animate-bounce"}></div>
                     <div
-                      className="w-4 h-4 bg-purple-500 rounded-full animate-bounce"
+                      className={categoryStyles ? "w-4 h-4 bg-[var(--category-accent)] rounded-full animate-bounce" : "w-4 h-4 bg-purple-500 rounded-full animate-bounce"}
                       style={{ animationDelay: "0.1s" }}
                     ></div>
                     <div
-                      className="w-4 h-4 bg-purple-500 rounded-full animate-bounce"
+                      className={categoryStyles ? "w-4 h-4 bg-[var(--category-accent)] rounded-full animate-bounce" : "w-4 h-4 bg-purple-500 rounded-full animate-bounce"}
                       style={{ animationDelay: "0.2s" }}
                     ></div>
                   </div>
