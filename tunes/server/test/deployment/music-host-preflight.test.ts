@@ -35,7 +35,7 @@ describe("Tunes host preflight authority", () => {
         esac
       }
       node() { [[ "$#" == 1 && "$1" == --version ]] || return 93; printf 'v22.12.0\\n'; }
-      ss() { [[ "$#" == 1 && "$1" == -lnt ]] || return 94; printf 'LISTEN 0 128 0.0.0.0:5001 0.0.0.0:*\\n'; }
+      ss() { [[ "$#" == 1 && "$1" == -lntp ]] || return 94; printf 'LISTEN 0 128 0.0.0.0:5001 0.0.0.0:* users:(("node",pid=123,fd=4))\\n'; }
       ${section}
     `], { encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
@@ -46,6 +46,7 @@ describe("Tunes host preflight authority", () => {
     expect(result.stdout.match(/networks=tunes_cosmic-network;/g)).toHaveLength(2);
     expect(result.stdout).toContain("v22.12.0");
     expect(result.stdout).toContain("LISTEN 0 128 0.0.0.0:5001");
+    expect(result.stdout).toContain('users:(("node",pid=123,fd=4))');
     expect(section).not.toMatch(/\.Config\.Env|docker compose config|cat .*\.env/);
   });
   it("is manual, uses the proven SSH connection, and cannot deploy", () => {
