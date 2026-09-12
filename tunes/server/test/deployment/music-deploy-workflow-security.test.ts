@@ -373,6 +373,9 @@ describe("Tunes workflow provenance and input boundary", () => {
       'git merge-base --is-ancestor "$commit" "$GITHUB_SHA"',
     );
     expect(deploy).toContain(
+      '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/tunes.yml"',
+    );
+    expect(deploy).not.toContain(
       '--signer-workflow "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/tunes.yml"',
     );
     expect(deploy).toContain("--source-ref refs/heads/main");
