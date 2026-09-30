@@ -79,6 +79,7 @@ services:
       dockerfile: Dockerfile
     environment:
       NODE_ENV: production
+      MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
       PORT: 5000
       MUSIC_DATABASE_HOST: postgres
       MUSIC_DATABASE_PORT: "5432"

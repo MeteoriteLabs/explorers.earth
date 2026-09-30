@@ -1,5 +1,6 @@
 import express from "express";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { build } from "esbuild";
@@ -7,6 +8,8 @@ import { describe, expect, it } from "vitest";
 import { startMusicServer, type MusicServerRuntime } from "../../config/music-startup";
 
 const tunesRoot = resolve(import.meta.dirname, "../../..");
+const require = createRequire(import.meta.url);
+const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 const fixtureEnvironment = Object.fromEntries(readFileSync(resolve(tunesRoot, "../.env.music.test.example"), "utf8")
   .split(/\r?\n/)
   .filter((line) => line && !line.startsWith("#"))
@@ -34,6 +37,11 @@ function runtime(events: string[]): MusicServerRuntime {
 }
 
 describe("API-only build and startup", () => {
+  it("enables the production health path in the disposable API fixture", () => {
+    const compose = parseYaml(readFileSync(resolve(tunesRoot, "../docker-compose.replatform.yml"), "utf8"));
+    expect(compose.services.tunes.environment.MUSIC_DEPLOYMENT_HEALTH_ENABLED).toBe("true");
+  });
+
   it("releases owned resources when startup rejects its listener configuration", async () => {
     const events: string[] = [];
     await expect(startMusicServer({ ...fixtureEnvironment, PORT: "invalid" }, {

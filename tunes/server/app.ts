@@ -175,7 +175,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
       fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
     }, localProfile);
   } catch (error) {
-    if (localProfile) return failAfterLocalMusicOwnedCleanup(error, {
+    if (localProfile || apiOnly) return failAfterLocalMusicOwnedCleanup(error, {
       closeSessionStore: closeLocalSessionStore,
       closePool: async () => { await pool.end(); },
     });

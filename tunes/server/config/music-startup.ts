@@ -101,22 +101,32 @@ export async function startMusicServer(
 ): Promise<{ app: Express; server: Server; config: MusicIdentityRuntimeConfig; shutdown: () => Promise<void> }> {
   const config = await validateMusicStartupEnvironment(environment, dependencies);
   const fixtureSkipsAnalyticsDdl = fixtureUsesAttestedAnalyticsSchema(environment);
-  if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
-  else {
-    const [{ pool }, { EXPLORERS_ANALYTICS_SCHEMA_MARKER, verifyExplorersAnalyticsSchema }] = await Promise.all([
-      import("../db"),
-      import("../startup/explorers-analytics-migration"),
-    ]);
-    await verifyExplorersAnalyticsSchema(pool, fixtureSkipsAnalyticsDdl
-      ? environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER
-      : EXPLORERS_ANALYTICS_SCHEMA_MARKER);
+  let earlyPool: { end: () => Promise<void> } | undefined;
+  let appCreationStarted = false;
+  let constructed: Awaited<ReturnType<MusicServerRuntime["createApp"]>>;
+  try {
+    if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
+    else {
+      const { pool } = await import("../db");
+      earlyPool = pool;
+      const { EXPLORERS_ANALYTICS_SCHEMA_MARKER, verifyExplorersAnalyticsSchema } = await import("../startup/explorers-analytics-migration");
+      await verifyExplorersAnalyticsSchema(pool, fixtureSkipsAnalyticsDdl
+        ? environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER
+        : EXPLORERS_ANALYTICS_SCHEMA_MARKER);
+    }
+    const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
+    appCreationStarted = true;
+    constructed = await runtime.createApp(config, undefined, dependencies.apiOnly === true);
+    const { app, server } = constructed;
+    if (dependencies.apiOnly) {
+      app.use((req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } }));
+    } else if (app.get("env") === "development") await runtime.setupVite(app, server);
+    else runtime.serveStatic(app);
+  } catch (error) {
+    if (dependencies.apiOnly && !appCreationStarted) await earlyPool?.end().catch(() => undefined);
+    throw error;
   }
-  const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
-  const { app, server, shutdown } = await runtime.createApp(config, undefined, dependencies.apiOnly === true);
-  if (dependencies.apiOnly) {
-    app.use((req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } }));
-  } else if (app.get("env") === "development") await runtime.setupVite(app, server);
-  else runtime.serveStatic(app);
+  const { app, server, shutdown } = constructed;
 
   try {
     const port = dependencies.port ?? Number.parseInt(environment.PORT ?? "5000", 10);
