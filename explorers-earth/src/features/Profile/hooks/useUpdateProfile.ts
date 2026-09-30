@@ -5,6 +5,8 @@ import { readSocialVisibility } from "../config/socialVisibility";
 import type { KeyValuePair } from "../types/profileSave";
 import { mobileNumberField } from "./mobileNumberField";
 import { musicApi } from "../../music/musicApi";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
+import { toAccountUpdate, toProfileViewModel } from "../api/profileClient";
 
 const getAccountTypeValue = (
   key: unknown,
@@ -240,6 +242,13 @@ export const useUpdateProfile = (
 
   const handleSubmit = async (values: KeyValuePair) => {
     const socialMedia = buildSocialMediaInput(values);
+    if (documentId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(documentId)) {
+      const current = await explorersApiClient.getMyProfile();
+      if (current.id !== documentId) throw new Error("Account changed during save");
+      const updated = await explorersApiClient.updateAccount(toAccountUpdate({ ...values, social_media: socialMedia }, current));
+      await refetch();
+      return toProfileViewModel(updated);
+    }
 
     if (!documentId) {
       const response = await createAccount({

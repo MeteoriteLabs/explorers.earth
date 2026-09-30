@@ -5,9 +5,9 @@ import useAuthStore from "../../store/store";
 import ProtectedRoute from "../ProtectedRoute";
 
 const query = vi.hoisted(() => ({ refetch: vi.fn() }));
-vi.mock("@apollo/client", async (original) => ({
-  ...await original<typeof import("@apollo/client")>(),
-  useQuery: () => ({ data: { usersPermissionsUser: { accounts: [] } }, loading: false, error: undefined, refetch: query.refetch }),
+vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
+  useCanonicalAccount: () => ({ data: { id: "account-incomplete", onboardingStatus: "incomplete" },
+    isLoading: false, error: null, refetch: query.refetch }),
 }));
 vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>Loading lifecycle</div> }));
 vi.mock("../../hooks/useLogout", () => ({ useLogout: () => useAuthStore.getState().logout }));

@@ -22,11 +22,10 @@ import {
   SupportedAspectRatio,
 } from "../../../utils/aspectRatioUtils";
 import {
-  generateFeedUploadPath,
   generateRandomFileName,
-  sanitizeUsername,
 } from "../../../utils/uploadPathGenerator";
 import { useFileUpload } from "../../../hooks/useFileUpload";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
 import type {
   FeedAsyncOperation,
   FeedAsyncState,
@@ -69,7 +68,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
   const importDisclosureId = `gallery-import-sources-${useId().replace(/:/g, "")}`;
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
 
   // MediaViewer state
   const {
@@ -149,42 +148,15 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
     try {
       const uploads = await Promise.all(
         validFiles.map(async (file) => {
-          // Generate structured path for feed media
-          const mediaType = file.type.startsWith("video/")
-            ? "videos"
-            : "images";
-          const username = sanitizeUsername(user?.username || "user");
-          const randomFileName = generateRandomFileName(file.name);
-          const structuredPath = generateFeedUploadPath(
-            username,
-            mediaType,
-            randomFileName
-          );
-
-          // Upload the file with structured path
-          const formData = new FormData();
-          formData.append("files", file);
-          formData.append("path", structuredPath);
-
-          const resp = await axios.post(
-            `${import.meta.env.VITE_REST_API_URL}/upload`,
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-            }
-          );
-          const item = resp.data?.[0];
-          if (item?.url) {
+          const item = await explorersApiClient.createMedia(file, "feed");
+          if (item.url) {
             // Detect aspect ratio for the uploaded file
             try {
               const aspectRatioInfo = await detectMediaAspectRatio(file);
               return {
                 id: `feed-uploaded-${item.id}`,
                 url: item.url,
-                documentId: item.documentId,
+                documentId: item.id,
                 fileName: file.name,
                 type: file.type.startsWith("video/") ? "video" : "image",
                 aspectRatio: aspectRatioInfo.aspectRatio,
@@ -201,7 +173,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
               return {
                 id: `feed-uploaded-${item.id}`,
                 url: item.url,
-                documentId: item.documentId,
+                documentId: item.id,
                 fileName: file.name,
                 type: file.type.startsWith("video/") ? "video" : "image",
                 aspectRatio: "4:5", // Default fallback
@@ -240,6 +212,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
 
   // File upload validation hook
   const { handleFileSelection, acceptString } = useFileUpload({
+    canonicalPurpose: "feed",
     allowImages: true,
     allowVideos: true,
     onValidFiles: handleValidFiles,
@@ -251,10 +224,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
     ? values.Feed_Data
     : [];
 
-  /**
-   * Upload Google image to S3 with structured path
-   * Downloads the image from Google and uploads to our S3 with proper path structure
-   */
+  /** Copy an imported image into the account's private local media store. */
   const uploadGoogleImageToS3 = async (
     imageUrl: string,
     fileName: string
@@ -269,40 +239,14 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
 
       const imageBlob = await imageResponse.blob();
 
-      // Generate structured path for Google import
-      const username = sanitizeUsername(user?.username || "user");
       const randomFileName = generateRandomFileName(fileName);
-      const structuredPath = generateFeedUploadPath(
-        username,
-        "google-import",
-        randomFileName
-      );
-
-      // Upload to our S3 with structured path
-      const formData = new FormData();
-      formData.append(
-        "files",
-        new File([imageBlob], randomFileName, { type: imageBlob.type })
-      );
-      formData.append("path", structuredPath);
-
-      const resp = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-
-      const item = resp.data?.[0];
+      const item = await explorersApiClient.createMedia(new File([imageBlob], randomFileName,
+        { type: imageBlob.type }), "feed");
       if (item?.url) {
         return {
           id: `feed-google-${item.id}`,
           url: item.url,
-          documentId: item.documentId,
+          documentId: item.id,
           fileName: randomFileName,
           type: "image",
           aspectRatio: aspectRatioInfo.aspectRatio,
@@ -313,7 +257,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
       }
       return null;
     } catch (error) {
-      console.error("Error uploading Google image to S3:", error);
+      console.error("Error importing Google image:", error);
       return null;
     }
   };
@@ -472,10 +416,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
     }
   };
 
-  /**
-   * Upload an Instagram image to S3 with structured path.
-   * Downloads via proxy and re-uploads to our storage.
-   */
+  /** Copy an imported Instagram image into the account's private local media store. */
   const uploadInstagramImageToS3 = async (
     proxyImageUrl: string,
     fileName: string,
@@ -502,33 +443,14 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
         } catch { /* fallback to default */ }
       }
 
-      // Generate structured path for Instagram import
-      const username = sanitizeUsername(user?.username || 'user');
       const randomFileName = generateRandomFileName(fileName);
-      const structuredPath = generateFeedUploadPath(username, 'instagram-import', randomFileName);
-
-      // Upload to our S3
-      const formData = new FormData();
-      formData.append('files', new File([imageBlob], randomFileName, { type: imageBlob.type }));
-      formData.append('path', structuredPath);
-
-      const resp = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-
-      const item = resp.data?.[0];
+      const item = await explorersApiClient.createMedia(new File([imageBlob], randomFileName,
+        { type: imageBlob.type }), "feed");
       if (item?.url) {
         return {
           id: `feed-ig-${item.id}`,
           url: item.url,
-          documentId: item.documentId,
+          documentId: item.id,
           fileName: randomFileName,
           type: mediaType,
           aspectRatio: aspectRatioInfo.aspectRatio,
@@ -539,7 +461,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
       }
       return null;
     } catch (error) {
-      console.error('Error uploading Instagram image to S3:', error);
+      console.error('Error importing Instagram image:', error);
       return null;
     }
   };

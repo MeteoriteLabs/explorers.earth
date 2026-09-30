@@ -39,6 +39,7 @@ import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { CategoryEmptyState } from "../components/CategoryEmptyState";
 import { ListVisibilityModal } from "../components/ListVisibilityModal";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 export interface Recommendation {
   title: string;
   image: string;
@@ -120,6 +121,7 @@ const Favorites = memo(() => {
   const location = useLocation();
   // fetching the user details from the global state
   const { user } = useAuthStore();
+  const canonicalAccount = useCanonicalAccount();
   // account data by Id
   const { data: accountById } = useQuery(accountDataQuery, {
     variables: {
@@ -315,9 +317,10 @@ const Favorites = memo(() => {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Syncing recommendations completion status:', currentIsRecommendationsComplete);
       }
-      setSetupStatus(isProfileComplete, currentIsRecommendationsComplete);
+      if (canonicalAccount.data) setSetupStatus(canonicalAccount.data.onboardingStatus === "complete",
+        currentIsRecommendationsComplete, canonicalAccount.data.id);
     }
-  }, [currentIsRecommendationsComplete, isRecommendationsComplete, isProfileComplete, setSetupStatus, cities]);
+  }, [currentIsRecommendationsComplete, isRecommendationsComplete, canonicalAccount.data, setSetupStatus, cities]);
 
 
   // Track route changes for better modal detection

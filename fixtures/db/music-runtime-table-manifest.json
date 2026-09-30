@@ -2,8 +2,8 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0023_explorers_authorization",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql", "0018_transactional_queue_replacement.sql", "0019_queue_visibility_control.sql", "0020_public_snapshot_revision.sql", "0021_explorers_analytics_receipts.sql", "0022_explorers_identity.sql", "0023_explorers_authorization.sql"],
+    "expectedId": "0024_explorers_profile_media",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql", "0018_transactional_queue_replacement.sql", "0019_queue_visibility_control.sql", "0020_public_snapshot_revision.sql", "0021_explorers_analytics_receipts.sql", "0022_explorers_identity.sql", "0023_explorers_authorization.sql", "0024_explorers_profile_media.sql"],
     "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations", "music_publication_operations", "music_publication_operation_archive", "music_reactivation_tokens", "music_owner_operations", "explorers_analytics_receipts"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/shared/authSchema.ts", "tunes/shared/explorersSchema.ts", "tunes/server/**/*.ts"],
@@ -21,6 +21,10 @@
     { "name": "auth_user", "managedBy": "drizzle", "family": "identity", "lifecycle": "retain-minimal-binding" },
     { "name": "auth_verification", "managedBy": "drizzle", "family": "identity-credential", "lifecycle": "expire-delete" },
     { "name": "creator_accounts", "managedBy": "drizzle", "family": "profile", "lifecycle": "retain-tombstone-binding" },
+    { "name": "media_assets", "managedBy": "drizzle", "family": "media", "lifecycle": "delete-after-storage-cleanup" },
+    { "name": "media_objects", "managedBy": "drizzle", "family": "media", "lifecycle": "delete-after-storage-cleanup" },
+    { "name": "profile_feed_items", "managedBy": "drizzle", "family": "profile", "lifecycle": "strip-on-deletion" },
+    { "name": "profile_media", "managedBy": "drizzle", "family": "media", "lifecycle": "detach-on-deletion" },
     { "name": "email_logs", "managedBy": "drizzle", "family": "pii", "lifecycle": "anonymize-retain-policy" },
     { "name": "email_templates", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-owner-policy" },
     { "name": "guest_interactions", "managedBy": "drizzle", "family": "analytics", "lifecycle": "anonymize-retain" },

@@ -33,6 +33,13 @@ const { settingsQuery } = vi.hoisted(() => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
+vi.mock("../../api/useCanonicalAccount", () => ({
+  useCanonicalAccount: () => ({ data: { id: "00000000-0000-4000-8000-000000000001", handle: "settings-user",
+    displayName: "Settings account", accountType: "Personal", onboardingStatus: "complete", revision: 1,
+    bioPlain: "Settings bio", primaryAddress: {}, additionalAddresses: [], publicAddress: null, feedItems: [],
+    socialLinks: [], themeSettings: {}, mobileNumber: "+919999999999", mobileNumberVisible: false,
+    publicProfile: true, autoPinning: true }, isLoading: false, error: null, refetch: vi.fn() }),
+}));
 vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
   return { ...actual, useQuery: () => settingsQuery };

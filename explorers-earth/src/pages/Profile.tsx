@@ -11,14 +11,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ProfileForm, {
   type FormSection,
 } from "../features/Profile/components/ProfileForm";
-import { useQuery } from "@apollo/client";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
+import { toProfileViewModel } from "../features/Profile/api/profileClient";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
-import { profileDataQuery } from "../features/Profile/api/query";
 import { mapAddressComponents } from "../utils/mapAddress";
 import { useUpdateProfile } from "../features/Profile/hooks/useUpdateProfile";
 import { useReverseGeocoding } from "../features/Profile/hooks/useReverseGeocoding";
@@ -52,6 +52,7 @@ import {
   sanitizeUsername,
 } from "../utils/uploadPathGenerator";
 import { IMAGE_CONFIG } from "../config";
+import { explorersApiClient } from "../lib/explorersApiClient";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
 import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
 import { validateUsername } from "../utils/usernameValidation";
@@ -311,11 +312,11 @@ const Profile = memo(() => {
   // accessing user document Id
   const documentId = user?.documentId;
 
-  const { data, loading, error, refetch } = useQuery(profileDataQuery, {
-    variables: { documentId },
-    fetchPolicy: "cache-and-network", // Always fetch fresh data but use cache while loading
-    skip: !documentId, // Skip query if documentId is not available
-  });
+  const accountQuery = useCanonicalAccount();
+  const data: any = accountQuery.data ? { usersPermissionsUser: { username: accountQuery.data.handle,
+    accounts: [toProfileViewModel(accountQuery.data)] } } : undefined;
+  const { error, refetch } = accountQuery;
+  const loading = accountQuery.isLoading;
 
   useEffect(() => {
     if (!loading) {
@@ -398,7 +399,11 @@ const Profile = memo(() => {
     }
   }, [account, uploadedBackground, uploadedImage]);
 
-  const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
+  const { isProfileComplete, isRecommendationsComplete, setSetupStatus, bindAccount } = useSetupStore();
+
+  useEffect(() => {
+    if (accountQuery.data) bindAccount(accountQuery.data.id, accountQuery.data.onboardingStatus);
+  }, [accountQuery.data?.id, accountQuery.data?.onboardingStatus, bindAccount]);
 
   // Sync setup status with store
   const currentIsProfileComplete = useMemo(() => {
@@ -411,7 +416,7 @@ const Profile = memo(() => {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Syncing profile completion status:', currentIsProfileComplete);
       }
-      setSetupStatus(currentIsProfileComplete, isRecommendationsComplete);
+      setSetupStatus(currentIsProfileComplete, isRecommendationsComplete, accountQuery.data?.id);
     }
   }, [currentIsProfileComplete, isProfileComplete, isRecommendationsComplete, setSetupStatus, account]);
 
@@ -1708,6 +1713,23 @@ const Profile = memo(() => {
       // Pause walkthrough during upload
       setIsUploading(true);
 
+      if (accountQuery.data) {
+        const media = await explorersApiClient.createMedia(file, "profile");
+        try {
+          const current = await explorersApiClient.getMyProfile();
+          await explorersApiClient.updateAccount({ expectedRevision: current.revision, profileImageId: media.id });
+        } catch (error) {
+          await explorersApiClient.deleteMedia(media.id).catch(() => undefined);
+          throw error;
+        }
+        setUploadedImage(media.url);
+        await refetch();
+        toast.success(t('toast.success.profileImageUpdated'));
+        markProcessingComplete();
+        if (steps[stepIndex]?.target === '[data-walkthrough="profile-picture"]') advanceToNextStep();
+        return;
+      }
+
       const accountId = await resolveSelectedAccountUploadId();
 
       const formData = new FormData();
@@ -1787,6 +1809,23 @@ const Profile = memo(() => {
     try {
       // Pause walkthrough during upload
       setIsUploading(true);
+
+      if (accountQuery.data) {
+        const media = await explorersApiClient.createMedia(file, "background");
+        try {
+          const current = await explorersApiClient.getMyProfile();
+          await explorersApiClient.updateAccount({ expectedRevision: current.revision, backgroundImageId: media.id });
+        } catch (error) {
+          await explorersApiClient.deleteMedia(media.id).catch(() => undefined);
+          throw error;
+        }
+        setUploadedBackground(media.url);
+        await refetch();
+        toast.success(t('toast.success.backgroundImageUpdated'));
+        markProcessingComplete();
+        if (steps[stepIndex]?.target === '[data-walkthrough="cover-image"]') advanceToNextStep();
+        return;
+      }
 
       const accountId = await resolveSelectedAccountUploadId();
 

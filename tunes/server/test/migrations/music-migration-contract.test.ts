@@ -23,7 +23,7 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
   it("retains the append-only database-owned publication clock before durable reactivation and archive authority", () => {
-    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0023_explorers_authorization");
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0024_explorers_profile_media");
     const migration = loadMusicMigrations().find(({ id }) => id === "0013_publication_operation_database_clock");
     expect(migration?.id).toBe("0013_publication_operation_database_clock");
     expect(migration?.sql).toMatch(/CREATE OR REPLACE FUNCTION enforce_music_publication_operation_immutability/i);
@@ -60,6 +60,7 @@ describe("Music migration authority contracts", () => {
       "0021_explorers_analytics_receipts",
       "0022_explorers_identity",
       "0023_explorers_authorization",
+      "0024_explorers_profile_media",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -183,6 +184,7 @@ describe("Music migration authority contracts", () => {
       "0021_explorers_analytics_receipts",
       "0022_explorers_identity",
       "0023_explorers_authorization",
+      "0024_explorers_profile_media",
     ]);
     expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();

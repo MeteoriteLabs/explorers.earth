@@ -84,3 +84,42 @@ export const accountRecoveryProofs = pgTable("account_recovery_proofs", {
   index("account_recovery_expiry_idx").on(table.expiresAt, table.id),
   index("account_recovery_account_user_idx").on(table.accountId, table.userId),
 ]);
+
+export const mediaAssets = pgTable("media_assets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  accountId: uuid("account_id").notNull().references(() => creatorAccounts.id),
+  purpose: text("purpose").notNull(), status: text("status").notNull().default("uploading"),
+  mimeType: text("mime_type").notNull(), byteSize: bigint("byte_size", { mode: "number" }).notNull(),
+  contentSha256: bytea("content_sha256"), originalFilename: text("original_filename"),
+  widthPx: integer("width_px"), heightPx: integer("height_px"),
+  alternativeText: text("alternative_text"), caption: text("caption"),
+  readyAt: timestamp("ready_at", { withTimezone: true }),
+  deleteRequestedAt: timestamp("delete_requested_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const mediaObjects = pgTable("media_objects", {
+  mediaId: uuid("media_id").notNull().references(() => mediaAssets.id),
+  variant: text("variant").notNull(), storageEnvironment: text("storage_environment").notNull(),
+  objectKey: text("object_key").notNull().unique(), mimeType: text("mime_type").notNull(),
+  byteSize: bigint("byte_size", { mode: "number" }).notNull(), contentSha256: bytea("content_sha256").notNull(),
+  storageVersionId: text("storage_version_id"), deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [primaryKey({ columns: [table.mediaId, table.variant] })]);
+
+export const profileMedia = pgTable("profile_media", {
+  accountId: uuid("account_id").notNull().references(() => creatorAccounts.id),
+  slot: text("slot").notNull(), mediaId: uuid("media_id").notNull().references(() => mediaAssets.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [primaryKey({ columns: [table.accountId, table.slot] })]);
+
+export const profileFeedItems = pgTable("profile_feed_items", {
+  id: uuid("id").defaultRandom().primaryKey(), accountId: uuid("account_id").notNull().references(() => creatorAccounts.id),
+  mediaId: uuid("media_id").references(() => mediaAssets.id), externalUrl: text("external_url"),
+  source: text("source").notNull(), mediaType: text("media_type").notNull(), caption: text("caption"),
+  displayOrder: integer("display_order").notNull(), details: jsonb("details").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

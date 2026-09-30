@@ -11,6 +11,12 @@ import { createRecoveryIntent, recoveryCookieOptions, recoveryIntentCookie, reco
 import { revokeRecoveryProof } from "./recoveryProof";
 import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { AuthorizationError } from "../application/authorization";
+import { ProfileService } from "../application/profiles";
+import { setupExplorersAccountRoutes } from "../routes/explorersAccountRoutes";
+import { setupExplorersPublicProfileRoutes } from "../routes/explorersPublicProfileRoutes";
+import { PublicProfileService } from "../publicProfile/publicProfileService";
+import { PostgresPublicProfileGateway } from "../publicProfile/postgresPublicProfileGateway";
+import { setupExplorersMediaRoutes } from "../routes/explorersMediaRoutes";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -34,6 +40,11 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
   app.use(cookieParser());
   app.use(express.json({ limit: "64kb" }));
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
+  setupExplorersAccountRoutes(app, pool, auth, config);
+  setupExplorersMediaRoutes(app, pool, auth, config);
+  const publicProfiles = new PublicProfileService(new PostgresPublicProfileGateway(pool));
+  setupExplorersPublicProfileRoutes(app, { shell: publicProfiles.shell.bind(publicProfiles),
+    category: publicProfiles.category.bind(publicProfiles), detail: publicProfiles.detail.bind(publicProfiles) });
 
   app.post("/api/explorers/v1/recovery/start", async (request, response) => {
     if (request.get("origin") !== config.baseURL) {
@@ -77,22 +88,8 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
       const { accountId } = await ensureInitialAccount(pool, userId);
       const actor = await requireActor(request, auth, pool);
       if (actor.accountId !== accountId) throw new AuthorizationError(404, "NOT_FOUND", "Account is unavailable");
-      const result = await pool.query<{
-        id: string; handle: string | null; display_name: string | null; account_type: string | null;
-        onboarding_status: string; status: string; revision: string;
-      }>(`SELECT id,handle,display_name,account_type,onboarding_status,status,revision::text
-        FROM creator_accounts WHERE id=$1`, [accountId]);
-      const account = result.rows[0];
-      if (!account || account.status !== "active") return errorResponse(response, 403, "FORBIDDEN", "Account access is unavailable");
-      response.json({ account: accountDtoSchema.parse({
-        id: account.id,
-        handle: account.handle,
-        displayName: account.display_name,
-        accountType: account.account_type,
-        onboardingStatus: account.onboarding_status,
-        status: account.status,
-        revision: Number(account.revision),
-      }) });
+      const account = await new ProfileService(pool).getMyProfile(actor);
+      response.json({ account: accountDtoSchema.parse(account) });
     } catch (error) {
       sendActorError(request, response, error);
     }

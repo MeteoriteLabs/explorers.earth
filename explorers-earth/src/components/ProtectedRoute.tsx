@@ -1,51 +1,27 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
 import useAuthStore from "../store/store";
 import { useLogout } from "../hooks/useLogout";
 import { EarthLoader } from "./EarthLoader";
 import OnboardingCheckError from "./OnboardingCheckError";
 import { AccountLifecycleError, createAccountLifecycleService } from "../services/accountLifecycleService";
-import { selectExplorerAccountState } from "../features/music/musicIdentityCoordinator";
 import { useAccountLifecycleIdentity } from "../services/useAccountLifecycleIdentity";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 
-const checkOnboardingStatusQuery = gql`
-  query CheckOnboardingStatus($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        Account_Type
-        mobile_number
-      }
-    }
-  }
-`;
-
+/** The canonical owner account is the authority for onboarding redirects. */
 const ProtectedRoute = () => {
-  const { isAuthenticated, user } = useAuthStore();
-  const lifecycleIdentity = useAccountLifecycleIdentity();
+  const { isAuthenticated } = useAuthStore();
   const location = useLocation();
-
-  const { data, loading, error, refetch } = useQuery(checkOnboardingStatusQuery, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-    fetchPolicy: "cache-first", // Use cache to speed up navigation
-    nextFetchPolicy: "cache-first",
-    errorPolicy: "all", // keep any partial data alongside errors
-  });
+  const account = useCanonicalAccount({ skip: !isAuthenticated });
+  const lifecycleIdentity = useAccountLifecycleIdentity();
   const logout = useLogout();
-  const accountSelection = selectExplorerAccountState(data?.usersPermissionsUser?.accounts, {
-    authoritative: !loading && !error && Array.isArray(data?.usersPermissionsUser?.accounts),
-  });
-  const isAccountComplete = accountSelection.kind === "selected";
+  const isAccountComplete = account.data?.onboardingStatus === "complete";
   const [gate, setGate] = useState<{ identity: typeof lifecycleIdentity; status: "idle" | "checking" | "pending" | "none" | "error" }>({ identity: lifecycleIdentity, status: "idle" });
   const deletionGate = gate.identity === lifecycleIdentity ? gate.status : "idle";
   const [lifecycleRetry, setLifecycleRetry] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated || loading || error || isAccountComplete || location.pathname !== "/settings") {
+    if (!isAuthenticated || account.isLoading || account.error || isAccountComplete || location.pathname !== "/settings") {
       setGate({ identity: lifecycleIdentity, status: "idle" });
       return;
     }
@@ -63,83 +39,31 @@ const ProtectedRoute = () => {
       setGate({ identity: lifecycleIdentity, status: cause instanceof AccountLifecycleError && cause.code === "LIFECYCLE_NOT_FOUND" ? "none" : "error" });
     });
     return () => { active = false; };
-  }, [error, isAccountComplete, isAuthenticated, loading, location.pathname, lifecycleIdentity, lifecycleRetry]);
+  }, [account.error, account.isLoading, isAccountComplete, isAuthenticated, location.pathname, lifecycleIdentity, lifecycleRetry]);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // While the check is still loading, show the loader.
-  if (loading) {
-    const savedTheme = localStorage.getItem('dashboard-theme');
-    const isDark = savedTheme === 'dark' || !savedTheme;
-    return (
-      <div className={`dashboard-theme ${isDark ? 'dashboard-theme-dark' : ''} bg-dashboard-bg min-h-screen flex items-center justify-center`}>
-        <EarthLoader context="general" size="default" />
-      </div>
-    );
-  }
-
-  // Onboarding is complete only when the account positively has all mandatory
-  // fields. Compute it first so the error guard can distinguish "verified
-  // complete" from "unknown / partial".
-  // On any query error, only trust the response if it POSITIVELY establishes a
-  // complete account. With errorPolicy:"all", a field-level failure can return a
-  // truthy-but-partial object (e.g. { usersPermissionsUser: null }, or an account
-  // missing mobile_number) alongside the error — which must NOT be read as "not
-  // onboarded" and bounce an already-onboarded user to /onboarding. Show the
-  // recoverable state (retry / log out) instead; there's no perpetual loader, so a
-  // persistent error can't lock the user out.
-  if (error || accountSelection.kind === "unknown" || accountSelection.kind === "ambiguous") {
-    return <OnboardingCheckError onRetry={() => { refetch(); }} onLogout={() => { logout(); }} />;
-  }
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (account.isLoading) return <div className="dashboard-theme dashboard-theme-dark bg-dashboard-bg min-h-screen flex items-center justify-center">
+    <EarthLoader context="general" size="default" />
+  </div>;
+  if (account.error || !account.data) return <OnboardingCheckError onRetry={() => { void account.refetch(); }} onLogout={logout} />;
 
   if (!isAccountComplete && location.pathname === "/settings") {
-    if (deletionGate === "idle" || deletionGate === "checking") {
-      return <EarthLoader context="general" size="default" />;
-    }
+    if (deletionGate === "idle" || deletionGate === "checking") return <EarthLoader context="general" size="default" />;
     if (deletionGate === "pending") return <Outlet />;
-    if (deletionGate === "error") {
-      return <OnboardingCheckError onRetry={() => {
-        if (!lifecycleIdentity.isCurrent()) return;
-        setGate({ identity: lifecycleIdentity, status: "idle" });
-        setLifecycleRetry((attempt) => attempt + 1);
-        void refetch();
-      }} onLogout={() => { if (lifecycleIdentity.isCurrent()) logout(); }} />;
-    }
+    if (deletionGate === "error") return <OnboardingCheckError onRetry={() => {
+      if (!lifecycleIdentity.isCurrent()) return;
+      setGate({ identity: lifecycleIdentity, status: "idle" });
+      setLifecycleRetry((attempt) => attempt + 1);
+      void account.refetch();
+    }} onLogout={() => { if (lifecycleIdentity.isCurrent()) logout(); }} />;
   }
 
-  const isOnboardingRequired = !isAccountComplete;
-
-  const allowedDuringOnboarding = [
-    "/onboarding",
-    "/music",
-    "/recommendations/music",
-    "/instagram",
-    "/subscription-plans",
-    "/checkout"
-  ];
-
-  const isAllowedRoute = allowedDuringOnboarding.includes(location.pathname);
-
-  // Debug logging
-  console.log("ProtectedRoute - pathname:", location.pathname, "isAllowedRoute:", isAllowedRoute, "isOnboardingRequired:", isOnboardingRequired);
-
-  // Always allow subscription-plans, music, and onboarding routes
-  if (isAllowedRoute) {
-    // If we're on the onboarding page but onboarding is not required, redirect to home
-    if (location.pathname === "/onboarding" && !isOnboardingRequired) {
-      return <Navigate to="/home" replace />;
-    }
-    // Otherwise, show the allowed route
+  const allowedDuringOnboarding = ["/onboarding", "/music", "/recommendations/music", "/instagram", "/subscription-plans", "/checkout"];
+  if (allowedDuringOnboarding.includes(location.pathname)) {
+    if (location.pathname === "/onboarding" && isAccountComplete) return <Navigate to="/home" replace />;
     return <Outlet />;
   }
-
-  // For all other protected routes, check if onboarding is required
-  if (isOnboardingRequired) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
+  if (!isAccountComplete) return <Navigate to="/onboarding" replace />;
   return <Outlet />;
 };
 

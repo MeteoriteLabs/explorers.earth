@@ -25,6 +25,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:real-tool": "vitest run --config vitest.real-tool.config.ts",
     "music:test:uat-database": "tsx scripts/music-uat-database.ts",
+    "explorers:test:profile-browser": "tsx scripts/profile-browser-fixture.ts",
     "music:local:check": "tsx scripts/music-local.ts check",
     "music:local:provision": "tsx scripts/music-local.ts provision",
     "music:local:start": "tsx scripts/music-local.ts start",

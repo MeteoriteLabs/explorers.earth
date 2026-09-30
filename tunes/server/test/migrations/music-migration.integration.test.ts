@@ -747,7 +747,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       await pool.query(`SELECT count(*) FROM ${table.name}`);
       families.add(table.family);
     }
-    expect(families).toEqual(new Set(["security-audit", "analytics", "pii", "user-content", "identity", "identity-credential", "profile"]));
+    expect(families).toEqual(new Set(["security-audit", "analytics", "pii", "user-content", "identity", "identity-credential", "profile", "media"]));
 
     const app = express();
     setupMusicFixtureProbeRoute(app, {

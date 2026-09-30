@@ -40,4 +40,14 @@ describe('useSetupStore', () => {
       expect(stored.state.isRecommendationsComplete).toBe(false);
     }
   });
+
+  it('does not carry completion from account A to account B', () => {
+    useSetupStore.getState().bindAccount('account-a', 'complete');
+    useSetupStore.getState().setSetupStatus(true, true, 'account-a');
+    useSetupStore.getState().bindAccount('account-b', 'incomplete');
+    expect(useSetupStore.getState().isProfileComplete).toBe(false);
+    expect(useSetupStore.getState().isRecommendationsComplete).toBe(false);
+    useSetupStore.getState().setSetupStatus(true, true, 'account-a');
+    expect(useSetupStore.getState().isRecommendationsComplete).toBe(false);
+  });
 });

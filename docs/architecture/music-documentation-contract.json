@@ -52,7 +52,8 @@
     "0020_public_snapshot_revision",
     "0021_explorers_analytics_receipts",
     "0022_explorers_identity",
-    "0023_explorers_authorization"
+    "0023_explorers_authorization",
+    "0024_explorers_profile_media"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

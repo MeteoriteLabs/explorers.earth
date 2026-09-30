@@ -120,11 +120,11 @@ describe("Music E2E transactional state restore", () => {
       "account_category_settings", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_snapshots", "api_tokens", "auth_account", "auth_session", "auth_user",
       "auth_verification", "creator_accounts", "email_logs", "email_templates",
-      "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "music_credential_revocation_operations",
+      "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects", "music_credential_revocation_operations",
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
+      "playlists", "profile_feed_items", "profile_media", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
@@ -140,6 +140,7 @@ describe("Music E2E transactional state restore", () => {
       "0019_queue_visibility_control", "0020_public_snapshot_revision", "0021_explorers_analytics_receipts",
       "0022_explorers_identity",
       "0023_explorers_authorization",
+      "0024_explorers_profile_media",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
