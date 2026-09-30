@@ -77,4 +77,4 @@ For any anomaly or unexpected change:
 4. Repair the source contract or local identity conflict under its owning runbook, then create a new dry-run review.
 5. If an apply committed an individually valid but unwanted suspension, stop the reconciler. Do not issue a bulk reactivation. Use the explicit C7 reactivation authority per reviewed identity.
 
-Database rollback, schema migration, production deployment, registry changes, and opening `GATE_PROD` are outside this workflow. This command has no migration authority.
+Database rollback, schema migration, production deployment, registry changes, and production release approval are outside this workflow. This command has no migration authority.

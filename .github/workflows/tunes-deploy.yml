@@ -47,9 +47,7 @@ concurrency:
 
 jobs:
   production-authority-preflight:
-    # Non-main dispatches always run and fail this no-secret job. On main, the
-    # external-policy API check is required only when production is enabled.
-    if: github.ref != 'refs/heads/main' || vars.GATE_PROD == 'open'
+    # Non-main dispatches fail this no-secret protected-main policy check.
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -65,10 +63,9 @@ jobs:
         run: node tunes/deployment/verify-production-environment-policy.mjs
 
   deploy:
-    # GATE-PROD remains closed until external runtime evidence and explicit
-    # production authorization set this repository variable to exactly `open`.
+    # The protected environment reviewer is the deliberate release decision.
     needs: production-authority-preflight
-    if: needs.production-authority-preflight.result == 'success' && github.ref == 'refs/heads/main' && vars.GATE_PROD == 'open'
+    if: needs.production-authority-preflight.result == 'success' && github.ref == 'refs/heads/main'
     environment: tunes-production
     runs-on: ubuntu-24.04
     steps:

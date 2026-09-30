@@ -328,18 +328,21 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
         (first === "create" ? "6" : "7").repeat(64), `provision-race-${suffix}`,
       ]);
       const tombstone = () => pool.query(insertTombstone, [userDocumentId, accountDocumentId, `delete-race-${suffix}`]);
-      const [firstPromise, secondPromise] = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
+      const { settledPending } = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
         await blocker.query("BEGIN");
         await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${userDocumentId}`]);
         await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
         const firstPending = first === "create" ? create() : tombstone();
         await waitForWaiters(1);
         const secondPending = first === "create" ? tombstone() : create();
+        // Attach rejection handlers before releasing the blocker: the losing
+        // query may reject before withClient returns to the outer assertion.
+        const settledPending = Promise.allSettled([firstPending, secondPending]);
         await waitForWaiters(2);
         await blocker.query("COMMIT");
-        return [firstPending, secondPending] as const;
+        return { settledPending };
       });
-      const [firstResult, secondResult] = await Promise.allSettled([firstPromise, secondPromise]);
+      const [firstResult, secondResult] = await settledPending;
       expect(firstResult.status).toBe("fulfilled");
       expect(secondResult.status).toBe("rejected");
       const state = await pool.query<{ live: number; tombstone: number }>(`SELECT
@@ -487,18 +490,21 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
             (strapi_user_document_id,strapi_account_document_id,reason,lifecycle_operation_id)
             VALUES ($1,$2,'direct-race',$3)`, [userDocumentId, accountDocumentId, `direct-tombstone-${suffix}`]);
         const deletion = () => pool.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [userId, `delete-${suffix}`, "race-delete"]);
-        const [firstPromise, secondPromise] = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
+        const { settledPending } = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
           await blocker.query("BEGIN");
           await blocker.query("SELECT lock_music_identity_pair($1,$2)", [userDocumentId, accountDocumentId]);
           const firstPending = first === "delete" ? deletion() : competitor();
           await waitForWaiters(1);
           const secondPending = first === "delete" ? competitor() : deletion();
+          // Attach both rejection handlers before releasing the lock: either
+          // operation can reject before this callback returns to the test.
+          const settledPending = Promise.allSettled([firstPending, secondPending]);
           await waitForWaiters(2);
           await blocker.query("COMMIT");
-          return [firstPending, secondPending] as const;
+          return { settledPending };
         });
         const settled = await Promise.race([
-          Promise.allSettled([firstPromise, secondPromise]),
+          settledPending,
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("delete lock-order deadlock")), 5_000)),
         ]);
         expect(settled.filter(({ status }) => status === "fulfilled")).toHaveLength(1);

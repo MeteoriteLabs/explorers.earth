@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,8 +26,23 @@ describe("replatform workflow authority", () => {
     const required = ci.jobs["replatform-required"];
     expect(required).toBeDefined();
     expect(required.needs).toEqual(expect.arrayContaining([
-      "lint", "typecheck", "unit-tests", "build", "integration-tests", "e2e-tests", "backend-validation",
+      "lint", "typecheck", "unit-tests", "build", "integration-tests", "e2e-tests",
     ]));
+    expect(ci.jobs["backend-validation"]).toBeUndefined();
+    expect(required.if).toContain("always()");
+    expect(required.steps.some((step: any) =>
+      typeof step.run === "string" && step.run.includes("result !== 'success'"),
+    )).toBe(true);
+  });
+
+  it("requires retained Music and local fixture lanes without counting optional load as success", () => {
+    const music = workflow("test");
+    const required = music.jobs["music-required"];
+    expect(required.needs).toEqual(expect.arrayContaining([
+      "docs-contracts", "static", "unit-coverage", "contracts", "database",
+      "security", "frontend", "browser", "image-deploy-contract", "platform-fixture",
+    ]));
+    expect(required.needs).not.toContain("load-chaos");
     expect(required.if).toContain("always()");
     expect(required.steps.some((step: any) =>
       typeof step.run === "string" && step.run.includes("result !== 'success'"),
@@ -56,6 +71,7 @@ describe("replatform workflow authority", () => {
     });
     expect(deploy.jobs.deploy.environment).toBe("tunes-production");
     expect(deploy.jobs.deploy.if).toContain("github.ref == 'refs/heads/main'");
+    expect(read("tunes-deploy")).not.toContain("GATE_PROD");
     expect(read("tunes-deploy")).toContain("--source-digest \"$COMMIT\"");
     expect(read("tunes-deploy")).toContain('[[ "$commit" == "$GITHUB_SHA" ]]');
   });
@@ -63,15 +79,23 @@ describe("replatform workflow authority", () => {
   it("requires a successful aggregate from the same main source before registry publication", () => {
     const image = workflow("tunes");
     expect(image.on.workflow_dispatch.inputs.validated_run_id).toMatchObject({ type: "string", required: true });
+    expect(image.on.workflow_dispatch.inputs.music_validated_run_id).toMatchObject({ type: "string", required: true });
     const preflight = image.jobs["release-preflight"];
     expect(preflight.permissions).toEqual({ actions: "read", contents: "read" });
     const step = preflight.steps.find((step: any) => typeof step.run === "string");
     const script = step.run as string;
     expect(step.env.VALIDATED_RUN_ID).toBe("${{ inputs.validated_run_id }}");
     expect(script).toContain("replatform-required");
+    expect(script).toContain("music-required");
     expect(script).toContain("GITHUB_SHA");
-    expect(script).toContain('.path == ".github/workflows/ci.yml"');
+    expect(script).toContain("require_aggregate");
+    expect(script).toContain(".github/workflows/ci.yml replatform-required");
+    expect(script).toContain(".github/workflows/test.yml music-required");
     expect(image.jobs["publish-image"].needs).toContain("release-preflight");
+  });
+
+  it("retired temporary direct deployment has no callable workflow file", () => {
+    expect(existsSync(resolve(root, ".github/workflows/tunes-test-direct-deploy.yml"))).toBe(false);
   });
 
   it("does not give PR validation deploy credentials or package write scope", () => {

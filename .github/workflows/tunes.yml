@@ -52,6 +52,10 @@ on:
         description: Successful main CI Pipeline push run for this exact source revision
         type: string
         required: true
+      music_validated_run_id:
+        description: Successful main Music contract CI push run for this exact source revision
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -187,22 +191,28 @@ jobs:
       actions: read
       contents: read
     steps:
-      - name: Require successful main aggregate for exact source SHA
+      - name: Require both successful main aggregates for exact source SHA
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           VALIDATED_RUN_ID: ${{ inputs.validated_run_id }}
+          MUSIC_VALIDATED_RUN_ID: ${{ inputs.music_validated_run_id }}
         run: |
           set -euo pipefail
-          [[ "$VALIDATED_RUN_ID" =~ ^[1-9][0-9]*$ ]]
-          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATED_RUN_ID")"
-          jq -e --arg sha "$GITHUB_SHA" '
-            .head_sha == $sha and .head_branch == "main" and
-            .event == "push" and .conclusion == "success" and
-            .path == ".github/workflows/ci.yml"
-          ' <<< "$run_json" >/dev/null
-          aggregate="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATED_RUN_ID/jobs?per_page=100" --jq '.jobs[] | select(.name == "replatform-required") | .conclusion')"
-          [[ "$aggregate" == success ]]
+          require_aggregate() {
+            local run_id="$1" workflow_path="$2" job_name="$3" run_json aggregate
+            [[ "$run_id" =~ ^[1-9][0-9]*$ ]]
+            run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+            jq -e --arg sha "$GITHUB_SHA" --arg path "$workflow_path" '
+              .head_sha == $sha and .head_branch == "main" and
+              .event == "push" and .conclusion == "success" and
+              .path == $path
+            ' <<< "$run_json" >/dev/null
+            aggregate="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" --jq ".jobs[] | select(.name == \"$job_name\") | .conclusion")"
+            [[ "$aggregate" == success ]]
+          }
+          require_aggregate "$VALIDATED_RUN_ID" .github/workflows/ci.yml replatform-required
+          require_aggregate "$MUSIC_VALIDATED_RUN_ID" .github/workflows/test.yml music-required
 
   publish-image:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production

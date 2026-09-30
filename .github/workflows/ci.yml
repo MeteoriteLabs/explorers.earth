@@ -240,45 +240,11 @@ jobs:
             .artifacts/music-publishing/results/
           retention-days: 7
 
-  backend-validation:
-    name: Replatform backend and local fixture
-    runs-on: ubuntu-24.04
-    timeout-minutes: 75
-    defaults:
-      run:
-        working-directory: .
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.12.0'
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            tunes/package-lock.json
-            explorers-earth/package-lock.json
-      - run: npm ci
-      - run: npm ci --prefix tunes --legacy-peer-deps
-      - run: npm ci --prefix explorers-earth
-      - name: Check domain contracts and security
-        run: npm test --prefix tunes -- --run server/test/contracts server/test/security/music-security-qualification.test.ts server/test/music-surface-policy.test.ts
-      - name: Provision disposable PostgreSQL and mounted API
-        run: npm run platform:local -- provision
-      - name: Seed current fixture identity
-        run: npm run platform:seed -- --dataset acceptance
-      - name: Run real PostgreSQL integration and route checks
-        run: |
-          npm run platform:test:integration
-          npm run platform:test:routes
-      - name: Stop disposable services
-        if: always()
-        run: npm run platform:local -- stop
-
   replatform-required:
     name: replatform-required
     runs-on: ubuntu-24.04
     if: always()
-    needs: [lint, typecheck, unit-tests, build, integration-tests, e2e-tests, backend-validation]
+    needs: [lint, typecheck, unit-tests, build, integration-tests, e2e-tests]
     steps:
       - name: Require each validation job to succeed
         env:

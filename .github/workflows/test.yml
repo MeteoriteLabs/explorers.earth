@@ -277,3 +277,42 @@ jobs:
           npm run test:real-tool --prefix tunes -- \
             server/test/deployment/registration-compat-traefik.real-tool.test.ts \
             --maxWorkers=1 --fileParallelism=false
+
+  platform-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+            explorers-earth/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm ci --prefix explorers-earth
+      - name: Provision disposable local platform
+        run: npm run platform:local -- provision
+      - name: Verify repeatable current-domain seed and mounted routes
+        run: |
+          npm run platform:seed -- --dataset acceptance
+          npm run platform:seed -- --dataset acceptance
+          npm run platform:test:routes
+      - name: Stop disposable services
+        if: always()
+        run: npm run platform:local -- stop
+
+  music-required:
+    name: music-required
+    runs-on: ubuntu-24.04
+    if: always()
+    needs: [docs-contracts, static, unit-coverage, contracts, database, security, frontend, browser, image-deploy-contract, platform-fixture]
+    steps:
+      - name: Require every Music and local-platform validation job to succeed
+        env:
+          REQUIRED_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const failures=Object.entries(results).filter(([, job]) => job.result !== 'success'); if(failures.length){ console.error('Required Music validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"

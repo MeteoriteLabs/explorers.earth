@@ -234,11 +234,7 @@ describe("Music deployment authority files", () => {
           );
         return deploysTunes && /(ssh|scp|docker\s+compose\s+up)/i.test(source);
       });
-    expect(competitors).toEqual(["tunes-test-direct-deploy.yml"]);
-    const temporary = parseYaml(
-      read(".github/workflows/tunes-test-direct-deploy.yml"),
-    );
-    expect(temporary.env.TEMPORARY_DIRECT_DEPLOY_EXPIRES).toBe("2026-08-28");
+    expect(competitors).toEqual([]);
   });
 
   it("bootstraps the floor from a verified C2 image without assuming C1 has C2 health metadata", () => {
