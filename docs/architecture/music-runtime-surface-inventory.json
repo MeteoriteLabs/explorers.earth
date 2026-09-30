@@ -381,6 +381,66 @@
       "line": 746
     },
     {
+      "method": "USE",
+      "path": "/api/auth",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 23
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 30
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth/*splat",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 31
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 34
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/start",
+      "classification": "canonical-explorers-recovery",
+      "ownerSource": "trusted-origin+single-use-recovery-intent",
+      "policy": "trusted-origin+single-use-recovery-intent",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 36
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/me",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 54
+    },
+    {
       "method": "GET",
       "path": "/health/live",
       "classification": "public",

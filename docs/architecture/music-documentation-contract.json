@@ -50,7 +50,8 @@
     "0018_transactional_queue_replacement",
     "0019_queue_visibility_control",
     "0020_public_snapshot_revision",
-    "0021_explorers_analytics_receipts"
+    "0021_explorers_analytics_receipts",
+    "0022_explorers_identity"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

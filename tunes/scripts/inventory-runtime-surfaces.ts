@@ -56,8 +56,8 @@ function policyFor(text: string): string {
   return policies.length ? policies.join("+") : "none";
 }
 
-function classificationFor(method: string, path: string, priorClassification: string): string {
-  const decision = decisionForRoute({ method, path, classification: priorClassification });
+function classificationFor(method: string, path: string, priorClassification: string, source: string): string {
+  const decision = decisionForRoute({ method, path, classification: priorClassification, source });
   const classifications: Record<MusicSurfaceDecision, string> = {
     public: "public",
     "strapi-identity": "strapi-identity-boundary",
@@ -69,6 +69,9 @@ function classificationFor(method: string, path: string, priorClassification: st
     "admin-tombstone": "admin-tombstone",
     "owner-or-guest": "c5-or-guest-handshake",
     unclassified: "unclassified",
+    "explorers-auth": "canonical-explorers-auth",
+    "explorers-owner": "canonical-explorers-owner",
+    "explorers-recovery": "canonical-explorers-recovery",
   };
   return classifications[decision];
 }
@@ -85,6 +88,9 @@ function ownerFor(path: string, classification: string): string {
     : "hashed-guest-capability";
   if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";
   if (classification === "native-session") return "native-session-only";
+  if (classification === "canonical-explorers-owner") return "verified-google-session+active-initial-account-binding";
+  if (classification === "canonical-explorers-auth") return "better-auth-session-or-provider-flow";
+  if (classification === "canonical-explorers-recovery") return "trusted-origin+single-use-recovery-intent";
   return "none";
 }
 
@@ -124,7 +130,7 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
             const middleware = node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(" ");
             const routePolicy = policyFor(middleware);
             const legacyClassification = routePolicy !== "none" ? "authenticated" : "handler-authorization-unknown";
-            const classification = classificationFor(method.toUpperCase(), path, legacyClassification);
+            const classification = classificationFor(method.toUpperCase(), path, legacyClassification, source);
             let policy = routePolicy;
             if (classification === "public") policy = "explicit-public-contract";
             else if (path === "/{*musicRetiredPath}") policy = "normalized-executable-retirement-matcher";
@@ -136,6 +142,9 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
               ? "c5-mint-boundary"
               : "authoritative-strapi-bearer+immutable-binding+lifecycle-state";
             else if (classification === "native-session") policy = "standalone-native-only";
+            else if (classification === "canonical-explorers-auth") policy = "better-auth-handler+trusted-origin-for-mutations";
+            else if (classification === "canonical-explorers-owner") policy = "better-auth-session+google-provider+active-initial-account-binding";
+            else if (classification === "canonical-explorers-recovery") policy = "trusted-origin+single-use-recovery-intent";
             routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, classification), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }
           const event = literal(node.arguments[0]);

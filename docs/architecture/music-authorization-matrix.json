@@ -96,6 +96,120 @@
       }
     },
     {
+      "method": "USE",
+      "path": "/api/auth",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-auth",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-auth",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth/*splat",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-auth",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/start",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-recovery",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/me",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "GET",
       "path": "/health/live",
       "source": "tunes/server/deployment/music-health.ts",

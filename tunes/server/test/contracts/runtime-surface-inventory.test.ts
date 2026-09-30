@@ -28,10 +28,14 @@ describe("runtime route/event/job inventory", () => {
     ]));
     expect(inventory.routes).toEqual(expect.arrayContaining([
       expect.objectContaining({ method: "ALL", path: "/{*musicRetiredPath}", classification: "tombstone", policy: "normalized-executable-retirement-matcher" }),
+      expect.objectContaining({ method: "USE", path: "/api/auth", classification: "canonical-explorers-auth", policy: "better-auth-handler+trusted-origin-for-mutations" }),
+      expect.objectContaining({ method: "ALL", path: "/api/auth/*splat", classification: "canonical-explorers-auth" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/start", classification: "canonical-explorers-recovery" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/me", classification: "canonical-explorers-owner", ownerSource: "verified-google-session+active-initial-account-binding" }),
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
-    expect(inventory.routes.filter((route) => route.method === "ALL")).toHaveLength(1);
+    expect(inventory.routes.filter((route) => route.method === "ALL")).toHaveLength(3);
     expect(inventory.routes.every((route) => route.line > 0)).toBe(true);
     expect(inventory.routes.filter((route) => route.policy === "none").every((route) => route.classification !== "public")).toBe(true);
     expect(inventory.events).toEqual(expect.arrayContaining([

@@ -645,15 +645,15 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(rollback.status, rollback.stderr).toBe(0);
   }, deploymentProcessRecoveryTimeoutMs);
 
-  it("deploys analytics migration 0021 from an authenticated 0020 image", () => {
-    // Omitting 0020 from the engine's historical ranks rejects 0021's compatibility floor.
+  it("deploys identity migration 0022 from an authenticated 0020 image", () => {
+    // Omitting 0020 from the engine's historical ranks rejects the new compatibility floor.
     seedVersionedAuthority("0020_public_snapshot_revision");
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
       .toContain(`\t${digest("b")}\t${commit("b")}\t0022_explorers_identity\t`);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0020_public_snapshot_revision\tcurrent\t");
+      .toContain("\t0021_explorers_analytics_receipts\tcurrent\t");
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -673,7 +673,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     "0014_durable_reactivation_authority",
     "0015_publication_operation_archive",
     "0016_publication_operation_retention",
-  ])("upgrades authenticated historical marker %s directly to production 0021", (historicalMarker) => {
+  ])("upgrades authenticated historical marker %s directly to production 0022", (historicalMarker) => {
     if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
     else seedHistoricalAuthority(historicalMarker);
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -681,7 +681,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0020_public_snapshot_revision\tpending\t");
+      .toContain("\t0021_explorers_analytics_receipts\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -694,7 +694,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0020_public_snapshot_revision\tcurrent\t");
+      .toContain("\t0021_explorers_analytics_receipts\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -754,8 +754,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0020_public_snapshot_revision", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0020_public_snapshot_revision", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0021_explorers_analytics_receipts", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0021_explorers_analytics_receipts", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -763,7 +763,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0020_public_snapshot_revision\tcurrent\t");
+      .toContain("\t0021_explorers_analytics_receipts\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
       .toContain(`\t${digest("b")}\t${commit("b")}\t0022_explorers_identity\t`);
   }, deploymentProcessRecoveryTimeoutMs);

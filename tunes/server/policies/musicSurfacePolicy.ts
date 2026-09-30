@@ -54,6 +54,9 @@ export type MusicSurfaceDecision =
   | "tombstone"
   | "admin-tombstone"
   | "owner-or-guest"
+  | "explorers-auth"
+  | "explorers-owner"
+  | "explorers-recovery"
   | "unclassified";
 
 export interface RuntimeRouteSurface {
@@ -115,7 +118,12 @@ const OWNER_PREFIXES = [
   "/api/seo",
 ];
 
-export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification">): MusicSurfaceDecision {
+export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification"> & Partial<Pick<RuntimeRouteSurface, "source">>): MusicSurfaceDecision {
+  if (route.source === "tunes/server/auth/canonicalApp.ts") {
+    if (["USE", "ALL"].includes(route.method) && (route.path === "/api/auth" || route.path === "/api/auth/*splat")) return "explorers-auth";
+    if (route.method === "POST" && route.path === "/api/explorers/v1/recovery/start") return "explorers-recovery";
+    if (route.method === "GET" && route.path === "/api/explorers/v1/me") return "explorers-owner";
+  }
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
   if (route.method === "GET" && PUBLIC_PROFILE_GET_PATHS.has(route.path)) return "public";
@@ -142,8 +150,8 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
 
 function allowedFor(decision: MusicSurfaceDecision) {
   return {
-    unauthenticated: decision === "public" || decision === "guest" || decision === "native-session",
-    owner: decision === "owner" || decision === "paid-owner" || decision === "owner-or-guest",
+    unauthenticated: decision === "public" || decision === "guest" || decision === "native-session" || decision === "explorers-auth" || decision === "explorers-recovery",
+    owner: decision === "owner" || decision === "paid-owner" || decision === "owner-or-guest" || decision === "explorers-owner" || decision === "explorers-auth",
     otherUser: false,
     suspended: false,
     pendingDeletion: false,

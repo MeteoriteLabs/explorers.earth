@@ -29,6 +29,18 @@ describe("Music surface authorization policy", () => {
     expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles", classification: "private" })).toBe("tombstone");
   });
 
+  it("classifies canonical auth only at its registered source and retains the legacy auth tombstone", () => {
+    const route = { method: "ALL", path: "/api/auth/*splat", classification: "private" };
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts" })).toBe("explorers-auth");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth.ts" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts", path: "/api/auth/legacy" }))
+      .toBe("tombstone");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts", method: "POST", path: "/api/explorers/v1/me" }))
+      .toBe("tombstone");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts", method: "GET", path: "/api/explorers/v1/recovery/start" }))
+      .toBe("tombstone");
+  });
+
   it.each([
     ["entitled", "2026-08-14T09:50:00.000Z", "2026-08-14T10:00:00.000Z", true],
     ["entitled", "2026-08-14T09:49:59.999Z", "2026-08-14T10:00:00.000Z", false],

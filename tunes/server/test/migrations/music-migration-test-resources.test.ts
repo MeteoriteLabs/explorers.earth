@@ -10,7 +10,7 @@ describe("music migration integration test resources", () => {
     expect(nextSyntheticMusicMigrationId(
       EXPECTED_MUSIC_MIGRATION_CHAIN,
       "deliberate_failure",
-    )).toBe("0022_deliberate_failure");
+    )).toBe("0023_deliberate_failure");
     expect(nextSyntheticMusicMigrationId(
       ["0001_first", "0009_current", "0004_older"],
       "unapproved",
