@@ -74,6 +74,13 @@ export class ExplorersAccountRepository {
       if (input.themeSettings !== undefined) p.push(["theme_settings", input.themeSettings]);
       if (input.socialLinks !== undefined) p.push(["social_links", input.socialLinks]);
       if (input.businessDetails !== undefined) p.push(["business_details", input.businessDetails]);
+      if (input.themeSettings?.wallpaperUrl) {
+        const wallpaperId = input.themeSettings.wallpaperUrl.match(/\/media\/([0-9a-f-]{36})\/content$/i)?.[1];
+        const wallpaper = await client.query(`SELECT 1 FROM profile_media pm JOIN media_assets m
+          ON m.id=pm.media_id AND m.account_id=pm.account_id AND m.status='ready'
+          WHERE pm.account_id=$1 AND pm.slot='wallpaper' AND pm.media_id=$2`, [accountId, wallpaperId]);
+        if (!wallpaper.rows[0]) throw new AccountInvalidAttachment("Wallpaper must be an attached owned asset");
+      }
       if (p.length) await client.query(`UPDATE account_presentation SET ${p.map(([key], i) => `${key}=$${i + 2}`).join(",")}
         WHERE account_id=$1`, [accountId, ...p.map(([, value]) => JSON.stringify(value))]);
       for (const [field, slot] of [["profileImageId", "profile"], ["backgroundImageId", "background"]] as const) {

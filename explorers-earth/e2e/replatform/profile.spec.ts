@@ -60,11 +60,24 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     })).json()).toMatchObject({ account: { handle: persona.handle, onboardingStatus: 'complete' } });
     await page.goto('/profile');
     await expect(page.getByTestId('profile-editor-root')).toBeVisible();
+    const stalePage = await page.context().newPage();
+    await signInAs(stalePage, persona);
+    await stalePage.goto('/profile');
+    await expect(stalePage.getByTestId('profile-editor-root')).toBeVisible();
+    await stalePage.locator('[name="accountName"]').fill(`Stale ${width}`);
     await page.locator('[name="accountName"]').fill(`Updated ${width}`);
     await page.getByRole('button', { name: /Save & Publish/i }).first().click();
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { displayName: `Updated ${width}` } });
+    const conflict = stalePage.waitForResponse((response) => response.url().endsWith('/api/explorers/v1/account')
+      && response.request().method() === 'PATCH' && response.status() === 409);
+    await stalePage.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await conflict;
+    expect((await (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).account.displayName).toBe(`Updated ${width}`);
+    await stalePage.close();
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64');
     await page.locator('input[type="file"]').first().setInputFiles({
       name: 'avatar.png', mimeType: 'image/png', buffer: png,
@@ -88,6 +101,32 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await page.reload();
     await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: 'Account', exact: true }).click();
     await expect(page.getByRole('radio', { name: 'Creator' })).toBeChecked();
+    const current = (await (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).account;
+    const feedUpload = await page.request.post(`${fixture.origin}/api/explorers/v1/media`, {
+      headers: { Cookie: persona.cookie, Origin: fixture.origin, 'Content-Type': 'image/png',
+        'X-Media-Purpose': 'feed', 'X-File-Name': 'public-feed.png' }, data: png,
+    });
+    expect(feedUpload.status()).toBe(201);
+    const feedId = (await feedUpload.json()).media.id;
+    const publish = await page.request.patch(`${fixture.origin}/api/explorers/v1/account`, {
+      headers: { Cookie: persona.cookie, Origin: fixture.origin }, data: { expectedRevision: current.revision,
+        bioPlain: `Public biography ${width}`, themeSettings: { preset: 'cinematic-dark' },
+        socialLinks: [{ platform: 'instagram', url: 'https://instagram.com/explorerfixture', visible: true },
+          { platform: 'facebook', url: 'https://example.invalid/hidden', visible: false }],
+        feedItems: [{ mediaId: feedId, externalUrl: null, source: 'manual', type: 'image', caption: null,
+          details: { fileName: 'public-feed.png', width: 800, height: 1000, aspectRatio: '4:5' } }],
+      },
+    });
+    expect(publish.status()).toBe(200);
+    await page.goto(`/${persona.handle}`);
+    await expect(page.getByTestId('public-profile-theme-root')).toHaveAttribute('data-theme-preset', 'cinematic-dark');
+    await expect(page.getByText(`Public biography ${width}`)).toBeVisible();
+    await expect(page.locator('a[href="https://instagram.com/explorerfixture"]')).toBeVisible();
+    await expect(page.locator(`img[src="/api/explorers/v1/media/${feedId}/content"]`).first()).toBeVisible();
+    expect((await (await page.request.get(`${fixture.origin}/api/explorers/v1/profiles/${persona.handle}`)).text()))
+      .not.toContain('https://example.invalid/hidden');
     expect(apiCalls.some((entry) => entry.startsWith('PATCH /api/explorers/v1/account 200'))).toBe(true);
   });
 }

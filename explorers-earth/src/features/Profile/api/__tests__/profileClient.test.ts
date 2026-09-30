@@ -39,4 +39,13 @@ describe("profile compatibility mapper", () => {
     expect(update.feedItems).toMatchObject([{ mediaId: account.feedItems[0].mediaId,
       externalUrl: null, source: "manual", details: { width: 800, height: 1000 } }]);
   });
+
+  it("keeps each form snapshot revision when another form has saved", () => {
+    const first = toProfileViewModel(account);
+    const second = toProfileViewModel(account);
+    const firstSave = toAccountUpdate({ ...first, bio: "first" }, { revision: first.revision });
+    const secondSave = toAccountUpdate({ ...second, bio: "second" }, { revision: second.revision });
+    expect(firstSave.expectedRevision).toBe(3);
+    expect(secondSave.expectedRevision).toBe(3);
+  });
 });

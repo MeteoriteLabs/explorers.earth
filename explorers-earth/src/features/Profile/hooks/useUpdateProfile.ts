@@ -243,9 +243,11 @@ export const useUpdateProfile = (
   const handleSubmit = async (values: KeyValuePair) => {
     const socialMedia = buildSocialMediaInput(values);
     if (documentId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(documentId)) {
-      const current = await explorersApiClient.getMyProfile();
-      if (current.id !== documentId) throw new Error("Account changed during save");
-      const updated = await explorersApiClient.updateAccount(toAccountUpdate({ ...values, social_media: socialMedia }, current));
+      if (values.documentId !== documentId || !Number.isSafeInteger(values.revision) || values.revision < 1)
+        throw new Error("Profile form snapshot is unavailable");
+      const updated = await explorersApiClient.updateAccount(toAccountUpdate(
+        { ...values, social_media: socialMedia }, { revision: values.revision },
+      ));
       await refetch();
       return toProfileViewModel(updated);
     }

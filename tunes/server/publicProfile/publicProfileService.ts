@@ -48,6 +48,7 @@ export class PublicProfileService {
   }
 
   private async account(username: string, bypassCache: boolean): Promise<Record<string, unknown> | undefined> {
+    if (this.ttlMs === 0) return this.gateway.resolveAccount(username);
     const cached = this.read(this.accounts, username, bypassCache);
     if (cached) return cached;
     const inFlight = this.accountReads.get(username);

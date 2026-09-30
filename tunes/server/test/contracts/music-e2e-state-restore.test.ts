@@ -141,10 +141,12 @@ describe("Music E2E transactional state restore", () => {
       "0022_explorers_identity",
       "0023_explorers_authorization",
       "0024_explorers_profile_media",
+      "0025_explorers_media_attachment_guard",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
       { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
+      { table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 },
       { table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 },
       { table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 },
       { table: "music_identity_tombstones", name: "music_identity_tombstone_immutability", enabled: "O", type: 19 },
@@ -152,6 +154,8 @@ describe("Music E2E transactional state restore", () => {
       { table: "music_publication_operation_archive", name: "music_publication_operation_archive_immutability", enabled: "A", type: 27 },
       { table: "music_publication_operations", name: "music_publication_operation_immutability", enabled: "A", type: 31 },
       { table: "music_reactivation_tokens", name: "music_reactivation_token_identity_immutability", enabled: "O", type: 19 },
+      { table: "profile_feed_items", name: "profile_feed_ready_guard", enabled: "O", type: 21 },
+      { table: "profile_media", name: "profile_media_ready_guard", enabled: "O", type: 21 },
       { table: "users", name: "users_music_identity_immutability", enabled: "O", type: 19 },
       { table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 },
       { table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 },

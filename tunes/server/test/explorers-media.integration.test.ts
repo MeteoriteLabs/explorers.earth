@@ -7,6 +7,7 @@ import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { MediaService, MediaUnavailable } from "../application/media";
 import type { Actor } from "../application/actor";
 import type { ObjectStorage } from "../services/objectStorage";
+import { MediaRepository } from "../repositories/mediaRepository";
 
 const config = resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51474",
   EXPLORERS_AUTH_SECRET: "integration-secret-".repeat(4), GOOGLE_CLIENT_ID: "fixture-google-id", GOOGLE_CLIENT_SECRET: "fixture-google-secret" });
@@ -93,25 +94,68 @@ describe("private local media", () => {
     expect((await request(composed.app).delete(`/api/explorers/v1/media/${uploaded.body.media.id}`).set("cookie", other.cookie).set("origin", config.baseURL)).status).toBe(404);
   });
 
-  it("does not persist metadata on storage failure and removes bytes after metadata failure", async () => {
+  it("serializes concurrent attach and delete under the asset lock", async () => {
+    const owner = await persona();
+    const created = await upload(owner.cookie);
+    expect(created.status).toBe(201);
+    const id = created.body.media.id as string;
+    const attaching = await pool.connect();
+    try {
+      await attaching.query("BEGIN");
+      await attaching.query("SELECT id FROM media_assets WHERE id=$1 FOR SHARE", [id]);
+      await attaching.query("INSERT INTO profile_media(account_id,slot,media_id) VALUES ($1,'profile',$2)", [owner.accountId, id]);
+      const deleting = new MediaRepository(pool).markDelete(id, owner.accountId);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await attaching.query("COMMIT");
+      expect(await deleting).toBeUndefined();
+      expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [id])).rows[0].status).toBe("ready");
+    } finally { await attaching.query("ROLLBACK").catch(() => undefined); attaching.release(); }
+  });
+
+  it("rejects direct SQL attachments to unready media and unready transitions of attached media", async () => {
+    const owner = await persona();
+    const created = await upload(owner.cookie);
+    const id = created.body.media.id as string;
+    await pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [id]);
+    await expect(pool.query("INSERT INTO profile_media(account_id,slot,media_id) VALUES ($1,'profile',$2)",
+      [owner.accountId, id])).rejects.toMatchObject({ code: "23514" });
+    await pool.query("UPDATE media_assets SET status='ready' WHERE id=$1", [id]);
+    await pool.query("INSERT INTO profile_media(account_id,slot,media_id) VALUES ($1,'profile',$2)", [owner.accountId, id]);
+    await expect(pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [id]))
+      .rejects.toMatchObject({ code: "23514" });
+  });
+
+  it("keeps a durable cleanup record when upload finalization and object deletion both fail", async () => {
     const owner = await persona();
     const actor: Actor = { userId: owner.userId, accountId: owner.accountId, role: "owner",
       credential: { kind: "oauth", grantId: "test-only", scopes: ["media:create"] } };
     const input = { purpose: "profile" as const, filename: "avatar.png", mimeType: "image/png",
       length: png.length, bytes: png };
-    const before = await pool.query("SELECT count(*)::integer AS count FROM media_assets WHERE account_id=$1", [owner.accountId]);
     const unavailable: ObjectStorage = { environment: "local", put: async () => { throw Error("storage offline"); },
       get: async () => png, delete: async () => undefined };
     await expect(new MediaService(pool, unavailable).createMedia(actor, input, { requestId: "test" }))
       .rejects.toBeInstanceOf(MediaUnavailable);
-    const after = await pool.query("SELECT count(*)::integer AS count FROM media_assets WHERE account_id=$1", [owner.accountId]);
-    expect(after.rows[0].count).toBe(before.rows[0].count);
-    const removed: string[] = [];
+    const retired = await pool.query("SELECT status FROM media_assets WHERE account_id=$1", [owner.accountId]);
+    expect(retired.rows[0].status).toBe("deleted");
     const storage: ObjectStorage = { environment: "local", put: async () => undefined,
-      get: async () => png, delete: async (key) => { removed.push(key); } };
-    const failingPool = { query: pool.query.bind(pool), connect: async () => { throw Error("metadata offline"); } } as unknown as pg.Pool;
+      get: async () => png, delete: async () => { throw Error("delete offline"); } };
+    let inject = true;
+    const failingPool = { query: pool.query.bind(pool), connect: async () => {
+      const client = await pool.connect();
+      return { query: (...args: any[]) => {
+        if (inject && String(args[0]).includes("SET status='ready'")) { inject = false; throw Error("metadata offline"); }
+        return (client.query as any)(...args);
+      }, release: () => client.release() };
+    } } as unknown as pg.Pool;
     await expect(new MediaService(failingPool, storage).createMedia(actor, input, { requestId: "test" }))
-      .rejects.toThrow("metadata offline");
+      .rejects.toBeInstanceOf(MediaUnavailable);
+    const pending = await pool.query("SELECT id,status FROM media_assets WHERE account_id=$1 AND status='pending_delete'", [owner.accountId]);
+    expect(pending.rowCount).toBe(1);
+    const removed: string[] = [];
+    const recovered: ObjectStorage = { environment: "local", put: async () => undefined,
+      get: async () => png, delete: async (key) => { removed.push(key); } };
+    await new MediaService(pool, recovered).retryPendingDeletes(owner.accountId);
     expect(removed).toHaveLength(1);
+    expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [pending.rows[0].id])).rows[0].status).toBe("deleted");
   });
 });

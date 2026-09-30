@@ -4,7 +4,7 @@ import type { Actor } from "./actor";
 import { authorizeOperation } from "./authorization";
 import type { MediaDto, RequestContext } from "../../shared/explorersContract";
 import { MediaRepository } from "../repositories/mediaRepository";
-import { LocalObjectStorage, type ObjectStorage } from "../services/objectStorage";
+import { resolveObjectStorage, type ObjectStorage } from "../services/objectStorage";
 
 export type MediaUploadInput = { purpose: "profile" | "background" | "feed"; filename: string;
   mimeType: string; length: number; bytes: Buffer; alternativeText?: string | null; caption?: string | null };
@@ -27,14 +27,18 @@ function sniff(bytes: Buffer): string | undefined {
 
 export class MediaService {
   private readonly repo: MediaRepository;
-  constructor(private readonly db: Pool, private readonly storage: ObjectStorage = new LocalObjectStorage()) {
+  constructor(private readonly db: Pool, private readonly storage: ObjectStorage = resolveObjectStorage()) {
     this.repo = new MediaRepository(db);
   }
 
   /** Bounded retry for metadata retained after a failed object deletion. */
   async retryPendingDeletes(accountId: string): Promise<void> {
-    for (const item of await this.repo.pendingDeletes(accountId)) {
-      try { await this.storage.delete(item.object_key); await this.repo.finalizeDelete(item.id); }
+    for (const candidate of await this.repo.abandoned(accountId, this.storage.environment)) {
+      if (candidate.status === "ready") await this.repo.markDelete(candidate.id, accountId);
+      else await this.repo.markUploadForCleanup(candidate.id);
+    }
+    for (const item of await this.repo.pendingDeletes(accountId, this.storage.environment)) {
+      try { await this.storage.delete(item.object_key, item.storage_version_id); await this.repo.finalizeDelete(item.id); }
       catch { /* keep the pending row for the next local cleanup pass */ }
     }
   }
@@ -47,16 +51,20 @@ export class MediaService {
       || !/^[\w. -]{1,255}$/.test(input.filename) || sniff(input.bytes) !== input.mimeType
       || (input.purpose !== "feed" && !input.mimeType.startsWith("image/"))) throw new MediaInputError("Invalid media upload");
     const id = randomUUID();
-    const key = `local/${actor.accountId}/${id}`;
+    const key = `${this.storage.environment}/${actor.accountId}/${id}`;
     const hash = createHash("sha256").update(input.bytes).digest();
-    try { await this.storage.put(key, input.bytes); }
-    catch { throw new MediaUnavailable("Storage unavailable"); }
+    await this.repo.reserve({ id, accountId: actor.accountId, purpose: input.purpose, mimeType: input.mimeType,
+      filename: input.filename, bytes: input.bytes, hash, key, environment: this.storage.environment });
+    let versionId: string | undefined;
     try {
-      await this.repo.create({ id, accountId: actor.accountId, purpose: input.purpose, mimeType: input.mimeType,
-        filename: input.filename, bytes: input.bytes, hash, key });
+      versionId = (await this.storage.put(key, input.bytes)) || undefined;
+      await this.repo.markReady(id, versionId);
     } catch (error) {
-      await this.storage.delete(key).catch(() => undefined);
-      throw error;
+      // The reservation survives even if both cleanup and metadata finalization fail.
+      await this.repo.markUploadForCleanup(id, versionId).catch(() => undefined);
+      try { await this.storage.delete(key, versionId); await this.repo.finalizeDelete(id); }
+      catch { /* durable reservation is retried by the cleanup pass */ }
+      throw new MediaUnavailable("Storage unavailable");
     }
     return { id, url: `/api/explorers/v1/media/${id}/content`, mimeType: input.mimeType,
       size: input.bytes.length, alternativeText: input.alternativeText ?? null, caption: input.caption ?? null };
@@ -79,9 +87,11 @@ export class MediaService {
   async deleteMedia(actor: Actor, id: string, _context: RequestContext): Promise<void> {
     await authorizeOperation(this.db, actor, "media:delete", actor.accountId);
     await this.retryPendingDeletes(actor.accountId);
+    const located = await this.repo.find(id);
+    if (!located || located.storage_environment !== this.storage.environment) throw new MediaUnavailable("Media unavailable");
     const record = await this.repo.markDelete(id, actor.accountId);
     if (!record || record.storage_environment !== this.storage.environment) throw new MediaUnavailable("Media unavailable");
-    try { await this.storage.delete(record.object_key); await this.repo.finalizeDelete(id); }
+    try { await this.storage.delete(record.object_key, record.storage_version_id); await this.repo.finalizeDelete(id); }
     catch { /* pending_delete is retained for the bounded cleanup worker */ }
   }
 }

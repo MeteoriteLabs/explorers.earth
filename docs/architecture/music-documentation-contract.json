@@ -53,7 +53,8 @@
     "0021_explorers_analytics_receipts",
     "0022_explorers_identity",
     "0023_explorers_authorization",
-    "0024_explorers_profile_media"
+    "0024_explorers_profile_media",
+    "0025_explorers_media_attachment_guard"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

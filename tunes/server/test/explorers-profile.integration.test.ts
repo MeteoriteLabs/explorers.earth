@@ -112,7 +112,7 @@ describe("canonical profile", () => {
         mobileNumber: "+12025550123", mobileNumberVisible: false,
         themeSettings: { preset: "cinematic-dark" }, businessDetails: { category: "travel" },
         socialLinks: [{ platform: "instagram", url: "https://instagram.com/example", visible: true },
-          { platform: "private", url: "https://example.invalid/hidden", visible: false }] });
+          { platform: "facebook", url: "https://example.invalid/hidden", visible: false }] });
     expect(saved.status).toBe(200);
     const ownerView = await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie);
     expect(ownerView.body.account).toMatchObject({ locale: "hi", bioRich: { blocks: [{ text: "नमस्ते" }] },
@@ -124,7 +124,10 @@ describe("canonical profile", () => {
     expect(publicView.status).toBe(200);
     expect(JSON.stringify(publicView.body)).not.toContain("+12025550123");
     expect(JSON.stringify(publicView.body)).not.toContain("https://example.invalid/hidden");
-    expect(publicView.body.social_media).toEqual([{ platform: "instagram", url: "https://instagram.com/example", visible: true }]);
+    expect(publicView.body.social_media.instagram).toEqual({ link: "https://instagram.com/example", visibility: true });
+    expect(publicView.body.social_media.facebook).toBeUndefined();
+    expect(publicView.body.Bio).toBe("Hello");
+    expect(publicView.body.social_media.theme_settings).toMatchObject({ preset: "cinematic-dark" });
   });
 
   it("persists owner feed media, serves an attached public item, and rejects foreign attachments", async () => {
@@ -146,6 +149,8 @@ describe("canonical profile", () => {
         feedItems: [{ mediaId: id, externalUrl: null, source: "manual", type: "image", caption: null, details: { width: 100 } }] });
     expect(saved.status).toBe(200);
     expect(saved.body.account.feedItems).toMatchObject([{ mediaId: id, details: { width: 100 } }]);
+    const shell = await request(composed.app).get(`/api/explorers/v1/profiles/${handle}`);
+    expect(shell.body.Feed_Data).toMatchObject([{ documentId: id, type: "image", width: 100 }]);
     const publicMedia = await request(composed.app).get(`/api/explorers/v1/media/${id}/content`);
     expect(publicMedia.status).toBe(200);
     const attachedDelete = await request(composed.app).delete(`/api/explorers/v1/media/${id}`)
@@ -155,5 +160,28 @@ describe("canonical profile", () => {
       .set("cookie", stranger.cookie).set("origin", config.baseURL).send({ expectedRevision: 1,
         feedItems: [{ mediaId: id, externalUrl: null, source: "manual", type: "image", caption: null, details: {} }] });
     expect(foreign.status).toBe(422);
+  });
+
+  it("revokes a cached public phone and then the whole shell immediately after privacy changes", async () => {
+    const owner = await persona();
+    const handle = `p${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+    const first = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 1, handle, displayName: "Privacy",
+        accountType: "Creator", onboardingStatus: "complete",
+        mobileNumber: "+12025550123", mobileNumberVisible: true, publicProfile: true });
+    expect(first.status).toBe(200);
+    const visible = await request(composed.app).get(`/api/explorers/v1/profiles/${handle}`);
+    expect(visible.body.mobile_number).toBe("+12025550123");
+    expect(visible.headers["cache-control"]).toBe("no-store");
+    const hiddenPhone = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 2, mobileNumberVisible: false });
+    expect(hiddenPhone.status).toBe(200);
+    const redacted = await request(composed.app).get(`/api/explorers/v1/profiles/${handle}`);
+    expect(redacted.status).toBe(200);
+    expect(JSON.stringify(redacted.body)).not.toContain("+12025550123");
+    const hidden = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 3, publicProfile: false });
+    expect(hidden.status).toBe(200);
+    expect((await request(composed.app).get(`/api/explorers/v1/profiles/${handle}`)).status).toBe(404);
   });
 });

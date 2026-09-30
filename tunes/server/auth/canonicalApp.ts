@@ -42,7 +42,8 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersAccountRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config);
-  const publicProfiles = new PublicProfileService(new PostgresPublicProfileGateway(pool));
+  // Privacy changes must be visible on the very next public request, including across app replicas.
+  const publicProfiles = new PublicProfileService(new PostgresPublicProfileGateway(pool), { ttlMs: 0 });
   setupExplorersPublicProfileRoutes(app, { shell: publicProfiles.shell.bind(publicProfiles),
     category: publicProfiles.category.bind(publicProfiles), detail: publicProfiles.detail.bind(publicProfiles) });
 

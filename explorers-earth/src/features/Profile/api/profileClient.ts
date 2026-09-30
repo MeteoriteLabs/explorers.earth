@@ -25,7 +25,7 @@ export function toProfileViewModel(account: AccountDto): KeyValuePair {
 }
 
 const optional = (value: unknown): string | null => typeof value === "string" && value.trim() ? value.trim() : null;
-export function toAccountUpdate(values: KeyValuePair, account: AccountDto): UpdateAccountInput & RevisionInput {
+export function toAccountUpdate(values: KeyValuePair, account: Pick<AccountDto, "revision">): UpdateAccountInput & RevisionInput {
   const result: UpdateAccountInput & RevisionInput = { expectedRevision: account.revision };
   if ("username" in values) result.handle = optional(values.username);
   if ("accountName" in values) result.displayName = optional(values.accountName);
@@ -45,7 +45,8 @@ export function toAccountUpdate(values: KeyValuePair, account: AccountDto): Upda
   if ("social_media" in values && values.social_media && typeof values.social_media === "object") {
     result.socialLinks = Object.entries(values.social_media as Record<string, any>)
       .filter(([name, value]) => name !== "theme_settings" && value && typeof value === "object" && typeof value.link === "string")
-      .map(([platform, value]) => ({ platform, url: value.link, visible: Boolean(value.visibility) }));
+      .map(([platform, value]) => ({ platform: platform as AccountDto["socialLinks"][number]["platform"],
+        url: value.link, visible: Boolean(value.visibility) }));
   }
   if ("Feed_Data" in values && Array.isArray(values.Feed_Data)) {
     result.feedItems = values.Feed_Data.map((item: any) => {

@@ -1,12 +1,19 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
+import { DeleteObjectCommand, GetObjectCommand, ListObjectVersionsCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
+export type StorageEnvironment = "local" | "qa" | "prod";
 export interface ObjectStorage {
-  readonly environment: "local";
-  put(key: string, bytes: Buffer): Promise<void>;
+  readonly environment: StorageEnvironment;
+  put(key: string, bytes: Buffer): Promise<string | undefined | void>;
   get(key: string): Promise<Buffer>;
-  delete(key: string): Promise<void>;
+  delete(key: string, versionId?: string | null): Promise<void>;
+}
+
+export function assertObjectKey(key: string, environment: StorageEnvironment): void {
+  if (!new RegExp(`^${environment}/[0-9a-f-]{36}/[0-9a-f-]{36}$`, "i").test(key))
+    throw new Error("Invalid media storage key or environment");
 }
 
 export class LocalObjectStorage implements ObjectStorage {
@@ -16,7 +23,7 @@ export class LocalObjectStorage implements ObjectStorage {
     this.root = resolve(root);
   }
   private path(key: string): string {
-    if (!/^local\/[0-9a-f-]{36}\/[0-9a-f-]{36}$/.test(key)) throw new Error("Invalid media storage key");
+    assertObjectKey(key, this.environment);
     const path = resolve(this.root, ...key.split("/"));
     if (!path.startsWith(this.root + sep)) throw new Error("Invalid media storage path");
     return path;
@@ -28,4 +35,62 @@ export class LocalObjectStorage implements ObjectStorage {
   }
   async get(key: string): Promise<Buffer> { return readFile(this.path(key)); }
   async delete(key: string): Promise<void> { await rm(this.path(key), { force: true }); }
+}
+
+/** The bucket remains private. The server is the only byte-delivery authority. */
+export class S3ObjectStorage implements ObjectStorage {
+  constructor(readonly environment: "qa" | "prod", private readonly bucket: string,
+    private readonly client: S3Client) {
+    if (!/^[a-z0-9][a-z0-9.-]{2,62}$/.test(bucket)) throw new Error("Invalid private media bucket");
+  }
+  async put(key: string, bytes: Buffer): Promise<string | undefined> {
+    assertObjectKey(key, this.environment);
+    const result = await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes }));
+    return result.VersionId;
+  }
+  async get(key: string): Promise<Buffer> {
+    assertObjectKey(key, this.environment);
+    const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    if (!result.Body) throw new Error("Media object is missing");
+    return Buffer.from(await result.Body.transformToByteArray());
+  }
+  async delete(key: string, versionId?: string | null): Promise<void> {
+    assertObjectKey(key, this.environment);
+    if (versionId) {
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key, VersionId: versionId }));
+      return;
+    }
+    // An upload may have succeeded just before metadata failed. Enumerate exact
+    // versions so a delete marker cannot masquerade as permanent byte cleanup.
+    let keyMarker: string | undefined;
+    let versionMarker: string | undefined;
+    let found = false;
+    do {
+      const listed = await this.client.send(new ListObjectVersionsCommand({ Bucket: this.bucket,
+        Prefix: key, KeyMarker: keyMarker, VersionIdMarker: versionMarker, MaxKeys: 1000 }));
+      for (const entry of [...(listed.Versions ?? []), ...(listed.DeleteMarkers ?? [])]) {
+        if (entry.Key !== key || !entry.VersionId) continue;
+        found = true;
+        await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key, VersionId: entry.VersionId }));
+      }
+      if (!listed.IsTruncated) break;
+      keyMarker = listed.NextKeyMarker;
+      versionMarker = listed.NextVersionIdMarker;
+      if (!keyMarker) throw new Error("Incomplete media version listing");
+    } while (true);
+    if (!found) await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+}
+
+export function resolveObjectStorage(env: NodeJS.ProcessEnv = process.env): ObjectStorage {
+  const selected = env.EXPLORERS_MEDIA_ENVIRONMENT;
+  if (selected === undefined && env.NODE_ENV !== "production") return new LocalObjectStorage(env.EXPLORERS_MEDIA_LOCAL_ROOT);
+  if (selected === "local" && env.NODE_ENV !== "production") return new LocalObjectStorage(env.EXPLORERS_MEDIA_LOCAL_ROOT);
+  if (selected !== "qa" && selected !== "prod") throw new Error("Explicit QA or production media environment is required");
+  if (env.NODE_ENV === "production" && selected !== (env.EXPLORERS_DEPLOYMENT_TIER === "qa" ? "qa" : "prod"))
+    throw new Error("Media prefix does not match the deployment tier");
+  const bucket = env.EXPLORERS_MEDIA_S3_BUCKET;
+  const region = env.EXPLORERS_MEDIA_S3_REGION;
+  if (!bucket || !region || !/^[a-z]{2}-[a-z-]+-\d$/.test(region)) throw new Error("Private media S3 bucket and region are required");
+  return new S3ObjectStorage(selected, bucket, new S3Client({ region }));
 }

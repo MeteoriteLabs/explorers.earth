@@ -93,6 +93,8 @@ const expectedRuntimeFunctions = [
   "enforce_music_reactivation_token_identity()",
   "enforce_music_tombstone_immutability()",
   "enforce_music_tombstone_insert()",
+  "explorers_assert_no_unready_references()",
+  "explorers_assert_ready_attachment()",
   "finalize_music_identity_deletion(integer,text,text)",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",

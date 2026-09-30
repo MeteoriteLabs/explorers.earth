@@ -1442,6 +1442,8 @@ const Profile = memo(() => {
   }
 
   const initialValues = {
+    ...((typeof account?.documentId === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(account.documentId))
+      ? { documentId: account.documentId, revision: account.revision } : {}),
     username: data.usersPermissionsUser?.username || "",
     accountName: account?.Account_Name || "",
     accountType: getAccountTypeKey(account?.Account_Type || "", t),
