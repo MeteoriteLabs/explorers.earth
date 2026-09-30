@@ -51,7 +51,8 @@
     "0019_queue_visibility_control",
     "0020_public_snapshot_revision",
     "0021_explorers_analytics_receipts",
-    "0022_explorers_identity"
+    "0022_explorers_identity",
+    "0023_explorers_authorization"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

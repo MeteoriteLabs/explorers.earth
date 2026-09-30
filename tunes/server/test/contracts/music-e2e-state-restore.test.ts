@@ -117,7 +117,7 @@ describe("Music E2E transactional state restore", () => {
     // trigger whose semantics mutate the captured bytes.
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
-      "account_category_settings", "account_memberships", "account_presentation", "account_recovery_proofs",
+      "account_category_settings", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_snapshots", "api_tokens", "auth_account", "auth_session", "auth_user",
       "auth_verification", "creator_accounts", "email_logs", "email_templates",
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "music_credential_revocation_operations",
@@ -139,8 +139,11 @@ describe("Music E2E transactional state restore", () => {
       "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement",
       "0019_queue_visibility_control", "0020_public_snapshot_revision", "0021_explorers_analytics_receipts",
       "0022_explorers_identity",
+      "0023_explorers_authorization",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
+      { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
+      { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
       { table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 },
       { table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 },
       { table: "music_identity_tombstones", name: "music_identity_tombstone_immutability", enabled: "O", type: 19 },

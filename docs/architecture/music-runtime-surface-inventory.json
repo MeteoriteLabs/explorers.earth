@@ -388,7 +388,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 23
+      "line": 25
     },
     {
       "method": "ALL",
@@ -398,7 +398,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 30
+      "line": 32
     },
     {
       "method": "ALL",
@@ -408,7 +408,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 31
+      "line": 33
     },
     {
       "method": "GET",
@@ -418,7 +418,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 34
+      "line": 36
     },
     {
       "method": "POST",
@@ -428,7 +428,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 36
+      "line": 38
     },
     {
       "method": "GET",
@@ -438,7 +438,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 54
+      "line": 56
     },
     {
       "method": "GET",

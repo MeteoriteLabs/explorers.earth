@@ -9,6 +9,8 @@ import { accountDtoSchema, type ApiError } from "../../shared/explorersContract"
 import { createRecoveryIntent, recoveryCookieOptions, recoveryIntentCookie, recoveryProofCookie,
   recoveryProofCookieOptions } from "./recoveryCallback";
 import { revokeRecoveryProof } from "./recoveryProof";
+import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
+import { AuthorizationError } from "../application/authorization";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -53,8 +55,11 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
 
   app.get("/api/explorers/v1/me", async (request: Request, response: Response) => {
     try {
+      if (request.headers.authorization || request.headers["x-account-id"] || request.headers["x-user-id"])
+        throw new AuthorizationError(401, "UNAUTHENTICATED", "Ambiguous credentials");
       const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
       if (!session?.user?.id) return errorResponse(response, 401, "UNAUTHENTICATED", "Sign in is required");
+      if (Object.keys(request.query).length) throw new AuthorizationError(422, "INVALID_INPUT", "Query parameters are not accepted");
       const userId = session.user.id;
       const provider = await pool.query<{ exists: boolean }>(
         "SELECT EXISTS(SELECT 1 FROM auth_account WHERE user_id=$1 AND provider_id='google') AS exists", [userId],
@@ -70,6 +75,8 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
         return errorResponse(response, 403, "FORBIDDEN", "Account access is unavailable");
       }
       const { accountId } = await ensureInitialAccount(pool, userId);
+      const actor = await requireActor(request, auth, pool);
+      if (actor.accountId !== accountId) throw new AuthorizationError(404, "NOT_FOUND", "Account is unavailable");
       const result = await pool.query<{
         id: string; handle: string | null; display_name: string | null; account_type: string | null;
         onboarding_status: string; status: string; revision: string;
@@ -86,8 +93,8 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
         status: account.status,
         revision: Number(account.revision),
       }) });
-    } catch {
-      errorResponse(response, 503, "FORBIDDEN", "Account service is unavailable");
+    } catch (error) {
+      sendActorError(request, response, error);
     }
   });
 

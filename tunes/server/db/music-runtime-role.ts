@@ -6,6 +6,7 @@ const safePassword = /^[A-Za-z0-9_-]{43,256}$/;
 const expectedRuntimeTables = [
   "account_category_settings",
   "account_memberships",
+  "account_music_identity",
   "account_presentation",
   "account_recovery_proofs",
   "activity_logs",
@@ -94,10 +95,12 @@ const expectedRuntimeFunctions = [
   "music_compact_publication_operations(integer)",
   "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
+  "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
   "reject_music_publication_archive_mutation()",
   "reject_unauthorized_music_identity_delete()",
   "retain_music_identity_tombstone_on_delete()",
+  "stamp_explorers_session_version()",
 ] as const;
 
 export interface MusicRuntimeLoginInput {
@@ -549,6 +552,8 @@ export async function provisionMusicRuntimeLogin(
       ON music_credential_revocation_operations FROM ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON user_security_state,initial_account_bindings,account_recovery_proofs FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON account_music_identity FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_publication_operations FROM ${capabilityRole}`);
@@ -678,6 +683,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || tableRows.some((row) => {
     const expected = row.object_name === "music_schema_migrations"
       ? [true, false, false, false]
+      : row.object_name === "account_music_identity"
+        ? [true, true, false, false]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
       : row.object_name === "music_credential_revocation_operations"

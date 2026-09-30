@@ -52,6 +52,8 @@ export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
 export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
+  Object.freeze({ table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 }),
+  Object.freeze({ table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 }),
   Object.freeze({ table: "music_identity_tombstones", name: "music_identity_tombstone_immutability", enabled: "O", type: 19 }),
