@@ -198,6 +198,13 @@ const RESET_INTENT = join(STATE, "reset-intent.json");
 const COMPOSE = join(ROOT, "docker-compose.replatform.yml");
 const DOCKER = process.platform === "win32" ? "docker.exe" : "docker";
 const SECRET_NAMES = ["db-migrator", "db-runtime", "music-token"] as const;
+type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
+  | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check";
+let failurePhase: PlatformPhase = "docker-endpoint";
+
+export function formatPlatformFailure(phase: PlatformPhase): string {
+  return `Replatform local command refused or failed; phase=${phase}; authority details redacted.\n`;
+}
 
 export function validateProvisionSecretInventory(entries: Array<{ name: string; kind: "file" | "directory" | "symlink"; nlink: number; size: number }>): "create" | "reuse" {
   if (entries.length === 0) return "create";
@@ -380,7 +387,9 @@ function createSecrets(recovering = false): void {
 }
 
 function provision(host: string): unknown {
+  failurePhase = "compose-model";
   checkedModel(host);
+  failurePhase = "receipt-check";
   const prior = existsSync(RECEIPT) ? readReceipt(true) : undefined;
   const recovering = prior && existsSync(RESET_INTENT)
     ? validateResetIntent(prior, readResetIntent()) : false;
@@ -391,13 +400,17 @@ function provision(host: string): unknown {
     compose(host, ["up", "-d", "--wait", "explorers"], 120_000);
     return check(host, prior);
   }
+  failurePhase = "resource-inventory";
   for (const args of [
     ["ps", "--all", "--quiet", "--filter", `label=com.docker.compose.project=${PLATFORM_PROJECT}`],
     ["network", "ls", "--quiet", "--filter", `label=com.docker.compose.project=${PLATFORM_PROJECT}`],
     ["volume", "ls", "--quiet", "--filter", `label=com.docker.compose.project=${PLATFORM_PROJECT}`],
   ]) if (run(DOCKER, ["--host", host, ...args])) refuse();
+  failurePhase = "secret-inventory";
   createSecrets(recovering);
+  failurePhase = "postgres-start";
   compose(host, ["up", "-d", "--wait", "postgres"], 120_000);
+  failurePhase = "postgres-attestation";
   const inspect = inspectPostgres(host);
   const receipt: PlatformAuthority = {
     version: 1, project: PLATFORM_PROJECT, database: PLATFORM_DATABASE, host: "127.0.0.1", port: PLATFORM_PORT,
@@ -406,7 +419,9 @@ function provision(host: string): unknown {
   assertPlatformContainer(receipt, inspect);
   writeFileSync(RECEIPT, JSON.stringify(receipt), { flag: recovering ? "w" : "wx", mode: 0o600 });
   if (recovering) writeFileSync(RESET_INTENT, JSON.stringify({ status: "consumed", authority: receipt }), { flag: "w", mode: 0o600 });
+  failurePhase = "service-build";
   compose(host, ["up", "-d", "--build", "--quiet-build", "--wait", "explorers"], 900_000);
+  failurePhase = "service-check";
   return check(host, receipt);
 }
 
@@ -467,8 +482,10 @@ function verifyAllProjectResources(host: string, receipt: PlatformAuthority): vo
 
 async function main(args: string[]): Promise<void> {
   const command = parsePlatformCommand(args);
+  failurePhase = "docker-endpoint";
   if (command.command === "test:integration") {
     const host = localDockerHost();
+    failurePhase = "receipt-check";
     check(host, readReceipt());
     const npmCli = process.env.npm_execpath;
     if (!npmCli) refuse();
@@ -478,12 +495,14 @@ async function main(args: string[]): Promise<void> {
   }
   if (command.command === "test:routes") {
     const host = localDockerHost();
+    failurePhase = "receipt-check";
     check(host, readReceipt());
     const checked = await verifyPlatformIngress("http://127.0.0.1:51474");
     process.stdout.write(`${JSON.stringify({ ingressHandlersChecked: checked })}\n`);
     return;
   }
   const host = localDockerHost();
+  failurePhase = "receipt-check";
   const result = command.command === "provision" ? provision(host) : await (async () => {
     const receipt = readReceipt(command.command === "reset");
     if (command.command === "check") return check(host, receipt);
@@ -521,7 +540,7 @@ async function main(args: string[]): Promise<void> {
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   main(process.argv.slice(2)).catch(() => {
-    process.stderr.write("Replatform local command refused or failed; authority details redacted.\n");
+    process.stderr.write(formatPlatformFailure(failurePhase));
     process.exitCode = 1;
   });
 }

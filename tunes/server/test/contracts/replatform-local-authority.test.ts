@@ -17,6 +17,7 @@ import {
   prepareResetIntent,
   validatePlatformAuthority,
   validatePlatformComposeModel,
+  formatPlatformFailure,
 } from "../../../../scripts/replatform-local";
 
 const receipt = {
@@ -60,6 +61,12 @@ const resetModel = {
 };
 
 describe("replatform local authority", () => {
+  it("formats a fixed diagnostic phase without underlying authority details", () => {
+    expect(formatPlatformFailure("docker-endpoint")).toBe(
+      "Replatform local command refused or failed; phase=docker-endpoint; authority details redacted.\n",
+    );
+  });
+
   it("accepts only the declared local and acceptance seed commands", () => {
     expect(parsePlatformCommand(["provision"])).toEqual({ command: "provision" });
     expect(parsePlatformCommand(["seed", "--dataset", "acceptance"])).toEqual({ command: "seed", dataset: "acceptance" });
@@ -193,7 +200,7 @@ describe("replatform local authority", () => {
   it("resolves the checked-in Compose file to the owned local project", () => {
     const root = resolve(import.meta.dirname, "../../../..");
     const result = spawnSync("docker", ["compose", "-f", "docker-compose.replatform.yml", "config", "--format", "json"], {
-      cwd: root, encoding: "utf8", windowsHide: true,
+      cwd: root, encoding: "utf8", windowsHide: true, timeout: 15_000,
       env: { ...process.env,
         MUSIC_DB_MIGRATOR_SECRET_FILE_HOST: resolve(root, "fixtures", "dummy-migrator"),
         MUSIC_DB_RUNTIME_SECRET_FILE_HOST: resolve(root, "fixtures", "dummy-runtime"),
@@ -210,5 +217,5 @@ describe("replatform local authority", () => {
     expect(Object.keys(model.services.explorers.networks).sort()).toEqual(["replatform-edge", "replatform-local"]);
     expect(Object.keys(model.services.tunes.networks)).toEqual(["replatform-local"]);
     expect(model.services.explorers.ports).toEqual(expect.arrayContaining([expect.objectContaining({ host_ip: "127.0.0.1", published: "51474" })]));
-  });
+  }, 20_000);
 });

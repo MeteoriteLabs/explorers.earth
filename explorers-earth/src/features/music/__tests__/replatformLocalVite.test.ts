@@ -27,6 +27,7 @@ describe("replatform local Vite", () => {
   });
   it("ignores synthetic developer dotenv credentials in its dedicated config", async () => {
     const root = mkdtempSync(join(tmpdir(), "replatform-vite-env-"));
+    if (!resolve(root).startsWith(resolve(tmpdir()) + sep)) throw new Error("temporary Vite root escaped OS temp");
     const previousIgdb = process.env.VITE_IGDB_CLIENT_SECRET;
     const previousPayment = process.env.VITE_PAYMENT_API_URL;
     try {
@@ -41,7 +42,6 @@ describe("replatform local Vite", () => {
       else process.env.VITE_IGDB_CLIENT_SECRET = previousIgdb;
       if (previousPayment === undefined) delete process.env.VITE_PAYMENT_API_URL;
       else process.env.VITE_PAYMENT_API_URL = previousPayment;
-      if (!resolve(root).startsWith(resolve(tmpdir()) + sep)) throw new Error("temporary Vite root escaped OS temp");
       rmSync(root, { recursive: true, force: true });
     }
   });
