@@ -1,6 +1,6 @@
 # Acceptance evidence ledger
 
-This directory holds **references and sanitized run records**, not provider credentials, private profiles or database dumps. The provisional [matrix](../acceptance-matrix.md) has no claimed pass results yet. Ticket 1.2 must first provision its attested disposable local database and deterministic owner, second-owner, anonymous and suspended fixtures. A mocked browser check must say `mocked`; a real API fixture run must say `local-fixture`; a Google/Maps/S3 QA check must say `qa-provider`. None is owner sign-off.
+This directory holds **references and sanitized run records**, not provider credentials, private profiles or database dumps. The [matrix](../acceptance-matrix.md) separates current-source baseline observations from replacement acceptance. Ticket 1.2 supplies an attested Music fixture; deterministic canonical owner, second-owner, anonymous and suspended account/content fixtures remain later-ticket work. A mocked browser check must say `mocked`; a real API fixture run must say `local-fixture`; a Google/Maps/S3 QA check must say `qa-provider`. None is owner sign-off.
 
 For each run create a dated Markdown or JSON record with these fields:
 
@@ -20,4 +20,4 @@ For each run create a dated Markdown or JSON record with these fields:
 
 Recommended directory: `evidence/YYYY-MM-DD/<run-id>/record.md` with `desktop/`, `mobile/`, and `traces/` children. Keep generated browser artifacts out of git when large or sensitive; commit a stable manifest with hashes and an accessible artifact reference. Scrub tokens, cookies, email addresses, raw profile contents, private URLs and connection strings before retention. Snapshot refresh alone is not parity evidence: attach observed run result and review the changed image.
 
-Current status: **inventory only** at source `79ef17d0b88c7e11b49d618fc7c888a513f29fa8`. No new browser screenshots or baseline suite runs were produced for Ticket 1.1. Those runs are deferred until 1.2's safe local authority exists; the existing PNG snapshots in `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/` are historical fixtures, not this run's screenshots.
+Current records: [local static-gateway browser and fixture run](2026-09-30/local-fixture-efd3b819/record.md) with four new desktop/mobile screenshots, and [exact-head hosted CI](2026-09-30/hosted-efd3b819.md) with five frontend browser jobs plus the separate backend real-PostgreSQL and platform-fixture lanes. The existing PNG snapshots in `explorers-earth/e2e/music-public-contract.spec.ts-snapshots/` remain historical fixtures, not these new screenshots. Replacement account/category acceptance and provider checks remain pending their owning tickets.
