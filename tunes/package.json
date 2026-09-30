@@ -6,10 +6,17 @@
   "engines": {
     "node": ">=22.12"
   },
+  "imports": {
+    "#auth-runtime": {
+      "types": "./auth-runtime/index.d.ts",
+      "default": "./auth-runtime/index.js"
+    }
+  },
   "scripts": {
+    "postinstall": "npm ci --prefix auth-runtime --omit=dev",
     "dev": "tsx --watch server/index.ts",
-    "build": "vite build && esbuild server/index.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --bundle --splitting --format=esm --outbase=server --outdir=dist/server",
-    "build:api": "node scripts/clean-api-dist.mjs && esbuild server/api.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --bundle --splitting --format=esm --outbase=server --outdir=dist/server",
+    "build": "vite build && esbuild server/index.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --external:#auth-runtime --bundle --splitting --format=esm --outbase=server --outdir=dist/server",
+    "build:api": "node scripts/clean-api-dist.mjs && esbuild server/api.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --external:#auth-runtime --bundle --splitting --format=esm --outbase=server --outdir=dist/server",
     "start": "NODE_ENV=production node dist/server/index.js",
     "start:api": "node dist/server/api.js",
     "check": "tsc",

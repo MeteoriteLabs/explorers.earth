@@ -19,13 +19,15 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 # Separate layer for dependencies
 FROM base AS deps
+COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
 # Keep build and test tooling out of the runtime image.
 FROM base AS prod-deps
+COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --omit=dev
 
 # Build the application
 FROM deps AS builder
@@ -49,6 +51,7 @@ LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
 
 # Copy production dependencies and build output
 COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/auth-runtime ./auth-runtime
 COPY --from=builder /app/dist ./dist
 
 # Copy necessary config files

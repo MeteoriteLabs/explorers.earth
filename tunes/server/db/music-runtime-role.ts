@@ -4,13 +4,23 @@ const capabilityRole = "music_runtime";
 const safeRoleName = /^[a-z_][a-z0-9_]{1,62}$/;
 const safePassword = /^[A-Za-z0-9_-]{43,256}$/;
 const expectedRuntimeTables = [
+  "account_category_settings",
+  "account_memberships",
+  "account_presentation",
+  "account_recovery_proofs",
   "activity_logs",
   "analytics_snapshots",
   "api_tokens",
+  "auth_account",
+  "auth_session",
+  "auth_user",
+  "auth_verification",
+  "creator_accounts",
   "email_logs",
   "email_templates",
   "explorers_analytics_receipts",
   "guest_interactions",
+  "initial_account_bindings",
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
   "music_identity_tombstones",
@@ -31,6 +41,7 @@ const expectedRuntimeTables = [
   "team_members",
   "user_activity",
   "user_profiles",
+  "user_security_state",
   "user_sessions",
   "users",
   "widgets",
@@ -536,6 +547,8 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`GRANT SELECT ON music_schema_migrations TO ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_credential_revocation_operations FROM ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON user_security_state,initial_account_bindings,account_recovery_proofs FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_publication_operations FROM ${capabilityRole}`);
@@ -674,6 +687,9 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       : row.object_name === "music_owner_operations"
           ? [true, true, false, true]
         : row.object_name === "music_identity_tombstones" || row.object_name === "music_reactivation_tokens"
+          ? [true, true, true, false]
+        : row.object_name === "user_security_state" || row.object_name === "initial_account_bindings"
+          || row.object_name === "account_recovery_proofs"
           ? [true, true, true, false]
         : [true, true, true, true];
     return JSON.stringify([row.can_select,row.can_insert,row.can_update,row.can_delete]) !== JSON.stringify(expected)

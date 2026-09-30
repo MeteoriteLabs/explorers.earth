@@ -35,7 +35,10 @@ describe("Music deployment authority files", () => {
     );
     expect(dockerfile).toContain("FROM base AS prod-deps");
     expect(dockerfile).toContain("RUN apk upgrade --no-cache");
-    expect(dockerfile).toContain("RUN npm ci --omit=dev --legacy-peer-deps");
+    expect(dockerfile).toContain("RUN npm ci --omit=dev");
+    expect(JSON.parse(read("tunes/package.json")).scripts.postinstall)
+      .toBe("npm ci --prefix auth-runtime --omit=dev");
+    expect(dockerfile).toContain("COPY --from=prod-deps /app/auth-runtime ./auth-runtime");
     expect(dockerfile).toContain(
       "COPY --from=prod-deps /app/node_modules ./node_modules",
     );
@@ -151,13 +154,13 @@ describe("Music deployment authority files", () => {
     );
     expect(ci).toContain(
       "/app/migrations/0020_public_snapshot_revision.sql",
-      "/app/migrations/0021_explorers_analytics_receipts.sql",
+      "/app/migrations/0022_explorers_identity.sql",
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0021_explorers_analytics_receipts"',
+      'production_current_marker="0022_explorers_identity"',
     );
     expect(read("tunes/scripts/music-docker-release-rehearsal.ts")).toContain(
-      'const marker = "0021_explorers_analytics_receipts"',
+      'const marker = "0022_explorers_identity"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -434,11 +437,11 @@ describe("Music deployment authority files", () => {
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
     expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
-    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0021_explorers_analytics_receipts");
-    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0021_explorers_analytics_receipts");
-    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0021_explorers_analytics_receipts");
-    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0021_explorers_analytics_receipts");
-    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0021_explorers_analytics_receipts");
+    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0022_explorers_identity");
+    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0022_explorers_identity");
+    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0022_explorers_identity");
+    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0022_explorers_identity");
+    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0022_explorers_identity");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

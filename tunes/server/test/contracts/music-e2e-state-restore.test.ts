@@ -111,19 +111,21 @@ describe("Music E2E transactional state restore", () => {
     expect(sql.indexOf(marker)).toBeLessThan(sql.lastIndexOf("ENABLE ALWAYS TRIGGER music_publication_operation_immutability"));
   });
 
-  it("uses the exact frozen 0021 table, migration, and trigger authority", async () => {
+  it("uses the exact frozen 0022 table, migration, and trigger authority", async () => {
     // Production break caught: a dynamic public-table query or incomplete
     // trigger inventory could truncate an unexpected table or replay through a
     // trigger whose semantics mutate the captured bytes.
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
-      "activity_logs", "analytics_snapshots", "api_tokens", "email_logs", "email_templates",
-      "explorers_analytics_receipts", "guest_interactions", "music_credential_revocation_operations",
+      "account_category_settings", "account_memberships", "account_presentation", "account_recovery_proofs",
+      "activity_logs", "analytics_snapshots", "api_tokens", "auth_account", "auth_session", "auth_user",
+      "auth_verification", "creator_accounts", "email_logs", "email_templates",
+      "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "music_credential_revocation_operations",
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
       "playlists", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
-      "user_profiles", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
+      "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
     expect(contract.MUSIC_FIXTURE_MIGRATION_IDS).toEqual([
@@ -136,6 +138,7 @@ describe("Music E2E transactional state restore", () => {
       "0015_publication_operation_archive", "0016_publication_operation_retention",
       "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement",
       "0019_queue_visibility_control", "0020_public_snapshot_revision", "0021_explorers_analytics_receipts",
+      "0022_explorers_identity",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 },

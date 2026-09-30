@@ -51,6 +51,7 @@ services:
     environment:
       MUSIC_STRAPI_HOST_PORT: "51338"
       MUSIC_MODE: fixture
+      EXPLORERS_API_MODE: legacy-music
       MUSIC_DATABASE_HOST: postgres
       MUSIC_DATABASE_PORT: "5432"
       MUSIC_DATABASE_NAME: music_fixture
@@ -60,7 +61,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0021_explorers_analytics_receipts
+      MUSIC_MIGRATION_MARKER: 0022_explorers_identity
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -100,6 +101,7 @@ services:
       ALLOWED_ORIGINS: http://127.0.0.1:51474
       MUSIC_STRAPI_HOST_PORT: "51338"
       MUSIC_MODE: fixture
+      EXPLORERS_API_MODE: legacy-music
       MUSIC_FIXTURE_VERSION: "1"
       MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: "true"
       MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: explorers-analytics-receipts-v1
@@ -140,7 +142,7 @@ services:
       MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
       MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
       MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
-      MUSIC_EXPECTED_MIGRATION_ID: 0021_explorers_analytics_receipts
+      MUSIC_EXPECTED_MIGRATION_ID: 0022_explorers_identity
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     depends_on:

@@ -76,7 +76,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     }
   });
 
-  it("migrates a fresh database, creates all 28 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
+  it("migrates a fresh database, creates all 38 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
     const pool = await freshDatabase("baseline");
     const first = await migrateMusicDatabase(pool);
     const second = await migrateMusicDatabase(pool);
