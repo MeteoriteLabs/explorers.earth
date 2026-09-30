@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "tsx --watch server/index.ts",
     "build": "vite build && esbuild server/index.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --bundle --splitting --format=esm --outbase=server --outdir=dist/server",
+    "build:api": "node scripts/clean-api-dist.mjs && esbuild server/api.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --bundle --splitting --format=esm --outbase=server --outdir=dist/server",
     "start": "NODE_ENV=production node dist/server/index.js",
+    "start:api": "node dist/server/api.js",
     "check": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",

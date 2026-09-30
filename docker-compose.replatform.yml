@@ -77,10 +77,6 @@ services:
     build:
       context: ./tunes
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://127.0.0.1:55001
-        VITE_REST_API_URL: http://127.0.0.1:55001
-        VITE_PUBLIC_ACCESS_TOKEN: fixture-public-token
     environment:
       NODE_ENV: production
       PORT: 5000

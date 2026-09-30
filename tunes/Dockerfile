@@ -30,18 +30,8 @@ RUN npm ci --omit=dev --legacy-peer-deps
 # Build the application
 FROM deps AS builder
 
-# Accept VITE_ build args - these are embedded into the frontend bundle at build time
-ARG VITE_API_URL
-ARG VITE_REST_API_URL
-ARG VITE_PUBLIC_ACCESS_TOKEN
-
-# Set them as ENV so Vite can read them during build
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_REST_API_URL=$VITE_REST_API_URL
-ENV VITE_PUBLIC_ACCESS_TOKEN=$VITE_PUBLIC_ACCESS_TOKEN
-
 COPY . .
-RUN npm run build
+RUN npm run build:api
 
 # Production image
 FROM base AS runner
@@ -60,7 +50,6 @@ LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
 # Copy production dependencies and build output
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
 
 # Copy necessary config files
 COPY package.json ./
@@ -75,4 +64,4 @@ HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 # Set the default command
-CMD ["node", "dist/server/index.js"]
+CMD ["node", "dist/server/api.js"]

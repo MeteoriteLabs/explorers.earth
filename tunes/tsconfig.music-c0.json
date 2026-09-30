@@ -17,6 +17,7 @@
     "server/services/musicReconciler.ts",
     "server/services/musicReconciliationSuspensionListener.ts",
     "server/types/express.d.ts",
+    "server/utils/types/geoip-lite.d.ts",
     "server/test/contracts/*.test.ts"
   ],
   "exclude": []

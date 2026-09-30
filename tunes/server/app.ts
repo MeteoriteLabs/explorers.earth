@@ -32,7 +32,7 @@ export function sanitizedRequestLogTarget(request: Pick<Request, "path">): strin
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile): Promise<{
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly = false): Promise<{
   app: express.Express;
   server: Server;
   shutdown?: () => Promise<void>;
@@ -73,7 +73,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
 
   // Serve favicon and related files directly from root and public directories
   // This ensures maximum browser compatibility for favicon display
-  if (!localProfile) {
+  if (!localProfile && !apiOnly) {
     app.use(express.static('.')); // Serve files from root directory
     app.use(express.static('public')); // Serve files from public directory
   }
@@ -189,7 +189,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
     containmentErrorHandler(err, req, res);
   });
 
-  if (!localProfile) return { app, server };
+  if (!localProfile && !apiOnly) return { app, server };
   return {
     app,
     server,

@@ -43,6 +43,10 @@ describe("Music deployment authority files", () => {
       "COPY --from=deps /app/node_modules ./node_modules",
     );
     expect(dockerfile).toContain("rm -rf /usr/local/lib/node_modules/npm");
+    expect(dockerfile).toContain("RUN npm run build:api");
+    expect(dockerfile).toContain('CMD ["node", "dist/server/api.js"]');
+    expect(dockerfile).not.toContain("COPY --from=builder /app/public");
+    expect(dockerfile).not.toContain("ARG VITE_");
     expect(read("tunes/server/app.ts")).not.toContain('from "./vite"');
     expect(read("tunes/server/runtime.ts")).not.toMatch(/from ["']vite["']/);
     expect(read("tunes/server/runtime.ts")).not.toContain("nanoid");

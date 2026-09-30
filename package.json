@@ -12,6 +12,7 @@
     "dev:explorers-earth": "npm run dev --prefix explorers-earth",
     "install:all": "npm install --prefix tunes && npm install --prefix explorers-earth",
     "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth",
+    "build:api": "npm run build:api --prefix tunes",
     "music-cli": "tsx tunes/scripts/music-cli.ts",
     "music:bootstrap": "npm run --silent music-cli -- bootstrap",
     "music:doctor": "npm run --silent music-cli -- doctor",
