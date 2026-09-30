@@ -25,3 +25,12 @@ The Music job's dependent database, security, frontend, browser and image-contra
 ## Next remote decision
 
 Independent review of this local patch is required before controller push. After push, inspect exact-SHA PR runs: lint, Compose contract, `platform-fixture` phase, both strict aggregates, E2E, all Music dependents and the Tunes image scan. If `platform-fixture` remains red, the phase code is diagnostic evidence for a further source or hosted-runner fix; it is not an approval to omit the job. No branch protection or production release should rely on this PR until all mandatory checks actually pass.
+
+
+## Lockfile peer coherence correction
+
+Independent review of commit `59833271` found that `npm update ... --legacy-peer-deps --package-lock-only` removed the existing `openapi-types@12.1.3` peer entry. The C0 Linux/Windows workflow deliberately uses plain `npm ci --prefix tunes`, which then rejects the lock as out of sync. This was reproduced locally with plain `npm ci --dry-run --ignore-scripts --no-audit --no-fund`: exit 1, “Missing: openapi-types@12.1.3 from lock file.”
+
+Restored only the previous `node_modules/openapi-types` lock entry (same resolved tarball, integrity, dev/peer metadata). The patched production resolutions remain `brace-expansion@1.1.21` and `engine.io@6.6.11`; no C0 install mode or check was changed.
+
+Green after the lock correction: plain and `--legacy-peer-deps` `npm ci` dry runs both exited 0; full plain `npm ci` exited 0 and installed the peer. `npm ls` confirms all three versions. Four focused C0/local authority files passed 63/63; `music:types:scoped` and Tunes build passed. The baseline comparator passed with the known 142 diagnostics/compiler exit 2, not a full typecheck success. Production-only npm audit reports zero high and four moderate. The hosted Grype and C0 checks must still verify the new commit.
