@@ -2,27 +2,56 @@ name: Tunes immutable image CI
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - tunes/**
+      - explorers-earth/**
+      - scripts/replatform-local.ts
+      - package.json
+      - package-lock.json
+      - fixtures/**
+      - docs/replatform/**
+      - docs/replatform-audit/**
       - .env.music.example
       - .env.music.test.example
       - docker-compose.yml
       - docker-compose.music-test.yml
+      - docker-compose.replatform.yml
+      - .github/workflows/**
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
   push:
-    branches: [main]
+    branches: [main, codex/unified-replatform]
     paths:
       - tunes/**
+      - explorers-earth/**
+      - scripts/replatform-local.ts
+      - package.json
+      - package-lock.json
+      - fixtures/**
+      - docs/replatform/**
+      - docs/replatform-audit/**
       - .env.music.example
       - .env.music.test.example
       - docker-compose.yml
       - docker-compose.music-test.yml
+      - docker-compose.replatform.yml
+      - .github/workflows/**
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
   workflow_dispatch:
+    inputs:
+      release_production:
+        description: Build, attest and deploy this exact main revision to Tunes production
+        type: boolean
+        required: true
+        default: false
+      validated_run_id:
+        description: Successful main CI Pipeline push run for this exact source revision
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -46,12 +75,7 @@ jobs:
           --health-retries 30
     permissions:
       contents: read
-      packages: write
-      id-token: write
-      attestations: write
     outputs:
-      image_ref: ${{ steps.push.outputs.image_ref }}
-      digest: ${{ steps.push.outputs.digest }}
       commit: ${{ github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -139,38 +163,95 @@ jobs:
           name: grype-complete-${{ github.sha }}
           path: grype-complete.sarif
           if-no-files-found: error
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push and expose registry digest
-        if: github.event_name != 'pull_request'
-        id: push
+      - name: Save the qualified image for an explicit release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
         shell: bash
         env:
           IMAGE_NAME: ${{ steps.image.outputs.name }}
         run: |
           set -euo pipefail
-          docker push "${IMAGE_NAME}:${GITHUB_SHA}"
-          image_ref="$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE_NAME}:${GITHUB_SHA}")"
+          docker save "${IMAGE_NAME}:${GITHUB_SHA}" | gzip -1 > tunes-qualified-image.tar.gz
+      - name: Transfer the qualified image to the release job
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tunes-qualified-image-${{ github.sha }}
+          path: tunes-qualified-image.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  release-preflight:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require successful main aggregate for exact source SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_RUN_ID: ${{ inputs.validated_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$VALIDATED_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATED_RUN_ID")"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .head_sha == $sha and .head_branch == "main" and
+            .event == "push" and .conclusion == "success" and
+            .path == ".github/workflows/ci.yml"
+          ' <<< "$run_json" >/dev/null
+          aggregate="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATED_RUN_ID/jobs?per_page=100" --jq '.jobs[] | select(.name == "replatform-required") | .conclusion')"
+          [[ "$aggregate" == success ]]
+
+  publish-image:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+    needs: [build-test-scan-push, release-preflight]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      commit: ${{ github.sha }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tunes-qualified-image-${{ github.sha }}
+      - name: Load the qualified image without rebuilding
+        run: gzip -dc tunes-qualified-image.tar.gz | docker load
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Push and expose registry digest
+        id: push
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image_name="ghcr.io/${owner}/explorers-tunes"
+          docker push "${image_name}:${GITHUB_SHA}"
+          image_ref="$(docker inspect --format '{{index .RepoDigests 0}}' "${image_name}:${GITHUB_SHA}")"
           digest="${image_ref##*@}"
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
       - name: Attest the pushed image provenance
-        if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
-          subject-name: ${{ steps.image.outputs.name }}
+          subject-name: ${{ steps.push.outputs.image_name }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
   deploy-production:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: build-test-scan-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.release_production && needs.publish-image.result == 'success'
+    needs: publish-image
     permissions:
       actions: read
       contents: read
@@ -178,8 +259,8 @@ jobs:
       attestations: read
     uses: ./.github/workflows/tunes-deploy.yml
     with:
-      digest: ${{ needs.build-test-scan-push.outputs.digest }}
-      commit: ${{ needs.build-test-scan-push.outputs.commit }}
+      digest: ${{ needs.publish-image.outputs.digest }}
+      commit: ${{ needs.publish-image.outputs.commit }}
     secrets:
       TUNES_DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
       TUNES_DEPLOY_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}

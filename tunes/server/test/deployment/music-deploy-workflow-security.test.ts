@@ -179,11 +179,12 @@ describe("Tunes workflow provenance and input boundary", () => {
       "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
     );
     expect(upload.with.path).toBe("grype-complete.sarif");
+    const publish = workflow.jobs["publish-image"];
     expect(steps.indexOf(actionable)).toBeLessThan(
-      steps.findIndex(
-        (step: any) => step.name === "Push and expose registry digest",
-      ),
+      steps.findIndex((step: any) => step.name === "Transfer the qualified image to the release job"),
     );
+    expect(publish.needs).toEqual(["build-test-scan-push", "release-preflight"]);
+    expect(publish.steps.some((step: any) => step.name === "Push and expose registry digest")).toBe(true);
   });
 
   it("limits manual dispatch to one-time bootstrap or rollback and keeps normal deploy internal", () => {
@@ -356,7 +357,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).toContain(
       "$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main",
     );
-    expect(ci).toContain("github.event_name == 'push'");
+    expect(ci).toContain("github.event_name == 'workflow_dispatch' && inputs.release_production");
     expect(ci).toMatch(
       /deploy-production:[\s\S]*?permissions:[\s\S]*?attestations: read/,
     );

@@ -2,24 +2,35 @@ name: Music C0 contracts
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "package.json"
+      - "package-lock.json"
       - "tunes/**"
+      - "explorers-earth/**"
       - "fixtures/**"
+      - "scripts/replatform-local.ts"
       - "docker-compose.music-test.yml"
+      - "docker-compose.replatform.yml"
       - ".env.music*.example"
+      - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
       - ".github/workflows/music-reconcile.yml"
       - "docs/**"
   push:
-    branches: [main, develop]
+    branches: [main, develop, codex/unified-replatform]
     paths:
       - "package.json"
+      - "package-lock.json"
       - "tunes/**"
+      - "explorers-earth/**"
       - "fixtures/**"
+      - "scripts/replatform-local.ts"
       - "docker-compose.music-test.yml"
+      - "docker-compose.replatform.yml"
       - ".env.music*.example"
+      - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
       - ".github/workflows/music-reconcile.yml"
