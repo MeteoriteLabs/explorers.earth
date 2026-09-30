@@ -37,6 +37,18 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
   server: Server;
   shutdown?: () => Promise<void>;
 }> {
+  try {
+    return await composeApp(musicIdentityConfig, localProfile, apiOnly);
+  } catch (error) {
+    if (localProfile || apiOnly) return failAfterLocalMusicOwnedCleanup(error, {
+      closeSessionStore: closeLocalSessionStore,
+      closePool: async () => { await pool.end(); },
+    });
+    throw error;
+  }
+}
+
+async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile: ValidatedLocalMusicProfile | undefined, apiOnly: boolean): Promise<Awaited<ReturnType<typeof createApp>>> {
   installSafeConsole();
   if (localProfile) {
     assertValidatedLocalMusicProfile(localProfile, process.env);
@@ -168,19 +180,10 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
     fetchImpl: musicIdentityConfig.fetchImpl,
     timeoutMs: Math.min(musicIdentityConfig.overallTimeoutMs, 30_000),
   });
-  let registered: Awaited<ReturnType<typeof registerRoutes>>;
-  try {
-    registered = await registerRoutes(app, storage, routeMusicConfig, {
-      proveAbsence: (identity) => identityAbsenceProof.prove(identity),
-      fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
-    }, localProfile);
-  } catch (error) {
-    if (localProfile || apiOnly) return failAfterLocalMusicOwnedCleanup(error, {
-      closeSessionStore: closeLocalSessionStore,
-      closePool: async () => { await pool.end(); },
-    });
-    throw error;
-  }
+  const registered = await registerRoutes(app, storage, routeMusicConfig, {
+    proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+    fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
+  }, localProfile);
   const { server } = registered;
 
   // Error handling middleware (registered after routes, before the Vite/static
