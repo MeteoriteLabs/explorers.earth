@@ -247,6 +247,7 @@ jobs:
     needs: [lint, typecheck, unit-tests, build, integration-tests, e2e-tests]
     steps:
       - name: Require each validation job to succeed
+        working-directory: ${{ github.workspace }}
         env:
           REQUIRED_RESULTS: ${{ toJSON(needs) }}
         run: |

@@ -35,6 +35,19 @@ describe("replatform workflow authority", () => {
     )).toBe(true);
   });
 
+  it("runs the checkout-free aggregate from the existing runner workspace", () => {
+    const ci = workflow("ci");
+    const aggregate = ci.jobs["replatform-required"];
+    expect(aggregate.steps.some((step: any) => String(step.uses ?? "").startsWith("actions/checkout@"))).toBe(false);
+    const check = aggregate.steps.find((step: any) =>
+      typeof step.run === "string" && step.run.includes("result !== 'success'"),
+    );
+    const effectiveWorkingDirectory = check["working-directory"]
+      ?? aggregate.defaults?.run?.["working-directory"]
+      ?? ci.defaults?.run?.["working-directory"];
+    expect(effectiveWorkingDirectory).toBe("${{ github.workspace }}");
+  });
+
   it("requires retained Music and local fixture lanes without counting optional load as success", () => {
     const music = workflow("test");
     const required = music.jobs["music-required"];
