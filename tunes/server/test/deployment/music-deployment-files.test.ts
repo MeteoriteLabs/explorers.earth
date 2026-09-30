@@ -50,7 +50,8 @@ describe("Music deployment authority files", () => {
       "FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
     );
     expect(dockerfile).toContain("FROM base AS prod-deps");
-    expect(dockerfile).toContain("RUN apk upgrade --no-cache");
+    expect(dockerfile).toMatch(/ARG BUILD_COMMIT\r?\nRUN : "\$BUILD_COMMIT" && apk upgrade --no-cache/);
+    expect(dockerfile).toContain("RUN rm -rf node_modules/tsx node_modules/.bin/tsx");
     expect(dockerfile).toContain("RUN npm ci --omit=dev");
     expect(JSON.parse(read("tunes/package.json")).scripts.postinstall)
       .toBe("npm ci --prefix auth-runtime --omit=dev");

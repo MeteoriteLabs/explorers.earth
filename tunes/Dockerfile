@@ -3,8 +3,9 @@ FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa3
 # Set working directory here
 WORKDIR /app
 
-# Install dependencies for Puppeteer
-RUN apk upgrade --no-cache
+# Refresh Alpine packages for each image commit, even with a remote build cache.
+ARG BUILD_COMMIT
+RUN : "$BUILD_COMMIT" && apk upgrade --no-cache
 RUN apk add --no-cache \
       chromium \
       nss \
@@ -28,6 +29,9 @@ FROM base AS prod-deps
 COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
+# npm retains optional peer tooling here despite --omit=dev. The server runs
+# compiled JavaScript, so keep tsx and its older Go-built esbuild out of runner.
+RUN rm -rf node_modules/tsx node_modules/.bin/tsx
 
 # Build the application
 FROM deps AS builder
