@@ -47,6 +47,7 @@ import { setupLocalMusicBoundary } from "./musicLocalBoundary";
 import { setupLocalMusicHealthRoutes } from "../deployment/music-local-health";
 import { assertValidatedLocalMusicProfile, type ValidatedLocalMusicProfile } from "../config/music-local-profile";
 import { installProfileOptionalMusicIntegrations, musicCompositionPolicy } from "../config/music-local-composition";
+import { assertCanonicalPlatformRouteGraph } from "../config/platform-route-graph";
 import { requestLocalMusicRuntimeShutdown } from "../config/music-local-shutdown";
 
 const featureAllowlist = (value?: string) => new Set((value ?? "").split(",").map((item) => item.trim()).filter(Boolean));
@@ -62,6 +63,7 @@ export async function registerRoutes(
   },
   localProfile?: ValidatedLocalMusicProfile,
 ): Promise<{ server: Server; shutdown: () => Promise<void> }> {
+  assertCanonicalPlatformRouteGraph(musicConfig.mode, localProfile);
   if (localProfile) {
     assertValidatedLocalMusicProfile(localProfile, process.env);
     setupLocalMusicBoundary(app);
@@ -278,6 +280,9 @@ export async function registerRoutes(
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {
+    if (musicConfig.mode === "fixture") {
+      return res.status(503).json({ error: "FIXTURE_PROVIDER_UNAVAILABLE" });
+    }
     try {
       const { term, entity, limit, media } = req.query;
       const url = `https://itunes.apple.com/search?term=${encodeURIComponent(String(term || ""))}&entity=${entity || "software"}&limit=${limit || 12}&media=${media || "software"}`;

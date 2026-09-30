@@ -40,7 +40,10 @@
     "music:fixtures:capture": "npm run --silent music-cli -- fixtures:capture",
     "music:reconcile": "npm run --silent music-cli -- reconcile",
     "music:types:scoped": "npm run music:types:scoped --prefix tunes",
-    "music:types:baseline": "npm run music:types:baseline --prefix tunes"
+    "music:types:baseline": "npm run music:types:baseline --prefix tunes",
+    "platform:local": "tsx scripts/replatform-local.ts",
+    "platform:test:integration": "tsx scripts/replatform-local.ts test:integration",
+    "platform:seed": "tsx scripts/replatform-local.ts seed"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
