@@ -200,10 +200,24 @@ const DOCKER = process.platform === "win32" ? "docker.exe" : "docker";
 const SECRET_NAMES = ["db-migrator", "db-runtime", "music-token"] as const;
 type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
   | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check";
+type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-resolution" | "compose-option"
+  | "resource-exhaustion" | "service-health" | "build-command" | "unclassified";
 let failurePhase: PlatformPhase = "docker-endpoint";
+let failureCause: PlatformBuildFailure | undefined;
 
-export function formatPlatformFailure(phase: PlatformPhase): string {
-  return `Replatform local command refused or failed; phase=${phase}; authority details redacted.\n`;
+export function classifyPlatformBuildFailure(output: string): PlatformBuildFailure {
+  if (/toomanyrequests|rate.limit|\b429\b/i.test(output)) return "registry-rate-limit";
+  if (/unauthorized|authentication required|access denied/i.test(output)) return "registry-auth";
+  if (/manifest unknown|failed to resolve source metadata|pull access denied|not found:.*image/i.test(output)) return "image-resolution";
+  if (/unknown flag|unknown shorthand flag|unsupported option/i.test(output)) return "compose-option";
+  if (/no space left|out of memory|\bENOBUFS\b|cannot allocate memory/i.test(output)) return "resource-exhaustion";
+  if (/unhealthy|dependency failed to start|timed out waiting for/i.test(output)) return "service-health";
+  if (/failed to solve|did not complete successfully|npm (?:ERR!|error)/i.test(output)) return "build-command";
+  return "unclassified";
+}
+
+export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure): string {
+  return `Replatform local command refused or failed; phase=${phase}${cause ? `; cause=${cause}` : ""}; authority details redacted.\n`;
 }
 
 export function validateProvisionSecretInventory(entries: Array<{ name: string; kind: "file" | "directory" | "symlink"; nlink: number; size: number }>): "create" | "reuse" {
@@ -264,7 +278,12 @@ function run(file: string, args: string[], environment = childEnvironment(), tim
     cwd: ROOT, env: environment, encoding: "utf8", windowsHide: true,
     shell: false, timeout, maxBuffer: 8 * 1024 * 1024, input,
   });
-  if (result.error || result.status !== 0) throw new Error("local subprocess failed");
+  if (result.error || result.status !== 0) {
+    if (failurePhase === "service-build") {
+      failureCause = classifyPlatformBuildFailure(`${result.stderr ?? ""}\n${result.stdout ?? ""}\n${result.error?.message ?? ""}`);
+    }
+    throw new Error("local subprocess failed");
+  }
   return result.stdout.trim();
 }
 
@@ -420,7 +439,8 @@ function provision(host: string): unknown {
   writeFileSync(RECEIPT, JSON.stringify(receipt), { flag: recovering ? "w" : "wx", mode: 0o600 });
   if (recovering) writeFileSync(RESET_INTENT, JSON.stringify({ status: "consumed", authority: receipt }), { flag: "w", mode: 0o600 });
   failurePhase = "service-build";
-  compose(host, ["up", "-d", "--build", "--quiet-build", "--wait", "explorers"], 900_000);
+  // Capture build output for fixed-category failure diagnosis; never print it.
+  compose(host, ["up", "-d", "--build", "--wait", "explorers"], 900_000);
   failurePhase = "service-check";
   return check(host, receipt);
 }
@@ -483,6 +503,7 @@ function verifyAllProjectResources(host: string, receipt: PlatformAuthority): vo
 async function main(args: string[]): Promise<void> {
   const command = parsePlatformCommand(args);
   failurePhase = "docker-endpoint";
+  failureCause = undefined;
   if (command.command === "test:integration") {
     const host = localDockerHost();
     failurePhase = "receipt-check";
@@ -540,7 +561,7 @@ async function main(args: string[]): Promise<void> {
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   main(process.argv.slice(2)).catch(() => {
-    process.stderr.write(formatPlatformFailure(failurePhase));
+    process.stderr.write(formatPlatformFailure(failurePhase, failureCause));
     process.exitCode = 1;
   });
 }

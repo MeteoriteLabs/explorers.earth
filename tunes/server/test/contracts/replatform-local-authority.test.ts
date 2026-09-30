@@ -18,6 +18,7 @@ import {
   validatePlatformAuthority,
   validatePlatformComposeModel,
   formatPlatformFailure,
+  classifyPlatformBuildFailure,
 } from "../../../../scripts/replatform-local";
 
 const receipt = {
@@ -65,6 +66,17 @@ describe("replatform local authority", () => {
     expect(formatPlatformFailure("docker-endpoint")).toBe(
       "Replatform local command refused or failed; phase=docker-endpoint; authority details redacted.\n",
     );
+  });
+
+  it("classifies a service-build refusal without disclosing Docker output", () => {
+    const raw = "toomanyrequests: synthetic-secret-value from a registry";
+    const message = formatPlatformFailure("service-build", classifyPlatformBuildFailure(raw));
+    expect(message).toContain("phase=service-build; cause=registry-rate-limit");
+    expect(message).not.toContain("synthetic-secret-value");
+    expect(classifyPlatformBuildFailure("unknown flag: --quiet-build")).toBe("compose-option");
+    expect(classifyPlatformBuildFailure("no space left on device")).toBe("resource-exhaustion");
+    expect(classifyPlatformBuildFailure("process npm ci did not complete successfully")).toBe("build-command");
+    expect(classifyPlatformBuildFailure("sensitive but unknown failure")).toBe("unclassified");
   });
 
   it("accepts only the declared local and acceptance seed commands", () => {
