@@ -6,6 +6,7 @@ import { createCanonicalApp } from "../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { ensureInitialAccount } from "../auth/initialAccount";
 import { recoveryIntentCookie, recoveryProofCookie } from "../auth/recoveryCallback";
+import { consumeRecoveryProof } from "../auth/recoveryProof";
 
 const config = resolveExplorersAuthConfig({
   EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51474",
@@ -18,7 +19,7 @@ let composed: ReturnType<typeof createCanonicalApp>;
 
 function cookie(response: { headers: Record<string, unknown> }, name: string): string {
   const headers = response.headers["set-cookie"] as string[] | undefined;
-  const found = headers?.find((entry) => entry.startsWith(`${name}=`));
+  const found = headers?.filter((entry) => entry.startsWith(`${name}=`) && entry.split(";")[0].split("=")[1] !== "").at(-1);
   if (!found) throw new Error(`Missing ${name} cookie`);
   return found.split(";")[0];
 }
@@ -72,10 +73,21 @@ function hasPositiveNormalAuthCookie(response: { headers: Record<string, unknown
   }));
 }
 
+function hasPositiveRecoveryProofCookie(response: { headers: Record<string, unknown> }): boolean {
+  const values = response.headers["set-cookie"] as string[] | undefined;
+  return Boolean(values?.some((entry) => entry.startsWith(`${recoveryProofCookie}=`)
+    && entry.split(";")[0].split("=")[1] !== ""));
+}
+
 describe("pinned Google callback recovery adapter", () => {
   beforeAll(() => {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 5 });
     composed = createCanonicalApp(pool, config);
+    // This test-only endpoint has the same cookie path as the later lifecycle consumer.
+    composed.app.get("/api/explorers/v1/recovery/probe", (req, res) => {
+      const raw = req.get("cookie") ?? "";
+      res.json({ hasProof: /(?:^|;\s*)explorers_recovery_proof=[A-Za-z0-9_-]{43}(?:;|$)/.test(raw) });
+    });
   });
   afterAll(async () => { await pool?.end(); });
 
@@ -132,7 +144,7 @@ describe("pinned Google callback recovery adapter", () => {
     const response = await request(composed.app).get("/api/auth/callback/google")
       .query({ error: "access_denied", state }).set("cookie", callbackCookies);
     expect(hasPositiveNormalAuthCookie(response)).toBe(false);
-    expect((response.headers["set-cookie"] as string[] | undefined)?.some((entry) => entry.startsWith(`${recoveryProofCookie}=`))).toBeFalsy();
+    expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
     expect((await pool.query("SELECT count(*)::int AS count FROM auth_session WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
   });
 
@@ -146,7 +158,7 @@ describe("pinned Google callback recovery adapter", () => {
       .set("cookie", [second.intent, ...first.callbackCookies.split("; ").slice(1)].join("; "));
     expect(response.headers.location).toBe(`${config.baseURL}/app/recover?error=recovery_unavailable`);
     expect(hasPositiveNormalAuthCookie(response)).toBe(false);
-    expect((response.headers["set-cookie"] as string[] | undefined)?.some((entry) => entry.startsWith(`${recoveryProofCookie}=`))).toBeFalsy();
+    expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
     expect((await pool.query("SELECT count(*)::int AS count FROM auth_session WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
   });
 
@@ -157,7 +169,7 @@ describe("pinned Google callback recovery adapter", () => {
     const response = await request(composed.app).get("/api/auth/callback/google")
       .query({ code: "fixture-code", state }).set("cookie", callbackCookies);
     expect(hasPositiveNormalAuthCookie(response)).toBe(false);
-    expect((response.headers["set-cookie"] as string[] | undefined)?.some((entry) => entry.startsWith(`${recoveryProofCookie}=`))).toBeFalsy();
+    expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
     expect((await pool.query("SELECT status FROM creator_accounts WHERE id=$1", [identity.accountId])).rows[0].status).toBe("suspended");
     expect((await pool.query("SELECT count(*)::int AS count FROM account_recovery_proofs WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
   });
@@ -171,7 +183,58 @@ describe("pinned Google callback recovery adapter", () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe(`${config.baseURL}/app/recover?error=recovery_unavailable`);
     expect(hasPositiveNormalAuthCookie(response)).toBe(false);
-    expect((response.headers["set-cookie"] as string[] | undefined)?.some((entry) => entry.startsWith(`${recoveryProofCookie}=`))).toBeFalsy();
+    expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
     expect((await pool.query("SELECT count(*)::int AS count FROM auth_session WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
   });
+
+  it.each(["cancelled", "mismatched", "issuance-failed"] as const)(
+    "expires and revokes a prior browser proof across a %s replacement flow",
+    async (outcome) => {
+      const identity = await seedIdentity();
+      await simulateGoogleIdentity(identity);
+      const agent = request.agent(composed.app);
+      const begin = async () => {
+        const started = await agent.post("/api/explorers/v1/recovery/start").set("origin", config.baseURL);
+        expect(started.status).toBe(204);
+        const signIn = await agent.post("/api/auth/sign-in/social").set("origin", config.baseURL)
+          .send({ provider: "google", callbackURL: "/app/recover" });
+        expect(signIn.status).toBe(200);
+        const state = new URL(signIn.body.url).searchParams.get("state");
+        if (!state) throw new Error("Google state missing");
+        return state;
+      };
+
+      const firstState = await begin();
+      const firstCallback = await agent.get("/api/auth/callback/google").query({ code: "fixture-code", state: firstState });
+      const previousToken = cookie(firstCallback, recoveryProofCookie).split("=")[1];
+      expect((await agent.get("/api/explorers/v1/recovery/probe")).body.hasProof).toBe(true);
+
+      const restarted = await agent.post("/api/explorers/v1/recovery/start").set("origin", config.baseURL);
+      expect(restarted.status).toBe(204);
+      const clear = (restarted.headers["set-cookie"] as string[]).find((entry) => entry.startsWith(`${recoveryProofCookie}=`));
+      expect(clear).toMatch(/Path=\/api\/explorers\/v1\/recovery/i);
+      expect(clear).toMatch(/Expires=|Max-Age=0/i);
+      expect((await agent.get("/api/explorers/v1/recovery/probe")).body.hasProof).toBe(false);
+      const stored = await pool.query<{ revoked_at: Date | null }>(
+        "SELECT revoked_at FROM account_recovery_proofs WHERE user_id=$1 ORDER BY issued_at DESC LIMIT 1", [identity.userId],
+      );
+      expect(stored.rows[0].revoked_at).not.toBeNull();
+      await expect(consumeRecoveryProof(pool, previousToken)).rejects.toThrow();
+
+      const signIn = await agent.post("/api/auth/sign-in/social").set("origin", config.baseURL)
+        .send({ provider: "google", callbackURL: "/app/recover" });
+      const state = new URL(signIn.body.url).searchParams.get("state");
+      if (!state) throw new Error("Google state missing");
+      if (outcome === "mismatched") {
+        await agent.post("/api/explorers/v1/recovery/start").set("origin", config.baseURL);
+      } else if (outcome === "issuance-failed") {
+        await pool.query("UPDATE creator_accounts SET status='active',suspended_at=NULL WHERE id=$1", [identity.accountId]);
+      }
+      const failed = await agent.get("/api/auth/callback/google").query(
+        outcome === "cancelled" ? { error: "access_denied", state } : { code: "fixture-code", state },
+      );
+      expect(hasPositiveNormalAuthCookie(failed)).toBe(false);
+      expect((await agent.get("/api/explorers/v1/recovery/probe")).body.hasProof).toBe(false);
+    },
+  );
 });

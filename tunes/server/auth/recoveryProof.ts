@@ -9,6 +9,13 @@ interface VerifiedGoogleCallback {
 
 function digest(token: string): Buffer { return createHash("sha256").update(token).digest(); }
 
+/** Starting a new recovery flow invalidates any earlier browser-held proof. */
+export async function revokeRecoveryProof(pool: Pick<Pool, "query">, token: string): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return;
+  await pool.query(`UPDATE account_recovery_proofs SET revoked_at=clock_timestamp()
+    WHERE token_hash=$1 AND consumed_at IS NULL AND revoked_at IS NULL`, [digest(token)]);
+}
+
 /** Called only by the verified Better Auth Google callback after-hook. Never a public route. */
 export async function issueRecoveryProof(
   pool: Pick<Pool, "connect" | "query">,

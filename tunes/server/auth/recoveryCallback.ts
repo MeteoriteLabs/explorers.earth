@@ -12,6 +12,10 @@ export function recoveryCookieOptions(config: ExplorersAuthConfig) {
   return { httpOnly: true, secure: config.baseURL.startsWith("https:"), sameSite: "lax" as const, path: "/" };
 }
 
+export function recoveryProofCookieOptions(config: ExplorersAuthConfig) {
+  return { ...recoveryCookieOptions(config), path: "/api/explorers/v1/recovery" };
+}
+
 export function createRecoveryIntent(secret: string, now = Date.now()): string {
   const payload = `${randomBytes(20).toString("base64url")}.${now}`;
   const signature = createHmac("sha256", secret).update(payload).digest("base64url");
@@ -55,6 +59,7 @@ export function createRecoveryOAuthHooks(pool: Pool, config: ExplorersAuthConfig
         ctx.context.setNewSession(null);
       }
       ctx.setCookie(recoveryIntentCookie, "", { ...recoveryCookieOptions(config), maxAge: 0 });
+      ctx.setCookie(recoveryProofCookie, "", { ...recoveryProofCookieOptions(config), maxAge: 0 });
       const cookieIntent = readRecoveryIntent(raw ?? undefined, config.secret);
       if (!pending || !cookieIntent || stateIntent !== cookieIntent) {
         if (pending) await ctx.context.internalAdapter.deleteSession(pending.session.token);
@@ -73,7 +78,7 @@ export function createRecoveryOAuthHooks(pool: Pool, config: ExplorersAuthConfig
           sessionId: pending.session.id,
         });
         ctx.setCookie(recoveryProofCookie, proof.token, {
-          ...recoveryCookieOptions(config), path: "/api/explorers/v1/recovery", maxAge: 300,
+          ...recoveryProofCookieOptions(config), maxAge: 300,
         });
       } catch {
         await ctx.context.internalAdapter.deleteSession(pending.session.token).catch(() => undefined);

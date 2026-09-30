@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import express, { type Express, type Request, type Response } from "express";
+import cookieParser from "cookie-parser";
 import { fromNodeHeaders, toNodeHandler } from "#auth-runtime";
 import type { Pool } from "pg";
 import { ensureInitialAccount } from "./initialAccount";
 import { createExplorersAuth, type ExplorersAuthConfig } from "./betterAuth";
 import { accountDtoSchema, type ApiError } from "../../shared/explorersContract";
-import { createRecoveryIntent, recoveryCookieOptions, recoveryIntentCookie } from "./recoveryCallback";
+import { createRecoveryIntent, recoveryCookieOptions, recoveryIntentCookie, recoveryProofCookie,
+  recoveryProofCookieOptions } from "./recoveryCallback";
+import { revokeRecoveryProof } from "./recoveryProof";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -26,12 +29,21 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig): { a
   });
   app.all("/api/auth", authHandler);
   app.all("/api/auth/*splat", authHandler);
+  app.use(cookieParser());
   app.use(express.json({ limit: "64kb" }));
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
 
-  app.post("/api/explorers/v1/recovery/start", (request, response) => {
+  app.post("/api/explorers/v1/recovery/start", async (request, response) => {
     if (request.get("origin") !== config.baseURL) {
       return errorResponse(response, 403, "FORBIDDEN", "Recovery request origin is not trusted");
+    }
+    response.clearCookie(recoveryIntentCookie, recoveryCookieOptions(config));
+    response.clearCookie(recoveryProofCookie, recoveryProofCookieOptions(config));
+    try {
+      const previousProof = request.cookies?.[recoveryProofCookie];
+      if (typeof previousProof === "string") await revokeRecoveryProof(pool, previousProof);
+    } catch {
+      return errorResponse(response, 503, "FORBIDDEN", "Recovery service is unavailable");
     }
     response.cookie(recoveryIntentCookie, createRecoveryIntent(config.secret), {
       ...recoveryCookieOptions(config), maxAge: 300_000,
