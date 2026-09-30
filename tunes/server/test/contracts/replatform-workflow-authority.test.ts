@@ -92,24 +92,31 @@ describe("replatform workflow authority", () => {
       typeof step.run === "string" && step.run.includes("result !== 'success'"),
     )).toBe(true);
     const check = required.steps.find((step: any) => String(step.run ?? "").includes("REQUIRED_RESULTS"));
-    for (const [event, lane, load, expected] of [
-      ["pull_request", "", "skipped", 0], ["push", "", "skipped", 0],
-      ["workflow_dispatch", "pr", "skipped", 0], ["schedule", "", "success", 0],
-      ["workflow_dispatch", "nightly", "success", 0],
-      ["schedule", "", "skipped", 1], ["schedule", "", "failure", 1],
-      ["workflow_dispatch", "nightly", "cancelled", 1], ["pull_request", "", "failure", 1],
-    ] as const) {
-      const results = Object.fromEntries(required.needs.map((name: string) => [name, { result: name === "load-chaos" ? load : "success" }]));
-      const result = spawnSync(process.execPath, ["-e", check.run.replace(/^node -e \"|\"\s*$/g, "")], {
-        encoding: "utf8", env: { ...process.env, REQUIRED_RESULTS: JSON.stringify(results), EVENT_NAME: event, LANE: lane },
-      });
-      expect(result.status, `${event}/${lane}/${load}: ${result.stderr}`).toBe(expected);
+    const cases = [
+      { event: "pull_request", lane: "", nightly: false },
+      { event: "push", lane: "", nightly: false },
+      { event: "workflow_dispatch", lane: "pr", nightly: false },
+      { event: "schedule", lane: "", nightly: true },
+      { event: "workflow_dispatch", lane: "nightly", nightly: true },
+    ] as const;
+    const script = check.run.replace(/^node -e \"|\"\s*$/g, "");
+    for (const { event, lane, nightly } of cases) {
+      for (const load of ["success", "skipped", "failure", "cancelled"] as const) {
+        const results = Object.fromEntries(required.needs.map((name: string) => [name, { result: name === "load-chaos" ? load : "success" }]));
+        const result = spawnSync(process.execPath, ["-e", script], {
+          encoding: "utf8", env: { ...process.env, REQUIRED_RESULTS: JSON.stringify(results), EVENT_NAME: event, LANE: lane },
+        });
+        const expected = load === "success" || (load === "skipped" && !nightly) ? 0 : 1;
+        expect(result.status, `${event}/${lane}/${load}: ${result.stderr}`).toBe(expected);
+      }
+      for (const outcome of ["skipped", "failure", "cancelled"] as const) {
+        const results = Object.fromEntries(required.needs.map((name: string) => [name, { result: name === "static" ? outcome : "success" }]));
+        const result = spawnSync(process.execPath, ["-e", script], {
+          encoding: "utf8", env: { ...process.env, REQUIRED_RESULTS: JSON.stringify(results), EVENT_NAME: event, LANE: lane },
+        });
+        expect(result.status, `${event}/${lane}/static=${outcome}: ${result.stderr}`).toBe(1);
+      }
     }
-    const skippedRequired = Object.fromEntries(required.needs.map((name: string) => [name, { result: name === "static" ? "skipped" : "success" }]));
-    const unexpectedSkip = spawnSync(process.execPath, ["-e", check.run.replace(/^node -e \"|\"\s*$/g, "")], {
-      encoding: "utf8", env: { ...process.env, REQUIRED_RESULTS: JSON.stringify(skippedRequired), EVENT_NAME: "schedule", LANE: "" },
-    });
-    expect(unexpectedSkip.status).toBe(1);
   });
 
   it("keeps feature pushes and PRs out of all deployment jobs", () => {

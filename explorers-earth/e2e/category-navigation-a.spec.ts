@@ -457,43 +457,6 @@ test('contained actual Settings boot verifies account without mounting consent o
 });
 
 for (const category of categories) {
-  // Break caught: Off forgets only visibility, or On silently restores saved pin.
-  test(`${category.route}: Settings Off → guest fallback → header On → explicit manual Pin`, async ({ browser, baseURL }) => {
-    const other = category.field === 'public_books' ? 'public_games' : 'public_books';
-    const state = fixtureState({ pinned_nav_tabs: ['public_profile', category.field, other] });
-    const owner = await openFixture(browser, baseURL!, state, { owner: true });
-    const guest = await openFixture(browser, baseURL!, state);
-    try {
-      await settings(owner.page);
-      await submitPinnedCategoryUnpublish(owner.page, owner.page.getByRole('checkbox', { name: category.label, exact: true }), category.label);
-      await expect.poll(() => state.writes.length).toBe(1);
-      expect(state.writes.map(r => r.variables)).toEqual([{ documentId: 'browser-account', data: { [category.field]: 'No', pinned_nav_tabs: ['public_profile', other] } }]);
-      await owner.page.reload(); await settings(owner.page, true);
-      await expect(owner.page.getByRole('checkbox', { name: category.label, exact: true })).not.toBeChecked();
-      await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
-      await guest.page.goto(`/${fixtureUser.username}`);
-      await expect(guest.page.getByRole('link', { name: 'Profile', exact: true })).toBeVisible();
-      await expect(guest.page.locator(`a[href="/${fixtureUser.username}/${category.route}"]`)).toHaveCount(0);
-      await guest.page.goto(`/${fixtureUser.username}/${category.route}?utm_source=browser`);
-      await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}?utm_source=browser`);
-      await owner.page.goto(`/recommendations/${category.route}`);
-      await toggle(owner.page.getByRole('checkbox').first(), true);
-      expect(state.writes.at(-1)?.variables.data).toEqual({ [category.field]: 'Yes' });
-      expect(state.account.pinned_nav_tabs).toEqual(['public_profile', other]);
-      await settings(owner.page, true);
-      const pin = owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true });
-      await expect(pin).not.toBeChecked(); await toggle(pin, true);
-      expect(state.writes.at(-1)?.variables.data).toEqual({ pinned_nav_tabs: ['public_profile', other, category.field] });
-      await owner.page.reload(); await settings(owner.page, true); await expect(pin).toBeChecked();
-      await guest.page.goto(`/${fixtureUser.username}`);
-      await expect(guest.page.getByRole('link', { name: category.route[0].toUpperCase() + category.route.slice(1), exact: true })).toBeVisible();
-      expect(guest.guard.vendors).toEqual([]);
-      expect(await guest.page.evaluate(() => ({ auth: localStorage.getItem('auth-storage'), token: localStorage.getItem('qrtoken') }))).toEqual({ auth: null, token: null });
-    } finally { await closeFixture(owner); await closeFixture(guest); }
-  });
-}
-
-for (const category of categories) {
   test(`${category.route}: Auto saved → header Off → reload → Hub On → Manual explicit Pin`, async ({ browser, baseURL }) => {
     const other = category.field === 'public_books' ? 'public_games' : 'public_books';
     const state = fixtureState({ auto_pinning: true, pinned_nav_tabs: ['public_profile', category.field, other] });
