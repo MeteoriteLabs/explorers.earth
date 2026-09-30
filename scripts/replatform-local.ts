@@ -12,10 +12,10 @@ export const PLATFORM_PROJECT = "explorers-replatform-local";
 export const PLATFORM_DATABASE = "music_fixture";
 export const PLATFORM_PORT = 51434;
 
-export type PlatformCommand = { command: "provision" | "start" | "check" | "stop" | "reset" } | { command: "seed"; dataset: "acceptance" } | { command: "test:integration" };
+export type PlatformCommand = { command: "provision" | "start" | "check" | "stop" | "reset" } | { command: "seed"; dataset: "acceptance" } | { command: "test:integration" | "test:routes" };
 
 export function parsePlatformCommand(args: string[]): PlatformCommand {
-  if (args.length === 1 && ["provision", "start", "check", "stop", "reset", "test:integration"].includes(args[0])) {
+  if (args.length === 1 && ["provision", "start", "check", "stop", "reset", "test:integration", "test:routes"].includes(args[0])) {
     return { command: args[0] as Exclude<PlatformCommand["command"], "seed"> };
   }
   if (args.length === 3 && args[0] === "seed" && args[1] === "--dataset" && args[2] === "acceptance") {
@@ -75,6 +75,60 @@ export function validatePlatformComposeModel<T>(model: T): T {
   return model;
 }
 
+export function assertResetComposeModel<T>(model: T): T {
+  if (!model || typeof model !== "object") refuse();
+  const value = model as Record<string, any>;
+  if (value.name !== PLATFORM_PROJECT) refuse();
+  const exactKeys = (actual: unknown, expected: string[]) => {
+    if (!actual || typeof actual !== "object" || Array.isArray(actual)
+      || Object.keys(actual).sort().join(",") !== expected.slice().sort().join(",")) refuse();
+  };
+  exactKeys(value.services, ["postgres", "strapi", "tunes-migrate", "tunes", "explorers"]);
+  const targets = {
+    networks: {
+      "replatform-local": `${PLATFORM_PROJECT}_replatform-local`,
+      "replatform-edge": `${PLATFORM_PROJECT}_replatform-edge`,
+    },
+    volumes: {
+      "replatform-local-postgres": `${PLATFORM_PROJECT}_replatform-local-postgres`,
+      "replatform-local-gates": `${PLATFORM_PROJECT}_replatform-local-gates`,
+    },
+  } as const;
+  for (const kind of ["networks", "volumes"] as const) {
+    exactKeys(value[kind], Object.keys(targets[kind]));
+    for (const [key, name] of Object.entries(targets[kind])) {
+      const resource = value[kind][key];
+      if (!resource || typeof resource !== "object" || resource.name !== name || resource.external === true) refuse();
+    }
+  }
+  if (value.networks["replatform-local"].internal !== true) refuse();
+  for (const service of Object.values(value.services) as Array<Record<string, any>>) {
+    if (!Array.isArray(service.volumes ?? [])) refuse();
+    if (service.volumes_from !== undefined && (!Array.isArray(service.volumes_from) || service.volumes_from.length > 0)) refuse();
+    for (const mount of service.volumes ?? []) {
+      if (!mount || typeof mount !== "object") refuse();
+      if (mount.type === "volume" && !Object.keys(targets.volumes).includes(mount.source)) refuse();
+      if (mount.type !== "volume" && mount.type !== "bind") refuse();
+    }
+  }
+  return model;
+}
+
+export function assertResetResourceInventory(targets: string[], owned: string[], existing: string[]): void {
+  for (const name of targets) if (existing.includes(name) && !owned.includes(name)) refuse();
+  for (const name of owned) if (!targets.includes(name)) refuse();
+}
+
+export function assertResetContainerMounts(mounts: unknown): void {
+  if (!Array.isArray(mounts)) refuse();
+  const allowed = new Set([`${PLATFORM_PROJECT}_replatform-local-postgres`, `${PLATFORM_PROJECT}_replatform-local-gates`]);
+  for (const mount of mounts) {
+    if (!mount || typeof mount !== "object") refuse();
+    if (mount.Type === "volume" && !allowed.has(mount.Name)) refuse();
+    if (mount.Type !== "volume" && mount.Type !== "bind") refuse();
+  }
+}
+
 export function assertPlatformContainer(receipt: PlatformAuthority, inspect: unknown, allowStopped = false): PlatformAuthority {
   if (!validReceipt(receipt) || !inspect || typeof inspect !== "object") refuse();
   const value = inspect as Record<string, any>;
@@ -119,11 +173,13 @@ export async function resetPlatformLocal(
   receipt: PlatformAuthority,
   target: PlatformAuthority,
   inspect: () => Promise<unknown>,
-  mutate: () => Promise<void>,
+  inspectModel: () => Promise<unknown>,
+  mutate: (attestedModel: unknown) => Promise<void>,
 ): Promise<void> {
   assertPlatformResetTarget(receipt, target);
   assertPlatformContainer(receipt, await inspect(), true);
-  await mutate();
+  const model = assertResetComposeModel(await inspectModel());
+  await mutate(model);
 }
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -132,6 +188,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { assertLocalDockerEndpoint } from "../tunes/scripts/music-local-docker";
 import { MUSIC_UAT_DATABASE_ACK } from "../tunes/scripts/music-uat-database";
+import { verifyPlatformIngress } from "./replatform-route-parity";
 
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -166,14 +223,14 @@ function readResetIntent(): unknown {
 }
 
 export function prepareResetIntent(receipt: PlatformAuthority, value: unknown): { status: "pending"; authority: PlatformAuthority } {
-  if (validateResetIntent(receipt, value)) refuse();
+  validateResetIntent(receipt, value);
   return { status: "pending", authority: receipt };
 }
 
-function childEnvironment(): NodeJS.ProcessEnv {
+function childEnvironment(source: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const allowed = ["PATH", "Path", "PATHEXT", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "ComSpec", "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "CommonProgramFiles"];
   const environment: NodeJS.ProcessEnv = {};
-  for (const key of allowed) if (process.env[key]) environment[key] = process.env[key];
+  for (const key of allowed) if (source[key]) environment[key] = source[key];
   for (const [name, filename] of [
     ["MUSIC_DB_MIGRATOR_SECRET_FILE_HOST", "db-migrator"],
     ["MUSIC_DB_RUNTIME_SECRET_FILE_HOST", "db-runtime"],
@@ -183,10 +240,22 @@ function childEnvironment(): NodeJS.ProcessEnv {
   return environment;
 }
 
-function run(file: string, args: string[], environment = childEnvironment(), timeout = 30_000): string {
+export function platformViteEnvironment(source: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return {
+    ...childEnvironment(source),
+    VITE_API_URL: "http://127.0.0.1:51474/graphql",
+    VITE_REST_API_URL: "http://127.0.0.1:51474",
+    VITE_PUBLIC_ACCESS_TOKEN: "fixture-public-token",
+    VITE_LOCAL_TUNES_API_URL: "https://localtunes.earth",
+    MUSIC_DEV_PROXY_ENABLED: "true",
+    MUSIC_DEV_PROXY_TARGET: "http://127.0.0.1:51474",
+  };
+}
+
+function run(file: string, args: string[], environment = childEnvironment(), timeout = 30_000, input?: string): string {
   const result = spawnSync(file, args, {
     cwd: ROOT, env: environment, encoding: "utf8", windowsHide: true,
-    shell: false, timeout, maxBuffer: 8 * 1024 * 1024,
+    shell: false, timeout, maxBuffer: 8 * 1024 * 1024, input,
   });
   if (result.error || result.status !== 0) throw new Error("local subprocess failed");
   return result.stdout.trim();
@@ -208,9 +277,15 @@ function compose(host: string, args: string[], timeout = 30_000): string {
   return run(DOCKER, ["--host", host, "compose", "-p", PLATFORM_PROJECT, "-f", COMPOSE, ...args], childEnvironment(), timeout);
 }
 
-function checkedModel(host: string): void {
+function composeFromAttestedModel(host: string, model: unknown, args: string[], timeout = 30_000): string {
+  assertResetComposeModel(model);
+  return run(DOCKER, ["--host", host, "compose", "-p", PLATFORM_PROJECT, "-f", "-", ...args], childEnvironment(), timeout, JSON.stringify(model));
+}
+
+function checkedModel(host: string): Record<string, any> {
   const model = JSON.parse(compose(host, ["config", "--format", "json"])) as Record<string, any>;
   validatePlatformComposeModel(model);
+  assertResetComposeModel(model);
   if (model.networks?.["replatform-local"]?.internal !== true) refuse();
   const port = model.services?.postgres?.ports;
   if (!Array.isArray(port) || port.length !== 1 || port[0]?.host_ip !== "127.0.0.1" || String(port[0]?.published) !== String(PLATFORM_PORT) || port[0]?.target !== 5432) refuse();
@@ -223,6 +298,7 @@ function checkedModel(host: string): void {
   }
   const services = Object.keys(model.services ?? {}).sort().join(",");
   if (services !== "explorers,postgres,strapi,tunes,tunes-migrate") refuse();
+  return model;
 }
 
 function privateDirectory(): void {
@@ -366,10 +442,12 @@ function verifyAllProjectResources(host: string, receipt: PlatformAuthority): vo
     if (value.Id !== id || !allowedServices.has(service) || value.Name !== `/${PLATFORM_PROJECT}-${service}-1`
       || labels["com.docker.compose.project"] !== PLATFORM_PROJECT
       || labels["com.explorers.replatform.fixture"] !== "true" || labels["com.explorers.replatform.project"] !== PLATFORM_PROJECT) refuse();
+    assertResetContainerMounts(value.Mounts);
   }
   for (const kind of ["network", "volume"] as const) {
     const names = run(DOCKER, ["--host", host, kind, "ls", "--quiet", "--filter", `label=com.docker.compose.project=${PLATFORM_PROJECT}`]).split(/\r?\n/).filter(Boolean);
     if (!names.length || names.length > 2) refuse();
+    const ownedNames: string[] = [];
     for (const name of names) {
       const value = JSON.parse(run(DOCKER, ["--host", host, kind, "inspect", "--format", "{{json .}}", name])) as Record<string, any>;
       const labels = value.Labels ?? {};
@@ -378,7 +456,12 @@ function verifyAllProjectResources(host: string, receipt: PlatformAuthority): vo
       if (!allowedName || (kind === "network" && value.Name.endsWith("_replatform-local") && value.Internal !== true)
         || labels["com.docker.compose.project"] !== PLATFORM_PROJECT || labels["com.explorers.replatform.fixture"] !== "true"
         || labels["com.explorers.replatform.project"] !== PLATFORM_PROJECT) refuse();
+      ownedNames.push(value.Name);
     }
+    const expectedNames = kind === "network" ? [`${PLATFORM_PROJECT}_replatform-local`, `${PLATFORM_PROJECT}_replatform-edge`]
+      : [`${PLATFORM_PROJECT}_replatform-local-postgres`, `${PLATFORM_PROJECT}_replatform-local-gates`];
+    const existingNames = run(DOCKER, ["--host", host, kind, "ls", "--format", "{{.Name}}"]).split(/\r?\n/).filter(Boolean);
+    assertResetResourceInventory(expectedNames, ownedNames, existingNames);
   }
 }
 
@@ -393,6 +476,13 @@ async function main(args: string[]): Promise<void> {
     process.stdout.write(`${output}\n`);
     return;
   }
+  if (command.command === "test:routes") {
+    const host = localDockerHost();
+    check(host, readReceipt());
+    const checked = await verifyPlatformIngress("http://127.0.0.1:51474");
+    process.stdout.write(`${JSON.stringify({ ingressHandlersChecked: checked })}\n`);
+    return;
+  }
   const host = localDockerHost();
   const result = command.command === "provision" ? provision(host) : await (async () => {
     const receipt = readReceipt(command.command === "reset");
@@ -400,13 +490,13 @@ async function main(args: string[]): Promise<void> {
     if (command.command === "seed") return await seed(host, receipt);
     if (command.command === "stop") return stop(host, receipt);
     if (command.command === "reset") {
-      await resetPlatformLocal(receipt, { ...receipt }, async () => inspectPostgres(host, receipt, true), async () => {
+      await resetPlatformLocal(receipt, { ...receipt }, async () => inspectPostgres(host, receipt, true), async () => checkedModel(host), async (attestedModel) => {
         verifyAllProjectResources(host, receipt);
         if (existsSync(RESET_INTENT)) {
           const next = prepareResetIntent(receipt, readResetIntent());
           writeFileSync(RESET_INTENT, JSON.stringify(next), { flag: "w", mode: 0o600 });
         } else writeFileSync(RESET_INTENT, JSON.stringify({ status: "pending", authority: receipt }), { flag: "wx", mode: 0o600 });
-        compose(host, ["down", "--volumes", "--remove-orphans"], 120_000);
+        composeFromAttestedModel(host, attestedModel, ["down", "--volumes"], 120_000);
       });
       return { reset: true, project: receipt.project };
     }
@@ -417,7 +507,7 @@ async function main(args: string[]): Promise<void> {
       check(host, receipt);
       const npmCli = process.env.npm_execpath;
       if (!npmCli) refuse();
-      const env = { ...childEnvironment(), VITE_API_URL: "http://127.0.0.1:51474/graphql", VITE_REST_API_URL: "http://127.0.0.1:51474", VITE_PUBLIC_ACCESS_TOKEN: "fixture-public-token", VITE_LOCAL_TUNES_API_URL: "https://localtunes.earth", MUSIC_DEV_PROXY_ENABLED: "true", MUSIC_DEV_PROXY_TARGET: "http://127.0.0.1:51474" };
+      const env = platformViteEnvironment();
       const child = spawnSync(process.execPath, [npmCli, "--prefix", "explorers-earth", "run", "dev", "--", "--config", "vite.replatform.config.ts", "--host", "127.0.0.1", "--port", "5175", "--strictPort"], {
         cwd: ROOT, env, stdio: "inherit", windowsHide: true,
       });

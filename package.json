@@ -43,6 +43,8 @@
     "music:types:baseline": "npm run music:types:baseline --prefix tunes",
     "platform:local": "tsx scripts/replatform-local.ts",
     "platform:test:integration": "tsx scripts/replatform-local.ts test:integration",
+    "platform:test:routes": "tsx scripts/replatform-local.ts test:routes",
+    "platform:test:browser-egress": "node explorers-earth/scripts/replatform-browser-egress.mjs",
     "platform:seed": "tsx scripts/replatform-local.ts seed"
   },
   "devDependencies": {

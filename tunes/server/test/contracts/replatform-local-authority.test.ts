@@ -6,9 +6,13 @@ import {
   assertPlatformContainer,
   assertPlatformNetwork,
   assertPlatformServiceNetworks,
+  assertResetComposeModel,
+  assertResetResourceInventory,
+  assertResetContainerMounts,
   resetPlatformLocal,
   parsePlatformCommand,
   validateProvisionSecretInventory,
+  platformViteEnvironment,
   validateResetIntent,
   prepareResetIntent,
   validatePlatformAuthority,
@@ -42,6 +46,18 @@ const ownedContainer = {
   State: { Running: true, Health: { Status: "healthy" } },
   HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "51434" }] } },
 };
+const resetModel = {
+  ...ownedModel,
+  services: Object.fromEntries(["postgres", "strapi", "tunes-migrate", "tunes", "explorers"].map((name) => [name, { volumes: name === "postgres" ? [{ type: "volume", source: "replatform-local-postgres" }] : [] }])),
+  networks: {
+    "replatform-local": { name: "explorers-replatform-local_replatform-local", internal: true },
+    "replatform-edge": { name: "explorers-replatform-local_replatform-edge" },
+  },
+  volumes: {
+    "replatform-local-postgres": { name: "explorers-replatform-local_replatform-local-postgres" },
+    "replatform-local-gates": { name: "explorers-replatform-local_replatform-local-gates" },
+  },
+};
 
 describe("replatform local authority", () => {
   it("accepts only the declared local and acceptance seed commands", () => {
@@ -61,15 +77,23 @@ describe("replatform local authority", () => {
     expect(() => validateProvisionSecretInventory([{ ...safe[0], name: "../db-migrator" }, ...safe.slice(1)])).toThrow(/authority/i);
   });
 
+  it("passes only explicit fixture Vite values from a secret-bearing parent environment", () => {
+    const env = platformViteEnvironment({ PATH: "fixture-path", VITE_IGDB_CLIENT_SECRET: "SYNTHETIC_SENTINEL", VITE_PAYMENT_API_URL: "https://hosted.example" });
+    expect(env.VITE_IGDB_CLIENT_SECRET).toBeUndefined();
+    expect(env.VITE_PAYMENT_API_URL).toBeUndefined();
+    expect(env.VITE_API_URL).toBe("http://127.0.0.1:51474/graphql");
+    expect(env.MUSIC_DEV_PROXY_TARGET).toBe("http://127.0.0.1:51474");
+  });
+
   it("requires an exact reset intent before reprovisioning a retired receipt", () => {
     expect(validateResetIntent(receipt, { status: "pending", authority: { ...receipt } })).toBe(true);
     expect(validateResetIntent(receipt, { status: "consumed", authority: { ...receipt } })).toBe(false);
     expect(() => validateResetIntent(receipt, { status: "pending", authority: { ...receipt, project: "production" } })).toThrow(/authority/i);
   });
-  it("renews only a consumed intent for the same provisioned authority", () => {
+  it("renews or retries only an exact intent for the same provisioned authority", () => {
     expect(prepareResetIntent(receipt, { status: "consumed", authority: { ...receipt } })).toEqual({ status: "pending", authority: receipt });
     expect(() => prepareResetIntent(receipt, { status: "consumed", authority: { ...receipt, containerId: "c".repeat(64) } })).toThrow(/authority/i);
-    expect(() => prepareResetIntent(receipt, { status: "pending", authority: { ...receipt } })).toThrow(/authority/i);
+    expect(prepareResetIntent(receipt, { status: "pending", authority: { ...receipt } })).toEqual({ status: "pending", authority: receipt });
   });
   it("accepts only an exact provisioned loopback target", () => {
     expect(validatePlatformAuthority(receipt, `postgresql://music_migrator:fixture@127.0.0.1:51434/music_fixture`, receipt.commit)).toEqual(receipt);
@@ -94,6 +118,27 @@ describe("replatform local authority", () => {
     expect(() => assertPlatformResetTarget(receipt, { ...receipt, containerId: "c".repeat(64) })).toThrow(/authority/i);
     expect(() => assertPlatformResetTarget(receipt, { ...receipt, project: "production" })).toThrow(/authority/i);
     expect(assertPlatformResetTarget(receipt, { ...receipt })).toEqual(receipt);
+  });
+
+  it("rejects every undeclared or unowned Compose deletion target before reset mutation", async () => {
+    expect(assertResetComposeModel(resetModel)).toEqual(resetModel);
+    const unsafe = { ...resetModel, volumes: { ...resetModel.volumes, extra: { name: "another_local_volume" } } };
+    expect(() => assertResetComposeModel(unsafe)).toThrow(/authority/i);
+    let mutations = 0;
+    await expect(resetPlatformLocal(receipt, { ...receipt }, async () => ownedContainer, async () => unsafe, async () => { mutations++; }))
+      .rejects.toThrow(/authority/i);
+    expect(mutations).toBe(0);
+    let deletionModel: unknown;
+    await resetPlatformLocal(receipt, { ...receipt }, async () => ownedContainer, async () => resetModel, async (model) => { deletionModel = model; });
+    expect(deletionModel).toBe(resetModel);
+    expect(() => assertResetComposeModel({ ...resetModel, volumes: { ...resetModel.volumes, "replatform-local-postgres": { name: "another_local_volume" } } })).toThrow(/authority/i);
+    expect(() => assertResetComposeModel({ ...resetModel, volumes: { ...resetModel.volumes, "replatform-local-postgres": { name: "explorers-replatform-local_replatform-local-postgres", external: true } } })).toThrow(/authority/i);
+    expect(() => assertResetComposeModel({ ...resetModel, networks: { ...resetModel.networks, "replatform-edge": { name: "another_local_network" } } })).toThrow(/authority/i);
+    expect(() => assertResetComposeModel({ ...resetModel, services: { ...resetModel.services, postgres: { volumes: [{ type: "volume", source: "another_local_volume" }] } } })).toThrow(/authority/i);
+    expect(() => assertResetResourceInventory(["owned"], ["owned"], ["owned"])).not.toThrow();
+    expect(() => assertResetResourceInventory(["owned"], [], ["owned"])).toThrow(/authority/i);
+    expect(() => assertResetContainerMounts([{ Type: "volume", Name: "explorers-replatform-local_replatform-local-postgres" }, { Type: "bind" }])).not.toThrow();
+    expect(() => assertResetContainerMounts([{ Type: "volume", Name: "unowned_volume" }])).toThrow(/authority/i);
   });
 
   it("requires a separate labeled Compose project with a loopback PostgreSQL service", () => {
@@ -129,19 +174,19 @@ describe("replatform local authority", () => {
 
   it("does not call reset mutation when container attestation fails", async () => {
     let mutations = 0;
-    await expect(resetPlatformLocal(receipt, { ...receipt }, async () => ({ ...ownedContainer, Id: "c".repeat(64) }), async () => { mutations++; }))
+    await expect(resetPlatformLocal(receipt, { ...receipt }, async () => ({ ...ownedContainer, Id: "c".repeat(64) }), async () => resetModel, async () => { mutations++; }))
       .rejects.toThrow(/authority/i);
     expect(mutations).toBe(0);
-    await resetPlatformLocal(receipt, { ...receipt }, async () => ownedContainer, async () => { mutations++; });
+    await resetPlatformLocal(receipt, { ...receipt }, async () => ownedContainer, async () => resetModel, async () => { mutations++; });
     expect(mutations).toBe(1);
   });
 
   it("can reset an exact stopped local container after stop", async () => {
     let mutations = 0;
     const stopped = { ...ownedContainer, State: { Running: false, Health: { Status: "healthy" } } };
-    await resetPlatformLocal(receipt, { ...receipt }, async () => stopped, async () => { mutations++; });
+    await resetPlatformLocal(receipt, { ...receipt }, async () => stopped, async () => resetModel, async () => { mutations++; });
     expect(mutations).toBe(1);
-    await expect(resetPlatformLocal(receipt, { ...receipt }, async () => ({ ...stopped, Id: "c".repeat(64) }), async () => { mutations++; })).rejects.toThrow(/authority/i);
+    await expect(resetPlatformLocal(receipt, { ...receipt }, async () => ({ ...stopped, Id: "c".repeat(64) }), async () => resetModel, async () => { mutations++; })).rejects.toThrow(/authority/i);
     expect(mutations).toBe(1);
   });
 

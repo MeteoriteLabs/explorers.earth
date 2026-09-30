@@ -5,6 +5,7 @@ export function createReplatformViteConfig(): UserConfig {
   const gateway = "http://127.0.0.1:51474";
   return defineConfig({
     plugins: [react()],
+    envDir: false,
     server: {
       host: "127.0.0.1",
       port: 5175,
