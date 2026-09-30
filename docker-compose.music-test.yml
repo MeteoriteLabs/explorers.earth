@@ -83,6 +83,7 @@ services:
         VITE_PUBLIC_ACCESS_TOKEN: fixture-public-token
     environment:
       NODE_ENV: production
+      EXPLORERS_API_MODE: legacy-music
       PORT: 5000
       MUSIC_DATABASE_HOST: postgres
       MUSIC_DATABASE_PORT: "5432"

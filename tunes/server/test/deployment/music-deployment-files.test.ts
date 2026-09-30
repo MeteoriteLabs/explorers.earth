@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { auditDeploymentAuthority } from "../../deployment/music-deployment";
+import { selectApiMode } from "../../apiMode";
 
 const repoRoot = resolve(import.meta.dirname, "../../../..");
 const read = (path: string) => readFileSync(resolve(repoRoot, path), "utf8");
@@ -28,6 +29,21 @@ function heredoc(source: string, opener: string): string {
 }
 
 describe("Music deployment authority files", () => {
+  it("selects legacy API startup for every Compose service using the Tunes API image", () => {
+    for (const [file, serviceNames] of [
+      ["docker-compose.yml", ["tunes-blue", "tunes-green"]],
+      ["docker-compose.music-test.yml", ["tunes"]],
+      ["docker-compose.replatform.yml", ["tunes"]],
+    ] as const) {
+      const compose = parseYaml(read(file));
+      for (const name of serviceNames) {
+        const service = compose.services[name];
+        expect(service, `${file}:${name}`).toBeDefined();
+        expect(service.command, `${file}:${name} must use the API image default entrypoint`).toBeUndefined();
+        expect(selectApiMode(service.environment), `${file}:${name}`).toBe("legacy-music");
+      }
+    }
+  });
   it("keeps development dependencies out of the production image", () => {
     const dockerfile = read("tunes/Dockerfile");
     expect(dockerfile).toContain(

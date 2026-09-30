@@ -2,6 +2,7 @@ import { betterAuth, APIError, createAuthMiddleware, drizzleAdapter } from "#aut
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { Pool } from "pg";
 import * as authSchema from "../../shared/authSchema";
+import { createRecoveryOAuthHooks } from "./recoveryCallback";
 
 type Environment = Record<string, string | undefined>;
 
@@ -52,6 +53,7 @@ export function isAllowedAuthReturnUrl(value: string, config: Pick<ExplorersAuth
 
 export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig) {
   const database = drizzle(pool, { schema: authSchema });
+  const recoveryHooks = createRecoveryOAuthHooks(pool, config);
   return betterAuth({
     baseURL: config.baseURL,
     basePath: "/api/auth",
@@ -81,7 +83,9 @@ export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig) {
             throw new APIError("FORBIDDEN", { message: "Auth return URL is not allowed" });
           }
         }
+        await recoveryHooks.before(context);
       }),
+      after: recoveryHooks.after,
     },
   });
 }
