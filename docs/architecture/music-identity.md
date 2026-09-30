@@ -6,6 +6,8 @@ Strapi is the authority for the authenticated Explorer and the selected Account.
 
 The machine-readable authorities are the generated [runtime surface inventory](music-runtime-surface-inventory.json), the [authorization matrix](music-authorization-matrix.json), the runtime-table manifest in `fixtures/db/music-runtime-table-manifest.json`, and the OpenAPI document served by Tunes at `GET /api-docs`. This document explains the model; it does not override those artifacts.
 
+Canonical Explorer authentication and recovery-start rows in the matrix carry `flowAccess` with `grantsApplicationAuthority: false`. Suspended and pending-deletion identities may enter those provider/recovery flows; that access does not authorize `/api/explorers/v1/me`, Music owner/content routes, or retired legacy auth paths. The recovery intent is signed and short-lived; OAuth state and the consumed recovery proof provide the one-use boundaries.
+
 ## Five independent axes
 
 | Axis | Meaning | Authority | What it must not imply |

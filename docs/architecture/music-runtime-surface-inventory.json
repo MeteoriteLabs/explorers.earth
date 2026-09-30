@@ -424,8 +424,8 @@
       "method": "POST",
       "path": "/api/explorers/v1/recovery/start",
       "classification": "canonical-explorers-recovery",
-      "ownerSource": "trusted-origin+single-use-recovery-intent",
-      "policy": "trusted-origin+single-use-recovery-intent",
+      "ownerSource": "trusted-origin+signed-short-lived-recovery-intent",
+      "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
       "line": 36

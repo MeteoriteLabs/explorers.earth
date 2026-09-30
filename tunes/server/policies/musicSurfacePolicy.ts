@@ -149,12 +149,13 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
 }
 
 function allowedFor(decision: MusicSurfaceDecision) {
+  const identityFlow = decision === "explorers-auth" || decision === "explorers-recovery";
   return {
     unauthenticated: decision === "public" || decision === "guest" || decision === "native-session" || decision === "explorers-auth" || decision === "explorers-recovery",
     owner: decision === "owner" || decision === "paid-owner" || decision === "owner-or-guest" || decision === "explorers-owner" || decision === "explorers-auth",
     otherUser: false,
-    suspended: false,
-    pendingDeletion: false,
+    suspended: identityFlow,
+    pendingDeletion: identityFlow,
     staleEntitlement: decision === "owner",
     guestValid: decision === "guest" || decision === "owner-or-guest",
     guestInvalid: false,
@@ -183,7 +184,15 @@ export function authorizationMatrixFromInventory(inventory: {
       if (decision === "guest" && route.method !== "GET"
           && route.path !== "/api/playlist/:guestUrl/requests"
           && route.path !== "/api/explorers/analytics/music/:publicSlug/events") allowed.unauthenticated = false;
-      return { method: route.method, path: route.path, source: route.source, decision, allowed };
+      const flowAccess = decision === "explorers-auth"
+        ? { purpose: "provider-authentication", grantsApplicationAuthority: false }
+        : decision === "explorers-recovery"
+          ? { purpose: "recovery-intent-issuance", grantsApplicationAuthority: false }
+          : undefined;
+      return {
+        method: route.method, path: route.path, source: route.source, decision, allowed,
+        ...(flowAccess ? { flowAccess } : {}),
+      };
     }),
     events: inventory.events.map((event) => {
       const decision: MusicSurfaceDecision = event.direction === "emit" && event.event === "guest_request" ? "owner"

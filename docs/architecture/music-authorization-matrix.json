@@ -104,14 +104,18 @@
         "unauthenticated": true,
         "owner": true,
         "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
+        "suspended": true,
+        "pendingDeletion": true,
         "staleEntitlement": false,
         "guestValid": false,
         "guestInvalid": false,
         "guestRevoked": false,
         "internalAdmin": false,
         "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "provider-authentication",
+        "grantsApplicationAuthority": false
       }
     },
     {
@@ -123,14 +127,18 @@
         "unauthenticated": true,
         "owner": true,
         "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
+        "suspended": true,
+        "pendingDeletion": true,
         "staleEntitlement": false,
         "guestValid": false,
         "guestInvalid": false,
         "guestRevoked": false,
         "internalAdmin": false,
         "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "provider-authentication",
+        "grantsApplicationAuthority": false
       }
     },
     {
@@ -142,14 +150,18 @@
         "unauthenticated": true,
         "owner": true,
         "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
+        "suspended": true,
+        "pendingDeletion": true,
         "staleEntitlement": false,
         "guestValid": false,
         "guestInvalid": false,
         "guestRevoked": false,
         "internalAdmin": false,
         "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "provider-authentication",
+        "grantsApplicationAuthority": false
       }
     },
     {
@@ -180,14 +192,18 @@
         "unauthenticated": true,
         "owner": false,
         "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
+        "suspended": true,
+        "pendingDeletion": true,
         "staleEntitlement": false,
         "guestValid": false,
         "guestInvalid": false,
         "guestRevoked": false,
         "internalAdmin": false,
         "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "recovery-intent-issuance",
+        "grantsApplicationAuthority": false
       }
     },
     {

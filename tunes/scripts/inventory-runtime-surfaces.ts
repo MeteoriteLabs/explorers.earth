@@ -90,7 +90,7 @@ function ownerFor(path: string, classification: string): string {
   if (classification === "native-session") return "native-session-only";
   if (classification === "canonical-explorers-owner") return "verified-google-session+active-initial-account-binding";
   if (classification === "canonical-explorers-auth") return "better-auth-session-or-provider-flow";
-  if (classification === "canonical-explorers-recovery") return "trusted-origin+single-use-recovery-intent";
+  if (classification === "canonical-explorers-recovery") return "trusted-origin+signed-short-lived-recovery-intent";
   return "none";
 }
 
@@ -144,7 +144,7 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
             else if (classification === "native-session") policy = "standalone-native-only";
             else if (classification === "canonical-explorers-auth") policy = "better-auth-handler+trusted-origin-for-mutations";
             else if (classification === "canonical-explorers-owner") policy = "better-auth-session+google-provider+active-initial-account-binding";
-            else if (classification === "canonical-explorers-recovery") policy = "trusted-origin+single-use-recovery-intent";
+            else if (classification === "canonical-explorers-recovery") policy = "trusted-origin+signed-short-lived-recovery-intent";
             routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, classification), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }
           const event = literal(node.arguments[0]);
