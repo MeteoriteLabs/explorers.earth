@@ -19,7 +19,7 @@ on:
       - ".github/workflows/music-reconcile.yml"
       - "docs/**"
   push:
-    branches: [main, develop, codex/unified-replatform]
+    branches: [main, develop]
     paths:
       - "package.json"
       - "package-lock.json"

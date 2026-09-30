@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,12 +11,14 @@ const { load } = require("js-yaml") as { load(source: string): any };
 const workflow = (name: string) => load(read(name));
 
 describe("replatform workflow authority", () => {
-  it("validates every main PR, including drafts, and every integration push without path gaps", () => {
+  it("validates every main PR, including drafts, without duplicate integration pushes", () => {
     const ci = workflow("ci");
     expect(ci.on.pull_request.branches).toContain("main");
     expect(ci.on.pull_request).not.toHaveProperty("paths");
     expect(ci.on.pull_request).not.toHaveProperty("paths-ignore");
-    expect(ci.on.push.branches).toContain("codex/unified-replatform");
+    for (const name of ["ci", "test", "music-c0-contracts", "tunes"]) {
+      expect(workflow(name).on.push.branches).not.toContain("codex/unified-replatform");
+    }
     expect(ci.on.push).not.toHaveProperty("paths");
     expect(ci.on.push).not.toHaveProperty("paths-ignore");
     expect(read("ci")).not.toMatch(/\bdraft\s*==\s*false/);
@@ -26,8 +29,36 @@ describe("replatform workflow authority", () => {
     const required = ci.jobs["replatform-required"];
     expect(required).toBeDefined();
     expect(required.needs).toEqual(expect.arrayContaining([
-      "lint", "typecheck", "unit-tests", "build", "integration-tests", "e2e-tests",
+      "lint", "typecheck", "unit-tests", "build", "integration-tests",
+      "e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-publishing", "e2e-music-account",
     ]));
+    for (const name of ["e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-publishing", "e2e-music-account"]) {
+      expect(ci.jobs[name]).toBeDefined();
+      expect(ci.jobs[name]).not.toHaveProperty("needs");
+    }
+    const commands = [
+      "--config=playwright.category-navigation-a.config.ts",
+      "--config=playwright.category-navigation-b.config.ts",
+      "--config=playwright.public-shell-continuity.config.ts --project=chromium",
+      "--config=playwright.music-publishing.config.ts",
+      "e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual",
+    ];
+    const artifacts = new Set<string>();
+    ["e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-publishing", "e2e-music-account"].forEach((name, index) => {
+      const job = ci.jobs[name];
+      expect(job.steps.some((step: any) => String(step.run ?? "").includes(commands[index]))).toBe(true);
+      const run = job.steps.find((step: any) => String(step.run ?? "").includes(commands[index]));
+      expect(run.env).toMatchObject({ CI: true, PLAYWRIGHT_PR_SAFE: true, VITE_API_URL: "http://localhost:5173/graphql" });
+      const uploads = job.steps.filter((step: any) => step.uses === "actions/upload-artifact@v4");
+      expect(uploads).toHaveLength(2);
+      for (const upload of uploads) {
+        expect(artifacts.has(upload.with.name)).toBe(false);
+        artifacts.add(upload.with.name);
+        expect(upload.with["if-no-files-found"]).toBe("ignore");
+      }
+      expect(uploads[0].if).toBe("always()");
+      expect(uploads[1].if).toBe("failure()");
+    });
     expect(ci.jobs["backend-validation"]).toBeUndefined();
     expect(required.if).toContain("always()");
     expect(required.steps.some((step: any) =>
@@ -48,18 +79,37 @@ describe("replatform workflow authority", () => {
     expect(effectiveWorkingDirectory).toBe("${{ github.workspace }}");
   });
 
-  it("requires retained Music and local fixture lanes without counting optional load as success", () => {
+  it("requires retained Music and local fixture lanes with event-specific nightly load", () => {
     const music = workflow("test");
     const required = music.jobs["music-required"];
     expect(required.needs).toEqual(expect.arrayContaining([
       "docs-contracts", "static", "unit-coverage", "contracts", "database",
       "security", "frontend", "browser", "image-deploy-contract", "platform-fixture",
     ]));
-    expect(required.needs).not.toContain("load-chaos");
+    expect(required.needs).toContain("load-chaos");
     expect(required.if).toContain("always()");
     expect(required.steps.some((step: any) =>
       typeof step.run === "string" && step.run.includes("result !== 'success'"),
     )).toBe(true);
+    const check = required.steps.find((step: any) => String(step.run ?? "").includes("REQUIRED_RESULTS"));
+    for (const [event, lane, load, expected] of [
+      ["pull_request", "", "skipped", 0], ["push", "", "skipped", 0],
+      ["workflow_dispatch", "pr", "skipped", 0], ["schedule", "", "success", 0],
+      ["workflow_dispatch", "nightly", "success", 0],
+      ["schedule", "", "skipped", 1], ["schedule", "", "failure", 1],
+      ["workflow_dispatch", "nightly", "cancelled", 1], ["pull_request", "", "failure", 1],
+    ] as const) {
+      const results = Object.fromEntries(required.needs.map((name: string) => [name, { result: name === "load-chaos" ? load : "success" }]));
+      const result = spawnSync(process.execPath, ["-e", check.run.replace(/^node -e \"|\"\s*$/g, "")], {
+        encoding: "utf8", env: { ...process.env, REQUIRED_RESULTS: JSON.stringify(results), EVENT_NAME: event, LANE: lane },
+      });
+      expect(result.status, `${event}/${lane}/${load}: ${result.stderr}`).toBe(expected);
+    }
+    const skippedRequired = Object.fromEntries(required.needs.map((name: string) => [name, { result: name === "static" ? "skipped" : "success" }]));
+    const unexpectedSkip = spawnSync(process.execPath, ["-e", check.run.replace(/^node -e \"|\"\s*$/g, "")], {
+      encoding: "utf8", env: { ...process.env, REQUIRED_RESULTS: JSON.stringify(skippedRequired), EVENT_NAME: "schedule", LANE: "" },
+    });
+    expect(unexpectedSkip.status).toBe(1);
   });
 
   it("keeps feature pushes and PRs out of all deployment jobs", () => {

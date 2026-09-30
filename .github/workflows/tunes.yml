@@ -1,4 +1,4 @@
-name: Tunes immutable image CI
+name: API image validation
 
 on:
   pull_request:
@@ -22,7 +22,7 @@ on:
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
   push:
-    branches: [main, codex/unified-replatform]
+    branches: [main]
     paths:
       - tunes/**
       - explorers-earth/**
@@ -49,11 +49,11 @@ on:
         required: true
         default: false
       validated_run_id:
-        description: Successful main CI Pipeline push run for this exact source revision
+        description: Successful main Explorers validation push run for this exact source revision
         type: string
         required: true
       music_validated_run_id:
-        description: Successful main Music contract CI push run for this exact source revision
+        description: Successful main Backend validation push run for this exact source revision
         type: string
         required: true
 

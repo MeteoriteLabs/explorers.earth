@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e', testMatch: 'category-navigation.spec.ts',
+  testDir: './e2e', testMatch: /category-navigation-[ab]\.spec\.ts/,
   outputDir: '../.artifacts/category-navigation/results',
   workers: 1, retries: 0, timeout: 60_000, expect: { timeout: 12_000 }, reporter: [['line'], ['json', { outputFile: '../.artifacts/category-navigation/report.json' }]],
   use: {

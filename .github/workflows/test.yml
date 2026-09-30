@@ -1,9 +1,9 @@
-name: Music contract and qualification CI
+name: Backend validation
 
 on:
   pull_request: {}
   push:
-    branches: [main, develop, codex/unified-replatform]
+    branches: [main, develop]
   schedule:
     - cron: "41 2 * * *"
   workflow_dispatch:
@@ -52,7 +52,6 @@ jobs:
       - run: npm run music:types:baseline
 
   unit-coverage:
-    needs: static
     # Native Windows ACL behavior has injected unit contracts and a native local proof;
     # the portable coverage gate must not inherit hosted-runner ACL policy.
     runs-on: ubuntu-24.04
@@ -72,7 +71,6 @@ jobs:
       - run: npm run test:music-critical-coverage --prefix explorers-earth
 
   contracts:
-    needs: unit-coverage
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -86,7 +84,6 @@ jobs:
       - run: npm test --prefix tunes -- --run server/test/contracts
 
   database:
-    needs: contracts
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -126,7 +123,6 @@ jobs:
         run: npm run test:integration --prefix tunes -- server/test/migrations/music-migration.integration.test.ts server/test/music-identity-projection.integration.test.ts server/test/music-credential.integration.test.ts server/test/music-domain-repository.integration.test.ts server/test/musicLifecycle.integration.test.ts server/test/musicReconciler.integration.test.ts server/test/reconciliationRepository.integration.test.ts --maxWorkers=1 --fileParallelism=false
 
   security:
-    needs: database
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -140,7 +136,6 @@ jobs:
       - run: npm test --prefix tunes -- --run server/test/contracts/music-authorization-matrix.test.ts server/test/security/music-security-qualification.test.ts server/test/music-surface-policy.test.ts server/test/music-surface-routes.test.ts server/test/music-identity-route.test.ts server/test/music-socket-server.test.ts
 
   frontend:
-    needs: security
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -154,7 +149,6 @@ jobs:
       - run: npm run test:unit --prefix explorers-earth -- src/features/music src/components/__tests__/MusicDashboard.test.tsx src/pages/__tests__/MusicPage.test.tsx src/pages/__tests__/PublicMusic.test.tsx src/services/__tests__/accountLifecycleService.test.ts
 
   browser:
-    needs: frontend
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -236,8 +230,6 @@ jobs:
         run: /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh nightly
 
   image-deploy-contract:
-    needs: [browser, load-chaos]
-    if: always() && needs.browser.result == 'success' && (needs.load-chaos.result == 'success' || needs.load-chaos.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -309,10 +301,12 @@ jobs:
     name: music-required
     runs-on: ubuntu-24.04
     if: always()
-    needs: [docs-contracts, static, unit-coverage, contracts, database, security, frontend, browser, image-deploy-contract, platform-fixture]
+    needs: [docs-contracts, static, unit-coverage, contracts, database, security, frontend, browser, load-chaos, image-deploy-contract, platform-fixture]
     steps:
       - name: Require every Music and local-platform validation job to succeed
         env:
           REQUIRED_RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+          LANE: ${{ inputs.lane }}
         run: |
-          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const failures=Object.entries(results).filter(([, job]) => job.result !== 'success'); if(failures.length){ console.error('Required Music validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"
+          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const nightly=process.env.EVENT_NAME === 'schedule' || (process.env.EVENT_NAME === 'workflow_dispatch' && process.env.LANE === 'nightly'); const failures=Object.entries(results).filter(([name, job]) => name === 'load-chaos' && !nightly && job.result === 'skipped' ? false : job.result !== 'success'); if(failures.length){ console.error('Required Music validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"

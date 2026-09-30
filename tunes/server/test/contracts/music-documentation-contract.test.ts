@@ -792,22 +792,19 @@ describe("Music documentation publication contract", () => {
 });
 
 describe("Music CI publication order", () => {
-  it("runs docs contracts on every change and gates release layers in dependency order", () => {
+  it("runs every isolated Music validation lane and retains the nightly browser edge", () => {
     const path = resolve(root, ".github/workflows/test.yml");
     const workflow = existsSync(path) ? parseYaml(read(".github/workflows/test.yml")) : {};
     expect(workflow.on).toEqual(expect.objectContaining({ pull_request: expect.anything(), push: expect.anything() }));
     expect(workflow.on).not.toHaveProperty("paths-ignore");
     expect(workflow.jobs?.["docs-contracts"]).not.toHaveProperty("needs");
     expect(workflow.jobs?.static).not.toHaveProperty("needs");
-    expect(workflow.jobs?.["unit-coverage"]?.needs).toBe("static");
+    expect(workflow.jobs?.["unit-coverage"]).not.toHaveProperty("needs");
     expect(workflow.jobs?.["unit-coverage"]?.["runs-on"]).toBe("ubuntu-24.04");
-    expect(workflow.jobs?.contracts?.needs).toBe("unit-coverage");
-    expect(workflow.jobs?.database?.needs).toBe("contracts");
-    expect(workflow.jobs?.security?.needs).toBe("database");
-    expect(workflow.jobs?.frontend?.needs).toBe("security");
-    expect(workflow.jobs?.browser?.needs).toBe("frontend");
+    for (const name of ["contracts", "database", "security", "frontend", "browser", "image-deploy-contract"]) {
+      expect(workflow.jobs?.[name]).not.toHaveProperty("needs");
+    }
     expect(workflow.jobs?.["load-chaos"]?.needs).toBe("browser");
-    expect(workflow.jobs?.["image-deploy-contract"]?.needs).toEqual(["browser", "load-chaos"]);
     const imageSteps = JSON.stringify(workflow.jobs?.["image-deploy-contract"]?.steps ?? []);
     for (const path of MUSIC_QUALIFICATION_TASKS["release-rehearsal"].npmArgs.filter((value) => value.startsWith("server/test/deployment/"))) {
       expect(imageSteps).toContain(path);
