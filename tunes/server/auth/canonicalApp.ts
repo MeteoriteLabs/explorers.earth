@@ -20,6 +20,7 @@ import { setupExplorersMediaRoutes } from "../routes/explorersMediaRoutes";
 import { MediaService } from "../application/media";
 import type { ObjectStorage } from "../services/objectStorage";
 import { setupExplorersLifecycleRoutes } from "../routes/explorersLifecycleRoutes";
+import { setupExplorersRecommendationRoutes } from "../routes/explorersRecommendationRoutes";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -45,6 +46,7 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.use(express.json({ limit: "64kb" }));
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersAccountRoutes(app, pool, auth, config);
+  setupExplorersRecommendationRoutes(app, pool, auth, config);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage));
   // Privacy changes must be visible on the very next public request, including across app replicas.

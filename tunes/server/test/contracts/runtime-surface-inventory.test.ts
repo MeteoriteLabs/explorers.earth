@@ -41,7 +41,8 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
-    expect(inventory.routes.filter((route) => route.method === "ALL")).toHaveLength(3);
+    expect(inventory.routes.filter((route) => route.method === "ALL"
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(3);
     expect(inventory.routes.every((route) => route.line > 0)).toBe(true);
     expect(inventory.routes.filter((route) => route.policy === "none").every((route) => route.classification !== "public")).toBe(true);
     expect(inventory.events).toEqual(expect.arrayContaining([
@@ -54,6 +55,26 @@ describe("runtime route/event/job inventory", () => {
     ].includes(route.classification))).toBe(false);
     expect(inventory.events.every((event) => event.classification !== "unclassified")).toBe(true);
     expect(inventory.jobs).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "setTimeout", lifecycle: "reactivation-token-cleanup" })]));
+  });
+
+  it("discovers every bounded recommendation owner command and fail-closed method boundary", () => {
+    const routes=inventoryRuntimeSurfaces(repositoryRoot).routes.filter(route=>route.source === "tunes/server/routes/explorersRecommendationRoutes.ts");
+    const ownerCommands=[
+      ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
+      ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
+      ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
+      ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
+    ];
+    const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
+      '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
+      '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search'];
+    expect(routes).toHaveLength(ownerCommands.length+methodBoundaries.length);
+    for(const [method,path] of ownerCommands) expect(routes).toContainEqual(expect.objectContaining({
+      method,path,classification:'canonical-explorers-owner',ownerSource:'verified-google-session+active-initial-account-binding',
+      policy:'better-auth-session+google-provider+active-initial-account-binding',
+    }));
+    expect(routes.filter(route=>route.method==='ALL').map(route=>route.path).sort()).toEqual(methodBoundaries.sort());
+    expect(routes.filter(route=>route.method==='ALL').every(route=>route.classification==='tombstone' && route.ownerSource==='none-fail-closed')).toBe(true);
   });
 
   it("fails closed on an unclassified admin or owner surface", () => {

@@ -14,6 +14,20 @@ const repositoryRoot = resolve(import.meta.dirname, "../../..");
 
 describe("Music surface authorization policy", () => {
   it.each([
+    ['POST','/api/explorers/v1/entities/resolve'],['POST','/api/explorers/v1/collections'],
+    ['PATCH','/api/explorers/v1/collections/:id'],['PATCH','/api/explorers/v1/collections/:id/order'],
+    ['DELETE','/api/explorers/v1/collections/:id'],['POST','/api/explorers/v1/recommendations'],
+    ['PATCH','/api/explorers/v1/recommendations/:id'],['DELETE','/api/explorers/v1/recommendations/:id'],
+  ])('classifies only the implemented recommendation command %s %s', (method,path)=>{
+    const route={source:'tunes/server/routes/explorersRecommendationRoutes.ts',method,path,classification:'private'};
+    expect(decisionForRoute(route)).toBe('explorers-owner');
+    expect(decisionForRoute({...route,source:'legacy.ts'})).toBe('tombstone');
+    expect(decisionForRoute({...route,method:'PUT'})).toBe('tombstone');
+    expect(decisionForRoute({...route,method:'ALL'})).toBe('tombstone');
+    expect(decisionForRoute({...route,path:`${path}/admin`})).toBe('tombstone');
+    expect(decisionForRoute({...route,classification:'tombstone'})).toBe('tombstone');
+  });
+  it.each([
     ["explorersAccountRoutes", "PATCH", "/api/explorers/v1/account", "explorers-owner"],
     ["explorersMediaRoutes", "POST", "/api/explorers/v1/media", "explorers-owner"],
     ["explorersMediaRoutes", "DELETE", "/api/explorers/v1/media/:id", "explorers-owner"],

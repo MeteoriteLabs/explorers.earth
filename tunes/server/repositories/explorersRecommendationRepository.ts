@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+import type { CollectionCoreDto, RecommendationCoreDto } from '../../shared/explorersContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
 export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|'products'|'people';
-export type CollectionRecord = {id:string;accountId:string;category:ContentCategory;title:string;slug:string;
-  visibility:'public'|'private';publicationState:'draft'|'published';revision:number};
-export type RecommendationRecord = {id:string;accountId:string;entityId:string;category:Exclude<ContentCategory,'guides'>;revision:number};
+export type CollectionRecord = CollectionCoreDto;
+export type RecommendationRecord = RecommendationCoreDto;
 export class RecommendationFailure extends Error {
   constructor(readonly status:404|409|422, message:string) {super(message);}
 }
@@ -17,12 +17,28 @@ function canonical(value:unknown):string {
   return `{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
 }
 const collectionDto=(r:any):CollectionRecord=>({id:r.id,accountId:r.account_id,category:r.category,title:r.title,slug:r.slug,
-  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision)});
-const recommendationDto=(r:any):RecommendationRecord=>({id:r.id,accountId:r.account_id,entityId:r.entity_id,category:r.category,revision:Number(r.revision)});
+  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null});
+const recommendationDto=(r:any):RecommendationRecord=>({id:r.id,accountId:r.account_id,entityId:r.entity_id,category:r.category,userRating:r.user_rating,publicationState:r.publication_state,revision:Number(r.revision),mediaIds:r.media_ids??[]});
 
 /** Internal persistence seam: application authorization and typed transport validation precede calls. */
 export class ExplorersRecommendationRepository {
   constructor(private readonly pool:Pool) {}
+  private async collectionRecord(db:Pick<Pool,'query'>,row:any):Promise<CollectionRecord> {
+    const cover=await db.query("SELECT media_id FROM collection_media WHERE collection_id=$1 AND slot='cover'",[row.id]);
+    return collectionDto({...row,cover_media_id:cover.rows[0]?.media_id??null});
+  }
+  private async recommendationRecord(db:Pick<Pool,'query'>,row:any):Promise<RecommendationRecord> {
+    const media=await db.query('SELECT media_id FROM recommendation_media WHERE recommendation_id=$1 ORDER BY display_order',[row.id]);
+    return recommendationDto({...row,media_ids:media.rows.map(r=>r.media_id)});
+  }
+  private async replaceCover(db:PoolClient,accountId:string,id:string,mediaId:string|null) {
+    await db.query('DELETE FROM collection_media WHERE collection_id=$1',[id]);
+    if(mediaId!==null) await db.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[id,accountId,mediaId]);
+  }
+  private async replaceMedia(db:PoolClient,accountId:string,id:string,mediaIds:string[]) {
+    await db.query('DELETE FROM recommendation_media WHERE recommendation_id=$1',[id]);
+    for(let position=0;position<mediaIds.length;position++) await db.query('INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,$4)',[id,accountId,mediaIds[position],position]);
+  }
   private async transaction<T>(work:(db:PoolClient)=>Promise<T>):Promise<T> {
     const db=await this.pool.connect();
     try {await db.query('BEGIN');const result=await work(db);await db.query('COMMIT');return result;}
@@ -66,13 +82,15 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published'},key:string):Promise<CollectionRecord> {
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null},key:string):Promise<CollectionRecord> {
     const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
     return this.command(accountId,'createCollection',normalized,key,async db=>{
       const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
         SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0) FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
         [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
-      return collectionDto(result.rows[0]);
+      await db.query('UPDATE collections SET description=$2,heading=$3 WHERE id=$1',[result.rows[0].id,input.description??null,input.heading??null]);
+      await this.replaceCover(db,accountId,result.rows[0].id,input.coverMediaId??null);
+      return this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null});
     });
   }
   private async lockCollection(db:PoolClient,accountId:string,id:string,revision:number) {
@@ -82,17 +100,18 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null},key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[]},key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
-      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating)
-        VALUES($1,$2,$3,$4) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null]);
+      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state)
+        VALUES($1,$2,$3,$4,$5) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft']);
       await db.query(`INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order)
         SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1`,
         [input.collectionId,result.rows[0].id,accountId,input.category]);
       await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1',[input.collectionId]);
-      return recommendationDto(result.rows[0]);
+      await this.replaceMedia(db,accountId,result.rows[0].id,input.mediaIds??[]);
+      return this.recommendationRecord(db,result.rows[0]);
     });
   }
   async reorderCollection(accountId:string,id:string,expectedRevision:number,ids:string[],key:string):Promise<CollectionRecord> {
@@ -106,7 +125,7 @@ export class ExplorersRecommendationRepository {
       // Archived recommendations lose membership in the archive operation, avoiding rank collisions.
       for(let position=0;position<ids.length;position++) await db.query('UPDATE collection_items SET display_order=$3 WHERE collection_id=$1 AND recommendation_id=$2',[id,ids[position],position]);
       const result=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id]);
-      return collectionDto(result.rows[0]);
+      return this.collectionRecord(db,result.rows[0]);
     });
   }
   async archiveCollection(accountId:string,id:string,expectedRevision:number,key:string):Promise<{id:string;archived:true}> {
@@ -123,7 +142,7 @@ export class ExplorersRecommendationRepository {
       JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
       WHERE c.id=$1 AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public`,[id]);
-    return result.rows[0]?collectionDto(result.rows[0]):null;
+    return result.rows[0]?this.collectionRecord(this.pool,result.rows[0]):null;
   }
   private async lockRecommendation(db:PoolClient,accountId:string,id:string,revision:number) {
     if(!Number.isSafeInteger(revision)||revision<1) throw new RecommendationFailure(422,'Invalid revision');
@@ -132,13 +151,26 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale recommendation revision');
     return result.rows[0];
   }
-  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating:number|null},key:string):Promise<RecommendationRecord> {
-    if(input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
+  async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null},key:string):Promise<CollectionRecord> {
+    return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
+      await this.lockCollection(db,accountId,id,expectedRevision);
+      const result=await db.query(`UPDATE collections SET title=coalesce($2,title),visibility=coalesce($3,visibility),
+        publication_state=coalesce($4,publication_state),revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.title??null,input.visibility??null,input.publicationState??null]);
+      if(input.description!==undefined) await db.query('UPDATE collections SET description=$2 WHERE id=$1',[id,input.description]);
+      if(input.heading!==undefined) await db.query('UPDATE collections SET heading=$2 WHERE id=$1',[id,input.heading]);
+      if(input.coverMediaId!==undefined) await this.replaceCover(db,accountId,id,input.coverMediaId);
+      return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
+    });
+  }
+  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[]},key:string):Promise<RecommendationRecord> {
+    if(input.userRating!==undefined&&input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       await this.lockRecommendation(db,accountId,id,expectedRevision);
-      const result=await db.query('UPDATE recommendations SET user_rating=$2,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id,input.userRating]);
-      return recommendationDto(result.rows[0]);
+      const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
+        publication_state=coalesce($4,publication_state),revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null]);
+      if(input.mediaIds!==undefined) await this.replaceMedia(db,accountId,id,input.mediaIds);
+      return this.recommendationRecord(db,result.rows[0]);
     });
   }
   async archiveRecommendation(accountId:string,id:string,expectedRevision:number,key:string):Promise<{id:string;archived:true}> {

@@ -6,6 +6,51 @@ export const categoryKeys = [
 export const categoryKeySchema = z.enum(categoryKeys);
 export type CategoryKey = z.infer<typeof categoryKeySchema>;
 
+// Bounded recommendation core. Rich notes, category facts and display overrides have
+// separate typed adapters; this boundary intentionally has no arbitrary JSON field.
+export const contentCategorySchema = z.enum(['places','guides','movies','books','games','apps','products','people']);
+export const recommendationCategorySchema = z.enum(['places','movies','books','games','apps','products','people']);
+export const catalogKindSchema = z.enum(['place','movie','book','game','app','product','person']);
+const contentRevision = z.number().int().positive().safe();
+const contentTitle = z.string().trim().min(1).max(200);
+const contentSlug = z.string().max(200).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+const publicationState = z.enum(['draft','published']);
+const contentVisibility = z.enum(['private','public']);
+const userRating = z.number().int().min(1).max(10).nullable();
+export const contentIdSchema = z.string().uuid();
+export const commandKeySchema = z.string().regex(/^[A-Za-z0-9._~-]{8,200}$/);
+const collectionPlainText = z.string().max(5000).nullable();
+const collectionHeading = z.string().trim().max(200).nullable();
+const recommendationMediaIds = z.array(contentIdSchema).max(20).refine(ids=>new Set(ids).size===ids.length,'Duplicate media');
+export const contentRevisionSchema = z.object({expectedRevision:contentRevision}).strict();
+export const createCollectionSchema = z.object({category:contentCategorySchema,title:contentTitle,slug:contentSlug,
+  visibility:contentVisibility.default('private'),publicationState:publicationState.default('draft'),
+  description:collectionPlainText.default(null),heading:collectionHeading.default(null),coverMediaId:contentIdSchema.nullable().default(null)}).strict();
+export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),
+  visibility:contentVisibility.optional(),publicationState:publicationState.optional(),description:collectionPlainText.optional(),
+  heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional()}).strict()
+  .refine(value=>Object.keys(value).length>1,'At least one editable field required');
+export const createRecommendationSchema = z.object({category:recommendationCategorySchema,entityId:contentIdSchema,
+  collectionId:contentIdSchema,expectedCollectionRevision:contentRevision,userRating:userRating.default(null),
+  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([])}).strict();
+export const updateRecommendationSchema = z.object({expectedRevision:contentRevision,userRating:userRating.optional(),
+  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
+export const reorderCollectionSchema = z.object({expectedRevision:contentRevision,
+  orderedRecommendationIds:z.array(contentIdSchema).max(10000)}).strict();
+export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,
+  title:contentTitle,slug:contentSlug,visibility:contentVisibility,publicationState,revision:contentRevision,
+  description:collectionPlainText,heading:collectionHeading,coverMediaId:contentIdSchema.nullable()}).strict();
+export const recommendationCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,entityId:contentIdSchema,
+  category:recommendationCategorySchema,userRating,publicationState,revision:contentRevision,mediaIds:recommendationMediaIds}).strict();
+export type CreateCollectionInput = z.input<typeof createCollectionSchema>;
+export type UpdateCollectionInput = z.infer<typeof updateCollectionSchema>;
+export type CreateRecommendationInput = z.input<typeof createRecommendationSchema>;
+export type UpdateRecommendationInput = z.infer<typeof updateRecommendationSchema>;
+export type CollectionCoreDto = z.infer<typeof collectionCoreDtoSchema>;
+export type RecommendationCoreDto = z.infer<typeof recommendationCoreDtoSchema>;
+export const resolveExistingEntitySchema = z.object({entityId:contentIdSchema,category:recommendationCategorySchema}).strict();
+export const entityCoreDtoSchema = z.object({id:contentIdSchema,kind:catalogKindSchema,title:z.string().trim().min(1).max(500)}).strict();
+
 export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED"] as const;
 export const apiErrorSchema = z.object({
   error: z.object({

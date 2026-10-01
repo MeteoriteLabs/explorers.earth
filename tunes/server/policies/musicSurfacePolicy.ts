@@ -126,6 +126,17 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   }
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
+  if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
+      && [
+        ["POST", "/api/explorers/v1/entities/resolve"],
+        ["POST", "/api/explorers/v1/collections"],
+        ["PATCH", "/api/explorers/v1/collections/:id"],
+        ["PATCH", "/api/explorers/v1/collections/:id/order"],
+        ["DELETE", "/api/explorers/v1/collections/:id"],
+        ["POST", "/api/explorers/v1/recommendations"],
+        ["PATCH", "/api/explorers/v1/recommendations/:id"],
+        ["DELETE", "/api/explorers/v1/recommendations/:id"],
+      ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
       && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersLifecycleRoutes.ts") {
