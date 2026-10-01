@@ -28,6 +28,17 @@ describe("Music surface authorization policy", () => {
     expect(decisionForRoute({ ...route, classification: "tombstone" })).toBe("tombstone");
   });
   it.each([
+    ["POST", "/api/explorers/v1/account/deletion", "explorers-owner"],
+    ["GET", "/api/explorers/v1/recovery/status", "explorers-recovery"],
+    ["POST", "/api/explorers/v1/recovery/complete", "explorers-recovery"],
+  ] as const)("classifies the lifecycle route %s %s only at its registered source", (method, path, decision) => {
+    const route = { source: "tunes/server/routes/explorersLifecycleRoutes.ts", method, path, classification: "private" };
+    expect(decisionForRoute(route)).toBe(decision);
+    expect(decisionForRoute({ ...route, source: "legacy.ts" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, path: "/api/explorers/v1/recovery/unknown" })).toBe("tombstone");
+  });
+
+  it.each([
     "/api/explorers/v1/profiles/:username",
     "/api/explorers/v1/profiles/:username/recommendations/:category",
     "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
