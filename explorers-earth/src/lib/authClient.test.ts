@@ -49,4 +49,15 @@ describe("verified browser session", () => {
     await expect(pending).rejects.toThrow("offline");
     expect(useAuthStore.getState().status).toBe("signed-out");
   });
+
+  it("only clears the logout failure for the matching attempt", () => {
+    const first = useAuthStore.getState().setLogoutError(true);
+    const second = useAuthStore.getState().setLogoutError(true);
+    expect(first).not.toBe(second);
+    useAuthStore.getState().setLogoutError(false, first);
+    expect(useAuthStore.getState()).toMatchObject({ logoutError: true, logoutAttemptId: second });
+    expect(localStorage.getItem("explorers-logout-pending")).toBe(second);
+    useAuthStore.getState().setLogoutError(false, second);
+    expect(useAuthStore.getState().logoutError).toBe(false);
+  });
 });

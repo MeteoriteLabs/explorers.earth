@@ -8,6 +8,7 @@ interface AuthState {
   generation: number;
   accountId: string | null;
   logoutError: boolean;
+  logoutAttemptId: string | null;
   isAuthenticated: boolean;
   user: {
     id: string;
@@ -21,7 +22,7 @@ interface AuthState {
   acceptVerified: (generation: number, account: { id: string; userId: string; username: string; email: string;
     onboardingStatus: "incomplete" | "complete"; revision: number }) => void;
   verificationFailed: (generation: number, status: "signed-out" | "recovery-only" | "terminal" | "error") => void;
-  setLogoutError: (failed: boolean) => void;
+  setLogoutError: (failed: boolean, attemptId?: string | null) => string | null;
   login: (data: {
     id: string;
     documentId: string;
@@ -35,15 +36,20 @@ interface AuthState {
   updateUserBlocked: (blocked: boolean) => void;
 }
 
-function pendingServerLogout(): boolean {
-  if (typeof localStorage === "undefined") return false;
-  if (localStorage.getItem("explorers-logout-pending") === "1") return true;
+const logoutMarker = "explorers-logout-pending";
+function pendingServerLogout(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  const current = localStorage.getItem(logoutMarker);
+  if (current) return current;
   if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("explorers-logout-pending") === "1") {
-    localStorage.setItem("explorers-logout-pending", "1");
-    return true;
+    const migrated = crypto.randomUUID();
+    localStorage.setItem(logoutMarker, migrated);
+    return migrated;
   }
-  return false;
+  return null;
 }
+
+const initialLogoutAttempt = pendingServerLogout();
 
 const useAuthStore = create<AuthState>()(
   persist(
@@ -52,7 +58,8 @@ const useAuthStore = create<AuthState>()(
       status: "loading",
       generation: 0,
       accountId: null,
-      logoutError: pendingServerLogout(),
+      logoutError: initialLogoutAttempt !== null,
+      logoutAttemptId: initialLogoutAttempt,
       token: null,
       isAuthenticated: false,
       user: null,
@@ -75,13 +82,17 @@ const useAuthStore = create<AuthState>()(
         clearMusicCredential();
         set({ status, accountId: null, isAuthenticated: false, token: null, user: null });
       },
-      setLogoutError: (failed) => {
+      setLogoutError: (failed, attemptId) => {
+        const current = pendingServerLogout();
+        if (!failed && attemptId && current && current !== attemptId) return current;
+        const next = failed ? crypto.randomUUID() : null;
         if (typeof localStorage !== "undefined") {
-          if (failed) localStorage.setItem("explorers-logout-pending", "1");
-          else localStorage.removeItem("explorers-logout-pending");
+          if (next) localStorage.setItem(logoutMarker, next);
+          else localStorage.removeItem(logoutMarker);
         }
         if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("explorers-logout-pending");
-        set({ logoutError: failed });
+        set({ logoutError: next !== null, logoutAttemptId: next });
+        return next;
       },
 
       login: (data) => {
@@ -90,7 +101,8 @@ const useAuthStore = create<AuthState>()(
           generation: get().generation + 1,
           status: "active-complete",
           accountId: data.documentId,
-          logoutError: pendingServerLogout(),
+          logoutError: pendingServerLogout() !== null,
+          logoutAttemptId: pendingServerLogout(),
           isAuthenticated: true,
           user: {
             id: data.id,
@@ -109,7 +121,8 @@ const useAuthStore = create<AuthState>()(
           generation: get().generation + 1,
           status: "signed-out",
           accountId: null,
-          logoutError: pendingServerLogout(),
+          logoutError: pendingServerLogout() !== null,
+          logoutAttemptId: pendingServerLogout(),
           isAuthenticated: false,
           user: null,
           token: null,
@@ -135,5 +148,11 @@ const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+if (typeof window !== "undefined") window.addEventListener("storage", (event) => {
+  if (event.key !== logoutMarker) return;
+  const current = pendingServerLogout();
+  useAuthStore.setState({ logoutError: current !== null, logoutAttemptId: current });
+});
 
 export default useAuthStore;

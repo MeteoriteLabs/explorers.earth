@@ -12,18 +12,45 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
     UPDATE deletion_feedback f SET reason=NULL,user_id=NULL,purged_at=clock_timestamp()
     FROM due WHERE f.id=due.id`, [batchSize]);
 
+  // Music ownership is delivered in 6.1. Record that boundary once, then leave
+  // these operations out of the claim window so they cannot starve other owners.
+  await pool.query(`WITH blocked AS (SELECT o.id FROM account_lifecycle_operations o
+    JOIN creator_accounts a ON a.id=o.account_id
+    WHERE o.kind='delete' AND o.state='pending' AND a.status='pending_deletion'
+      AND o.failure_code IS DISTINCT FROM $2
+      AND EXISTS (SELECT 1 FROM account_music_identity mi WHERE mi.account_id=o.account_id)
+    ORDER BY o.created_at,o.id LIMIT $1)
+    UPDATE account_lifecycle_operations o SET failure_code=$2,
+      updated_at=clock_timestamp() FROM blocked WHERE o.id=blocked.id`, [batchSize, "MUSIC_BOUNDARY_PENDING"]);
+
   const claimed = await pool.query<{ id: string; account_id: string }>(`WITH due AS (
     SELECT o.id FROM account_lifecycle_operations o JOIN creator_accounts a ON a.id=o.account_id
     WHERE o.kind='delete' AND a.status='pending_deletion'
       AND a.deletion_requested_at<=clock_timestamp()
+      AND NOT EXISTS (SELECT 1 FROM account_music_identity mi WHERE mi.account_id=o.account_id)
       AND (o.state='pending' OR (o.state='running' AND o.updated_at<clock_timestamp()-interval '10 minutes'))
     ORDER BY o.created_at,o.id LIMIT $1 FOR UPDATE OF o,a SKIP LOCKED)
     UPDATE account_lifecycle_operations o SET state='running',updated_at=clock_timestamp(),failure_code=NULL
     FROM due WHERE o.id=due.id RETURNING o.id,o.account_id`, [batchSize]);
   for (const operation of claimed.rows) {
     try {
+      const uploadGate = await pool.connect();
+      let uploadLocked = false;
+      try {
+      uploadLocked = (await uploadGate.query<{ locked: boolean }>(
+        "SELECT pg_try_advisory_lock(44024,hashtext($1)) AS locked", [operation.account_id])).rows[0].locked;
+      if (!uploadLocked) throw new Error("MEDIA_UPLOAD_IN_FLIGHT");
       const mapping = await pool.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [operation.account_id]);
       if (mapping.rowCount) throw new Error("MUSIC_BOUNDARY_PENDING");
+      // An active put owns a durable reservation. The stale threshold exceeds
+      // the bounded storage request; a crashed writer is converted to cleanup.
+      const activeUploads = await pool.query(`SELECT 1 FROM media_assets
+        WHERE account_id=$1 AND status='uploading' AND created_at>clock_timestamp()-interval '10 minutes' LIMIT 1`,
+      [operation.account_id]);
+      if (activeUploads.rowCount) throw new Error("MEDIA_UPLOAD_IN_FLIGHT");
+      await pool.query(`UPDATE media_assets SET status='pending_delete',delete_requested_at=clock_timestamp(),
+        updated_at=clock_timestamp() WHERE account_id=$1 AND status='uploading'
+        AND created_at<=clock_timestamp()-interval '10 minutes'`, [operation.account_id]);
       const objects = await pool.query<{ media_id: string; variant: string; object_key: string; storage_environment: string }>(
         `SELECT mo.media_id,mo.variant,mo.object_key,mo.storage_environment FROM media_objects mo
          JOIN media_assets ma ON ma.id=mo.media_id WHERE ma.account_id=$1 AND mo.deleted_at IS NULL
@@ -48,6 +75,9 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         const missing = await db.query(`SELECT 1 FROM media_objects mo JOIN media_assets ma ON ma.id=mo.media_id
           WHERE ma.account_id=$1 AND mo.deleted_at IS NULL LIMIT 1`, [operation.account_id]);
         if (missing.rowCount) throw new Error("MEDIA_CLEANUP_INCOMPLETE");
+        const uploading = await db.query(`SELECT 1 FROM media_assets WHERE account_id=$1 AND status='uploading' LIMIT 1`,
+          [operation.account_id]);
+        if (uploading.rowCount) throw new Error("MEDIA_UPLOAD_IN_FLIGHT");
         await db.query("DELETE FROM profile_media WHERE account_id=$1", [operation.account_id]);
         await db.query("DELETE FROM profile_feed_items WHERE account_id=$1", [operation.account_id]);
         await db.query("DELETE FROM media_objects WHERE media_id IN (SELECT id FROM media_assets WHERE account_id=$1)", [operation.account_id]);
@@ -75,6 +105,11 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         await db.query("COMMIT");
       } catch (error) { await db.query("ROLLBACK").catch(() => undefined); throw error; }
       finally { db.release(); }
+      } finally {
+        if (uploadLocked) await uploadGate.query("SELECT pg_advisory_unlock(44024,hashtext($1))", [operation.account_id])
+          .catch(() => undefined);
+        uploadGate.release();
+      }
     } catch (error) {
       const code = error instanceof Error && error.message === "MUSIC_BOUNDARY_PENDING"
         ? "MUSIC_BOUNDARY_PENDING" : "FINALIZATION_RETRY";

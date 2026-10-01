@@ -25,6 +25,6 @@ export default defineConfig({
     // exercised explicitly inside the projection/migration suites.
     fileParallelism: false,
     include: ['**/*.integration.test.ts', '**/account-recovery.test.ts'],
-    exclude: [...configDefaults.exclude],
+    exclude: [...configDefaults.exclude, '**/.music-cli-contract-isolated-*/**'],
   },
 });

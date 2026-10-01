@@ -81,6 +81,12 @@ test('failed logout fences a receiving tab after reload and a newly opened tab',
   await page.unroute('**/api/auth/sign-out');
   await page.getByRole('button', { name: 'Retry sign-out' }).click();
   await expect(page.getByRole('button', { name: 'Retry sign-out' })).toHaveCount(0);
+  await expect(second.getByRole('button', { name: 'Retry sign-out' })).toHaveCount(0);
+  await expect(fresh.getByRole('button', { name: 'Retry sign-out' })).toHaveCount(0);
+  await browserSession(context, fixture.personas.ownerA);
+  await fresh.goto('/onboarding');
+  await expect(fresh.getByRole('button', { name: 'Log out' }).first()).toBeVisible();
+  expect((await fresh.request.get(`${fixture.origin}/api/explorers/v1/me`)).status()).toBe(200);
   await fresh.close();
   await second.close();
 });
@@ -98,6 +104,8 @@ test('real local session gates onboarding and cross-tab logout revokes both tabs
   await second.getByRole('button', { name: 'Log out' }).last().click();
   await expect(second).toHaveURL(/\/login(?:\?.*)?$/);
   await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
+  await expect(page.getByRole('button', { name: 'Retry sign-out' })).toHaveCount(0);
+  await expect(second.getByRole('button', { name: 'Retry sign-out' })).toHaveCount(0);
   const denied = await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
     headers: { Cookie: fixture.personas.ownerA.cookie },
   });

@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import pg from "pg";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCanonicalApp } from "../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { issueRecoveryProof } from "../auth/recoveryProof";
@@ -9,6 +9,8 @@ import { AccountLifecycleService } from "../application/accountLifecycle";
 import { runAccountLifecycleMaintenance } from "../application/accountLifecycleMaintenance";
 import { LocalObjectStorage } from "../services/objectStorage";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
+import { MediaRepository } from "../repositories/mediaRepository";
+import { MediaService } from "../application/media";
 
 const config = resolveExplorersAuthConfig({
   EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51474",
@@ -32,6 +34,29 @@ async function identity() {
   expect(profile.status).toBe(200);
   return { userId, cookie, accountId: profile.body.account.id, revision: profile.body.account.revision as number };
 }
+
+async function pendingDeletion(owner: Awaited<ReturnType<typeof identity>>) {
+  const feedback = await request(app.app).post("/api/explorers/v1/account/deletion-feedback")
+    .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
+    .send({ reason: "Leaving" });
+  const deletion = await request(app.app).post("/api/explorers/v1/account/deletion")
+    .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
+    .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
+  expect(deletion.status).toBe(200);
+  return deletion.body.lifecycle.operationId as string;
+}
+
+async function webActor(owner: Awaited<ReturnType<typeof identity>>) {
+  const session = await pool.query<{ id: string; session_version: string }>(
+    "SELECT id,session_version::text FROM auth_session WHERE user_id=$1 LIMIT 1", [owner.userId]);
+  return { userId: owner.userId, accountId: owner.accountId, role: "owner" as const,
+    credential: { kind: "web-session" as const, sessionId: session.rows[0].id,
+      sessionVersion: Number(session.rows[0].session_version) } };
+}
+
+const png = Buffer.from([137,80,78,71,13,10,26,10,0]);
+const upload = { purpose: "profile" as const, filename: "avatar.png", mimeType: "image/png",
+  length: png.length, bytes: png };
 
 describe("canonical account lifecycle", () => {
   beforeAll(() => { pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST }); app = createCanonicalApp(pool, config); });
@@ -257,7 +282,7 @@ describe("canonical account lifecycle", () => {
       .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
       .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
     expect(pending.status).toBe(200);
-    expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(1);
+    expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(0);
     expect((await pool.query("SELECT state,completed_at,failure_code FROM account_lifecycle_operations WHERE id=$1",
       [pending.body.lifecycle.operationId])).rows[0]).toMatchObject({
       state: "pending", completed_at: null, failure_code: "MUSIC_BOUNDARY_PENDING",
@@ -272,6 +297,104 @@ describe("canonical account lifecycle", () => {
       .send({ expectedRevision: pending.body.lifecycle.revision });
     expect(recovered.status).toBe(200);
     expect(recovered.body.lifecycle.status).toBe("active");
+  });
+
+  it("does not starve an unmapped deletion behind Music-blocked owners with batch size one", async () => {
+    const blocked = await identity();
+    const musicId = randomUUID();
+    const user = await new MusicIdentityRepository(pool).ensureIdentity({
+      userDocumentId: `user-${musicId}`, accountDocumentId: `account-${musicId}`,
+      username: `owner-${musicId}`, email: `${musicId}@example.invalid`, provider: "google",
+      accountName: "Fixture", accountType: "Venue", accountMobile: "+15555550100",
+      internalUsername: `owner-${musicId}`, password: "disabled-native-password",
+      guestUrl: `guest-${musicId}`, guestCapabilityHash: createHash("sha256").update(musicId).digest("hex"),
+      operationId: `provision-${musicId}`, requestId: musicId,
+    });
+    await pool.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)", [blocked.accountId, user.id]);
+    const blockedOperation = await pendingDeletion(blocked);
+    const free = await identity();
+    const freeOperation = await pendingDeletion(free);
+    expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage(), 1)).toBe(1);
+    expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1",
+      [blockedOperation])).rows[0]).toMatchObject({ state: "pending", failure_code: "MUSIC_BOUNDARY_PENDING" });
+    expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [freeOperation])).rows[0].state)
+      .toBe("succeeded");
+    expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage(), 1)).toBe(0);
+  });
+
+  it("fences a reservation delayed past terminal deletion at the account row", async () => {
+    const owner = await identity();
+    const actor = await webActor(owner);
+    const original = MediaRepository.prototype.reserve;
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>((resolve) => { release = resolve; });
+    const reached = new Promise<void>((resolve) => { entered = resolve; });
+    const spy = vi.spyOn(MediaRepository.prototype, "reserve").mockImplementation(async function(input) {
+      entered(); await waiting; return original.call(this, input);
+    });
+    try {
+      const attempt = new MediaService(pool, new LocalObjectStorage()).createMedia(actor, upload,
+        { requestId: randomUUID() });
+      await reached;
+      await pendingDeletion(owner);
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage(), 1)).toBe(1);
+      release();
+      await expect(attempt).rejects.toMatchObject({ status: 403, code: "FORBIDDEN" });
+      expect((await pool.query("SELECT count(*)::int AS n FROM media_assets WHERE account_id=$1",
+        [owner.accountId])).rows[0].n).toBe(0);
+    } finally { release(); spy.mockRestore(); }
+  });
+
+  it("retains an in-flight put and recovers failed compensation before terminal purge", async () => {
+    const owner = await identity();
+    const actor = await webActor(owner);
+    const backing = new LocalObjectStorage();
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>((resolve) => { release = resolve; });
+    const reached = new Promise<void>((resolve) => { entered = resolve; });
+    let key = "";
+    const storage = { environment: "local" as const,
+      put: async (objectKey: string, bytes: Buffer) => { key = objectKey; entered(); await waiting;
+        await backing.put(objectKey, bytes); throw new Error("metadata response lost"); },
+      get: (objectKey: string) => backing.get(objectKey),
+      delete: async () => { throw new Error("failed compensation"); } };
+    const attempt = new MediaService(pool, storage).createMedia(actor, upload, { requestId: randomUUID() });
+    await reached;
+    const operation = await pendingDeletion(owner);
+    expect(await runAccountLifecycleMaintenance(pool, backing, 1)).toBe(1);
+    expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1",
+      [operation])).rows[0]).toMatchObject({ state: "running", failure_code: "FINALIZATION_RETRY" });
+    release();
+    await expect(attempt).rejects.toThrow("Storage unavailable");
+    expect((await pool.query("SELECT status FROM media_assets WHERE account_id=$1", [owner.accountId])).rows[0].status)
+      .toBe("pending_delete");
+    await pool.query("UPDATE account_lifecycle_operations SET updated_at=clock_timestamp()-interval '11 minutes' WHERE id=$1",
+      [operation]);
+    expect(await runAccountLifecycleMaintenance(pool, backing, 1)).toBe(1);
+    expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
+      .toBe("succeeded");
+    await expect(backing.get(key)).rejects.toThrow();
+  });
+
+  it("reaps a crashed upload reservation and its late object before terminal success", async () => {
+    const owner = await identity();
+    const storage = new LocalObjectStorage();
+    const id = randomUUID();
+    const key = `local/${owner.accountId}/${id}`;
+    const hash = createHash("sha256").update(png).digest();
+    await new MediaRepository(pool).reserve({ id, accountId: owner.accountId, purpose: "profile",
+      mimeType: "image/png", filename: "avatar.png", bytes: png, hash, key, environment: "local" });
+    await storage.put(key, png);
+    await pool.query("UPDATE media_assets SET created_at=clock_timestamp()-interval '11 minutes' WHERE id=$1", [id]);
+    const operation = await pendingDeletion(owner);
+    expect(await runAccountLifecycleMaintenance(pool, storage, 1)).toBe(1);
+    expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
+      .toBe("succeeded");
+    expect((await pool.query("SELECT count(*)::int AS n FROM media_assets WHERE account_id=$1",
+      [owner.accountId])).rows[0].n).toBe(0);
+    await expect(storage.get(key)).rejects.toThrow();
   });
 
   it("finalizes a pending delete through child-first media cleanup and retains only a non-revivable tombstone", async () => {

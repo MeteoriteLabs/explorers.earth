@@ -9,7 +9,7 @@ export const authClient = {
   async refresh(): Promise<void> {
     localStorage.removeItem("qrtoken");
     localStorage.removeItem("auth-storage");
-    if (useAuthStore.getState().logoutError || localStorage.getItem("explorers-logout-pending") === "1") {
+    if (useAuthStore.getState().logoutError || localStorage.getItem("explorers-logout-pending")) {
       const current = useAuthStore.getState();
       current.verificationFailed(current.generation, "signed-out");
       return;
@@ -39,7 +39,7 @@ export const authClient = {
     } catch { useAuthStore.getState().verificationFailed(generation, "error"); }
   },
   async startGoogleSignIn(recovery = false): Promise<void> {
-    if (useAuthStore.getState().logoutError || localStorage.getItem("explorers-logout-pending") === "1")
+    if (useAuthStore.getState().logoutError || localStorage.getItem("explorers-logout-pending"))
       throw new Error("Finish signing out first");
     localStorage.removeItem("qrtoken");
     localStorage.removeItem("auth-storage");

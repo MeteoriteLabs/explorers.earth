@@ -88,6 +88,6 @@ describe("useLogout", () => {
     const { result } = renderHook(() => useLogout());
     await result.current();
     expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, status: "signed-out", logoutError: true });
-    expect(localStorage.getItem("explorers-logout-pending")).toBe("1");
+    expect(localStorage.getItem("explorers-logout-pending")).toBe(useAuthStore.getState().logoutAttemptId);
   });
 });

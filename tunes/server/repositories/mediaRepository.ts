@@ -4,6 +4,7 @@ import type { StorageEnvironment } from "../services/objectStorage";
 export type MediaRecord = { id: string; account_id: string; purpose: string; status: string; mime_type: string;
   byte_size: string; alternative_text: string | null; caption: string | null; object_key: string;
   storage_environment: string; storage_version_id: string | null; content_sha256: Buffer };
+export class MediaAccountInactive extends Error {}
 
 export class MediaRepository {
   constructor(private readonly db: Pool) {}
@@ -13,6 +14,9 @@ export class MediaRepository {
     const client = await this.db.connect();
     try {
       await client.query("BEGIN");
+      const account = await client.query(`SELECT id FROM creator_accounts WHERE id=$1 AND status='active' FOR UPDATE`,
+        [input.accountId]);
+      if (!account.rowCount) throw new MediaAccountInactive("Media account is no longer active");
       await client.query(`INSERT INTO media_assets(id,account_id,purpose,status,mime_type,byte_size,content_sha256,original_filename)
         VALUES ($1,$2,$3,'uploading',$4,$5,$6,$7)`, [input.id, input.accountId, input.purpose,
         input.mimeType, input.bytes.length, input.hash, input.filename]);

@@ -17,8 +17,9 @@ export default function Login() {
     if (logoutError) return;
     void authClient.startGoogleSignIn().catch(() => setError("Google sign-in is unavailable. Please try again."));
   };
-  const retrySignOut = () => { void authClient.signOut().then(() => {
-    useAuthStore.getState().setLogoutError(false);
+  const retrySignOut = () => { const attemptId = useAuthStore.getState().logoutAttemptId;
+    void authClient.signOut().then(() => {
+    useAuthStore.getState().setLogoutError(false, attemptId);
     setError("");
   }).catch(() => setError("Server sign-out is still unavailable. Please retry.")); };
   return <>

@@ -22,7 +22,7 @@ export const useLogout = () => {
   const client = useApolloClient();
 
   return async (options: { serverRevoked?: boolean } = {}) => {
-    useAuthStore.getState().setLogoutError(true);
+    const logoutAttemptId = useAuthStore.getState().setLogoutError(true);
     logout();
     closeLocalMusicSession();
 
@@ -47,11 +47,10 @@ export const useLogout = () => {
 
     try {
       if (!options.serverRevoked) await authClient.signOut();
-      useAuthStore.getState().setLogoutError(false);
+      useAuthStore.getState().setLogoutError(false, logoutAttemptId);
       navigate("/login");
       toast(t("toast.success.loggedOutSuccessfully"));
     } catch {
-      useAuthStore.getState().setLogoutError(true);
       navigate("/login?error=logout_incomplete");
       toast.error("Server sign-out failed. Retry to finish signing out.");
     }

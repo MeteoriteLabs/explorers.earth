@@ -31,7 +31,7 @@ export class LocalObjectStorage implements ObjectStorage {
   async put(key: string, bytes: Buffer): Promise<void> {
     const path = this.path(key);
     await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
-    await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
+    await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal: AbortSignal.timeout(120_000) });
   }
   async get(key: string): Promise<Buffer> { return readFile(this.path(key)); }
   async delete(key: string): Promise<void> { await rm(this.path(key), { force: true }); }
@@ -45,7 +45,8 @@ export class S3ObjectStorage implements ObjectStorage {
   }
   async put(key: string, bytes: Buffer): Promise<string | undefined> {
     assertObjectKey(key, this.environment);
-    const result = await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes }));
+    const result = await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes }),
+      { abortSignal: AbortSignal.timeout(120_000) });
     return result.VersionId;
   }
   async get(key: string): Promise<Buffer> {

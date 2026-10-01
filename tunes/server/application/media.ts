@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Actor } from "./actor";
-import { authorizeOperation } from "./authorization";
+import { authorizeOperation, AuthorizationError } from "./authorization";
 import type { MediaDto, RequestContext } from "../../shared/explorersContract";
-import { MediaRepository } from "../repositories/mediaRepository";
+import { MediaAccountInactive, MediaRepository } from "../repositories/mediaRepository";
 import { resolveObjectStorage, type ObjectStorage } from "../services/objectStorage";
 
 export type MediaUploadInput = { purpose: "profile" | "background" | "feed"; filename: string;
@@ -53,8 +53,20 @@ export class MediaService {
     const id = randomUUID();
     const key = `${this.storage.environment}/${actor.accountId}/${id}`;
     const hash = createHash("sha256").update(input.bytes).digest();
-    await this.repo.reserve({ id, accountId: actor.accountId, purpose: input.purpose, mimeType: input.mimeType,
-      filename: input.filename, bytes: input.bytes, hash, key, environment: this.storage.environment });
+    // Keep a session advisory lock until the put and its metadata/compensation
+    // settle. A terminal worker never sweeps a live writer's reservation.
+    const gate = await this.db.connect();
+    let uploadLocked = false;
+    try {
+    await gate.query("SELECT pg_advisory_lock(44024,hashtext($1))", [actor.accountId]);
+    uploadLocked = true;
+    try {
+      await this.repo.reserve({ id, accountId: actor.accountId, purpose: input.purpose, mimeType: input.mimeType,
+        filename: input.filename, bytes: input.bytes, hash, key, environment: this.storage.environment });
+    } catch (error) {
+      if (error instanceof MediaAccountInactive) throw new AuthorizationError(403, "FORBIDDEN", "Account access is unavailable");
+      throw error;
+    }
     let versionId: string | undefined;
     try {
       versionId = (await this.storage.put(key, input.bytes)) || undefined;
@@ -68,6 +80,11 @@ export class MediaService {
     }
     return { id, url: `/api/explorers/v1/media/${id}/content`, mimeType: input.mimeType,
       size: input.bytes.length, alternativeText: input.alternativeText ?? null, caption: input.caption ?? null };
+    } finally {
+      if (uploadLocked) await gate.query("SELECT pg_advisory_unlock(44024,hashtext($1))", [actor.accountId])
+        .catch(() => undefined);
+      gate.release();
+    }
   }
 
   async resolveMediaContent(actor: Actor | null, id: string): Promise<AuthorizedMediaObject> {
