@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
@@ -23,6 +23,7 @@ const fixtureDatabase = "music_fixture";
 let admin: pg.Pool | undefined;
 let fixture: pg.Pool | undefined;
 let containerId = "";
+let revisionAccount='';
 
 function databaseUrl(name: string) {
   const target = new URL(process.env.DATABASE_URL_TEST ?? "");
@@ -51,6 +52,11 @@ function hash() {
     .join("\n");
   return createHash("sha256").update(normalized).digest("hex");
 }
+function replay(operation:{file:string;args:string[];input:Buffer}) {
+  const result=spawnSync(operation.file,operation.args,{input:operation.input,windowsHide:true,maxBuffer:4*1024*1024});
+  if(result.status!==0) console.error(result.stderr?.toString('utf8'));
+  return result;
+}
 
 describePg("owned PostgreSQL transactional Music E2E restore", () => {
   beforeAll(async () => {
@@ -73,6 +79,20 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     await fixture.query("INSERT INTO playlists(user_id,name,is_visible_to_guests) SELECT id,$1,true FROM users WHERE username=$2", [
       "Restore qualification", "e2e-public-music-restore-owner",
     ]);
+    revisionAccount=(await fixture.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    const entity=(await fixture.query("INSERT INTO entities(kind,title,origin) VALUES('book','Restore catalog','manual') RETURNING id")).rows[0].id;
+    const list=(await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Restore list',$2,0) RETURNING id",[revisionAccount,randomUUID()])).rows[0].id;
+    await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'guides','Restore guide',$2,0)",[revisionAccount,randomUUID()]);
+    const item=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'books',$2) RETURNING id",[revisionAccount,entity])).rows[0].id;
+    await fixture.query("INSERT INTO collection_items VALUES($1,$2,$3,'books',0,now())",[list,item,revisionAccount]);
+    await fixture.query("INSERT INTO account_category_pin_state VALUES($1,'books',7)",[revisionAccount]);
+    await fixture.query("INSERT INTO category_recommendation_pins VALUES($1,'books',$2,$3,0)",[revisionAccount,item,list]);
+    for(const purpose of ['collection','recommendation']) {
+      const media=(await fixture.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256)
+        VALUES($1,$2,'ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id`,[revisionAccount,purpose])).rows[0].id;
+      await fixture.query(purpose==='collection'?"INSERT INTO collection_media VALUES($1,$2,'cover',$3,now())":"INSERT INTO recommendation_media VALUES($1,$2,$3,0,now())",[purpose==='collection'?list:item,revisionAccount,media]);
+    }
+    await fixture.query("UPDATE account_category_content_state SET revision=revision+123 WHERE account_id=$1",[revisionAccount]);
   });
 
   afterAll(async () => {
@@ -96,12 +116,24 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect(hash()).not.toBe(baselineHash);
     const restored = runMusicFixtureRestoreTransaction({
       containerId, dataDump: baselineData, snapshotHash: baselineHash, captureHash: hash,
-      execute: (operation) => spawnSync(operation.file, operation.args, {
-        input: operation.input, windowsHide: true, maxBuffer: 4 * 1024 * 1024,
-      }),
+      execute: replay,
     });
     expect(restored).toEqual({ ok: true, beforeHash: baselineHash, afterHash: baselineHash });
     expect(hash()).toBe(baselineHash);
+  });
+
+  it('preserves nonempty category counters exactly and advances after replay',async()=>{
+    const before=(await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows;
+    expect(before).toHaveLength(2);expect(BigInt(before[0].revision)).toBeGreaterThan(100n);
+    const data=dump(true),snapshot=hash();
+    await fixture!.query("UPDATE collections SET heading='Before restore',revision=revision+1 WHERE account_id=$1",[revisionAccount]);
+    const result=runMusicFixtureRestoreTransaction({containerId,dataDump:data,snapshotHash:snapshot,captureHash:hash,
+      execute:replay});
+    expect(result).toEqual({ok:true,beforeHash:snapshot,afterHash:snapshot});
+    expect((await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows).toEqual(before);
+    await fixture!.query("UPDATE collections SET heading='After restore' WHERE account_id=$1 AND category='books'",[revisionAccount]);
+    const next=(await fixture!.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[revisionAccount])).rows[0].revision;
+    expect(BigInt(next)).toBeGreaterThan(BigInt(before.find(row=>row.category==='books')!.revision));
   });
 
   it("rolls an injected mid-replay failure back to the pre-attempt mutated hash", async () => {

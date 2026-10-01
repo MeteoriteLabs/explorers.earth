@@ -394,7 +394,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0030_explorers_media_purpose_guard",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0031_explorers_content_revision",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -433,7 +433,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0030_explorers_media_purpose_guard",
+          "migration=0031_explorers_content_revision",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -645,16 +645,24 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(rollback.status, rollback.stderr).toBe(0);
   }, deploymentProcessRecoveryTimeoutMs);
 
-  it("deploys media-purpose migration through 0030 from an authenticated 0022 image", () => {
+  it("deploys category-revision migration through 0031 from an authenticated 0022 image", () => {
     // Omitting an earlier rank rejects the current compatibility floor.
     seedVersionedAuthority("0022_explorers_identity");
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0030_explorers_media_purpose_guard\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0031_explorers_content_revision\t`);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0029_explorers_recommendations\tcurrent\t");
+      .toContain("\t0031_explorers_content_revision\tcurrent\t");
   }, deploymentProcessRecoveryTimeoutMs);
+
+  it('denies rollback to a 0030 executable after installing the SELECT-only revision boundary',()=>{
+    seedVersionedAuthority('0030_explorers_media_purpose_guard');
+    const deployed=run('deploy',digest('b'),commit('b'));expect(deployed.status,deployed.stderr).toBe(0);
+    writeFileSync(eventLog,'');const rollback=run('rollback',digest('a'),'-');
+    expect(rollback.status).not.toBe(0);expect(rollback.stderr).toMatch(/schema compatibility floor/i);
+    expect(readFileSync(eventLog,'utf8')).toBe('');
+  },deploymentProcessRecoveryTimeoutMs);
 
   it.each([
     "containment-no-schema-change",
@@ -673,7 +681,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     "0014_durable_reactivation_authority",
     "0015_publication_operation_archive",
     "0016_publication_operation_retention",
-  ])("upgrades authenticated historical marker %s directly to production 0030", (historicalMarker) => {
+  ])("upgrades authenticated historical marker %s directly to production 0031", (historicalMarker) => {
     if (historicalMarker === "containment-no-schema-change") seedLegacyAuthority();
     else seedHistoricalAuthority(historicalMarker);
     const historicalLedger = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8");
@@ -681,7 +689,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0029_explorers_recommendations\tpending\t");
+      .toContain("\t0031_explorers_content_revision\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -694,7 +702,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0029_explorers_recommendations\tcurrent\t");
+      .toContain("\t0031_explorers_content_revision\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -754,8 +762,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0029_explorers_recommendations", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0029_explorers_recommendations", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0031_explorers_content_revision", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0031_explorers_content_revision", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -763,9 +771,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0029_explorers_recommendations\tcurrent\t");
+      .toContain("\t0031_explorers_content_revision\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0030_explorers_media_purpose_guard\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0031_explorers_content_revision\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1160,7 +1168,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0030_explorers_media_purpose_guard", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0031_explorers_content_revision", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

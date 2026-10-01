@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { Pool } from "pg";
+import { CONTENT_CATEGORIES, lockContentCategories } from "../db/explorers-content-lock";
 
 interface VerifiedGoogleCallback {
   userId: string;
@@ -59,6 +60,12 @@ export async function consumeRecoveryProof(pool: Pick<Pool, "connect">, token: s
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // Resolve without tuple locks, lock the account first, then revalidate the
+    // one-use proof below. Never hold a proof lock while waiting for its account.
+    const scope=await client.query<{account_id:string}>("SELECT account_id FROM account_recovery_proofs WHERE token_hash=$1",[digest(token)]);
+    if(!scope.rows[0]) throw new Error("Recovery proof is invalid or expired");
+    await client.query("SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE",[scope.rows[0].account_id]);
+    await lockContentCategories(client,scope.rows[0].account_id,CONTENT_CATEGORIES);
     const proof = await client.query<{ id: string; user_id: string; account_id: string }>(`SELECT p.id,p.user_id,p.account_id
       FROM account_recovery_proofs p JOIN creator_accounts a ON a.id=p.account_id
       WHERE p.token_hash=$1 AND p.purpose='account-recovery' AND p.consumed_at IS NULL

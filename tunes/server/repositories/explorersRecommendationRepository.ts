@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto } from '../../shared/explorersContract';
+import { lockContentCategories } from '../db/explorers-content-lock';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
 export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|'products'|'people';
@@ -58,6 +59,19 @@ export class ExplorersRecommendationRepository {
         if(!row.request_hash.equals(requestHash)||row.status!=='completed'||!row.replayable) throw new RecommendationFailure(409,'Idempotency conflict');
         return row.response as T;
       }
+      // Account -> category -> aggregate. Replay returns above without mutation.
+      // Existing resource scope is derived under the account lock, never supplied
+      // by the caller; the callback still checks ownership/archive/revision.
+      const commandInput=input as {category?:ContentCategory;id?:string};
+      let category=commandInput.category;
+      if(!category) {
+        const recommendation=operation==='updateRecommendation'||operation==='archiveRecommendation';
+        const scope=await db.query(recommendation
+          ? 'SELECT category FROM recommendations WHERE id=$1 AND account_id=$2'
+          : 'SELECT category FROM collections WHERE id=$1 AND account_id=$2',[commandInput.id,accountId]);
+        category=scope.rows[0]?.category;
+      }
+      if(category) await lockContentCategories(db,accountId,[category]);
       const result=await work(db);
       await db.query(`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response)
         VALUES($1,$2,$3,$4,$5)`,[accountId,operation,keyHash,requestHash,JSON.stringify(result)]);

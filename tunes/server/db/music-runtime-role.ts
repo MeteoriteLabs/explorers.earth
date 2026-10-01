@@ -4,6 +4,7 @@ const capabilityRole = "music_runtime";
 const safeRoleName = /^[a-z_][a-z0-9_]{1,62}$/;
 const safePassword = /^[A-Za-z0-9_-]{43,256}$/;
 const expectedRuntimeTables = [
+  "account_category_content_state",
   "account_category_pin_state",
   "account_category_settings",
   "account_lifecycle_operations",
@@ -107,6 +108,10 @@ const expectedRuntimeFunctions = [
   "enforce_music_tombstone_insert()",
   "explorers_assert_no_unready_references()",
   "explorers_assert_ready_attachment()",
+  "explorers_content_revision_delete()",
+  "explorers_content_revision_insert()",
+  "explorers_content_revision_lifecycle()",
+  "explorers_content_revision_update()",
   "finalize_music_identity_deletion(integer,text,text)",
   "guard_recommendation_entity_kind()",
   "guard_recommendation_media()",
@@ -568,6 +573,11 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${capabilityRole}`);
     await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON account_category_content_state FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION explorers_content_revision_insert(),
+      explorers_content_revision_update(),explorers_content_revision_delete(),explorers_content_revision_lifecycle()
+      FROM ${capabilityRole}`);
+    await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON music_schema_migrations FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT ON music_schema_migrations TO ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -666,6 +676,14 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "CREATE TEMP TABLE music_runtime_temp_attestation(id integer)",
     "CREATE TABLE music_runtime_schema_attestation(id integer)",
     "TRUNCATE TABLE users",
+    "INSERT INTO account_category_content_state DEFAULT VALUES",
+    "UPDATE account_category_content_state SET revision=revision WHERE false",
+    "DELETE FROM account_category_content_state WHERE false",
+    "TRUNCATE TABLE account_category_content_state",
+    "SELECT explorers_content_revision_insert()",
+    "SELECT explorers_content_revision_update()",
+    "SELECT explorers_content_revision_delete()",
+    "SELECT explorers_content_revision_lifecycle()",
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
     "DELETE FROM music_publication_operations WHERE false",
@@ -709,7 +727,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
       || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
-    const expected = row.object_name === "music_schema_migrations"
+    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state"
       ? [true, false, false, false]
       : row.object_name === "account_music_identity"
         ? [true, true, false, false]
@@ -765,7 +783,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
     WHERE namespace.nspname='public' ORDER BY procedure.oid::regprocedure::text`)).rows;
   if (!sameRuntimeInventory(functionRows.map((row) => row.function_signature), expectedRuntimeFunctions)
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
-        !== (row.function_signature !== "provision_music_runtime_login(name,text)"))) {
+        !== (row.function_signature !== "provision_music_runtime_login(name,text)"
+          && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 

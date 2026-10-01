@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import type { RequestContext, RevisionInput } from "../../shared/explorersContract";
 import { AccountLifecycleFailure, type AccountLifecycleDto } from "../application/accountLifecycle";
 import { recoveryProofCookie } from "./recoveryCallback";
+import { CONTENT_CATEGORIES, lockContentCategories } from "../db/explorers-content-lock";
 
 declare const recoveryBrand: unique symbol;
 export type RecoveryPrincipal = { userId: string; accountId: string; purpose: "account-recovery"; proofId: string;
@@ -34,6 +35,8 @@ export async function recoverAccount(pool: Pool, principal: RecoveryPrincipal, i
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE", [principal.accountId]);
+    await lockContentCategories(client,principal.accountId,CONTENT_CATEGORIES);
     const proof = await client.query<{ id: string; revision: string; status: string }>(
       `SELECT p.id,a.revision::text,a.status FROM account_recovery_proofs p
         JOIN creator_accounts a ON a.id=p.account_id

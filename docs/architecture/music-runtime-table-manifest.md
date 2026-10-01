@@ -133,3 +133,17 @@ observed scheduler is the reactivation-service token cleanup interval. There is
 no C0 evidence of a separate job runner. Delete/block/reactivate endpoints are
 in legacy admin/user paths and `reactivationRoutes`; their Strapi lifecycle
 equivalence remains unproven and blocks live provisioning.
+
+
+## Category content revision foundation (0031)
+
+`account_category_content_state` retains at most eight data-free category/revision
+pairs on creator account tombstones. Runtime state privileges are SELECT-only;
+only four trigger functions mutate it. Seven content families each have INSERT,
+UPDATE and DELETE statement triggers; status transitions invalidate all categories.
+Supported writers lock account rows, sorted category keys (two-int namespace
+44031, hashtext of lowercase UUID plus colon plus category), then aggregates,
+proofs and operations. Arbitrary aggregate-first SQL may deadlock and aborts
+atomically. Guarded exact restore disables only the 22 revision triggers plus
+the three existing replay exceptions and restores revision triggers to mode O.
+Asset/provider triggers are excluded from the current ID-only owner projection.

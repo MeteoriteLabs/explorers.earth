@@ -49,6 +49,23 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 }
 
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
+  it('lets an account-first writer finish before freezing revision backfill sources',async()=>{
+    const pool=await freshDatabase('revision_writer_lock'),prior=loadMusicMigrations().slice(0,-1);
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Before migration','before',0)",[account]);
+    const writer=await pool.connect();let pending:Promise<any>|undefined;
+    try {
+      await writer.query('BEGIN');await writer.query("SET LOCAL lock_timeout='500ms'");await writer.query('SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE',[account]);
+      pending=migrateMusicDatabase(pool).then(value=>({value})).catch(error=>({error}));
+      let waiting=false;const deadline=Date.now()+5000;
+      while(Date.now()<deadline&&!waiting) {waiting=(await pool.query('SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type=\'Lock\'')).rowCount!>0;if(!waiting) await new Promise(resolve=>setTimeout(resolve,10));}
+      expect(waiting).toBe(true);
+      await writer.query("UPDATE collections SET title='Committed before migration' WHERE account_id=$1",[account]);await writer.query('COMMIT');
+      expect((await pending).error).toBeUndefined();
+      expect((await pool.query('SELECT revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual([{revision:'1'}]);
+    } finally {await writer.query('ROLLBACK');await pending;writer.release();await resources.closePool(pool);}
+  });
   aroundEach(async (runTest) => {
     await resources.runWithCleanup(runTest);
   });
@@ -76,7 +93,22 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     }
   });
 
-  it("migrates a fresh database, creates all 55 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
+  it("backfills a populated 0030 database and upgrades category revisions once",async()=>{
+    const pool=await freshDatabase('content_revision_upgrade'),prior=loadMusicMigrations().slice(0,-1);
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Old list','old',0),($1,'guides','Old guide','guide',0)",[account]);
+    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision']);
+    expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[account])).rows).toEqual([{category:'books',revision:'1'},{category:'guides',revision:'1'}]);
+    const db=await pool.connect();try {await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
+      await db.query("UPDATE collections SET heading='Post upgrade' WHERE account_id=$1 AND category='books'",[account]);await db.query('COMMIT');
+    } finally {await db.query('ROLLBACK');db.release();}
+    expect((await pool.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[account])).rows[0].revision).toBe('2');
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
+    const triggers=await pool.query("SELECT count(*)::int AS count FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE '%_content_revision_%'");expect(triggers.rows[0].count).toBe(22);
+    await resources.closePool(pool);
+  });
+  it("migrates a fresh database, creates all 56 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
     const pool = await freshDatabase("baseline");
     const first = await migrateMusicDatabase(pool);
     const second = await migrateMusicDatabase(pool);

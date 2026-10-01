@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import type { ObjectStorage } from "../services/objectStorage";
+import { CONTENT_CATEGORIES, lockContentCategories } from "../db/explorers-content-lock";
 
 export async function runAccountLifecycleMaintenance(pool: Pool, storage: ObjectStorage, batchSize = 25): Promise<number> {
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100) throw new Error("Invalid maintenance batch size");
@@ -68,6 +69,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         const account = await db.query<{ status: string; user_id: string }>(`SELECT a.status,m.user_id FROM creator_accounts a
           JOIN account_memberships m ON m.account_id=a.id AND m.role='owner'
           WHERE a.id=$1 FOR UPDATE OF a`, [operation.account_id]);
+        await lockContentCategories(db,operation.account_id,CONTENT_CATEGORIES);
         const active = await db.query("SELECT 1 FROM account_lifecycle_operations WHERE id=$1 AND state='running' FOR UPDATE", [operation.id]);
         const mappingNow = await db.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [operation.account_id]);
         if (!account.rows[0] || account.rows[0].status !== "pending_deletion" || !active.rowCount || mappingNow.rowCount)

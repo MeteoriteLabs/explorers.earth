@@ -117,7 +117,7 @@ describe("Music E2E transactional state restore", () => {
     // trigger whose semantics mutate the captured bytes.
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
-      "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
+      "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
       "auth_verification", "category_recommendation_pins", "collection_items", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects", "music_credential_revocation_operations",
@@ -147,8 +147,9 @@ describe("Music E2E transactional state restore", () => {
       "0028_explorers_recovery_proof_retention",
       "0029_explorers_recommendations",
       "0030_explorers_media_purpose_guard",
+      "0031_explorers_content_revision",
     ]);
-    expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
+    const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
       { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
       { table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 },
@@ -169,7 +170,30 @@ describe("Music E2E transactional state restore", () => {
       { table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 },
       { table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 },
       { table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 },
-    ]);
+    ];
+    expectedTriggers.push({table:"collections",name:"collections_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"collections",name:"collections_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"collections",name:"collections_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"recommendations",name:"recommendations_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"recommendations",name:"recommendations_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"recommendations",name:"recommendations_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"collection_items",name:"collection_items_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"collection_items",name:"collection_items_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"collection_items",name:"collection_items_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"collection_media",name:"collection_media_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"collection_media",name:"collection_media_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"collection_media",name:"collection_media_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"recommendation_media",name:"recommendation_media_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"recommendation_media",name:"recommendation_media_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"recommendation_media",name:"recommendation_media_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"category_recommendation_pins",name:"category_recommendation_pins_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"category_recommendation_pins",name:"category_recommendation_pins_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"category_recommendation_pins",name:"category_recommendation_pins_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"creator_accounts",name:"creator_accounts_content_revision_lifecycle",enabled:"O",type:17,function:"explorers_content_revision_lifecycle"});
+    expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_MIGRATION_IDS)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS)).toBe(true);

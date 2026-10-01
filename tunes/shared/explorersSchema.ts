@@ -157,6 +157,12 @@ export const collectionItems=pgTable('collection_items',{
 export const accountCategoryPinState=pgTable('account_category_pin_state',{
   accountId:uuid('account_id').notNull(),category:text('category').notNull(),revision:bigint('revision',{mode:'number'}).notNull().default(1),
 },t=>[primaryKey({columns:[t.accountId,t.category]})]);
+// 0031 owns the bounded category CHECK and tombstone-preserving RESTRICT FK.
+// Decimal strings preserve revision identity without JS arithmetic/coercion.
+export const accountCategoryContentState=pgTable('account_category_content_state',{
+  accountId:uuid('account_id').notNull().references(()=>creatorAccounts.id,{onDelete:'restrict'}),
+  category:text('category').notNull(),revision:bigint('revision',{mode:'bigint'}).notNull(),
+},t=>[primaryKey({columns:[t.accountId,t.category]})]);
 export const categoryRecommendationPins=pgTable('category_recommendation_pins',{
   accountId:uuid('account_id').notNull(),category:text('category').notNull(),recommendationId:uuid('recommendation_id').notNull(),
   collectionId:uuid('collection_id').notNull(),position:integer('position').notNull(),

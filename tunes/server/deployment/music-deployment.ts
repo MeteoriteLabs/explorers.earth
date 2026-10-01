@@ -13,6 +13,8 @@ export const GATE_KIND = "music-schema-deployment-gate-v2" as const;
 export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
 
 export function rollbackCompatibilityFloorMarker(marker: DeployableMusicMigrationMarker): DeployableMusicMigrationMarker {
+  // Pre-0031 reprovisioners would regrant counter DML and trigger EXECUTE.
+  // This privilege boundary requires the matching executable after migration.
   return marker === "0030_explorers_media_purpose_guard"
     ? "0029_explorers_recommendations"
     : marker === "0029_explorers_recommendations"

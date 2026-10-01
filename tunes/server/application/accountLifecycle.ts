@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import type { Actor } from "./actor";
 import type { RequestContext, RevisionInput } from "../../shared/explorersContract";
 import { authorizeOperation } from "./authorization";
+import { CONTENT_CATEGORIES, lockContentCategories } from "../db/explorers-content-lock";
 
 export type AccountLifecycleDto = {
   accountId: string;
@@ -109,6 +110,7 @@ export class AccountLifecycleService {
       await client.query("BEGIN");
       const account = await accountRow(client, actor);
       await authorizeOperation(client, actor, `lifecycle:${operation}`, actor.accountId);
+      await lockContentCategories(client,actor.accountId,CONTENT_CATEGORIES);
       const saved = await receipt(client, actor, operation, input, context);
       if (saved.previous) { await client.query("COMMIT"); return saved.previous as AccountLifecycleDto; }
       if (account.status !== "active") throw new AccountLifecycleFailure(403, "FORBIDDEN", "Account is unavailable");
