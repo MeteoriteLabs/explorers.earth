@@ -49,8 +49,21 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 }
 
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
+  it('upgrades 0031 to owner seek indexes without changing revision counters or runtime authority',async()=>{
+    const pool=await freshDatabase('owner_page_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0032');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Prior list','prior',0)",[account]);
+    const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0032_explorers_owner_page_indexes']);
+    expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
+    const indexes=(await pool.query("SELECT indexname FROM pg_indexes WHERE schemaname='public' AND indexname IN ('collections_owner_order_idx','recommendations_owner_id_idx','collection_items_owner_page_idx','collection_items_owner_collection_order_idx') ORDER BY indexname")).rows;
+    expect(indexes).toHaveLength(4);
+    const privilege=(await pool.query("SELECT has_table_privilege('music_runtime','account_category_content_state','SELECT') readable,has_table_privilege('music_runtime','account_category_content_state','UPDATE') writable")).rows[0];expect(privilege).toEqual({readable:true,writable:false});
+    await resources.closePool(pool);
+  });
   it('lets an account-first writer finish before freezing revision backfill sources',async()=>{
-    const pool=await freshDatabase('revision_writer_lock'),prior=loadMusicMigrations().slice(0,-1);
+    const pool=await freshDatabase('revision_writer_lock'),prior=loadMusicMigrations().filter(m=>m.id<'0031');
     await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Before migration','before',0)",[account]);
@@ -94,11 +107,11 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
   });
 
   it("backfills a populated 0030 database and upgrades category revisions once",async()=>{
-    const pool=await freshDatabase('content_revision_upgrade'),prior=loadMusicMigrations().slice(0,-1);
+    const pool=await freshDatabase('content_revision_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0031');
     await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Old list','old',0),($1,'guides','Old guide','guide',0)",[account]);
-    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision']);
+    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision','0032_explorers_owner_page_indexes']);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[account])).rows).toEqual([{category:'books',revision:'1'},{category:'guides',revision:'1'}]);
     const db=await pool.connect();try {await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
       await db.query("UPDATE collections SET heading='Post upgrade' WHERE account_id=$1 AND category='books'",[account]);await db.query('COMMIT');

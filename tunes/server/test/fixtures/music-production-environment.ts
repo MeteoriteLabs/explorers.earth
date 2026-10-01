@@ -33,7 +33,7 @@ export function productionEnvironmentFixture(
     MUSIC_PUBLIC_ID_HMAC_KEY_FILE: "/run/secrets/music-publication-response/public-id",
     ALLOWED_ORIGINS: "https://localtunes.earth,https://explorers.earth",
     MUSIC_IMAGE_DIGEST: digest, MUSIC_IMAGE_COMMIT: "a".repeat(40),
-    MUSIC_MIGRATION_MARKER: "0031_explorers_content_revision",
+    MUSIC_MIGRATION_MARKER: "0032_explorers_owner_page_indexes",
     MUSIC_GATE_ATTESTATION_PATH: `/deployment-gates/${digest}.json`,
     ...overrides,
   };

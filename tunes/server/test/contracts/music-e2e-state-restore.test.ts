@@ -148,6 +148,7 @@ describe("Music E2E transactional state restore", () => {
       "0029_explorers_recommendations",
       "0030_explorers_media_purpose_guard",
       "0031_explorers_content_revision",
+      "0032_explorers_owner_page_indexes",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

@@ -143,17 +143,17 @@ export const collections=pgTable('collections',{
   visibility:text('visibility').notNull().default('private'),publicationState:text('publication_state').notNull().default('draft'),
   displayOrder:integer('display_order').notNull(),pinOrder:integer('pin_order'),heading:text('heading'),
   revision:bigint('revision',{mode:'number'}).notNull().default(1),archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
-});
+},t=>[index('collections_owner_order_idx').on(t.accountId,t.category,t.displayOrder,t.id)]);
 export const recommendations=pgTable('recommendations',{
   id:uuid('id').primaryKey().defaultRandom(),accountId:uuid('account_id').notNull(),entityId:uuid('entity_id').notNull(),
   category:text('category').notNull(),note:jsonb('note'),userRating:smallint('user_rating'),
   publicationState:text('publication_state').notNull().default('draft'),revision:bigint('revision',{mode:'number'}).notNull().default(1),
   archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
-});
+},t=>[index('recommendations_owner_id_idx').on(t.accountId,t.category,t.id)]);
 export const collectionItems=pgTable('collection_items',{
   collectionId:uuid('collection_id').notNull(),recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),
   category:text('category').notNull(),displayOrder:integer('display_order').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[primaryKey({columns:[t.collectionId,t.recommendationId]})]);
+},t=>[primaryKey({columns:[t.collectionId,t.recommendationId]}),index('collection_items_owner_page_idx').on(t.accountId,t.category,t.recommendationId,t.collectionId),index('collection_items_owner_collection_order_idx').on(t.accountId,t.category,t.collectionId,t.displayOrder,t.recommendationId)]);
 export const accountCategoryPinState=pgTable('account_category_pin_state',{
   accountId:uuid('account_id').notNull(),category:text('category').notNull(),revision:bigint('revision',{mode:'number'}).notNull().default(1),
 },t=>[primaryKey({columns:[t.accountId,t.category]})]);

@@ -8,7 +8,7 @@ export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|
 export type CollectionRecord = CollectionCoreDto;
 export type RecommendationRecord = RecommendationCoreDto;
 export class RecommendationFailure extends Error {
-  constructor(readonly status:404|409|422, message:string) {super(message);}
+  constructor(readonly status:404|409|413|422, message:string) {super(message);}
 }
 const hash=(value:string)=>createHash('sha256').update(value).digest();
 // Hash normalized domain inputs, independent of transport JSON object insertion order.

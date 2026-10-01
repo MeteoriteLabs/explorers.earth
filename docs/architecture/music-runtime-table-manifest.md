@@ -147,3 +147,16 @@ proofs and operations. Arbitrary aggregate-first SQL may deadlock and aborts
 atomically. Guarded exact restore disables only the 22 revision triggers plus
 the three existing replay exceptions and restores revision triggers to mode O.
 Asset/provider triggers are excluded from the current ID-only owner projection.
+
+## Bounded owner pages (0032)
+
+The append-only `0032_explorers_owner_page_indexes` migration adds only four
+indexes: collection account/category/order/id, recommendation account/category/id,
+membership account/category/recommendation/collection, and selected-collection
+account/category/collection/order/recommendation. The manifest still has
+56 tables and the same trigger/function authority. Runtime content-state access
+remains SELECT-only under 0031; restore includes 0032 in its checksummed chain.
+Owner v2 reads obtain the constant category revision lookup in each short
+repeatable-read transaction. Separate membership pages and bounded media queries
+replace nested arrays. A shared opaque snapshot is validated after all streams
+by the future combined collector; that collector and UI adoption remain open.

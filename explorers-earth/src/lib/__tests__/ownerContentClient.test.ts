@@ -4,19 +4,19 @@ import { explorersApiClient, assertCompleteOwnerContent } from '../explorersApiC
 const accountId='00000000-0000-4000-8000-000000000001';
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n+10).padStart(12,'0')}`;
 const collection=(n:number)=>({id:id(n),accountId,category:'books',title:`List ${n}`,slug:`list-${n}`,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:n});
-const child=(n:number)=>({id:id(n+100),accountId,category:'books',entityId:id(999),userRating:null,publicationState:'draft',revision:1,mediaIds:[],archived:false,pin:n===52?{collectionId:id(26),position:0,revision:1}:null,memberships:[{collectionId:id(26),collectionRevision:1,displayOrder:n,archived:false}]});
-const page=(items:any[],nextCursor:string|null,snapshot='a'.repeat(64))=>({version:'explorers-owner-content/v1',snapshot,items,nextCursor});
+const child=(n:number)=>({id:id(n+100),accountId,category:'books',entityId:id(999),userRating:null,publicationState:'draft',revision:1,mediaIds:[],archived:false,pin:n===52?{collectionId:id(26),position:0,revision:1}:null});
+const page=(items:any[],nextCursor:string|null,snapshot='1')=>({version:'explorers-owner-content/v2',snapshot,snapshotToken:'opaque-fixture',expiresAt:Date.now()+600000,items,nextCursor});
 const response=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 beforeEach(()=>{useAuthStore.setState({generation:10,accountId,isAuthenticated:true});});
 afterEach(()=>{vi.unstubAllGlobals();});
-it('sequentially completes 27 lists and 53 children, preserving late membership before write eligibility',async()=>{
+it('parses v2 compatibility pages for 27 lists and 53 bounded recommendation cores',async()=>{
   vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
     const u=new URL(url,'http://localhost'),cursor=u.searchParams.get('cursor');
     if(u.pathname.endsWith('/collections')) return response(page(Array.from({length:cursor?3:24},(_,n)=>collection(n+(cursor?24:0))),cursor?null:'list-page2'));
     const offset=cursor==='child-page3'?48:cursor?24:0;return response(page(Array.from({length:offset===48?5:24},(_,n)=>child(n+offset)),offset===48?null:offset===24?'child-page3':'child-page2'));
   }));
   const lists=await explorersApiClient.getAllMyCollections({category:'books'});expect(lists.items).toHaveLength(27);assertCompleteOwnerContent(lists);
-  const children=await explorersApiClient.getAllMyRecommendations({category:'books',collectionId:id(26)});expect(children.items).toHaveLength(53);expect(children.items[52].memberships[0].displayOrder).toBe(52);expect(children.items[52].pin).toEqual({collectionId:id(26),position:0,revision:1});assertCompleteOwnerContent(children);
+  const children=await explorersApiClient.getAllMyRecommendations({category:'books',collectionId:id(26)});expect(children.items).toHaveLength(53);expect(children.items[52].pin).toEqual({collectionId:id(26),position:0,revision:1});assertCompleteOwnerContent(children);
 });
 it('page two failure returns no complete set and a retry starts at the first page',async()=>{
   let failed=true;
@@ -26,7 +26,7 @@ it('page two failure returns no complete set and a retry starts at the first pag
   failed=false;const retried=await explorersApiClient.getAllMyCollections({category:'books'});expect(retried.items.map(x=>x.id)).toEqual([id(0),id(26)]);assertCompleteOwnerContent(retried);
 });
 it('rejects changed snapshots and duplicates instead of granting partial write eligibility',async()=>{
-  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{const cursor=new URL(url,'http://localhost').searchParams.get('cursor');return response(page([collection(cursor?1:0)],cursor?null:'next',cursor?'b'.repeat(64):'a'.repeat(64)));}));
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{const cursor=new URL(url,'http://localhost').searchParams.get('cursor');return response(page([collection(cursor?1:0)],cursor?null:'next',cursor?'2':'1'));}));
   await expect(explorersApiClient.getAllMyCollections({category:'books'})).rejects.toMatchObject({status:409});
   vi.stubGlobal('fetch',vi.fn(async(url:string)=>{const cursor=new URL(url,'http://localhost').searchParams.get('cursor');return response(page([collection(0)],cursor?null:'next'));}));
   await expect(explorersApiClient.getAllMyCollections({category:'books'})).rejects.toThrow();

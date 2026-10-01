@@ -51,7 +51,7 @@ export type RecommendationCoreDto = z.infer<typeof recommendationCoreDtoSchema>;
 export const resolveExistingEntitySchema = z.object({entityId:contentIdSchema,category:recommendationCategorySchema}).strict();
 export const entityCoreDtoSchema = z.object({id:contentIdSchema,kind:catalogKindSchema,title:z.string().trim().min(1).max(500)}).strict();
 
-export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED"] as const;
+export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE"] as const;
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.enum(apiErrorCodes),

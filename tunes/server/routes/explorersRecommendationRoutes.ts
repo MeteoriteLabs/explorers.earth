@@ -26,7 +26,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const result=await work(actor,String(request.params.id??''),request.body,{requestId,idempotencyKey:request.get('Idempotency-Key')});
       return response.status(status).json({[name]:result});
     } catch(error) {
-      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':'INVALID_INPUT',message:error.message,requestId}});
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
     }
   };
@@ -36,13 +36,20 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const actor=await requireActor(request,auth,pool),result=await work(actor,String(request.params.id??''),request.query);
       return response.json(name?{[name]:result}:result);
     } catch(error) {
-      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':'INVALID_INPUT',message:error.message,requestId}});
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
     }
+  };
+  const categoryQuery=(request:Request,query:unknown)=>{
+    if(Object.prototype.hasOwnProperty.call(query,'category')) throw new RecommendationFailure(422,'Category is specified by the route');
+    return {...(query as object),category:request.params.category};
   };
   routes.get('/api/explorers/v1/collections',read((a,_id,q)=>ownerContent.listCollections(a,q)));
   routes.get('/api/explorers/v1/collections/:id',read((a,id,q)=>ownerContent.getCollection(a,id,q),'collection'));
   routes.get('/api/explorers/v1/recommendations',read((a,_id,q)=>ownerContent.listRecommendations(a,q)));
+  routes.get('/api/explorers/v1/categories/:category/content-snapshot',async(req,res)=>read((a,_id,q)=>ownerContent.getSnapshot(a,categoryQuery(req,q)))(req,res));
+  routes.get('/api/explorers/v1/categories/:category/content-snapshot/validate',async(req,res)=>read((a,_id,q)=>ownerContent.validateSnapshot(a,categoryQuery(req,q)))(req,res));
+  routes.get('/api/explorers/v1/categories/:category/memberships',async(req,res)=>read((a,_id,q)=>ownerContent.listMemberships(a,categoryQuery(req,q)))(req,res));
   // Literal registrations also make each executable boundary visible to the
   // official AST inventory; interpolated templates and loop paths are not parsed.
   routes.post('/api/explorers/v1/entities/resolve',mutation((a,_id,b)=>catalog.resolveEntity(a,b),'entity'));
@@ -62,5 +69,8 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.all('/api/explorers/v1/collections/:id/order',unsupported);
   routes.all('/api/explorers/v1/recommendations',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id',unsupported);
+  routes.all('/api/explorers/v1/categories/:category/content-snapshot',unsupported);
+  routes.all('/api/explorers/v1/categories/:category/content-snapshot/validate',unsupported);
+  routes.all('/api/explorers/v1/categories/:category/memberships',unsupported);
   app.use(routes);
 }

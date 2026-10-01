@@ -20,6 +20,9 @@ describe("Music surface authorization policy", () => {
     ['PATCH','/api/explorers/v1/recommendations/:id'],['DELETE','/api/explorers/v1/recommendations/:id'],
     ['GET','/api/explorers/v1/collections'],['GET','/api/explorers/v1/collections/:id'],
     ['GET','/api/explorers/v1/recommendations'],['GET','/api/explorers/v1/recommendations/:id'],
+    ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
+    ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],
+    ['GET','/api/explorers/v1/categories/:category/memberships'],
   ])('classifies only the implemented recommendation command %s %s', (method,path)=>{
     const route={source:'tunes/server/routes/explorersRecommendationRoutes.ts',method,path,classification:'private'};
     expect(decisionForRoute(route)).toBe('explorers-owner');

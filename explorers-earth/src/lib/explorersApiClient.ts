@@ -70,11 +70,11 @@ async function responseBody<T>(response: Response, generation: number): Promise<
 export const explorersApiClient = {
   async getMyCollections(input:OwnerCollectionsRequest,signal?:AbortSignal) {
     const query=ownerCollectionsRequestSchema.parse(input),page=await ownerRead('/collections',query,ownerCollectionPageSchema,signal);
-    if(page.items.length>query.limit||page.items.some(x=>x.accountId!==useAuthStore.getState().accountId||x.category!==query.category||x.archived!==(query.status==='archived'))) throw new ExplorersApiError(409,'CONFLICT','Invalid owner content page');return page;
+    if(page.items.length>query.limit||page.items.some(x=>x.accountId!==useAuthStore.getState().accountId||x.category!==query.category||(query.status!=='all'&&x.archived!==(query.status==='archived')))) throw new ExplorersApiError(409,'CONFLICT','Invalid owner content page');return page;
   },
   async getMyRecommendations(input:OwnerRecommendationsRequest,signal?:AbortSignal) {
     const query=ownerRecommendationsRequestSchema.parse(input),page=await ownerRead('/recommendations',query,ownerRecommendationPageSchema,signal);
-    if(page.items.length>query.limit||page.items.some(x=>x.accountId!==useAuthStore.getState().accountId||x.category!==query.category||x.archived!==(query.status==='archived')||(query.collectionId&&!x.memberships.some(m=>m.collectionId===query.collectionId&&!m.archived)))) throw new ExplorersApiError(409,'CONFLICT','Invalid owner content page');return page;
+    if(page.items.length>query.limit||page.items.some(x=>x.accountId!==useAuthStore.getState().accountId||x.category!==query.category||(query.status!=='all'&&x.archived!==(query.status==='archived')))) throw new ExplorersApiError(409,'CONFLICT','Invalid owner content page');return page;
   },
   async getAllMyCollections(input:Omit<OwnerCollectionsRequest,'cursor'>,signal?:AbortSignal):Promise<CompleteOwnerContent<OwnerCollectionDto>> {
     return allOwnerContent(ownerCollectionsRequestSchema.omit({cursor:true}).parse(input),(q,s)=>explorersApiClient.getMyCollections(q as OwnerCollectionsRequest,s),signal);
