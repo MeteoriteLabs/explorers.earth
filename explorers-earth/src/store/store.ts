@@ -35,6 +35,16 @@ interface AuthState {
   updateUserBlocked: (blocked: boolean) => void;
 }
 
+function pendingServerLogout(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  if (localStorage.getItem("explorers-logout-pending") === "1") return true;
+  if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("explorers-logout-pending") === "1") {
+    localStorage.setItem("explorers-logout-pending", "1");
+    return true;
+  }
+  return false;
+}
+
 const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -42,7 +52,7 @@ const useAuthStore = create<AuthState>()(
       status: "loading",
       generation: 0,
       accountId: null,
-      logoutError: typeof sessionStorage !== "undefined" && sessionStorage.getItem("explorers-logout-pending") === "1",
+      logoutError: pendingServerLogout(),
       token: null,
       isAuthenticated: false,
       user: null,
@@ -66,10 +76,11 @@ const useAuthStore = create<AuthState>()(
         set({ status, accountId: null, isAuthenticated: false, token: null, user: null });
       },
       setLogoutError: (failed) => {
-        if (typeof sessionStorage !== "undefined") {
-          if (failed) sessionStorage.setItem("explorers-logout-pending", "1");
-          else sessionStorage.removeItem("explorers-logout-pending");
+        if (typeof localStorage !== "undefined") {
+          if (failed) localStorage.setItem("explorers-logout-pending", "1");
+          else localStorage.removeItem("explorers-logout-pending");
         }
+        if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("explorers-logout-pending");
         set({ logoutError: failed });
       },
 
@@ -79,7 +90,7 @@ const useAuthStore = create<AuthState>()(
           generation: get().generation + 1,
           status: "active-complete",
           accountId: data.documentId,
-          logoutError: false,
+          logoutError: pendingServerLogout(),
           isAuthenticated: true,
           user: {
             id: data.id,
@@ -98,7 +109,7 @@ const useAuthStore = create<AuthState>()(
           generation: get().generation + 1,
           status: "signed-out",
           accountId: null,
-          logoutError: false,
+          logoutError: pendingServerLogout(),
           isAuthenticated: false,
           user: null,
           token: null,

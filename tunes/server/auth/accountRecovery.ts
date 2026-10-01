@@ -45,6 +45,14 @@ export async function recoverAccount(pool: Pool, principal: RecoveryPrincipal, i
     if (Number(proof.rows[0].revision) !== input.expectedRevision) {
       throw new AccountLifecycleFailure(409, "CONFLICT", "Account changed");
     }
+    if (proof.rows[0].status === "pending_deletion") {
+      const finalizing = await client.query(`SELECT 1 FROM account_lifecycle_operations
+        WHERE account_id=$1 AND kind='delete' AND state='running'`, [principal.accountId]);
+      if (finalizing.rowCount) throw new AccountLifecycleFailure(409, "CONFLICT", "Deletion is finalizing");
+      await client.query(`UPDATE account_lifecycle_operations SET state='cancelled',completed_at=clock_timestamp(),
+        updated_at=clock_timestamp() WHERE account_id=$1 AND kind='delete' AND state IN ('pending','running')`,
+      [principal.accountId]);
+    }
     const changed = await client.query<{ revision: string }>(`UPDATE creator_accounts SET status='active',suspended_at=NULL,
       deletion_requested_at=NULL,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING revision::text`, [principal.accountId]);
     await client.query("UPDATE user_security_state SET blocked_at=NULL,session_version=session_version+1,updated_at=now() WHERE user_id=$1", [principal.userId]);

@@ -3,7 +3,7 @@ import useAuthStore from "../store/store";
 import { authClient } from "./authClient";
 
 describe("verified browser session", () => {
-  beforeEach(() => { useAuthStore.getState().logout(); vi.restoreAllMocks(); });
+  beforeEach(() => { useAuthStore.getState().setLogoutError(false); useAuthStore.getState().logout(); vi.restoreAllMocks(); });
 
   it("loads a Better Auth session and canonical account before exposing owner access", async () => {
     const calls: string[] = [];
@@ -32,5 +32,21 @@ describe("verified browser session", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     await authClient.refresh();
     expect(useAuthStore.getState().status).toBe("error");
+  });
+
+  it("ends a failed Google-start generation in a retryable routed state", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 503 })));
+    await expect(authClient.startGoogleSignIn()).rejects.toThrow("Google sign-in could not start");
+    expect(useAuthStore.getState()).toMatchObject({ status: "error", isAuthenticated: false });
+  });
+
+  it("does not let an old Google-start failure overwrite a later generation", async () => {
+    let reject!: (error: Error) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((_resolve, fail) => { reject = fail; })));
+    const pending = authClient.startGoogleSignIn();
+    useAuthStore.getState().logout();
+    reject(new Error("offline"));
+    await expect(pending).rejects.toThrow("offline");
+    expect(useAuthStore.getState().status).toBe("signed-out");
   });
 });

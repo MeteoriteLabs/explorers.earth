@@ -9,7 +9,7 @@ export const authClient = {
   async refresh(): Promise<void> {
     localStorage.removeItem("qrtoken");
     localStorage.removeItem("auth-storage");
-    if (useAuthStore.getState().logoutError) {
+    if (useAuthStore.getState().logoutError || localStorage.getItem("explorers-logout-pending") === "1") {
       const current = useAuthStore.getState();
       current.verificationFailed(current.generation, "signed-out");
       return;
@@ -39,25 +39,31 @@ export const authClient = {
     } catch { useAuthStore.getState().verificationFailed(generation, "error"); }
   },
   async startGoogleSignIn(recovery = false): Promise<void> {
-    if (useAuthStore.getState().logoutError) throw new Error("Finish signing out first");
+    if (useAuthStore.getState().logoutError || localStorage.getItem("explorers-logout-pending") === "1")
+      throw new Error("Finish signing out first");
     localStorage.removeItem("qrtoken");
     localStorage.removeItem("auth-storage");
-    useAuthStore.getState().beginVerification();
-    if (recovery) {
-      const started = await fetch("/api/explorers/v1/recovery/start", { method: "POST", credentials: "include" });
-      if (!started.ok) throw new Error("Recovery is unavailable");
+    const generation = useAuthStore.getState().beginVerification();
+    try {
+      if (recovery) {
+        const started = await fetch("/api/explorers/v1/recovery/start", { method: "POST", credentials: "include" });
+        if (!started.ok) throw new Error("Recovery is unavailable");
+      }
+      const callbackURL = recovery ? "/reactivate-confirm" : "/google-auth/callback";
+      const response = await fetch("/api/auth/sign-in/social", { method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "google", callbackURL, errorCallbackURL: callbackURL }) });
+      const body = await jsonOrNull(response) as { url?: string } | null;
+      if (!response.ok || !body?.url) throw new Error("Google sign-in could not start");
+      const target = new URL(body.url, window.location.origin);
+      if (target.protocol !== "https:" && !(import.meta.env.DEV && target.protocol === "http:")) {
+        throw new Error("Google sign-in destination is invalid");
+      }
+      window.location.assign(target.href);
+    } catch (error) {
+      useAuthStore.getState().verificationFailed(generation, "error");
+      throw error;
     }
-    const callbackURL = recovery ? "/reactivate-confirm" : "/google-auth/callback";
-    const response = await fetch("/api/auth/sign-in/social", { method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: "google", callbackURL, errorCallbackURL: callbackURL }) });
-    const body = await jsonOrNull(response) as { url?: string } | null;
-    if (!response.ok || !body?.url) throw new Error("Google sign-in could not start");
-    const target = new URL(body.url, window.location.origin);
-    if (target.protocol !== "https:" && !(import.meta.env.DEV && target.protocol === "http:")) {
-      throw new Error("Google sign-in destination is invalid");
-    }
-    window.location.assign(target.href);
   },
   async signOut(): Promise<void> {
     const response = await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });

@@ -90,7 +90,7 @@ async function main(): Promise<number> {
     const server = composed.app.listen(apiPort, '127.0.0.1', () => done(server));
   });
   const personas: Record<string, { userId: string; cookie: string; handle: string }> = {};
-  for (const name of ['ownerA', 'ownerB']) {
+  for (const name of ['ownerA', 'ownerB', 'ownerC']) {
     const userId = `profile-e2e-${randomUUID()}`;
     await db.query('INSERT INTO auth_user(id,name,email) VALUES ($1,$2,$3)', [userId, name, `${userId}@example.invalid`]);
     await db.query("INSERT INTO auth_account(id,account_id,provider_id,user_id,updated_at) VALUES ($1,$2,'google',$3,now())",

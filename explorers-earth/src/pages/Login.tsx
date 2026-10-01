@@ -12,6 +12,7 @@ export default function Login() {
   const [params] = useSearchParams();
   const [error, setError] = useState("");
   const logoutError = useAuthStore((state) => state.logoutError);
+  const status = useAuthStore((state) => state.status);
   const begin = () => {
     if (logoutError) return;
     void authClient.startGoogleSignIn().catch(() => setError("Google sign-in is unavailable. Please try again."));
@@ -23,7 +24,7 @@ export default function Login() {
   return <>
     <SEO title={t("seo.loginTitle")} description="Sign in to your explorers account with Google."
       canonical={createCanonicalUrl("/login")} noIndex={true} />
-    {(error || logoutError || params.has("error")) && <div role="alert" className="bg-black text-center text-amber-300 py-3">
+    {(error || logoutError || params.has("error") || status === "error") && <div role="alert" className="bg-black text-center text-amber-300 py-3">
       {error || (logoutError ? "Server sign-out is incomplete. Retry signing out before using this account." : "Google sign-in was cancelled or could not finish. Please try again.")}
       {logoutError && <button type="button" onClick={retrySignOut} className="ml-3 underline">Retry sign-out</button>}
     </div>}

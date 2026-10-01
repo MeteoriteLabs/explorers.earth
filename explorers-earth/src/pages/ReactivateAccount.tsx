@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import SEO from "../components/SEO";
 import { authClient } from "../lib/authClient";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
+import useAuthStore from "../store/store";
 
 export default function ReactivateAccount() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
+  const authStatus = useAuthStore((state) => state.status);
   const start = () => {
     if (starting) return;
     setStarting(true);
@@ -24,7 +26,9 @@ export default function ReactivateAccount() {
         <div className="backdrop-blur-sm bg-dashboard-sidebar border border-dashboard p-6 sm:p-8 rounded-2xl shadow-dashboard-elevated text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-white mb-3">Recover your account</h1>
           <p className="text-sm text-gray-400 mb-6">Continue with the Google identity connected to this account to reactivate it or cancel a pending deletion.</p>
-          {error && <p role="alert" className="text-red-400 text-sm mb-4">{error}</p>}
+          {(error || authStatus === "error") && <p role="alert" className="text-red-400 text-sm mb-4">
+            {error || "Recovery could not start. Check your connection and try again."}
+          </p>}
           <button type="button" onClick={start} disabled={starting}
             className="w-full py-2.5 px-4 rounded-xl font-medium shadow-dashboard-elevated text-sm bg-dashboard-accent hover:bg-dashboard-accent/90 text-dashboard disabled:opacity-60">
             {starting ? "Connecting to Google..." : "Continue with Google"}

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type { Actor } from "./actor";
 import type { RequestContext, RevisionInput } from "../../shared/explorersContract";
+import { authorizeOperation } from "./authorization";
 
 export type AccountLifecycleDto = {
   accountId: string;
@@ -36,12 +37,12 @@ async function accountRow(db: PoolClient, actor: Actor) {
 async function receipt(db: PoolClient, actor: Actor, operation: string, input: unknown, context: RequestContext) {
   const key = commandKey(context);
   const requestHash = hash(JSON.stringify(input));
-  const prior = await db.query<{ id: string; request_hash: Buffer; response: unknown; status: string }>(
-    `SELECT id,request_hash,response,status FROM application_command_receipts
+  const prior = await db.query<{ id: string; request_hash: Buffer; response: unknown; status: string; replayable: boolean }>(
+    `SELECT id,request_hash,response,status,replay_until>clock_timestamp() AS replayable FROM application_command_receipts
       WHERE account_id=$1 AND operation=$2 AND idempotency_key_hash=$3 FOR UPDATE`,
     [actor.accountId, operation, key]);
   if (prior.rows[0]) {
-    if (!prior.rows[0].request_hash.equals(requestHash) || prior.rows[0].status !== "completed") {
+    if (!prior.rows[0].request_hash.equals(requestHash) || prior.rows[0].status !== "completed" || !prior.rows[0].replayable) {
       throw new AccountLifecycleFailure(409, "CONFLICT", "Request key has already been used");
     }
     return { id: prior.rows[0].id, previous: prior.rows[0].response };
@@ -77,6 +78,7 @@ export class AccountLifecycleService {
     try {
       await client.query("BEGIN");
       const account = await accountRow(client, actor);
+      await authorizeOperation(client, actor, "lifecycle:feedback", actor.accountId);
       if (account.status !== "active") throw new AccountLifecycleFailure(403, "FORBIDDEN", "Account is unavailable");
       const saved = await receipt(client, actor, "deletion-feedback", { reason }, context);
       if (saved.previous) { await client.query("COMMIT"); return saved.previous as { id: string }; }
@@ -106,6 +108,7 @@ export class AccountLifecycleService {
     try {
       await client.query("BEGIN");
       const account = await accountRow(client, actor);
+      await authorizeOperation(client, actor, `lifecycle:${operation}`, actor.accountId);
       const saved = await receipt(client, actor, operation, input, context);
       if (saved.previous) { await client.query("COMMIT"); return saved.previous as AccountLifecycleDto; }
       if (account.status !== "active") throw new AccountLifecycleFailure(403, "FORBIDDEN", "Account is unavailable");
@@ -123,8 +126,9 @@ export class AccountLifecycleService {
         revision=revision+1,updated_at=now() WHERE id=$1 RETURNING revision::text`, [actor.accountId, nextStatus]);
       const record = await client.query<{ id: string }>(`INSERT INTO account_lifecycle_operations
         (account_id,requested_by_user_id,kind,state,expected_revision,feedback_id,receipt_id,completed_at)
-        VALUES($1,$2,$3,'succeeded',$4,$5,$6,now()) RETURNING id`,
-      [actor.accountId, actor.userId, operation, input.expectedRevision, input.feedbackId ?? null, saved.id]);
+        VALUES($1,$2,$3,$7,$4,$5,$6,CASE WHEN $3='delete' THEN NULL ELSE now() END) RETURNING id`,
+      [actor.accountId, actor.userId, operation, input.expectedRevision, input.feedbackId ?? null, saved.id,
+        operation === "delete" ? "pending" : "succeeded"]);
       await client.query("UPDATE user_security_state SET blocked_at=now(),session_version=session_version+1,updated_at=now() WHERE user_id=$1", [actor.userId]);
       await client.query("DELETE FROM auth_session WHERE user_id=$1", [actor.userId]);
       const response: AccountLifecycleDto = { accountId: actor.accountId, status: nextStatus,

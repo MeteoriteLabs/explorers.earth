@@ -22,8 +22,8 @@ export const useLogout = () => {
   const client = useApolloClient();
 
   return async (options: { serverRevoked?: boolean } = {}) => {
-    logout();
     useAuthStore.getState().setLogoutError(true);
+    logout();
     closeLocalMusicSession();
 
     // Clear all explorers storage

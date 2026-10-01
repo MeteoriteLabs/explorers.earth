@@ -5,6 +5,8 @@ import { verifyMusicRuntimeDatabaseConnection } from "../db/music-runtime-role";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
 import { createCanonicalApp } from "./canonicalApp";
 import { resolveExplorersAuthConfig } from "./betterAuth";
+import { runAccountLifecycleMaintenance } from "../application/accountLifecycleMaintenance";
+import { resolveObjectStorage } from "../services/objectStorage";
 
 type Environment = Record<string, string | undefined>;
 
@@ -42,9 +44,22 @@ export async function startCanonicalServer(
         resolve();
       });
     });
+    const storage = resolveObjectStorage(environment);
+    let maintenance: Promise<void> | undefined;
+    const maintain = () => {
+      if (maintenance) return;
+      maintenance = runAccountLifecycleMaintenance(pool, storage).then(() => undefined).catch(() => {
+        process.stderr.write("Account lifecycle maintenance failed; retry is scheduled\n");
+      }).finally(() => { maintenance = undefined; });
+    };
+    maintain();
+    const maintenanceTimer = setInterval(maintain, 60_000);
+    maintenanceTimer.unref();
     return {
       httpServer,
       shutdown: async () => {
+        clearInterval(maintenanceTimer);
+        await maintenance;
         await new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve()));
         if (ownsPool) await pool.end();
       },

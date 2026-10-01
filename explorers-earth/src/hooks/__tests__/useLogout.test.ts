@@ -20,6 +20,7 @@ describe("useLogout", () => {
     mockClearStore.mockResolvedValue(undefined);
     (useApolloClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ clearStore: mockClearStore });
     (useNavigate as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockNavigate);
+    useAuthStore.getState().setLogoutError(false);
     useAuthStore.getState().logout();
     queryClient.clear();
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
@@ -87,5 +88,6 @@ describe("useLogout", () => {
     const { result } = renderHook(() => useLogout());
     await result.current();
     expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, status: "signed-out", logoutError: true });
+    expect(localStorage.getItem("explorers-logout-pending")).toBe("1");
   });
 });
