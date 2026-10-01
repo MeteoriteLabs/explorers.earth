@@ -1,0 +1,68 @@
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import type { Pool } from 'pg';
+import { z } from 'zod/v3';
+import { publicContentRequestSchema, type PublicContentPage, type PublicContentRequest,
+  type PublicCollectionSummary, type PublicRecommendationSummary } from '../../shared/explorersPublicContentContract';
+
+export class PublicContentFailure extends Error {
+  constructor(readonly status:400|409) {super(status===400?'Invalid public content request':'Collection changed; restart pagination');}
+}
+const cursorSchema=z.object({version:z.literal(1),binding:z.string(),account:z.string().uuid(),
+  revision:z.string().nullable(),order:z.number().int().nonnegative().max(2147483647),id:z.string().uuid()}).strict();
+type Cursor=z.infer<typeof cursorSchema>;
+/** Live public pages, never a complete-set owner read. Each page has one consistent database snapshot. */
+export class PublicContentService {
+  private readonly key:Buffer;
+  constructor(private readonly pool:Pool,secret:string) {this.key=createHash('sha256').update('explorers-public-content-cursor/v1\0').update(secret).digest();}
+  private binding(input:PublicContentRequest) {return JSON.stringify([input.username,input.category,input.slug??null,input.limit,'display_order,id/v1']);}
+  private decode(value:string|undefined,binding:string):Cursor|undefined {
+    if(!value) return undefined;
+    try {
+      const bytes=Buffer.from(value,'base64url');if(bytes.toString('base64url')!==value||bytes.length<29) throw new Error();
+      const cipher=createDecipheriv('aes-256-gcm',this.key,bytes.subarray(0,12));cipher.setAAD(Buffer.from('explorers-public-content/v1'));cipher.setAuthTag(bytes.subarray(12,28));
+      const cursor=cursorSchema.parse(JSON.parse(Buffer.concat([cipher.update(bytes.subarray(28)),cipher.final()]).toString('utf8')));
+      if(cursor.binding!==binding) throw new Error();return cursor;
+    } catch {throw new PublicContentFailure(400);}
+  }
+  private encode(cursor:Cursor) {
+    const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',this.key,nonce);cipher.setAAD(Buffer.from('explorers-public-content/v1'));
+    const encrypted=Buffer.concat([cipher.update(JSON.stringify(cursor),'utf8'),cipher.final()]);return Buffer.concat([nonce,cipher.getAuthTag(),encrypted]).toString('base64url');
+  }
+  async page(raw:unknown):Promise<PublicContentPage<PublicCollectionSummary|PublicRecommendationSummary>|undefined> {
+    const parsed=publicContentRequestSchema.safeParse(raw);if(!parsed.success) throw new PublicContentFailure(400);
+    const input=parsed.data,binding=this.binding(input),cursor=this.decode(input.cursor,binding);
+    const db=await this.pool.connect();
+    try {
+      await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      const account=(await db.query(`SELECT a.id FROM creator_accounts a JOIN account_category_settings s ON s.account_id=a.id AND s.category=$2
+        WHERE a.handle_key=$1 AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public`,[input.username,input.category])).rows[0];
+      if(!account) {await db.query('COMMIT');return undefined;}
+      if(cursor&&cursor.account!==account.id) throw new PublicContentFailure(400);
+      let revision:string|null=null,rows:any[];
+      if(input.slug!==undefined) {
+        const collection=(await db.query(`SELECT id,revision::text FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3
+          AND archived_at IS NULL AND visibility='public' AND publication_state='published'`,[account.id,input.category,input.slug])).rows[0];
+        if(!collection) {await db.query('COMMIT');return undefined;}
+        revision=collection.revision;if(cursor&&cursor.revision!==revision) throw new PublicContentFailure(409);
+        rows=(await db.query(`SELECT r.id,e.title,e.kind,r.user_rating,ci.display_order FROM collection_items ci
+          JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
+          JOIN entities e ON e.id=r.entity_id
+          WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published'
+          AND ($4::integer IS NULL OR (ci.display_order,r.id)>($4,$5::uuid)) ORDER BY ci.display_order,r.id LIMIT $6`,
+          [collection.id,account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
+      } else {
+        if(cursor&&cursor.revision!==null) throw new PublicContentFailure(400);
+        rows=(await db.query(`SELECT id,title,slug,description,heading,display_order FROM collections WHERE account_id=$1 AND category=$2
+          AND archived_at IS NULL AND visibility='public' AND publication_state='published'
+          AND ($3::integer IS NULL OR (display_order,id)>($3,$4::uuid)) ORDER BY display_order,id LIMIT $5`,
+          [account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
+      }
+      const hasMore=rows.length>input.limit;rows=rows.slice(0,input.limit);const last=rows.at(-1);
+      const result:PublicContentPage<PublicCollectionSummary|PublicRecommendationSummary>={version:'explorers-public-content/v1',
+        items:rows.map(row=>input.slug!==undefined?{id:row.id,title:row.title,kind:row.kind,userRating:row.user_rating}:
+          {id:row.id,title:row.title,slug:row.slug,description:row.description,heading:row.heading}),
+        nextCursor:hasMore?this.encode({version:1,binding,account:account.id,revision,order:last.display_order,id:last.id}):null};
+      await db.query('COMMIT');return result;
+    } catch(error) {await db.query('ROLLBACK');throw error;} finally {db.release();}
+  }
+}

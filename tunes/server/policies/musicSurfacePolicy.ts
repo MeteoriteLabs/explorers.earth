@@ -126,6 +126,10 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   }
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
+  if(route.source==='tunes/server/routes/explorersPublicContentRoutes.ts' && route.method==='GET' && [
+    '/api/explorers/v1/public/profiles/:username/collections/:category',
+    '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
+  ].includes(route.path)) return 'public';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
       && [
         ["POST", "/api/explorers/v1/entities/resolve"],

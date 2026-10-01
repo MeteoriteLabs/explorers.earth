@@ -63,6 +63,14 @@ describe("Music surface authorization policy", () => {
     expect(decisionForRoute({ method: "GET", path, classification: "admin-tombstone" })).toBe("admin-tombstone");
   });
 
+  it.each([
+    '/api/explorers/v1/public/profiles/:username/collections/:category',
+    '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
+  ])('recognizes only the exact public content GET source and path %s',path=>{
+    const route={method:'GET',path,source:'tunes/server/routes/explorersPublicContentRoutes.ts',classification:'private'};
+    expect(decisionForRoute(route)).toBe('public');
+    for(const changed of [{source:'other.ts'},{method:'POST'},{method:'ALL'},{path:path+'/internal'},{classification:'tombstone'}]) expect(decisionForRoute({...route,...changed})).toBe('tombstone');
+  });
   it("does not make unknown public profile paths public", () => {
     expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles/:username/admin", classification: "private" })).toBe("tombstone");
     expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles", classification: "private" })).toBe("tombstone");
