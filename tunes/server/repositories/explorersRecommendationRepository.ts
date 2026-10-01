@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import type { CollectionCoreDto, RecommendationCoreDto } from '../../shared/explorersContract';
+import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult } from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
@@ -76,6 +76,39 @@ export class ExplorersRecommendationRepository {
       await db.query(`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response)
         VALUES($1,$2,$3,$4,$5)`,[accountId,operation,keyHash,requestHash,JSON.stringify(result)]);
       return result;
+    });
+  }
+  /** Bounded internal command seam; strict input and Actor authority come from the application. */
+  async writeCategoryTopPicks(accountId:string,category:TopPickCategory,input:CategoryTopPicksInput,key:string,replace:boolean):Promise<CategoryTopPicksResult> {
+    return this.command(accountId,replace?'setCategoryTopPicks':'upsertCategoryTopPickOrder',{category,...input},key,async db=>{
+      // command holds account and category advisory locks before this pin lock.
+      const categoryRevision=async()=>String((await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+      if(await categoryRevision()!==input.expectedCategoryRevision) throw new RecommendationFailure(409,'Stale category revision');
+      const state=await db.query('SELECT revision FROM account_category_pin_state WHERE account_id=$1 AND category=$2 FOR UPDATE',[accountId,category]);
+      const revision=state.rows[0]?Number(state.rows[0].revision):null;
+      if(revision!==input.expectedPinRevision) throw new RecommendationFailure(409,'Stale pin revision');
+      for(const pin of input.orderedPins) {
+        const member=await db.query(`SELECT 1 FROM collection_items ci JOIN collections c ON c.id=ci.collection_id
+          JOIN recommendations r ON r.id=ci.recommendation_id WHERE ci.account_id=$1 AND ci.category=$2
+          AND ci.recommendation_id=$3 AND ci.collection_id=$4 AND c.account_id=$1 AND c.category=$2
+          AND r.account_id=$1 AND r.category=$2 AND c.archived_at IS NULL AND r.archived_at IS NULL`,
+          [accountId,category,pin.recommendationId,pin.collectionId]);
+        if(!member.rows[0]) throw new RecommendationFailure(422,'Selected membership unavailable');
+      }
+      // State must exist before pins because their FK points at it. New state is
+      // revision 1, never inserted and subsequently incremented to 2.
+      const changed=revision===null
+        ?await db.query('INSERT INTO account_category_pin_state(account_id,category,revision) VALUES($1,$2,1) RETURNING revision',[accountId,category])
+        :await db.query('UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category=$2 RETURNING revision',[accountId,category]);
+      if(replace) await db.query('DELETE FROM category_recommendation_pins WHERE account_id=$1 AND category=$2',[accountId,category]);
+      for(let position=0;position<input.orderedPins.length;position++) {
+        const pin=input.orderedPins[position];
+        await db.query(`INSERT INTO category_recommendation_pins(account_id,category,recommendation_id,collection_id,position)
+          VALUES($1,$2,$3,$4,$5) ON CONFLICT(account_id,category,recommendation_id)
+          DO UPDATE SET collection_id=excluded.collection_id,position=excluded.position`,[accountId,category,pin.recommendationId,pin.collectionId,position]);
+      }
+      return {operation:replace?'replace':'upsert-order',categoryRevision:await categoryRevision(),pinRevision:Number(changed.rows[0].revision),
+        pins:input.orderedPins.map((pin,position)=>({...pin,position}))};
     });
   }
   /** Provider facts are server-validated upstream; this method never fetches or accepts caller authority. */

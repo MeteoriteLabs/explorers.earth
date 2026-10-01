@@ -937,6 +937,44 @@
       }
     },
     {
+      "method": "PUT",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "POST",
       "path": "/api/explorers/v1/collections",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
@@ -1262,6 +1300,44 @@
     {
       "method": "ALL",
       "path": "/api/explorers/v1/categories/:category/memberships",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "tombstone",
       "allowed": {

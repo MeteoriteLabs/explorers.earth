@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, createCollectionSchema, updateCollectionSchema,
   createRecommendationSchema, updateRecommendationSchema, reorderCollectionSchema, contentRevisionSchema,
-  contentIdSchema, commandKeySchema, type RequestContext } from '../../shared/explorersContract';
+  contentIdSchema, commandKeySchema, topPickCategorySchema, categoryTopPicksInputSchema, categoryTopPicksResultSchema, type RequestContext } from '../../shared/explorersContract';
 import type { Actor } from './actor';
 import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
@@ -29,6 +29,16 @@ export class RecommendationService {
     }
   }
   private key(context:RequestContext) {return parseContent(commandKeySchema,context?.idempotencyKey);}
+  async setCategoryTopPicks(actor:Actor,category:string,input:unknown,context:RequestContext) {
+    return this.topPicks(actor,category,input,context,true);
+  }
+  async upsertCategoryTopPickOrder(actor:Actor,category:string,input:unknown,context:RequestContext) {
+    return this.topPicks(actor,category,input,context,false);
+  }
+  private async topPicks(actor:Actor,category:string,input:unknown,context:RequestContext,replace:boolean) {
+    return this.authorized(actor,'recommendations:write',async()=>categoryTopPicksResultSchema.parse(await this.repository.writeCategoryTopPicks(
+      actor.accountId,parseContent(topPickCategorySchema,category),parseContent(categoryTopPicksInputSchema,input),this.key(context),replace)));
+  }
   async createCollection(actor:Actor,input:unknown,context:RequestContext) {
     return this.authorized(actor,'collections:write',async()=>collectionCoreDtoSchema.parse(await this.repository.createCollection(actor.accountId,parseContent(createCollectionSchema,input),this.key(context))));
   }

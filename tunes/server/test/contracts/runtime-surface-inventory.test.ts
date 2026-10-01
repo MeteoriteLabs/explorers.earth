@@ -69,11 +69,14 @@ describe("runtime route/event/job inventory", () => {
       ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],
       ['GET','/api/explorers/v1/categories/:category/memberships'],
+      ['PUT','/api/explorers/v1/categories/:category/top-picks'],
+      ['PATCH','/api/explorers/v1/categories/:category/top-picks/order'],
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
-      '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships'];
+      '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',
+      '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order'];
     expect(routes).toHaveLength(ownerCommands.length+methodBoundaries.length);
     for(const [method,path] of ownerCommands) expect(routes).toContainEqual(expect.objectContaining({
       method,path,classification:'canonical-explorers-owner',ownerSource:'verified-google-session+active-initial-account-binding',

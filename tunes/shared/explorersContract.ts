@@ -19,6 +19,20 @@ const contentVisibility = z.enum(['private','public']);
 const userRating = z.number().int().min(1).max(10).nullable();
 export const contentIdSchema = z.string().uuid();
 export const commandKeySchema = z.string().regex(/^[A-Za-z0-9._~-]{8,200}$/);
+export const topPickCategorySchema = z.enum(['books','movies','games','apps','products','people']);
+export const categoryContentRevisionSchema = z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
+const topPickMembershipSchema = z.object({recommendationId:contentIdSchema.transform(v=>v.toLowerCase()),collectionId:contentIdSchema.transform(v=>v.toLowerCase())}).strict();
+export const categoryTopPicksInputSchema = z.object({expectedCategoryRevision:categoryContentRevisionSchema,
+  expectedPinRevision:contentRevision.nullable(),orderedPins:z.array(topPickMembershipSchema).max(15)
+    .refine(pins=>new Set(pins.map(p=>p.recommendationId)).size===pins.length,'Duplicate recommendation')}).strict();
+// replace returns the complete replaced set; upsert-order returns supplied rows
+// only. Neither response is a category content snapshot or grants completeness.
+export const categoryTopPicksResultSchema = z.object({operation:z.enum(['replace','upsert-order']),
+  categoryRevision:categoryContentRevisionSchema,pinRevision:contentRevision,
+  pins:z.array(topPickMembershipSchema.extend({position:z.number().int().nonnegative()})).max(15)}).strict();
+export type TopPickCategory = z.infer<typeof topPickCategorySchema>;
+export type CategoryTopPicksInput = z.infer<typeof categoryTopPicksInputSchema>;
+export type CategoryTopPicksResult = z.infer<typeof categoryTopPicksResultSchema>;
 const collectionPlainText = z.string().max(5000).nullable();
 const collectionHeading = z.string().trim().max(200).nullable();
 const recommendationMediaIds = z.array(contentIdSchema).max(20).refine(ids=>new Set(ids).size===ids.length,'Duplicate media');

@@ -136,3 +136,170 @@ it('rechecks stale and inactive actors at the application boundary, including li
   await pool.query('UPDATE user_security_state SET session_version=session_version+1 WHERE user_id=$1',[a.userId]);await expect(service.createCollection(actor,input,context)).rejects.toMatchObject({status:401});
   await pool.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1",[a.accountId]);await expect(service.archiveCollection(actor,created.id,{expectedRevision:1},context)).rejects.toMatchObject({status:403});
 });
+
+// Category commands preserve staged manager save timing. These real HTTP tests
+// catch replacement masquerading as autosave and unbounded completeness claims.
+async function pinInput(owner:{cookie:string},orderedPins:object[],category='books') {
+  const snapshot=await request(composed.app).get(`/api/explorers/v1/categories/${category}/content-snapshot`).set('cookie',owner.cookie);
+  expect(snapshot.status).toBe(200);
+  return {expectedCategoryRevision:snapshot.body.revision,expectedPinRevision:snapshot.body.pinRevision,orderedPins};
+}
+function pins(owner:{cookie:string},method:'put'|'patch',input:object,key=randomUUID(),category='books') {
+  return request(composed.app)[method](`/api/explorers/v1/categories/${category}/top-picks${method==='patch'?'/order':''}`).set('cookie',owner.cookie).set('origin',config.baseURL).set('Idempotency-Key',key).send(input);
+}
+it('top picks preserve staged add/drag and unpin/drag ties until explicit Save',async()=>{
+  const a=await persona(),c=await list(a),d=await list(a),e=await entity(),one=await recommendation(a,c,e),two=await recommendation(a,d,e);
+  const p={recommendationId:one.id,collectionId:c.id},q={recommendationId:two.id,collectionId:d.id};
+  const saved=await pins(a,'put',await pinInput(a,[p]));expect(saved.status).toBe(200);expect(saved.body.topPicks).toMatchObject({operation:'replace',pinRevision:1,pins:[{...p,position:0}]});
+  const moved=await pins(a,'patch',await pinInput(a,[q]));expect(moved.status).toBe(200);expect(moved.body.topPicks).toMatchObject({operation:'upsert-order',pinRevision:2,pins:[{...q,position:0}]});
+  expect((await pool.query('SELECT recommendation_id,position FROM category_recommendation_pins WHERE account_id=$1 ORDER BY recommendation_id',[a.accountId])).rows).toHaveLength(2);
+  expect((await pool.query('SELECT position FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows.map(r=>r.position)).toEqual([0,0]);
+  const cleared=await pins(a,'put',await pinInput(a,[q]));expect(cleared.status).toBe(200);expect(cleared.body.topPicks.pins).toEqual([{...q,position:0}]);
+  expect((await pool.query('SELECT recommendation_id FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows).toEqual([{recommendation_id:two.id}]);
+  expect((await pool.query('SELECT publication_state,visibility FROM collections WHERE id=$1',[d.id])).rows[0]).toEqual({publication_state:'draft',visibility:'private'});
+});
+it('top picks accept 15 supplied rows and preserve an autosave union above 15',async()=>{
+  const a=await persona(),c=await list(a),e=await entity(),selected=[];
+  for(let i=0;i<16;i++){const r=await recommendation(a,c,e,i+1);selected.push({recommendationId:r.id,collectionId:c.id});}
+  expect((await pins(a,'put',await pinInput(a,selected))).status).toBe(422);
+  const saved=await pins(a,'put',await pinInput(a,selected.slice(0,15)));expect(saved.status).toBe(200);expect(saved.body.topPicks.pins).toHaveLength(15);
+  const moved=await pins(a,'patch',await pinInput(a,selected.slice(15)));expect(moved.status).toBe(200);expect(moved.body.topPicks.pins).toHaveLength(1);
+  expect((await pool.query('SELECT count(*)::int n FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(16);
+  expect((await pins(a,'patch',await pinInput(a,[]))).body.topPicks.pinRevision).toBe(3);
+  expect((await pool.query('SELECT count(*)::int n FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(16);
+  expect((await pins(a,'put',await pinInput(a,[]))).body.topPicks.pins).toEqual([]);
+  expect((await pool.query('SELECT count(*)::int n FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(0);
+});
+it('top picks require both revisions and exact strict bounded command inputs',async()=>{
+  const a=await persona(),base=await pinInput(a,[]);
+  for(const body of [{orderedPins:[]},{...base,expectedPinRevision:undefined},{...base,expectedCategoryRevision:undefined},{...base,expectedCategoryRevision:'01'},{...base,expectedCategoryRevision:'-1'},{...base,expectedPinRevision:0},{...base,expectedPinRevision:'1'},{...base,accountId:a.accountId},{...base,position:0},{...base,complete:true}]) expect((await pins(a,'put',body)).status).toBe(422);
+  for(const category of ['music','places','guides','BOOKS']) expect((await pins(a,'put',base,randomUUID(),category)).status).toBe(422);
+  expect((await pins(a,'put',base).query({category:'books'})).status).toBe(422);
+  expect((await pins(a,'put',base,'bad')).status).toBe(422);
+  expect((await request(composed.app).get('/api/explorers/v1/categories/books/top-picks')).status).toBe(405);
+});
+it('top picks reject foreign and missing selected memberships without data or receipt prefixes',async()=>{
+  const a=await persona(),b=await persona(),c=await list(a),d=await list(a),foreign=await list(b),r=await recommendation(a,c,await entity());
+  const base=await pinInput(a,[]);
+  for(const collectionId of [d.id,foreign.id,randomUUID()]) expect((await pins(a,'put',{...base,orderedPins:[{recommendationId:r.id,collectionId}]})).status).toBe(422);
+  expect((await pins(a,'put',{...base,orderedPins:[{recommendationId:r.id,collectionId:c.id},{recommendationId:r.id,collectionId:d.id}]})).status).toBe(422);
+  expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation IN ('setCategoryTopPicks','upsertCategoryTopPickOrder')",[a.accountId])).rows[0].n).toBe(0);
+  expect((await pool.query('SELECT count(*)::int n FROM account_category_pin_state WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(0);
+});
+it('top picks replay before stale checks and reject changed hashes and expired receipts',async()=>{
+  const a=await persona(),input=await pinInput(a,[]),key=randomUUID(),first=await pins(a,'put',input,key);expect(first.status).toBe(200);expect(first.body.topPicks.pinRevision).toBe(1);
+  expect((await pins(a,'put',input)).status).toBe(409);
+  const next=await pins(a,'patch',await pinInput(a,[]));expect(next.status).toBe(200);expect(next.body.topPicks.pinRevision).toBe(2);
+  expect((await pins(a,'put',input,key)).body).toEqual(first.body);
+  expect((await pins(a,'put',{...input,expectedPinRevision:2},key)).status).toBe(409);
+  expect((await pins(a,'put',input,key,'games')).status).toBe(409);
+  await pool.query("UPDATE application_command_receipts SET replay_until=now()-interval '1 second' WHERE account_id=$1",[a.accountId]);
+  expect((await pins(a,'put',input,key)).status).toBe(409);
+});
+it('top picks serialize concurrent absent-state creation and independently compare both revisions',async()=>{
+  const a=await persona(),input=await pinInput(a,[]),results=await Promise.all([pins(a,'put',input),pins(a,'patch',input)]);
+  expect(results.map(r=>r.status).sort()).toEqual([200,409]);
+  const current=await pinInput(a,[]);
+  expect((await pins(a,'put',{...current,expectedCategoryRevision:'0'})).status).toBe(409);
+  expect((await pins(a,'put',{...current,expectedPinRevision:null})).status).toBe(409);
+  const changed=await pins(a,'put',current);expect(changed.status).toBe(200);expect(changed.body.topPicks.pinRevision).toBe(2);
+  const actual=await pinInput(a,[]);expect(changed.body.topPicks.categoryRevision).toBe(actual.expectedCategoryRevision);
+});
+it('top picks deny canonical origin, anonymous, stale session, lifecycle, revoked membership and OAuth scopes',async()=>{
+  const a=await persona(),input=await pinInput(a,[]),path='/api/explorers/v1/categories/books/top-picks';
+  expect((await request(composed.app).put(path).set('origin',config.baseURL).send(input)).status).toBe(401);
+  expect((await pins(a,'put',input).set('origin','https://foreign.invalid')).status).toBe(403);
+  expect((await pins(a,'put',input).set('x-account-id',a.accountId)).status).toBe(401);
+  const {RecommendationService}=await import('../application/recommendations'),service=new RecommendationService(pool);
+  const actor={userId:a.userId,accountId:a.accountId,role:'owner' as const,credential:{kind:'web-session' as const,sessionId:a.sessionId,sessionVersion:1}},context={requestId:randomUUID(),idempotencyKey:randomUUID()};
+  for(const scopes of [[],['collections:write'],['recommendations:read']]) await expect(service.setCategoryTopPicks({...actor,credential:{kind:'oauth',grantId:randomUUID(),scopes}},'books',input,context)).rejects.toMatchObject({status:403});
+  await pool.query('UPDATE auth_session SET expires_at=now()-interval \'1 second\' WHERE id=$1',[a.sessionId]);expect((await pins(a,'put',input)).status).toBe(401);
+  const b=await persona(),binput=await pinInput(b,[]);await pool.query('UPDATE user_security_state SET session_version=session_version+1 WHERE user_id=$1',[b.userId]);expect((await pins(b,'put',binput)).status).toBe(401);
+  const c=await persona(),cinput=await pinInput(c,[]);await pool.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1",[c.accountId]);expect((await pins(c,'put',cinput)).status).toBe(403);
+  const d=await persona(),dinput=await pinInput(d,[]);await expect(service.setCategoryTopPicks({...actor,accountId:d.accountId},'books',dinput,context)).rejects.toMatchObject({status:404});
+});
+it('top picks select another exact membership and stale category changes fence commands',async()=>{
+  const a=await persona(),c=await list(a),d=await list(a),r=await recommendation(a,c,await entity()),p={recommendationId:r.id,collectionId:c.id};
+  await pool.query('INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,\'books\',0)',[d.id,r.id,a.accountId]);
+  const saved=await pins(a,'put',await pinInput(a,[p]));expect(saved.status).toBe(200);
+  const changed=await pins(a,'patch',await pinInput(a,[{...p,collectionId:d.id}]));expect(changed.status).toBe(200);
+  expect((await pool.query('SELECT collection_id FROM category_recommendation_pins WHERE recommendation_id=$1',[r.id])).rows[0].collection_id).toBe(d.id);
+  const before=await pinInput(a,[p]);await pool.query('UPDATE collections SET title=\'New\' WHERE id=$1',[c.id]);expect((await pins(a,'put',before)).status).toBe(409);
+  await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[c.id]);expect((await pins(a,'put',await pinInput(a,[p]))).status).toBe(422);
+  await pool.query('UPDATE recommendations SET archived_at=now() WHERE id=$1',[r.id]);expect((await pins(a,'patch',await pinInput(a,[{...p,collectionId:d.id}]))).status).toBe(422);
+});
+it('top picks roll back pin DML, both revisions and receipt on injected failure and permit retry',async()=>{
+  const {ExplorersRecommendationRepository}=await import('../repositories/explorersRecommendationRepository');
+  for(const failure of ['INSERT INTO application_command_receipts','COMMIT']) {
+    const a=await persona(),c=await list(a),r=await recommendation(a,c,await entity()),input=await pinInput(a,[{recommendationId:r.id,collectionId:c.id}]),key=randomUUID();
+    const faulty={connect:async()=>{const db=await pool.connect();return {release:()=>db.release(),query:async(sql:string,args?:unknown[])=>{if(sql.startsWith(failure)) throw new Error('Injected top-pick failure');return db.query(sql,args);}};}} as unknown as pg.Pool;
+    await expect(new ExplorersRecommendationRepository(faulty).writeCategoryTopPicks(a.accountId,'books',input as any,key,true)).rejects.toThrow('Injected top-pick failure');
+    expect(await pinInput(a,[])).toEqual({...input,orderedPins:[]});
+    expect((await pool.query('SELECT count(*)::int n FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(0);
+    expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='setCategoryTopPicks'",[a.accountId])).rows[0].n).toBe(0);
+    expect((await pins(a,'put',input,key)).status).toBe(200);
+  }
+});
+it('top picks use real runtime grants and rollback pin revision overflow',async()=>{
+  const {ExplorersRecommendationRepository}=await import('../repositories/explorersRecommendationRepository');
+  const a=await persona(),c=await list(a),r=await recommendation(a,c,await entity()),input=await pinInput(a,[{recommendationId:r.id,collectionId:c.id}]);
+  const runtime={connect:async()=>{const db=await pool.connect();await db.query('SET ROLE music_runtime');return {query:db.query.bind(db),release:async()=>{await db.query('RESET ROLE');db.release();}};}} as unknown as pg.Pool;
+  const accepted=await new ExplorersRecommendationRepository(runtime).writeCategoryTopPicks(a.accountId,'books',input as any,randomUUID(),true);expect(accepted.pinRevision).toBe(1);
+  expect(accepted.categoryRevision).toBe((await pinInput(a,[])).expectedCategoryRevision);
+  await pool.query("UPDATE account_category_pin_state SET revision=9007199254740991 WHERE account_id=$1 AND category='books'",[a.accountId]);
+  const before=await pinInput(a,[]);expect((await pins(a,'put',before)).status).toBe(422);
+  expect(await pinInput(a,[])).toEqual(before);
+  expect((await pool.query('SELECT recommendation_id FROM category_recommendation_pins WHERE account_id=$1',[a.accountId])).rows).toEqual([{recommendation_id:r.id}]);
+});
+
+it.each(['books','movies','games','apps','products','people'])('top picks initialize untouched %s to pin revision one and return actual multi-trigger category revision',async category=>{
+  const a=await persona(),input={expectedCategoryRevision:'0',expectedPinRevision:null,orderedPins:[]};
+  const first=await pins(a,'put',input,randomUUID(),category);expect(first.status).toBe(200);expect(first.body.topPicks).toEqual({operation:'replace',categoryRevision:'1',pinRevision:1,pins:[]});
+  const next=await pins(a,'patch',{expectedCategoryRevision:'1',expectedPinRevision:1,orderedPins:[]},randomUUID(),category);expect(next.status).toBe(200);expect(next.body.topPicks.pinRevision).toBe(2);
+  expect(next.body.topPicks.categoryRevision).toBe((await pinInput(a,[],category)).expectedCategoryRevision);
+  const kind={books:'book',movies:'movie',games:'game',apps:'app',products:'product',people:'person'}[category];
+  const c=await list(a,category),r=await recommendation(a,c,await entity(kind));
+  const saved=await pins(a,'put',await pinInput(a,[{recommendationId:r.id,collectionId:c.id}],category),randomUUID(),category);
+  expect(saved.status).toBe(200);expect(saved.body.topPicks.pinRevision).toBe(3);
+  expect((await pool.query('SELECT publication_state FROM recommendations WHERE id=$1',[r.id])).rows[0].publication_state).toBe('draft');
+});
+it('top picks canonicalize UUID casing for replay while changed order and membership hashes conflict',async()=>{
+  const a=await persona(),c=await list(a),d=await list(a),e=await entity(),one=await recommendation(a,c,e),two=await recommendation(a,d,e),key=randomUUID();
+  const p={recommendationId:one.id,collectionId:c.id},q={recommendationId:two.id,collectionId:d.id},input=await pinInput(a,[p,q]);
+  const first=await pins(a,'put',input,key);expect(first.status).toBe(200);
+  expect((await pins(a,'put',{...input,orderedPins:[{recommendationId:one.id.toUpperCase(),collectionId:c.id.toUpperCase()},q]},key)).body).toEqual(first.body);
+  expect((await pins(a,'put',{...input,orderedPins:[q,p]},key)).status).toBe(409);
+  expect((await pins(a,'put',{...input,orderedPins:[{...p,collectionId:d.id},q]},key)).status).toBe(409);
+  // Accepted state + two inserted rows conservatively invalidate several times.
+  expect(BigInt(first.body.topPicks.categoryRevision)-BigInt(input.expectedCategoryRevision)).toBeGreaterThan(1n);
+  expect(first.body.topPicks.categoryRevision).toBe((await pinInput(a,[])).expectedCategoryRevision);
+});
+it('top picks terminal purge removes commanded pins and cannot replay into the tombstone',async()=>{
+  const a=await persona(),b=await persona(),c=await list(a),d=await list(b),e=await entity(),r=await recommendation(a,c,e),other=await recommendation(b,d,e),input=await pinInput(a,[{recommendationId:r.id,collectionId:c.id}]),key=randomUUID();
+  expect((await pins(a,'put',input,key)).status).toBe(200);
+  const receipt=(await pool.query("INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response) VALUES($1,'delete',decode(repeat('02',32),'hex'),decode(repeat('02',32),'hex'),'{}') RETURNING id",[a.accountId])).rows[0].id;
+  const feedback=(await pool.query("INSERT INTO deletion_feedback(account_id,reason) VALUES($1,'Delete') RETURNING id",[a.accountId])).rows[0].id;
+  const operation=(await pool.query("INSERT INTO account_lifecycle_operations(account_id,kind,state,expected_revision,feedback_id,receipt_id) VALUES($1,'delete','running',1,$2,$3) RETURNING id",[a.accountId,feedback,receipt])).rows[0].id;
+  await pool.query("UPDATE creator_accounts SET status='pending_deletion',deletion_requested_at=now() WHERE id=$1",[a.accountId]);
+  const db=await pool.connect();try {await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');await db.query('SELECT purge_explorers_account_content($1,$2)',[a.accountId,operation]);await db.query('COMMIT');}finally{await db.query('ROLLBACK');db.release();}
+  for(const table of ['category_recommendation_pins','account_category_pin_state']) expect((await pool.query(`SELECT 1 FROM ${table} WHERE account_id=$1`,[a.accountId])).rowCount).toBe(0);
+  expect((await pins(a,'put',input,key)).status).toBe(403);
+  expect((await pool.query('SELECT 1 FROM entities WHERE id=$1',[e])).rowCount).toBe(1);
+  expect((await pool.query('SELECT 1 FROM recommendations WHERE id=$1',[other.id])).rowCount).toBe(1);
+  expect((await pool.query('SELECT 1 FROM account_category_content_state WHERE account_id=$1',[a.accountId])).rowCount).toBe(8);
+});
+it('top picks fence intervening membership/media mutations and reject wrong-category or wrong-owner replay',async()=>{
+  const a=await persona(),b=await persona(),c=await list(a),other=await list(a,'games'),r=await recommendation(a,c,await entity()),wrong=await recommendation(a,other,await entity('game'));
+  const p={recommendationId:r.id,collectionId:c.id},input=await pinInput(a,[p]),key=randomUUID();
+  expect((await pins(a,'put',input,key)).status).toBe(200);
+  expect((await pins(b,'put',await pinInput(b,[p]),key)).status).toBe(422);
+  expect((await pins(a,'put',await pinInput(a,[{recommendationId:wrong.id,collectionId:other.id}]))).status).toBe(422);
+  const beforeMedia=await pinInput(a,[p]),media=(await pool.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'recommendation','ready','image/png',10,now(),decode(repeat('00',32),'hex')) RETURNING id",[a.accountId])).rows[0].id;
+  await pool.query('INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,0)',[r.id,a.accountId,media]);
+  expect((await pins(a,'put',beforeMedia)).status).toBe(409);
+  const beforeMembership=await pinInput(a,[p]);await pool.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[c.id,r.id]);
+  expect((await pins(a,'put',beforeMembership)).status).toBe(409);
+  expect((await pins(a,'put',await pinInput(a,[p]))).status).toBe(422);
+  // Replays return the original bounded response even after selected membership vanished.
+  expect((await pins(a,'put',input,key)).status).toBe(200);
+});
