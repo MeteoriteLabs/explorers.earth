@@ -30,6 +30,27 @@ async function fixture(lists=27,children=53) {
   return {userId,accountId,cookie,ids,recommendations,sessionId:session.id};
 }
 const get=(f:{cookie:string},path:string,query:object={})=>request(composed.app).get(`/api/explorers/v1${path}`).set('cookie',f.cookie).query(query);
+it.each(['complete','recommendations','validate'])('executes the real joint client against guarded owner HTTP: %s',async(race)=>{
+  const f=await fixture(),storage=new Map<string,string>();
+  vi.stubGlobal('localStorage',{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});
+  const {default:store}=await import('../../../explorers-earth/src/store/store');
+  const {explorersApiClient,assertCompleteMyCategoryContent}=await import('../../../explorers-earth/src/lib/explorersApiClient');
+  store.setState({accountId:f.accountId,generation:101,isAuthenticated:true});let changed=false,validated=false;
+  vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{
+    expect(options.credentials).toBe('include');expect(options.cache).toBe('no-store');
+    if(!changed&&race!=='complete'&&new URL(url,'http://fixture').pathname.endsWith(`/${race}`)) {
+      await pool.query('UPDATE collections SET title=$2 WHERE id=$1',[f.ids[0],'Committed between reads']);changed=true;
+    }
+    if(url.includes('/validate?')) validated=true;
+    const result=await request(composed.app).get(url).set('cookie',f.cookie);
+    return new Response(JSON.stringify(result.body),{status:result.status,headers:{'Content-Type':'application/json'}});
+  });
+  try {
+    const result=explorersApiClient.getCompleteMyCategoryContent({category:'books'});
+    if(race==='complete') {const content=await result;assertCompleteMyCategoryContent(content);expect(content.collections).toHaveLength(27);expect(content.recommendations).toHaveLength(53);expect(content.memberships).toHaveLength(53);expect(validated).toBe(true);}
+    else {await expect(result).rejects.toMatchObject({status:409,code:'CONFLICT'});expect(changed).toBe(true);expect(validated).toBe(race==='validate');}
+  } finally {store.setState({accountId:null,isAuthenticated:false,generation:102});vi.unstubAllGlobals();}
+});
 const actorFor=(f:{userId:string;accountId:string;sessionId:string}):Actor=>({userId:f.userId,accountId:f.accountId,role:'owner',credential:{kind:'web-session',sessionId:f.sessionId,sessionVersion:1}});
 function observedPool(observe:(sql:string,values:any[],result:pg.QueryResult)=>Promise<void>|void):pg.Pool {
   return {query:pool.query.bind(pool),connect:async()=>{
