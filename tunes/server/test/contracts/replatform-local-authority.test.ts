@@ -19,6 +19,7 @@ import {
   validatePlatformComposeModel,
   formatPlatformFailure,
   classifyPlatformBuildFailure,
+  buildAndStartPlatformServices,
 } from "../../../../scripts/replatform-local";
 
 const receipt = {
@@ -62,6 +63,29 @@ const resetModel = {
 };
 
 describe("replatform local authority", () => {
+  it("builds the shared API image before starting migration from a cold cache", () => {
+    let apiImageExists = false;
+    const calls: string[][] = [];
+    buildAndStartPlatformServices(args => {
+      calls.push(args);
+      if (args[0] === "build") apiImageExists = true;
+      if (args[0] === "up") expect(apiImageExists).toBe(true);
+    });
+    expect(calls).toEqual([
+      ["build", "tunes", "explorers"],
+      ["up", "-d", "--no-build", "--wait", "explorers"],
+    ]);
+  });
+
+  it("does not start the migrator or API when the image build fails", () => {
+    const calls: string[][] = [];
+    expect(() => buildAndStartPlatformServices(args => {
+      calls.push(args);
+      throw new Error("image build refused");
+    })).toThrow("image build refused");
+    expect(calls).toEqual([["build", "tunes", "explorers"]]);
+  });
+
   it("formats a fixed diagnostic phase without underlying authority details", () => {
     expect(formatPlatformFailure("docker-endpoint")).toBe(
       "Replatform local command refused or failed; phase=docker-endpoint; authority details redacted.\n",
@@ -242,6 +266,10 @@ describe("replatform local authority", () => {
     expect(model.services.postgres.ports).toEqual(expect.arrayContaining([expect.objectContaining({ host_ip: "127.0.0.1", published: "51434" })]));
     expect(model.networks["replatform-local"].internal).toBe(true);
     expect(model.services.tunes.ports ?? []).toEqual([]);
+    expect(model.services["tunes-migrate"].image).toBe(model.services.tunes.image);
+    expect(model.services.tunes.image).toBe("explorers-replatform-local-tunes:c4");
+    expect(model.services["tunes-migrate"].pull_policy).toBe("never");
+    expect(model.services.tunes.pull_policy).toBe("never");
     expect(model.services.strapi.ports ?? []).toEqual([]);
     expect(Object.keys(model.services.explorers.networks).sort()).toEqual(["replatform-edge", "replatform-local"]);
     expect(Object.keys(model.services.tunes.networks)).toEqual(["replatform-local"]);

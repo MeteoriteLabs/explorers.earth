@@ -6,6 +6,8 @@ x-music-labels: &music-labels
 
 x-tunes-fixture-image: &tunes-fixture-image
   image: explorers-replatform-local-tunes:c4
+  # Built explicitly before dependent services start; this tag is never remote.
+  pull_policy: never
 
 services:
   postgres:

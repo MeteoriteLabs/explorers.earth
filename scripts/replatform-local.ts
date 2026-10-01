@@ -421,6 +421,13 @@ function createSecrets(recovering = false): void {
   }
 }
 
+export function buildAndStartPlatformServices(runCompose: (args: string[], timeout: number) => unknown): void {
+  // The migrator consumes the API's local-only tag but has no build definition.
+  // Compose may try to pull that dependency before an `up --build` builds Tunes.
+  runCompose(["build", "tunes", "explorers"], 900_000);
+  runCompose(["up", "-d", "--no-build", "--wait", "explorers"], 900_000);
+}
+
 function provision(host: string): unknown {
   failurePhase = "compose-model";
   checkedModel(host);
@@ -456,7 +463,7 @@ function provision(host: string): unknown {
   if (recovering) writeFileSync(RESET_INTENT, JSON.stringify({ status: "consumed", authority: receipt }), { flag: "w", mode: 0o600 });
   failurePhase = "service-build";
   // Capture build output for fixed-category failure diagnosis; never print it.
-  compose(host, ["up", "-d", "--build", "--wait", "explorers"], 900_000);
+  buildAndStartPlatformServices((args, timeout) => compose(host, args, timeout));
   failurePhase = "service-check";
   return check(host, receipt);
 }
