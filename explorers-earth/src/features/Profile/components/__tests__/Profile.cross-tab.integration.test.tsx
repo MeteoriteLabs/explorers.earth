@@ -297,7 +297,7 @@ describe("Profile editor cross-tab save boundary", () => {
       preset: "cinematic-dark",
       futureTheme: { keep: true },
     });
-  });
+  }, 15_000); // The real editor render and keyboard reorder finish under targeted coverage, but contend with the full CI suite.
 
   it("keeps Profile, Gallery, and Appearance mounted through a failed save and retry", async () => {
     const { container } = render(<Profile />);

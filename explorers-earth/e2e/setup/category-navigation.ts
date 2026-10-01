@@ -6,6 +6,9 @@ import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture'
 
 export const fixtureUser = { id: 'browser-user', documentId: 'browser-user', username: 'fixture-owner', email: 'owner@example.test', blocked: false };
 export const token = 'synthetic-browser-authority-not-a-live-token';
+const sessionCookie = 'better-auth.session_token';
+const sessionValue = 'contained-browser-session';
+const sessionId = 'contained-browser-session-id';
 export const categories = [
   { field: 'public_recommendations', route: 'places', label: 'Places Tab', root: 'recommendationLists' },
   { field: 'public_movie', route: 'movies', label: 'Movies & Shows Tab', root: 'movieLists' },
@@ -121,7 +124,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if (message.type() !== 'error') return;
       const status = expectedHttpErrors.get(message.location().url);
       if (expectedOffline.has(message.location().url) && message.text() === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED') observedHttpErrors.push(`offline ${new URL(message.location().url).pathname}`);
-      else if (status && message.text() === `Failed to load resource: the server responded with a status of ${status} (${status === 404 ? 'Not Found' : status === 429 ? 'Too Many Requests' : status === 409 ? 'Conflict' : 'Service Unavailable'})`) observedHttpErrors.push(`${status} ${new URL(message.location().url).pathname}`);
+      else if (status && message.text() === `Failed to load resource: the server responded with a status of ${status} (${status === 401 ? 'Unauthorized' : status === 404 ? 'Not Found' : status === 429 ? 'Too Many Requests' : status === 409 ? 'Conflict' : 'Service Unavailable'})`) observedHttpErrors.push(`${status} ${new URL(message.location().url).pathname}`);
       else errors.push(message.text());
     });
   };
@@ -145,9 +148,18 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
   await context.route('**/*', async route => {
     const request = route.request(); const url = new URL(request.url());
     const isContainedMusicAuthority = url.origin === 'https://localtunes.test';
+    // Canonical authentication follows the cookie actually sent by this request.
+    // Playwright's abbreviated headers() collection can omit Cookie.
+    const hasOwnerSession = async () => ((await request.headerValue('cookie')) ?? '')
+      .split(';').some(cookie => cookie.trim() === `${sessionCookie}=${sessionValue}`);
+    if (url.origin === origin && url.pathname === '/api/auth/get-session' && url.search === '' && request.method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(
+        await hasOwnerSession() ? { user: { id: fixtureUser.id, email: fixtureUser.email }, session: { id: sessionId } } : null,
+      ) });
+    }
     if (url.origin === origin && url.pathname === '/api/explorers/v1/me' && request.method() === 'GET') {
-      const cookies = await context.cookies(origin);
-      if (!cookies.some(cookie => cookie.name === 'token' && cookie.value === token)) {
+      if (!await hasOwnerSession()) {
+        expectedHttpErrors.set(request.url(), 401);
         return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: {
           code: 'UNAUTHENTICATED', message: 'Fixture session is required', requestId: 'category-fixture-account-read',
         } }) });
@@ -158,6 +170,15 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         onboardingStatus: state.account.Account_Name && state.account.Account_Type && state.account.mobile_number ? 'complete' : 'incomplete',
         publicProfile: state.account.public_profile === 'Yes', autoPinning: state.account.auto_pinning,
       }) }) });
+    }
+    if (url.origin === origin && url.pathname === '/api/explorers/v1/account/lifecycle' && url.search === '' && request.method() === 'GET') {
+      if (!await hasOwnerSession()) {
+        expectedHttpErrors.set(request.url(), 401);
+        return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: { code: 'UNAUTHENTICATED' } }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ lifecycle: {
+        accountId: canonicalAccountFixture().id, status: 'active', operationId: null, revision: canonicalAccountFixture().revision,
+      } }) });
     }
     const waitForDestination = async () => {
       const pending = state.destinationGates.entries().next().value as [string, Promise<void>] | undefined;
@@ -251,7 +272,12 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if (status >= 400) expectedHttpErrors.set(request.url(), status);
       return route.fulfill({ status, headers, contentType: 'application/json', body: JSON.stringify(body) });
     };
-    const owner = request.headers().authorization === `Bearer ${token}`;
+    // The contained legacy GraphQL adapter maps the fixture's verified session
+    // to its Strapi subject without giving the browser a JWT or forwarding a
+    // canonical credential to GraphQL. It remains test-only and exact-origin.
+    const owner = request.headers().authorization === `Bearer ${token}`
+      || url.origin === origin && url.pathname === '/graphql' && (await context.cookies(origin))
+        .some(cookie => cookie.name === sessionCookie && cookie.value === sessionValue);
     if (url.pathname === '/graphql' && request.method() === 'POST') {
       await waitForDestination();
       const body = request.postDataJSON();
@@ -363,13 +389,10 @@ export async function openFixture(browser: Browser, origin: string, state: Fixtu
   reducedMotion?: 'reduce' | 'no-preference';
   safeArea?: { top?: number; right?: number; bottom?: number; left?: number };
 } = {}) {
-  const entries = options.owner ? [
-    { name: 'auth-storage', value: JSON.stringify({ state: { isAuthenticated: true, user: fixtureUser, token }, version: 0 }) },
-    { name: 'user', value: JSON.stringify(fixtureUser) }, { name: 'qrtoken', value: token },
-  ] : [];
+  const entries: { name: string; value: string }[] = [];
   if (options.theme) entries.push({ name: 'dashboard-theme', value: options.theme });
   const context = await browser.newContext({ baseURL: origin, serviceWorkers: 'block', hasTouch: options.touch ?? false, reducedMotion: options.reducedMotion, viewport: { width: options.width ?? 1280, height: options.height ?? 900 },
-    storageState: { cookies: options.owner ? [{ name: 'token', value: token, domain: '127.0.0.1', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }] : [], origins: [{ origin, localStorage: entries }] },
+    storageState: { cookies: options.owner ? [{ name: sessionCookie, value: sessionValue, domain: '127.0.0.1', path: '/', expires: -1, httpOnly: true, secure: false, sameSite: 'Lax' }] : [], origins: [{ origin, localStorage: entries }] },
   });
   if (options.safeArea) await context.addInitScript((safeArea) => {
     const values = {

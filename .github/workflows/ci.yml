@@ -171,7 +171,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run Playwright E2E tests
-        run: npx playwright test --config=playwright.category-navigation-a.config.ts
+        run: |
+          npx playwright test --config=playwright.contained-auth-session.config.ts
+          npx playwright test --config=playwright.category-navigation-a.config.ts
         env:
           CI: true
           # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);

@@ -73,11 +73,11 @@ describe('category and publishing discovery', () => {
     const moved = (item: Identity) => item.title.includes('Settings Off → guest fallback → header On → explicit manual Pin');
     expect(a.filter(moved)).toHaveLength(0);
     expect(b.filter(moved)).toHaveLength(8);
-  });
+  }, 15_000); // Three Playwright CLI child processes can exceed Vitest's 5s default under CI coverage load.
 
   it('keeps publishing isolated from category discovery', () => {
     const publishing = discover('playwright.music-publishing.config.ts');
     expect(publishing).toHaveLength(69);
     expect(publishing.every((item) => item.file.endsWith('music-publish-controls.spec.ts'))).toBe(true);
-  });
+  }, 15_000); // This assertion also waits for a separate Playwright discovery process.
 });
