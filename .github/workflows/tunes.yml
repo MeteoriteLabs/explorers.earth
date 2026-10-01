@@ -88,6 +88,9 @@ jobs:
       - name: Prove C1 containment ancestry
         shell: bash
         run: git merge-base --is-ancestor d226f7e4dc5a54195a59804ec729f72b5e8f10d7 "$GITHUB_SHA"
+      - name: Reclaim unused hosted image SDK space
+        shell: bash
+        run: bash scripts/image-ci-disk.sh cleanup
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.12.0
@@ -109,6 +112,8 @@ jobs:
           npm run test:music-c8:repository-coverage
           npm run music:types:scoped
           npm run music:types:baseline
+      - name: Test hosted disk and image evidence contracts
+        run: node --test scripts/image-ci-disk.test.cjs
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Resolve immutable image name
         id: image
@@ -116,7 +121,11 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "name=ghcr.io/${owner}/explorers-tunes" >> "$GITHUB_OUTPUT"
+      - name: Record disk before image build
+        shell: bash
+        run: bash scripts/image-ci-disk.sh snapshot
       - name: Build Tunes exactly once
+        id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./tunes
@@ -142,17 +151,43 @@ jobs:
           timeout 30s docker run --rm --entrypoint node \
             "${{ steps.image.outputs.name }}:${{ github.sha }}" \
             dist/server/deployment/run-production-graph-smoke.js
+      - name: Require scanner disk reserve and exact built image
+        id: scan_reserve
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          EXPECTED_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        run: |
+          test -n "$EXPECTED_IMAGE_ID"
+          bash scripts/image-ci-disk.sh reserve
       - name: Block fixable high and critical image vulnerabilities
+        id: strict_scan
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        env:
+          TMPDIR: ${{ runner.temp }}
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: true
           severity-cutoff: high
           only-fixed: true
+      - name: Require disk reserve before complete scan
+        id: report_reserve
+        if: always() && steps.scan_reserve.outcome == 'success'
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          EXPECTED_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        run: bash scripts/image-ci-disk.sh reserve
       - name: Report all high and critical image vulnerabilities
-        if: always()
+        id: complete_scan
+        if: always() && steps.report_reserve.outcome == 'success'
         continue-on-error: true
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        env:
+          TMPDIR: ${{ runner.temp }}
+          GRYPE_LOG_FILE: ${{ github.workspace }}/grype-complete.log
+          GRYPE_LOG_LEVEL: info
+          NO_COLOR: "1"
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: false
@@ -160,15 +195,34 @@ jobs:
           only-fixed: false
           output-format: sarif
           output-file: grype-complete.sarif
-      - name: Retain complete vulnerability report
+      - name: Validate complete vulnerability report
+        id: report_valid
         if: always()
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          EXPECTED_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+          COMPLETE_SCAN_OUTCOME: ${{ steps.complete_scan.outcome }}
+          REPORT_RESERVE_OUTCOME: ${{ steps.report_reserve.outcome }}
+        run: |
+          set -euo pipefail
+          test "$REPORT_RESERVE_OUTCOME" = success
+          test "$COMPLETE_SCAN_OUTCOME" = success
+          test -n "$EXPECTED_IMAGE_ID"
+          bash scripts/image-ci-disk.sh identity
+          bash scripts/image-ci-disk.sh snapshot
+          node scripts/image-ci-report.cjs grype-complete.sarif grype-complete.log
+      - name: Retain complete vulnerability report
+        if: always() && steps.report_valid.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: grype-complete-${{ github.sha }}
-          path: grype-complete.sarif
+          path: |
+            grype-complete.sarif
+            grype-complete.log
           if-no-files-found: error
       - name: Save the qualified image for an explicit release
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
         shell: bash
         env:
           IMAGE_NAME: ${{ steps.image.outputs.name }}
@@ -176,7 +230,7 @@ jobs:
           set -euo pipefail
           docker save "${IMAGE_NAME}:${GITHUB_SHA}" | gzip -1 > tunes-qualified-image.tar.gz
       - name: Transfer the qualified image to the release job
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tunes-qualified-image-${{ github.sha }}

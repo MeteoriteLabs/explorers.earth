@@ -68,7 +68,12 @@ describe("Tunes workflow provenance and input boundary", () => {
       "severity-cutoff": "high",
       "only-fixed": true,
     });
-    expect(disclosure.if).toBe("always()");
+    expect(actionable["continue-on-error"]).toBeUndefined();
+    const reserve = steps.find((step: any) => step.id === "report_reserve");
+    expect(reserve.if).toBe("always() && steps.scan_reserve.outcome == 'success'");
+    expect(reserve.run).toContain("bash scripts/image-ci-disk.sh reserve");
+    expect(steps.indexOf(reserve)).toBeLessThan(steps.indexOf(disclosure));
+    expect(disclosure.if).toBe("always() && steps.report_reserve.outcome == 'success'");
     expect(disclosure["continue-on-error"]).toBe(true);
     expect(disclosure.with).toMatchObject({
       "fail-build": false,
@@ -77,11 +82,24 @@ describe("Tunes workflow provenance and input boundary", () => {
       "output-format": "sarif",
     });
     expect(disclosure.with["output-file"]).toBe("grype-complete.sarif");
-    expect(upload.if).toBe("always()");
+    const validation = steps.find((step: any) => step.id === "report_valid");
+    expect(validation.if).toBe("always()");
+    expect(validation.run).toContain('test "$REPORT_RESERVE_OUTCOME" = success');
+    expect(validation.run).toContain('test "$COMPLETE_SCAN_OUTCOME" = success');
+    expect(validation.run).toContain("bash scripts/image-ci-disk.sh identity");
+    expect(validation.run).toContain("node scripts/image-ci-report.cjs grype-complete.sarif grype-complete.log");
+    expect(steps.indexOf(validation)).toBeLessThan(steps.indexOf(upload));
+    expect(upload.if).toBe("always() && steps.report_valid.outcome == 'success'");
     expect(upload.uses).toBe(
       "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
     );
-    expect(upload.with.path).toBe("grype-complete.sarif");
+    expect(upload.with.path.trim().split(/\r?\n/)).toEqual(["grype-complete.sarif", "grype-complete.log"]);
+    expect(disclosure.env.GRYPE_LOG_FILE).toBe("${{ github.workspace }}/grype-complete.log");
+    for (const name of ["Save the qualified image for an explicit release", "Transfer the qualified image to the release job"]) {
+      const step = steps.find((candidate: any) => candidate.name === name);
+      expect(step.if).toContain("success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success'");
+      expect(step.if).toContain("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production");
+    }
     const publish = workflow.jobs["publish-image"];
     expect(steps.indexOf(actionable)).toBeLessThan(
       steps.findIndex((step: any) => step.name === "Transfer the qualified image to the release job"),
