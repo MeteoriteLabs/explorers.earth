@@ -64,6 +64,8 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
+      ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
+      ['GET','/api/explorers/v1/recommendations'], ['GET','/api/explorers/v1/recommendations/:id'],
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',

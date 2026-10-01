@@ -741,6 +741,36 @@
       "line": 58
     },
     {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 43
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 44
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 45
+    },
+    {
       "method": "POST",
       "path": "/api/explorers/v1/entities/resolve",
       "classification": "canonical-explorers-owner",
@@ -748,7 +778,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 33
+      "line": 48
     },
     {
       "method": "POST",
@@ -758,7 +788,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 34
+      "line": 49
     },
     {
       "method": "PATCH",
@@ -768,7 +798,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 35
+      "line": 50
     },
     {
       "method": "PATCH",
@@ -778,7 +808,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 36
+      "line": 51
     },
     {
       "method": "DELETE",
@@ -788,7 +818,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 37
+      "line": 52
     },
     {
       "method": "ALL",
@@ -798,7 +828,17 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 39
+      "line": 54
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 55
     },
     {
       "method": "POST",
@@ -808,7 +848,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 40
+      "line": 56
     },
     {
       "method": "PATCH",
@@ -818,7 +858,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 41
+      "line": 57
     },
     {
       "method": "DELETE",
@@ -828,7 +868,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 42
+      "line": 58
     },
     {
       "method": "ALL",
@@ -838,7 +878,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 43
+      "line": 59
     },
     {
       "method": "ALL",
@@ -848,7 +888,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 44
+      "line": 60
     },
     {
       "method": "ALL",
@@ -858,7 +898,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 45
+      "line": 61
     },
     {
       "method": "ALL",
@@ -868,7 +908,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 46
+      "line": 62
     },
     {
       "method": "ALL",
@@ -878,7 +918,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 47
+      "line": 63
     },
     {
       "method": "ALL",
@@ -888,7 +928,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 48
+      "line": 64
     },
     {
       "method": "GET",

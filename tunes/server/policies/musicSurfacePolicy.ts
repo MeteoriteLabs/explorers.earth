@@ -134,6 +134,10 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
       && [
         ["POST", "/api/explorers/v1/entities/resolve"],
         ["POST", "/api/explorers/v1/collections"],
+        ["GET", "/api/explorers/v1/collections"],
+        ["GET", "/api/explorers/v1/collections/:id"],
+        ["GET", "/api/explorers/v1/recommendations"],
+        ["GET", "/api/explorers/v1/recommendations/:id"],
         ["PATCH", "/api/explorers/v1/collections/:id"],
         ["PATCH", "/api/explorers/v1/collections/:id/order"],
         ["DELETE", "/api/explorers/v1/collections/:id"],

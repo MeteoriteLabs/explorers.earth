@@ -6,12 +6,14 @@ import type { ExplorersAuth, ExplorersAuthConfig } from '../auth/betterAuth';
 import type { Actor } from '../application/actor';
 import { RecommendationService } from '../application/recommendations';
 import { CatalogService } from '../application/catalog';
+import { OwnerContentService } from '../application/ownerContent';
 import { RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { requireActor, sendActorError } from '../middleware/explorersPrincipal';
 import type { RequestContext } from '../../shared/explorersContract';
 
 export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig) {
   const service=new RecommendationService(pool),catalog=new CatalogService(pool);
+  const ownerContent=new OwnerContentService(pool,config.secret);
   const routes=Router({caseSensitive:true,strict:true});
   const unsupported=(_request:Request,response:Response)=>response.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}});
   const mutation=(work:(actor:Actor,id:string,body:unknown,context:RequestContext)=>Promise<unknown>,name:string,status=200)=>async(request:Request,response:Response)=>{
@@ -28,6 +30,19 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       sendActorError(request,response,error);
     }
   };
+  const read=(work:(actor:Actor,id:string,query:unknown)=>Promise<unknown>,name?:string)=>async(request:Request,response:Response)=>{
+    response.set('Cache-Control','no-store');const requestId=randomUUID();
+    try {
+      const actor=await requireActor(request,auth,pool),result=await work(actor,String(request.params.id??''),request.query);
+      return response.json(name?{[name]:result}:result);
+    } catch(error) {
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':'INVALID_INPUT',message:error.message,requestId}});
+      sendActorError(request,response,error);
+    }
+  };
+  routes.get('/api/explorers/v1/collections',read((a,_id,q)=>ownerContent.listCollections(a,q)));
+  routes.get('/api/explorers/v1/collections/:id',read((a,id,q)=>ownerContent.getCollection(a,id,q),'collection'));
+  routes.get('/api/explorers/v1/recommendations',read((a,_id,q)=>ownerContent.listRecommendations(a,q)));
   // Literal registrations also make each executable boundary visible to the
   // official AST inventory; interpolated templates and loop paths are not parsed.
   routes.post('/api/explorers/v1/entities/resolve',mutation((a,_id,b)=>catalog.resolveEntity(a,b),'entity'));
@@ -37,6 +52,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.delete('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.archiveCollection(a,id,b,c),'collection'));
   // Reserve static search before /:id; pagination/search is a subsequent slice.
   routes.all('/api/explorers/v1/recommendations/search',unsupported);
+  routes.get('/api/explorers/v1/recommendations/:id',read((a,id,q)=>ownerContent.getRecommendation(a,id,q),'recommendation'));
   routes.post('/api/explorers/v1/recommendations',mutation((a,_id,b,c)=>service.createRecommendation(a,b,c),'recommendation',201));
   routes.patch('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.updateRecommendation(a,id,b,c),'recommendation'));
   routes.delete('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.archiveRecommendation(a,id,b,c),'recommendation'));
