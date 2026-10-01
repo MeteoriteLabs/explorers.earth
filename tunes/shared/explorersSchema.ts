@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { auth_user } from "./authSchema";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
 export const creatorAccounts = pgTable("creator_accounts", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -123,3 +124,48 @@ export const profileFeedItems = pgTable("profile_feed_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Migration 0029 owns composite ownership/category FKs, deferred ordering, guards and grants.
+// These mappings do not authorize generated schema diffs to drop SQL-owned constraints.
+const contentTimes = () => ({createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+  updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow()});
+export const entities=pgTable('entities',{
+  id:uuid('id').primaryKey().defaultRandom(),kind:text('kind').notNull(),title:text('title').notNull(),origin:text('origin').notNull(),
+  factsVersion:smallint('facts_version').notNull().default(1),searchDocument:tsvector('search_document').notNull().default(sql`''::tsvector`),...contentTimes(),
+});
+export const entityIdentifiers=pgTable('entity_identifiers',{
+  entityId:uuid('entity_id').notNull(),provider:text('provider').notNull(),externalKind:text('external_kind').notNull(),
+  externalId:text('external_id').notNull(),fetchedAt:timestamp('fetched_at',{withTimezone:true}).notNull().defaultNow(),sourceUrl:text('source_url'),
+},t=>[primaryKey({columns:[t.provider,t.externalKind,t.externalId]})]);
+export const collections=pgTable('collections',{
+  id:uuid('id').primaryKey().defaultRandom(),accountId:uuid('account_id').notNull(),category:text('category').notNull(),
+  title:text('title').notNull(),description:text('description'),descriptionRich:jsonb('description_rich'),slug:text('slug').notNull(),
+  visibility:text('visibility').notNull().default('private'),publicationState:text('publication_state').notNull().default('draft'),
+  displayOrder:integer('display_order').notNull(),pinOrder:integer('pin_order'),heading:text('heading'),
+  revision:bigint('revision',{mode:'number'}).notNull().default(1),archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
+});
+export const recommendations=pgTable('recommendations',{
+  id:uuid('id').primaryKey().defaultRandom(),accountId:uuid('account_id').notNull(),entityId:uuid('entity_id').notNull(),
+  category:text('category').notNull(),note:jsonb('note'),userRating:smallint('user_rating'),
+  publicationState:text('publication_state').notNull().default('draft'),revision:bigint('revision',{mode:'number'}).notNull().default(1),
+  archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
+});
+export const collectionItems=pgTable('collection_items',{
+  collectionId:uuid('collection_id').notNull(),recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),
+  category:text('category').notNull(),displayOrder:integer('display_order').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.collectionId,t.recommendationId]})]);
+export const accountCategoryPinState=pgTable('account_category_pin_state',{
+  accountId:uuid('account_id').notNull(),category:text('category').notNull(),revision:bigint('revision',{mode:'number'}).notNull().default(1),
+},t=>[primaryKey({columns:[t.accountId,t.category]})]);
+export const categoryRecommendationPins=pgTable('category_recommendation_pins',{
+  accountId:uuid('account_id').notNull(),category:text('category').notNull(),recommendationId:uuid('recommendation_id').notNull(),
+  collectionId:uuid('collection_id').notNull(),position:integer('position').notNull(),
+},t=>[primaryKey({columns:[t.accountId,t.category,t.recommendationId]})]);
+export const collectionMedia=pgTable('collection_media',{
+  collectionId:uuid('collection_id').notNull(),accountId:uuid('account_id').notNull(),slot:text('slot').notNull(),mediaId:uuid('media_id').notNull(),
+  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.collectionId,t.slot]})]);
+export const recommendationMedia=pgTable('recommendation_media',{
+  recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),mediaId:uuid('media_id').notNull(),
+  displayOrder:integer('display_order').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.recommendationId,t.mediaId]})]);

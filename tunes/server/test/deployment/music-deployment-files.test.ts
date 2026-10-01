@@ -175,13 +175,13 @@ describe("Music deployment authority files", () => {
       "/app/migrations/0025_explorers_media_attachment_guard.sql",
       "/app/migrations/0026_explorers_media_slot_compatibility.sql",
       "/app/migrations/0027_explorers_lifecycle.sql",
-      "/app/migrations/0028_explorers_recovery_proof_retention.sql",
+      "/app/migrations/0029_explorers_recommendations.sql",
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0028_explorers_recovery_proof_retention"',
+      'production_current_marker="0029_explorers_recommendations"',
     );
     expect(read("tunes/scripts/music-docker-release-rehearsal.ts")).toContain(
-      'const marker = "0028_explorers_recovery_proof_retention"',
+      'const marker = "0029_explorers_recommendations"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -458,11 +458,11 @@ describe("Music deployment authority files", () => {
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
     expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
-    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0028_explorers_recovery_proof_retention");
-    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0028_explorers_recovery_proof_retention");
-    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0028_explorers_recovery_proof_retention");
-    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0028_explorers_recovery_proof_retention");
-    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0028_explorers_recovery_proof_retention");
+    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0029_explorers_recommendations");
+    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0029_explorers_recommendations");
+    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0029_explorers_recommendations");
+    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0029_explorers_recommendations");
+    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0029_explorers_recommendations");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

@@ -14,6 +14,7 @@ import { LocalObjectStorage } from "../services/objectStorage";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
 import { MediaRepository } from "../repositories/mediaRepository";
 import { MediaService } from "../application/media";
+import { ExplorersRecommendationRepository } from "../repositories/explorersRecommendationRepository";
 
 const config = resolveExplorersAuthConfig({
   EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51474",
@@ -71,6 +72,36 @@ async function within<T>(promise: Promise<T>, milliseconds = 5000): Promise<T> {
 }
 
 describe("canonical account lifecycle", () => {
+  it("terminally purges owned content and typed attachments while retaining shared catalog and tombstone", async () => {
+    const owner=await identity(), other=await identity();
+    const catalog=await pool.query("INSERT INTO entities(kind,title,origin) VALUES('book','Shared edition','manual') RETURNING id");
+    const repository=new ExplorersRecommendationRepository(pool), shared=catalog.rows[0].id;
+    const list=await repository.createCollection(owner.accountId,{category:'books',title:'Private editorial list',slug:'reading'},randomUUID());
+    const item=await repository.createRecommendation(owner.accountId,{category:'books',entityId:shared,collectionId:list.id,expectedCollectionRevision:1,userRating:9},randomUUID());
+    await repository.createCollection(owner.accountId,{category:'guides',title:'Empty guide',slug:'guide'},randomUUID());
+    const otherList=await repository.createCollection(other.accountId,{category:'books',title:'Other list',slug:'reading'},randomUUID());
+    const otherItem=await repository.createRecommendation(other.accountId,{category:'books',entityId:shared,collectionId:otherList.id,expectedCollectionRevision:1},randomUUID());
+    await pool.query("INSERT INTO account_category_pin_state(account_id,category) VALUES($1,'books')",[owner.accountId]);
+    await pool.query("INSERT INTO category_recommendation_pins VALUES($1,'books',$2,$3,0)",[owner.accountId,item.id,list.id]);
+    // 3.2 owns transport upload purposes; provision this typed attachment through
+    // the real persistence/storage seam rather than expanding the profile upload API.
+    const mediaId=randomUUID(), key=`local/${owner.accountId}/${mediaId}`, storage=new LocalObjectStorage(), media=new MediaRepository(pool);
+    await media.reserve({id:mediaId,accountId:owner.accountId,purpose:'collection',mimeType:'image/png',filename:'cover.png',
+      bytes:png,hash:createHash('sha256').update(png).digest(),key,environment:'local'});
+    await storage.put(key,png); await media.markReady(mediaId);
+    await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[list.id,owner.accountId,mediaId]);
+    const operation=await pendingDeletion(owner);
+    await runAccountLifecycleMaintenance(pool,new LocalObjectStorage());
+    expect((await pool.query('SELECT status FROM creator_accounts WHERE id=$1',[owner.accountId])).rows[0].status).toBe('deleted');
+    expect((await pool.query('SELECT state FROM account_lifecycle_operations WHERE id=$1',[operation])).rows[0].state).toBe('succeeded');
+    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','category_recommendation_pins','account_category_pin_state','media_assets']) {
+      expect((await pool.query(`SELECT 1 FROM ${table} WHERE account_id=$1`,[owner.accountId])).rowCount,table).toBe(0);
+    }
+    expect((await pool.query('SELECT id FROM entities WHERE id=$1',[shared])).rowCount).toBe(1);
+    expect((await pool.query('SELECT id FROM recommendations WHERE id=$1',[otherItem.id])).rowCount).toBe(1);
+    await expect(storage.get(key)).rejects.toMatchObject({code:'ENOENT'});
+    expect(await runAccountLifecycleMaintenance(pool,new LocalObjectStorage())).toBe(0);
+  });
   beforeAll(() => { pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST }); app = createCanonicalApp(pool, config); });
   afterAll(async () => { await pool?.end(); });
 

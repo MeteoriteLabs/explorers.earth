@@ -2,12 +2,21 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0028_explorers_recovery_proof_retention",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql", "0018_transactional_queue_replacement.sql", "0019_queue_visibility_control.sql", "0020_public_snapshot_revision.sql", "0021_explorers_analytics_receipts.sql", "0022_explorers_identity.sql", "0023_explorers_authorization.sql", "0024_explorers_profile_media.sql", "0025_explorers_media_attachment_guard.sql", "0026_explorers_media_slot_compatibility.sql", "0027_explorers_lifecycle.sql", "0028_explorers_recovery_proof_retention.sql"],
+    "expectedId": "0029_explorers_recommendations",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql", "0018_transactional_queue_replacement.sql", "0019_queue_visibility_control.sql", "0020_public_snapshot_revision.sql", "0021_explorers_analytics_receipts.sql", "0022_explorers_identity.sql", "0023_explorers_authorization.sql", "0024_explorers_profile_media.sql", "0025_explorers_media_attachment_guard.sql", "0026_explorers_media_slot_compatibility.sql", "0027_explorers_lifecycle.sql", "0028_explorers_recovery_proof_retention.sql", "0029_explorers_recommendations.sql"],
     "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations", "music_publication_operations", "music_publication_operation_archive", "music_reactivation_tokens", "music_owner_operations", "explorers_analytics_receipts"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/shared/authSchema.ts", "tunes/shared/explorersSchema.ts", "tunes/server/**/*.ts"],
   "tables": [
+    { "name": "account_category_pin_state", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "category_recommendation_pins", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "collections", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "collection_items", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "collection_media", "managedBy": "drizzle", "family": "media", "lifecycle": "detach-on-deletion" },
+    { "name": "entities", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" },
+    { "name": "entity_identifiers", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" },
+    { "name": "recommendations", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "recommendation_media", "managedBy": "drizzle", "family": "media", "lifecycle": "detach-on-deletion" },
     { "name": "account_category_settings", "managedBy": "drizzle", "family": "profile", "lifecycle": "strip-on-deletion" },
     { "name": "account_memberships", "managedBy": "drizzle", "family": "identity", "lifecycle": "retain-tombstone-binding" },
     { "name": "account_music_identity", "managedBy": "unmanaged-raw-sql", "family": "identity", "lifecycle": "delete-with-music-owner" },

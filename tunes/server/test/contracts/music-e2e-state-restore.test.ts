@@ -117,14 +117,14 @@ describe("Music E2E transactional state restore", () => {
     // trigger whose semantics mutate the captured bytes.
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
-      "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
+      "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
-      "auth_verification", "creator_accounts", "deletion_feedback", "email_logs", "email_templates",
+      "auth_verification", "category_recommendation_pins", "collection_items", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects", "music_credential_revocation_operations",
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "profile_feed_items", "profile_media", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
+      "playlists", "profile_feed_items", "profile_media", "recommendation_media", "recommendations", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
@@ -145,10 +145,13 @@ describe("Music E2E transactional state restore", () => {
       "0026_explorers_media_slot_compatibility",
       "0027_explorers_lifecycle",
       "0028_explorers_recovery_proof_retention",
+      "0029_explorers_recommendations",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
       { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
+      { table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 },
+      { table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 },
       { table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 },
       { table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 },
       { table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 },
@@ -159,6 +162,8 @@ describe("Music E2E transactional state restore", () => {
       { table: "music_reactivation_tokens", name: "music_reactivation_token_identity_immutability", enabled: "O", type: 19 },
       { table: "profile_feed_items", name: "profile_feed_ready_guard", enabled: "O", type: 21 },
       { table: "profile_media", name: "profile_media_ready_guard", enabled: "O", type: 21 },
+      { table: "recommendation_media", name: "recommendation_media_ready_guard", enabled: "O", type: 21 },
+      { table: "recommendations", name: "recommendation_entity_kind_guard", enabled: "O", type: 21 },
       { table: "users", name: "users_music_identity_immutability", enabled: "O", type: 19 },
       { table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 },
       { table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 },

@@ -74,7 +74,9 @@ export class MediaRepository {
       const locked = await client.query("SELECT id FROM media_assets WHERE id=$1 AND account_id=$2 AND status='ready' FOR UPDATE", [id, accountId]);
       if (!locked.rows[0]) { await client.query("ROLLBACK"); return undefined; }
       const refs = await client.query<{ count: string }>(`SELECT ((SELECT count(*) FROM profile_media WHERE media_id=$1 AND account_id=$2)
-        + (SELECT count(*) FROM profile_feed_items WHERE media_id=$1 AND account_id=$2))::text AS count`, [id, accountId]);
+        + (SELECT count(*) FROM profile_feed_items WHERE media_id=$1 AND account_id=$2)
+        + (SELECT count(*) FROM collection_media WHERE media_id=$1 AND account_id=$2)
+        + (SELECT count(*) FROM recommendation_media WHERE media_id=$1 AND account_id=$2))::text AS count`, [id, accountId]);
       if (Number(refs.rows[0]?.count) > 0) { await client.query("ROLLBACK"); return undefined; }
       const changed = await client.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now(),updated_at=now() WHERE id=$1 AND account_id=$2 AND status='ready' RETURNING id", [id, accountId]);
       if (!changed.rows[0]) { await client.query("ROLLBACK"); return undefined; }
@@ -108,7 +110,9 @@ export class MediaRepository {
         (m.status='uploading' AND m.created_at < now()-interval '10 minutes') OR
         (m.status='ready' AND m.created_at < now()-interval '24 hours'
           AND NOT EXISTS (SELECT 1 FROM profile_media WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM profile_feed_items WHERE media_id=m.id)))
+          AND NOT EXISTS (SELECT 1 FROM profile_feed_items WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM collection_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_media WHERE media_id=m.id)))
       ORDER BY m.created_at,m.id LIMIT $3`, [accountId, environment, limit]);
     return result.rows;
   }

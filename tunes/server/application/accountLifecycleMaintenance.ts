@@ -78,6 +78,9 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         const uploading = await db.query(`SELECT 1 FROM media_assets WHERE account_id=$1 AND status='uploading' LIMIT 1`,
           [operation.account_id]);
         if (uploading.rowCount) throw new Error("MEDIA_UPLOAD_IN_FLIGHT");
+        // Guarded SQL capability purges owned content and cascades typed media,
+        // membership and pin rows. It cannot delete active accounts or shared facts.
+        await db.query("SELECT purge_explorers_account_content($1,$2)", [operation.account_id,operation.id]);
         await db.query("DELETE FROM profile_media WHERE account_id=$1", [operation.account_id]);
         await db.query("DELETE FROM profile_feed_items WHERE account_id=$1", [operation.account_id]);
         await db.query("DELETE FROM media_objects WHERE media_id IN (SELECT id FROM media_assets WHERE account_id=$1)", [operation.account_id]);

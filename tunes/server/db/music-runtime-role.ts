@@ -4,6 +4,7 @@ const capabilityRole = "music_runtime";
 const safeRoleName = /^[a-z_][a-z0-9_]{1,62}$/;
 const safePassword = /^[A-Za-z0-9_-]{43,256}$/;
 const expectedRuntimeTables = [
+  "account_category_pin_state",
   "account_category_settings",
   "account_lifecycle_operations",
   "account_memberships",
@@ -18,10 +19,16 @@ const expectedRuntimeTables = [
   "auth_session",
   "auth_user",
   "auth_verification",
+  "category_recommendation_pins",
+  "collection_items",
+  "collection_media",
+  "collections",
   "creator_accounts",
   "deletion_feedback",
   "email_logs",
   "email_templates",
+  "entities",
+  "entity_identifiers",
   "explorers_analytics_receipts",
   "guest_interactions",
   "initial_account_bindings",
@@ -42,6 +49,8 @@ const expectedRuntimeTables = [
   "playlists",
   "profile_feed_items",
   "profile_media",
+  "recommendation_media",
+  "recommendations",
   "seo_settings",
   "session",
   "songs",
@@ -99,12 +108,15 @@ const expectedRuntimeFunctions = [
   "explorers_assert_no_unready_references()",
   "explorers_assert_ready_attachment()",
   "finalize_music_identity_deletion(integer,text,text)",
+  "guard_recommendation_entity_kind()",
+  "guard_recommendation_media()",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",
   "music_compact_publication_operations(integer)",
   "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
   "purge_expired_account_recovery_proofs(integer)",
+  "purge_explorers_account_content(uuid,uuid)",
   "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
   "reject_music_publication_archive_mutation()",
@@ -564,6 +576,10 @@ export async function provisionMusicRuntimeLogin(
       ON user_security_state,initial_account_bindings,account_recovery_proofs FROM ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON application_command_receipts,deletion_feedback,account_lifecycle_operations FROM ${capabilityRole}`);
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON entity_identifiers FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON account_music_identity FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
@@ -697,6 +713,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       ? [true, false, false, false]
       : row.object_name === "account_music_identity"
         ? [true, true, false, false]
+      : row.object_name === "entity_identifiers"
+        ? [true, true, false, false]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
       : row.object_name === "music_credential_revocation_operations"
@@ -712,6 +730,10 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
           || row.object_name === "application_command_receipts"
           || row.object_name === "deletion_feedback"
           || row.object_name === "account_lifecycle_operations"
+          || row.object_name === "entities"
+          || row.object_name === "collections"
+          || row.object_name === "recommendations"
+          || row.object_name === "account_category_pin_state"
           ? [true, true, true, false]
         : [true, true, true, true];
     return JSON.stringify([row.can_select,row.can_insert,row.can_update,row.can_delete]) !== JSON.stringify(expected)

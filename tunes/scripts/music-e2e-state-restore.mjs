@@ -54,6 +54,8 @@ export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrat
 export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 }),
   Object.freeze({ table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 }),
+  Object.freeze({ table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 }),
   Object.freeze({ table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 }),
   Object.freeze({ table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 }),
@@ -64,6 +66,8 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "music_reactivation_tokens", name: "music_reactivation_token_identity_immutability", enabled: "O", type: 19 }),
   Object.freeze({ table: "profile_feed_items", name: "profile_feed_ready_guard", enabled: "O", type: 21 }),
   Object.freeze({ table: "profile_media", name: "profile_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "recommendation_media", name: "recommendation_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "recommendations", name: "recommendation_entity_kind_guard", enabled: "O", type: 21 }),
   Object.freeze({ table: "users", name: "users_music_identity_immutability", enabled: "O", type: 19 }),
   Object.freeze({ table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 }),
