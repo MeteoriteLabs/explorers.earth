@@ -12,7 +12,7 @@ import ProfileForm, {
   type FormSection,
 } from "../features/Profile/components/ProfileForm";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
-import { toProfileViewModel } from "../features/Profile/api/profileClient";
+import { buildBusinessPublicAddress, toProfileViewModel } from "../features/Profile/api/profileClient";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -247,6 +247,9 @@ const Profile = memo(() => {
   const [uploadedImage, setUploadedImage] = useState<string>("");
   // local state for handling background image uploading
   const [uploadedBackground, setUploadedBackground] = useState<string>("");
+  const [mediaRevisionAdvance, setMediaRevisionAdvance] = useState<{
+    accountId: string; fromRevision: number; toRevision: number;
+  } | null>(null);
   // accessing auth data from the zustand store
   const { user, token } = useAuthStore();
   // local state for handling accurate address
@@ -529,16 +532,7 @@ const Profile = memo(() => {
     operation: ProfileSaveOperation,
   ) => {
     // Construct Public_Profile_Address from individual business fields
-    const businessData = {
-      title: values.title || values.businessTitle || "",
-      address: values.businessAddress || "",
-      contact: values.businessContact || "",
-      website: values.businessWebsite || "",
-      about: values.about || values.businessDescription || "",
-      // Persist selected Google place_id so users can import later
-      placeId: values.businessPlaceId || "",
-      places: null,
-    };
+    const businessData = buildBusinessPublicAddress(values);
 
     // Only include Public_Profile_Address if any business field has data
     const hasBusinessData = Object.values(businessData).some(
@@ -600,14 +594,14 @@ const Profile = memo(() => {
   const performProfileSave = async (
     values: any,
     operation: ProfileSaveOperation,
-  ): Promise<"saved" | "failed"> => {
-    if (!isAccountSessionActive(operation)) return "failed";
+  ): Promise<ProfileSaveResult> => {
+    if (!isAccountSessionActive(operation)) return { status: "failed" };
 
     submittingSaveOperationRef.current = operation;
     setIsFormSubmitting(true);
     try {
-      await processBusinessImagesAndSubmit(values, operation);
-      if (!ownsSubmittingState(operation)) return "failed";
+      const saved = await processBusinessImagesAndSubmit(values, operation);
+      if (!ownsSubmittingState(operation)) return { status: "failed" };
 
       markProcessingComplete();
       toast.success(
@@ -627,13 +621,13 @@ const Profile = memo(() => {
         }
       }
 
-      return "saved";
+      return { status: "saved", committedRevision: saved.revision };
     } catch (error) {
-      if (!ownsSubmittingState(operation)) return "failed";
+      if (!ownsSubmittingState(operation)) return { status: "failed" };
 
       markProcessingComplete();
       showProfileSaveError(error);
-      return "failed";
+      return { status: "failed" };
     } finally {
       if (ownsSubmittingState(operation)) {
         submittingSaveOperationRef.current = null;
@@ -671,8 +665,7 @@ const Profile = memo(() => {
     const operation = beginProfileSaveOperation();
     if (!operation) return { status: "failed" };
 
-    const status = await performProfileSave(values, operation);
-    return { status };
+    return performProfileSave(values, operation);
   };
 
   const handleConfirmUsernameChange = async () => {
@@ -694,7 +687,8 @@ const Profile = memo(() => {
     );
     if (!isAccountSessionActive(pendingSave.operation)) return;
 
-    pendingSave.deferred.settle(terminal);
+    pendingSave.deferred.settle(terminal.status === "saved" ? "saved" : "failed",
+      terminal.status === "saved" ? terminal.committedRevision : undefined);
     if (pendingUsernameSaveRef.current === pendingSave) {
       pendingUsernameSaveRef.current = null;
       setPendingFormValues(null);
@@ -1719,7 +1713,8 @@ const Profile = memo(() => {
         const media = await explorersApiClient.createMedia(file, "profile");
         try {
           const current = await explorersApiClient.getMyProfile();
-          await explorersApiClient.updateAccount({ expectedRevision: current.revision, profileImageId: media.id });
+          const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, profileImageId: media.id });
+          setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
         } catch (error) {
           await explorersApiClient.deleteMedia(media.id).catch(() => undefined);
           throw error;
@@ -1816,7 +1811,8 @@ const Profile = memo(() => {
         const media = await explorersApiClient.createMedia(file, "background");
         try {
           const current = await explorersApiClient.getMyProfile();
-          await explorersApiClient.updateAccount({ expectedRevision: current.revision, backgroundImageId: media.id });
+          const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, backgroundImageId: media.id });
+          setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
         } catch (error) {
           await explorersApiClient.deleteMedia(media.id).catch(() => undefined);
           throw error;
@@ -2159,6 +2155,7 @@ const Profile = memo(() => {
                   mode="workspaces"
                   initialValues={initialValues}
                   onSubmit={handleFormSubmit}
+                  externalRevisionAdvance={mediaRevisionAdvance}
                   setPlaces={setPlaces}
                   formFields={currentFormFields}
                   workspaces={profileWorkspaces}

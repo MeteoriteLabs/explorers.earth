@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
+import sharp from 'sharp';
 
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona } };
@@ -70,13 +71,18 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { displayName: `Updated ${width}` } });
+    await page.locator('[name="accountName"]').fill(`Updated twice ${width}`);
+    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).toMatchObject({ account: { displayName: `Updated twice ${width}` } });
     const conflict = stalePage.waitForResponse((response) => response.url().endsWith('/api/explorers/v1/account')
       && response.request().method() === 'PATCH' && response.status() === 409);
     await stalePage.getByRole('button', { name: /Save & Publish/i }).first().click();
     await conflict;
     expect((await (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
-    })).json()).account.displayName).toBe(`Updated ${width}`);
+    })).json()).account.displayName).toBe(`Updated twice ${width}`);
     await stalePage.close();
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64');
     await page.locator('input[type="file"]').first().setInputFiles({
@@ -86,13 +92,54 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { profileImage: { mimeType: 'image/jpeg' } } });
+    await page.locator('[name="accountName"]').fill(`After avatar ${width}`);
+    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).toMatchObject({ account: { displayName: `After avatar ${width}` } });
+    await page.getByRole('tab', { name: 'Gallery' }).click();
+    const landscape = await sharp({ create: { width: 191, height: 100, channels: 3,
+      background: { r: 40, g: 100, b: 170 } } }).png().toBuffer();
+    await page.locator('input[type="file"][multiple]').setInputFiles({
+      name: 'landscape.png', mimeType: 'image/png', buffer: landscape,
+    });
+    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).toMatchObject({ account: { feedItems: [expect.objectContaining({
+      details: expect.objectContaining({ aspectRatio: '1.91:1' }),
+    })] } });
     await page.reload();
     await expect(page.getByTestId('profile-editor-root')).toBeVisible();
-    await expect(page.locator('[name="accountName"]')).toHaveValue(`Updated ${width}`);
+    await expect(page.locator('[name="accountName"]')).toHaveValue(`After avatar ${width}`);
+    await page.getByRole('tab', { name: 'Gallery' }).click();
+    await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).toMatchObject({ account: { feedItems: [expect.objectContaining({
+      details: expect.objectContaining({ aspectRatio: '1.91:1' }),
+    })] } });
     await page.goto('/settings');
     await expect(page.getByRole('tab', { name: 'Account', exact: true })).toBeVisible();
     await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: 'Account', exact: true }).click();
     await expect(page.getByPlaceholder('Enter your username')).toHaveValue(persona.handle);
+    await page.getByRole('radio', { name: 'Business' }).check();
+    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: /Save & Publish/i }).click();
+    await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).toMatchObject({ account: { accountType: 'Business' } });
+    await page.goto('/profile');
+    await page.getByRole('button', { name: /How to reach us/i }).click();
+    await page.getByRole('button', { name: 'Title', exact: true }).click();
+    await page.locator('[name="title"]').fill(`Studio ${width}`);
+    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
+      headers: { Cookie: persona.cookie },
+    })).json()).toMatchObject({ account: { publicAddress: { title: `Studio ${width}`, places: null } } });
+    await page.reload();
+    await page.getByRole('button', { name: /How to reach us/i }).click();
+    await expect(page.locator('[name="title"]')).toHaveValue(`Studio ${width}`);
+    await page.goto('/settings');
+    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: 'Account', exact: true }).click();
     await page.getByRole('radio', { name: 'Creator' }).check();
     await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: /Save & Publish/i }).click();
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {

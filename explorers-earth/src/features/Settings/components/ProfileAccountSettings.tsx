@@ -170,20 +170,20 @@ const ProfileAccountSettings = ({
 
   const performSave = async (
     values: KeyValuePair,
-  ): Promise<"saved" | "failed"> => {
+  ): Promise<ProfileSaveResult> => {
     try {
-      await updateProfile(values);
+      const saved = await updateProfile(values);
       toast.success(
         translate("dashboard.profile.common.savedAndPublishedSuccessfully"),
       );
-      return "saved";
+      return { status: "saved", committedRevision: saved.revision };
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : "Unexpected error";
       toast.error(
         translate("toast.error.updateFailedWithError", { error: message }),
       );
-      return "failed";
+      return { status: "failed" };
     }
   };
 
@@ -191,7 +191,7 @@ const ProfileAccountSettings = ({
     values: KeyValuePair,
   ): Promise<ProfileSaveResult> => {
     if (section === "billing") {
-      return { status: await performSave(values) };
+      return performSave(values);
     }
 
     const currentUsername = data?.usersPermissionsUser?.username || "";
@@ -223,7 +223,7 @@ const ProfileAccountSettings = ({
       return deferred.result;
     }
 
-    return { status: await performSave(values) };
+    return performSave(values);
   };
 
   const confirmUsernameChange = async () => {
@@ -232,7 +232,8 @@ const ProfileAccountSettings = ({
     if (!pending) return;
 
     const terminal = await performSave(pending.values);
-    pending.deferred.settle(terminal);
+    pending.deferred.settle(terminal.status === "saved" ? "saved" : "failed",
+      terminal.status === "saved" ? terminal.committedRevision : undefined);
     pendingUsernameSaveRef.current = null;
     setPendingUsername("");
   };

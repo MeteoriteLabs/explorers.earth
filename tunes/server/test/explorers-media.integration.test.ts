@@ -125,6 +125,28 @@ describe("private local media", () => {
       .rejects.toMatchObject({ code: "23514" });
   });
 
+  it("allows wallpaper and shared profile slots while rejecting feed and claim-evidence purposes", async () => {
+    const owner = await persona();
+    const profile = await upload(owner.cookie);
+    const profileId = profile.body.media.id as string;
+    await pool.query("INSERT INTO profile_media(account_id,slot,media_id) VALUES ($1,'profile',$2)", [owner.accountId, profileId]);
+    await pool.query("INSERT INTO profile_media(account_id,slot,media_id) VALUES ($1,'wallpaper',$2)", [owner.accountId, profileId]);
+    const slots = await pool.query("SELECT slot FROM profile_media WHERE account_id=$1 AND media_id=$2 ORDER BY slot", [owner.accountId, profileId]);
+    expect(slots.rows.map((row) => row.slot)).toEqual(["profile", "wallpaper"]);
+
+    const background = await upload(owner.cookie, png, "image/png", "background");
+    expect(background.status).toBe(201);
+    await pool.query("INSERT INTO profile_media(account_id,slot,media_id) VALUES ($1,'background',$2)", [owner.accountId, background.body.media.id]);
+
+    const feed = await upload(owner.cookie, png, "image/png", "feed");
+    expect(feed.status).toBe(201);
+    await expect(pool.query("UPDATE profile_media SET media_id=$1 WHERE account_id=$2 AND slot='wallpaper'",
+      [feed.body.media.id, owner.accountId])).rejects.toMatchObject({ code: "23514" });
+    await pool.query("UPDATE media_assets SET purpose='claim-evidence' WHERE id=$1", [feed.body.media.id]);
+    await expect(pool.query("UPDATE profile_media SET media_id=$1 WHERE account_id=$2 AND slot='wallpaper'",
+      [feed.body.media.id, owner.accountId])).rejects.toMatchObject({ code: "23514" });
+  });
+
   it("keeps a durable cleanup record when upload finalization and object deletion both fail", async () => {
     const owner = await persona();
     const actor: Actor = { userId: owner.userId, accountId: owner.accountId, role: "owner",

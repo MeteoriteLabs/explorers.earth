@@ -36,6 +36,10 @@ const addressSchema = z.object({
   businessWebsite: z.string().url().startsWith("https://").max(2048).optional(),
   about: z.string().max(5000).optional(), businessDescription: z.string().max(5000).optional(),
 }).strict();
+const publicAddressSchema = addressSchema.extend({
+  placeId: shortText.optional(),
+  places: z.null().optional(),
+}).strict();
 const placeDetailsSchema = z.object({ placeId: shortText.optional(), name: shortText.optional(),
   formattedAddress: shortText.optional(), lat: z.number().finite().optional(), lng: z.number().finite().optional() }).strict();
 const richTextSchema = z.object({ blocks: z.array(z.object({ text: z.string().max(5000) }).strict()).max(100) }).strict();
@@ -55,7 +59,7 @@ const socialLinkSchema = z.object({ platform: z.enum(["instagram", "youtube", "w
   "linkedin", "snapchat", "tiktok", "email", "gmail", "X", "spotify", "youtubeMusic", "appleMusic", "localTunes"]),
   url: z.string().max(2048), visible: z.boolean() }).strict();
 const businessDetailsSchema = z.object({ category: shortText.optional(), description: z.string().max(5000).optional() }).strict();
-const feedDetailsSchema = z.object({ fileName: shortText.optional(), aspectRatio: z.enum(["1:1", "4:5", "16:9", "9:16", "3:2", "2:3", "unknown"]).optional(),
+const feedDetailsSchema = z.object({ fileName: shortText.optional(), aspectRatio: z.enum(["1:1", "4:5", "1.91:1", "9:16"]).optional(),
   width: z.number().int().positive().max(20000).optional(), height: z.number().int().positive().max(20000).optional() }).strict();
 
 export const profileFeedItemSchema = z.object({
@@ -89,7 +93,7 @@ export const accountDtoSchema = z.object({
   bioRich: richTextSchema.nullable(),
   primaryAddress: addressSchema.nullable(),
   additionalAddresses: z.array(addressSchema).max(20),
-  publicAddress: addressSchema.nullable(),
+  publicAddress: publicAddressSchema.nullable(),
   profilePlaceDetails: placeDetailsSchema.nullable(),
   categories: z.array(z.object({ category: categoryKeySchema, isPublic: z.boolean(), displayOrder: z.number().int().nonnegative(), pinnedOrder: z.number().int().nonnegative().nullable() }).strict()),
   themeSettings: themeSettingsSchema,
@@ -116,7 +120,7 @@ export const updateAccountInputSchema = z.object({
   bioRich: richTextSchema.nullable().optional(),
   primaryAddress: addressSchema.nullable().optional(),
   additionalAddresses: z.array(addressSchema).max(20).optional(),
-  publicAddress: addressSchema.nullable().optional(),
+  publicAddress: publicAddressSchema.nullable().optional(),
   profilePlaceDetails: placeDetailsSchema.nullable().optional(),
   categories: z.array(z.object({ category: categoryKeySchema, isPublic: z.boolean(), displayOrder: z.number().int().nonnegative(), pinnedOrder: z.number().int().nonnegative().nullable() }).strict()).optional(),
   themeSettings: themeSettingsSchema.optional(),

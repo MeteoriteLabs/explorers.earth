@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { toProfileViewModel, toAccountUpdate } from "../profileClient";
+import { toProfileViewModel, toAccountUpdate, buildBusinessPublicAddress } from "../profileClient";
+import { updateAccountRequestSchema } from "../../../../../../tunes/shared/explorersContract";
 
 const account = {
   id: "11111111-1111-4111-8111-111111111111", handle: "explorer", displayName: "Explorer",
@@ -47,5 +48,25 @@ describe("profile compatibility mapper", () => {
     const secondSave = toAccountUpdate({ ...second, bio: "second" }, { revision: second.revision });
     expect(firstSave.expectedRevision).toBe(3);
     expect(secondSave.expectedRevision).toBe(3);
+  });
+
+  it("validates the complete business address built by the Profile UI, including a selected place and blank website", () => {
+    const produced = buildBusinessPublicAddress({ title: "Studio", businessAddress: "Main St",
+      businessContact: "123", businessWebsite: "", about: "Open", businessPlaceId: "google-place-1" });
+    expect(produced).toMatchObject({ placeId: "google-place-1", places: null, website: "" });
+    const update = toAccountUpdate({ Public_Profile_Address: produced }, account);
+    expect(update.publicAddress).toMatchObject({ placeId: "google-place-1", places: null, title: "Studio" });
+    expect(update.publicAddress).not.toHaveProperty("website");
+    expect(updateAccountRequestSchema.safeParse(update).success).toBe(true);
+  });
+
+  it("validates the landscape metadata emitted by the FeedFields upload path", () => {
+    const view = toProfileViewModel(account);
+    const upload = { documentId: account.feedItems[0].mediaId, url: account.feedItems[0].url,
+      type: "image", uploadSource: "manual", fileName: "landscape.png", aspectRatio: "1.91:1",
+      width: 1910, height: 1000 };
+    const update = toAccountUpdate({ Feed_Data: [...view.Feed_Data, upload] }, account);
+    expect(update.feedItems?.[1]?.details).toMatchObject({ aspectRatio: "1.91:1", width: 1910, height: 1000 });
+    expect(updateAccountRequestSchema.safeParse(update).success).toBe(true);
   });
 });

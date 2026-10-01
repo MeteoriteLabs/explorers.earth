@@ -25,6 +25,17 @@ export function toProfileViewModel(account: AccountDto): KeyValuePair {
 }
 
 const optional = (value: unknown): string | null => typeof value === "string" && value.trim() ? value.trim() : null;
+export function buildBusinessPublicAddress(values: KeyValuePair): KeyValuePair {
+  return {
+    title: values.title || values.businessTitle || "",
+    address: values.businessAddress || "",
+    contact: values.businessContact || "",
+    website: values.businessWebsite || "",
+    about: values.about || values.businessDescription || "",
+    placeId: values.businessPlaceId || "",
+    places: null,
+  };
+}
 export function toAccountUpdate(values: KeyValuePair, account: Pick<AccountDto, "revision">): UpdateAccountInput & RevisionInput {
   const result: UpdateAccountInput & RevisionInput = { expectedRevision: account.revision };
   if ("username" in values) result.handle = optional(values.username);
@@ -40,7 +51,13 @@ export function toAccountUpdate(values: KeyValuePair, account: Pick<AccountDto, 
     ? { address: values.primaryAddressCombined } : null;
   if ("address" in values) result.additionalAddresses = [{ address: values.address ?? "", city: values.city ?? "",
     country: values.country ?? "", state: values.state ?? "", streetName: values.streetName ?? "", postalCode: values.postalCode ?? "" }];
-  if ("Public_Profile_Address" in values) result.publicAddress = values.Public_Profile_Address || null;
+  if ("Public_Profile_Address" in values) {
+    const address = values.Public_Profile_Address;
+    result.publicAddress = address && typeof address === "object"
+      ? Object.fromEntries(Object.entries(address).filter(([key, value]) =>
+          !((key === "website" || key === "businessWebsite") && value === "")))
+      : address || null;
+  }
   if ("theme_settings" in values) result.themeSettings = values.theme_settings as Record<string, unknown>;
   if ("social_media" in values && values.social_media && typeof values.social_media === "object") {
     result.socialLinks = Object.entries(values.social_media as Record<string, any>)

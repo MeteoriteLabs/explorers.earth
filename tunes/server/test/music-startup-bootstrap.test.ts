@@ -180,7 +180,7 @@ describe("discriminated Music startup bootstrap", () => {
 
   it("validates the literal production environment fixture exactly once before application import and listen", async () => {
     const environment = withSigningFile(productionEnvironmentFixture());
-    expect(environment.MUSIC_MIGRATION_MARKER).toBe("0025_explorers_media_attachment_guard");
+    expect(environment.MUSIC_MIGRATION_MARKER).toBe("0026_explorers_media_slot_compatibility");
     for (const fixtureOnly of [
       "MUSIC_FIXTURE_VERSION", "STRAPI_FIXTURE_URL", "DATABASE_URL_TEST",
       "MUSIC_SIGNING_KEY_CURRENT_ID", "MUSIC_SIGNING_KEY_CURRENT_SECRET",
