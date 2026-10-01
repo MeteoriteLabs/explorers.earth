@@ -32,6 +32,7 @@ const fixedFiles = [
   "explorers-earth/scripts/check-music-production-bundle.mjs",
   "tunes/shared/musicPublicationContract.ts",
   "tunes/shared/explorersContract.ts",
+  "tunes/shared/explorersOwnerContentContract.ts",
 ];
 // The compose file explicitly builds explorers-earth/Dockerfile.music-fixture,
 // so this small allowlist affects only the disposable Music UAT image.  It
