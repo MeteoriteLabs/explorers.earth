@@ -146,6 +146,7 @@ describe("Music E2E transactional state restore", () => {
       "0027_explorers_lifecycle",
       "0028_explorers_recovery_proof_retention",
       "0029_explorers_recommendations",
+      "0030_explorers_media_purpose_guard",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

@@ -58,7 +58,8 @@
     "0026_explorers_media_slot_compatibility",
     "0027_explorers_lifecycle",
     "0028_explorers_recovery_proof_retention",
-    "0029_explorers_recommendations"
+    "0029_explorers_recommendations",
+    "0030_explorers_media_purpose_guard"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

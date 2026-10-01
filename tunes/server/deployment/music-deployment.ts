@@ -13,7 +13,9 @@ export const GATE_KIND = "music-schema-deployment-gate-v2" as const;
 export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
 
 export function rollbackCompatibilityFloorMarker(marker: DeployableMusicMigrationMarker): DeployableMusicMigrationMarker {
-  return marker === "0029_explorers_recommendations"
+  return marker === "0030_explorers_media_purpose_guard"
+    ? "0029_explorers_recommendations"
+    : marker === "0029_explorers_recommendations"
     ? "0028_explorers_recovery_proof_retention"
     : marker === "0028_explorers_recovery_proof_retention"
     ? "0027_explorers_lifecycle"

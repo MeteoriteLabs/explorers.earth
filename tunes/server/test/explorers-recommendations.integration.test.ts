@@ -23,8 +23,69 @@ async function recommendation(accountId: string, entityId: string, category = 'b
     VALUES ($1,$2,$3) RETURNING id`, [accountId, entityId, category]);
   return result.rows[0].id as string;
 }
+async function contentAttachment(purpose:'collection'|'recommendation') {
+  const accountId=await account();
+  const parent=purpose==='collection'?await collection(accountId):await recommendation(accountId,await entity());
+  const result=await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256)
+    VALUES($1,$2,'ready','image/png',10,now(),decode(repeat('00',32),'hex')) RETURNING id`,[accountId,purpose]);
+  const mediaId=result.rows[0].id as string;
+  return {accountId,mediaId,attach:(db:Pick<pg.PoolClient,'query'>)=>purpose==='collection'
+    ?db.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[parent,accountId,mediaId])
+    :db.query('INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,0)',[parent,accountId,mediaId])};
+}
+async function waitForDatabaseLock(pid:number) {
+  const deadline=Date.now()+5000;
+  while(Date.now()<deadline) {
+    const row=await pool.query("SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1",[pid]);
+    if(row.rows[0]?.wait_event_type==='Lock') return;
+    await new Promise(resolve=>setTimeout(resolve,10));
+  }
+  throw new Error('Expected the competing SQL writer to wait on an asset lock');
+}
 
 describe('recommendation core PostgreSQL contract', () => {
+  it.each(['collection','recommendation'] as const)('rejects runtime purpose mutation of an attached %s asset', async purpose=>{
+    const fixture=await contentAttachment(purpose), db=await pool.connect();
+    try {
+      await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
+      await fixture.attach(db);await db.query('COMMIT');
+      await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
+      await db.query("UPDATE media_assets SET purpose=$2 WHERE id=$1",[fixture.mediaId,purpose==='collection'?'recommendation':'collection']);
+      await expect(db.query('SET CONSTRAINTS ALL IMMEDIATE')).rejects.toMatchObject({code:'23514'});
+      await db.query('ROLLBACK');
+      expect((await pool.query('SELECT purpose,status FROM media_assets WHERE id=$1',[fixture.mediaId])).rows[0]).toEqual({purpose,status:'ready'});
+    } finally {await db.query('ROLLBACK');db.release();}
+  });
+  it.each(['collection','recommendation'] as const)('serializes a purpose update behind a committed %s attachment', async purpose=>{
+    const fixture=await contentAttachment(purpose), attaching=await pool.connect(), updating=await pool.connect();
+    let pending:Promise<unknown>|undefined;
+    try {
+      await attaching.query('BEGIN');await attaching.query('SET LOCAL ROLE music_runtime');
+      await fixture.attach(attaching);await attaching.query('SET CONSTRAINTS ALL IMMEDIATE');
+      await updating.query('BEGIN');await updating.query('SET LOCAL ROLE music_runtime');
+      const pid=(await updating.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      pending=updating.query("UPDATE media_assets SET purpose=$2 WHERE id=$1",[fixture.mediaId,purpose==='collection'?'recommendation':'collection'])
+        .then(()=>updating.query('SET CONSTRAINTS ALL IMMEDIATE')).catch(error=>error);
+      await waitForDatabaseLock(pid);
+      await attaching.query('COMMIT');
+      expect(await pending).toMatchObject({code:'23514'});
+      await updating.query('ROLLBACK');
+    } finally {await attaching.query('ROLLBACK');await updating.query('ROLLBACK');await pending;attaching.release();updating.release();}
+  });
+  it.each(['collection','recommendation'] as const)('rejects an attachment after a concurrent %s purpose update commits', async purpose=>{
+    const fixture=await contentAttachment(purpose), updating=await pool.connect(), attaching=await pool.connect();
+    let pending:Promise<unknown>|undefined;
+    try {
+      await updating.query('BEGIN');await updating.query('SET LOCAL ROLE music_runtime');
+      await updating.query("UPDATE media_assets SET purpose=$2 WHERE id=$1",[fixture.mediaId,purpose==='collection'?'recommendation':'collection']);
+      await attaching.query('BEGIN');await attaching.query('SET LOCAL ROLE music_runtime');await fixture.attach(attaching);
+      const pid=(await attaching.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      pending=attaching.query('SET CONSTRAINTS ALL IMMEDIATE').catch(error=>error);
+      await waitForDatabaseLock(pid);await updating.query('COMMIT');
+      expect(await pending).toMatchObject({code:'23514'});
+      await attaching.query('ROLLBACK');
+    } finally {await updating.query('ROLLBACK');await attaching.query('ROLLBACK');await pending;updating.release();attaching.release();}
+  });
   it('installs the core identity and owned relationship tables', async () => {
     for (const name of ['entities','entity_identifiers','collections','recommendations','collection_items',
       'account_category_pin_state','category_recommendation_pins','collection_media','recommendation_media']) {
