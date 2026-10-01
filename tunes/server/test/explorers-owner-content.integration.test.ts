@@ -30,6 +30,27 @@ async function fixture(lists=27,children=53) {
   return {userId,accountId,cookie,ids,recommendations,sessionId:session.id};
 }
 const get=(f:{cookie:string},path:string,query:object={})=>request(composed.app).get(`/api/explorers/v1${path}`).set('cookie',f.cookie).query(query);
+it('pages the top-pick union beyond fifteen, preserves ties and rejects stale continuation',async()=>{
+ const f=await fixture(1,17);
+ await pool.query("INSERT INTO account_category_pin_state(account_id,category,revision) VALUES($1,'books',1)",[f.accountId]);
+ for(const id of f.recommendations) await pool.query("INSERT INTO category_recommendation_pins(account_id,category,recommendation_id,collection_id,position) VALUES($1,'books',$2,$3,0)",[f.accountId,id,f.ids[0]]);
+ const path='/categories/books/top-picks',first=await get(f,path,{limit:8});expect(first.status).toBe(200);expect(first.body.items).toHaveLength(8);expect(first.body.pinRevision).toBe(1);
+ const second=await get(f,path,{limit:8,cursor:first.body.nextCursor,snapshotToken:first.body.snapshotToken});expect(second.status).toBe(200);
+ const third=await get(f,path,{limit:8,cursor:second.body.nextCursor});expect(third.status).toBe(200);expect(third.body.nextCursor).toBeNull();
+ expect([...first.body.items,...second.body.items,...third.body.items].map(x=>x.recommendationId)).toEqual([...f.recommendations].sort());
+ expect((await get(f,path,{limit:9,cursor:first.body.nextCursor})).status).toBe(422);
+ expect((await get(f,'/categories/games/top-picks',{limit:8,cursor:first.body.nextCursor})).status).toBe(422);
+ await pool.query('UPDATE collections SET title=$2 WHERE id=$1',[f.ids[0],'Changed']);expect((await get(f,path,{limit:8,cursor:first.body.nextCursor})).status).toBe(409);
+});
+it('reads strict owner top-picks and leaves absent pin state null',async()=>{
+ const f=await fixture(1,0),path='/categories/books/top-picks';
+ expect((await request(composed.app).get(`/api/explorers/v1${path}`)).status).toBe(401);
+ const empty=await get(f,path);expect(empty.status).toBe(200);expect(empty.body.items).toEqual([]);expect(empty.body.pinRevision).toBeNull();
+ expect((await pool.query('SELECT 1 FROM account_category_pin_state WHERE account_id=$1',[f.accountId])).rowCount).toBe(0);
+ for(const query of [{accountId:f.accountId},{category:'games'},{limit:'01'},{limit:101},{status:'all'}]) expect((await get(f,path,query)).status).toBe(422);
+ expect((await get(f,'/categories/places/top-picks')).status).toBe(422);
+ await pool.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1",[f.accountId]);expect((await get(f,path)).status).toBe(403);
+});
 it.each(['complete','recommendations','validate'])('executes the real joint client against guarded owner HTTP: %s',async(race)=>{
   const f=await fixture(),storage=new Map<string,string>();
   if(race==='complete') {
@@ -317,4 +338,38 @@ it('executes the read service with the actual runtime role and leaves command re
     expect((await service.listRecommendations(actor,{category:'books'})).items.map(x=>x.id)).toEqual(f.recommendations);
     expect((await runtime.query('SELECT count(*)::int AS n FROM application_command_receipts WHERE account_id=$1',[f.accountId])).rows[0].n).toBe(0);
   } finally {await runtime.end();}
+});
+it('top-pick snapshots bind current actor, pin revision, expiry and read scopes',async()=>{
+ const a=await fixture(1,1),b=await fixture(1,0),service=new OwnerContentService(pool,config.secret);
+ const first=await service.listTopPicks(actorFor(a),{category:'books'});
+ await expect(service.listTopPicks(actorFor(b),{category:'books',snapshotToken:first.snapshotToken})).rejects.toMatchObject({status:422});
+ await expect(service.listTopPicks({...actorFor(a),credential:{kind:'oauth',scopes:['recommendations:read']}} as Actor,{category:'books'})).rejects.toMatchObject({status:403});
+ vi.spyOn(Date,'now').mockReturnValue(first.expiresAt);try{await expect(service.listTopPicks(actorFor(a),{category:'books',snapshotToken:first.snapshotToken})).rejects.toMatchObject({status:422});}finally{vi.restoreAllMocks();}
+ await pool.query("INSERT INTO account_category_pin_state(account_id,category,revision) VALUES($1,'books',1)",[a.accountId]);
+ await expect(service.listTopPicks(actorFor(a),{category:'books',snapshotToken:first.snapshotToken})).rejects.toMatchObject({status:409});
+ const current=await service.listTopPicks(actorFor(a),{category:'books'});
+ await pool.query("UPDATE account_category_pin_state SET revision=2 WHERE account_id=$1 AND category='books'",[a.accountId]);
+ await expect(service.listTopPicks(actorFor(a),{category:'books',snapshotToken:current.snapshotToken})).rejects.toMatchObject({status:409});
+});
+it('executes dedicated union GET and shared PATCH through the canonical app without granting reply completeness',async()=>{
+ const f=await fixture(1,27),storage=new Map<string,string>();
+ await pool.query("INSERT INTO account_category_pin_state(account_id,category) VALUES($1,'books')",[f.accountId]);
+ for(const id of f.recommendations)await pool.query("INSERT INTO category_recommendation_pins(account_id,category,recommendation_id,collection_id,position) VALUES($1,'books',$2,$3,0)",[f.accountId,id,f.ids[0]]);
+ vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
+ const {default:store}=await import('../../../explorers-earth/src/store/store');
+ const {explorersApiClient,assertCompleteMyCategoryContent}=await import('../../../explorers-earth/src/lib/explorersApiClient');
+ store.setState({accountId:f.accountId,generation:201,isAuthenticated:true});let loseReply=true;
+ vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{
+  if(options.method){const result=await request(composed.app)[options.method==='PUT'?'put':'patch'](url).set('cookie',f.cookie).set('origin',config.baseURL).set('Idempotency-Key',(options.headers as Record<string,string>)['Idempotency-Key']).send(JSON.parse(options.body as string));
+   if(loseReply){loseReply=false;expect(result.status).toBe(200);throw new Error('reply lost after commit');}return new Response(JSON.stringify(result.body),{status:result.status});}
+  const result=await request(composed.app).get(url).set('cookie',f.cookie);return new Response(JSON.stringify(result.body),{status:result.status});
+ });
+ try{
+  const observation=await explorersApiClient.getCompleteMyCategoryTopPicks({category:'books'});expect(observation.topPicks).toHaveLength(27);assertCompleteMyCategoryContent(observation);
+  const selected=[{recommendationId:f.recommendations[26],collectionId:f.ids[0]}],key=randomUUID();
+  await expect(explorersApiClient.upsertMyCategoryTopPickOrder(observation,selected,key)).rejects.toMatchObject({status:503});assertCompleteMyCategoryContent(observation);
+  await expect(explorersApiClient.upsertMyCategoryTopPickOrder(observation,[],key)).rejects.toMatchObject({status:409});expect(()=>assertCompleteMyCategoryContent(observation)).toThrow();
+  const fresh=await explorersApiClient.getCompleteMyCategoryTopPicks({category:'books'}),result=await explorersApiClient.upsertMyCategoryTopPickOrder(fresh,selected,randomUUID());expect(result.pins).toHaveLength(1);expect(()=>assertCompleteMyCategoryContent(result as any)).toThrow();expect(()=>assertCompleteMyCategoryContent(fresh)).toThrow();
+  expect((await pool.query('SELECT 1 FROM category_recommendation_pins WHERE account_id=$1',[f.accountId])).rowCount).toBe(27);
+ }finally{store.setState({accountId:null,isAuthenticated:false,generation:202});vi.unstubAllGlobals();}
 });

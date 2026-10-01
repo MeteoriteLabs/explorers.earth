@@ -141,6 +141,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["GET", "/api/explorers/v1/categories/:category/content-snapshot"],
         ["GET", "/api/explorers/v1/categories/:category/content-snapshot/validate"],
         ["GET", "/api/explorers/v1/categories/:category/memberships"],
+        ["GET", "/api/explorers/v1/categories/:category/top-picks"],
          ["PUT", "/api/explorers/v1/categories/:category/top-picks"],
          ["PATCH", "/api/explorers/v1/categories/:category/top-picks/order"],
         ["PATCH", "/api/explorers/v1/collections/:id"],

@@ -50,6 +50,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.get('/api/explorers/v1/categories/:category/content-snapshot',async(req,res)=>read((a,_id,q)=>ownerContent.getSnapshot(a,categoryQuery(req,q)))(req,res));
   routes.get('/api/explorers/v1/categories/:category/content-snapshot/validate',async(req,res)=>read((a,_id,q)=>ownerContent.validateSnapshot(a,categoryQuery(req,q)))(req,res));
   routes.get('/api/explorers/v1/categories/:category/memberships',async(req,res)=>read((a,_id,q)=>ownerContent.listMemberships(a,categoryQuery(req,q)))(req,res));
+  routes.get('/api/explorers/v1/categories/:category/top-picks',async(req,res)=>read((a,_id,q)=>ownerContent.listTopPicks(a,categoryQuery(req,q)))(req,res));
   // Literal registrations also make each executable boundary visible to the
   // official AST inventory; interpolated templates and loop paths are not parsed.
   routes.post('/api/explorers/v1/entities/resolve',mutation((a,_id,b)=>catalog.resolveEntity(a,b),'entity'));

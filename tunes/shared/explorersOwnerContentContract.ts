@@ -1,5 +1,5 @@
 import { z } from 'zod/v3';
-import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema } from './explorersContract';
+import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema } from './explorersContract';
 const status=z.enum(['active','archived','all']).default('active');
 const token=z.string().min(1).max(4096);
 const limit=z.union([z.number().int().min(1).max(100),z.string().regex(/^[1-9][0-9]{0,2}$/).transform(Number).pipe(z.number().max(100))]).default(24);
@@ -17,6 +17,10 @@ export const ownerMembershipDtoSchema=z.object({recommendationId:contentIdSchema
 export const ownerCollectionPageSchema=z.object({version:z.literal('explorers-owner-content/v2'),snapshot:revision,snapshotToken:token,expiresAt:z.number().int().positive(),items:z.array(ownerCollectionDtoSchema).max(100),nextCursor:token.nullable()}).strict();
 export const ownerRecommendationPageSchema=ownerCollectionPageSchema.extend({items:z.array(ownerRecommendationDtoSchema).max(100)}).strict();
 export const ownerMembershipPageSchema=ownerCollectionPageSchema.extend({items:z.array(ownerMembershipDtoSchema).max(100)}).strict();
+export const ownerTopPicksRequestSchema=z.object({category:topPickCategorySchema,limit,cursor:token.optional(),snapshotToken:token.optional()}).strict();
+export const ownerTopPickDtoSchema=z.object({recommendationId:contentIdSchema,collectionId:contentIdSchema,position:z.number().int().nonnegative()}).strict();
+export const ownerTopPickPageSchema=ownerCollectionPageSchema.extend({pinRevision:z.number().int().positive().safe().nullable(),items:z.array(ownerTopPickDtoSchema).max(100)}).strict();
+export type OwnerTopPicksRequest=z.input<typeof ownerTopPicksRequestSchema>;
 export type OwnerCollectionsRequest=z.input<typeof ownerCollectionsRequestSchema>;
 export type OwnerRecommendationsRequest=z.input<typeof ownerRecommendationsRequestSchema>;
 export type OwnerCollectionDto=z.infer<typeof ownerCollectionDtoSchema>;

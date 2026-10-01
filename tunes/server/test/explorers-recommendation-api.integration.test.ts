@@ -176,7 +176,7 @@ it('top picks require both revisions and exact strict bounded command inputs',as
   for(const category of ['music','places','guides','BOOKS']) expect((await pins(a,'put',base,randomUUID(),category)).status).toBe(422);
   expect((await pins(a,'put',base).query({category:'books'})).status).toBe(422);
   expect((await pins(a,'put',base,'bad')).status).toBe(422);
-  expect((await request(composed.app).get('/api/explorers/v1/categories/books/top-picks')).status).toBe(405);
+  expect((await request(composed.app).get('/api/explorers/v1/categories/books/top-picks')).status).toBe(401);
 });
 it('top picks reject foreign and missing selected memberships without data or receipt prefixes',async()=>{
   const a=await persona(),b=await persona(),c=await list(a),d=await list(a),foreign=await list(b),r=await recommendation(a,c,await entity());

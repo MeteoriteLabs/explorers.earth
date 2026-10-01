@@ -154,6 +154,21 @@ export class OwnerContentService {
    return wire.ownerMembershipPageSchema.parse(this.page(rows,items,ctx,binding,r=>({order:0,id:r.recommendation_id,secondary:r.collection_id})));
   });
  }
+ async listTopPicks(actor:Actor,raw:unknown) {
+  return this.read(actor,['collections:read','recommendations:read'],async db=>{
+   const input=parseContent(wire.ownerTopPicksRequestSchema,raw),binding=JSON.stringify([actor.accountId,'top-picks',input.category,input.limit,'position,recommendation_id/v2']);
+   const ctx=await this.context(db,actor,input,binding),cursor=ctx.cursor;
+   const values:any[]=[actor.accountId,input.category];
+   let continuation='';if(cursor){values.push(cursor.order,cursor.id);continuation='AND (p.position,p.recommendation_id)>($3,$4::uuid)';}values.push(input.limit+1);
+   const rows=(await db.query(`SELECT p.recommendation_id,p.collection_id,p.position FROM category_recommendation_pins p
+    JOIN collections c ON c.id=p.collection_id AND c.account_id=p.account_id AND c.category=p.category AND c.archived_at IS NULL
+    JOIN recommendations r ON r.id=p.recommendation_id AND r.account_id=p.account_id AND r.category=p.category AND r.archived_at IS NULL
+    JOIN collection_items i ON i.collection_id=p.collection_id AND i.recommendation_id=p.recommendation_id AND i.account_id=p.account_id AND i.category=p.category
+    WHERE p.account_id=$1 AND p.category=$2 ${continuation} ORDER BY p.position,p.recommendation_id LIMIT $${values.length}`,values)).rows;
+   const items=rows.slice(0,input.limit).map(r=>({recommendationId:r.recommendation_id,collectionId:r.collection_id,position:r.position}));
+   return wire.ownerTopPickPageSchema.parse({...this.page(rows,items,ctx,binding,r=>({order:r.position,id:r.recommendation_id})),pinRevision:ctx.pinRevision});
+  });
+ }
  async getCollection(actor:Actor,id:string,raw:unknown={}) {
   return this.read(actor,['collections:read'],async db=>{
    parseContent(contentIdSchema,id);const input=parseContent(wire.ownerDetailRequestSchema,raw);

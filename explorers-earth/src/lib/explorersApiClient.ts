@@ -1,9 +1,11 @@
 import type { AccountDto, MediaDto, RevisionInput, UpdateAccountInput } from "../../../tunes/shared/explorersContract";
 import useAuthStore from "../store/store";
+import {categoryTopPicksInputSchema,categoryTopPicksResultSchema,commandKeySchema,topPickCategorySchema,type CategoryTopPicksInput} from '../../../tunes/shared/explorersContract';
 import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollectionDtoSchema, ownerRecommendationDtoSchema,
   ownerCollectionsRequestSchema, ownerRecommendationsRequestSchema, ownerMembershipPageSchema, ownerSnapshotSchema,
   type OwnerSnapshot, type OwnerMembershipDto,
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
+import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,type OwnerTopPicksRequest} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
@@ -59,6 +61,7 @@ export type CompleteMyCategoryContent = DeepReadonly<{
   complete:true;category:OwnerCollectionDto['category'];status:'active'|'archived'|'all';
   accountId:string;generation:number;revision:string;snapshotToken:string;expiresAt:number;pinRevision:number|null;
   collections:OwnerCollectionDto[];recommendations:OwnerRecommendationDto[];memberships:OwnerMembershipDto[];
+  topPicks?:z.infer<typeof ownerTopPickPageSchema>['items'];
 }>;
 const completedCategories=new WeakSet<object>();
 /** Call immediately before staging/saving. The server writer must also check expected category revision under its write lock. */
@@ -79,7 +82,8 @@ function deepFreeze<T>(value:T):DeepReadonly<T> {
 
 // Transport safeguards only: exceeding one rejects the entire read, never truncates domain data.
 const JOINT_PAGE_BYTES=4*1024*1024,JOINT_TOTAL_BYTES=64*1024*1024,JOINT_REQUESTS=1000,JOINT_STREAM_ROWS=100000;
-async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'status'>,signal?:AbortSignal):Promise<CompleteMyCategoryContent> {
+async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'status'>,signal?:AbortSignal,includeTopPicks=false):Promise<CompleteMyCategoryContent> {
+  if(includeTopPicks&&(!topPickCategorySchema.safeParse(input?.category).success||input?.status==='archived'))throw new ExplorersApiError(422,'INVALID_INPUT','Top-picks require an active or all catalog category');
   const query=ownerCollectionsRequestSchema.pick({category:true,status:true}).parse(input),initial=useAuthStore.getState();
   if(!initial.isAuthenticated||!initial.accountId) throw new ExplorersApiError(401,'UNAUTHENTICATED','Sign in is required');
   const controller=new AbortController(),stop=()=>controller.abort();
@@ -148,9 +152,20 @@ async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'s
       const parent=parents.get(child.pin.collectionId);
       if(child.archived||!parent||parent.archived||!tuples.has(`${child.id}:${parent.id}`)||child.pin.revision!==snapshot.pinRevision) return invalid();
     }
+    let topPicks:z.infer<typeof ownerTopPickPageSchema>['items']|undefined;
+    if(includeTopPicks) {
+      if(query.status==='archived'||!topPickCategorySchema.safeParse(query.category).success) fail('INVALID_INPUT','Top-picks require an active or all catalog category',422);
+      topPicks=await collect(`/categories/${query.category}/top-picks`,{},ownerTopPickPageSchema.superRefine((page,ctx)=>{if(page.pinRevision!==snapshot!.pinRevision)ctx.addIssue({code:'custom',message:'Pin revision changed'});}));
+      const ids=new Set<string>();
+      for(const [n,pin] of topPicks.entries()) {
+        const child=children.get(pin.recommendationId),previous=topPicks[n-1];
+        if(ids.has(pin.recommendationId)||!child?.pin||child.pin.collectionId!==pin.collectionId||child.pin.position!==pin.position||previous&&(pin.position<previous.position||pin.position===previous.position&&pin.recommendationId<=previous.recommendationId)) return invalid();ids.add(pin.recommendationId);
+      }
+      if(recommendations.filter(x=>x.pin!==null).length!==topPicks.length)return invalid();
+    }
     const validated=await read(`/categories/${query.category}/content-snapshot/validate`,{snapshotToken:snapshot.snapshotToken},ownerSnapshotSchema);
     if(validated.snapshotToken!==snapshot.snapshotToken||validated.revision!==snapshot.revision||validated.expiresAt!==snapshot.expiresAt||validated.pinRevision!==snapshot.pinRevision) return invalid();check();
-    const complete=deepFreeze({complete:true as const,category:query.category,status:query.status,accountId:initial.accountId,generation:initial.generation,...snapshot,collections,recommendations,memberships});
+    const complete=deepFreeze({complete:true as const,category:query.category,status:query.status,accountId:initial.accountId,generation:initial.generation,...snapshot,collections,recommendations,memberships,...(includeTopPicks?{topPicks}: {})});
     completedCategories.add(complete);assertCompleteMyCategoryContent(complete);return complete;
   } catch(error) {
     if(error instanceof ExplorersApiError) throw error;
@@ -172,7 +187,51 @@ async function responseBody<T>(response: Response, generation: number): Promise<
   return body as T;
 }
 
+async function writeTopPicks(observed:CompleteMyCategoryContent,orderedPins:CategoryTopPicksInput['orderedPins'],key:string,replace:boolean,signal?:AbortSignal) {
+  assertCompleteMyCategoryContent(observed);
+  if(observed.status==='archived') throw new ExplorersApiError(409,'CONFLICT','Reload active or all category content before saving');
+  const category=topPickCategorySchema.safeParse(observed.category),parsed=categoryTopPicksInputSchema.safeParse({orderedPins,expectedCategoryRevision:observed.revision,expectedPinRevision:observed.pinRevision});
+  if(!category.success||!parsed.success||!commandKeySchema.safeParse(key).success) throw new ExplorersApiError(422,'INVALID_INPUT','Invalid top-pick command');
+  for(const pin of parsed.data.orderedPins) {
+    const child=observed.recommendations.find(x=>x.id===pin.recommendationId),parent=observed.collections.find(x=>x.id===pin.collectionId);
+    if(!child||child.archived||!parent||parent.archived||!observed.memberships.some(x=>x.recommendationId===pin.recommendationId&&x.collectionId===pin.collectionId)) throw new ExplorersApiError(422,'INVALID_INPUT','Pin must select a current observed membership');
+  }
+  const controller=new AbortController(),stop=()=>controller.abort();
+  const current=()=>{const state=useAuthStore.getState();return state.isAuthenticated&&state.generation===observed.generation&&state.accountId===observed.accountId;};
+  const unsubscribe=useAuthStore.subscribe(()=>{if(!current())stop();});signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
+  try {
+    assertCompleteMyCategoryContent(observed);
+    const response=await fetch(`/api/explorers/v1/categories/${category.data}/top-picks${replace?'':'/order'}`,{method:replace?'PUT':'PATCH',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify(parsed.data),signal:controller.signal});
+    const body=await responseBody<{topPicks:unknown}>(response,observed.generation);
+    if(!current()||controller.signal.aborted) throw new ExplorersApiError(409,'CONFLICT','Owner changed before command completion');
+    // A command reply cannot establish a new complete category observation.
+    completedCategories.delete(observed);
+    const result=categoryTopPicksResultSchema.safeParse(body?.topPicks);
+    if(!result.success||result.data.operation!==(replace?'replace':'upsert-order')||result.data.pins.length!==parsed.data.orderedPins.length||result.data.pins.some((pin,n)=>pin.position!==n||pin.recommendationId!==parsed.data.orderedPins[n].recommendationId||pin.collectionId!==parsed.data.orderedPins[n].collectionId)) throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid top-pick command response');
+    return deepFreeze(result.data);
+  } catch(error) {
+    if(error instanceof ExplorersApiError) {if(error.status===409)completedCategories.delete(observed);throw error;}
+    if(controller.signal.aborted) throw new ExplorersApiError(409,'CONFLICT','Top-pick command cancelled');
+    throw new ExplorersApiError(503,'UNAVAILABLE','Unable to save top-picks');
+  } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
+}
+
 export const explorersApiClient = {
+  getCompleteMyCategoryTopPicks:(input:Pick<OwnerCollectionsRequest,'category'|'status'>,signal?:AbortSignal)=>completeCategory(input,signal,true),
+  async getMyCategoryTopPicks(input:OwnerTopPicksRequest,signal?:AbortSignal) {
+   try {
+    const query=ownerTopPicksRequestSchema.safeParse(input);if(!query.success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid top-pick read');
+    const {category,...params}=query.data,page=await ownerRead(`/categories/${category}/top-picks`,params,ownerTopPickPageSchema,signal);
+    if(page.items.length>query.data.limit||page.expiresAt<=Date.now()||page.items.length>0&&page.pinRevision===null||query.data.snapshotToken&&page.snapshotToken!==query.data.snapshotToken||new Set(page.items.map(x=>x.recommendationId)).size!==page.items.length||page.items.some((x,n)=>n>0&&(x.position<page.items[n-1].position||x.position===page.items[n-1].position&&x.recommendationId<=page.items[n-1].recommendationId))) throw new ExplorersApiError(409,'CONFLICT','Invalid top-pick page');return deepFreeze(page);
+   } catch(error) {
+     if(error instanceof ExplorersApiError)throw error;
+     if(error instanceof z.ZodError)throw new ExplorersApiError(422,'INVALID_OWNER_CONTENT','Invalid top-pick page');
+     if(error instanceof Error&&error.name==='AbortError'){const aborted=new ExplorersApiError(409,'ABORTED','Top-pick read cancelled');aborted.name='AbortError';throw aborted;}
+     throw new ExplorersApiError(503,'UNAVAILABLE','Unable to read top-picks');
+   }
+  },
+  setMyCategoryTopPicks:(observed:CompleteMyCategoryContent,pins:CategoryTopPicksInput['orderedPins'],key:string,signal?:AbortSignal)=>writeTopPicks(observed,pins,key,true,signal),
+  upsertMyCategoryTopPickOrder:(observed:CompleteMyCategoryContent,pins:CategoryTopPicksInput['orderedPins'],key:string,signal?:AbortSignal)=>writeTopPicks(observed,pins,key,false,signal),
   getCompleteMyCategoryContent:completeCategory,
   async getMyCollections(input:OwnerCollectionsRequest,signal?:AbortSignal) {
     const query=ownerCollectionsRequestSchema.parse(input),page=await ownerRead('/collections',query,ownerCollectionPageSchema,signal);
