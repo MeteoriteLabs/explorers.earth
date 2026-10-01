@@ -49,7 +49,7 @@ it.each(['snapshotToken','snapshot','expiresAt'])('rejects mismatched %s across 
   server((s,_c,b)=>s==='recommendations'?response({...b,[key]:key==='expiresAt'?expiresAt+1:key==='snapshot'?'8':'other'}):undefined);
   await expect(explorersApiClient.getCompleteMyCategoryContent({category:'books'})).rejects.toMatchObject({code:'INVALID_OWNER_CONTENT'});
 });
-it.each(['duplicate','collection-duplicate','recommendation-duplicate','cursor','empty','parent','missing','missing-child','foreign','wrong-category','wrong-status','archived','pin','pin-position','pin-revision'])('rejects %s protocol corruption',async(kind)=>{
+it.each(['duplicate','collection-duplicate','recommendation-duplicate','cursor','empty','parent','missing','missing-child','foreign','wrong-category','wrong-status','archived','pin','pin-negative-position','pin-foreign-target','pin-revision'])('rejects %s protocol corruption',async(kind)=>{
   server((s,c,b)=>{
     if(kind==='duplicate'&&s==='memberships'&&c) b.items[0]=membership(0);
     if(kind==='collection-duplicate'&&s==='collections'&&c) b.items[0]=collection(0);
@@ -67,7 +67,8 @@ it.each(['duplicate','collection-duplicate','recommendation-duplicate','cursor',
     }
     if(s==='recommendations'&&c==='recommendations-48') {
       if(kind==='pin') b.items[4].pin.collectionId=id(0);
-      if(kind==='pin-position') b.items[3].pin={collectionId:id(26),position:0,revision:1};
+      if(kind==='pin-negative-position') b.items[4].pin.position=-1;
+      if(kind==='pin-foreign-target') b.items[4].pin.collectionId=id(555);
       if(kind==='pin-revision') b.items[4].pin.revision=2;
     }
     return response(b);
@@ -155,4 +156,14 @@ it('expires the current session even when a definitive 401 body is malformed',as
   vi.stubGlobal('fetch',async()=>new Response('not-json',{status:401}));
   await expect(explorersApiClient.getCompleteMyCategoryContent({category:'books'})).rejects.toMatchObject({status:401,code:'UNAUTHENTICATED'});
   expect(useAuthStore.getState().isAuthenticated).toBe(false);
+});
+it('preserves equal pin ranks in a complete immutable snapshot and mutable staging copy',async()=>{
+  server((s,c,b)=>{if(s==='recommendations'&&c==='recommendations-48') b.items[3].pin={collectionId:id(26),position:0,revision:1};return response(b);});
+  const value=await explorersApiClient.getCompleteMyCategoryContent({category:'books'});assertCompleteMyCategoryContent(value);
+  const pins=value.recommendations.filter(x=>x.pin);
+  expect(pins.map(x=>x.id)).toEqual([id(2051),id(2052)]);expect(pins.map(x=>x.pin?.position)).toEqual([0,0]);
+  expect(pins.every(x=>Object.isFrozen(x.pin))).toBe(true);
+  const draft=copyMyCategoryContentForStaging(value);expect(draft.recommendations.filter(x=>x.pin).map(x=>x.pin?.position)).toEqual([0,0]);
+  draft.recommendations[51].pin!.position=9;expect(value.recommendations[51].pin!.position).toBe(0);
+  expect(()=>assertCompleteMyCategoryContent(draft as any)).toThrow();
 });

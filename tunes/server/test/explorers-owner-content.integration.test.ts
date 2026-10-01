@@ -32,9 +32,13 @@ async function fixture(lists=27,children=53) {
 const get=(f:{cookie:string},path:string,query:object={})=>request(composed.app).get(`/api/explorers/v1${path}`).set('cookie',f.cookie).query(query);
 it.each(['complete','recommendations','validate'])('executes the real joint client against guarded owner HTTP: %s',async(race)=>{
   const f=await fixture(),storage=new Map<string,string>();
+  if(race==='complete') {
+    await pool.query("INSERT INTO account_category_pin_state(account_id,category) VALUES($1,'books')",[f.accountId]);
+    await pool.query("INSERT INTO category_recommendation_pins(account_id,category,recommendation_id,collection_id,position) VALUES($1,'books',$2,$4,0),($1,'books',$3,$4,0)",[f.accountId,f.recommendations[51],f.recommendations[52],f.ids[26]]);
+  }
   vi.stubGlobal('localStorage',{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});
   const {default:store}=await import('../../../explorers-earth/src/store/store');
-  const {explorersApiClient,assertCompleteMyCategoryContent}=await import('../../../explorers-earth/src/lib/explorersApiClient');
+  const {explorersApiClient,assertCompleteMyCategoryContent,copyMyCategoryContentForStaging}=await import('../../../explorers-earth/src/lib/explorersApiClient');
   store.setState({accountId:f.accountId,generation:101,isAuthenticated:true});let changed=false,validated=false;
   vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{
     expect(options.credentials).toBe('include');expect(options.cache).toBe('no-store');
@@ -47,7 +51,11 @@ it.each(['complete','recommendations','validate'])('executes the real joint clie
   });
   try {
     const result=explorersApiClient.getCompleteMyCategoryContent({category:'books'});
-    if(race==='complete') {const content=await result;assertCompleteMyCategoryContent(content);expect(content.collections).toHaveLength(27);expect(content.recommendations).toHaveLength(53);expect(content.memberships).toHaveLength(53);expect(validated).toBe(true);}
+    if(race==='complete') {const content=await result;assertCompleteMyCategoryContent(content);expect(content.collections).toHaveLength(27);expect(content.recommendations).toHaveLength(53);expect(content.memberships).toHaveLength(53);expect(validated).toBe(true);
+      const pins=content.recommendations.filter(x=>x.pin);expect(pins.map(x=>x.id).sort()).toEqual(f.recommendations.slice(51).sort());expect(pins.map(x=>x.pin?.position)).toEqual([0,0]);expect(pins.every(x=>Object.isFrozen(x.pin))).toBe(true);
+      const draft=copyMyCategoryContentForStaging(content);expect(draft.recommendations.filter(x=>x.pin).map(x=>x.pin?.position)).toEqual([0,0]);draft.recommendations.find(x=>x.pin)!.pin!.position=7;expect(pins.map(x=>x.pin?.position)).toEqual([0,0]);
+      expect((await pool.query('SELECT position FROM category_recommendation_pins WHERE account_id=$1 ORDER BY position,recommendation_id',[f.accountId])).rows.map(x=>x.position)).toEqual([0,0]);
+    }
     else {await expect(result).rejects.toMatchObject({status:409,code:'CONFLICT'});expect(changed).toBe(true);expect(validated).toBe(race==='validate');}
   } finally {store.setState({accountId:null,isAuthenticated:false,generation:102});vi.unstubAllGlobals();}
 });

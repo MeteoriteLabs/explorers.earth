@@ -144,10 +144,9 @@ async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'s
       const parent=parents.get(item.collectionId),child=children.get(item.recommendationId),key=`${item.recommendationId}:${item.collectionId}`;
       if(!parent||!child||tuples.has(key)||parent.revision!==item.collectionRevision||parent.archived!==item.collectionArchived||child.archived!==item.recommendationArchived) return invalid();tuples.add(key);
     }
-    const positions=new Set<number>();
     for(const child of recommendations) if(child.pin) {
       const parent=parents.get(child.pin.collectionId);
-      if(child.archived||!parent||parent.archived||!tuples.has(`${child.id}:${parent.id}`)||child.pin.revision!==snapshot.pinRevision||positions.has(child.pin.position)) return invalid();positions.add(child.pin.position);
+      if(child.archived||!parent||parent.archived||!tuples.has(`${child.id}:${parent.id}`)||child.pin.revision!==snapshot.pinRevision) return invalid();
     }
     const validated=await read(`/categories/${query.category}/content-snapshot/validate`,{snapshotToken:snapshot.snapshotToken},ownerSnapshotSchema);
     if(validated.snapshotToken!==snapshot.snapshotToken||validated.revision!==snapshot.revision||validated.expiresAt!==snapshot.expiresAt||validated.pinRevision!==snapshot.pinRevision) return invalid();check();
