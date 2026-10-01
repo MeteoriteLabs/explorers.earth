@@ -86,14 +86,15 @@ it('executes observed shared mutation clients through guarded HTTP with real not
  try {
   const list=await explorersApiClient.createMyCollection({category:'books',title:'Clients',slug:'clients'},'client-list');
   let parent=await explorersApiClient.getMyEditableCollection(list.id);
-  const saved=await explorersApiClient.createMyRecommendation(parent,{entityId:await entity(),note:{version:1,format:'quill-html',html:actualQuill.html}},'client-child');
+  const manual=await explorersApiClient.resolveManualEntity({kind:'manual',category:'books',details:{title:'  😀 Client canonical  '}},'client-manual');
+  const saved=await explorersApiClient.createMyRecommendation(parent,{entityId:manual.id,displayOverrides:{title:null},note:{version:1,format:'quill-html',html:actualQuill.html}},'client-child');
   expect(()=>assertOwnerDetailObservation(parent)).toThrow();
   let observed=await explorersApiClient.getMyEditableRecommendation(saved.id);
-  expect(observed.detail.note?.html).toBe(actualQuill.html);const draft=copyOwnerDetailForStaging(observed);draft.note!.html='<p>staged</p>';expect(observed.detail.note?.html).toBe(actualQuill.html);
-  const categoryBefore=observed.categoryRevision;lost=true;const patch={note:{version:1 as const,format:'quill-html' as const,html:'<p>😀 edited</p>'}};
+  expect(observed.detail.note?.html).toBe(actualQuill.html);expect(observed.detail.entity.title).toBe('😀 Client canonical');expect(observed.detail.displayTitle).toBeNull();expect(Object.isFrozen(observed.detail.displayOverrides)).toBe(true);const draft=copyOwnerDetailForStaging(observed);draft.note!.html='<p>staged</p>';expect(observed.detail.note?.html).toBe(actualQuill.html);
+  const categoryBefore=observed.categoryRevision;lost=true;const patch={displayOverrides:{title:'😀 Author title'},note:{version:1 as const,format:'quill-html' as const,html:'<p>😀 edited</p>'}};
   await expect(explorersApiClient.updateMyRecommendation(observed,patch,'client-retry')).rejects.toMatchObject({status:503});assertOwnerDetailObservation(observed);
   const replay=await explorersApiClient.updateMyRecommendation(observed,patch,'client-retry');expect(replay.revision).toBe(2);
-  observed=await explorersApiClient.getMyEditableRecommendation(saved.id);expect(BigInt(observed.categoryRevision)).toBeGreaterThan(BigInt(categoryBefore));expect(observed.detail.note).toEqual(patch.note);
+  observed=await explorersApiClient.getMyEditableRecommendation(saved.id);expect(BigInt(observed.categoryRevision)).toBeGreaterThan(BigInt(categoryBefore));expect(observed.detail.note).toEqual(patch.note);expect(observed.detail.displayTitle).toBe('😀 Author title');
   await expect(explorersApiClient.updateMyRecommendation(observed,{note:null},'client-retry')).rejects.toMatchObject({status:409});expect(()=>assertOwnerDetailObservation(observed)).toThrow();
   const complete=await explorersApiClient.getCompleteMyCategoryContent({category:'books'});
   await expect(explorersApiClient.reorderMyCollection(complete,list.id,[],'client-order-bad')).rejects.toMatchObject({status:422});assertCompleteMyCategoryContent(complete);

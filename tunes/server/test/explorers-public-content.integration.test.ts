@@ -34,6 +34,18 @@ it('pages public children beyond page one using safe explicit projection',async(
   while(cursor) {const page=await request(app).get(f.children).query({limit:2,cursor});expect(page.status).toBe(200);seen.push(...page.body.items.map((x:any)=>x.id));cursor=page.body.nextCursor;}
   expect(seen).toEqual(f.ids);
 });
+it('projects effective override string/null and invalidates public continuation without leaking raw values',async()=>{
+ const f=await fixture(3),first=await request(app).get(f.children).query({limit:1});expect(first.status).toBe(200);
+ await pool.query('UPDATE recommendations SET note=NULL WHERE account_id=$1',[f.account]);
+ await pool.query('INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$3,$4),($2,$3,$5)',[f.ids[0],f.ids[1],f.account,{title:'😀 Edited'},{title:null}]);
+ expect((await request(app).get(f.children).query({limit:1,cursor:first.body.nextCursor})).status).toBe(409);
+ const page=await request(app).get(f.children);expect(page.status).toBe(200);expect(page.body.items.map((v:any)=>v.title)).toEqual(['😀 Edited',null,'Public title']);
+ for(const id of f.ids.slice(0,2)) {const detail=await request(app).get(`${f.children}/${id}`);expect(detail.status).toBe(200);expect(detail.body.recommendation.title).toBe(id===f.ids[0]?'😀 Edited':null);expect(Object.keys(detail.body.recommendation).sort()).toEqual(['id','kind','note','title','userRating']);}
+ await pool.query('UPDATE recommendation_display_overrides SET display_values=$2 WHERE recommendation_id=$1',[f.ids[0],{secret:'Never exposed'}]);
+ const bad=await request(app).get(f.children);expect(bad.status).toBe(400);expect(JSON.stringify(bad.body)).not.toContain('Never exposed');
+ await pool.query('UPDATE recommendation_display_overrides SET display_values=$2 WHERE recommendation_id=$1',[f.ids[0],{title:'Never exposed'.repeat(100000)}]);
+ for(const path of [f.children,`${f.children}/${f.ids[0]}`]){const large=await request(app).get(path);expect(large.status).toBe(413);expect(JSON.stringify(large.body)).not.toContain('Never exposed');}
+});
 it('rejects unknown query inputs, invalid bounds and altered or rebound cursors',async()=>{
   const f=await fixture(),g=await fixture();
   for(const query of [{limit:0},{limit:25},{limit:'1.2'},{limit:'01'},{limit:['1','2']},{accountId:f.account},{username:f.handle},{category:'books'},{slug:'reading'},{order:'title'},{cursor:'o2'}]) expect((await request(app).get(f.children).query(query)).status).toBe(400);
@@ -56,7 +68,8 @@ it('filters mixed publication and archival states before taking the bounded page
   const f=await fixture();await pool.query("UPDATE recommendations SET publication_state='draft' WHERE id=$1",[f.ids[0]]);await pool.query('UPDATE recommendations SET archived_at=now() WHERE id=$1',[f.ids[2]]);
   const page=await request(app).get(f.children).query({limit:2});expect(page.status).toBe(200);expect(page.body.items.map((x:any)=>x.id)).toEqual([f.ids[1],f.ids[3]]);
   await pool.query("UPDATE recommendations SET publication_state='draft' WHERE id=$1",[f.ids[4]]);
-  const next=await request(app).get(f.children).query({limit:2,cursor:page.body.nextCursor});expect(next.status).toBe(200);expect(next.body.items).toEqual([]);expect(next.body.nextCursor).toBeNull();
+  const next=await request(app).get(f.children).query({limit:2,cursor:page.body.nextCursor});expect(next.status).toBe(409);
+  const restarted=await request(app).get(f.children);expect(restarted.status).toBe(200);expect(restarted.body.items.map((x:any)=>x.id)).toEqual([f.ids[1],f.ids[3]]);
 });
 it('requires restart after collection order revision changes and rechecks privacy on continuation',async()=>{
   const f=await fixture();const first=await request(app).get(f.children).query({limit:2});

@@ -160,3 +160,26 @@ Owner v2 reads obtain the constant category revision lookup in each short
 repeatable-read transaction. Separate membership pages and bounded media queries
 replace nested arrays. A shared opaque snapshot is validated after all streams
 by the future combined collector; that collector and UI adoption remain open.
+
+## Manual entities and sparse title overrides (0033)
+
+The append-only `0033_explorers_recommendation_display_overrides` migration adds
+`recommendation_display_overrides`, bringing the current manifest to 57 tables.
+Its composite recommendation/account FK cascades on terminal purge; shared catalog
+entities survive. Runtime receives companion SELECT/INSERT/UPDATE/DELETE and retains
+SELECT-only category counters. The three statement triggers derive scopes through
+the parent recommendation; moved rows invalidate both accounts. Exact restore now
+attests and temporarily disables 25 revision triggers and preserves sparse `{}`
+versus `{title:null}`. Capture obtains the same table list from this frozen manifest.
+
+Manual resolution accepts only six category/title variants, trims boundaries,
+requires 1–500 Unicode code points and rejects ASCII controls/lone surrogates.
+Normalized receipt replay returns the same identity; distinct keys create distinct
+identities, including equal titles. Overrides replace the whole sparse object;
+omitted PATCH preserves, `{}` inherits, and `{title:null}` explicitly clears.
+Canonical reads keep existing accepted text with codepoint bounds. Editable detail
+requires canonical entity plus sparse overrides and nullable effective title.
+The shared public-content v1 is an unadopted internal checkpoint: its coordinated
+nullable title change is permitted before released consumer adoption. Public
+projections expose effective title only; existing category screens still use their
+legacy gateway and are not qualified consumers of this contract.

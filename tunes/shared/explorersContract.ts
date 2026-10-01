@@ -37,6 +37,13 @@ export type CategoryTopPicksResult = z.infer<typeof categoryTopPicksResultSchema
 const collectionPlainText = z.string().max(5000).nullable();
 const collectionHeading = z.string().trim().max(200).nullable();
 const recommendationMediaIds = z.array(contentIdSchema).max(20).refine(ids=>new Set(ids).size===ids.length,'Duplicate media');
+// Read bounds preserve previously accepted canonical/provider text. New writes
+// normalize boundary whitespace and reject controls and malformed Unicode.
+export const catalogTitleSchema=z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500,'Invalid title length');
+export const displayTitleWriteSchema=z.string().trim().pipe(catalogTitleSchema).refine(v=>!/[\u0000-\u001f\u007f]/.test(v)&&!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v),'Invalid title characters');
+export const displayOverridesSchema=z.object({title:displayTitleWriteSchema.nullable().optional()}).strict();
+export const displayOverridesReadSchema=z.object({title:z.string().refine(v=>v===v.trim(),'Unnormalized stored title').pipe(displayTitleWriteSchema).nullable().optional()}).strict();
+export type DisplayOverrides=z.infer<typeof displayOverridesSchema>;
 export const contentRevisionSchema = z.object({expectedRevision:contentRevision}).strict();
 export const createCollectionSchema = z.object({category:contentCategorySchema,title:contentTitle,slug:contentSlug,
   visibility:contentVisibility.default('private'),publicationState:publicationState.default('draft'),
@@ -47,9 +54,9 @@ export const updateCollectionSchema = z.object({expectedRevision:contentRevision
   .refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const createRecommendationSchema = z.object({category:recommendationCategorySchema,entityId:contentIdSchema,
   collectionId:contentIdSchema,expectedCollectionRevision:contentRevision,userRating:userRating.default(null),
-  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([]),note:richNoteSchema.nullable().default(null)}).strict();
+  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([]),note:richNoteSchema.nullable().default(null),displayOverrides:displayOverridesSchema.optional()}).strict();
 export const updateRecommendationSchema = z.object({expectedRevision:contentRevision,userRating:userRating.optional(),
-  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional(),note:richNoteSchema.nullable().optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
+  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional(),note:richNoteSchema.nullable().optional(),displayOverrides:displayOverridesSchema.optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const reorderCollectionSchema = z.object({expectedRevision:contentRevision,
   orderedRecommendationIds:z.array(contentIdSchema).max(10000)}).strict();
 export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,
@@ -64,7 +71,10 @@ export type UpdateRecommendationInput = z.infer<typeof updateRecommendationSchem
 export type CollectionCoreDto = z.infer<typeof collectionCoreDtoSchema>;
 export type RecommendationCoreDto = z.infer<typeof recommendationCoreDtoSchema>;
 export const resolveExistingEntitySchema = z.object({entityId:contentIdSchema,category:recommendationCategorySchema}).strict();
-export const entityCoreDtoSchema = z.object({id:contentIdSchema,kind:catalogKindSchema,title:z.string().trim().min(1).max(500)}).strict();
+export const entityCoreDtoSchema = z.object({id:contentIdSchema,kind:catalogKindSchema,title:catalogTitleSchema}).strict();
+export const resolveManualEntitySchema=z.object({kind:z.literal('manual'),category:topPickCategorySchema,details:z.object({title:displayTitleWriteSchema}).strict()}).strict();
+export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema]);
+export type ResolveManualEntityInput=z.input<typeof resolveManualEntitySchema>;
 
 export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE"] as const;
 export const apiErrorSchema = z.object({

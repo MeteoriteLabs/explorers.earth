@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult } from '../../shared/explorersContract';
+import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides } from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 
@@ -113,6 +113,18 @@ export class ExplorersRecommendationRepository {
     });
   }
   /** Provider facts are server-validated upstream; this method never fetches or accepts caller authority. */
+  async resolveManualEntity(accountId:string,input:{category:TopPickCategory;details:{title:string}},key:string) {
+    const kinds={books:'book',movies:'movie',games:'game',apps:'app',products:'product',people:'person'} as const;
+    return this.command(accountId,'resolveManualEntity',input,key,async db=>{
+      const result=await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES($1,$2,'manual',to_tsvector('simple',$2)) RETURNING id,kind,title",[kinds[input.category],input.details.title]);
+      return result.rows[0] as {id:string;kind:CatalogKind;title:string};
+    });
+  }
+  private async replaceOverrides(db:PoolClient,accountId:string,id:string,values:DisplayOverrides) {
+    if(Object.keys(values).length===0) {await db.query('DELETE FROM recommendation_display_overrides WHERE recommendation_id=$1 AND account_id=$2',[id,accountId]);return;}
+    await db.query(`INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$2,$3::jsonb)
+      ON CONFLICT(recommendation_id) DO UPDATE SET display_values=excluded.display_values`,[id,accountId,JSON.stringify(values)]);
+  }
   async resolveProviderEntity(input:{kind:CatalogKind;title:string;provider:'tmdb'|'google_books'|'igdb'|'google_places';externalKind:string;externalId:string}) {
     return this.transaction(async db=>{
       const identity=canonical([input.provider,input.externalKind,input.externalId]);
@@ -148,7 +160,7 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null},key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides},key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
@@ -158,6 +170,7 @@ export class ExplorersRecommendationRepository {
         SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1`,
         [input.collectionId,result.rows[0].id,accountId,input.category]);
       await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1',[input.collectionId]);
+      if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,result.rows[0].id,input.displayOverrides);
       await this.replaceMedia(db,accountId,result.rows[0].id,input.mediaIds??[]);
       return this.recommendationRecord(db,result.rows[0]);
     });
@@ -210,13 +223,14 @@ export class ExplorersRecommendationRepository {
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
   }
-  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null},key:string):Promise<RecommendationRecord> {
+  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides},key:string):Promise<RecommendationRecord> {
     if(input.userRating!==undefined&&input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       await this.lockRecommendation(db,accountId,id,expectedRevision);
       const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
         publication_state=coalesce($4,publication_state),note=CASE WHEN $5 THEN $6::jsonb ELSE note END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null,input.note!==undefined,input.note==null?null:JSON.stringify(input.note)]);
+      if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,id,input.displayOverrides);
       if(input.mediaIds!==undefined) await this.replaceMedia(db,accountId,id,input.mediaIds);
       return this.recommendationRecord(db,result.rows[0]);
     });

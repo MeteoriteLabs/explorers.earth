@@ -150,6 +150,11 @@ export const recommendations=pgTable('recommendations',{
   publicationState:text('publication_state').notNull().default('draft'),revision:bigint('revision',{mode:'number'}).notNull().default(1),
   archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
 },t=>[index('recommendations_owner_id_idx').on(t.accountId,t.category,t.id)]);
+// 0033 owns the composite account FK, schema-version/object CHECKs and triggers.
+export const recommendationDisplayOverrides=pgTable('recommendation_display_overrides',{
+  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),
+  schemaVersion:smallint('schema_version').notNull().default(1),displayValues:jsonb('display_values').notNull().default({}),
+},t=>[index('recommendation_display_overrides_account_idx').on(t.accountId,t.recommendationId)]);
 export const collectionItems=pgTable('collection_items',{
   collectionId:uuid('collection_id').notNull(),recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),
   category:text('category').notNull(),displayOrder:integer('display_order').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),

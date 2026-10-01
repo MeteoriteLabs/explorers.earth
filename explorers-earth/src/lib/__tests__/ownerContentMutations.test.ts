@@ -3,12 +3,12 @@ import store from '../../store/store';
 import { explorersApiClient } from '../explorersApiClient';
 const account='00000000-0000-4000-8000-000000000001',id='00000000-0000-4000-8000-000000000002',entityId='00000000-0000-4000-8000-000000000003';
 const collection={id,accountId:account,category:'books',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,categoryRevision:'9'};
-const child={id,accountId:account,category:'books',entityId,userRating:null,publicationState:'draft',revision:2,mediaIds:[],archived:false,pin:null,note:null,categoryRevision:'9'};
+const child={id,accountId:account,category:'books',entityId,userRating:null,publicationState:'draft',revision:2,mediaIds:[],archived:false,pin:null,note:null,categoryRevision:'9',entity:{id:entityId,kind:'book',title:'Canonical'},displayOverrides:{},displayTitle:'Canonical'};
 const response=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
 beforeEach(()=>{vi.unstubAllGlobals();store.setState({accountId:account,isAuthenticated:true,generation:900});});
 it('derives create identity/revision from privately issued parent and rejects copies/forged selectors',async()=>{
  let sent:any;
- vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{if(!options.method)return response({collection});sent=JSON.parse(options.body as string);return response({recommendation:{...child,revision:1,archived:undefined,pin:undefined,note:undefined,categoryRevision:undefined}},201);});
+ vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{if(!options.method)return response({collection});sent=JSON.parse(options.body as string);return response({recommendation:{...child,revision:1,archived:undefined,pin:undefined,note:undefined,categoryRevision:undefined,entity:undefined,displayOverrides:undefined,displayTitle:undefined}},201);});
  const observed=await explorersApiClient.getMyEditableCollection(id);
  expect(Object.isFrozen(observed.detail)).toBe(true);
  await expect(explorersApiClient.createMyRecommendation({...observed},{entityId},'stable-key')).rejects.toMatchObject({status:409});
@@ -53,4 +53,30 @@ it('returns typed failure for malformed detail/error JSON and never sends forged
  await expect(explorersApiClient.updateMyRecommendation(observed,{note:null,expectedRevision:999} as any,'forged-patch')).rejects.toMatchObject({status:422});
  await expect(explorersApiClient.updateMyRecommendation(observed,{note:null},'bad-error')).rejects.toMatchObject({status:503});
  malformed=true;await expect(explorersApiClient.getMyEditableRecommendation(id)).rejects.toMatchObject({status:503});
+});
+it('resolves manual titles with normalized stable retry and no fabricated owner observation',async()=>{
+ let lost=true;const attempts:any[]=[];
+ vi.stubGlobal('fetch',async(_url:string,options:RequestInit)=>{attempts.push({body:options.body,key:new Headers(options.headers).get('Idempotency-Key')});if(lost){lost=false;throw new Error('reply lost');}return response({entity:{id:entityId,kind:'book',title:'😀 Manual'}});});
+ const input={kind:'manual' as const,category:'books' as const,details:{title:'  😀 Manual  '}};
+ await expect(explorersApiClient.resolveManualEntity(input,'manual-key')).rejects.toMatchObject({status:503});
+ const result=await explorersApiClient.resolveManualEntity(input,'manual-key');expect(result).toEqual({id:entityId,kind:'book',title:'😀 Manual'});expect(Object.isFrozen(result)).toBe(true);expect(attempts[1]).toEqual(attempts[0]);expect(JSON.parse(attempts[0].body).details.title).toBe('😀 Manual');
+ await expect(explorersApiClient.updateMyRecommendation(result as any,{displayOverrides:{title:'No authority'}},'bad-key-1')).rejects.toMatchObject({status:409});
+ await expect(explorersApiClient.resolveManualEntity({...input,details:{title:'\ud800'}},'bad-key-1')).rejects.toMatchObject({status:422});expect(attempts).toHaveLength(2);
+});
+it('freezes sparse overrides, rejects inconsistent effective title and derives override mutation revision',async()=>{
+ let malformed=false,sent:any;
+ const detail={...child,displayOverrides:{title:null},displayTitle:null};
+ vi.stubGlobal('fetch',async(_url:string,options:RequestInit)=>{if(!options.method)return response({recommendation:malformed?{...detail,displayTitle:'Canonical'}:detail});sent=JSON.parse(options.body as string);return response({recommendation:{id,accountId:account,category:'books',entityId,userRating:null,publicationState:'draft',revision:3,mediaIds:[]}});});
+ const observed=await explorersApiClient.getMyEditableRecommendation(id);expect(Object.isFrozen(observed.detail.displayOverrides)).toBe(true);
+ await explorersApiClient.updateMyRecommendation(observed,{displayOverrides:{title:'  Mine  '}},'override-key');expect(sent).toMatchObject({expectedRevision:2,displayOverrides:{title:'Mine'}});
+ malformed=true;await expect(explorersApiClient.getMyEditableRecommendation(id)).rejects.toMatchObject({status:503});
+});
+it.each(['null-canonical','foreign-entity','kind','unknown-override','missing-effective'])('rejects malformed editable catalog presentation %s',async(kind)=>{
+ const malformed=structuredClone(child) as any;
+ if(kind==='null-canonical')malformed.entity.title=null;
+ if(kind==='foreign-entity')malformed.entity.id=id;
+ if(kind==='kind')malformed.entity.kind='movie';
+ if(kind==='unknown-override')malformed.displayOverrides={facts:{}};
+ if(kind==='missing-effective')delete malformed.displayTitle;
+ vi.stubGlobal('fetch',async()=>response({recommendation:malformed}));await expect(explorersApiClient.getMyEditableRecommendation(id)).rejects.toMatchObject({status:503});
 });

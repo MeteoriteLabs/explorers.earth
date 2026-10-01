@@ -1,17 +1,18 @@
 import type { Pool } from 'pg';
-import { entityCoreDtoSchema, resolveExistingEntitySchema } from '../../shared/explorersContract';
+import { entityCoreDtoSchema, resolveEntitySchema,commandKeySchema,type RequestContext } from '../../shared/explorersContract';
 import type { Actor } from './actor';
 import { authorizeOperation } from './authorization';
 import { parseContent } from './recommendations';
-import { RecommendationFailure } from '../repositories/explorersRecommendationRepository';
+import { RecommendationFailure,ExplorersRecommendationRepository } from '../repositories/explorersRecommendationRepository';
 
 /** Existing owned catalog context only. Provider ingestion/fetch is a separate
  * trusted server adapter; HTTP callers cannot supply or overwrite shared facts. */
 export class CatalogService {
   constructor(private readonly db:Pool) {}
-  async resolveEntity(actor:Actor,input:unknown) {
+  async resolveEntity(actor:Actor,input:unknown,context?:RequestContext) {
     await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);
-    const parsed=parseContent(resolveExistingEntitySchema,input);
+    const parsed=parseContent(resolveEntitySchema,input);
+    if('kind' in parsed) return entityCoreDtoSchema.parse(await new ExplorersRecommendationRepository(this.db).resolveManualEntity(actor.accountId,parsed,parseContent(commandKeySchema,context?.idempotencyKey)));
     const result=await this.db.query(`SELECT e.id,e.kind,e.title FROM entities e
       WHERE e.id=$1 AND EXISTS(SELECT 1 FROM recommendations r
         JOIN collection_items ci ON ci.recommendation_id=r.id

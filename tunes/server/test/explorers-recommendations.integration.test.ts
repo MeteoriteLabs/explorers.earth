@@ -184,6 +184,7 @@ describe('recommendation repository transactions', () => {
   it('permits content purge only for a matching running terminal deletion and retries atomically', async () => {
     const a=await account(), b=await account(), shared=await entity(), list=await collection(a), other=await collection(b);
     const first=await recommendation(a,shared), second=await recommendation(b,shared);
+    await pool.query('INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$2,$3),($4,$5,$6)',[first,a,{title:null},second,b,{title:'B survives'}]);
     await pool.query("INSERT INTO collection_items VALUES($1,$2,$3,'books',0,now())",[list,first,a]);
     await pool.query("INSERT INTO account_category_pin_state(account_id,category) VALUES($1,'books')",[a]);
     await pool.query("INSERT INTO category_recommendation_pins VALUES($1,'books',$2,$3,0)",[a,first,list]);
@@ -204,11 +205,14 @@ describe('recommendation repository transactions', () => {
       await client.query('SELECT purge_explorers_account_content($1,$2)',[a,operation.rows[0].id]);
       await client.query('ROLLBACK');
       expect((await pool.query('SELECT id FROM recommendations WHERE id=$1',[first])).rowCount).toBe(1);
+      expect((await pool.query('SELECT display_values FROM recommendation_display_overrides WHERE recommendation_id=$1',[first])).rows).toEqual([{display_values:{title:null}}]);
       const purged=await client.query('SELECT purge_explorers_account_content($1,$2) AS count',[a,operation.rows[0].id]);
       expect(purged.rows[0].count).toBe(2);
       expect((await client.query('SELECT purge_explorers_account_content($1,$2) AS count',[a,operation.rows[0].id])).rows[0].count).toBe(0);
       expect((await pool.query('SELECT id FROM entities WHERE id=$1',[shared])).rowCount).toBe(1);
       expect((await pool.query('SELECT id FROM recommendations WHERE id=$1',[second])).rowCount).toBe(1);
+      expect((await pool.query('SELECT display_values FROM recommendation_display_overrides WHERE recommendation_id=$1',[first])).rows).toEqual([]);
+      expect((await pool.query('SELECT display_values FROM recommendation_display_overrides WHERE recommendation_id=$1',[second])).rows).toEqual([{display_values:{title:'B survives'}}]);
       expect((await pool.query('SELECT id FROM collections WHERE id=$1',[other])).rowCount).toBe(1);
       expect((await pool.query('SELECT * FROM category_recommendation_pins WHERE account_id=$1',[a])).rowCount).toBe(0);
     } finally {await client.query('RESET ROLE');client.release();}

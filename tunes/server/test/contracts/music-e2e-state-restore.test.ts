@@ -124,7 +124,7 @@ describe("Music E2E transactional state restore", () => {
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "profile_feed_items", "profile_media", "recommendation_media", "recommendations", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
+      "playlists", "profile_feed_items", "profile_media", "recommendation_display_overrides", "recommendation_media", "recommendations", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
@@ -149,6 +149,7 @@ describe("Music E2E transactional state restore", () => {
       "0030_explorers_media_purpose_guard",
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
+      "0033_explorers_recommendation_display_overrides",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -194,6 +195,7 @@ describe("Music E2E transactional state restore", () => {
     expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
     expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
     expectedTriggers.push({table:"creator_accounts",name:"creator_accounts_content_revision_lifecycle",enabled:"O",type:17,function:"explorers_content_revision_lifecycle"});
+    for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table:'recommendation_display_overrides',name:`recommendation_display_overrides_content_revision_${event}`,enabled:'O',type,function:`explorers_content_revision_${event}`});
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_MIGRATION_IDS)).toBe(true);

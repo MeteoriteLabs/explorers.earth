@@ -3,7 +3,8 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v3';
 import { publicContentRequestSchema, type PublicContentPage, type PublicContentRequest,
   type PublicCollectionSummary, type PublicRecommendationSummary } from '../../shared/explorersPublicContentContract';
-import { publicRecommendationDetailRequestSchema,publicRecommendationDetailSchema } from '../../shared/explorersPublicContentContract';
+import { publicRecommendationDetailRequestSchema,publicRecommendationDetailSchema,publicRecommendationSummarySchema } from '../../shared/explorersPublicContentContract';
+import { displayOverridesReadSchema,catalogTitleSchema } from '../../shared/explorersContract';
 import { normalizeRichNote } from './richNote';
 
 export class PublicContentFailure extends Error {
@@ -12,6 +13,15 @@ export class PublicContentFailure extends Error {
 const cursorSchema=z.object({version:z.literal(1),binding:z.string(),account:z.string().uuid(),
   revision:z.string().nullable(),order:z.number().int().nonnegative().max(2147483647),id:z.string().uuid()}).strict();
 type Cursor=z.infer<typeof cursorSchema>;
+const overrideJoin='LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id';
+const titleBytes='octet_length(to_json(e.title)::text)+coalesce(octet_length(o.display_values::text),0)';
+const boundedTitle=`CASE WHEN ${titleBytes}<=8192 THEN e.title END AS canonical_title,CASE WHEN ${titleBytes}<=8192 THEN o.display_values END AS display_values,${titleBytes} AS title_bytes`;
+function effectiveTitle(row:any) {
+ if(Number(row.title_bytes)>8192)throw new PublicContentFailure(413);
+ const title=catalogTitleSchema.safeParse(row.canonical_title),overrides=displayOverridesReadSchema.safeParse(row.display_values??{});
+ if(!title.success||!overrides.success)throw new PublicContentFailure(400);
+ return Object.hasOwn(overrides.data,'title')?overrides.data.title:title.data;
+}
 /** Live public pages, never a complete-set owner read. Each page has one consistent database snapshot. */
 export class PublicContentService {
   private readonly key:Buffer;
@@ -38,16 +48,16 @@ export class PublicContentService {
       const eligible=`FROM recommendations r JOIN collection_items ci ON ci.recommendation_id=r.id AND ci.account_id=r.account_id AND ci.category=r.category
         JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category
         JOIN creator_accounts a ON a.id=r.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=r.category
-        JOIN entities e ON e.id=r.entity_id WHERE a.handle_key=$1 AND r.category=$2 AND c.slug=$3 AND r.id=$4
+        JOIN entities e ON e.id=r.entity_id ${overrideJoin} WHERE a.handle_key=$1 AND r.category=$2 AND c.slug=$3 AND r.id=$4
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public
         AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
         AND r.archived_at IS NULL AND r.publication_state='published'`;
       const values=[input.username,input.category,input.slug,input.id];
-      const size=(await db.query(`SELECT coalesce(octet_length(r.note::text),0) AS bytes,octet_length(to_json(e.title)::text) AS title_bytes ${eligible}`,values)).rows[0];
+      const size=(await db.query(`SELECT coalesce(octet_length(r.note::text),0) AS bytes,${titleBytes} AS title_bytes ${eligible}`,values)).rows[0];
       if(!size){await db.query('COMMIT');return undefined;}
-      if(Number(size.bytes)>1024*1024||Number(size.bytes)+Number(size.title_bytes)+1024>4*1024*1024)throw new PublicContentFailure(413);
-      const row=(await db.query(`SELECT r.id,e.title,e.kind,r.user_rating,r.note ${eligible}`,values)).rows[0];
-      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:row.title,kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note)}});
+      if(Number(size.bytes)>1024*1024||Number(size.title_bytes)>8192||Number(size.bytes)+Number(size.title_bytes)+1024>4*1024*1024)throw new PublicContentFailure(413);
+      const row=(await db.query(`SELECT r.id,${boundedTitle},e.kind,r.user_rating,r.note ${eligible}`,values)).rows[0];
+      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note)}});
       await db.query('COMMIT');return value;
     }catch(error){await db.query('ROLLBACK');if((error as {status?:number}).status===413)throw new PublicContentFailure(413);throw error;}finally{db.release();}
   }
@@ -66,10 +76,11 @@ export class PublicContentService {
         const collection=(await db.query(`SELECT id,revision::text FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3
           AND archived_at IS NULL AND visibility='public' AND publication_state='published'`,[account.id,input.category,input.slug])).rows[0];
         if(!collection) {await db.query('COMMIT');return undefined;}
-        revision=collection.revision;if(cursor&&cursor.revision!==revision) throw new PublicContentFailure(409);
-        rows=(await db.query(`SELECT r.id,e.title,e.kind,r.user_rating,ci.display_order FROM collection_items ci
+        const categoryState=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[account.id,input.category])).rows[0];
+        revision=`${collection.revision}:${categoryState.revision}`;if(cursor&&cursor.revision!==revision) throw new PublicContentFailure(409);
+        rows=(await db.query(`SELECT r.id,${boundedTitle},e.kind,r.user_rating,ci.display_order FROM collection_items ci
           JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
-          JOIN entities e ON e.id=r.entity_id
+          JOIN entities e ON e.id=r.entity_id ${overrideJoin}
           WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published'
           AND ($4::integer IS NULL OR (ci.display_order,r.id)>($4,$5::uuid)) ORDER BY ci.display_order,r.id LIMIT $6`,
           [collection.id,account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
@@ -82,7 +93,7 @@ export class PublicContentService {
       }
       const hasMore=rows.length>input.limit;rows=rows.slice(0,input.limit);const last=rows.at(-1);
       const result:PublicContentPage<PublicCollectionSummary|PublicRecommendationSummary>={version:'explorers-public-content/v1',
-        items:rows.map(row=>input.slug!==undefined?{id:row.id,title:row.title,kind:row.kind,userRating:row.user_rating}:
+        items:rows.map(row=>input.slug!==undefined?publicRecommendationSummarySchema.parse({id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating}):
           {id:row.id,title:row.title,slug:row.slug,description:row.description,heading:row.heading}),
         nextCursor:hasMore?this.encode({version:1,binding,account:account.id,revision,order:last.display_order,id:last.id}):null};
       await db.query('COMMIT');return result;

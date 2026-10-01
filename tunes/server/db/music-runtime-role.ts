@@ -50,6 +50,7 @@ const expectedRuntimeTables = [
   "playlists",
   "profile_feed_items",
   "profile_media",
+  "recommendation_display_overrides",
   "recommendation_media",
   "recommendations",
   "seo_settings",

@@ -1,5 +1,5 @@
 import { z } from 'zod/v3';
-import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema } from './explorersContract';
+import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema,entityCoreDtoSchema,displayOverridesReadSchema,catalogTitleSchema } from './explorersContract';
 import { richNoteSchema } from './explorersRichNoteContract';
 const status=z.enum(['active','archived','all']).default('active');
 const token=z.string().min(1).max(4096);
@@ -11,7 +11,11 @@ export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.st
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
 export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision}).strict();
-export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,note:richNoteSchema.nullable()}).strict();
+export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,note:richNoteSchema.nullable(),entity:entityCoreDtoSchema,displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable()}).strict().superRefine((v,ctx)=>{
+ const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};
+ const title=Object.prototype.hasOwnProperty.call(v.displayOverrides,'title')?v.displayOverrides.title:v.entity.title;
+ if(v.entity.id!==v.entityId||!expected[v.category].includes(v.entity.kind)||v.displayTitle!==title)ctx.addIssue({code:'custom',message:'Inconsistent catalog presentation'});
+});
 export type EditableOwnerCollection=z.infer<typeof editableOwnerCollectionSchema>;
 export type EditableOwnerRecommendation=z.infer<typeof editableOwnerRecommendationSchema>;
 export const ownerSnapshotRequestSchema=z.object({category:contentCategorySchema,snapshotToken:token.optional()}).strict();

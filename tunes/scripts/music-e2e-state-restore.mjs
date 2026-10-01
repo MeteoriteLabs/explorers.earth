@@ -52,7 +52,7 @@ export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
 const revisionTriggers = Object.freeze([
-  ...['collections','recommendations','collection_items','collection_media','recommendation_media','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
     [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
       table,name:`${table}_content_revision_${event}`,enabled:'O',type,
       function:`explorers_content_revision_${event}`,

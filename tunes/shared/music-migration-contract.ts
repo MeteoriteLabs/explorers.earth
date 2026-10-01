@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0032_explorers_owner_page_indexes" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0033_explorers_recommendation_display_overrides" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -31,6 +31,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0029_explorers_recommendations",
   "0030_explorers_media_purpose_guard",
   "0031_explorers_content_revision",
+  "0032_explorers_owner_page_indexes",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -67,6 +68,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0029_explorers_recommendations",
   "0030_explorers_media_purpose_guard",
   "0031_explorers_content_revision",
+  "0032_explorers_owner_page_indexes",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

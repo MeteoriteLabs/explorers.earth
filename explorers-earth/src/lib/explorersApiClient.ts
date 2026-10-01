@@ -9,6 +9,7 @@ import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,type OwnerTopPicksRequ
 import { z } from 'zod/v3';
 import { createCollectionSchema,updateCollectionSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
+import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -288,6 +289,13 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
+  async resolveManualEntity(input:ResolveManualEntityInput,key:string,signal?:AbortSignal) {
+   const body=commandInput(resolveManualEntitySchema,input);
+   const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',entityCoreDtoSchema,signal);
+   const kinds={books:'book',movies:'movie',games:'game',apps:'app',products:'product',people:'person'} as const;
+   if(entity.kind!==kinds[body.category]||entity.title!==body.details.title)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved catalog identity');
+   return entity;
+  },
   getMyEditableCollection:(id:string,signal?:AbortSignal)=>editableDetail('collection',id,signal),
   getMyEditableRecommendation:(id:string,signal?:AbortSignal)=>editableDetail('recommendation',id,signal),
   async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal) {
