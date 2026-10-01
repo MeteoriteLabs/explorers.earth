@@ -139,7 +139,7 @@ describe("Tunes workflow provenance and input boundary", () => {
       "com.explorers.music.minimum-containment-commit",
     );
     expect(dockerfile).toContain(
-      "FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
+      "FROM public.ecr.aws/docker/library/node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
     );
   });
 

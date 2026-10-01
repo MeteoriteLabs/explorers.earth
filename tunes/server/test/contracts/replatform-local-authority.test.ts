@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   assertPlatformResetTarget,
@@ -40,7 +41,7 @@ const ownedModel = {
 const ownedContainer = {
   Id: receipt.containerId,
   Name: "/explorers-replatform-local-postgres-1",
-  Config: { Image: "postgres:15-alpine", Labels: {
+  Config: { Image: "public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81", Labels: {
     "com.docker.compose.project": receipt.project,
     "com.docker.compose.service": "postgres",
     "com.explorers.replatform.fixture": "true",
@@ -63,6 +64,18 @@ const resetModel = {
 };
 
 describe("replatform local authority", () => {
+  it("uses pinned Docker Official Images from the public mirror for every platform registry input", () => {
+    const root = resolve(import.meta.dirname, "../../../..");
+    const compose = readFileSync(resolve(root, "docker-compose.replatform.yml"), "utf8");
+    const frontend = readFileSync(resolve(root, "explorers-earth/Dockerfile.music-fixture"), "utf8");
+    expect(compose).toContain("image: public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81");
+    const node = "public.ecr.aws/docker/library/node:22.12-alpine@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd";
+    expect(compose).toContain(`image: ${node}`);
+    expect(frontend).toContain(`FROM ${node} AS builder`);
+    expect(frontend).toContain("COPY tunes/shared/explorersContract.ts /workspace/tunes/shared/explorersContract.ts");
+    expect(frontend).toContain("FROM public.ecr.aws/docker/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner");
+  });
+
   it("builds the shared API image before starting migration from a cold cache", () => {
     let apiImageExists = false;
     const calls: string[][] = [];
@@ -212,6 +225,15 @@ describe("replatform local authority", () => {
     expect(() => assertPlatformContainer(receipt, { ...ownedContainer, Id: "c".repeat(64) })).toThrow(/authority/i);
     expect(() => assertPlatformContainer(receipt, { ...ownedContainer, HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "0.0.0.0", HostPort: "55434" }] } } })).toThrow(/authority/i);
     expect(() => assertPlatformContainer(receipt, { ...ownedContainer, Config: { ...ownedContainer.Config, Labels: { ...ownedContainer.Config.Labels, "com.docker.compose.project": "other" } } })).toThrow(/authority/i);
+  });
+  it.each([
+    "postgres:15-alpine",
+    "public.ecr.aws/docker/library/postgres:15-alpine",
+    `public.ecr.aws/docker/library/postgres:15-alpine@sha256:${"a".repeat(64)}`,
+  ])("refuses a PostgreSQL image outside the exact mirror pin (%#)", image => {
+    expect(() => assertPlatformContainer(receipt, {
+      ...ownedContainer, Config: { ...ownedContainer.Config, Image: image },
+    })).toThrow(/authority/i);
   });
   it("requires the live fixture network to be private and owned", () => {
     const network = { Name: "explorers-replatform-local_replatform-local", Internal: true, Labels: {
