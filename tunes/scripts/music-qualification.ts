@@ -9,6 +9,8 @@ import { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence.ts";
 export type MusicQualificationLaneName = "fast" | "pr" | "nightly" | "release";
 
 export const MUSIC_INTEGRATION_FILES = [
+  "server/test/explorers-media.integration.test.ts",
+  "server/test/explorers-profile.integration.test.ts",
   "server/test/google-sync.integration.test.ts",
   "server/test/load/music-load-http-postgres.integration.test.ts",
   "server/test/load/music-load-postgres.integration.test.ts",

@@ -14,6 +14,20 @@ const repositoryRoot = resolve(import.meta.dirname, "../../..");
 
 describe("Music surface authorization policy", () => {
   it.each([
+    ["explorersAccountRoutes", "PATCH", "/api/explorers/v1/account", "explorers-owner"],
+    ["explorersMediaRoutes", "POST", "/api/explorers/v1/media", "explorers-owner"],
+    ["explorersMediaRoutes", "DELETE", "/api/explorers/v1/media/:id", "explorers-owner"],
+    ["explorersMediaRoutes", "GET", "/api/explorers/v1/media/:id/content", "public"],
+    ["explorersMediaRoutes", "HEAD", "/api/explorers/v1/media/:id/content", "public"],
+  ])("classifies the exact canonical profile/media route %s %s %s", (file, method, path, decision) => {
+    const route = { source: `tunes/server/routes/${file}.ts`, method, path, classification: "private" };
+    expect(decisionForRoute(route)).toBe(decision);
+    expect(decisionForRoute({ ...route, source: "legacy.ts" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, method: "PUT" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, path: `${path}/admin` })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, classification: "tombstone" })).toBe("tombstone");
+  });
+  it.each([
     "/api/explorers/v1/profiles/:username",
     "/api/explorers/v1/profiles/:username/recommendations/:category",
     "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",

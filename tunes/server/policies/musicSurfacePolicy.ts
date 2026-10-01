@@ -126,6 +126,13 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   }
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
+  if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
+      && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";
+  if (route.source === "tunes/server/routes/explorersMediaRoutes.ts") {
+    if (route.method === "POST" && route.path === "/api/explorers/v1/media") return "explorers-owner";
+    if (route.method === "DELETE" && route.path === "/api/explorers/v1/media/:id") return "explorers-owner";
+    if (["GET", "HEAD"].includes(route.method) && route.path === "/api/explorers/v1/media/:id/content") return "public";
+  }
   if (route.method === "GET" && PUBLIC_PROFILE_GET_PATHS.has(route.path)) return "public";
   if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";

@@ -77,6 +77,7 @@ function classificationFor(method: string, path: string, priorClassification: st
 }
 
 function ownerFor(path: string, classification: string): string {
+  if (path === "/api/explorers/v1/media/:id/content" && classification === "public") return "owner-or-visible-public-profile-attachment";
   if (path === "/api/explorers/analytics/music-account/:accountDocumentId/events") return "active-local-binding-from-account-descriptor";
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
   if (path.startsWith("/api/music/identity/lifecycle/")) return "authoritative-strapi-user+stored-account-binding";
@@ -126,13 +127,14 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
           const method = node.expression.name.text.toLowerCase();
           const target = node.expression.expression.getText(sourceFile);
           const path = literal(node.arguments[0]);
-          if (["get", "post", "put", "patch", "delete", "use", "all"].includes(method) && path?.startsWith("/")) {
+          if (["get", "head", "post", "put", "patch", "delete", "use", "all"].includes(method) && path?.startsWith("/")) {
             const middleware = node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(" ");
             const routePolicy = policyFor(middleware);
             const legacyClassification = routePolicy !== "none" ? "authenticated" : "handler-authorization-unknown";
             const classification = classificationFor(method.toUpperCase(), path, legacyClassification, source);
             let policy = routePolicy;
-            if (classification === "public") policy = "explicit-public-contract";
+            if (classification === "public") policy = path === "/api/explorers/v1/media/:id/content"
+              ? "ready-media+owner-or-visible-public-profile-attachment" : "explicit-public-contract";
             else if (path === "/{*musicRetiredPath}") policy = "normalized-executable-retirement-matcher";
             else if (classification === "local-music-owner") policy = "c5-principal+local-lifecycle+owner-sql";
             else if (classification === "paid-local-music-owner") policy = "c5-principal+local-lifecycle+fresh-entitlement+owner-sql";

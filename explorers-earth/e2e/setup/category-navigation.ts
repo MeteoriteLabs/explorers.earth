@@ -2,6 +2,7 @@ import { expect, test, type Browser, type BrowserContext, type Locator, type Pag
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Kind, parse, print, visit, type SelectionSetNode } from 'graphql';
+import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
 
 export const fixtureUser = { id: 'browser-user', documentId: 'browser-user', username: 'fixture-owner', email: 'owner@example.test', blocked: false };
 export const token = 'synthetic-browser-authority-not-a-live-token';
@@ -144,6 +145,20 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
   await context.route('**/*', async route => {
     const request = route.request(); const url = new URL(request.url());
     const isContainedMusicAuthority = url.origin === 'https://localtunes.test';
+    if (url.origin === origin && url.pathname === '/api/explorers/v1/me' && request.method() === 'GET') {
+      const cookies = await context.cookies(origin);
+      if (!cookies.some(cookie => cookie.name === 'token' && cookie.value === token)) {
+        return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: {
+          code: 'UNAUTHENTICATED', message: 'Fixture session is required', requestId: 'category-fixture-account-read',
+        } }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ account: canonicalAccountFixture({
+        handle: state.account.username, displayName: state.account.Account_Name,
+        accountType: state.account.Account_Type, mobileNumber: state.account.mobile_number,
+        onboardingStatus: state.account.Account_Name && state.account.Account_Type && state.account.mobile_number ? 'complete' : 'incomplete',
+        publicProfile: state.account.public_profile === 'Yes', autoPinning: state.account.auto_pinning,
+      }) }) });
+    }
     const waitForDestination = async () => {
       const pending = state.destinationGates.entries().next().value as [string, Promise<void>] | undefined;
       if (!pending) return;
