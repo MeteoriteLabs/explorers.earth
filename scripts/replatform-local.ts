@@ -201,12 +201,28 @@ const SECRET_NAMES = ["db-migrator", "db-runtime", "music-token"] as const;
 type PlatformPhase = "docker-endpoint" | "compose-model" | "resource-inventory" | "secret-inventory"
   | "postgres-start" | "postgres-attestation" | "service-build" | "service-check" | "receipt-check";
 type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-resolution" | "compose-option"
+  | "local-fixture-pull-denied" | "upstream-registry-auth" | "mixed-registry-auth"
   | "resource-exhaustion" | "service-health" | "build-command" | "unclassified";
 let failurePhase: PlatformPhase = "docker-endpoint";
 let failureCause: PlatformBuildFailure | undefined;
 
 export function classifyPlatformBuildFailure(output: string): PlatformBuildFailure {
   if (/toomanyrequests|rate.limit|\b429\b/i.test(output)) return "registry-rate-limit";
+  // Only classify an image mentioned in the denial itself. Merely seeing the
+  // local tag in build progress does not establish which registry request failed.
+  // Emit fixed categories only; never return image names, URLs or child output.
+  let localPullDenied = false;
+  let upstreamDenied = /failed to authorize:[^\r\n]*(?:unauthorized|authentication required|access denied|\b401\b|\b403\b)/i.test(output);
+  for (const match of output.matchAll(/pull access denied for ([^\s,]{1,512})(?=[\s,]|$)/gi)) {
+    if (/^(?:docker\.io\/library\/)?explorers-replatform-local-tunes(?::c4)?$/i.test(match[1])) {
+      localPullDenied = true;
+    } else {
+      upstreamDenied = true;
+    }
+  }
+  if (localPullDenied && upstreamDenied) return "mixed-registry-auth";
+  if (localPullDenied) return "local-fixture-pull-denied";
+  if (upstreamDenied) return "upstream-registry-auth";
   if (/unauthorized|authentication required|access denied/i.test(output)) return "registry-auth";
   if (/manifest unknown|failed to resolve source metadata|pull access denied|not found:.*image/i.test(output)) return "image-resolution";
   if (/unknown flag|unknown shorthand flag|unsupported option/i.test(output)) return "compose-option";

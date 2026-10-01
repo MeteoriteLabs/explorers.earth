@@ -79,6 +79,23 @@ describe("replatform local authority", () => {
     expect(classifyPlatformBuildFailure("sensitive but unknown failure")).toBe("unclassified");
   });
 
+  it.each([
+    ["tunes-migrate Error pull access denied for explorers-replatform-local-tunes, repository does not exist or may require 'docker login'", "local-fixture-pull-denied"],
+    ["Error pull access denied for docker.io/library/explorers-replatform-local-tunes:c4, repository does not exist", "local-fixture-pull-denied"],
+    ["Error pull access denied for private.example.invalid/secret-image, repository does not exist", "upstream-registry-auth"],
+    ["failed to authorize: failed to fetch anonymous token: unexpected status: 401 Unauthorized", "upstream-registry-auth"],
+    ["pull access denied for explorers-replatform-local-tunes, repository does not exist\nfailed to authorize: failed to fetch anonymous token: 401 Unauthorized", "mixed-registry-auth"],
+    ["authentication required: synthetic-secret-value", "registry-auth"],
+    ["explorers-replatform-local-tunes:c4 Building\nunauthorized: synthetic-secret-value", "registry-auth"],
+    ["pull access denied for explorers-replatform-local-tunes-other, repository does not exist", "upstream-registry-auth"],
+  ])("narrows registry denial evidence without printing raw output (%#)", (raw, expected) => {
+    const cause = classifyPlatformBuildFailure(`${raw}\ncredential=synthetic-secret-value`);
+    expect(cause).toBe(expected);
+    expect(formatPlatformFailure("service-build", cause)).toBe(
+      `Replatform local command refused or failed; phase=service-build; cause=${expected}; authority details redacted.\n`,
+    );
+  });
+
   it("accepts only the declared local and acceptance seed commands", () => {
     expect(parsePlatformCommand(["provision"])).toEqual({ command: "provision" });
     expect(parsePlatformCommand(["seed", "--dataset", "acceptance"])).toEqual({ command: "seed", dataset: "acceptance" });
