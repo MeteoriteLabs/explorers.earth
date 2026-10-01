@@ -194,6 +194,7 @@ HomeSkeleton.displayName = "HomeSkeleton";
 const Home = memo(() => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
+  const sessionGeneration = useAuthStore((state) => state.generation);
   const canonicalAccount = useCanonicalAccount();
   const canonicalHandle = canonicalAccount.data?.handle ?? "";
   const token = useAuthStore((state) => state.token);
@@ -597,9 +598,9 @@ const Home = memo(() => {
     // Update store whenever completion flags change
     // Only update if we have data loaded (not during initial loading)
     if (!loading && canonicalAccount.data) {
-      setSetupStatus(isProfileComplete, isRecommendationsComplete, canonicalAccount.data.id);
+      setSetupStatus(isProfileComplete, isRecommendationsComplete, canonicalAccount.data.id, sessionGeneration);
     }
-  }, [loading, isProfileComplete, isRecommendationsComplete, canonicalAccount.data, setSetupStatus]);
+  }, [loading, isProfileComplete, isRecommendationsComplete, canonicalAccount.data, setSetupStatus, sessionGeneration]);
 
   // Clear walkthrough session storage when setup is complete
   // This prevents the walkthrough from auto-starting when users add places after completing setup

@@ -3,25 +3,29 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 interface SetupState {
   accountScope: string | null;
+  sessionGeneration: number | null;
   isProfileComplete: boolean;
   isRecommendationsComplete: boolean;
-  bindAccount: (accountId: string, onboardingStatus: "incomplete" | "complete") => void;
-  setSetupStatus: (profileComplete: boolean, recommendationsComplete: boolean, accountId?: string) => void;
+  bindAccount: (accountId: string, onboardingStatus: "incomplete" | "complete", generation?: number) => void;
+  setSetupStatus: (profileComplete: boolean, recommendationsComplete: boolean, accountId?: string, generation?: number) => void;
 }
 
 const useSetupStore = create<SetupState>()(
   persist(
     (set) => ({
       accountScope: null,
+      sessionGeneration: null,
       isProfileComplete: false,
       isRecommendationsComplete: false,
-      bindAccount: (accountId, onboardingStatus) => set((state) => ({
+      bindAccount: (accountId, onboardingStatus, generation) => set((state) => ({
         accountScope: accountId,
+        sessionGeneration: generation ?? null,
         isProfileComplete: onboardingStatus === "complete",
-        isRecommendationsComplete: state.accountScope === accountId ? state.isRecommendationsComplete : false,
+        isRecommendationsComplete: state.accountScope === accountId && state.sessionGeneration === (generation ?? null)
+          ? state.isRecommendationsComplete : false,
       })),
-      setSetupStatus: (profileComplete, recommendationsComplete, accountId) =>
-        set((state) => accountId && accountId !== state.accountScope ? state : ({
+      setSetupStatus: (profileComplete, recommendationsComplete, accountId, generation) =>
+        set((state) => !accountId || accountId !== state.accountScope || state.sessionGeneration !== (generation ?? null) ? state : ({
           isProfileComplete: profileComplete,
           isRecommendationsComplete: recommendationsComplete,
         })),
@@ -29,6 +33,8 @@ const useSetupStore = create<SetupState>()(
     {
       name: "setup-storage",
       storage: createJSONStorage(() => localStorage),
+      partialize: () => ({}),
+      merge: (_persisted, current) => current,
     }
   )
 );

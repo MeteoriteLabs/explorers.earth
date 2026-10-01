@@ -34,7 +34,7 @@ export async function issueRecoveryProof(
         AND p.provider_id='google' AND p.account_id=$3
       FOR UPDATE OF s,a`, [callback.sessionId, callback.userId, callback.subject]);
     const account = identity.rows[0];
-    if (!account || account.status !== "suspended") throw new Error("Recovery identity is unavailable");
+    if (!account || !["suspended", "pending_deletion"].includes(account.status)) throw new Error("Recovery identity is unavailable");
     const token = randomBytes(32).toString("base64url");
     const proof = await client.query<{ id: string }>(`WITH issuance AS (SELECT clock_timestamp() AS issued)
       INSERT INTO account_recovery_proofs(user_id,account_id,token_hash,authenticated_at,issued_at,expires_at)
@@ -62,7 +62,7 @@ export async function consumeRecoveryProof(pool: Pick<Pool, "connect">, token: s
     const proof = await client.query<{ id: string; user_id: string; account_id: string }>(`SELECT p.id,p.user_id,p.account_id
       FROM account_recovery_proofs p JOIN creator_accounts a ON a.id=p.account_id
       WHERE p.token_hash=$1 AND p.purpose='account-recovery' AND p.consumed_at IS NULL
-        AND p.revoked_at IS NULL AND p.expires_at>clock_timestamp() AND a.status='suspended'
+        AND p.revoked_at IS NULL AND p.expires_at>clock_timestamp() AND a.status IN ('suspended','pending_deletion')
       FOR UPDATE OF p,a`, [digest(token)]);
     const row = proof.rows[0];
     if (!row) throw new Error("Recovery proof is invalid or expired");

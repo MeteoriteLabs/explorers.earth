@@ -322,12 +322,7 @@ export const useUpdateProfile = (
         },
       });
 
-      const authStore = useAuthStore.getState();
-      authStore.login({
-        ...user,
-        username: incomingUsername,
-        token: authStore.token || "",
-      });
+      useAuthStore.getState().updateUsername(incomingUsername);
 
     }
 

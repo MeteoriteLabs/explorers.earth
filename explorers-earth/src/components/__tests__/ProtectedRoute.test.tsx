@@ -12,7 +12,7 @@ vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
 vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>LOADING</div> }));
 vi.mock("../../hooks/useLogout", () => ({ useLogout: () => vi.fn() }));
 
-const signIn = () => useAuthStore.setState({ isAuthenticated: true,
+const signIn = () => useAuthStore.setState({ isAuthenticated: true, status: "active-complete",
   user: { id: "user-a", documentId: "user-a", username: "google-name",
     email: "a@example.invalid", blocked: false }, token: "fixture" });
 const mount = (path = "/home") => render(<MemoryRouter initialEntries={[path]}><Routes>
@@ -34,6 +34,13 @@ describe("ProtectedRoute canonical onboarding gate", () => {
     useAuthStore.setState({ isAuthenticated: false, user: null, token: null });
     mount();
     expect(screen.getByText("LOGIN PAGE")).toBeInTheDocument();
+  });
+
+  it("does not render owner content from a stale local authentication flag", () => {
+    useAuthStore.setState({ isAuthenticated: true, status: "signed-out", token: "old-jwt" });
+    mount();
+    expect(screen.getByText("LOGIN PAGE")).toBeInTheDocument();
+    expect(screen.queryByText("PROTECTED HOME")).toBeNull();
   });
 
   it("waits for authoritative account data", () => {

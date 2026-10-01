@@ -36,7 +36,7 @@ import {
   beginFinalize,
   endFinalize,
 } from "./onboardingFinalizeLock";
-import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
+import { useLogout } from "../hooks/useLogout";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { explorersApiClient } from "../lib/explorersApiClient";
 
@@ -306,9 +306,8 @@ const OnBoarding = () => {
 
   const storedUsername = useAuthStore((state) => state.user?.username);
   const documentId = useAuthStore((state) => state.user?.documentId);
-  const logout = useAuthStore((state) => state.logout);
+  const endSession = useLogout();
   // const { isAuthenticated } = useAuthStore();
-  const token = useAuthStore((state) => state.token);
   const navigate = useNavigate();
   const location = useLocation();
  
@@ -316,22 +315,7 @@ const OnBoarding = () => {
  
   const handleLogout = async () => {
     setShowLogoutModal(false);
-    logout();
-    closeLocalMusicSession();
- 
-    // Clear all explorers storage
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("qrtoken");
- 
- 
-    // Clear all other possible storage
-    localStorage.clear();
-    sessionStorage.clear();
- 
-    // Clear all cookies
- 
-    navigate("/login");
-    toast(t("toast.success.loggedOutSuccessfully", "Logged out successfully!"));
+    await endSession();
   };
 
 
@@ -1043,7 +1027,7 @@ const OnBoarding = () => {
   }
 
   // Ensure we always render something
-  if (!documentId || !token) {
+  if (!documentId) {
     console.log("OnBoarding: Missing required data, showing error");
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">

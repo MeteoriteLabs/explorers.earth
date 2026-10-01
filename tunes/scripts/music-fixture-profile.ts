@@ -12,7 +12,7 @@ const MAX_PROFILE_JSON_BYTES = 48 * 1024;
 const MAX_CAPTURED_PROFILE_SNAPSHOTS = 128;
 
 const operationSources = [
-  ["explorers-earth/src/components/AuthSyncManager.tsx", ["MusicIdentityEligibility"]],
+  ["tunes/scripts/legacy-profile-fixture-documents.txt", ["MusicIdentityEligibility"]],
   ["explorers-earth/src/pages/Music.tsx", ["MusicPageEligibility"]],
   // Retired UI readers remain fixtures for the pre-migration Music identity snapshot.
   ["tunes/scripts/legacy-profile-fixture-documents.txt", ["CheckOnboardingStatus", "SidebarAccount", "user", "UsersPermissionsUser"]],

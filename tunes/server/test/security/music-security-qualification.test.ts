@@ -70,11 +70,14 @@ describe("complete C10 REST, GraphQL, and socket security qualification", () => 
       "ALL /api/auth",
       "ALL /api/auth/*splat",
       "POST /api/explorers/v1/recovery/start",
+      "GET /api/explorers/v1/recovery/status",
+      "POST /api/explorers/v1/recovery/complete",
     ]);
     for (const route of flowRoutes) {
       expect(route.allowed).toMatchObject({ suspended: true, pendingDeletion: true });
       expect(route).toMatchObject({ flowAccess: {
-        purpose: route.decision === "explorers-auth" ? "provider-authentication" : "recovery-intent-issuance",
+        purpose: route.decision === "explorers-auth" ? "provider-authentication"
+          : route.path.endsWith("/start") ? "recovery-intent-issuance" : "recovery-proof-consumption",
         grantsApplicationAuthority: false,
       } });
     }

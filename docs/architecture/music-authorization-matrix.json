@@ -454,6 +454,128 @@
       }
     },
     {
+      "method": "GET",
+      "path": "/api/explorers/v1/account/lifecycle",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion-feedback",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deactivation",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recovery/status",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-recovery",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "recovery-proof-consumption",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/complete",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-recovery",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "recovery-proof-consumption",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
       "method": "POST",
       "path": "/api/explorers/v1/media",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",

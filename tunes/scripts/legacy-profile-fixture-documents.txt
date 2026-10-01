@@ -65,3 +65,19 @@ export const profileDataQuery = gql`
     }
   }
 `;
+gql`
+  query MusicIdentityEligibility($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      documentId
+      provider
+      confirmed
+      blocked
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        mobile_number
+      }
+    }
+  }
+`;

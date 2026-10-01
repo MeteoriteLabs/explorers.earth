@@ -251,7 +251,7 @@ const Profile = memo(() => {
     accountId: string; fromRevision: number; toRevision: number;
   } | null>(null);
   // accessing auth data from the zustand store
-  const { user, token } = useAuthStore();
+  const { user, token, generation: sessionGeneration } = useAuthStore();
   // local state for handling accurate address
   const [placesState, setPlacesState] = useState<Places | null>();
   // local state for upload progress
@@ -405,8 +405,8 @@ const Profile = memo(() => {
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus, bindAccount } = useSetupStore();
 
   useEffect(() => {
-    if (accountQuery.data) bindAccount(accountQuery.data.id, accountQuery.data.onboardingStatus);
-  }, [accountQuery.data?.id, accountQuery.data?.onboardingStatus, bindAccount]);
+    if (accountQuery.data) bindAccount(accountQuery.data.id, accountQuery.data.onboardingStatus, sessionGeneration);
+  }, [accountQuery.data?.id, accountQuery.data?.onboardingStatus, bindAccount, sessionGeneration]);
 
   // Sync setup status with store
   const currentIsProfileComplete = useMemo(() => {
@@ -419,9 +419,9 @@ const Profile = memo(() => {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Syncing profile completion status:', currentIsProfileComplete);
       }
-      setSetupStatus(currentIsProfileComplete, isRecommendationsComplete, accountQuery.data?.id);
+      setSetupStatus(currentIsProfileComplete, isRecommendationsComplete, accountQuery.data?.id, sessionGeneration);
     }
-  }, [currentIsProfileComplete, isProfileComplete, isRecommendationsComplete, setSetupStatus, account]);
+  }, [currentIsProfileComplete, isProfileComplete, isRecommendationsComplete, setSetupStatus, account, sessionGeneration]);
 
   // custom hook for handling adress submission
   const { handleSubmit: originalHandleSubmit } = useUpdateProfile(

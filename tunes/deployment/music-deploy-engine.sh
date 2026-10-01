@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0026_explorers_media_slot_compatibility"
+readonly production_current_marker="0027_explorers_lifecycle"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -44,6 +44,7 @@ readonly -a known_markers=(
   "0023_explorers_authorization"
   "0024_explorers_profile_media"
   "0025_explorers_media_attachment_guard"
+  "0026_explorers_media_slot_compatibility"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
@@ -71,6 +72,7 @@ marker_rank() {
 
 compatibility_marker_for() {
   case "$1" in
+    "0027_explorers_lifecycle") printf '%s\n' "0026_explorers_media_slot_compatibility" ;;
     "0026_explorers_media_slot_compatibility") printf '%s\n' "0025_explorers_media_attachment_guard" ;;
     "0025_explorers_media_attachment_guard") printf '%s\n' "0024_explorers_profile_media" ;;
     "0024_explorers_profile_media") printf '%s\n' "0023_explorers_authorization" ;;

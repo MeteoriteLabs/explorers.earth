@@ -388,7 +388,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 31
+      "line": 32
     },
     {
       "method": "ALL",
@@ -398,7 +398,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 38
+      "line": 39
     },
     {
       "method": "ALL",
@@ -408,7 +408,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 39
+      "line": 40
     },
     {
       "method": "GET",
@@ -418,7 +418,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 42
+      "line": 43
     },
     {
       "method": "POST",
@@ -428,7 +428,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 50
+      "line": 52
     },
     {
       "method": "GET",
@@ -438,7 +438,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 68
+      "line": 70
     },
     {
       "method": "GET",
@@ -559,6 +559,66 @@
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
       "line": 322
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/account/lifecycle",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 24
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion-feedback",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 28
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deactivation",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "block-or-deactivate",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 34
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 40
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recovery/status",
+      "classification": "canonical-explorers-recovery",
+      "ownerSource": "single-use-google-bound-recovery-proof",
+      "policy": "google-bound-five-minute-proof+origin-on-mutation",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 46
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/complete",
+      "classification": "canonical-explorers-recovery",
+      "ownerSource": "single-use-google-bound-recovery-proof",
+      "policy": "google-bound-five-minute-proof+origin-on-mutation",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 54
     },
     {
       "method": "POST",

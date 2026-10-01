@@ -8,6 +8,8 @@ import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { createCanonicalApp } from '../server/auth/canonicalApp';
 import { resolveExplorersAuthConfig } from '../server/auth/betterAuth';
+import { issueRecoveryProof } from '../server/auth/recoveryProof';
+import { ensureInitialAccount } from '../server/auth/initialAccount';
 import { migrateMusicDatabase } from '../server/db/migrate';
 import { MUSIC_UAT_DATABASE_ACK, startOwnedUatDatabase, stopOwnedUatDatabase,
   type OwnedUatDatabaseAuthority } from './music-uat-database';
@@ -16,9 +18,10 @@ import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-
 
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');
-const ack = '--ack';
-if (process.argv.slice(2).join(' ') !== `${ack} ${MUSIC_UAT_DATABASE_ACK}`)
-  throw new Error('Profile E2E requires exact disposable PostgreSQL acknowledgement');
+const suite = process.argv[2] === '--suite' && process.argv[3] === 'auth' ? 'auth' : 'profile';
+const expectedArgs = suite === 'auth' ? `--suite auth --ack ${MUSIC_UAT_DATABASE_ACK}` : `--ack ${MUSIC_UAT_DATABASE_ACK}`;
+if (process.argv.slice(2).join(' ') !== expectedArgs)
+  throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');
 for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD',
   'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_DEPLOY_PROD']) {
   if (process.env[key]) throw new Error('Ambient database or Docker authority is forbidden');
@@ -98,8 +101,20 @@ async function main(): Promise<number> {
     const cookie = `${context.authCookies.sessionToken.name}=${session.token}.${signature}`;
     personas[name] = { userId, cookie, handle: `profile${name.toLowerCase()}${runId.slice(0, 4)}` };
   }
+  let recoveryProof: string | undefined;
+  if (suite === 'auth') {
+    const recovery = personas.ownerB;
+    const selected = await ensureInitialAccount(db, recovery.userId);
+    await db.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1", [selected.accountId]);
+    await db.query('UPDATE user_security_state SET blocked_at=now(),session_version=session_version+1 WHERE user_id=$1', [recovery.userId]);
+    await db.query('DELETE FROM auth_session WHERE user_id=$1', [recovery.userId]);
+    const context = await composed.auth.$context;
+    const temporary = await context.internalAdapter.createSession(recovery.userId, false);
+    recoveryProof = (await issueRecoveryProof(db, { userId: recovery.userId,
+      subject: `google-${recovery.userId}`, sessionId: temporary.id })).token;
+  }
   const fixturePath = join(disposable, 'sessions.json');
-  writeFileSync(fixturePath, JSON.stringify({ origin, personas }), { mode: 0o600 });
+  writeFileSync(fixturePath, JSON.stringify({ origin, personas, recoveryProof }), { mode: 0o600 });
   vite = spawn(process.execPath, [resolve(frontend, 'node_modules/vite/bin/vite.js'),
     '--config', 'e2e/replatform/profile.vite.config.ts'], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
@@ -108,9 +123,10 @@ async function main(): Promise<number> {
   });
   await waitFor(origin);
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
-    'test', 'e2e/replatform/profile.spec.ts', '--project=chromium-pr-safe', '--retries=0'], {
+    'test', `e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
-      PROFILE_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
+      [suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
+      PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
   });
   return await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
 }

@@ -117,9 +117,9 @@ describe("Music E2E transactional state restore", () => {
     // trigger whose semantics mutate the captured bytes.
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
-      "account_category_settings", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
-      "activity_logs", "analytics_snapshots", "api_tokens", "auth_account", "auth_session", "auth_user",
-      "auth_verification", "creator_accounts", "email_logs", "email_templates",
+      "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
+      "activity_logs", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
+      "auth_verification", "creator_accounts", "deletion_feedback", "email_logs", "email_templates",
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects", "music_credential_revocation_operations",
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
@@ -143,6 +143,7 @@ describe("Music E2E transactional state restore", () => {
       "0024_explorers_profile_media",
       "0025_explorers_media_attachment_guard",
       "0026_explorers_media_slot_compatibility",
+      "0027_explorers_lifecycle",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

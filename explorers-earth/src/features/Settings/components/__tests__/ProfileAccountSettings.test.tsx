@@ -5,6 +5,7 @@ import { explorersApiClient } from "../../../../lib/explorersApiClient";
 
 const { authState, harness, updateSubmit, updateTargets, toastError, toastSuccess } = vi.hoisted(() => ({
   authState: {
+    generation: 0,
     user: {
       id: "user-1",
       documentId: "user-doc",
@@ -97,7 +98,8 @@ vi.mock("../../../../components/ui/UsernameChangeConfirmationModal", () => ({
 }));
 
 vi.mock("../../../../store/store", () => ({
-  default: (selector?: (state: typeof authState) => unknown) => selector ? selector(authState) : authState,
+  default: Object.assign((selector?: (state: typeof authState) => unknown) => selector ? selector(authState) : authState,
+    { getState: () => authState }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -116,7 +118,7 @@ import ProfileAccountSettings from "../ProfileAccountSettings";
 
 const renderAccountSettings = (section: "account" | "billing" = "account", cached?: typeof account) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  if (cached) client.setQueryData(["explorers-account", authState.user?.id ?? "cookie-session"], cached);
+  if (cached) client.setQueryData(["explorers-account", authState.user?.id ?? "cookie-session", authState.generation], cached);
   return render(<QueryClientProvider client={client}><ProfileAccountSettings section={section} /></QueryClientProvider>);
 };
 

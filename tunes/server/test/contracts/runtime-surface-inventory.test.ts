@@ -32,6 +32,12 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "ALL", path: "/api/auth/*splat", classification: "canonical-explorers-auth" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/start", classification: "canonical-explorers-recovery", ownerSource: "trusted-origin+signed-short-lived-recovery-intent", policy: "trusted-origin+signed-short-lived-recovery-intent" }),
       expect.objectContaining({ method: "GET", path: "/api/explorers/v1/me", classification: "canonical-explorers-owner", ownerSource: "verified-google-session+active-initial-account-binding" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/account/lifecycle", classification: "canonical-explorers-owner" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/account/deletion-feedback", classification: "canonical-explorers-owner" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/account/deactivation", classification: "canonical-explorers-owner" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/account/deletion", classification: "canonical-explorers-owner" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/recovery/status", classification: "canonical-explorers-recovery", ownerSource: "single-use-google-bound-recovery-proof" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/complete", classification: "canonical-explorers-recovery", policy: "google-bound-five-minute-proof+origin-on-mutation" }),
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));

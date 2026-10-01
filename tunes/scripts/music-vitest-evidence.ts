@@ -25,6 +25,10 @@ export type MusicUatEvidence = {
 };
 
 export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
+  "server/test/explorers-lifecycle.integration.test.ts",
+  "server/test/account-recovery.test.ts",
+  "server/test/explorers-recovery.integration.test.ts",
+  "server/test/explorers-recovery-callback.integration.test.ts",
   "server/test/explorers-profile.integration.test.ts",
   "server/test/explorers-media.integration.test.ts",
   "server/test/migrations/music-migration.integration.test.ts",

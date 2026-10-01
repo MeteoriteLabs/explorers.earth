@@ -128,6 +128,11 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.classification === "tombstone") return "tombstone";
   if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
       && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";
+  if (route.source === "tunes/server/routes/explorersLifecycleRoutes.ts") {
+    if (route.path.startsWith("/api/explorers/v1/account/")) return "explorers-owner";
+    if (route.path === "/api/explorers/v1/recovery/status" || route.path === "/api/explorers/v1/recovery/complete")
+      return "explorers-recovery";
+  }
   if (route.source === "tunes/server/routes/explorersMediaRoutes.ts") {
     if (route.method === "POST" && route.path === "/api/explorers/v1/media") return "explorers-owner";
     if (route.method === "DELETE" && route.path === "/api/explorers/v1/media/:id") return "explorers-owner";
@@ -194,7 +199,7 @@ export function authorizationMatrixFromInventory(inventory: {
       const flowAccess = decision === "explorers-auth"
         ? { purpose: "provider-authentication", grantsApplicationAuthority: false }
         : decision === "explorers-recovery"
-          ? { purpose: "recovery-intent-issuance", grantsApplicationAuthority: false }
+          ? { purpose: route.path.endsWith("/start") ? "recovery-intent-issuance" : "recovery-proof-consumption", grantsApplicationAuthority: false }
           : undefined;
       return {
         method: route.method, path: route.path, source: route.source, decision, allowed,
