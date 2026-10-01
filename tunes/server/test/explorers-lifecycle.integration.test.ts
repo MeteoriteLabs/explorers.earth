@@ -1,4 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import pg from "pg";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -57,6 +60,15 @@ async function webActor(owner: Awaited<ReturnType<typeof identity>>) {
 const png = Buffer.from([137,80,78,71,13,10,26,10,0]);
 const upload = { purpose: "profile" as const, filename: "avatar.png", mimeType: "image/png",
   length: png.length, bytes: png };
+
+async function within<T>(promise: Promise<T>, milliseconds = 5000): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([promise, new Promise<T>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("Small-pool upload/worker did not progress")), milliseconds);
+    })]);
+  } finally { if (timer) clearTimeout(timer); }
+}
 
 describe("canonical account lifecycle", () => {
   beforeAll(() => { pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST }); app = createCanonicalApp(pool, config); });
@@ -330,8 +342,8 @@ describe("canonical account lifecycle", () => {
     let entered!: () => void;
     const waiting = new Promise<void>((resolve) => { release = resolve; });
     const reached = new Promise<void>((resolve) => { entered = resolve; });
-    const spy = vi.spyOn(MediaRepository.prototype, "reserve").mockImplementation(async function(input) {
-      entered(); await waiting; return original.call(this, input);
+    const spy = vi.spyOn(MediaRepository.prototype, "reserve").mockImplementation(async function(input, connection) {
+      entered(); await waiting; return original.call(this, input, connection);
     });
     try {
       const attempt = new MediaService(pool, new LocalObjectStorage()).createMedia(actor, upload,
@@ -395,6 +407,76 @@ describe("canonical account lifecycle", () => {
     expect((await pool.query("SELECT count(*)::int AS n FROM media_assets WHERE account_id=$1",
       [owner.accountId])).rows[0].n).toBe(0);
     await expect(storage.get(key)).rejects.toThrow();
+  });
+
+  it("makes same-account uploads and terminal worker progress with a saturated two-connection pool", async () => {
+    const owner = await identity();
+    const actor = await webActor(owner);
+    const small = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 2, connectionTimeoutMillis: 5000 });
+    const directory = mkdtempSync(join(tmpdir(), "media-small-pool-"));
+    const backing = new LocalObjectStorage(directory);
+    let entered!: () => void;
+    let release!: () => void;
+    const reached = new Promise<void>((resolve) => { entered = resolve; });
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let firstPut = true;
+    const storage = { environment: "local" as const,
+      put: async (key: string, bytes: Buffer) => {
+        if (firstPut) { firstPut = false; entered(); await held; }
+        return backing.put(key, bytes);
+      }, get: (key: string) => backing.get(key), delete: (key: string) => backing.delete(key) };
+    try {
+      const service = new MediaService(small, storage);
+      const first = service.createMedia(actor, upload, { requestId: randomUUID() });
+      await reached;
+      const second = service.createMedia(actor, upload, { requestId: randomUUID() });
+      const third = service.createMedia(actor, upload, { requestId: randomUUID() });
+      const operation = await pendingDeletion(owner);
+      const worker = runAccountLifecycleMaintenance(small, storage, 1);
+      release();
+      const outcomes = await within(Promise.allSettled([first, second, third, worker]));
+      expect(outcomes[0].status).toBe("fulfilled");
+      for (const outcome of outcomes.slice(1, 3)) {
+        expect(outcome).toMatchObject({ status: "rejected", reason: { status: 403, code: "FORBIDDEN" } });
+      }
+      expect(outcomes[3]).toMatchObject({ status: "fulfilled", value: 1 });
+      expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
+        .toBe("succeeded");
+    } finally { release(); await small.end(); rmSync(directory, { recursive: true, force: true }); }
+  });
+
+  it("makes distinct-account uploads and the worker progress with a saturated two-connection pool", async () => {
+    const owners = await Promise.all([identity(), identity(), identity(), identity()]);
+    const actors = await Promise.all(owners.slice(0, 3).map(webActor));
+    const small = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 2, connectionTimeoutMillis: 5000 });
+    const directory = mkdtempSync(join(tmpdir(), "media-small-pool-"));
+    const backing = new LocalObjectStorage(directory);
+    let entered!: () => void;
+    let release!: () => void;
+    const reached = new Promise<void>((resolve) => { entered = resolve; });
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let puts = 0;
+    const storage = { environment: "local" as const,
+      put: async (key: string, bytes: Buffer) => {
+        puts += 1;
+        if (puts <= 2) { if (puts === 2) entered(); await held; }
+        return backing.put(key, bytes);
+      }, get: (key: string) => backing.get(key), delete: (key: string) => backing.delete(key) };
+    try {
+      const service = new MediaService(small, storage);
+      const first = service.createMedia(actors[0], upload, { requestId: randomUUID() });
+      const second = service.createMedia(actors[1], upload, { requestId: randomUUID() });
+      await reached;
+      const third = service.createMedia(actors[2], upload, { requestId: randomUUID() });
+      const operation = await pendingDeletion(owners[3]);
+      const worker = runAccountLifecycleMaintenance(small, storage, 1);
+      release();
+      const outcomes = await within(Promise.allSettled([first, second, third, worker]));
+      expect(outcomes.map((outcome) => outcome.status)).toEqual(["fulfilled", "fulfilled", "fulfilled", "fulfilled"]);
+      expect(outcomes[3]).toMatchObject({ value: 1 });
+      expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
+        .toBe("succeeded");
+    } finally { release(); await small.end(); rmSync(directory, { recursive: true, force: true }); }
   });
 
   it("finalizes a pending delete through child-first media cleanup and retains only a non-revivable tombstone", async () => {

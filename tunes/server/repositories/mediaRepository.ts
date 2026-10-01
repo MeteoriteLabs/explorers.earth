@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import type { StorageEnvironment } from "../services/objectStorage";
 
 export type MediaRecord = { id: string; account_id: string; purpose: string; status: string; mime_type: string;
@@ -10,8 +10,8 @@ export class MediaRepository {
   constructor(private readonly db: Pool) {}
 
   async reserve(input: { id: string; accountId: string; purpose: string; mimeType: string; filename: string;
-    bytes: Buffer; hash: Buffer; key: string; environment: StorageEnvironment }): Promise<void> {
-    const client = await this.db.connect();
+    bytes: Buffer; hash: Buffer; key: string; environment: StorageEnvironment }, connection?: PoolClient): Promise<void> {
+    const client = connection ?? await this.db.connect();
     try {
       await client.query("BEGIN");
       const account = await client.query(`SELECT id FROM creator_accounts WHERE id=$1 AND status='active' FOR UPDATE`,
@@ -25,11 +25,11 @@ export class MediaRepository {
           input.mimeType, input.bytes.length, input.hash]);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
-    finally { client.release(); }
+    finally { if (!connection) client.release(); }
   }
 
-  async markReady(id: string, versionId?: string): Promise<void> {
-    const client = await this.db.connect();
+  async markReady(id: string, versionId?: string, connection?: PoolClient): Promise<void> {
+    const client = connection ?? await this.db.connect();
     try {
       await client.query("BEGIN");
       await client.query("UPDATE media_objects SET storage_version_id=$2 WHERE media_id=$1", [id, versionId ?? null]);
@@ -38,13 +38,14 @@ export class MediaRepository {
       if (!result.rows[0]) throw new Error("Upload reservation disappeared");
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
-    finally { client.release(); }
+    finally { if (!connection) client.release(); }
   }
 
-  async markUploadForCleanup(id: string, versionId?: string): Promise<void> {
-    await this.db.query(`UPDATE media_assets SET status='pending_delete',delete_requested_at=now(),updated_at=now()
+  async markUploadForCleanup(id: string, versionId?: string, connection?: PoolClient): Promise<void> {
+    const db = connection ?? this.db;
+    await db.query(`UPDATE media_assets SET status='pending_delete',delete_requested_at=now(),updated_at=now()
       WHERE id=$1 AND status IN ('uploading','failed')`, [id]);
-    if (versionId) await this.db.query("UPDATE media_objects SET storage_version_id=$2 WHERE media_id=$1", [id, versionId]);
+    if (versionId) await db.query("UPDATE media_objects SET storage_version_id=$2 WHERE media_id=$1", [id, versionId]);
   }
 
   async find(id: string): Promise<MediaRecord | undefined> {
@@ -86,9 +87,10 @@ export class MediaRepository {
     finally { client.release(); }
   }
 
-  async finalizeDelete(id: string): Promise<void> {
-    await this.db.query(`UPDATE media_assets SET status='deleted',deleted_at=now(),updated_at=now() WHERE id=$1 AND status='pending_delete'`, [id]);
-    await this.db.query("UPDATE media_objects SET deleted_at=now() WHERE media_id=$1", [id]);
+  async finalizeDelete(id: string, connection?: PoolClient): Promise<void> {
+    const db = connection ?? this.db;
+    await db.query(`UPDATE media_assets SET status='deleted',deleted_at=now(),updated_at=now() WHERE id=$1 AND status='pending_delete'`, [id]);
+    await db.query("UPDATE media_objects SET deleted_at=now() WHERE media_id=$1", [id]);
   }
 
   async pendingDeletes(accountId: string, environment: StorageEnvironment, limit = 20): Promise<Array<{ id: string; object_key: string; storage_version_id: string | null }>> {

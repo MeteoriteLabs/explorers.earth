@@ -40,18 +40,18 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
       uploadLocked = (await uploadGate.query<{ locked: boolean }>(
         "SELECT pg_try_advisory_lock(44024,hashtext($1)) AS locked", [operation.account_id])).rows[0].locked;
       if (!uploadLocked) throw new Error("MEDIA_UPLOAD_IN_FLIGHT");
-      const mapping = await pool.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [operation.account_id]);
+      const mapping = await uploadGate.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [operation.account_id]);
       if (mapping.rowCount) throw new Error("MUSIC_BOUNDARY_PENDING");
       // An active put owns a durable reservation. The stale threshold exceeds
       // the bounded storage request; a crashed writer is converted to cleanup.
-      const activeUploads = await pool.query(`SELECT 1 FROM media_assets
+      const activeUploads = await uploadGate.query(`SELECT 1 FROM media_assets
         WHERE account_id=$1 AND status='uploading' AND created_at>clock_timestamp()-interval '10 minutes' LIMIT 1`,
       [operation.account_id]);
       if (activeUploads.rowCount) throw new Error("MEDIA_UPLOAD_IN_FLIGHT");
-      await pool.query(`UPDATE media_assets SET status='pending_delete',delete_requested_at=clock_timestamp(),
+      await uploadGate.query(`UPDATE media_assets SET status='pending_delete',delete_requested_at=clock_timestamp(),
         updated_at=clock_timestamp() WHERE account_id=$1 AND status='uploading'
         AND created_at<=clock_timestamp()-interval '10 minutes'`, [operation.account_id]);
-      const objects = await pool.query<{ media_id: string; variant: string; object_key: string; storage_environment: string }>(
+      const objects = await uploadGate.query<{ media_id: string; variant: string; object_key: string; storage_environment: string }>(
         `SELECT mo.media_id,mo.variant,mo.object_key,mo.storage_environment FROM media_objects mo
          JOIN media_assets ma ON ma.id=mo.media_id WHERE ma.account_id=$1 AND mo.deleted_at IS NULL
          ORDER BY mo.media_id,mo.variant`, [operation.account_id]);
@@ -59,10 +59,10 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         if (object.storage_environment !== storage.environment) throw new Error("STORAGE_ENVIRONMENT_MISMATCH");
         // Delete all versions, including a crash-orphaned latest version, before marking the object absent.
         await storage.delete(object.object_key);
-        await pool.query(`UPDATE media_objects SET deleted_at=clock_timestamp() WHERE media_id=$1 AND variant=$2`,
+        await uploadGate.query(`UPDATE media_objects SET deleted_at=clock_timestamp() WHERE media_id=$1 AND variant=$2`,
           [object.media_id, object.variant]);
       }
-      const db = await pool.connect();
+      const db = uploadGate;
       try {
         await db.query("BEGIN");
         const account = await db.query<{ status: string; user_id: string }>(`SELECT a.status,m.user_id FROM creator_accounts a
@@ -104,7 +104,6 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
           updated_at=clock_timestamp(),failure_code=NULL WHERE id=$1`, [operation.id]);
         await db.query("COMMIT");
       } catch (error) { await db.query("ROLLBACK").catch(() => undefined); throw error; }
-      finally { db.release(); }
       } finally {
         if (uploadLocked) await uploadGate.query("SELECT pg_advisory_unlock(44024,hashtext($1))", [operation.account_id])
           .catch(() => undefined);

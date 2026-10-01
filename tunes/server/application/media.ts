@@ -62,7 +62,7 @@ export class MediaService {
     uploadLocked = true;
     try {
       await this.repo.reserve({ id, accountId: actor.accountId, purpose: input.purpose, mimeType: input.mimeType,
-        filename: input.filename, bytes: input.bytes, hash, key, environment: this.storage.environment });
+        filename: input.filename, bytes: input.bytes, hash, key, environment: this.storage.environment }, gate);
     } catch (error) {
       if (error instanceof MediaAccountInactive) throw new AuthorizationError(403, "FORBIDDEN", "Account access is unavailable");
       throw error;
@@ -70,11 +70,11 @@ export class MediaService {
     let versionId: string | undefined;
     try {
       versionId = (await this.storage.put(key, input.bytes)) || undefined;
-      await this.repo.markReady(id, versionId);
+      await this.repo.markReady(id, versionId, gate);
     } catch (error) {
       // The reservation survives even if both cleanup and metadata finalization fail.
-      await this.repo.markUploadForCleanup(id, versionId).catch(() => undefined);
-      try { await this.storage.delete(key, versionId); await this.repo.finalizeDelete(id); }
+      await this.repo.markUploadForCleanup(id, versionId, gate).catch(() => undefined);
+      try { await this.storage.delete(key, versionId); await this.repo.finalizeDelete(id, gate); }
       catch { /* durable reservation is retried by the cleanup pass */ }
       throw new MediaUnavailable("Storage unavailable");
     }

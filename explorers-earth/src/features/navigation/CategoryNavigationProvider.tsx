@@ -76,7 +76,7 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
     } catch (error) {
       if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence
         || useAuthStore.getState().generation !== sessionGeneration) return;
-      publish({ ...state, error: error instanceof NavigationError ? error.message : 'Account could not be verified. Refresh to try again.' });
+      publish({ ...state, error: error instanceof NavigationError ? error.message : 'Category settings could not be loaded. Refresh to try again.' });
     }
   }
   const refreshAfterInvalidation = () => {

@@ -13,6 +13,7 @@ import { MUSIC_UAT_DATABASE_ACK, startOwnedUatDatabase, stopOwnedUatDatabase,
   type OwnedUatDatabaseAuthority } from './music-uat-database';
 import { prepareFixtureMusicTokenSecret, cleanupFixtureMusicTokenSecret } from './music-fixture-secret';
 import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
+import { createLiveGoogleMediaStorage } from './live-google-media';
 
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');
@@ -87,7 +88,7 @@ async function main() {
   const config = resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: origin,
     EXPLORERS_AUTH_SECRET: randomBytes(32).toString('hex'),
     GOOGLE_CLIENT_ID: credentials.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: credentials.GOOGLE_CLIENT_SECRET });
-  const composed = createCanonicalApp(db, config);
+  const composed = createCanonicalApp(db, config, { mediaStorage: createLiveGoogleMediaStorage(disposable) });
   apiServer = await new Promise((done) => {
     const server = composed.app.listen(apiPort, '127.0.0.1', () => done(server));
   });
