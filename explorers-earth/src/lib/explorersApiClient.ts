@@ -7,6 +7,8 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,type OwnerTopPicksRequest} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
+import { createCollectionSchema,updateCollectionSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
+import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -216,7 +218,105 @@ async function writeTopPicks(observed:CompleteMyCategoryContent,orderedPins:Cate
   } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 
+export type OwnerDetailObservation<T> = Readonly<{kind:'collection'|'recommendation';accountId:string;generation:number;observedAt:number;resourceId:string;resourceRevision:number;categoryRevision:string;detail:T}>;
+export type CollectionObservation=OwnerDetailObservation<EditableOwnerCollection>;
+export type RecommendationObservation=OwnerDetailObservation<EditableOwnerRecommendation>;
+const issuedDetails=new WeakSet<object>();
+export function assertOwnerDetailObservation(value:OwnerDetailObservation<EditableOwnerCollection|EditableOwnerRecommendation>,kind?:'collection'|'recommendation'):void {
+ const state=useAuthStore.getState();
+ if(!value||!issuedDetails.has(value)||kind&&value.kind!==kind||!state.isAuthenticated||state.accountId!==value.accountId||state.generation!==value.generation||Date.now()-value.observedAt>=600000||value.detail.archived)throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before saving');
+}
+export function copyOwnerDetailForStaging<T>(value:OwnerDetailObservation<T>):T {
+ if(!issuedDetails.has(value))throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before staging');
+ return structuredClone(value.detail);
+}
+async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id:string,signal?:AbortSignal):Promise<K extends 'collection'?CollectionObservation:RecommendationObservation> {
+ if(!contentIdSchema.safeParse(id).success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid resource ID');
+ const state=useAuthStore.getState();
+ try {
+  const schema=kind==='collection'?z.object({collection:editableOwnerCollectionSchema}).strict():z.object({recommendation:editableOwnerRecommendationSchema}).strict();
+  const body=await ownerRead(`/`+(kind==='collection'?'collections':'recommendations')+`/${encodeURIComponent(id)}/editable`,{status:'active'},schema as z.ZodType<any>,signal);
+  const detail=body[kind] as EditableOwnerCollection|EditableOwnerRecommendation,current=useAuthStore.getState();
+  if(!current.isAuthenticated||current.generation!==state.generation||current.accountId!==state.accountId||detail.accountId!==state.accountId||detail.id!==id.toLowerCase()||detail.archived)throw new ExplorersApiError(409,'CONFLICT','Invalid editable owner detail');
+  const observed=deepFreeze({kind,accountId:detail.accountId,generation:state.generation,observedAt:Date.now(),resourceId:detail.id,resourceRevision:detail.revision,categoryRevision:detail.categoryRevision,detail});issuedDetails.add(observed);
+  return observed as any;
+ } catch(error) {
+  if(error instanceof ExplorersApiError)throw error;
+  if(error instanceof Error&&error.name==='AbortError')throw new ExplorersApiError(409,'ABORTED','Owner detail read cancelled');
+  throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Unable to read editable owner detail');
+ }
+}
+function commandInput<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
+ const result=schema.safeParse(input);if(!result.success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');return result.data;
+}
+async function contentCommand<T extends {id:string}>(path:string,method:string,input:unknown,key:string,name:string,schema:z.ZodType<T>,signal?:AbortSignal,observed?:CollectionObservation|RecommendationObservation|CompleteMyCategoryContent,expectedId?:string,expectedRevision?:number):Promise<DeepReadonly<T>> {
+ commandInput(commandKeySchema,key);
+ const state=useAuthStore.getState(),controller=new AbortController(),stop=()=>controller.abort();
+ if(!state.isAuthenticated||!state.accountId)throw new ExplorersApiError(401,'UNAUTHENTICATED','Sign in is required');
+ const current=()=>{const now=useAuthStore.getState();return now.isAuthenticated&&now.accountId===state.accountId&&now.generation===state.generation;};
+ const revoke=()=>{if(observed){issuedDetails.delete(observed);completedCategories.delete(observed);}};
+ const body=JSON.stringify(input);if(new TextEncoder().encode(body).byteLength>1024*1024)throw new ExplorersApiError(413,'RESOURCE_TOO_LARGE','Content command exceeds the request byte bound');
+ const unsubscribe=useAuthStore.subscribe(()=>{if(!current())stop();});signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
+ try {
+  if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED','Content command cancelled');
+  const response=await fetch(`/api/explorers/v1${path}`,{method,credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Idempotency-Key':key},body,signal:controller.signal});
+  const text=await response.text();
+  if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'CONFLICT','Owner changed before command completion');
+  handleExpiredSession(response,state.generation);
+  if(new TextEncoder().encode(text).byteLength>4*1024*1024)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Command response exceeds the byte bound');
+  let raw:unknown;try {raw=JSON.parse(text);}catch{throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command response');}
+  if(!response.ok) {
+   const failure=apiErrorSchema.safeParse(raw);if(!failure.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command error');
+   if([401,403,404,409].includes(response.status))revoke();
+   throw new ExplorersApiError(response.status,failure.data.error.code,failure.data.error.message);
+  }
+  revoke();
+  const result=z.object({[name]:schema}).strict().safeParse(raw);if(!result.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command response');
+  const dto=result.data[name] as T&{accountId?:string;revision?:number;category?:string;entityId?:string};
+  const payload=input as {category?:string;entityId?:string};
+  const detail=observed&&'detail' in observed?observed.detail:undefined;
+  const expectedCategory=payload.category??detail?.category??(observed&&'category' in observed?observed.category:undefined);
+  const expectedEntity=payload.entityId??(detail&&'entityId' in detail?detail.entityId:undefined);
+  if(expectedId&&dto.id!==expectedId||dto.accountId!==undefined&&dto.accountId!==state.accountId||expectedRevision!==undefined&&dto.revision!==expectedRevision)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command resource');
+  if(dto.category!==undefined&&dto.category!==expectedCategory||dto.entityId!==undefined&&dto.entityId!==expectedEntity)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command category or catalog identity');
+  return deepFreeze(dto);
+ } catch(error) {
+  if(controller.signal.aborted||!current()){revoke();throw new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');}
+  if(error instanceof ExplorersApiError)throw error;
+  throw new ExplorersApiError(503,'UNAVAILABLE','Unable to save content');
+ } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
+}
+const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
+  getMyEditableCollection:(id:string,signal?:AbortSignal)=>editableDetail('collection',id,signal),
+  getMyEditableRecommendation:(id:string,signal?:AbortSignal)=>editableDetail('recommendation',id,signal),
+  async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal) {
+   const body=commandInput(createCollectionSchema,input);return contentCommand('/collections','POST',body,key,'collection',collectionCoreDtoSchema,signal,undefined,undefined,1);
+  },
+  async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection');const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
+   const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
+  async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection');return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
+  },
+  async createMyRecommendation(parent:CollectionObservation,input:Omit<CreateRecommendationInput,'collectionId'|'expectedCollectionRevision'|'category'>,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(parent,'collection');const editable=commandInput(createRecommendationSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict(),input);
+   const body=commandInput(createRecommendationSchema,{...editable,collectionId:parent.resourceId,category:parent.detail.category,expectedCollectionRevision:parent.resourceRevision});return contentCommand('/recommendations','POST',body,key,'recommendation',recommendationCoreDtoSchema,signal,parent,undefined,1);
+  },
+  async updateMyRecommendation(observed:RecommendationObservation,patch:Omit<UpdateRecommendationInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'recommendation');const editable=commandInput(updateRecommendationSchema.innerType().omit({expectedRevision:true}).strict(),patch);
+   const body=commandInput(updateRecommendationSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/recommendations/${observed.resourceId}`,'PATCH',body,key,'recommendation',recommendationCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
+  async archiveMyRecommendation(observed:RecommendationObservation,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'recommendation');return contentCommand(`/recommendations/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'recommendation',archivedResult,signal,observed,observed.resourceId);
+  },
+  async reorderMyCollection(observed:CompleteMyCategoryContent,collectionId:string,orderedRecommendationIds:string[],key:string,signal?:AbortSignal) {
+   assertCompleteMyCategoryContent(observed);const parent=observed.collections.find(x=>x.id===collectionId&&!x.archived);
+   const members=observed.memberships.filter(x=>x.collectionId===collectionId&&!x.collectionArchived&&!x.recommendationArchived).map(x=>x.recommendationId);
+   if(observed.status==='archived'||!parent||orderedRecommendationIds.length!==members.length||new Set(orderedRecommendationIds).size!==members.length||orderedRecommendationIds.some(id=>!members.includes(id)))throw new ExplorersApiError(422,'INVALID_INPUT','Order must contain the exact active observed membership');
+   const body=commandInput(reorderCollectionSchema,{expectedRevision:parent.revision,orderedRecommendationIds});return contentCommand(`/collections/${parent.id}/order`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,parent.id,parent.revision+1);
+  },
   getCompleteMyCategoryTopPicks:(input:Pick<OwnerCollectionsRequest,'category'|'status'>,signal?:AbortSignal)=>completeCategory(input,signal,true),
   async getMyCategoryTopPicks(input:OwnerTopPicksRequest,signal?:AbortSignal) {
    try {

@@ -7,6 +7,7 @@ import { parseContent } from './recommendations';
 import { RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { contentIdSchema } from '../../shared/explorersContract';
 import * as wire from '../../shared/explorersOwnerContentContract';
+import { normalizeRichNote } from './richNote';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -169,21 +170,30 @@ export class OwnerContentService {
    return wire.ownerTopPickPageSchema.parse({...this.page(rows,items,ctx,binding,r=>({order:r.position,id:r.recommendation_id})),pinRevision:ctx.pinRevision});
   });
  }
- async getCollection(actor:Actor,id:string,raw:unknown={}) {
+ async getCollection(actor:Actor,id:string,raw:unknown={},editable=false) {
   return this.read(actor,['collections:read'],async db=>{
    parseContent(contentIdSchema,id);const input=parseContent(wire.ownerDetailRequestSchema,raw);
    const locator=(await db.query(`SELECT c.id,${collectionBytes} AS item_bytes ${collectionJoin} WHERE c.id=$1 AND c.account_id=$2 AND ${statusPredicate('c',input.status)}`,[id,actor.accountId])).rows[0];
    if(!locator) throw new RecommendationFailure(404,'Resource unavailable');
    if(Number(locator.item_bytes)+Buffer.byteLength('{"collection":}','utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');
    const row=(await db.query(`SELECT ${collectionProjection} ${collectionJoin} WHERE c.id=$1 AND c.account_id=$2`,[id,actor.accountId])).rows[0],collection=this.collection(row);
-   if(Buffer.byteLength(JSON.stringify({collection}),'utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return collection;
+   if(Buffer.byteLength(JSON.stringify({collection}),'utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');
+   if(!editable)return collection;
+   const categoryRevision=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision",[actor.accountId,row.category])).rows[0].revision;
+   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision});
   });
  }
- async getRecommendation(actor:Actor,id:string,raw:unknown={}) {
+ async getRecommendation(actor:Actor,id:string,raw:unknown={},editable=false) {
   return this.read(actor,['recommendations:read'],async db=>{
    parseContent(contentIdSchema,id);const input=parseContent(wire.ownerDetailRequestSchema,raw);
    const row=(await db.query(`SELECT ${recommendationProjection} FROM recommendations r WHERE r.id=$1 AND r.account_id=$2 AND ${statusPredicate('r',input.status)}`,[id,actor.accountId])).rows[0];
-   if(!row) throw new RecommendationFailure(404,'Resource unavailable');return (await this.recommendations(db,[row]))[0];
+   if(!row) throw new RecommendationFailure(404,'Resource unavailable');const recommendation=(await this.recommendations(db,[row]))[0];
+   if(!editable)return recommendation;
+   const size=(await db.query('SELECT coalesce(octet_length(note::text),0) AS bytes FROM recommendations WHERE id=$1 AND account_id=$2',[id,actor.accountId])).rows[0];
+   if(Number(size.bytes)>1024*1024)throw new RecommendationFailure(413,'Owner note exceeds the response bound');
+   const detail=(await db.query("SELECT note,coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$2 AND category=r.category),'0') AS category_revision FROM recommendations r WHERE id=$1 AND account_id=$2",[id,actor.accountId])).rows[0];
+   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision});
+   if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });
  }
 }

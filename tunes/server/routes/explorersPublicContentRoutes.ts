@@ -18,5 +18,15 @@ export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:s
   };
   router.get('/api/explorers/v1/public/profiles/:username/collections/:category',read);
   router.get('/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',read);
+  router.get('/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',async(req,res)=>{
+    try {
+      if(Object.keys(req.query).length)throw new PublicContentFailure(400);
+      const value=await service.detail(req.params);
+      return value?res.json(value):res.status(404).json({version:'explorers-public-error/v1',error:{code:'NOT_FOUND'}});
+    }catch(error){
+      if(error instanceof PublicContentFailure)return res.status(error.status).json({version:'explorers-public-error/v1',error:{code:error.status===413?'RESOURCE_TOO_LARGE':'BAD_REQUEST'}});
+      return res.status(503).json({version:'explorers-public-error/v1',error:{code:'UNAVAILABLE',retryable:true}});
+    }
+  });
   app.use(router);
 }

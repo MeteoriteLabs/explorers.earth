@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult } from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
+import type { RichNote } from '../../shared/explorersRichNoteContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
 export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|'products'|'people';
@@ -147,12 +148,12 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[]},key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null},key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
-      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state)
-        VALUES($1,$2,$3,$4,$5) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft']);
+      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)
+        VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note)]);
       await db.query(`INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order)
         SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1`,
         [input.collectionId,result.rows[0].id,accountId,input.category]);
@@ -209,13 +210,13 @@ export class ExplorersRecommendationRepository {
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
   }
-  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[]},key:string):Promise<RecommendationRecord> {
+  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null},key:string):Promise<RecommendationRecord> {
     if(input.userRating!==undefined&&input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       await this.lockRecommendation(db,accountId,id,expectedRevision);
       const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
-        publication_state=coalesce($4,publication_state),revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null]);
+        publication_state=coalesce($4,publication_state),note=CASE WHEN $5 THEN $6::jsonb ELSE note END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null,input.note!==undefined,input.note==null?null:JSON.stringify(input.note)]);
       if(input.mediaIds!==undefined) await this.replaceMedia(db,accountId,id,input.mediaIds);
       return this.recommendationRecord(db,result.rows[0]);
     });

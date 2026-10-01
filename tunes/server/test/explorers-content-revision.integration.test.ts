@@ -84,6 +84,7 @@ describe('category revision foundation',()=>{
   });
   it('rolls back nonempty terminal purge, retains tombstone counters and preserves foreign/shared catalog',async()=>{
     const f=await fixture(),other=await fixture();
+    await pool.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[f.item,JSON.stringify({version:1,format:'quill-html',html:'<p>Owned note</p>'})]);
     await pool.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'books',$2)",[other.account,f.entity]);
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'guides','Guide',$2,0)",[f.account,randomUUID()]);
     await pool.query("INSERT INTO collection_items VALUES($1,$2,$3,'books',0,now())",[f.list,f.item,f.account]);

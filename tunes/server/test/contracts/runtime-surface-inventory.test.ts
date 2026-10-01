@@ -66,6 +66,7 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
       ['GET','/api/explorers/v1/recommendations'], ['GET','/api/explorers/v1/recommendations/:id'],
+      ['GET','/api/explorers/v1/collections/:id/editable'], ['GET','/api/explorers/v1/recommendations/:id/editable'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],
       ['GET','/api/explorers/v1/categories/:category/memberships'],
@@ -75,6 +76,7 @@ describe("runtime route/event/job inventory", () => {
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
+      '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
       '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',
       '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order'];

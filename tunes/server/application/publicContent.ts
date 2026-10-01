@@ -3,9 +3,11 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v3';
 import { publicContentRequestSchema, type PublicContentPage, type PublicContentRequest,
   type PublicCollectionSummary, type PublicRecommendationSummary } from '../../shared/explorersPublicContentContract';
+import { publicRecommendationDetailRequestSchema,publicRecommendationDetailSchema } from '../../shared/explorersPublicContentContract';
+import { normalizeRichNote } from './richNote';
 
 export class PublicContentFailure extends Error {
-  constructor(readonly status:400|409) {super(status===400?'Invalid public content request':'Collection changed; restart pagination');}
+  constructor(readonly status:400|409|413) {super(status===400?'Invalid public content request':status===413?'Public detail exceeds the response bound':'Collection changed; restart pagination');}
 }
 const cursorSchema=z.object({version:z.literal(1),binding:z.string(),account:z.string().uuid(),
   revision:z.string().nullable(),order:z.number().int().nonnegative().max(2147483647),id:z.string().uuid()}).strict();
@@ -27,6 +29,27 @@ export class PublicContentService {
   private encode(cursor:Cursor) {
     const nonce=randomBytes(12),cipher=createCipheriv('aes-256-gcm',this.key,nonce);cipher.setAAD(Buffer.from('explorers-public-content/v1'));
     const encrypted=Buffer.concat([cipher.update(JSON.stringify(cursor),'utf8'),cipher.final()]);return Buffer.concat([nonce,cipher.getAuthTag(),encrypted]).toString('base64url');
+  }
+  async detail(raw:unknown) {
+    const parsed=publicRecommendationDetailRequestSchema.safeParse(raw);if(!parsed.success)throw new PublicContentFailure(400);
+    const input=parsed.data,db=await this.pool.connect();
+    try {
+      await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      const eligible=`FROM recommendations r JOIN collection_items ci ON ci.recommendation_id=r.id AND ci.account_id=r.account_id AND ci.category=r.category
+        JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category
+        JOIN creator_accounts a ON a.id=r.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=r.category
+        JOIN entities e ON e.id=r.entity_id WHERE a.handle_key=$1 AND r.category=$2 AND c.slug=$3 AND r.id=$4
+        AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public
+        AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
+        AND r.archived_at IS NULL AND r.publication_state='published'`;
+      const values=[input.username,input.category,input.slug,input.id];
+      const size=(await db.query(`SELECT coalesce(octet_length(r.note::text),0) AS bytes,octet_length(to_json(e.title)::text) AS title_bytes ${eligible}`,values)).rows[0];
+      if(!size){await db.query('COMMIT');return undefined;}
+      if(Number(size.bytes)>1024*1024||Number(size.bytes)+Number(size.title_bytes)+1024>4*1024*1024)throw new PublicContentFailure(413);
+      const row=(await db.query(`SELECT r.id,e.title,e.kind,r.user_rating,r.note ${eligible}`,values)).rows[0];
+      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:row.title,kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note)}});
+      await db.query('COMMIT');return value;
+    }catch(error){await db.query('ROLLBACK');if((error as {status?:number}).status===413)throw new PublicContentFailure(413);throw error;}finally{db.release();}
   }
   async page(raw:unknown):Promise<PublicContentPage<PublicCollectionSummary|PublicRecommendationSummary>|undefined> {
     const parsed=publicContentRequestSchema.safeParse(raw);if(!parsed.success) throw new PublicContentFailure(400);

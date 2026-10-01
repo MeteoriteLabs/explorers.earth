@@ -6,6 +6,7 @@ import { collectionCoreDtoSchema, recommendationCoreDtoSchema, createCollectionS
 import type { Actor } from './actor';
 import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
+import { normalizeRichNote } from './richNote';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
   const parsed=schema.safeParse(input);
@@ -49,11 +50,15 @@ export class RecommendationService {
     });
   }
   async createRecommendation(actor:Actor,input:unknown,context:RequestContext) {
-    return this.authorized(actor,'recommendations:write',async()=>recommendationCoreDtoSchema.parse(await this.repository.createRecommendation(actor.accountId,parseContent(createRecommendationSchema,input),this.key(context))));
+    return this.authorized(actor,'recommendations:write',async()=>recommendationCoreDtoSchema.parse(await this.repository.createRecommendation(actor.accountId,parseContent(createRecommendationSchema,this.noteInput(input)),this.key(context))));
+  }
+  private noteInput(input:unknown):unknown {
+    if(input&&typeof input==='object'&&!Array.isArray(input)&&Object.hasOwn(input,'note'))return {...input,note:normalizeRichNote((input as {note:unknown}).note)};
+    return input;
   }
   async updateRecommendation(actor:Actor,id:string,input:unknown,context:RequestContext) {
     return this.authorized(actor,'recommendations:write',async()=>{
-      parseContent(contentIdSchema,id);const {expectedRevision,...editable}=parseContent(updateRecommendationSchema,input);
+      parseContent(contentIdSchema,id);const {expectedRevision,...editable}=parseContent(updateRecommendationSchema,this.noteInput(input));
       return recommendationCoreDtoSchema.parse(await this.repository.updateRecommendation(actor.accountId,id,expectedRevision,editable,this.key(context)));
     });
   }

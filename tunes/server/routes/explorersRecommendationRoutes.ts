@@ -46,6 +46,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   };
   routes.get('/api/explorers/v1/collections',read((a,_id,q)=>ownerContent.listCollections(a,q)));
   routes.get('/api/explorers/v1/collections/:id',read((a,id,q)=>ownerContent.getCollection(a,id,q),'collection'));
+  routes.get('/api/explorers/v1/collections/:id/editable',read((a,id,q)=>ownerContent.getCollection(a,id,q,true),'collection'));
   routes.get('/api/explorers/v1/recommendations',read((a,_id,q)=>ownerContent.listRecommendations(a,q)));
   routes.get('/api/explorers/v1/categories/:category/content-snapshot',async(req,res)=>read((a,_id,q)=>ownerContent.getSnapshot(a,categoryQuery(req,q)))(req,res));
   routes.get('/api/explorers/v1/categories/:category/content-snapshot/validate',async(req,res)=>read((a,_id,q)=>ownerContent.validateSnapshot(a,categoryQuery(req,q)))(req,res));
@@ -63,15 +64,18 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   // Reserve static search before /:id; pagination/search is a subsequent slice.
   routes.all('/api/explorers/v1/recommendations/search',unsupported);
   routes.get('/api/explorers/v1/recommendations/:id',read((a,id,q)=>ownerContent.getRecommendation(a,id,q),'recommendation'));
+  routes.get('/api/explorers/v1/recommendations/:id/editable',read((a,id,q)=>ownerContent.getRecommendation(a,id,q,true),'recommendation'));
   routes.post('/api/explorers/v1/recommendations',mutation((a,_id,b,c)=>service.createRecommendation(a,b,c),'recommendation',201));
   routes.patch('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.updateRecommendation(a,id,b,c),'recommendation'));
   routes.delete('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.archiveRecommendation(a,id,b,c),'recommendation'));
   routes.all('/api/explorers/v1/entities/resolve',unsupported);
   routes.all('/api/explorers/v1/collections',unsupported);
   routes.all('/api/explorers/v1/collections/:id',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/editable',unsupported);
   routes.all('/api/explorers/v1/collections/:id/order',unsupported);
   routes.all('/api/explorers/v1/recommendations',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id',unsupported);
+  routes.all('/api/explorers/v1/recommendations/:id/editable',unsupported);
   routes.all('/api/explorers/v1/categories/:category/content-snapshot',unsupported);
   routes.all('/api/explorers/v1/categories/:category/content-snapshot/validate',unsupported);
   routes.all('/api/explorers/v1/categories/:category/memberships',unsupported);

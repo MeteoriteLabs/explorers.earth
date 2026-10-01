@@ -129,6 +129,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if(route.source==='tunes/server/routes/explorersPublicContentRoutes.ts' && route.method==='GET' && [
     '/api/explorers/v1/public/profiles/:username/collections/:category',
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
+    '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',
   ].includes(route.path)) return 'public';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
       && [
@@ -136,8 +137,10 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["POST", "/api/explorers/v1/collections"],
         ["GET", "/api/explorers/v1/collections"],
         ["GET", "/api/explorers/v1/collections/:id"],
+        ["GET", "/api/explorers/v1/collections/:id/editable"],
         ["GET", "/api/explorers/v1/recommendations"],
         ["GET", "/api/explorers/v1/recommendations/:id"],
+        ["GET", "/api/explorers/v1/recommendations/:id/editable"],
         ["GET", "/api/explorers/v1/categories/:category/content-snapshot"],
         ["GET", "/api/explorers/v1/categories/:category/content-snapshot/validate"],
         ["GET", "/api/explorers/v1/categories/:category/memberships"],

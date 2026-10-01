@@ -1,3 +1,4 @@
+import { contentBodyParser } from '../application/contentBodyParser';
 import { randomUUID } from "node:crypto";
 import express, { type Express, type Request, type Response } from "express";
 import cookieParser from "cookie-parser";
@@ -44,7 +45,7 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.all("/api/auth", authHandler);
   app.all("/api/auth/*splat", authHandler);
   app.use(cookieParser());
-  app.use(express.json({ limit: "64kb" }));
+  app.use(contentBodyParser());
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersAccountRoutes(app, pool, auth, config);
   setupExplorersRecommendationRoutes(app, pool, auth, config);

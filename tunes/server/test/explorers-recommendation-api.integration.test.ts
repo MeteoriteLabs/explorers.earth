@@ -1,7 +1,8 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import request from 'supertest';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, expect, it, vi } from 'vitest';
+import actualQuill from '../../shared/test-fixtures/quill-note-v1.json';
 import { createCanonicalApp } from '../auth/canonicalApp';
 import { resolveExplorersAuthConfig } from '../auth/betterAuth';
 
@@ -28,6 +29,80 @@ async function entity(kind='book') {return (await pool.query("INSERT INTO entiti
 async function recommendation(owner:{cookie:string},collection:any,entityId:string,revision=1) {
   const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
 }
+it('persists independent versioned notes and preserves omitted, clear and retry semantics',async()=>{
+ const a=await persona(),b=await persona(),shared=await entity(),la=await list(a),lb=await list(b);
+ const note={version:1,format:'quill-html',html:'<h2>हैलो café</h2><p><strong>😀 A</strong></p>'};
+ const key=randomUUID(),input={category:'books',entityId:shared,collectionId:la.id,expectedCollectionRevision:1,note};
+ const saved=await command(a,'post','/recommendations',input,key);expect(saved.status).toBe(201);
+ const id=saved.body.recommendation.id;
+ expect((await pool.query('SELECT note FROM recommendations WHERE id=$1',[id])).rows[0].note).toEqual(note);
+ const replay=await command(a,'post','/recommendations',input,key);expect(replay.body).toEqual(saved.body);
+ const rb=await recommendation(b,lb,shared);
+ expect((await command(a,'patch',`/recommendations/${id}`,{expectedRevision:1,userRating:4})).status).toBe(200);
+ const detail=await request(composed.app).get(`/api/explorers/v1/recommendations/${id}/editable`).set('cookie',a.cookie);
+ expect(detail.status).toBe(200);expect(detail.body.recommendation).toMatchObject({id,revision:2,note,categoryRevision:expect.any(String)});
+ expect((await request(composed.app).get(`/api/explorers/v1/recommendations/${id}/editable`).set('cookie',b.cookie)).status).toBe(404);
+ expect((await command(a,'patch',`/recommendations/${id}`,{expectedRevision:1,note:null})).status).toBe(409);
+ expect((await command(a,'patch',`/recommendations/${id}`,{expectedRevision:2,note:{...note,html:'<p><br></p>'}})).status).toBe(200);
+ expect((await pool.query('SELECT note FROM recommendations WHERE id=$1',[id])).rows[0].note).toBeNull();
+ expect((await pool.query('SELECT note,user_rating FROM recommendations WHERE id=$1',[rb.id])).rows[0]).toEqual({note:null,user_rating:8});
+ expect((await pool.query('SELECT title FROM entities WHERE id=$1',[shared])).rows[0].title).toBe('Shared title');
+});
+it('rejects unsupported rich notes and guards UTF8/body bounds without writing receipts',async()=>{
+ const a=await persona(),la=await list(a),shared=await entity();
+ for(const [html,status] of [['<script>alert(1)</script>',422],['<p><strong>unclosed</p>',422],['<span class="ql-emojiblot" data-name="grinning"><strong>😀</strong></span>',422],['<span>'.repeat(129)+'A'+'</span>'.repeat(129),413],['<p>'+'<br>'.repeat(10001)+'</p>',413],[`<p>${'😀'.repeat(65536)}</p>`,413]] as const) {
+  const key=randomUUID();const result=await command(a,'post','/recommendations',{category:'books',entityId:shared,collectionId:la.id,expectedCollectionRevision:1,note:{version:1,format:'quill-html',html}},key);
+  expect(result.status).toBe(status);expect((await pool.query("SELECT count(*)::int AS n FROM application_command_receipts WHERE account_id=$1 AND operation='createRecommendation'",[a.accountId])).rows[0].n).toBe(0);
+ }
+ const valid=await command(a,'post','/recommendations',{category:'books',entityId:shared,collectionId:la.id,expectedCollectionRevision:1,note:{version:1,format:'quill-html',html:`<p>${'A'.repeat(70000)}</p>`}});expect(valid.status).toBe(201);
+ const oversized=await command(a,'patch',`/recommendations/${valid.body.recommendation.id}`,{expectedRevision:1,note:{version:1,format:'quill-html',html:'A'.repeat(1024*1024)}});
+ expect(oversized.status).toBe(413);expect(oversized.body.error.code).toBe('RESOURCE_TOO_LARGE');
+});
+it('rolls back note and revision together on invalid owned-media relation and bounds raw editable reads',async()=>{
+ const a=await persona(),b=await persona(),la=await list(a),r=await recommendation(a,la,await entity());
+ const foreign=(await pool.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'recommendation','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id",[b.accountId])).rows[0].id;
+ const key=randomUUID();expect((await command(a,'patch',`/recommendations/${r.id}`,{expectedRevision:1,note:{version:1,format:'quill-html',html:'<p>Must roll back</p>'},mediaIds:[foreign]},key)).status).toBe(422);
+ expect((await pool.query('SELECT note,revision::int FROM recommendations WHERE id=$1',[r.id])).rows[0]).toEqual({note:null,revision:1});
+ expect((await pool.query("SELECT count(*)::int AS n FROM application_command_receipts WHERE account_id=$1 AND operation='updateRecommendation'",[a.accountId])).rows[0].n).toBe(0);
+ await pool.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[r.id,JSON.stringify({version:1,format:'quill-html',html:'A'.repeat(1024*1024+1)})]);
+ expect((await request(composed.app).get(`/api/explorers/v1/recommendations/${r.id}/editable`).set('cookie',a.cookie)).status).toBe(413);
+ expect((await request(composed.app).get(`/api/explorers/v1/recommendations/${r.id}/editable`).set('cookie',b.cookie)).status).toBe(404);
+ expect((await request(composed.app).get(`/api/explorers/v1/recommendations/${r.id}`).set('cookie',a.cookie)).body.recommendation).not.toHaveProperty('note');
+});
+it('executes observed shared mutation clients through guarded HTTP with real note fixtures and lost reply replay',async()=>{
+ const a=await persona(),storage=new Map<string,string>();
+ vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
+ const {default:store}=await import('../../../explorers-earth/src/store/store');
+ const {explorersApiClient,assertOwnerDetailObservation,assertCompleteMyCategoryContent,copyOwnerDetailForStaging}=await import('../../../explorers-earth/src/lib/explorersApiClient');
+ store.setState({accountId:a.accountId,generation:300,isAuthenticated:true});let lost=false;
+ vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{
+  expect(options.credentials).toBe('include');expect(options.cache).toBe('no-store');
+  const method=(options.method??'GET').toLowerCase() as 'get'|'post'|'patch'|'delete';
+  let req=request(composed.app)[method](url).set('cookie',a.cookie);
+  if(method!=='get')req=req.set('origin',config.baseURL).set('Idempotency-Key',new Headers(options.headers).get('Idempotency-Key')!).send(JSON.parse(options.body as string));
+  const result=await req;if(lost&&method==='patch'&&url.includes('/recommendations/')){lost=false;throw new Error('lost after commit');}
+  return new Response(JSON.stringify(result.body),{status:result.status,headers:{'Content-Type':'application/json'}});
+ });
+ try {
+  const list=await explorersApiClient.createMyCollection({category:'books',title:'Clients',slug:'clients'},'client-list');
+  let parent=await explorersApiClient.getMyEditableCollection(list.id);
+  const saved=await explorersApiClient.createMyRecommendation(parent,{entityId:await entity(),note:{version:1,format:'quill-html',html:actualQuill.html}},'client-child');
+  expect(()=>assertOwnerDetailObservation(parent)).toThrow();
+  let observed=await explorersApiClient.getMyEditableRecommendation(saved.id);
+  expect(observed.detail.note?.html).toBe(actualQuill.html);const draft=copyOwnerDetailForStaging(observed);draft.note!.html='<p>staged</p>';expect(observed.detail.note?.html).toBe(actualQuill.html);
+  const categoryBefore=observed.categoryRevision;lost=true;const patch={note:{version:1 as const,format:'quill-html' as const,html:'<p>😀 edited</p>'}};
+  await expect(explorersApiClient.updateMyRecommendation(observed,patch,'client-retry')).rejects.toMatchObject({status:503});assertOwnerDetailObservation(observed);
+  const replay=await explorersApiClient.updateMyRecommendation(observed,patch,'client-retry');expect(replay.revision).toBe(2);
+  observed=await explorersApiClient.getMyEditableRecommendation(saved.id);expect(BigInt(observed.categoryRevision)).toBeGreaterThan(BigInt(categoryBefore));expect(observed.detail.note).toEqual(patch.note);
+  await expect(explorersApiClient.updateMyRecommendation(observed,{note:null},'client-retry')).rejects.toMatchObject({status:409});expect(()=>assertOwnerDetailObservation(observed)).toThrow();
+  const complete=await explorersApiClient.getCompleteMyCategoryContent({category:'books'});
+  await expect(explorersApiClient.reorderMyCollection(complete,list.id,[],'client-order-bad')).rejects.toMatchObject({status:422});assertCompleteMyCategoryContent(complete);
+  await explorersApiClient.reorderMyCollection(complete,list.id,[saved.id],'client-order');expect(()=>assertCompleteMyCategoryContent(complete)).toThrow();
+  observed=await explorersApiClient.getMyEditableRecommendation(saved.id);await explorersApiClient.archiveMyRecommendation(observed,'client-archive-child');
+  parent=await explorersApiClient.getMyEditableCollection(list.id);await explorersApiClient.updateMyCollection(parent,{heading:'Heading',description:null},'client-update-list');
+  parent=await explorersApiClient.getMyEditableCollection(list.id);await explorersApiClient.archiveMyCollection(parent,'client-archive-list');
+ }finally {vi.unstubAllGlobals();}
+});
 it('creates independent owner recommendations without changing shared catalog facts',async()=>{
   const a=await persona(),b=await persona(),shared=await entity(),la=await list(a),lb=await list(b);
   const ra=await recommendation(a,la,shared),rb=await recommendation(b,lb,shared);

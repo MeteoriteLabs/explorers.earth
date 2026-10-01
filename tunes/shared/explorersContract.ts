@@ -1,4 +1,5 @@
 import { z } from "zod/v3";
+import { richNoteSchema } from './explorersRichNoteContract';
 
 export const categoryKeys = [
   "places", "guides", "music", "movies", "books", "games", "apps", "products", "people",
@@ -46,9 +47,9 @@ export const updateCollectionSchema = z.object({expectedRevision:contentRevision
   .refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const createRecommendationSchema = z.object({category:recommendationCategorySchema,entityId:contentIdSchema,
   collectionId:contentIdSchema,expectedCollectionRevision:contentRevision,userRating:userRating.default(null),
-  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([])}).strict();
+  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([]),note:richNoteSchema.nullable().default(null)}).strict();
 export const updateRecommendationSchema = z.object({expectedRevision:contentRevision,userRating:userRating.optional(),
-  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
+  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional(),note:richNoteSchema.nullable().optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const reorderCollectionSchema = z.object({expectedRevision:contentRevision,
   orderedRecommendationIds:z.array(contentIdSchema).max(10000)}).strict();
 export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,

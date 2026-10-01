@@ -1,5 +1,6 @@
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema } from './explorersContract';
+import { richNoteSchema } from './explorersRichNoteContract';
 const status=z.enum(['active','archived','all']).default('active');
 const token=z.string().min(1).max(4096);
 const limit=z.union([z.number().int().min(1).max(100),z.string().regex(/^[1-9][0-9]{0,2}$/).transform(Number).pipe(z.number().max(100))]).default(24);
@@ -9,6 +10,10 @@ export const ownerDetailRequestSchema=z.object({status}).strict();
 export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.string().min(1).max(200),description:z.string().nullable(),heading:z.string().nullable(),archived:z.boolean(),displayOrder:z.number().int().nonnegative()}).strict();
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
+export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision}).strict();
+export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,note:richNoteSchema.nullable()}).strict();
+export type EditableOwnerCollection=z.infer<typeof editableOwnerCollectionSchema>;
+export type EditableOwnerRecommendation=z.infer<typeof editableOwnerRecommendationSchema>;
 export const ownerSnapshotRequestSchema=z.object({category:contentCategorySchema,snapshotToken:token.optional()}).strict();
 export const ownerSnapshotValidationRequestSchema=ownerSnapshotRequestSchema.extend({snapshotToken:token}).strict();
 export const ownerSnapshotSchema=z.object({version:z.literal('explorers-owner-content/v2'),snapshotToken:token,revision,expiresAt:z.number().int().positive(),pinRevision:z.number().int().positive().safe().nullable()}).strict();

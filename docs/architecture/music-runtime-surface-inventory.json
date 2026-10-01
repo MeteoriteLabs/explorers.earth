@@ -388,7 +388,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 37
+      "line": 38
     },
     {
       "method": "ALL",
@@ -398,7 +398,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 44
+      "line": 45
     },
     {
       "method": "ALL",
@@ -408,7 +408,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 45
+      "line": 46
     },
     {
       "method": "GET",
@@ -418,7 +418,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 48
+      "line": 49
     },
     {
       "method": "POST",
@@ -428,7 +428,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 59
+      "line": 60
     },
     {
       "method": "GET",
@@ -438,7 +438,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 77
+      "line": 78
     },
     {
       "method": "GET",
@@ -691,6 +691,16 @@
       "line": 20
     },
     {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 21
+    },
+    {
       "method": "USE",
       "path": "/api/explorers/v1/profiles",
       "classification": "tombstone",
@@ -762,7 +772,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/recommendations",
+      "path": "/api/explorers/v1/collections/:id/editable",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -772,7 +782,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/categories/:category/content-snapshot",
+      "path": "/api/explorers/v1/recommendations",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -782,7 +792,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -792,7 +802,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/categories/:category/memberships",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -802,13 +812,23 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "path": "/api/explorers/v1/categories/:category/memberships",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "line": 53
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 54
     },
     {
       "method": "POST",
@@ -818,7 +838,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 56
+      "line": 57
     },
     {
       "method": "PUT",
@@ -828,7 +848,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 57
+      "line": 58
     },
     {
       "method": "PATCH",
@@ -838,21 +858,11 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 58
+      "line": 59
     },
     {
       "method": "POST",
       "path": "/api/explorers/v1/collections",
-      "classification": "canonical-explorers-owner",
-      "ownerSource": "verified-google-session+active-initial-account-binding",
-      "policy": "better-auth-session+google-provider+active-initial-account-binding",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 59
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/explorers/v1/collections/:id",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -862,13 +872,23 @@
     },
     {
       "method": "PATCH",
-      "path": "/api/explorers/v1/collections/:id/order",
+      "path": "/api/explorers/v1/collections/:id",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "line": 61
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/order",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 62
     },
     {
       "method": "DELETE",
@@ -878,7 +898,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 62
+      "line": 63
     },
     {
       "method": "ALL",
@@ -888,7 +908,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 64
+      "line": 65
     },
     {
       "method": "GET",
@@ -898,7 +918,17 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 65
+      "line": 66
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/editable",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 67
     },
     {
       "method": "POST",
@@ -908,7 +938,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 66
+      "line": 68
     },
     {
       "method": "PATCH",
@@ -918,7 +948,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 67
+      "line": 69
     },
     {
       "method": "DELETE",
@@ -928,7 +958,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 68
+      "line": 70
     },
     {
       "method": "ALL",
@@ -938,7 +968,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 69
+      "line": 71
     },
     {
       "method": "ALL",
@@ -948,7 +978,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 70
+      "line": 72
     },
     {
       "method": "ALL",
@@ -958,31 +988,11 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 71
-    },
-    {
-      "method": "ALL",
-      "path": "/api/explorers/v1/collections/:id/order",
-      "classification": "tombstone",
-      "ownerSource": "none-fail-closed",
-      "policy": "fail-closed-tombstone",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 72
-    },
-    {
-      "method": "ALL",
-      "path": "/api/explorers/v1/recommendations",
-      "classification": "tombstone",
-      "ownerSource": "none-fail-closed",
-      "policy": "fail-closed-tombstone",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "line": 73
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/recommendations/:id",
+      "path": "/api/explorers/v1/collections/:id/editable",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
@@ -992,7 +1002,7 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/categories/:category/content-snapshot",
+      "path": "/api/explorers/v1/collections/:id/order",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
@@ -1002,7 +1012,7 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "path": "/api/explorers/v1/recommendations",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
@@ -1012,7 +1022,7 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/categories/:category/memberships",
+      "path": "/api/explorers/v1/recommendations/:id",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
@@ -1022,7 +1032,7 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "path": "/api/explorers/v1/recommendations/:id/editable",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
@@ -1032,13 +1042,53 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "line": 79
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 80
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/memberships",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 81
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 82
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 83
     },
     {
       "method": "GET",
@@ -1708,7 +1758,7 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/app.ts",
-      "line": 76
+      "line": 77
     },
     {
       "kind": "setInterval",

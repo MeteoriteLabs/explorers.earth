@@ -91,3 +91,18 @@ it('records fixture query plans without claiming production scale',async()=>{
   const children=await pool.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) SELECT r.id,e.title,e.kind,r.user_rating,ci.display_order FROM collection_items ci JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category JOIN entities e ON e.id=r.entity_id WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category='books' AND r.archived_at IS NULL AND r.publication_state='published' AND (ci.display_order,r.id)>(0,$3::uuid) ORDER BY ci.display_order,r.id LIMIT 3`,[f.collection,f.account,f.ids[0]]);
   for(const [label,result] of [['collections',lists],['children',children]] as const) {const plan=result.rows[0]['QUERY PLAN'][0];expect(plan.Plan['Node Type']).toBe('Limit');expect(plan.Plan['Actual Rows']).toBeLessThanOrEqual(3);writeFileSync(join(tmpdir(),`task-3-1-public-${label}-explain.json`),JSON.stringify(plan,null,2));}
 });
+it('serves only validated rich note detail through every live public ancestor',async()=>{
+ const f=await fixture(1),note={version:1,format:'quill-html',html:'<h3>Public</h3><p><u>😀 café</u></p>'};
+ await pool.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[f.ids[0],JSON.stringify(note)]);
+ const path=`${f.children}/${f.ids[0]}`,visible=await request(app).get(path);expect(visible.status).toBe(200);
+ expect(visible.body).toEqual({version:'explorers-public-content/v1',recommendation:{id:f.ids[0],title:'Public title',kind:'book',userRating:8,note}});
+ const missing=(await request(app).get(`${f.children}/${randomUUID()}`)).body;
+ for(const [sql,undo,id] of [
+  ['UPDATE creator_accounts SET public_profile=false WHERE id=$1','UPDATE creator_accounts SET public_profile=true WHERE id=$1',f.account],
+  ['UPDATE account_category_settings SET is_public=false WHERE account_id=$1','UPDATE account_category_settings SET is_public=true WHERE account_id=$1',f.account],
+  ["UPDATE collections SET visibility='private' WHERE id=$1","UPDATE collections SET visibility='public' WHERE id=$1",f.collection],
+  ["UPDATE recommendations SET publication_state='draft' WHERE id=$1","UPDATE recommendations SET publication_state='published' WHERE id=$1",f.ids[0]],
+ ]) {await pool.query(sql,[id]);const hidden=await request(app).get(path);expect(hidden.status).toBe(404);expect(hidden.body).toEqual(missing);await pool.query(undo,[id]);}
+ await pool.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[f.ids[0],JSON.stringify({...note,html:'<p onclick="x()">unsafe</p>'})]);
+ const unsafe=await request(app).get(path);expect(unsafe.status).toBe(503);expect(JSON.stringify(unsafe.body)).not.toContain('onclick');
+});

@@ -1,3 +1,4 @@
+import { contentBodyParser } from './application/contentBodyParser';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes/index";
 import { log } from "./runtime";
@@ -79,7 +80,7 @@ async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, local
     next();
   });
   setupMusicIdentityBodylessPreflight(app);
-  app.use(express.json({ limit: "64kb" }));
+  app.use(contentBodyParser());
   app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));
 
