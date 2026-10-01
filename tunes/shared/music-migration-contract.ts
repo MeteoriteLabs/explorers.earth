@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0027_explorers_lifecycle" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0028_explorers_recovery_proof_retention" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -26,6 +26,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0024_explorers_profile_media",
   "0025_explorers_media_attachment_guard",
   "0026_explorers_media_slot_compatibility",
+  "0027_explorers_lifecycle",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -57,6 +58,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0024_explorers_profile_media",
   "0025_explorers_media_attachment_guard",
   "0026_explorers_media_slot_compatibility",
+  "0027_explorers_lifecycle",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

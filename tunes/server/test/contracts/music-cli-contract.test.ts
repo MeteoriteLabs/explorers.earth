@@ -32,7 +32,7 @@ function ensureSupportedCliFixtureAuthority(): void {
     if (values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KID !== "fixture-publication-v1"
         || values.MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY !== "fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI"
         || values.MUSIC_PUBLIC_ID_HMAC_KEY !== "VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ"
-        || values.MUSIC_EXPECTED_MIGRATION_ID !== "0027_explorers_lifecycle") {
+        || values.MUSIC_EXPECTED_MIGRATION_ID !== "0028_explorers_recovery_proof_retention") {
       throw new Error("fixture environment authority is from an older schema epoch");
     }
     const tokenDirectory = resolve(repositoryRoot, ".artifacts", "music-token-secrets");

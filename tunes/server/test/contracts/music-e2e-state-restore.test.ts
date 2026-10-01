@@ -111,7 +111,7 @@ describe("Music E2E transactional state restore", () => {
     expect(sql.indexOf(marker)).toBeLessThan(sql.lastIndexOf("ENABLE ALWAYS TRIGGER music_publication_operation_immutability"));
   });
 
-  it("uses the exact frozen 0026 table, migration, and trigger authority", async () => {
+  it("uses the exact frozen production table, migration, and trigger authority", async () => {
     // Production break caught: a dynamic public-table query or incomplete
     // trigger inventory could truncate an unexpected table or replay through a
     // trigger whose semantics mutate the captured bytes.
@@ -144,6 +144,7 @@ describe("Music E2E transactional state restore", () => {
       "0025_explorers_media_attachment_guard",
       "0026_explorers_media_slot_compatibility",
       "0027_explorers_lifecycle",
+      "0028_explorers_recovery_proof_retention",
     ]);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

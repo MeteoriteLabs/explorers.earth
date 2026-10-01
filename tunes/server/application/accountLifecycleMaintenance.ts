@@ -3,6 +3,7 @@ import type { ObjectStorage } from "../services/objectStorage";
 
 export async function runAccountLifecycleMaintenance(pool: Pool, storage: ObjectStorage, batchSize = 25): Promise<number> {
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100) throw new Error("Invalid maintenance batch size");
+  await pool.query("SELECT purge_expired_account_recovery_proofs($1)", [batchSize]);
   await pool.query(`WITH due AS (SELECT id FROM application_command_receipts
     WHERE status='completed' AND replay_until<=clock_timestamp() ORDER BY replay_until,id LIMIT $1)
     UPDATE application_command_receipts r SET status='retired',response=NULL FROM due WHERE r.id=due.id`, [batchSize]);

@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import pg from "pg";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -210,6 +210,33 @@ describe("canonical account lifecycle", () => {
     expect((await pool.query("SELECT reason,user_id,purged_at IS NOT NULL AS purged FROM deletion_feedback WHERE account_id=$1", [owner.accountId])).rows[0])
       .toMatchObject({ reason: null, user_id: null, purged: true });
     expect((await submit()).status).toBe(409);
+  });
+
+  it("purges only proofs expired over 24 hours through a bounded least-privilege function", async () => {
+    const owner = await identity();
+    const insert = async (age: string) => {
+      const digest = createHash("sha256").update(randomUUID()).digest();
+      const row = await pool.query<{ id: string }>(`WITH stamp AS (SELECT clock_timestamp()-$4::interval AS issued)
+        INSERT INTO account_recovery_proofs
+        (user_id,account_id,token_hash,authenticated_at,issued_at,expires_at)
+        SELECT $1,$2,$3,clock_timestamp(),stamp.issued,stamp.issued+interval '5 minutes'
+        FROM stamp RETURNING id`,
+      [owner.userId, owner.accountId, digest, age]);
+      return row.rows[0].id;
+    };
+    const old = await insert("25 hours");
+    const youngExpired = await insert("1 hour");
+    const live = await insert("1 minute");
+    const grants = await pool.query<{ direct_delete: boolean; bounded_execute: boolean }>(`SELECT
+      has_table_privilege('music_runtime','account_recovery_proofs','DELETE') AS direct_delete,
+      has_function_privilege('music_runtime','purge_expired_account_recovery_proofs(integer)','EXECUTE') AS bounded_execute`);
+    expect(grants.rows[0]).toEqual({ direct_delete: false, bounded_execute: true });
+    await runAccountLifecycleMaintenance(pool, new LocalObjectStorage(), 1);
+    const remaining = (await pool.query("SELECT id FROM account_recovery_proofs WHERE id=ANY($1::uuid[]) ORDER BY id",
+      [[old, youngExpired, live]])).rows.map((row) => row.id);
+    expect(remaining).toEqual([youngExpired, live].sort());
+    expect((await pool.query("SELECT purge_expired_account_recovery_proofs(1) AS removed")).rows[0].removed).toBe(0);
+    await expect(pool.query("SELECT purge_expired_account_recovery_proofs(101)")).rejects.toThrow();
   });
 
   it("keeps a Music-mapped deletion pending until the 6.1 owner boundary is available", async () => {

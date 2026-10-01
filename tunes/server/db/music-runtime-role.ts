@@ -104,6 +104,7 @@ const expectedRuntimeFunctions = [
   "music_compact_publication_operations(integer)",
   "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
+  "purge_expired_account_recovery_proofs(integer)",
   "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
   "reject_music_publication_archive_mutation()",
