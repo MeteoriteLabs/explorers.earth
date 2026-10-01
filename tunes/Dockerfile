@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base
+FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base
 
 # Set working directory here
 WORKDIR /app
@@ -22,13 +22,13 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 FROM base AS deps
 COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --engine-strict
 
 # Keep build and test tooling out of the runtime image.
 FROM base AS prod-deps
 COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --engine-strict
 # npm retains optional peer tooling here despite --omit=dev. The server runs
 # compiled JavaScript, so keep tsx and its older Go-built esbuild out of runner.
 RUN rm -rf node_modules/tsx node_modules/.bin/tsx

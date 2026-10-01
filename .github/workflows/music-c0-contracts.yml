@@ -51,14 +51,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.12"
+          node-version: "24.21.0"
           cache: npm
           cache-dependency-path: |
             package-lock.json
             tunes/package-lock.json
       - run: npm ci
       - run: npm ci --prefix tunes
-      - name: Prove public JSON command on Node 22.12
+      - name: Prove public JSON command on Node 24.21.0
         run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
       - if: runner.os == 'Linux'
         run: npm test --prefix tunes -- --run server/test/contracts

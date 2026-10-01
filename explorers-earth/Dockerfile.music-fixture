@@ -1,6 +1,6 @@
 # Music fixture build: the root context makes the canonical shared publication
 # response contract available without duplicating it in the Explorer bundle.
-FROM public.ecr.aws/docker/library/node:22.12-alpine@sha256:51eff88af6dff26f59316b6e356188ffa2c422bd3c3b76f2556a2e7e89d080bd AS builder
+FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS builder
 
 WORKDIR /workspace/explorers-earth
 
@@ -19,12 +19,13 @@ ENV VITE_API_URL=$VITE_API_URL \
     MUSIC_FIXTURE_BUNDLE_CHECK=$MUSIC_FIXTURE_BUNDLE_CHECK
 
 COPY explorers-earth/package.json explorers-earth/package-lock.json ./
-RUN npm ci
+RUN npm ci --engine-strict
 
 COPY explorers-earth/ ./
 COPY tunes/shared/musicPublicationContract.ts /workspace/tunes/shared/musicPublicationContract.ts
 COPY tunes/shared/explorersContract.ts /workspace/tunes/shared/explorersContract.ts
 COPY tunes/shared/explorersOwnerContentContract.ts /workspace/tunes/shared/explorersOwnerContentContract.ts
+COPY tunes/shared/explorersRichNoteContract.ts /workspace/tunes/shared/explorersRichNoteContract.ts
 RUN npm run build
 
 FROM public.ecr.aws/docker/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner

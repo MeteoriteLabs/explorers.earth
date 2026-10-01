@@ -93,7 +93,7 @@ jobs:
         run: bash scripts/image-ci-disk.sh cleanup
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22.12.0
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - name: Test Tunes
@@ -113,7 +113,7 @@ jobs:
           npm run music:types:scoped
           npm run music:types:baseline
       - name: Test hosted disk and image evidence contracts
-        run: node --test scripts/image-ci-disk.test.cjs
+        run: node --test scripts/image-ci-disk.test.cjs scripts/node-runtime-alignment.test.cjs
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Resolve immutable image name
         id: image
