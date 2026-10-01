@@ -1,7 +1,18 @@
 import React from 'react';
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loginSurface, ordinaryCategories, surfaceHarness } from './surfaceHarness';
+import { loginSurface, ordinaryCategories, surfaceHarness as renderSurface } from './surfaceHarness';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { canonicalAccountFixture } from '../../../test/canonicalAccountFixture';
+import { explorersApiClient } from '../../../lib/explorersApiClient';
+
+vi.mock('../../../lib/explorersApiClient', () => ({ explorersApiClient: { getMyProfile: vi.fn() } }));
+
+function surfaceHarness(child: React.ReactNode, options: Parameters<typeof renderSurface>[1] = {}) {
+  vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(canonicalAccountFixture());
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderSurface(<QueryClientProvider client={client}>{child}</QueryClientProvider>, options);
+}
 import useAuthStore from '../../../store/store';
 import BooksHome from '../../Books/components/dashboard/BooksHome';
 import MoviesHome from '../../Movies/components/dashboard/MoviesHome';
