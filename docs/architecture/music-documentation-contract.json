@@ -64,7 +64,8 @@
     "0032_explorers_owner_page_indexes",
     "0033_explorers_recommendation_display_overrides",
     "0034_explorers_books_provider_context",
-    "0035_explorers_book_cover_import"
+    "0035_explorers_book_cover_import",
+    "0036_explorers_analytics_events"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

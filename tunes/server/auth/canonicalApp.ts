@@ -1,3 +1,4 @@
+import {setupCanonicalAnalyticsRoutes} from '../routes/explorersCanonicalAnalyticsRoutes';
 import { contentBodyParser } from '../application/contentBodyParser';
 import { randomUUID } from "node:crypto";
 import express, { type Express, type Request, type Response } from "express";
@@ -52,6 +53,7 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.use(contentBodyParser());
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersAccountRoutes(app, pool, auth, config);
+  setupCanonicalAnalyticsRoutes(app,pool,auth);
   const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
   setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher));
   setupExplorersCatalogRoutes(app,pool,auth,config,books);

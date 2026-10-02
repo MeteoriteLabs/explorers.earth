@@ -94,7 +94,7 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
     const statements = sqlStatements(file, source);
     for (const statement of statements) {
       const commonTableExpressions = new Set(
-        [...statement.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([a-z_][a-z0-9_]*)\s*(?:\([^)]*\)\s*)?AS\s*\(/gi)].map((match) => match[1].toLowerCase()),
+        [...statement.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([a-z_][a-z0-9_]*)\s*(?:\([^)]*\)\s*)?AS\s*(?:(?:NOT\s+)?MATERIALIZED\s*)?\(/gi)].map((match) => match[1].toLowerCase()),
       );
       for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+(?:OF|SKIP|SET)\b)|INTO)\s+(?:LATERAL\s+)?(?:"?public"?\.)?["']?([a-z_][a-z0-9_]*)["']?/gi)) {
         const table = match[1].toLowerCase();

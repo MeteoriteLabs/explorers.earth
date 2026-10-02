@@ -118,7 +118,7 @@ describe("Music E2E transactional state restore", () => {
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
       "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
-      "activity_logs", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
+      "activity_logs", "analytics_event_receipts", "analytics_events", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
       "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects", "music_credential_revocation_operations",
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
@@ -150,7 +150,7 @@ describe("Music E2E transactional state restore", () => {
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
       "0033_explorers_recommendation_display_overrides",
-      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

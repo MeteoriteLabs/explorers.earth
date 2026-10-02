@@ -1,3 +1,4 @@
+import {startAnalyticsMaintenance} from '../application/analyticsMaintenance';
 import { createServer, type Server } from "node:http";
 import pg, { type Pool } from "pg";
 import { resolveMusicDatabaseConnection } from "../config/music-database-config";
@@ -45,10 +46,11 @@ export async function startCanonicalServer(
       });
     });
     const storage = resolveObjectStorage(environment);
+    const stopAnalyticsMaintenance=startAnalyticsMaintenance(pool);
     let maintenance: Promise<void> | undefined;
     const maintain = () => {
       if (maintenance) return;
-      maintenance = runAccountLifecycleMaintenance(pool, storage).then(() => undefined).catch(() => {
+      maintenance = runAccountLifecycleMaintenance(pool!, storage).then(()=>undefined).catch(() => {
         process.stderr.write("Account lifecycle maintenance failed; retry is scheduled\n");
       }).finally(() => { maintenance = undefined; });
     };
@@ -59,7 +61,7 @@ export async function startCanonicalServer(
       httpServer,
       shutdown: async () => {
         clearInterval(maintenanceTimer);
-        await maintenance;
+        await Promise.all([maintenance,stopAnalyticsMaintenance()]);
         await new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve()));
         if (ownsPool) await pool.end();
       },

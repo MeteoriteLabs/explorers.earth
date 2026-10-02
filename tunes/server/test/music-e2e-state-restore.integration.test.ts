@@ -99,6 +99,9 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     }
     const cover=(await fixture.query("SELECT media_id FROM recommendation_media WHERE recommendation_id=$1",[item])).rows[0].media_id;
     await fixture.query("INSERT INTO recommendation_book_covers(recommendation_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3),($1,$2,'thumbnail',$3)",[item,revisionAccount,cover]);
+    const analytics=(await fixture.query("INSERT INTO analytics_events(account_id,client_event_id,event_type,page,category,collection_id,recommendation_id,occurred_at,canonical_path,consent_version) VALUES($1,'restore-analytics','view','public-books','books',$2,$3,now(),'/restore/books','explorers-analytics-v1') RETURNING id",[revisionAccount,list,item])).rows[0].id;
+    await fixture.query("INSERT INTO analytics_event_receipts(account_id,client_event_id,input_hash,event_id) VALUES($1,'restore-analytics',decode(repeat('00',32),'hex'),$2)",[revisionAccount,analytics]);
+    await fixture.query("INSERT INTO analytics_event_receipts(account_id,client_event_id,input_hash,retired_at) VALUES($1,'restore-retired',decode(repeat('01',32),'hex'),now())",[revisionAccount]);
     await fixture.query("UPDATE account_category_content_state SET revision=revision+123 WHERE account_id=$1",[revisionAccount]);
   });
 
@@ -130,6 +133,7 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
   });
 
   it('preserves nonempty category counters exactly and advances after replay',async()=>{
+    const analytics=(await fixture!.query('SELECT * FROM analytics_events ORDER BY id')).rows,receipts=(await fixture!.query('SELECT * FROM analytics_event_receipts ORDER BY client_event_id')).rows;expect(analytics).toHaveLength(1);expect(receipts).toHaveLength(2);
     const bookFacts=(await fixture!.query('SELECT * FROM book_entity_details')).rows;
     const bookCovers=(await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows;expect(bookCovers).toHaveLength(2);
     const bookContexts=(await fixture!.query('SELECT * FROM book_recommendation_context')).rows;
@@ -147,6 +151,7 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect((await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows).toEqual(before);
     expect((await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows).toEqual(notes);
     expect((await fixture!.query('SELECT recommendation_id,display_values FROM recommendation_display_overrides WHERE account_id=$1 ORDER BY recommendation_id',[revisionAccount])).rows).toEqual(overrides);
+    expect((await fixture!.query('SELECT * FROM analytics_events ORDER BY id')).rows).toEqual(analytics);expect((await fixture!.query('SELECT * FROM analytics_event_receipts ORDER BY client_event_id')).rows).toEqual(receipts);
     expect((await fixture!.query('SELECT * FROM book_entity_details')).rows).toEqual(bookFacts);
     expect((await fixture!.query('SELECT * FROM book_recommendation_context')).rows).toEqual(bookContexts);
     expect((await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows).toEqual(bookCovers);

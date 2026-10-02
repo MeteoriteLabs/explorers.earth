@@ -119,6 +119,13 @@ const OWNER_PREFIXES = [
 ];
 
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification"> & Partial<Pick<RuntimeRouteSurface, "source">>): MusicSurfaceDecision {
+  if(route.classification!=='tombstone'&&route.classification!=='admin-tombstone'){
+    if(route.source==='tunes/server/routes/explorersAnalyticsRoutes.ts'&&route.path==='/api/explorers/analytics/events'){
+      if(route.method==='POST')return 'public';
+      if(route.method==='GET')return 'strapi-identity'; // Historical GET only, until Epic7.2.
+    }
+    if(route.source==='tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/analytics/summary')return 'explorers-owner';
+  }
   if (route.source === "tunes/server/auth/canonicalApp.ts") {
     if (["USE", "ALL"].includes(route.method) && (route.path === "/api/auth" || route.path === "/api/auth/*splat")) return "explorers-auth";
     if (route.method === "POST" && route.path === "/api/explorers/v1/recovery/start") return "explorers-recovery";

@@ -388,7 +388,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 42
+      "line": 43
     },
     {
       "method": "ALL",
@@ -398,7 +398,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 49
+      "line": 50
     },
     {
       "method": "ALL",
@@ -408,7 +408,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 50
+      "line": 51
     },
     {
       "method": "GET",
@@ -418,7 +418,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 53
+      "line": 54
     },
     {
       "method": "POST",
@@ -428,7 +428,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 66
+      "line": 68
     },
     {
       "method": "GET",
@@ -438,7 +438,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 84
+      "line": 86
     },
     {
       "method": "GET",
@@ -528,7 +528,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 189
+      "line": 191
     },
     {
       "method": "POST",
@@ -538,27 +538,37 @@
       "policy": "hashed-capability+guest-allowlist",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 225
+      "line": 228
     },
     {
       "method": "POST",
       "path": "/api/explorers/analytics/events",
-      "classification": "tombstone",
-      "ownerSource": "none-fail-closed",
-      "policy": "fail-closed-tombstone",
+      "classification": "public",
+      "ownerSource": "consent+live-canonical-public-target",
+      "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 275
+      "line": 280
     },
     {
       "method": "GET",
       "path": "/api/explorers/analytics/events",
-      "classification": "tombstone",
-      "ownerSource": "none-fail-closed",
-      "policy": "fail-closed-tombstone",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "historical-strapi-bearer-owner-until-7.2",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 322
+      "line": 328
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/summary",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-Actor+analytics:read+current-session-lifecycle",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
+      "line": 29
     },
     {
       "method": "GET",
@@ -1198,7 +1208,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/index.ts",
-      "line": 282
+      "line": 287
     },
     {
       "method": "GET",
@@ -1863,8 +1873,14 @@
     {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/analyticsMaintenance.ts",
+      "line": 8
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
       "source": "tunes/server/auth/canonicalStartup.ts",
-      "line": 56
+      "line": 58
     },
     {
       "kind": "setTimeout",
@@ -1882,7 +1898,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
-      "line": 271
+      "line": 276
     },
     {
       "kind": "setTimeout",

@@ -49,13 +49,25 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 }
 
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
+  it('upgrades 0035 to analytics without advancing content revisions and fails readiness without0036',async()=>{
+    const pool=await freshDatabase('analytics_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0036');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO account_category_content_state(account_id,category,revision) VALUES($1,'books',7)",[account]);
+    const before=await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1',[account]);
+    await expect(verifyMusicDatabase(pool)).rejects.toThrow();
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0036_explorers_analytics_events']);
+    expect((await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before.rows);
+    expect((await pool.query("SELECT to_regclass('analytics_events') AS events,to_regclass('analytics_event_receipts') AS receipts")).rows[0]).toEqual({events:'analytics_events',receipts:'analytics_event_receipts'});
+    await verifyMusicDatabase(pool);expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
+  });
   it('upgrades populated 0032 to the override companion once without changing existing category revisions',async()=>{
     const pool=await freshDatabase('override_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0033');
     await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Before override','before',0)",[account]);
     const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
-    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import']);
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import','0036_explorers_analytics_events']);
     expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
     expect((await pool.query('SELECT count(*)::int n FROM recommendation_display_overrides')).rows[0].n).toBe(0);
@@ -70,7 +82,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Prior list','prior',0)",[account]);
     const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
-    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import']);
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import','0036_explorers_analytics_events']);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
     const indexes=(await pool.query("SELECT indexname FROM pg_indexes WHERE schemaname='public' AND indexname IN ('collections_owner_order_idx','recommendations_owner_id_idx','collection_items_owner_page_idx','collection_items_owner_collection_order_idx') ORDER BY indexname")).rows;
     expect(indexes).toHaveLength(4);
@@ -126,7 +138,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Old list','old',0),($1,'guides','Old guide','guide',0)",[account]);
-    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision','0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import']);
+    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision','0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import','0036_explorers_analytics_events']);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[account])).rows).toEqual([{category:'books',revision:'1'},{category:'guides',revision:'1'}]);
     const db=await pool.connect();try {await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
       await db.query("UPDATE collections SET heading='Post upgrade' WHERE account_id=$1 AND category='books'",[account]);await db.query('COMMIT');

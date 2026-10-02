@@ -8,6 +8,15 @@ export const categoryKeys = [
 export const categoryKeySchema = z.enum(categoryKeys);
 export type CategoryKey = z.infer<typeof categoryKeySchema>;
 
+const analyticsInstant=z.string().datetime({offset:true}).refine(value=>Number.isFinite(Date.parse(value)));
+export const analyticsQuerySchema=z.object({from:analyticsInstant,to:analyticsInstant,category:categoryKeySchema.optional(),collectionId:z.string().uuid().optional(),recommendationId:z.string().uuid().optional()}).strict().refine(input=>Date.parse(input.to)>Date.parse(input.from)&&Date.parse(input.to)-Date.parse(input.from)<=366*86400000);
+export type AnalyticsQuery=z.infer<typeof analyticsQuerySchema>;
+export type AnalyticsCounts={views:number;clicks:number;interactions:number};
+export type AnalyticsBucket=AnalyticsCounts&{key:string};
+export type AnalyticsDimension={buckets:AnalyticsBucket[];truncated:boolean;other:AnalyticsCounts};
+export type AnalyticsDimensionKey='page'|'category'|'country'|'trafficSource'|'element'|'platform'|'collection'|'recommendation';
+export type AnalyticsSummary={version:1;from:string;to:string;totals:AnalyticsCounts;daily:(AnalyticsCounts&{day:string})[];dimensions:Record<AnalyticsDimensionKey,AnalyticsDimension>};
+
 // Bounded recommendation core. Rich notes, category facts and display overrides have
 // separate typed adapters; this boundary intentionally has no arbitrary JSON field.
 export const contentCategorySchema = z.enum(['places','guides','movies','books','games','apps','products','people']);

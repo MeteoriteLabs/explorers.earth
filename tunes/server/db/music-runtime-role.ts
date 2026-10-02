@@ -13,6 +13,8 @@ const expectedRuntimeTables = [
   "account_presentation",
   "account_recovery_proofs",
   "activity_logs",
+  "analytics_event_receipts",
+  "analytics_events",
   "analytics_snapshots",
   "api_tokens",
   "application_command_receipts",
@@ -128,6 +130,7 @@ const expectedRuntimeFunctions = [
   "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
   "purge_expired_account_recovery_proofs(integer)",
+  "purge_expired_analytics_events(integer)",
   "purge_explorers_account_content(uuid,uuid)",
   "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
@@ -599,6 +602,8 @@ export async function provisionMusicRuntimeLogin(
       ON entity_identifiers,book_entity_details FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON account_music_identity FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -686,6 +691,10 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "TRUNCATE TABLE users",
     "INSERT INTO account_category_content_state DEFAULT VALUES",
     "UPDATE account_category_content_state SET revision=revision WHERE false",
+    "DELETE FROM analytics_events WHERE false",
+    "UPDATE analytics_events SET element=element WHERE false",
+    "DELETE FROM analytics_event_receipts WHERE false",
+    "UPDATE analytics_event_receipts SET input_hash=input_hash WHERE false",
     "DELETE FROM account_category_content_state WHERE false",
     "TRUNCATE TABLE account_category_content_state",
     "SELECT explorers_content_revision_insert()",
@@ -737,6 +746,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || tableRows.some((row) => {
     const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state"
       ? [true, false, false, false]
+      : ["analytics_events","analytics_event_receipts"].includes(row.object_name)
+        ? [true,true,false,false]
       : row.object_name === "account_music_identity"
         ? [true, true, false, false]
       : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details"

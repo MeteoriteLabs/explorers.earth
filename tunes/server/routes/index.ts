@@ -1,3 +1,4 @@
+import {startAnalyticsMaintenance} from '../application/analyticsMaintenance';
 import type { Express } from "express";
 import type { Server } from "http";
 import type { IStorage } from "../storage";
@@ -181,9 +182,10 @@ export async function registerRoutes(
     }));
     setupExplorersPublicProfileRoutes(app, { shell: publicProfileService.shell.bind(publicProfileService), category: publicProfileService.category.bind(publicProfileService), detail: publicProfileService.detail.bind(publicProfileService) });
   }
+  let canonicalAnalyticsEnabled=false;
   installProfileOptionalMusicIntegrations(localProfile, {
     nativeAuth: () => setupAuthRoutes(app),
-    analyticsPublishing: () => setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies()),
+    analyticsPublishing: () => {setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies());canonicalAnalyticsEnabled=true;},
     reactivation: () => setupReactivationRoutes(app, {
       reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
     }),
@@ -204,9 +206,11 @@ export async function registerRoutes(
   let suspensionListener: Awaited<ReturnType<typeof startMusicReconciliationSuspensionListener>> | undefined;
   let lifecycleWorker: ReturnType<typeof startMusicLifecycleWorker> | undefined;
   let publicationShredTimer: NodeJS.Timeout | undefined;
+  let stopAnalyticsMaintenance:(()=>Promise<void>)|undefined;
   let cleanupPromise: Promise<void> | undefined;
   const shutdown = (): Promise<void> => cleanupPromise ??= (async () => {
     lifecycleWorker?.stop();
+    await stopAnalyticsMaintenance?.();
     if (publicationShredTimer) clearInterval(publicationShredTimer);
     await ownerSocketRegistry.disconnectAllSockets().catch(() => undefined);
     await Promise.allSettled([
@@ -215,6 +219,7 @@ export async function registerRoutes(
     ].filter((operation): operation is Promise<void> => operation !== undefined));
   })();
   try {
+  if(canonicalAnalyticsEnabled)stopAnalyticsMaintenance=startAnalyticsMaintenance(pool);
   publicChangeListener = await startMusicPublicChangeListener({
     pool,
     fanout: (change) => publicSocketRegistry.publish(change),

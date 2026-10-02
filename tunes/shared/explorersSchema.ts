@@ -193,3 +193,10 @@ export const bookRecommendationContext=pgTable('book_recommendation_context',{
 export const recommendationBookCovers=pgTable('recommendation_book_covers',{
  recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),slot:text('slot').notNull(),mediaId:uuid('media_id').notNull(),
 },t=>[primaryKey({columns:[t.recommendationId,t.slot]}),index('recommendation_book_covers_asset_idx').on(t.mediaId,t.accountId),index('recommendation_book_covers_account_idx').on(t.accountId,t.recommendationId)]);
+// 0036 owns strict payload constraints, composite linkage, indexes and retention authority.
+export const analyticsEvents=pgTable('analytics_events',{
+ id:uuid('id').defaultRandom().primaryKey(),accountId:uuid('account_id').notNull(),clientEventId:text('client_event_id').notNull(),eventType:text('event_type').notNull(),page:text('page').notNull(),category:text('category'),collectionId:uuid('collection_id'),recommendationId:uuid('recommendation_id'),occurredAt:timestamp('occurred_at',{withTimezone:true}).notNull(),receivedAt:timestamp('received_at',{withTimezone:true}).notNull().defaultNow(),canonicalPath:text('canonical_path').notNull(),element:text('element'),referrerOrigin:text('referrer_origin'),utm:jsonb('utm').notNull().default({}),metadata:jsonb('metadata').notNull().default({}),countryCode:text('country_code'),consentVersion:text('consent_version').notNull(),
+});
+export const analyticsEventReceipts=pgTable('analytics_event_receipts',{
+ accountId:uuid('account_id').notNull(),clientEventId:text('client_event_id').notNull(),inputHash:bytea('input_hash').notNull(),eventId:uuid('event_id'),acceptedAt:timestamp('accepted_at',{withTimezone:true}).notNull().defaultNow(),retiredAt:timestamp('retired_at',{withTimezone:true}),
+},t=>[primaryKey({columns:[t.accountId,t.clientEventId]})]);

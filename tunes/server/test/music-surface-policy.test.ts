@@ -14,6 +14,14 @@ const repositoryRoot = resolve(import.meta.dirname, "../../..");
 
 describe("Music surface authorization policy", () => {
   it.each([
+    ['POST','/api/explorers/analytics/events','tunes/server/routes/explorersAnalyticsRoutes.ts','public'],
+    ['GET','/api/explorers/analytics/summary','tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts','explorers-owner'],
+    ['GET','/api/explorers/analytics/events','tunes/server/routes/explorersAnalyticsRoutes.ts','strapi-identity'],
+  ])('classifies only exact analytics source and method: %s %s',(method,path,source,decision)=>{
+    const route={method,path,source,classification:'private'};expect(decisionForRoute(route)).toBe(decision);
+    for(const changed of [{source:'legacy.ts'},{method:'DELETE'},{path:path+'/internal'},{classification:'tombstone'}])expect(decisionForRoute({...route,...changed})).toBe('tombstone');
+  });
+  it.each([
     ['POST','/api/explorers/v1/entities/resolve'],['POST','/api/explorers/v1/collections'],
     ['PATCH','/api/explorers/v1/collections/:id'],['PATCH','/api/explorers/v1/collections/:id/order'],
     ['DELETE','/api/explorers/v1/collections/:id'],['POST','/api/explorers/v1/recommendations'],

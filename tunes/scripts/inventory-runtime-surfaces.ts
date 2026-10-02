@@ -77,6 +77,8 @@ function classificationFor(method: string, path: string, priorClassification: st
 }
 
 function ownerFor(path: string, classification: string): string {
+  if(path==='/api/explorers/analytics/events')return classification==='public'?'consent+live-canonical-public-target':'historical-strapi-bearer-owner-until-7.2';
+  if(path==='/api/explorers/analytics/summary')return 'verified-Actor+analytics:read+current-session-lifecycle';
   if (path === "/api/explorers/v1/media/:id/content" && classification === "public") return "owner-or-visible-public-profile-attachment";
   if (path === "/api/explorers/analytics/music-account/:accountDocumentId/events") return "active-local-binding-from-account-descriptor";
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
