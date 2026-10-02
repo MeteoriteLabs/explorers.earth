@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../lib/publicRuntimeConfig";
 import type { UTMParameters } from '../utils/urlHelpers';
 import { createMusicDevelopmentFetch } from '../features/music/musicDevelopmentTransport';
 
@@ -5,7 +6,7 @@ const CONSENT_STORAGE_KEY = 'explorers-cookie-consent';
 export const ANALYTICS_CONSENT_CHANGED_EVENT =
   'explorers:analytics-consent-changed';
 const DEFAULT_LOCAL_TUNES_URL =
-  import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth';
+  runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || 'https://localtunes.earth');
 
 type FetchLike = typeof fetch;
 

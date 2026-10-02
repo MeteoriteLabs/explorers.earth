@@ -1,3 +1,4 @@
+import { isCanonicalRuntime } from "./lib/publicRuntimeConfig";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -29,7 +30,7 @@ const authLink = setContext((_, { headers }) => {
 
 // create a httpLink with the help of Graphql
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_API_URL,
+  uri: isCanonicalRuntime() ? "/graphql" : import.meta.env.VITE_API_URL,
   credentials: "omit",
 });
 

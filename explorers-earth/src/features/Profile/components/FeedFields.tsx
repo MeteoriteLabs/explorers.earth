@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
@@ -582,7 +583,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
     const requestId = beginAsyncOperation("google-fetch");
     try {
       const details = await axios.get(
-        `${GOOGLE_PLACES_API_BASE_URL}/${placeId}?fields=photos&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+        `${GOOGLE_PLACES_API_BASE_URL}/${placeId}?fields=photos&key=${mapsBrowserKey()
         }`
       );
       if (!isLatestGeneration()) return;
@@ -594,7 +595,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
       if (limited.length > 0) {
         imported = await Promise.all(
           limited.map(async (ref, i) => {
-            const direct = `${GOOGLE_PLACES_API_BASE_URL}/${placeId}/${ref}/media?maxWidthPx=800&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+            const direct = `${GOOGLE_PLACES_API_BASE_URL}/${placeId}/${ref}/media?maxWidthPx=800&key=${mapsBrowserKey()
               }`;
             // Best-effort availability check
             try {

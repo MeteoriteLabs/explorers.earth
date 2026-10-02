@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../../../lib/publicRuntimeConfig";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
@@ -22,7 +23,7 @@ import TopReadsManager from "./TopReadsManager";
 import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 
-const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
+const VITE_BASE_URL = runtimeOrigin(import.meta.env.VITE_BASE_URL || window.location.origin);
 
 // ─────────────────────────────────────────────────────────────
 // Book Row in Recommendations Tab

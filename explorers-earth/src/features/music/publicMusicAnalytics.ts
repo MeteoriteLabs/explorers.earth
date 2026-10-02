@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 export type PublicMusicProductEvent =
   | { name: "navigation_opened"; route: "friendly" | "direct" }
   | { name: "section_opened"; section: "player" | "request" | "queue" | "playlists" | "history" }
@@ -109,7 +110,7 @@ type DeliveryInput = Parameters<AnalyticsClient["track"]>[0];
 type DeliveryRecord = { eventId: string; input: DeliveryInput; state: "pending" | "retry" | "committed" };
 const memoryDeliveries = new Map<string, DeliveryRecord>();
 const MAX_OCCURRENCE_RECEIPTS = 256;
-const DEFAULT_LOCAL_TUNES_URL = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
+const DEFAULT_LOCAL_TUNES_URL = runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth");
 const defaultClient: AnalyticsClient = {
   async track(input) {
     return createPublicMusicAnalyticsClient(DEFAULT_LOCAL_TUNES_URL,
