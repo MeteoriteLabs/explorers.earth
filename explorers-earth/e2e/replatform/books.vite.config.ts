@@ -15,7 +15,7 @@ export default defineConfig({
   envPrefix: 'BOOKS_E2E_NEVER_EXPOSE_AMBIENT_',
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify(`${origin}/graphql`),
-    'import.meta.env.VITE_REST_API_URL': JSON.stringify(`${origin}/api`),
+    'import.meta.env.VITE_REST_API_URL': JSON.stringify('https://legacy-rest.invalid/api'),
     'import.meta.env.VITE_BASE_URL': JSON.stringify(origin),
     'import.meta.env.VITE_PUBLIC_PROFILE_GATEWAY_URL': JSON.stringify(origin),
     'import.meta.env.VITE_LOCAL_TUNES_API_URL': JSON.stringify('https://music-fixture.test'),

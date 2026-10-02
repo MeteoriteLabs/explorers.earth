@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { explorersApiClient, type RecommendationObservation } from "../../../../lib/explorersApiClient";
+import { explorersApiClient, type RecommendationObservation, type CollectionObservation } from "../../../../lib/explorersApiClient";
 import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
 import { booksCommandKey } from "../../api/booksClient";
 import { bookContextFromLinks } from "../../api/booksViewModel";
@@ -24,7 +24,10 @@ interface InlineSearchProps {
   onSelect: (item: BookCandidate) => void;
 }
 
-const InlineSearch = ({ onSelect }: InlineSearchProps) => {
+export const InlineSearch = ({ onSelect }: InlineSearchProps) => {
+  const generation=useAuthStore(state=>state.generation);
+  const authority=useRef<{controller:AbortController;sequence:number;query:string;generation:number}>();
+  const searchSequence=useRef(0);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookCandidate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,12 +36,18 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
   const [cursor,setCursor]=useState<string|null>(null);
 
   useEffect(() => {
-    const controller=new AbortController();setResults([]);setCursor(null);setError(undefined);
-    if(!query.trim()){setLoading(false);return;}
-    setLoading(true);timerRef.current=setTimeout(async()=>{try{const page=await explorersApiClient.searchBookCandidates({query,limit:12},controller.signal);if(!controller.signal.aborted){setResults(page.items);setCursor(page.nextCursor);}}catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Book search failed");}finally{if(!controller.signal.aborted)setLoading(false);}},350);
+    const controller=new AbortController();const current={controller,sequence:++searchSequence.current,query,generation};authority.current=current;setResults([]);setCursor(null);setError(undefined);
+    const active=()=>authority.current===current&&!controller.signal.aborted&&useAuthStore.getState().generation===generation;
+    if(!query.trim()){setLoading(false);return()=>controller.abort();}
+    setLoading(true);timerRef.current=setTimeout(async()=>{try{const page=await explorersApiClient.searchBookCandidates({query,limit:12},controller.signal);if(active()){setResults(page.items);setCursor(page.nextCursor);}}catch(e){if(active())setError(e instanceof Error?e.message:'Book search failed');}finally{if(active())setLoading(false);}},350);
     return()=>{controller.abort();if(timerRef.current)clearTimeout(timerRef.current);};
-  },[query]);
-
+  },[query,generation]);
+  const loadMore=async()=>{
+    const current=authority.current;if(!current||!cursor||loading||current.controller.signal.aborted)return;
+    const active=()=>authority.current===current&&!current.controller.signal.aborted&&useAuthStore.getState().generation===current.generation;
+    setLoading(true);setError(undefined);
+    try{const page=await explorersApiClient.searchBookCandidates({query:current.query,limit:12,cursor},current.controller.signal);if(active()){setResults(old=>[...old,...page.items]);setCursor(page.nextCursor);}}catch(e){if(active())setError(e instanceof Error?e.message:'Book search failed');}finally{if(active())setLoading(false);}
+  };
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -47,7 +56,7 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
           autoFocus
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {authority.current?.controller.abort();setQuery(e.target.value);}}
           placeholder="Search by title, author, or ISBN..."
           className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50 transition-colors"
         />
@@ -95,7 +104,7 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
       )}
 
       {error && <div role="alert">{error} <button onClick={() => setQuery(query + " ")}>Retry</button></div>}
-      {cursor && <button disabled={loading} onClick={async()=>{setLoading(true);try{const page=await explorersApiClient.searchBookCandidates({query,limit:12,cursor});setResults(old=>[...old,...page.items]);setCursor(page.nextCursor);}catch(e){setError(e instanceof Error?e.message:"Book search failed");}finally{setLoading(false);}}}>Load more books</button>}
+      {cursor && <button disabled={loading} onClick={loadMore}>Load more books</button>}
       {!loading && !error && query.trim() && results.length === 0 && (
         <p className="text-sm text-white/30 text-center py-4">No results found for "{query}"</p>
       )}
@@ -130,11 +139,12 @@ const AddBookPage = () => {
   const initialized=useRef<string>();
   const operationAbort=useRef(new AbortController());
   const createdRecommendation=useRef<string>();
+  const pendingCreate=useRef<{parent:CollectionObservation;input:Parameters<typeof explorersApiClient.createMyRecommendation>[1];key:string}>();
   const uploadedFiles=useRef(new Map<File,{id:string;url:string}>());
   const selectionSequence=useRef(0);
   const [snapshotPreviews,setSnapshotPreviews]=useState<string[]>([]);
   useEffect(()=>{const urls=newSnapshots.map(file=>URL.createObjectURL(file));setSnapshotPreviews(urls);return()=>urls.forEach(url=>URL.revokeObjectURL(url));},[newSnapshots]);
-  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
+  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;pendingCreate.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
 
   // Load existing book list (for display_order)
   const { data:listData,content,error:loadError } = useBooksOwnerContent(listId);
@@ -199,10 +209,10 @@ const AddBookPage = () => {
       for(const file of newSnapshots){let uploaded=uploadedFiles.current.get(file);if(!uploaded){const media=await explorersApiClient.createMedia(file,"recommendation",signal);signal.throwIfAborted();if(useAuthStore.getState().generation!==generation)return;uploaded={id:media.id,url:`/api/explorers/v1/media/${media.id}/content`};uploadedFiles.current.set(file,uploaded);}snapshots.push(uploaded);}
       signal.throwIfAborted();
       const patch={note:note?{version:1 as const,format:"quill-html" as const,html:String(note)}:null,userRating,bookContext:bookContextFromLinks(buyLinks),mediaIds:snapshots.map(media=>media.id)};
-      const retryCreated=!isEdit&&Boolean(createdRecommendation.current);
+      const retryCreated=!isEdit&&Boolean(createdRecommendation.current||pendingCreate.current);
       let recommendationId=bookId??createdRecommendation.current;
       if(isEdit&&bookId){if(!editedObservation.current)throw new Error("Refresh before editing this Book");await explorersApiClient.updateMyRecommendation(editedObservation.current,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(bookId,signal);}
-      else if(!recommendationId){const parent=await explorersApiClient.getMyEditableCollection(listId,signal);const saved=await explorersApiClient.createMyRecommendation(parent,{...patch,entityId,publicationState:"published"},booksCommandKey(),signal);recommendationId=saved.id;createdRecommendation.current=saved.id;setUploadingCover(true);try{const observed=await explorersApiClient.getMyEditableRecommendation(saved.id,signal);const imported=await explorersApiClient.importBookCovers(observed,booksCommandKey(),signal);if(Object.values(imported.slots).some(slot=>slot.status==="fallback"))toast.info("Some covers use the original Book image.");}catch(e){toast.info("Cover copying was unavailable; the original Book image is retained.");}finally{setUploadingCover(false);}}
+      else if(!recommendationId){if(!pendingCreate.current){const parent=await explorersApiClient.getMyEditableCollection(listId,signal);pendingCreate.current={parent,input:{...patch,entityId,publicationState:"published"},key:booksCommandKey()};}const command=pendingCreate.current;const saved=await explorersApiClient.createMyRecommendation(command.parent,command.input,command.key,signal);recommendationId=saved.id;createdRecommendation.current=saved.id;pendingCreate.current=undefined;setUploadingCover(true);try{const observed=await explorersApiClient.getMyEditableRecommendation(saved.id,signal);const imported=await explorersApiClient.importBookCovers(observed,booksCommandKey(),signal);if(Object.values(imported.slots).some(slot=>slot.status==="fallback"))toast.info("Some covers use the original Book image.");}catch(e){toast.info("Cover copying was unavailable; the original Book image is retained.");}finally{setUploadingCover(false);}}
       if(!recommendationId||useAuthStore.getState().generation!==generation)return;
       if(retryCreated){const observed=editedObservation.current??await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);await explorersApiClient.updateMyRecommendation(observed,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);}
       else if(!isEdit)editedObservation.current=await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);
@@ -420,7 +430,7 @@ const AddBookPage = () => {
                   {existingSnapshots.map((snap) => (
                     <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
                       <img
-                        src={snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`}
+                        src={snap.url}
                         className="w-full h-full object-cover"
                         alt=""
                       />
