@@ -7,6 +7,8 @@ import request from 'supertest';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { createCanonicalApp } from '../auth/canonicalApp';
 import { resolveExplorersAuthConfig } from '../auth/betterAuth';
+import { emptyBookDetails } from '../../shared/explorersBookContract';
+import { publicRecommendationDetailSchema } from '../../shared/explorersPublicContentContract';
 let pool:pg.Pool, app:ReturnType<typeof createCanonicalApp>['app'];
 beforeAll(()=>{pool=new pg.Pool({connectionString:process.env.DATABASE_URL_TEST,max:4});app=createCanonicalApp(pool,resolveExplorersAuthConfig({EXPLORERS_PUBLIC_ORIGIN:'http://127.0.0.1:51474',EXPLORERS_AUTH_SECRET:'public-test-secret-'.repeat(4),GOOGLE_CLIENT_ID:'fixture',GOOGLE_CLIENT_SECRET:'fixture'})).app;});
 afterAll(async()=>{await pool.end();});
@@ -40,7 +42,14 @@ it('projects effective override string/null and invalidates public continuation 
  await pool.query('INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$3,$4),($2,$3,$5)',[f.ids[0],f.ids[1],f.account,{title:'😀 Edited'},{title:null}]);
  expect((await request(app).get(f.children).query({limit:1,cursor:first.body.nextCursor})).status).toBe(409);
  const page=await request(app).get(f.children);expect(page.status).toBe(200);expect(page.body.items.map((v:any)=>v.title)).toEqual(['😀 Edited',null,'Public title']);
- for(const id of f.ids.slice(0,2)) {const detail=await request(app).get(`${f.children}/${id}`);expect(detail.status).toBe(200);expect(detail.body.recommendation.title).toBe(id===f.ids[0]?'😀 Edited':null);expect(Object.keys(detail.body.recommendation).sort()).toEqual(['id','kind','note','title','userRating']);}
+ for(const id of f.ids.slice(0,2)) {
+  const detail=await request(app).get(`${f.children}/${id}`);expect(detail.status).toBe(200);
+  expect(publicRecommendationDetailSchema.parse(detail.body)).toEqual(detail.body);
+  expect(Object.keys(detail.body.recommendation).sort()).toEqual(['bookContext','bookCovers','bookDetails','id','kind','note','title','userRating']);
+  expect(detail.body).toEqual({version:'explorers-public-content/v1',recommendation:{id,title:id===f.ids[0]?'😀 Edited':null,kind:'book',userRating:8,note:null,
+   bookDetails:emptyBookDetails(),bookContext:{buyLinks:[]},bookCovers:{cover:null,thumbnail:null}}});
+  expect(JSON.stringify(detail.body)).not.toContain(f.account);expect(JSON.stringify(detail.body)).not.toContain(f.entity);
+ }
  await pool.query('UPDATE recommendation_display_overrides SET display_values=$2 WHERE recommendation_id=$1',[f.ids[0],{secret:'Never exposed'}]);
  const bad=await request(app).get(f.children);expect(bad.status).toBe(400);expect(JSON.stringify(bad.body)).not.toContain('Never exposed');
  await pool.query('UPDATE recommendation_display_overrides SET display_values=$2 WHERE recommendation_id=$1',[f.ids[0],{title:'Never exposed'.repeat(100000)}]);
@@ -108,7 +117,9 @@ it('serves only validated rich note detail through every live public ancestor',a
  const f=await fixture(1),note={version:1,format:'quill-html',html:'<h3>Public</h3><p><u>😀 café</u></p>'};
  await pool.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[f.ids[0],JSON.stringify(note)]);
  const path=`${f.children}/${f.ids[0]}`,visible=await request(app).get(path);expect(visible.status).toBe(200);
- expect(visible.body).toEqual({version:'explorers-public-content/v1',recommendation:{id:f.ids[0],title:'Public title',kind:'book',userRating:8,note}});
+ expect(publicRecommendationDetailSchema.parse(visible.body)).toEqual(visible.body);
+ expect(visible.body).toEqual({version:'explorers-public-content/v1',recommendation:{id:f.ids[0],title:'Public title',kind:'book',userRating:8,note,
+  bookDetails:emptyBookDetails(),bookContext:{buyLinks:[]},bookCovers:{cover:null,thumbnail:null}}});
  const missing=(await request(app).get(`${f.children}/${randomUUID()}`)).body;
  for(const [sql,undo,id] of [
   ['UPDATE creator_accounts SET public_profile=false WHERE id=$1','UPDATE creator_accounts SET public_profile=true WHERE id=$1',f.account],

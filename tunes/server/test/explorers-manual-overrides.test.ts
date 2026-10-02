@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import * as wire from '../../shared/explorersContract';
 import { editableOwnerRecommendationSchema } from '../../shared/explorersOwnerContentContract';
 import { publicRecommendationDetailSchema } from '../../shared/explorersPublicContentContract';
+import { emptyBookDetails } from '../../shared/explorersBookContract';
 
 it('normalizes manual titles without merging identity and counts Unicode code points',()=>{
  const schema=(wire as any).resolveManualEntitySchema;
@@ -31,4 +32,18 @@ it('keeps compatible canonical reads while allowing nullable effective public pr
  expect(publicRecommendationDetailSchema.safeParse(dto).success).toBe(true);
  expect(publicRecommendationDetailSchema.safeParse({...dto,recommendation:{...dto.recommendation,title:'😀'.repeat(501)}}).success).toBe(false);
  expect(editableOwnerRecommendationSchema.innerType().shape).toHaveProperty('displayTitle');
+});
+it('admits only typed Book additions and excludes them from every non-Book public detail',()=>{
+ const recommendation={id:'00000000-0000-4000-8000-000000000001',title:'Public',kind:'book',userRating:null,note:null};
+ const additions={bookDetails:emptyBookDetails(),bookContext:{buyLinks:[]},bookCovers:{cover:null,thumbnail:null}};
+ const response=(values:Record<string,unknown>)=>({version:'explorers-public-content/v1',recommendation:{...recommendation,...values}});
+ expect(publicRecommendationDetailSchema.parse(response(additions))).toEqual(response(additions));
+ for(const kind of ['place','movie','game','app','product','person']){
+  expect(publicRecommendationDetailSchema.safeParse(response({kind})).success).toBe(true);
+  for(const [field,value] of Object.entries(additions))expect(publicRecommendationDetailSchema.safeParse(response({kind,[field]:value})).success).toBe(false);
+ }
+ for(const extra of [{accountId:recommendation.id},{entityId:recommendation.id},{displayOverrides:{title:'raw'}},{provenance:{provider:'google_books'}},{storageKey:'private/object'}])
+  expect(publicRecommendationDetailSchema.safeParse(response({...additions,...extra})).success).toBe(false);
+ for(const bad of [{bookDetails:{...emptyBookDetails(),secret:'private'}},{bookContext:{buyLinks:[{name:'Unsafe',url:'javascript:alert(1)'}]}},{bookCovers:{cover:null,thumbnail:null,rawUrl:'https://private.invalid'}}])
+  expect(publicRecommendationDetailSchema.safeParse(response({...additions,...bad})).success).toBe(false);
 });
