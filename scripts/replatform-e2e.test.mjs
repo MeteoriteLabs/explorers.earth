@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join,basename,dirname,resolve} from 'node:path';
-import {parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord} from './replatform-e2e.mjs';
+import {parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
 const ack='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 const manifest=()=>JSON.parse(readFileSync(new URL('../explorers-earth/e2e/replatform/suite-manifest.json',import.meta.url)));
 const provenance={commit:'a'.repeat(40),sourceHash:'b'.repeat(64),manifestHash:'c'.repeat(64),dirty:true};
@@ -81,10 +81,22 @@ test('controlled failing protected browser retains failure but no credential art
   const result=await capturedChild(process.execPath,[join(process.cwd(),'explorers-earth/node_modules/@playwright/test/cli.js'),'test','--config',config,'--trace=off','--output',output],process.cwd(),{...process.env,PLAYWRIGHT_JSON_OUTPUT_NAME:json},'controlled');
   assert.equal(result.status,1);const report=JSON.parse(readFileSync(json));assert.equal(report.config.configFile,config);assert.equal(resolve(report.config.projects[0].outputDir),resolve(output));assert.deepEqual(report.config.metadata.protectedArtifacts,{sourceConfig:'config.mjs',outputDir:output,trace:'off',video:'off',screenshot:'off'});assert.equal(report.suites[0].specs[0].tests[0].results[0].status,'failed');assert.match(report.suites[0].specs[0].tests[0].results[0].error.message,/Expected/);
   const walk=path=>readdirSync(path,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?walk(join(path,entry.name)):[entry.name]);assert.equal(walk(privateDirectory).some(name=>/\.(?:zip|webm|png|jpg)$/.test(name)),false);
-  writeFileSync(join(directory,'failure.json'),JSON.stringify({status:'failed',childStatus:1,cleanup:'passed',artifacts:[]}));rmSync(privateDirectory,{recursive:true,force:true});assert.equal(existsSync(privateDirectory),false);assert.deepEqual(readdirSync(directory),['failure.json']);assert.doesNotMatch(readFileSync(join(directory,'failure.json'),'utf8'),/sensitive-cookie/);
+  const diagnostics=decodeProtectedFailureDiagnostics(report,{spec:'failure.spec.mjs',identities:[{file:'failure.spec.mjs',titlePath:['intentional protected failure'],project:'controlled',repeat:0}]},privateDirectory);assert.equal(diagnostics.length,1);assert.equal(diagnostics[0].matcher,'toBe');assert.ok(diagnostics[0].locations.length);writeFileSync(join(directory,'failure.json'),JSON.stringify({status:'failed',childStatus:1,cleanup:'passed',artifacts:[],diagnostics}));rmSync(privateDirectory,{recursive:true,force:true});assert.equal(existsSync(privateDirectory),false);assert.deepEqual(readdirSync(directory),['failure.json']);assert.doesNotMatch(readFileSync(join(directory,'failure.json'),'utf8'),/sensitive-cookie/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });
 test('sanitized failed identity evidence never qualifies and cannot carry credentials or retries',()=>{
  const lane=manifest().lanes[0],c=structuredClone(child(lane));c.status=1;c.receipt.child.status=1;c.receipt.results[0].status='unexpected';c.receipt.results[0].attempts[0].status='failed';const {results,cleanup,artifacts}=c.receipt;const failure={version:1,lane:lane.name,provenance,results,child:{status:1,signal:null},cleanup,artifacts};assert.equal(validateFailureRecord(lane,failure,provenance,c),failure);assert.throws(()=>validateLaneReceipt(lane,c,provenance));
  for(const mutate of [r=>r.cookie='sensitive',r=>r.results[0].error='sensitive',r=>r.results[0].attempts[0].retry=1,r=>r.artifacts.trace='on',r=>r.cleanup.status='failed',r=>r.child.status=0]){const changed=structuredClone(failure);mutate(changed);assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
+});
+test('private failed assertion diagnostics retain only manifest identity, category, matcher and source coordinates',()=>{
+ const lane=manifest().lanes[1],report=rawReport(lane,true);report.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'Error: expect(locator).toHaveValue(expected) session=DO_NOT_EXPORT cookie=DO_NOT_EXPORT proof=DO_NOT_EXPORT',stack:'Error: private data\n at test (C:/owned/profile.spec.ts:110:7)'}};
+ const diagnostics=decodeProtectedFailureDiagnostics(report,lane,process.cwd());assert.deepEqual(diagnostics,[{identity:lane.identities[1],kind:'assertion',matcher:'toHaveValue',locations:[{line:110,column:7}]}]);assert.doesNotMatch(JSON.stringify(diagnostics),/DO_NOT_EXPORT|session|cookie|proof|C:\/owned/);
+});
+test('structured private error location is sufficient without exporting raw message or stack',()=>{
+ const lane=manifest().lanes[1],report=rawReport(lane,true);report.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,errors:[{message:'Timeout 10000ms exceeded: expect(locator).toBeVisible() cookie=DO_NOT_EXPORT',location:{file:join(process.cwd(),lane.spec),line:94,column:5}}]};
+ assert.deepEqual(decodeProtectedFailureDiagnostics(report,lane,process.cwd()),[{identity:lane.identities[1],kind:'timeout',matcher:'toBeVisible',locations:[{line:94,column:5}]}]);
+});
+test('failure diagnostic allowlist rejects credentials, arbitrary messages and unsafe coordinates',()=>{
+ const lane=manifest().lanes[1],c=structuredClone(child(lane));c.status=1;const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts,diagnostics:[{identity:lane.identities[1],kind:'assertion',matcher:'toHaveValue',locations:[{line:110,column:7}]}]};assert.doesNotThrow(()=>validateFailureRecord(lane,failure,provenance,c));
+ for(const mutation of [r=>r.diagnostics[0].message='private cookie',r=>r.diagnostics[0].matcher='private cookie',r=>r.diagnostics[0].locations[0].file='private cookie',r=>r.diagnostics[0].locations[0].line=0,r=>r.diagnostics[0].identity={...lane.identities[1],titlePath:['unreviewed']},r=>r.diagnostics[0].kind='private cookie']){const changed=structuredClone(failure);mutation(changed);assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
 });

@@ -22,9 +22,12 @@ export async function createProtectedReceipt(root:string,laneName:string,options
  if(JSON.stringify(contract.snapshotSource(root).provenance)!==JSON.stringify(marker.provenance))throw new Error('Protected receipt source changed');
  const startedAt=new Date().toISOString();let discovered:unknown[]|undefined,executed:unknown[]|undefined,playwright:string|undefined,child:{status:number|null;signal:string|null}|undefined;
  let artifactPolicy:{configFile:string;outputDir:string}|undefined;
+ let diagnostics:unknown[]=[];
  const decode=(path:string,execution:boolean)=>{
   if(!artifactPolicy)throw new Error('Protected artifact allocation missing');
-  const decoded=contract.decodeProtectedReport(JSON.parse(readFileSync(path,'utf8')),lane,root,execution,artifactPolicy);
+  const report=JSON.parse(readFileSync(path,'utf8'));
+  const decoded=contract.decodeProtectedReport(report,lane,root,execution,artifactPolicy);
+  if(execution)diagnostics=contract.decodeProtectedFailureDiagnostics(report,lane,root);
   if(playwright&&decoded.playwright!==playwright)throw new Error('Protected browser tool version changed');
   playwright=decoded.playwright;return decoded.results;
  };
@@ -50,7 +53,7 @@ export async function createProtectedReceipt(root:string,laneName:string,options
    if(!discovered||!executed||!child||interrupted||failures.length)throw new Error('Protected execution or owned cleanup did not qualify');
    const current=contract.snapshotSource(root).provenance;if(JSON.stringify(current)!==JSON.stringify(marker.provenance))throw new Error('Protected source changed during execution');
    if(!artifactPolicy||existsSync(artifactPolicy.configFile)||existsSync(artifactPolicy.outputDir)||lstatSync(directory).isSymbolicLink())throw new Error('Protected artifact ownership changed');
-   if(child.status!==0||child.signal){writeFileSync(join(directory,'failure.json'),JSON.stringify({version:1,lane:laneName,provenance:marker.provenance,results:executed,child,cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'}},null,2),{mode:0o600,flag:'wx'});throw new Error('Protected execution failed after owned artifact cleanup');}
+   if(child.status!==0||child.signal){const failure={version:1,lane:laneName,provenance:marker.provenance,results:executed,child,diagnostics,cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'}};contract.validateFailureRecord(lane,failure,marker.provenance,child);writeFileSync(join(directory,'failure.json'),JSON.stringify(failure,null,2),{mode:0o600,flag:'wx'});throw new Error('Protected execution failed after owned artifact cleanup');}
    const receipt={version:1,lane:laneName,provenance:marker.provenance,config:lane.config,spec:lane.spec,projects:lane.projects,discovery:discovered,results:executed,errors:[],cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'},authority:{owned:true,database:authority.database,containerId:authority.containerId,imageId:authority.imageId},child,startedAt,endedAt:new Date().toISOString(),playwright};
    contract.validateLaneReceipt(lane,{status:0,signal:null,error:null,receipt},marker.provenance);
    writeFileSync(join(directory,'receipt.json'),JSON.stringify(receipt,null,2),{mode:0o600,flag:'wx'});
