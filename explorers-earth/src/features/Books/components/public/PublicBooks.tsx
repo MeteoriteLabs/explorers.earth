@@ -66,7 +66,7 @@ const PublicBooks = () => {
 
   // Collect all pinned books across all lists (Top Reads)
   const allBooks = lists.flatMap((l) => l.recommended_books);
-  const topReads = allBooks
+  const topReads = (Array.isArray(data?.topReads) ? data.topReads.filter(isNonNullObject) as unknown as RecommendedBook[] : allBooks)
     .filter((b) => b.is_pinned)
     .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
 
@@ -99,7 +99,7 @@ const PublicBooks = () => {
   const profileName = creatorName;
   const bookCount = allBooks.length;
   const listCount = lists.length;
-  
+
   const pageTitle = `${profileName} | Favorite Books | explorers`;
   const metaDescription = bookCount > 0
     ? `Explore curated book recommendations and reading lists shared by ${profileName} on explorers. Browse ${listCount}${query.hasMore || query.error ? '+' : ''} reading list${listCount !== 1 ? 's' : ''} containing ${bookCount} loaded book${bookCount !== 1 ? 's' : ''}.`
@@ -178,14 +178,14 @@ const PublicBooks = () => {
         {topReads.length > 0 && (
           <div className="mb-0">
              {isDesktop ? (
-                <TopReadsHero 
-                  books={topReads} 
+                <TopReadsHero
+                  books={topReads}
                   onBookClick={handleBookClick}
                   showManageButton={false}
                 />
              ) : (
-                <TopReadsMobileHero 
-                  books={topReads} 
+                <TopReadsMobileHero
+                  books={topReads}
                   onBookClick={handleBookClick}
                   showManageButton={false}
                 />

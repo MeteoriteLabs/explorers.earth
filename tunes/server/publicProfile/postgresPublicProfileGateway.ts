@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import type { PublicProfileGateway } from "./publicProfileService";
 import type { PublicCategory } from "./publicProfilePolicy";
+import {publicBooksProjection} from './publicBooksProjection';
 
 const flag: Record<string, string> = { places: "public_recommendations", guides: "public_guides", music: "public_music",
   movies: "public_movie", books: "public_books", games: "public_games", apps: "public_apps",
@@ -47,6 +48,10 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
     return publicShell;
   }
 
-  async resolveCategory(_username: string, _category: PublicCategory): Promise<unknown> { return { items: [], nextCursor: null }; }
-  async resolveDetail(): Promise<unknown> { return undefined; }
+  async resolveCategory(username: string, category: PublicCategory, limit=12,cursor?:string): Promise<unknown> {
+    return category==='books'?publicBooksProjection(this.db,username,limit,cursor):{ items: [], nextCursor: null };
+  }
+  async resolveDetail(username:string,category:PublicCategory,slug:string,limit=12,cursor?:string): Promise<unknown> {
+    return category==='books'?publicBooksProjection(this.db,username,limit,cursor,slug):undefined;
+  }
 }

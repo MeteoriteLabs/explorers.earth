@@ -22,7 +22,7 @@ const PublicBookList = () => {
     book: null,
   });
 
-  const page = usePublicProfileDetail(username, "books", listSlug);
+  const page = usePublicProfileDetail(username, "books", listSlug, { pageSize:24 });
   const { data, loading, error, refetch } = page;
 
   const rawList = (Array.isArray(data?.bookLists) ? data.bookLists : []).find(
@@ -57,13 +57,13 @@ const PublicBookList = () => {
   const restBooks = books.filter((b) => !b.is_pinned);
 
   const pageTitle = rawList ? `${rawList.List_Name} | ${username}'s Book List | explorers` : `Book List | explorers`;
-  const metaDescription = rawList?.list_description 
-    ? rawList.list_description 
-    : rawList 
+  const metaDescription = rawList?.list_description
+    ? rawList.list_description
+    : rawList
       ? `Explore the curated book list "${rawList.List_Name}" containing ${books.length}${page.hasMore ? "+" : ""} books recommended by ${username} on explorers.`
       : "Explore book recommendations on explorers.";
 
-  const seoKeywords = rawList 
+  const seoKeywords = rawList
     ? [`${rawList.List_Name}`, `${username} books`, "book list", "explorers"]
     : ["book list", "explorers"];
 

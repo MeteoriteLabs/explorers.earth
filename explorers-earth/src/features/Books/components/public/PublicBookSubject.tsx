@@ -10,6 +10,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
 const isRenderableBook = (value: unknown): value is RecommendedBook =>
@@ -31,12 +32,13 @@ const PublicBookSubject = () => {
     book: null,
   });
 
-  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = usePublicRecommendationCategory(
+  const page = usePublicRecommendationCategory(
     username,
     "books",
     accountData?.public_books === "Yes",
   );
 
+  const {data,loading:booksLoading,error:booksError,refetch:refetchBooks}=page;
   const loading = userLoading || booksLoading;
   const queryError = userError || booksError;
   const rawLists = data?.bookLists;
@@ -121,7 +123,7 @@ const PublicBookSubject = () => {
           </div>
         ) : queryError && !hasUsableData ? (
           <PublicRouteErrorState title="Book subject unavailable" error={queryError} onRetry={handleRetry} />
-        ) : subjectBooks.length === 0 ? (
+        ) : subjectBooks.length === 0 && !page.hasMore ? (
           <p className="text-center text-[color:var(--category-muted,rgba(255,255,255,0.3))] py-16">No books found for this subject.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -132,6 +134,7 @@ const PublicBookSubject = () => {
         )}
       </div>
 
+      <PublicScrollContinuation {...page} label="book lists" />
       <BookDetailModal
         book={modalState.book}
         open={modalState.open}

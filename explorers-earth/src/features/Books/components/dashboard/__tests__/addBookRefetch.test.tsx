@@ -1,141 +1,32 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { MockedProvider } from "@apollo/client/testing";
-import { useQuery, useMutation } from "@apollo/client";
-import {
-  BOOKS_BY_LIST,
-  booksByListVars,
-  refetchBooksByList,
-} from "../../../api/query";
-import { CREATE_RECOMMENDED_BOOK } from "../../../api/mutation";
-
-const LIST_ID = "list-1";
-
-// Exactly the 6 NON-NULL variables CREATE_RECOMMENDED_BOOK declares ($volume_id!,
-// $title!, $authors!, $is_pinned!, $display_order!, $book_list!). MockedProvider
-// matches the mock by deep-equal on variables, so the harness must send this same
-// object.
-const createVars = {
-  volume_id: "vol-1",
-  title: "Refetched Book",
-  authors: ["Author A"],
-  is_pinned: false,
-  display_order: 0,
-  book_list: LIST_ID,
-};
-
-// Full recommended_books selection set (addTypename={false}) so the cache write
-// has every field the query asks for — no "missing field" noise on read.
-const makeBook = (over: Record<string, unknown>) => ({
-  documentId: "b1",
-  volume_id: "vol-1",
-  title: "Refetched Book",
-  subtitle: null,
-  authors: ["Author A"],
-  year: null,
-  cover_url: null,
-  cover_url_large: null,
-  subjects: null,
-  publisher: null,
-  page_count: null,
-  google_rating: null,
-  description: null,
-  isbn_13: null,
-  preview_link: null,
-  user_recommendation_note: null,
-  user_rating: null,
-  buy_links: null,
-  is_pinned: false,
-  pin_order: null,
-  display_order: 0,
-  media_details: null,
-  // Typed empty arrays: a future test that needs sub-fields gets a TS error if it
-  // spreads the wrong shape (BookListView only renders b.title today).
-  book_categories: [] as Array<{ documentId: string; subject_name: string }>,
-  Media: [] as Array<{ documentId: string; url: string; caption: string | null }>,
-  ...over,
-});
-
-const bookListResult = (books: ReturnType<typeof makeBook>[]) => ({
-  bookLists: [
-    {
-      documentId: LIST_ID,
-      List_Name: "QA",
-      list_description: null,
-      slug: "qa",
-      visibility: true,
-      top_reads_heading: null,
-      display_order: 0,
-      recommended_books: books,
-    },
-  ],
-});
-
-function Harness() {
-  const { data } = useQuery(BOOKS_BY_LIST, {
-    variables: booksByListVars(LIST_ID),
-    fetchPolicy: "cache-and-network",
-  });
-  const [createBook] = useMutation(CREATE_RECOMMENDED_BOOK);
-  const books = data?.bookLists?.[0]?.recommended_books ?? [];
-  return (
-    <div>
-      <ul>{books.map((b: { documentId: string; title: string }) => <li key={b.documentId}>{b.title}</li>)}</ul>
-      <button
-        onClick={() =>
-          createBook({
-            variables: createVars,
-            refetchQueries: refetchBooksByList(LIST_ID),
-            awaitRefetchQueries: true,
-          })
-        }
-      >
-        add
-      </button>
-    </div>
-  );
-}
-
-describe("add book → list refetch", () => {
-  it("shows the new book after add without a manual reload", async () => {
-    const mocks = [
-      {
-        request: { query: BOOKS_BY_LIST, variables: booksByListVars(LIST_ID) },
-        result: { data: bookListResult([]) },
-      },
-      {
-        request: { query: CREATE_RECOMMENDED_BOOK, variables: createVars },
-        result: {
-          data: {
-            createRecommendedBook: {
-              documentId: "b1",
-              volume_id: "vol-1",
-              title: "Refetched Book",
-              display_order: 0,
-              is_pinned: false,
-            },
-          },
-        },
-      },
-      {
-        request: { query: BOOKS_BY_LIST, variables: booksByListVars(LIST_ID) },
-        result: { data: bookListResult([makeBook({})]) },
-      },
-    ];
-
-    render(
-      <MockedProvider mocks={mocks} addTypename={false}>
-        <Harness />
-      </MockedProvider>,
-    );
-
-    // Initial list is empty.
-    expect(screen.queryByText("Refetched Book")).toBeNull();
-
-    await userEvent.click(screen.getByRole("button", { name: "add" }));
-
-    // The awaited refetch repopulates the list — appears with no manual reload.
-    expect(await screen.findByText("Refetched Book")).toBeInTheDocument();
-  });
+import {describe,it,expect,vi,beforeEach} from 'vitest';
+import {render,screen,waitFor,act,fireEvent} from '@testing-library/react';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import AddBookPage from '../AddBookPage';
+import useAuthStore from '../../../../../store/store';
+import {explorersApiClient} from '../../../../../lib/explorersApiClient';
+import {emptyBookDetails} from '../../../../../../../tunes/shared/explorersBookContract';
+const state=vi.hoisted(()=>({content:undefined as any}));
+vi.mock('../../../api/useBooksOwnerContent',()=>({useBooksOwnerContent:()=>state.content}));
+vi.mock('../../../../Favorites/components/TiptapEditor',()=>({default:({value,onChange}:any)=><textarea aria-label="Recommendation note" value={value} onChange={e=>onChange(e.target.value)}/>}));
+vi.mock('../../../../../lib/explorersApiClient',()=>({explorersApiClient:{updateMyRecommendation:vi.fn(),getMyEditableRecommendation:vi.fn(),getCompleteMyCategoryTopPicks:vi.fn(),setMyCategoryTopPicks:vi.fn(),createMedia:vi.fn(),searchBookCandidates:vi.fn(),resolveBookEntity:vi.fn(),getMyEditableCollection:vi.fn(),createMyRecommendation:vi.fn(),importBookCovers:vi.fn()}}));
+vi.mock('sonner',()=>({toast:{error:vi.fn(),success:vi.fn(),info:vi.fn()}}));
+const observation={detail:{id:'rec',revision:1}};
+const loaded=()=>({data:{bookLists:[{recommended_books:[{documentId:'rec',entity_id:'entity',title:'Hydrated book',authors:[],subjects:[],Media:[],volume_id:'volume',user_recommendation_note:'<p>Original</p>'}]}]},content:{observation:{generation:2},details:new Map([['rec',observation]])}});
+function form(){return <MemoryRouter initialEntries={['/books/list/edit/rec']}><Routes><Route path="/books/:listId/edit/:bookId" element={<AddBookPage/>}/><Route path="/recommendations/books/:listId" element={<p>Saved list</p>}/></Routes></MemoryRouter>;}
+describe('actual canonical Add/edit form',()=>{
+ beforeEach(()=>{vi.clearAllMocks();useAuthStore.setState({generation:2,accountId:'owner'});state.content=loaded();vi.mocked(explorersApiClient.getMyEditableRecommendation).mockResolvedValue({detail:{id:'rec',revision:2}} as never);vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({topPicks:[]} as never);vi.stubGlobal('URL',Object.assign(URL,{createObjectURL:vi.fn(()=> 'blob:fixture'),revokeObjectURL:vi.fn()}));});
+ it('holds interactive fields until hydration and saves captured revision',async()=>{state.content={};const view=render(form());expect(screen.queryByLabelText('Recommendation note')).toBeNull();state.content=loaded();view.rerender(form());fireEvent.change(await screen.findByLabelText('Recommendation note'),{target:{value:'<p>Edited</p>'}});fireEvent.click(screen.getByRole('button',{name:'Save Changes'}));await screen.findByText('Saved list');expect(explorersApiClient.updateMyRecommendation).toHaveBeenCalledWith(observation,expect.objectContaining({note:{version:1,format:'quill-html',html:'<p>Edited</p>'}}),expect.any(String),expect.any(AbortSignal));});
+ it('retains draft on snapshot upload failure',async()=>{vi.mocked(explorersApiClient.createMedia).mockRejectedValue(new Error('Upload failed'));const view=render(form());fireEvent.change(await screen.findByLabelText('Recommendation note'),{target:{value:'Keep draft'}});fireEvent.change(view.container.querySelector('input[type=file]')!,{target:{files:[new File(['image'],'snapshot.png',{type:'image/png'})]}});fireEvent.click(screen.getByRole('button',{name:'Save Changes'}));await waitFor(()=>expect(explorersApiClient.createMedia).toHaveBeenCalled());expect(explorersApiClient.updateMyRecommendation).not.toHaveBeenCalled();expect(screen.getByLabelText('Recommendation note')).toHaveValue('Keep draft');expect(screen.queryByText('Saved list')).toBeNull();});
+ it('aborts upload and clears old form when generation changes',async()=>{let resolveUpload:(value:any)=>void=()=>{};vi.mocked(explorersApiClient.createMedia).mockImplementation(()=>new Promise(resolve=>{resolveUpload=resolve;}));const view=render(form());await screen.findByLabelText('Recommendation note');fireEvent.change(view.container.querySelector('input[type=file]')!,{target:{files:[new File(['image'],'snapshot.png',{type:'image/png'})]}});fireEvent.click(screen.getByRole('button',{name:'Save Changes'}));await waitFor(()=>expect(explorersApiClient.createMedia).toHaveBeenCalled());const signal=vi.mocked(explorersApiClient.createMedia).mock.calls[0][2];await act(async()=>{useAuthStore.setState({generation:3,accountId:'other'});resolveUpload({id:'media'});});expect(signal?.aborted).toBe(true);expect(explorersApiClient.updateMyRecommendation).not.toHaveBeenCalled();expect(screen.queryByLabelText('Recommendation note')).toBeNull();expect(screen.queryByText('Saved list')).toBeNull();});
+ it('reuses a partially created recommendation and saves current fields on retry',async()=>{
+  vi.mocked(explorersApiClient.searchBookCandidates).mockResolvedValue({items:[{title:'Fixture',provider:'google_books',externalKind:'volume',externalId:'volume',preview:emptyBookDetails(),buyLinkSuggestion:null}],nextCursor:null} as never);
+  vi.mocked(explorersApiClient.resolveBookEntity).mockResolvedValue({id:'entity'} as never);
+  vi.mocked(explorersApiClient.getMyEditableCollection).mockResolvedValue({collection:{id:'list',revision:1}} as never);
+  vi.mocked(explorersApiClient.createMyRecommendation).mockResolvedValue({id:'rec'} as never);
+  vi.mocked(explorersApiClient.importBookCovers).mockResolvedValue({slots:{cover:{status:'copied'},thumbnail:{status:'copied'}}} as never);
+  vi.mocked(explorersApiClient.setMyCategoryTopPicks).mockRejectedValueOnce(new Error('Pin conflict')).mockResolvedValue(undefined as never);
+  render(<MemoryRouter initialEntries={['/books/list/add']}><Routes><Route path="/books/:listId/add" element={<AddBookPage/>}/><Route path="/recommendations/books/:listId" element={<p>Saved list</p>}/></Routes></MemoryRouter>);
+  fireEvent.change(screen.getByPlaceholderText('Search by title, author, or ISBN...'),{target:{value:'fixture'}});fireEvent.click(await screen.findByRole('button',{name:/^Fixture/}));fireEvent.change(await screen.findByLabelText('Recommendation note'),{target:{value:'Initial draft'}});fireEvent.click(screen.getByRole('button',{name:'Add to List'}));await waitFor(()=>expect(explorersApiClient.setMyCategoryTopPicks).toHaveBeenCalledTimes(1));await waitFor(()=>expect(screen.getByRole('button',{name:'Add to List'})).toBeEnabled());
+  fireEvent.change(screen.getByLabelText('Recommendation note'),{target:{value:'Changed after failure'}});fireEvent.click(screen.getByRole('button',{name:'Add to List'}));await screen.findByText('Saved list');expect(explorersApiClient.createMyRecommendation).toHaveBeenCalledTimes(1);expect(explorersApiClient.updateMyRecommendation).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({note:{version:1,format:'quill-html',html:'Changed after failure'}}),expect.any(String),expect.any(AbortSignal));
+ });
 });

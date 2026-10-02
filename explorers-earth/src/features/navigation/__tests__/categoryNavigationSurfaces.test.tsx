@@ -46,7 +46,7 @@ vi.mock('../../../components/SEO', () => ({ default: () => null }));
 vi.mock('react-joyride', () => ({ default: () => null }));
 vi.mock('../../Favorites/hooks/useCreateLocation', () => ({ useCreateLocation: () => ({ handleLocationSubmit: vi.fn(), accountData: {} }) }));
 const headers = [
-  ['public_books', BooksHome], ['public_movie', MoviesHome], ['public_games', GamesHome], ['public_apps', AppsHome],
+  ['public_movie', MoviesHome], ['public_games', GamesHome], ['public_apps', AppsHome],
   ['public_products', ProductsHome], ['public_people', PeopleHome], ['public_guides', GuidesPage], ['public_recommendations', Favorites],
 ] as const;
 const listFixture = { recommendationLists: [{ documentId: 'place-list', List_Name: 'My places', slug: 'places', Visibility: true, createdAt: '2026-01-01', recommended_places: [], List_Name_Details: {} }] };
@@ -163,7 +163,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(h.requests.some(r => r.name === 'UpdateGuide')).toBe(true));
     expect(h.requests.find(r => r.name === 'UpdateGuide')?.variables).toEqual({ documentId: 'g1', data: { Visibility: false } }); expect(h.writes).toEqual([]);
   });
-  it.each([['books', BookListView, 'bookLists', 'DeleteBookList'], ['movies', MovieListView, 'movieLists', 'DeleteMovieList']] as const)('%s list delete never unpublishes the category or changes saved pins', async (kind, Component, listField, operation) => {
+  it.each([['movies', MovieListView, 'movieLists', 'DeleteMovieList']] as const)('%s list delete never unpublishes the category or changes saved pins', async (kind, Component, listField, operation) => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = { documentId: 'list-1', List_Name: 'Test list', visibility: true, slug: 'list', recommended_books: [], recommended_movies: [] };
     const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<Component />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', lists: { [listField]: [fixture] }, respond: name => name === operation ? { [kind === 'books' ? 'deleteBookList' : 'deleteMovieList']: { documentId: 'list-1' } } : undefined }); await h.ready();
