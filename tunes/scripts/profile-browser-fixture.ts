@@ -143,10 +143,11 @@ async function main(): Promise<number> {
   const lifecycleConfig = ['--config', 'e2e/replatform/lifecycle.playwright.config.ts', '--project=lifecycle-chromium', '--retries=0'];
   const lifecycleEnv = { ...process.env, LIFECYCLE_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
   let discovered: string[] = [];
-  const browserArgs = suite === 'lifecycle' ? lifecycleConfig : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'];
+  let browserArgs = suite === 'lifecycle' ? lifecycleConfig : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'];
   const browserEnv = { ...process.env,
     [suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
     PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+  if (protectedReceipt) browserArgs = protectedReceipt.arguments(browserArgs, disposable);
   if (protectedReceipt) protectedReceipt.discovery(frontend, [...browserArgs, '--workers=1', '--forbid-only'], browserEnv, disposable);
   if (suite === 'lifecycle' && !protectedReceipt) {
     const listPath = join(artifacts!, 'discovery.json');

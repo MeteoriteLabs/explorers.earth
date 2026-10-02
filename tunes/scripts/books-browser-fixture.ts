@@ -151,8 +151,9 @@ async function main(): Promise<number> {
       BOOKS_E2E_API_PORT: String(apiPort) },
   });
   await waitFor(origin);
-  const browserArgs = ['--config=e2e/replatform/books.playwright.config.ts', '--retries=0'];
+  let browserArgs = ['--config=e2e/replatform/books.playwright.config.ts', '--retries=0'];
   const browserEnv = { ...process.env, BOOKS_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+  if (protectedReceipt) browserArgs = protectedReceipt.arguments(browserArgs, disposable);
   if (protectedReceipt) protectedReceipt.discovery(frontend, [...browserArgs, '--workers=1', '--forbid-only'], browserEnv, disposable);
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
     'test', ...browserArgs, ...(protectedReceipt ? ['--workers=1', '--forbid-only', '--reporter=json,line'] : [])], {

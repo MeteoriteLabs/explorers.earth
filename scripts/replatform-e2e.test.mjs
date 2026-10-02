@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdtempSync,mkdirSync,copyFileSync,rmSync,readdirSync,existsSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
-import {join,basename} from 'node:path';
-import {parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,qualifyLanes,capturedChild,decodeProtectedReport} from './replatform-e2e.mjs';
+import {join,basename,dirname,resolve} from 'node:path';
+import {parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord} from './replatform-e2e.mjs';
 const ack='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 const manifest=()=>JSON.parse(readFileSync(new URL('../explorers-earth/e2e/replatform/suite-manifest.json',import.meta.url)));
 const provenance={commit:'a'.repeat(40),sourceHash:'b'.repeat(64),manifestHash:'c'.repeat(64),dirty:true};
-const child=(lane)=>({status:0,signal:null,error:null,receipt:{version:1,lane:lane.name,provenance,config:lane.config,spec:lane.spec,projects:lane.projects,discovery:lane.identities,results:lane.identities.map(identity=>({identity,expectedStatus:'passed',status:'expected',attempts:[{status:'passed',retry:0}]})),errors:[],cleanup:{status:'passed'},authority:{owned:true,database:'music_uat_'+'d'.repeat(32),containerId:'e'.repeat(64),imageId:'sha256:'+'f'.repeat(64)},child:{status:0,signal:null},startedAt:'2026-10-02T00:00:00.000Z',endedAt:'2026-10-02T00:00:01.000Z',playwright:'1.61.1'}});
+const child=(lane)=>({status:0,signal:null,error:null,receipt:{version:1,lane:lane.name,provenance,config:lane.config,spec:lane.spec,projects:lane.projects,discovery:lane.identities,results:lane.identities.map(identity=>({identity,expectedStatus:'passed',status:'expected',attempts:[{status:'passed',retry:0}]})),errors:[],cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'},authority:{owned:true,database:'music_uat_'+'d'.repeat(32),containerId:'e'.repeat(64),imageId:'sha256:'+'f'.repeat(64)},child:{status:0,signal:null},startedAt:'2026-10-02T00:00:00.000Z',endedAt:'2026-10-02T00:00:01.000Z',playwright:'1.61.1'}});
 test('only named delivered scope and fresh owned temporary output are accepted',()=>{
  const args=['--milestone','delivered-auth-profile-books','--ack',ack,'--receipt',join(tmpdir(),'replatform-e2e-contract-12345678')];
  assert.equal(parseArguments(args).milestone,'delivered-auth-profile-books');
@@ -42,3 +44,47 @@ const rawReport=(lane,execution=false)=>({errors:[],config:{workers:1,shard:null
 test('actual reporter contract permits unselected configured projects but requires selected exact tuples',()=>{const lane=manifest().lanes[0];assert.deepEqual(decodeProtectedReport(rawReport(lane),lane,process.cwd(),false).results,lane.identities);});
 for(const [name,change] of [['loader errors',r=>r.errors.push({message:'loader'})],['missing selected project',r=>r.config.projects.shift()],['selected retries',r=>r.config.projects[0].retries=1],['sharding',r=>r.config.shard={current:1,total:2}],['only allowed',r=>r.config.forbidOnly=false],['wrong spec',r=>r.suites[0].specs[0].file='other.spec.ts'],['unknown project',r=>r.suites[0].specs[0].tests[0].projectName='unselected-music'],['skip annotation',r=>r.suites[0].specs[0].tests[0].annotations=[{type:'skip'}]],['stdout/incomplete JSON',r=>delete r.errors]])test(`raw discovery rejects ${name}`,()=>{const lane=manifest().lanes[0],r=rawReport(lane);change(r);assert.throws(()=>decodeProtectedReport(r,lane,process.cwd(),false));});
 test('raw dynamic skip cannot qualify even if process succeeds',()=>{const lane=manifest().lanes[0],r=rawReport(lane,true);r.suites[0].specs[0].tests[0].results[0].status='skipped';const c=child(lane);c.receipt.results=decodeProtectedReport(r,lane,process.cwd(),true).results;assert.throws(()=>validateLaneReceipt(lane,c,provenance));});
+
+test('already-dirty executed migration and helper edits change source provenance',()=>{
+ const root=process.cwd(),directory=mkdtempSync(join(tmpdir(),'replatform-source-contract-'));
+ const omitted=['tunes/migrations/0001_runtime_baseline.sql','tunes/scripts/music-uat-database.ts','tunes/scripts/music-fixture-secret.ts','tunes/scripts/music-qualification-postgres.ts','tunes/scripts/music-output-redaction.ts','tunes/scripts/music-vitest-evidence.ts'];
+ try{
+  const original=snapshotSource(root);for(const path of new Set([...Object.keys(original.hashes),...omitted])){mkdirSync(dirname(join(directory,path)),{recursive:true});copyFileSync(join(root,path),join(directory,path));}
+  const git=args=>execFileSync('git',args,{cwd:directory,windowsHide:true,stdio:'pipe'});
+  git(['init','-q']);git(['add','.']);git(['-c','user.name=Contract','-c','user.email=contract@example.invalid','commit','-qm','source fixture']);writeFileSync(join(directory,'unrelated-dirty-marker'),'dirty');
+  for(const path of omitted){const before=snapshotSource(directory);assert.equal(before.provenance.dirty,true);writeFileSync(join(directory,path),readFileSync(join(directory,path),'utf8')+'\n// mutation\n');const after=snapshotSource(directory);assert.equal(after.provenance.dirty,true);assert.notEqual(after.provenance.sourceHash,before.provenance.sourceHash,path);}
+  for(const path of ['tunes/scripts/music-output-redaction.ts','tunes/scripts/music-vitest-evidence.ts','explorers-earth/index.html','tunes/auth-runtime/node_modules/.package-lock.json'])assert.ok(snapshotSource(directory).hashes[path],path);
+  writeFileSync(join(directory,'tunes/migrations/9999_untracked.sql'),'SELECT 1;');assert.throws(()=>snapshotSource(directory));rmSync(join(directory,'tunes/migrations/9999_untracked.sql'));
+  writeFileSync(join(directory,'explorers-earth/src/untracked-runtime.ts'),'export default 1;');assert.throws(()=>snapshotSource(directory));rmSync(join(directory,'explorers-earth/src/untracked-runtime.ts'));
+  writeFileSync(join(directory,'.gitignore'),'ignored-helper.ts\nignored-runtime.ts\n');writeFileSync(join(directory,'explorers-earth/src/ignored-runtime.ts'),'export default 1;');git(['check-ignore','explorers-earth/src/ignored-runtime.ts']);assert.throws(()=>snapshotSource(directory));rmSync(join(directory,'explorers-earth/src/ignored-runtime.ts'));writeFileSync(join(directory,'tunes/scripts/ignored-helper.ts'),'export const injected=1;');git(['check-ignore','tunes/scripts/ignored-helper.ts']);writeFileSync(join(directory,omitted[1]),readFileSync(join(directory,omitted[1]),'utf8')+'\nimport "./ignored-helper";');assert.throws(()=>snapshotSource(directory));  rmSync(join(directory,omitted[1]));assert.throws(()=>snapshotSource(directory));
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});
+test('protected configuration disables all credential artifacts and owns output for every selected lane',()=>{
+ for(const lane of manifest().lanes){const config=protectedBrowserConfiguration({testDir:'.',use:{trace:'retain-on-failure',video:'retain-on-failure',screenshot:'only-on-failure'},projects:lane.projects.map(name=>({name,use:{trace:'on',video:'on'}}))},process.cwd(),lane.config,join(tmpdir(),'owned-output'));assert.equal(config.use.trace,'off');assert.equal(config.use.video,'off');assert.equal(config.use.screenshot,'off');for(const p of config.projects){assert.equal(p.use.trace,'off');assert.equal(p.use.video,'off');assert.equal(p.use.screenshot,'off');assert.equal(p.outputDir,join(tmpdir(),'owned-output'));}}
+});
+test('protected reporter rejects enabled trace/video/screenshots and output escape',()=>{
+ const lane=manifest().lanes[0],policy={configFile:join(tmpdir(),'owned-config.mjs'),outputDir:join(tmpdir(),'owned-output')};
+ const report=rawReport(lane);report.config.configFile=policy.configFile;report.config.metadata={protectedArtifacts:{sourceConfig:lane.config,outputDir:policy.outputDir,trace:'off',video:'off',screenshot:'off'}};for(const project of report.config.projects)project.outputDir=policy.outputDir;
+ assert.doesNotThrow(()=>decodeProtectedReport(report,lane,process.cwd(),false,policy));
+ for(const mutation of [r=>r.config.metadata.protectedArtifacts.trace='on',r=>r.config.metadata.protectedArtifacts.video='retain-on-failure',r=>r.config.metadata.protectedArtifacts.screenshot='only-on-failure',r=>r.config.projects[0].outputDir='../escape',r=>r.config.configFile='../escape']){const changed=structuredClone(report);mutation(changed);assert.throws(()=>decodeProtectedReport(changed,lane,process.cwd(),false,policy));}
+ const c=child(lane);c.receipt.artifacts.trace='on';assert.throws(()=>validateLaneReceipt(lane,c,provenance));
+});
+
+test('controlled failing protected browser retains failure but no credential artifacts',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'replatform-artifact-contract-')),privateDirectory=join(directory,'private');mkdirSync(privateDirectory);
+ try{
+  const module=pathToFileURL(join(process.cwd(),'scripts/replatform-e2e.mjs')).href;
+  const playwright=pathToFileURL(join(process.cwd(),'explorers-earth/node_modules/@playwright/test/index.mjs')).href;
+  writeFileSync(join(privateDirectory,'failure.spec.mjs'),`import {test,expect} from ${JSON.stringify(playwright)};test('intentional protected failure',async({page,context})=>{await context.addCookies([{name:'session',value:'controlled-fake-sensitive-cookie',url:'http://127.0.0.1'}]);await page.setContent('<p>Controlled failure</p>');expect(1).toBe(2);});`);
+  const output=join(privateDirectory,'output'),config=join(privateDirectory,'config.mjs'),json=join(privateDirectory,'raw.json');
+  writeFileSync(config,`import {protectedBrowserConfiguration} from ${JSON.stringify(module)};export default protectedBrowserConfiguration({testDir:'.',testMatch:'failure.spec.mjs',workers:1,retries:0,reporter:'json',use:{trace:'retain-on-failure',video:'retain-on-failure',screenshot:'only-on-failure'},projects:[{name:'controlled',use:{browserName:'chromium'}}]},${JSON.stringify(privateDirectory)},'config.mjs',${JSON.stringify(output)});`);
+  const result=await capturedChild(process.execPath,[join(process.cwd(),'explorers-earth/node_modules/@playwright/test/cli.js'),'test','--config',config,'--trace=off','--output',output],process.cwd(),{...process.env,PLAYWRIGHT_JSON_OUTPUT_NAME:json},'controlled');
+  assert.equal(result.status,1);const report=JSON.parse(readFileSync(json));assert.equal(report.config.configFile,config);assert.equal(resolve(report.config.projects[0].outputDir),resolve(output));assert.deepEqual(report.config.metadata.protectedArtifacts,{sourceConfig:'config.mjs',outputDir:output,trace:'off',video:'off',screenshot:'off'});assert.equal(report.suites[0].specs[0].tests[0].results[0].status,'failed');assert.match(report.suites[0].specs[0].tests[0].results[0].error.message,/Expected/);
+  const walk=path=>readdirSync(path,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?walk(join(path,entry.name)):[entry.name]);assert.equal(walk(privateDirectory).some(name=>/\.(?:zip|webm|png|jpg)$/.test(name)),false);
+  writeFileSync(join(directory,'failure.json'),JSON.stringify({status:'failed',childStatus:1,cleanup:'passed',artifacts:[]}));rmSync(privateDirectory,{recursive:true,force:true});assert.equal(existsSync(privateDirectory),false);assert.deepEqual(readdirSync(directory),['failure.json']);assert.doesNotMatch(readFileSync(join(directory,'failure.json'),'utf8'),/sensitive-cookie/);
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});
+test('sanitized failed identity evidence never qualifies and cannot carry credentials or retries',()=>{
+ const lane=manifest().lanes[0],c=structuredClone(child(lane));c.status=1;c.receipt.child.status=1;c.receipt.results[0].status='unexpected';c.receipt.results[0].attempts[0].status='failed';const {results,cleanup,artifacts}=c.receipt;const failure={version:1,lane:lane.name,provenance,results,child:{status:1,signal:null},cleanup,artifacts};assert.equal(validateFailureRecord(lane,failure,provenance,c),failure);assert.throws(()=>validateLaneReceipt(lane,c,provenance));
+ for(const mutate of [r=>r.cookie='sensitive',r=>r.results[0].error='sensitive',r=>r.results[0].attempts[0].retry=1,r=>r.artifacts.trace='on',r=>r.cleanup.status='failed',r=>r.child.status=0]){const changed=structuredClone(failure);mutate(changed);assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
+});

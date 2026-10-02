@@ -1,6 +1,6 @@
 import {createHash,randomBytes} from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
-import {readFileSync,writeFileSync,existsSync,mkdirSync,lstatSync,realpathSync,unlinkSync} from 'node:fs';
+import {readFileSync,writeFileSync,existsSync,mkdirSync,lstatSync,realpathSync,unlinkSync,readdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {resolve,join,dirname,basename,relative,isAbsolute} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -33,11 +33,17 @@ export function validateManifest(manifest){
  for(const lane of manifest.lanes){const expected=lanes[lane.name];if(lane.runner!==expected.runner||lane.config!==expected.config||lane.spec!==`explorers-earth/e2e/replatform/${lane.name}.spec.ts`||!equal(lane.projects,expected.projects)||lane.identities?.length!==expected.count)fail('Lane inventory/config mismatch');inventory(lane.identities);if(lane.identities.some(i=>i.file!==lane.spec||!lane.projects.includes(i.project)))fail('Unknown lane identity');}
  return true;
 }
-export function decodeProtectedReport(report,lane,root,execution){
+export function protectedBrowserConfiguration(base,root,sourceConfig,outputDir){
+ const use={...base.use,trace:'off',video:'off',screenshot:'off'};
+ return {...base,testDir:resolve(root,dirname(sourceConfig),base.testDir??'.'),outputDir,use,metadata:{...base.metadata,protectedArtifacts:{sourceConfig,outputDir,trace:use.trace,video:use.video,screenshot:use.screenshot}},projects:base.projects.map(project=>({...project,outputDir,use:{...project.use,trace:use.trace,video:use.video,screenshot:use.screenshot}}))};
+}
+export function decodeProtectedReport(report,lane,root,execution,artifactPolicy){
  if(!Array.isArray(report?.errors)||report.errors.length||!Array.isArray(report.suites)||!report.suites.length||report.config?.workers!==1||report.config.shard!==null||report.config.forbidOnly!==true||!Array.isArray(report.config.projects))fail('Protected browser reporter errors or selector mismatch');
  const selected=report.config.projects.filter(project=>lane.projects.includes(project.name));
  if(!equal(selected.map(p=>p.name).sort(),[...lane.projects].sort())||selected.some(project=>project.repeatEach!==1||project.retries!==0))fail('Protected browser selected project/repeat/retry mismatch');
- if(typeof report.config.configFile!=='string'||relative(root,report.config.configFile).replaceAll('\\','/')!==lane.config||typeof report.config.rootDir!=='string')fail('Protected browser config mismatch');
+ if(typeof report.config.configFile!=='string'||typeof report.config.rootDir!=='string')fail('Protected browser config mismatch');
+ if(artifactPolicy){if(report.config.configFile!==artifactPolicy.configFile||!equal(report.config.metadata?.protectedArtifacts,{sourceConfig:lane.config,outputDir:artifactPolicy.outputDir,trace:'off',video:'off',screenshot:'off'})||selected.some(project=>typeof project.outputDir!=='string'||resolve(project.outputDir)!==resolve(artifactPolicy.outputDir)))fail('Protected browser artifact policy mismatch');}
+ else if(relative(root,report.config.configFile).replaceAll('\\','/')!==lane.config)fail('Protected browser config mismatch');
  const results=[];
  const walk=(suite,titles,fileRoot)=>{
   if(!suite||typeof suite.title!=='string'||(suite.specs!==undefined&&!Array.isArray(suite.specs))||(suite.suites!==undefined&&!Array.isArray(suite.suites)))fail('Malformed protected suite');
@@ -55,7 +61,8 @@ export function decodeProtectedReport(report,lane,root,execution){
 }
 export function validateLaneReceipt(lane,child,provenance){
  if(child?.status!==0||child.signal||child.error)fail('Protected runner child failed/interrupted');const r=child.receipt;
- fields(r,['version','lane','provenance','config','spec','projects','discovery','results','errors','cleanup','authority','child','startedAt','endedAt','playwright']);
+ fields(r,['version','lane','provenance','config','spec','projects','discovery','results','errors','cleanup','authority','child','startedAt','endedAt','playwright','artifacts']);
+ if(!equal(r.artifacts,{trace:'off',video:'off',screenshot:'off',cleanup:'passed'}))fail('Protected artifact policy/cleanup mismatch');
  fields(r.cleanup,['status']);fields(r.authority,['owned','database','containerId','imageId']);fields(r.child,['status','signal']);
  if(r?.version!==1||r.lane!==lane.name||!equal(r.provenance,provenance)||r.config!==lane.config||r.spec!==lane.spec||!equal(r.projects,lane.projects)||!Array.isArray(r.errors)||r.errors.length||r.cleanup?.status!=='passed'||r.child?.status!==0||r.child.signal||r.authority?.owned!==true||!/^music_uat_[a-f0-9]{32}$/.test(r.authority.database)||!/^[a-f0-9]{64}$/.test(r.authority.containerId)||!/^sha256:[a-f0-9]{64}$/.test(r.authority.imageId))fail('Protected receipt source/config/cleanup/authority mismatch');
  if(!equal(inventory(r.discovery),inventory(lane.identities))||!Array.isArray(r.results)||!equal(inventory(r.results.map(result=>result.identity)),inventory(lane.identities)))fail('Discovery/execution exact identity mismatch');
@@ -63,15 +70,43 @@ export function validateLaneReceipt(lane,child,provenance){
  if(!/^\d+\.\d+\.\d+$/.test(r.playwright)||!Number.isFinite(Date.parse(r.startedAt))||!Number.isFinite(Date.parse(r.endedAt))||Date.parse(r.endedAt)<Date.parse(r.startedAt))fail('Missing tool/timing evidence');
  return r;
 }
+export function validateFailureRecord(lane,failure,provenance,child){
+ fields(failure,['version','lane','provenance','results','child','cleanup','artifacts']);fields(failure.child,['status','signal']);fields(failure.cleanup,['status']);
+ if(failure.version!==1||failure.lane!==lane.name||!equal(failure.provenance,provenance)||!Array.isArray(failure.results)||!equal(inventory(failure.results.map(result=>result.identity)),inventory(lane.identities))||child.status===0||!equal(failure.child,{status:child.status,signal:child.signal})||!equal(failure.artifacts,{trace:'off',video:'off',screenshot:'off',cleanup:'passed'})||failure.cleanup.status!=='passed')fail('Malformed protected failure/artifact record');
+ for(const result of failure.results){fields(result,['identity','expectedStatus','status','attempts']);if(result.expectedStatus!=='passed'||!['expected','unexpected','skipped'].includes(result.status)||!Array.isArray(result.attempts)||result.attempts.length>1)fail('Malformed failed result');for(const attempt of result.attempts){fields(attempt,['status','retry']);if(attempt.retry!==0||!['passed','failed','timedOut','skipped','interrupted'].includes(attempt.status))fail('Malformed failed attempt');}}
+ return failure;
+}
 export async function qualifyLanes({manifest,provenance,runLane,expectedPlaywright}){
  validateManifest(manifest);const receipts=[];for(const lane of manifest.lanes){const receipt=validateLaneReceipt(lane,await runLane(lane),provenance);if(expectedPlaywright&&receipt.playwright!==expectedPlaywright)fail('Installed Playwright version mismatch');receipts.push(receipt);}
  return {version:1,scope:SCOPE,deliveredSlice:'passed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance,identities:receipts.reduce((sum,r)=>sum+r.results.length,0),lanes:receipts,pending:manifest.pending,limits:manifest.limits,producer:'local owned-fixture development evidence; no hosted release provenance'};
 }
 export function snapshotSource(root){
  const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8',windowsHide:true}).trim();
- const tracked=execFileSync('git',['ls-files','tunes/server','tunes/shared','tunes/auth-runtime','explorers-earth/src','explorers-earth/e2e/replatform','explorers-earth/e2e/setup'],{cwd:root,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
+ const roots=['tunes/server','tunes/shared','tunes/auth-runtime','tunes/migrations','explorers-earth/src','explorers-earth/public','explorers-earth/e2e/replatform','explorers-earth/e2e/setup'];
+ const git=args=>execFileSync('git',args,{cwd:root,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
+ const tracked=git(['ls-files',...roots]);
+ const additions=git(['ls-files','--others','--exclude-standard',...roots]).filter(path=>path!==MANIFEST);
+ const ignored=git(['ls-files','--others','--ignored','--exclude-standard',...roots,':(exclude)tunes/auth-runtime/node_modules']);
+ if(additions.length||ignored.length)fail('Untracked runtime dependency is outside reviewed source inventory');
+ const migrationFiles=readdirSync(join(root,'tunes/migrations')).filter(path=>path.endsWith('.sql')).map(path=>`tunes/migrations/${path}`).sort();
+ if(!migrationFiles.length||!equal(migrationFiles,tracked.filter(path=>path.startsWith('tunes/migrations/')&&path.endsWith('.sql')).sort()))fail('Migration disk/tracked inventory mismatch');
+ const authority=['music-uat-database','music-fixture-secret','music-vitest-evidence','music-output-redaction','music-qualification-postgres'].map(name=>`tunes/scripts/${name}.ts`);
+ git(['ls-files','--error-unmatch',...authority]);
+ const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
+ if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
  const paths=[...new Set([...tracked,MANIFEST,'scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts'])].sort();
- const hashes=Object.fromEntries(paths.map(path=>[path,createHash('sha256').update(readFileSync(join(root,path))).digest('hex')]));
+ const dependencies=new Set([...paths,...authority,...frontendRoot]);
+ // Follow relative source imports from the runner/helper roots, including additions
+ // ignored by Git. Every resolved dependency must be tracked or an explicit overlay.
+ const reviewed=new Set([...tracked,...frontendRoot,...authority]);
+ const overlay=new Set(['tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/lifecycle-browser-guards.ts']);
+ const queue=[...authority,...overlay];const scanned=new Set();
+ while(queue.length){const path=queue.pop();if(scanned.has(path)||! /\.(?:[cm]?js|tsx?)$/.test(path))continue;scanned.add(path);
+  const text=readFileSync(join(root,path),'utf8');const imports=/\b(?:import|export)[\s\S]*?\bfrom\s+['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)|\bimport\s+['"](\.[^'"]+)['"]/g;
+  for(const match of text.matchAll(imports)){const imported=resolve(root,dirname(path),match[1]??match[2]??match[3]);const candidates=[imported,...['.ts','.tsx','.js','.mjs','/index.ts','/index.tsx','/index.js'].map(suffix=>imported+suffix),imported.replace(/\.js$/,'.ts')];const found=candidates.find(candidate=>existsSync(candidate)&&lstatSync(candidate).isFile());if(!found)fail('Missing relative executed dependency');const dependency=relative(root,found).replaceAll('\\','/');if(dependency.startsWith('../')||lstatSync(found).isSymbolicLink()||(!reviewed.has(dependency)&&!overlay.has(dependency)))fail('Unreviewed relative executed dependency');dependencies.add(dependency);queue.push(dependency);}
+ }
+ const closure=[...new Set([...dependencies,...['','tunes/','explorers-earth/','tunes/auth-runtime/'].map(prefix=>`${prefix}node_modules/.package-lock.json`)])].sort();
+ const hashes=Object.fromEntries(closure.map(path=>[path,createHash('sha256').update(readFileSync(join(root,path))).digest('hex')]));
  const dirty=Boolean(execFileSync('git',['status','--porcelain=v1','--untracked-files=normal'],{cwd:root,encoding:'utf8',windowsHide:true}).trim());
  return {provenance:{commit,sourceHash:digest(hashes),manifestHash:hashes[MANIFEST],dirty},hashes};
 }
@@ -94,7 +129,7 @@ export async function main(args=process.argv.slice(2)){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');assertEnvironment(process.env);const options=parseArguments(args);
  if(process.versions.node!=='24.21.0')fail('Protected qualification requires Node24.21.0');
  const manifest=JSON.parse(readFileSync(join(root,MANIFEST)));validateManifest(manifest);
- const source=snapshotSource(root),locks=Object.fromEntries(['','tunes','explorers-earth'].map(prefix=>[prefix||'root',validateLockedInstall(root,prefix)]));
+ const source=snapshotSource(root),locks=Object.fromEntries(['','tunes','explorers-earth','tunes/auth-runtime'].map(prefix=>[prefix||'root',validateLockedInstall(root,prefix)]));
  const npmCli=join(dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');if(!existsSync(npmCli))fail('Current Node-owned npm CLI unavailable');
  const npm=execFileSync(process.execPath,[npmCli,'--version'],{encoding:'utf8',windowsHide:true}).trim();
  const {chromium}=await import(pathToFileURL(join(root,'explorers-earth/node_modules/playwright-core/index.mjs')).href);
@@ -110,9 +145,10 @@ export async function main(args=process.argv.slice(2)){
    const suffix=['--ack',ACK,'--receipt-directory',directory,'--receipt-capability',capability];
    const selector=lane.name==='auth'||lane.name==='lifecycle'?['--suite',lane.name]:[];
    const childArgs=['--import',pathToFileURL(join(root,'tunes/node_modules/tsx/dist/loader.mjs')).href,join(root,lane.runner),...selector,...suffix];
-   const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);children.push({lane:lane.name,status:child.status,signal:child.signal,error:child.error});
+   const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
    if(child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
+   const failurePath=join(directory,'failure.json');if(existsSync(failurePath))childRecord.failure=validateFailureRecord(lane,JSON.parse(readFileSync(failurePath,'utf8')),source.provenance,child);
    if(!equal(snapshotSource(root).provenance,source.provenance))fail('Source changed during lane execution');
    return child;
   }});
