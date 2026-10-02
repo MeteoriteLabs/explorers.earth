@@ -12,11 +12,12 @@ interface BookDetailModalProps {
   book: RecommendedBook | null;
   open: boolean;
   onClose: () => void;
+  onTrackClick?: (element: string, metadata: Record<string, unknown>) => void;
 }
 
 const FALLBACK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
-const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
+const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalProps) => {
   const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -43,13 +44,14 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
   };
 
   const handleShare = useCallback(async () => {
+    if (book) onTrackClick?.('book-share', { id: book.documentId, listId: book.book_list?.documentId });
     const url = window.location.href;
     if (navigator.share) {
       try { await navigator.share({ title: book?.title, url }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(url);
     }
-  }, [book?.title]);
+  }, [book, onTrackClick]);
 
   const lightboxMediaItems = useMemo(() => {
     if (!book) return [];
@@ -340,6 +342,7 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                           <a
                             key={i}
                             href={link.url}
+                            onClick={() => onTrackClick?.('book-outbound', { id: book.documentId, listId: book.book_list?.documentId })}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 bg-[var(--category-card,rgba(255,255,255,0.08))] hover:bg-[var(--category-hover,rgba(255,255,255,0.12))] border border-[color:var(--category-border,rgba(255,255,255,0.1))] rounded-lg px-3 py-2 text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] transition-colors"

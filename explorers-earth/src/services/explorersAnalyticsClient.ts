@@ -76,10 +76,20 @@ async function errorMessage(response: Response): Promise<string> {
   return `Analytics request failed with ${response.status}${body ? `: ${body}` : ''}`;
 }
 
+export async function assertCommittedAnalyticsReceipt(response: Response): Promise<void> {
+  const receipt: unknown = await response.json().catch(() => null);
+  if ((response.status !== 200 && response.status !== 201) || !receipt || typeof receipt !== 'object' ||
+    !('status' in receipt) || receipt.status !== 'committed' || !('duplicate' in receipt) || typeof receipt.duplicate !== 'boolean' ||
+    ('documentId' in receipt && typeof receipt.documentId !== 'string') ||
+    ('retired' in receipt && (receipt.retired !== true || !receipt.duplicate))) {
+    throw new Error('Invalid analytics committed receipt');
+  }
+}
+
 export async function postExplorersAnalyticsEvent(
   payload: ExplorersAnalyticsWritePayload,
   {
-    baseUrl = DEFAULT_LOCAL_TUNES_URL,
+    baseUrl = '',
     fetchImpl,
     retryCount = 1,
     pendingPollCount = 7,
@@ -89,17 +99,14 @@ export async function postExplorersAnalyticsEvent(
       new Promise<void>((resolve) => window.setTimeout(resolve, delayMs)),
   }: WriteOptions = {},
 ): Promise<void> {
-  const analyticsFetch = fetchImpl ?? createMusicDevelopmentFetch(
-    fetch,
-    import.meta.env.DEV,
-    DEFAULT_LOCAL_TUNES_URL,
-  );
+  const analyticsFetch = fetchImpl ?? fetch;
   const body = JSON.stringify(payload);
   let lastError: unknown;
   let transientRetries = 0;
   let pendingPolls = 0;
 
   while (true) {
+    if (!hasAnalyticsConsent()) throw new Error('Analytics consent withdrawn');
     try {
       const response = await analyticsFetch(endpoint(baseUrl), {
         method: 'POST',
@@ -108,7 +115,10 @@ export async function postExplorersAnalyticsEvent(
         body,
         signal: AbortSignal.timeout(10_000),
       });
-      if (response.ok && response.status !== 202) return;
+      if (response.ok && response.status !== 202) {
+        await assertCommittedAnalyticsReceipt(response);
+        return;
+      }
 
       const message = await errorMessage(response);
       if (response.status === 202) {

@@ -5,6 +5,7 @@ import { deduplicateBooks, slugToSubjectName } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -61,7 +62,7 @@ const PublicBookSubject = () => {
     await settlePublicRouteRetries(refetchUser, accountData?.public_books === "Yes" ? refetchBooks : undefined);
   }, [accountData?.public_books, refetchBooks, refetchUser]);
 
-  usePublicHeaderDescriptor(subjectSlug ? {
+  usePublicHeaderDescriptor(subjectSlug && hasUsableData && accountData?.public_books === "Yes" ? {
     navigationKey: location.key,
     title: `${subjectName} Books`,
     url: window.location.href,
@@ -77,9 +78,11 @@ const PublicBookSubject = () => {
     )
   );
 
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(typeof accountData?.documentId === 'string' ? accountData.documentId : '', username), ready: hasUsableData && accountData?.public_books === 'Yes' });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-  }, []);
+    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId, title: book.title });
+  }, [analytics]);
 
   const pageTitle = `${subjectName} Books | ${username}'s Book List | explorers`;
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
@@ -135,7 +138,7 @@ const PublicBookSubject = () => {
       </div>
 
       <PublicScrollContinuation {...page} label="book lists" />
-      <BookDetailModal
+      <BookDetailModal onTrackClick={analytics.trackClick}
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}

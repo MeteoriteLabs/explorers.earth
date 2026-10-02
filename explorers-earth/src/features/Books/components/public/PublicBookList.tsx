@@ -6,6 +6,7 @@ import { deduplicateBooks } from "../../utils/bookHelpers";
 import type { BookList, RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -49,9 +50,11 @@ const PublicBookList = () => {
   } : undefined);
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
 
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(rawList?.account?.documentId || '', username, rawList?.documentId), ready: hasUsableData });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-  }, []);
+    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId || rawList?.documentId, title: book.title });
+  }, [analytics, rawList?.documentId]);
 
   const pinnedBooks = books.filter((b) => b.is_pinned);
   const restBooks = books.filter((b) => !b.is_pinned);
@@ -162,7 +165,7 @@ const PublicBookList = () => {
         <PublicScrollContinuation {...page} label="books" className="mt-6" />
       </div>
 
-      <BookDetailModal
+      <BookDetailModal onTrackClick={analytics.trackClick}
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}

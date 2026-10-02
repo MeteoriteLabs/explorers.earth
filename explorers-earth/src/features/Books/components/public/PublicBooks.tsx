@@ -59,9 +59,9 @@ const PublicBooks = () => {
     await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchBooks : undefined);
   }, [accountDocumentId, refetchBooks, refetchUser]);
 
-  // Initialize analytics — auto-tracks the page view once accountId resolves
+  // Track only a usable public Books surface.
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.books(accountDocumentId || '', username)
+    { ...createAnalyticsOptions.books(accountDocumentId || '', username), ready: hasUsableData && accountData?.public_books === 'Yes' }
   );
 
   // Collect all pinned books across all lists (Top Reads)
@@ -72,7 +72,7 @@ const PublicBooks = () => {
 
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-    // Track which book was clicked — sends Recommendation_Id to Strapi
+    // Bind the displayed book and its canonical collection.
     analytics.trackClick('book-card', {
       id: book.documentId,
       listId: book.book_list?.documentId,
@@ -95,6 +95,7 @@ const PublicBooks = () => {
     title: `${username}'s Books`,
     url: window.location.href,
     analyticsContext: "books-header",
+    analyticsReady: hasUsableData && accountData?.public_books === 'Yes',
   });
   const profileName = creatorName;
   const bookCount = allBooks.length;
@@ -229,7 +230,7 @@ const PublicBooks = () => {
       </div>
 
       {/* Book detail modal */}
-      <BookDetailModal
+      <BookDetailModal onTrackClick={analytics.trackClick}
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}
