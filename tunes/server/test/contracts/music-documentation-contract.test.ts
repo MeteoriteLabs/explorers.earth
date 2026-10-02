@@ -792,6 +792,29 @@ describe("Music documentation publication contract", () => {
 });
 
 describe("Music CI publication order", () => {
+  it("installs shared fixture runtime dependencies before frontend unit discovery", () => {
+    const frontend = parseYaml(read(".github/workflows/ci.yml"));
+    const steps = frontend.jobs["unit-tests"].steps;
+    const install = steps.findIndex((step: { run?: string }) => step.run === "npm ci --prefix ../tunes --legacy-peer-deps");
+    const discovery = steps.findIndex((step: { run?: string }) => step.run === "npm run test:coverage");
+    expect(install).toBeGreaterThan(-1);
+    expect(discovery).toBeGreaterThan(install);
+  });
+
+  it("triggers image and native contracts for their root context and generator dependencies", () => {
+    const image = parseYaml(read(".github/workflows/tunes.yml"));
+    const native = parseYaml(read(".github/workflows/music-c0-contracts.yml"));
+    for (const event of ["pull_request", "push"]) {
+      for (const dependency of [".dockerignore", "scripts/generate-music-fixture-dockerignore.mjs"]) {
+        expect(image.on[event].paths).toContain(dependency);
+        expect(native.on[event].paths).toContain(dependency);
+      }
+      for (const dependency of ["scripts/image-ci-disk.sh", "scripts/image-ci-disk.test.cjs", "scripts/image-ci-report.cjs", "docs/architecture/music-runtime-surface-inventory.json"]) {
+        expect(image.on[event].paths).toContain(dependency);
+      }
+    }
+  });
+
   it("runs every isolated Music validation lane and retains the nightly browser edge", () => {
     const path = resolve(root, ".github/workflows/test.yml");
     const workflow = existsSync(path) ? parseYaml(read(".github/workflows/test.yml")) : {};

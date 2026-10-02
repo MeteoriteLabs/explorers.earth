@@ -78,7 +78,7 @@ export function fixtureState(extra: Record<string, unknown> = {}, mode: 'private
   };
 }
 export type FixtureState = ReturnType<typeof fixtureState>;
-function canonicalCategoryAccount(state:FixtureState) {
+export function canonicalCategoryAccount(state:FixtureState) {
   return accountDtoSchema.parse(canonicalAccountFixture({handle:state.account.username,displayName:state.account.Account_Name,
     accountType:state.account.Account_Type,mobileNumber:state.account.mobile_number,
     onboardingStatus:state.account.Account_Name&&state.account.Account_Type&&state.account.mobile_number?'complete':'incomplete',

@@ -7,6 +7,12 @@ on:
       - tunes/**
       - explorers-earth/**
       - scripts/replatform-local.ts
+      - scripts/generate-music-fixture-dockerignore.mjs
+      - scripts/image-ci-disk.sh
+      - scripts/image-ci-disk.test.cjs
+      - scripts/image-ci-report.cjs
+      - .dockerignore
+      - docs/architecture/music-runtime-surface-inventory.json
       - package.json
       - package-lock.json
       - fixtures/**
@@ -27,6 +33,12 @@ on:
       - tunes/**
       - explorers-earth/**
       - scripts/replatform-local.ts
+      - scripts/generate-music-fixture-dockerignore.mjs
+      - scripts/image-ci-disk.sh
+      - scripts/image-ci-disk.test.cjs
+      - scripts/image-ci-report.cjs
+      - .dockerignore
+      - docs/architecture/music-runtime-surface-inventory.json
       - package.json
       - package-lock.json
       - fixtures/**

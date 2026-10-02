@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { canonicalAccountFixture } from '../src/test/canonicalAccountFixture';
-import { fixtureState, fixtureUser, installContainedRoutes, openFixture } from './setup/category-navigation';
+import { canonicalCategoryAccount, fixtureState, fixtureUser, installContainedRoutes, openFixture } from './setup/category-navigation';
 
 test('owner session and canonical account agree with included cookies and no legacy credentials', async ({ browser, baseURL }) => {
   const state = fixtureState();
@@ -20,10 +19,14 @@ test('owner session and canonical account agree with included cookies and no leg
     expect(result.sessionStatus).toBe(200);
     expect(result.session).toEqual({ user: { id: fixtureUser.id, email: fixtureUser.email }, session: { id: 'contained-browser-session-id' } });
     expect(result.meStatus).toBe(200);
-    expect(result.me).toEqual({ account: canonicalAccountFixture({ handle: state.account.username,
-      displayName: state.account.Account_Name, accountType: state.account.Account_Type,
-      mobileNumber: state.account.mobile_number, onboardingStatus: 'complete',
-      publicProfile: true, autoPinning: state.account.auto_pinning }) });
+    expect(result.me).toEqual({ account: canonicalCategoryAccount(state) });
+    expect(result.me.account.categories).toHaveLength(9);
+    expect(result.me.account.categories.map((category: { category: string }) => category.category))
+      .toEqual(['places', 'movies', 'books', 'games', 'apps', 'products', 'people', 'guides', 'music']);
+    expect(result.me.account.categories.find((category: { category: string }) => category.category === 'books'))
+      .toEqual({ category: 'books', isPublic: true, displayOrder: 2, pinnedOrder: 1 });
+    expect(result.me.account.categories.find((category: { category: string }) => category.category === 'music'))
+      .toEqual({ category: 'music', isPublic: false, displayOrder: 8, pinnedOrder: null });
     expect(result.session.user.id).not.toBe(result.me.account.id);
     expect(result.lifecycleStatus).toBe(200);
     expect(result.lifecycle).toEqual({ lifecycle: { accountId: result.me.account.id,

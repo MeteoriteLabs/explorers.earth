@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { discoveryReport } from '../playwrightDiscovery';
 
 type Identity = { project: string; title: string; file: string };
 type ListSuite = {
@@ -35,8 +36,7 @@ function discover(config: string): Identity[] {
   const result = spawnSync(process.execPath, [cli, 'test', `--config=${config}`, '--list', '--reporter=json'], {
     cwd: root, encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '0' },
   });
-  expect(result.status, `${config}: ${result.stderr}`).toBe(0);
-  const report = JSON.parse(result.stdout) as { suites: ListSuite[] };
+  const report = discoveryReport<ListSuite>(config, result);
   return identitiesFromSuites(report.suites);
 }
 
