@@ -29,3 +29,17 @@ Clean log files are cover-{frontend-unit,backend-all-unit,scoped-unit,final-focu
 ## Limits
 
 No live Google/OAuth/S3 credentials, QA storage acceptance, hosted deployment, production operation, registry publication, push or Books UI/browser milestone is claimed. Fixture-only storage/native transport proves the enforced boundary and actual API/database behavior. Unrelated reports, robots/sitemap, audit documents and scratch remain preserved. Independent review follows the scoped commit.
+
+## Committed source and image qualification
+
+Application source boundary: `cffa5d46df012aa157189b885642615f342e36a6`,55 files714 additions/124 deletions. `git diff HEAD^ HEAD --check` passes. An EOF blank line caught by the committed diff check was trimmed before this boundary; no application behavior changed. Earlier report staging initially respected the ignored sdd directory; it was explicitly force-added before the boundary.
+
+The final context `C:/Users/TK/AppData/Local/Temp/books-cover-image-2e9dcd1d6159415499d476eff724aed0` used `git -c core.autocrlf=false archive --format=tar HEAD:tunes`. All672 extracted Tunes files were compared byte-for-byte with their committed Git blobs.0035 local/committed SHA256 is `e6358f7478a9c71be73149db54881f00b69b7aae08b59b09374e928a9e89846d` (LF). An earlier image built before the harmless EOF trimming is not the final image authority.
+
+Exact final build: `docker build --pull=false --file <context>/Dockerfile --tag explorers-tunes:books-cover-cffa5d46df01 --build-arg BUILD_COMMIT=cffa5d46df012aa157189b885642615f342e36a6 --build-arg BUILD_SOURCE=https://github.com/explorers-earth/explorers.earth <context>`:exit0. Image ID `sha256:39ae265ee31e00adfd3d467950a63693f15ccc92e5d942c588916bccb6c33dc7`; Node `v24.21.0`; OCI revision matches that source commit.
+
+In Tunes, `N --import ./node_modules/tsx/dist/loader.mjs scripts/.shared-notes-harness.ts stop` then `start` refreshed the owned51538 source authority through the normal harness. With MUSIC_C5_POSTGRES_TEST=1, `N --import ./node_modules/tsx/dist/loader.mjs scripts/.shared-notes-harness.ts test server/test/book-cover-import.integration.test.ts server/test/music-runtime-role.integration.test.ts`:40/40,15.86s, zero skips, on the committed source. This includes all13 import cases and27 protected runtime-role cases.
+
+`N --import ./node_modules/tsx/dist/loader.mjs scripts/.cover-image-harness.ts`:exit0. This new untracked qualification helper derives from the preserved3.2 image harness, uses exact owned C10 attestation and normal protected runtime-login provisioning, verifies compiled migration/schema readiness and production graph, checks Node/revision labels, and launches the actual unmodified canonical API entrypoint. Health200 and anonymous owner/catalog401 pass. Startup validates exact0035 fingerprint readiness. The fixture S3 endpoint is loopback127.0.0.1:9 with generated fake credentials; this proves startup, not live storage acceptance. Generated secret files, exact owned API container and protected login were removed through ownership checks. The attested51538 review fixture is retained; documentation-only HEAD changes require its harness source-label refresh before new PG runs.
+
+Final logs:context image-build-final.log; worktree tunes/.superpowers/cover-committed-pg.log and cover-image-qualification.log. This result addendum changes documentation only. Application/image source remains cffa5d46. No push or production operation occurred.
