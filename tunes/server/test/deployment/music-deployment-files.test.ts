@@ -1,3 +1,4 @@
+import { DEPLOYABLE_MUSIC_MIGRATION_MARKERS,EXPECTED_MUSIC_MIGRATION_ID } from '../../../shared/music-migration-contract';
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
@@ -520,4 +521,9 @@ describe("Music deployment authority files", () => {
     });
     expect(issues.length).toBeGreaterThan(10);
   });
+});
+
+it('keeps the shell deployment marker history identical to the complete shared chain',()=>{
+ const engine=read('tunes/deployment/music-deploy-engine.sh'),declaration=engine.match(/readonly -a known_markers=\(([\s\S]*?)\r?\n\)/);expect(declaration).not.toBeNull();
+ const markers=Array.from(declaration![1].matchAll(/"([^"]+)"/g),match=>match[1]==='$legacy_marker'?'containment-no-schema-change':match[1]==='$production_current_marker'?EXPECTED_MUSIC_MIGRATION_ID:match[1]);expect(markers).toEqual([...DEPLOYABLE_MUSIC_MIGRATION_MARKERS]);
 });

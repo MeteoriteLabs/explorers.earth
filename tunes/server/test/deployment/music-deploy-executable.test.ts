@@ -656,6 +656,19 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       .toContain("\t0036_explorers_analytics_events\tcurrent\t");
   }, deploymentProcessRecoveryTimeoutMs);
 
+  it('upgrades a signed 0035 ledger to 0036 while preserving history and refusing rollback below its new floor',()=>{
+    seedVersionedAuthority('0035_explorers_book_cover_import');
+    const history=readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8');
+    const deployed=run('deploy',digest('b'),commit('b'));expect(deployed.status,deployed.stderr).toBe(0);
+    const ledger=readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8');expect(ledger.startsWith(history)).toBe(true);expect(ledger).toContain(`	${digest('b')}	${commit('b')}	0036_explorers_analytics_events	`);
+    for(const path of ['deployment-state/music-schema-floor.tsv','deployment-transactions/schema-epoch.tsv'])expect(readFileSync(join(root,path),'utf8')).toContain('	0036_explorers_analytics_events	current	');
+    writeFileSync(eventLog,'');const rollback=run('rollback',digest('a'),'-');expect(rollback.status).not.toBe(0);expect(rollback.stderr).toMatch(/schema compatibility floor/i);expect(readFileSync(eventLog,'utf8')).toBe('');expect(readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8')).toBe(ledger);
+  },deploymentProcessRecoveryTimeoutMs);
+
+  it('rejects a correctly signed unknown ledger marker before Docker or authority writes',()=>{
+    seedVersionedAuthority('9999_unknown_marker');const history=readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8');
+    const result=run('deploy',digest('b'),commit('b'));expect(result.status).not.toBe(0);expect(result.stderr).toMatch(/secure ledger contains unknown migration marker/i);expect(readFileSync(eventLog,'utf8')).toBe('');expect(readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8')).toBe(history);
+  },deploymentProcessRecoveryTimeoutMs);
   it('denies rollback to a 0030 executable after installing the SELECT-only revision boundary',()=>{
     seedVersionedAuthority('0030_explorers_media_purpose_guard');
     const deployed=run('deploy',digest('b'),commit('b'));expect(deployed.status,deployed.stderr).toBe(0);

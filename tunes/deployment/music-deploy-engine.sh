@@ -52,6 +52,8 @@ readonly -a known_markers=(
   "0031_explorers_content_revision"
   "0032_explorers_owner_page_indexes"
   "0033_explorers_recommendation_display_overrides"
+  "0034_explorers_books_provider_context"
+  "0035_explorers_book_cover_import"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
