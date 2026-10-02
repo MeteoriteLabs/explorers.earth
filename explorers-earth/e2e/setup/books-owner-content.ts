@@ -20,7 +20,7 @@ export function createBooksOwnerFixture(lists: () => Record<string, any>[], lega
     const collections = source.map((list, displayOrder) => contract.ownerCollectionDtoSchema.parse({
       id: bookFixtureId('collection', list.documentId), accountId, category: 'books',
       title: list.List_Name, slug: list.slug, visibility: list.visibility ? 'public' : 'private',
-      publicationState: list.canonicalPublicationState ?? (list.visibility ? 'published' : 'draft'), revision: list.canonicalRevision ?? 1,
+      publicationState: list.canonicalPublicationState ?? (list.Visibility ? 'published' : 'draft'), revision: list.canonicalRevision ?? 1,
       description: list.list_description ?? null, heading: list.top_reads_heading ?? null,
       coverMediaId: null, archived: false, displayOrder,
     }));
@@ -82,7 +82,7 @@ export function createBooksOwnerFixture(lists: () => Record<string, any>[], lega
     const offset = cursor ? Number(cursor.slice(13)) : 0, limit = Number(params.limit ?? 24);
     let items = data[stream!];
     if ((stream === 'collections' || stream === 'recommendations') && params.status === 'archived' || stream === 'memberships' && (params.collectionStatus === 'archived' || params.recommendationStatus === 'archived')) items = [];
-    if (stream === 'recommendations' && params.collectionId) items = data.recommendations.filter(item => data.memberships.some(member => member.collectionId === params.collectionId && member.recommendationId === item.id));
+    if (stream === 'recommendations' && params.collectionId) items = (items as typeof data.recommendations).filter(item => data.memberships.some(member => member.collectionId === params.collectionId && member.recommendationId === item.id));
     const pageSchema = stream === 'collections' ? contract.ownerCollectionPageSchema : stream === 'recommendations' ? contract.ownerRecommendationPageSchema : stream === 'memberships' ? contract.ownerMembershipPageSchema : contract.ownerTopPickPageSchema;
     return {status:200,body:pageSchema.parse({...common,snapshot:String(revision),items:items.slice(offset,offset+limit),nextCursor:offset+limit<items.length?`books-offset-${offset+limit}`:null,...(stream==='pins'?{pinRevision:1}:{})})};
   };

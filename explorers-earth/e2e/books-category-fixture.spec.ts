@@ -110,3 +110,40 @@ test('Books category account uses current canonical revision and preserves unrel
     expect(state.account.pinned_nav_tabs).toEqual(['public_profile','public_games']);expect(state.account.public_games).toBe('Yes');
   }finally{await closeFixture(fixture);}
 });
+
+test('Books collection filtering preserves active, archived and all status selection', () => {
+  const state=fixtureState();
+  state.lists.bookLists[0].recommended_books=[{documentId:'active-book',title:'Active Book'}];
+  const fixture=createBooksOwnerFixture(()=>state.lists.bookLists);
+  const url=(path:string)=>new URL('/api/explorers/v1'+path,'http://fixture.test');
+  const snapshot=fixture(url('/categories/books/content-snapshot'))!.body as {snapshotToken:string};
+  for(const status of ['active','archived','all'])for(const collectionId of [undefined,bookFixtureId('collection','books-list'),bookFixtureId('collection','missing')]){
+    const response=fixture(url(`/recommendations?category=books&status=${status}&snapshotToken=${snapshot.snapshotToken}${collectionId?`&collectionId=${collectionId}`:''}`))!;
+    expect(response.status).toBe(200);
+    expect((response.body as {items:unknown[]}).items).toHaveLength(status==='archived'||collectionId===bookFixtureId('collection','missing')?0:1);
+  }
+});
+
+test('Books legacy publication flags and canonical overrides agree with public exclusion', async({browser,baseURL})=>{
+  const state=fixtureState();
+  const source=state.lists.bookLists[0];
+  state.lists.bookLists=[];
+  for(const visibility of [false,true])for(const Visibility of [false,true]){
+    const list={...structuredClone(source),documentId:`flags-${visibility}-${Visibility}`,List_Name:`Flags ${visibility} ${Visibility}`,slug:`flags-${visibility}-${Visibility}`,visibility,Visibility,
+      recommended_books:[{documentId:`book-${visibility}-${Visibility}`,volume_id:`volume-${visibility}-${Visibility}`,title:`Book ${visibility} ${Visibility}`,authors:[],subjects:[],Media:[],book_categories:[],is_pinned:false}]};
+    state.lists.bookLists.push(list);
+    const project=(canonicalPublicationState?:string)=>{
+      const fixture=createBooksOwnerFixture(()=>[{...list,...(canonicalPublicationState?{canonicalPublicationState}:{})}]);
+      const snapshot=fixture(new URL('/api/explorers/v1/categories/books/content-snapshot',baseURL))!.body as {snapshotToken:string};
+      return (fixture(new URL(`/api/explorers/v1/collections?category=books&status=all&snapshotToken=${snapshot.snapshotToken}`,baseURL))!.body as {items:{visibility:string;publicationState:string}[]}).items[0];
+    };
+    expect(project()).toMatchObject({visibility:visibility?'public':'private',publicationState:Visibility?'published':'draft'});
+    for(const override of ['draft','published'])expect(project(override).publicationState).toBe(override);
+  }
+  const guest=await openFixture(browser,baseURL!,state);
+  try{
+    await guest.page.goto('/fixture-owner/books');
+    await expect(guest.page.getByText('Flags true true',{exact:true}).first()).toBeVisible();
+    for(const title of ['Flags false false','Flags false true','Flags true false'])await expect(guest.page.getByText(title,{exact:true})).toHaveCount(0);
+  }finally{await closeFixture(guest);}
+});
