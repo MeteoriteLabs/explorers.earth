@@ -46,6 +46,7 @@
     "platform:test:integration": "tsx scripts/replatform-local.ts test:integration",
     "platform:test:routes": "tsx scripts/replatform-local.ts test:routes",
     "platform:test:browser-egress": "node explorers-earth/scripts/replatform-browser-egress.mjs",
+    "platform:test:e2e": "node scripts/replatform-e2e.mjs",
     "platform:seed": "tsx scripts/replatform-local.ts seed"
   },
   "devDependencies": {

@@ -17,11 +17,12 @@ import { MUSIC_UAT_DATABASE_ACK, startOwnedUatDatabase, stopOwnedUatDatabase,
   type OwnedUatDatabaseAuthority } from './music-uat-database';
 import { prepareFixtureMusicTokenSecret, cleanupFixtureMusicTokenSecret } from './music-fixture-secret';
 import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
+import { extractProtectedReceiptArguments, createProtectedReceipt, stopProtectedChild } from './protected-browser-receipt';
 
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');
-const expectedArgs = `--ack ${MUSIC_UAT_DATABASE_ACK}`;
-if (process.argv.slice(2).join(' ') !== expectedArgs)
+const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
+if (JSON.stringify(receiptArguments.args) !== JSON.stringify(['--ack', MUSIC_UAT_DATABASE_ACK]))
   throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');
 for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD',
   'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_DEPLOY_PROD']) {
@@ -29,6 +30,7 @@ for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_C
 }
 if (process.env.NODE_ENV === 'production' || Object.keys(process.env).some((key) => key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_')))
   throw new Error('Production or unrelated database authority is forbidden');
+const protectedReceipt = await createProtectedReceipt(root, 'books', receiptArguments);
 const runId = randomBytes(16).toString('hex');
 const runtimeRole = `books_browser_${runId.slice(0,12)}`;
 const database = `music_uat_${runId}`;
@@ -149,34 +151,52 @@ async function main(): Promise<number> {
       BOOKS_E2E_API_PORT: String(apiPort) },
   });
   await waitFor(origin);
+  const browserArgs = ['--config=e2e/replatform/books.playwright.config.ts', '--retries=0'];
+  const browserEnv = { ...process.env, BOOKS_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+  if (protectedReceipt) protectedReceipt.discovery(frontend, [...browserArgs, '--workers=1', '--forbid-only'], browserEnv, disposable);
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
-    'test', '--config=e2e/replatform/books.playwright.config.ts', '--retries=0'], {
+    'test', ...browserArgs, ...(protectedReceipt ? ['--workers=1', '--forbid-only', '--reporter=json,line'] : [])], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
       BOOKS_E2E_FIXTURE_PATH: fixturePath,
+      ...(protectedReceipt ? protectedReceipt.executionEnvironment({}, disposable) : {}),
       PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
   });
-  return await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
+  const exitCode = await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
+  if (protectedReceipt) protectedReceipt.execution(exitCode, browser.signalCode, disposable);
+  return exitCode;
 }
 const signal = () => { interrupted = true; stopChild(browser); stopChild(vite); };
 process.once('SIGINT', signal);
 process.once('SIGTERM', signal);
+process.on('message', (message: unknown) => {
+  const input = message as { type?: string; capability?: string };
+  if (protectedReceipt && input.type === 'replatform-cancel' && input.capability === protectedReceipt.capability) signal();
+});
 try {
   process.exitCode = await main();
 } catch (error) {
   process.stderr.write(`Books E2E fixture failed: ${error instanceof Error ? error.message.replaceAll(disposable, '<fixture>') : 'unknown'}\n`);
   process.exitCode = 1;
 } finally {
-  stopChild(browser); stopChild(vite);
-  await new Promise<void>((done) => apiServer?.close(() => done()) ?? done());
-  await runtime?.end();
-  await db?.end();
-  if (authority) {
-    const password = await readSecureMusicSecretFile(passwordFile, { mode: 'fixture' });
-    await stopOwnedUatDatabase(authority, { dropDatabase: (owned) => dropOwnedDatabase(owned, password) });
-  }
-  cleanupFixtureMusicTokenSecret(root, passwordFile);
-  const relativeTemp = relative(resolve(tmpdir()), resolve(disposable));
-  if (!relativeTemp || relativeTemp.startsWith('..') || isAbsolute(relativeTemp) || !relativeTemp.startsWith('explorers-books-e2e-')) throw new Error('Fixture cleanup escaped its owned temporary directory');
-  rmSync(resolve(disposable), { recursive: true, force: true });
+  const failures: string[] = [];
+  const cleanup = async (label: string, action: () => unknown) => { try { await action(); } catch { failures.push(label); } };
+  await cleanup('browser child', () => protectedReceipt ? stopProtectedChild(browser) : stopChild(browser));
+  await cleanup('Vite child', () => protectedReceipt ? stopProtectedChild(vite) : stopChild(vite));
+  await cleanup('API server', () => new Promise<void>((done, reject) => apiServer?.close(error => error ? reject(error) : done()) ?? done()));
+  await cleanup('runtime pool', () => runtime?.end());
+  await cleanup('seed pool', () => db?.end());
+  await cleanup('attested owned database/container/runtime role', async () => {
+    if (authority) { const password = await readSecureMusicSecretFile(passwordFile, { mode: 'fixture' });
+      await stopOwnedUatDatabase(authority, { dropDatabase: (owned) => dropOwnedDatabase(owned, password) }); }
+  });
+  await cleanup('fixture secret', () => cleanupFixtureMusicTokenSecret(root, passwordFile));
+  await cleanup('private fixture directory', () => {
+    const relativeTemp = relative(resolve(tmpdir()), resolve(disposable));
+    if (!relativeTemp || relativeTemp.startsWith('..') || isAbsolute(relativeTemp) || !relativeTemp.startsWith('explorers-books-e2e-')) throw new Error('Fixture cleanup escaped its owned temporary directory');
+    rmSync(resolve(disposable), { recursive: true, force: true });
+  });
+  if (protectedReceipt && authority) await cleanup('protected receipt qualification', () => protectedReceipt.finish(authority!, failures, interrupted));
+  if (failures.length) { process.exitCode = 1; process.stderr.write(`Owned Books cleanup/qualification failed: ${failures.join(', ')}\n`); }
   if (interrupted) process.exitCode = 130;
+  if (process.connected) process.disconnect();
 }

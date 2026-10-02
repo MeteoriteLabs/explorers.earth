@@ -18,11 +18,14 @@ import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-
 import { provisionMusicRuntimeLogin } from '../server/db/music-runtime-role';
 import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
+import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
 
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');
-const suite = parseBrowserSuite(process.argv.slice(2));
+const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
+const suite = parseBrowserSuite(receiptArguments.args);
 assertBrowserEnvironment(process.env);
+const protectedReceipt = await createProtectedReceipt(root, suite, receiptArguments);
 const runId = randomBytes(16).toString('hex');
 const database = `music_uat_${runId}`;
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
@@ -33,7 +36,7 @@ let db: pg.Pool | undefined;
 let runtime: pg.Pool | undefined;
 let lifecycleControl: Awaited<ReturnType<typeof startLifecycleControl>> | undefined;
 let lifecycleReceipt: Record<string, unknown> | undefined;
-const artifacts = suite === 'lifecycle' ? mkdtempSync(join(tmpdir(), 'explorers-lifecycle-artifacts-')) : undefined;
+const artifacts = suite === 'lifecycle' && !protectedReceipt ? mkdtempSync(join(tmpdir(), 'explorers-lifecycle-artifacts-')) : undefined;
 let apiServer: ReturnType<ReturnType<typeof createCanonicalApp>['app']['listen']> | undefined;
 let vite: ChildProcess | undefined;
 let browser: ChildProcess | undefined;
@@ -140,7 +143,12 @@ async function main(): Promise<number> {
   const lifecycleConfig = ['--config', 'e2e/replatform/lifecycle.playwright.config.ts', '--project=lifecycle-chromium', '--retries=0'];
   const lifecycleEnv = { ...process.env, LIFECYCLE_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
   let discovered: string[] = [];
-  if (suite === 'lifecycle') {
+  const browserArgs = suite === 'lifecycle' ? lifecycleConfig : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'];
+  const browserEnv = { ...process.env,
+    [suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
+    PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+  if (protectedReceipt) protectedReceipt.discovery(frontend, [...browserArgs, '--workers=1', '--forbid-only'], browserEnv, disposable);
+  if (suite === 'lifecycle' && !protectedReceipt) {
     const listPath = join(artifacts!, 'discovery.json');
     const result = spawnSync(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'), 'test', ...lifecycleConfig, '--list', '--reporter=json'],
       { cwd: frontend, windowsHide: true, encoding: 'utf8', env: { ...lifecycleEnv, PLAYWRIGHT_JSON_OUTPUT_NAME: listPath } });
@@ -151,14 +159,15 @@ async function main(): Promise<number> {
     assertLifecycleResults(discovered, discovered.map(title => ({ title, status: 'passed', retry: 0 })));
   }
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
-    'test', ...(suite === 'lifecycle' ? [...lifecycleConfig, '--reporter=json,line'] : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'])], {
+    'test', ...browserArgs, ...(protectedReceipt ? ['--workers=1', '--forbid-only', '--reporter=json,line'] : suite === 'lifecycle' ? ['--reporter=json,line'] : [])], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
       [suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
-      ...(suite === 'lifecycle' ? { PLAYWRIGHT_JSON_OUTPUT_NAME: join(artifacts!, 'execution.json') } : {}),
+      ...(protectedReceipt ? protectedReceipt.executionEnvironment({}, disposable) : suite === 'lifecycle' ? { PLAYWRIGHT_JSON_OUTPUT_NAME: join(artifacts!, 'execution.json') } : {}),
       PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
   });
   const exitCode = await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
-  if (suite === 'lifecycle') {
+  if (protectedReceipt) protectedReceipt.execution(exitCode, browser.signalCode, disposable);
+  if (suite === 'lifecycle' && !protectedReceipt) {
     if (exitCode !== 0) throw new Error('Lifecycle browser child failed');
     const collect = (report: any): any[] => [...(report.specs ?? []), ...(report.suites ?? []).flatMap(collect)];
     const results = collect(JSON.parse(readFileSync(join(artifacts!, 'execution.json'), 'utf8'))).flatMap(spec => spec.tests.flatMap((test: any) => test.results.map((result: any) => ({ title: spec.title, status: result.status, retry: result.retry }))));
@@ -171,6 +180,10 @@ async function main(): Promise<number> {
 const signal = () => { interrupted = true; stopChild(browser); stopChild(vite); };
 process.once('SIGINT', signal);
 process.once('SIGTERM', signal);
+process.on('message', (message: unknown) => {
+  const input = message as { type?: string; capability?: string };
+  if (protectedReceipt && input.type === 'replatform-cancel' && input.capability === protectedReceipt.capability) signal();
+});
 try {
   process.exitCode = await main();
 } catch (error) {
@@ -179,8 +192,8 @@ try {
 } finally {
   const failures: string[] = [];
   const cleanup = async (label: string, action: () => unknown) => { try { await action(); } catch { failures.push(label); } };
-  await cleanup('browser child', () => suite === 'lifecycle' ? stopLifecycleChild(browser) : stopChild(browser));
-  await cleanup('Vite child', () => suite === 'lifecycle' ? stopLifecycleChild(vite) : stopChild(vite));
+  await cleanup('browser child', () => suite === 'lifecycle' || protectedReceipt ? stopLifecycleChild(browser) : stopChild(browser));
+  await cleanup('Vite child', () => suite === 'lifecycle' || protectedReceipt ? stopLifecycleChild(vite) : stopChild(vite));
   await cleanup('API server', () => new Promise<void>((done, reject) => apiServer?.close(error => error ? reject(error) : done()) ?? done()));
   await cleanup('private lifecycle control', () => lifecycleControl?.close());
   await cleanup('runtime pool', () => runtime?.end());
@@ -193,7 +206,9 @@ try {
   });
   await cleanup('fixture secret', () => cleanupFixtureMusicTokenSecret(root, passwordFile));
   await cleanup('private fixture directory', () => rmSync(disposable, { recursive: true, force: true }));
+  if (protectedReceipt && authority) await cleanup('protected receipt qualification', () => protectedReceipt.finish(authority!, failures, interrupted));
   try { assertOwnedCleanup(failures); } catch (error) { process.exitCode = 1; process.stderr.write(`${(error as Error).message}\n`); }
   if (lifecycleReceipt && artifacts) { lifecycleReceipt.cleanup = failures.length ? { failed: failures } : 'owned database dropped; attested container removed; pools/control/children closed; secret removed'; writeFileSync(join(artifacts, 'receipt.json'), JSON.stringify(lifecycleReceipt, null, 2)); process.stdout.write(`Lifecycle receipt: ${join(artifacts, 'receipt.json')}\n`); }
   if (interrupted) process.exitCode = 130;
+  if (process.connected) process.disconnect();
 }
