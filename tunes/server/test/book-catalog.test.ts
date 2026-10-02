@@ -80,3 +80,44 @@ it('rejects mismatched candidate and provenance identities',()=>{
  expect(contract.bookCandidateSchema.safeParse({...candidate,externalId:'different'}).success).toBe(false);
  expect(contract.bookProvenanceSchema.safeParse({...candidate.provenance,sourceUrl:'https://www.googleapis.com/books/v1/volumes/different'}).success).toBe(false);
 });
+
+it.each([
+ ['missing total',{items:[]}],
+ ['string total',{items:[],totalItems:'oops'}],
+ ['negative total',{items:[],totalItems:-1}],
+ ['fractional total',{items:[],totalItems:0.5}],
+ ['unsafe total',{items:[],totalItems:Number.MAX_SAFE_INTEGER+1}],
+ ['null total',{items:[],totalItems:null}],
+ ['positive initial empty total',{items:[],totalItems:1}],
+ ['positive total without items',{totalItems:1}],
+ ['zero total with results',{items:[volume()],totalItems:0}],
+ ['fewer total than returned results',{items:[volume(),volume('v_2')],totalItems:1}],
+])('rejects %s before caching a successful search',async(_label,body)=>{
+ const fetch=vi.fn(async()=>new Response(JSON.stringify(body))),service=new provider.BookCatalog({apiKey:'injected-only',secret:'cursor',fetch});
+ for(let n=0;n<2;n++)await expect(service.search('account',{query:'Book',limit:2})).rejects.toMatchObject({status:502,code:'PROVIDER_INVALID_RESPONSE'});
+ expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it.each([0,1,99])('accepts a later explicit empty page with valid total %s without treating pagination as a snapshot',async totalItems=>{
+ const fetch=vi.fn(async()=>new Response(JSON.stringify({items:[volume()],totalItems:1}))),service=new provider.BookCatalog({apiKey:'injected-only',secret:'cursor',fetch});
+ const first=await service.search('account',{query:'Book',limit:1});expect(first.nextCursor).toBeTypeOf('string');
+ fetch.mockImplementation(async()=>new Response(JSON.stringify({items:[],totalItems})));
+ const query={query:'Book',limit:1,cursor:first.nextCursor};
+ const next=await service.search('account',query);expect(next.items).toEqual([]);expect(next.nextCursor).toBeNull();
+ await service.search('account',query);expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it('accepts a later result whose offset exceeds an updated valid total estimate',async()=>{
+ const fetch=vi.fn(async()=>new Response(JSON.stringify({items:[volume()],totalItems:1}))),service=new provider.BookCatalog({apiKey:'injected-only',secret:'cursor',fetch});
+ const first=await service.search('account',{query:'Book',limit:1});
+ fetch.mockImplementation(async()=>new Response(JSON.stringify({items:[volume('v_2')],totalItems:1})));
+ const next=await service.search('account',{query:'Book',limit:1,cursor:first.nextCursor});expect(next.items[0].externalId).toBe('v_2');expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it('rejects and never caches malformed totals on later cursor pages',async()=>{
+ const fetch=vi.fn(async()=>new Response(JSON.stringify({items:[volume()],totalItems:1}))),service=new provider.BookCatalog({apiKey:'injected-only',secret:'cursor',fetch});
+ const first=await service.search('account',{query:'Book',limit:1});
+ fetch.mockImplementation(async()=>new Response(JSON.stringify({items:[],totalItems:'oops'})));
+ for(let n=0;n<2;n++)await expect(service.search('account',{query:'Book',limit:1,cursor:first.nextCursor})).rejects.toMatchObject({status:502,code:'PROVIDER_INVALID_RESPONSE'});
+ expect(fetch).toHaveBeenCalledTimes(3);
+});

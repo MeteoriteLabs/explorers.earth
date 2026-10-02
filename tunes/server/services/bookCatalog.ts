@@ -35,6 +35,17 @@ export function mapBookVolume(raw:unknown,expectedId:string|undefined,fetchedAt:
  return bookCandidateSchema.parse({provider:'google_books',externalKind:'volume',externalId:v.id,title:title.data,preview:d,provenance:{provider:'google_books',externalKind:'volume',externalId:v.id,fetchedAt,sourceUrl:`https://www.googleapis.com/books/v1/volumes/${v.id}`,mappingVersion:1},buyLinkSuggestion:url(v.saleInfo?.buyLink)});
 }
 const querySchema=bookCandidateRequestSchema;
+function volumeList(body:unknown,limit:number,offset:number):unknown[]{
+ if(!body||typeof body!=='object'||Array.isArray(body))throw invalid();
+ const list=body as {totalItems?:unknown;items?:unknown};
+ if(!Number.isSafeInteger(list.totalItems)||(list.totalItems as number)<0)throw invalid();
+ const total=list.totalItems as number;
+ if(list.items===undefined){if(total!==0)throw invalid();return [];}
+ if(!Array.isArray(list.items)||list.items.length>limit||list.items.length>total)throw invalid();
+ if(offset===0&&list.items.length===0&&total>0)throw invalid();
+ // Later pages may empty or extend past an updated total: offsets are not snapshots.
+ return list.items;
+}
 type Options={apiKey?:string;secret?:string;fetch?:typeof fetch;now?:()=>number;deadlineMs?:number};
 export class BookCatalog {
  private readonly fetcher:typeof fetch;private readonly now:()=>number;private readonly secret:string;private readonly cache=new Map<string,{expires:number;size:number;items:BookCandidate[]}>();private cacheBytes=0;private readonly flights=new Map<string,Promise<BookCandidate[]>>();private readonly rates=new Map<string,{since:number;count:number}>();private active=0;private readonly queue:Array<()=>void>=[];
@@ -56,7 +67,7 @@ export class BookCatalog {
  })(),timeout]);}catch(e){if(e instanceof BookProviderFailure)throw e;throw new BookProviderFailure(503,'PROVIDER_UNAVAILABLE');}finally{clearTimeout(timer);if(queued){const at=this.queue.indexOf(queued);if(at>=0)this.queue.splice(at,1);}if(acquired){this.active--;this.queue.shift()?.();}}
  }
  async search(account:string,raw:unknown){const parsed=querySchema.safeParse(raw);if(!parsed.success)throw input();let {query,limit,cursor}=parsed.data;if(/^isbn:/i.test(query)&&!isbnQuery(query.slice(5)))throw input();if(/^isbn:/i.test(query))query=`isbn:${query.slice(5).toUpperCase()}`;const offset=cursor?this.cursor(cursor,query,limit):0;this.rate(account);const key=JSON.stringify([query,limit,offset]);let items:BookCandidate[];const existing=this.cache.get(key);
- if(existing&&existing.expires>this.now()){this.cache.delete(key);this.cache.set(key,existing);items=existing.items;}else{if(existing){this.cache.delete(key);this.cacheBytes-=existing.size;}let flight=this.flights.get(key);if(!flight){flight=(async()=>{const body=await this.request('volumes',new URLSearchParams({q:query,langRestrict:'en',printType:'books',startIndex:String(offset),maxResults:String(limit)}));if(!body||typeof body!=='object'||Array.isArray(body)||body.items===undefined&&body.totalItems!==0||body.items!==undefined&&!Array.isArray(body.items)||body.items?.length>limit)throw invalid();const results=(body.items??[]).map((v:unknown)=>mapBookVolume(v,undefined,this.now()));const size=Buffer.byteLength(key)+Buffer.byteLength(JSON.stringify(results));if(size<=4194304){this.cache.set(key,{items:results,size,expires:this.now()+(results.length?300000:30000)});this.cacheBytes+=size;while(this.cache.size>200||this.cacheBytes>4194304){const k=this.cache.keys().next().value!;this.cacheBytes-=this.cache.get(k)!.size;this.cache.delete(k);}}return results;})();this.flights.set(key,flight);}try{items=await flight;}finally{if(this.flights.get(key)===flight)this.flights.delete(key);}}
+ if(existing&&existing.expires>this.now()){this.cache.delete(key);this.cache.set(key,existing);items=existing.items;}else{if(existing){this.cache.delete(key);this.cacheBytes-=existing.size;}let flight=this.flights.get(key);if(!flight){flight=(async()=>{const body=await this.request('volumes',new URLSearchParams({q:query,langRestrict:'en',printType:'books',startIndex:String(offset),maxResults:String(limit)}));const results=volumeList(body,limit,offset).map(v=>mapBookVolume(v,undefined,this.now()));const size=Buffer.byteLength(key)+Buffer.byteLength(JSON.stringify(results));if(size<=4194304){this.cache.set(key,{items:results,size,expires:this.now()+(results.length?300000:30000)});this.cacheBytes+=size;while(this.cache.size>200||this.cacheBytes>4194304){const k=this.cache.keys().next().value!;this.cacheBytes-=this.cache.get(k)!.size;this.cache.delete(k);}}return results;})();this.flights.set(key,flight);}try{items=await flight;}finally{if(this.flights.get(key)===flight)this.flights.delete(key);}}
  const expiresAt=this.now()+600000;return bookCandidatesSchema.parse({version:'explorers-book-candidates/v1',items,nextCursor:items.length===limit&&offset+limit<=200?this.token({query,limit,offset:offset+limit,language:'en',expires:expiresAt}):null,expiresAt});
  }
  async resolve(account:string,id:string){if(!/^[A-Za-z0-9_-]{1,200}$/.test(id))throw input();this.rate(account);return mapBookVolume(await this.request(`volumes/${encodeURIComponent(id)}`,new URLSearchParams({projection:'full'})),id,this.now());}
