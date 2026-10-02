@@ -13,6 +13,26 @@ const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Arra
 const digest=value=>createHash('sha256').update(canonical(value)).digest('hex');
 const equal=(a,b)=>canonical(a)===canonical(b);
 const fields=(value,expected)=>{if(!value||typeof value!=='object'||Array.isArray(value)||!equal(Object.keys(value).sort(),[...expected].sort()))fail('Unknown/missing receipt fields');};
+export function resolveNodeOwnedNpm(nodeExecutable=process.execPath,{platform=process.platform}={}){
+ const node=realpathSync(nodeExecutable);if(!lstatSync(node).isFile())fail('Node executable must be a regular file');
+ let prefix,pkg,alternative;
+ if(platform==='win32'&&basename(node).toLowerCase()==='node.exe'){prefix=dirname(node);pkg=join(prefix,'node_modules/npm');alternative=join(prefix,'lib/node_modules/npm');}
+ else if(platform==='linux'&&basename(node)==='node'&&basename(dirname(node))==='bin'){prefix=dirname(dirname(node));pkg=join(prefix,'lib/node_modules/npm');alternative=join(prefix,'bin/node_modules/npm');}
+ else fail('Unsupported Node-owned npm layout');
+ if(existsSync(alternative))fail('Ambiguous Node-owned npm installation');
+ if(realpathSync(pkg)!==resolve(pkg)||!lstatSync(pkg).isDirectory())fail('npm package ownership mismatch');
+ const packagePath=join(pkg,'package.json'),cli=join(pkg,'bin/npm-cli.js');
+ for(const path of [packagePath,cli])if(realpathSync(path)!==resolve(path)||!lstatSync(path).isFile())fail('npm file ownership mismatch');
+ const metadata=JSON.parse(readFileSync(packagePath,'utf8'));
+ if(metadata.name!=='npm'||!/^\d+\.\d+\.\d+$/.test(metadata.version)||metadata.bin?.npm!=='bin/npm-cli.js')fail('npm package identity mismatch');
+ return {nodeExecutable:node,nodePrefix:prefix,npmPackage:packagePath,npmCli:cli,packageVersion:metadata.version,layout:platform==='win32'?'windows-adjacent':'linux-prefix-lib'};
+}
+export function probeNodeOwnedNpm(nodeExecutable=process.execPath,{platform=process.platform,expectedNodeVersion=process.versions.node,run=(exe,args)=>execFileSync(exe,args,{encoding:'utf8',windowsHide:true})}={}){
+ const owner=resolveNodeOwnedNpm(nodeExecutable,{platform});
+ const nodeVersion=run(owner.nodeExecutable,['--version']).trim();if(nodeVersion!==`v${expectedNodeVersion}`)fail('Node runtime version mismatch');
+ const npmVersion=run(owner.nodeExecutable,[owner.npmCli,'--version']).trim();if(npmVersion!==owner.packageVersion)fail('npm runtime/package version mismatch');
+ return {...owner,nodeVersion:expectedNodeVersion,npmVersion};
+}
 export function identityKey(identity){
  if(!identity||Object.keys(identity).sort().join(',')!=='file,project,repeat,titlePath'||typeof identity.file!=='string'||!identity.file||/[\\:\x00-\x1f]/.test(identity.file)||identity.file.startsWith('/')||identity.file.split('/').some(p=>!p||p==='.'||p==='..')||!Array.isArray(identity.titlePath)||!identity.titlePath.length||identity.titlePath.some(p=>typeof p!=='string'||!p)||typeof identity.project!=='string'||identity.repeat!==0)fail('Invalid protected identity');
  return canonical(identity);
@@ -99,7 +119,7 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',...authority]);
  const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
  if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
- const paths=[...new Set([...tracked,MANIFEST,'scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts'])].sort();
+ const paths=[...new Set([...tracked,MANIFEST,'scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','scripts/node-owned-npm.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts'])].sort();
  const dependencies=new Set([...paths,...authority,...frontendRoot]);
  // Follow relative source imports from the runner/helper roots, including additions
  // ignored by Git. Every resolved dependency must be tracked or an explicit overlay.
@@ -135,8 +155,7 @@ export async function main(args=process.argv.slice(2)){
  if(process.versions.node!=='24.21.0')fail('Protected qualification requires Node24.21.0');
  const manifest=JSON.parse(readFileSync(join(root,MANIFEST)));validateManifest(manifest);
  const source=snapshotSource(root),locks=Object.fromEntries(['','tunes','explorers-earth','tunes/auth-runtime'].map(prefix=>[prefix||'root',validateLockedInstall(root,prefix)]));
- const npmCli=join(dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');if(!existsSync(npmCli))fail('Current Node-owned npm CLI unavailable');
- const npm=execFileSync(process.execPath,[npmCli,'--version'],{encoding:'utf8',windowsHide:true}).trim();
+ const npmOwner=probeNodeOwnedNpm(process.execPath),npm=npmOwner.npmVersion;
  const {chromium}=await import(pathToFileURL(join(root,'explorers-earth/node_modules/playwright-core/index.mjs')).href);
  if(!existsSync(chromium.executablePath()))fail('Installed Chromium unavailable');const probe=await chromium.launch({headless:true});const browserVersion=probe.version();await probe.close();
  mkdirSync(options.receiptDirectory,{mode:0o700});const startedAt=new Date().toISOString();const children=[];
@@ -157,7 +176,7 @@ export async function main(args=process.argv.slice(2)){
    if(!equal(snapshotSource(root).provenance,source.provenance))fail('Source changed during lane execution');
    return child;
   }});
-  result.sourceHashes=source.hashes;result.tools={node:process.versions.node,npm,playwright,chromium:browserVersion,locks};result.startedAt=startedAt;result.endedAt=new Date().toISOString();result.children=children;
+  result.sourceHashes=source.hashes;result.tools={node:process.versions.node,npm,nodeExecutable:npmOwner.nodeExecutable,npmCli:npmOwner.npmCli,npmPackage:npmOwner.npmPackage,playwright,chromium:browserVersion,locks};result.startedAt=startedAt;result.endedAt=new Date().toISOString();result.children=children;
   writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify(result,null,2),{mode:0o600,flag:'wx'});
   process.stdout.write(`Delivered slice passed: ${result.identities} identities. Overall milestone/full parity incomplete. Receipt: ${join(options.receiptDirectory,'qualification.json')}\n`);
   return result;
