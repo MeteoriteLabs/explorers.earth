@@ -1,4 +1,4 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {cases,projects,validateDiscovery,assertUnchanged,validateExecution} from './analytics-browser-contract.mjs';
+import {test} from 'vitest';import assert from 'node:assert/strict';import {cases,projects,validateDiscovery,assertUnchanged,validateExecution} from './analytics-browser-contract.mjs';
 const full=()=>({suites:[{specs:cases.map(title=>({title,tests:projects.map(projectName=>({projectName}))}))}]});
 test('exact ten identities accepted',()=>assert.equal(validateDiscovery(full()),10));
 test('missing identity refused',()=>{const r=full();r.suites[0].specs[0].tests.pop();assert.throws(()=>validateDiscovery(r));});

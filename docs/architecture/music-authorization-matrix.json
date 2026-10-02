@@ -419,9 +419,9 @@
       "method": "POST",
       "path": "/api/explorers/analytics/events",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "decision": "tombstone",
+      "decision": "public",
       "allowed": {
-        "unauthenticated": false,
+        "unauthenticated": true,
         "owner": false,
         "otherUser": false,
         "suspended": false,
@@ -438,10 +438,29 @@
       "method": "GET",
       "path": "/api/explorers/analytics/events",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "decision": "tombstone",
+      "decision": "strapi-identity",
       "allowed": {
         "unauthenticated": false,
         "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/summary",
+      "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
         "otherUser": false,
         "suspended": false,
         "pendingDeletion": false,
@@ -2920,6 +2939,17 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/app.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/analyticsMaintenance.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,
