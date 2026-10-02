@@ -9,6 +9,7 @@ import { resolveExplorersAuthConfig } from '../auth/betterAuth';
 import { OwnerContentService } from '../application/ownerContent';
 import type { Actor } from '../application/actor';
 import { apiErrorSchema } from '../../shared/explorersContract';
+import { assertSelectedCollectionPlan } from './owner-content-plan-assertion';
 const config=resolveExplorersAuthConfig({EXPLORERS_PUBLIC_ORIGIN:'http://127.0.0.1:51474',EXPLORERS_AUTH_SECRET:'owner-read-secret-'.repeat(4),GOOGLE_CLIENT_ID:'fixture',GOOGLE_CLIENT_SECRET:'fixture'});
 let pool:pg.Pool, composed:ReturnType<typeof createCanonicalApp>;
 beforeAll(()=>{pool=new pg.Pool({connectionString:process.env.DATABASE_URL_TEST,max:4});composed=createCanonicalApp(pool,config);});
@@ -218,14 +219,18 @@ it('uses matching index seeks for actual 1k and 10k owner page queries',async()=
     await service.listRecommendations(actorFor(f),{category:'books',status:'all',collectionId:f.ids[0]});
     for(const [n,index] of ['collections_owner_order_idx','recommendations_owner_id_idx','collection_items_owner_page_idx','collection_items_owner_collection_order_idx'].entries()) {
       const {sql,values}=queries[n],plan=(await pool.query('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+sql,values)).rows[0]['QUERY PLAN'];
-      if(index==='recommendations_owner_id_idx'&&!JSON.stringify(plan).includes(index)) {
+      evidence.push({fixture:count,index,rows:plan[0].Plan['Actual Rows'],blocks:plan[0].Plan['Shared Hit Blocks'],executionMs:plan[0]['Execution Time'],sql,parameters:values,plan:plan[0].Plan});
+      mkdirSync(resolve('.superpowers'),{recursive:true});writeFileSync(resolve('.superpowers/task3.1-owner-explain.json'),JSON.stringify(evidence,null,2));
+      console.info(`Owner query plan: fixture=${count}, query=${index}`);
+      if(index==='collection_items_owner_collection_order_idx'&&!JSON.stringify(plan).includes(index)) {
+        assertSelectedCollectionPlan(plan[0].Plan,{accountId:f.accountId,category:'books',collectionId:f.ids[0]});
+      } else if(index==='recommendations_owner_id_idx'&&!JSON.stringify(plan).includes(index)) {
         // A fixture owning nearly the entire table can prefer the narrower PK.
         // Accept only the observed bounded seek, never a full scan/sort fallback.
         expect(plan[0].Plan.Plans[0]['Index Name']).toBe('recommendations_pkey');
         expect(plan[0].Plan.Plans[0]['Rows Removed by Filter']).toBeLessThanOrEqual(25);
       } else expect(JSON.stringify(plan)).toContain(index);
       expect(plan[0].Plan['Actual Rows']).toBe(25);
-      evidence.push({fixture:count,index,rows:plan[0].Plan['Actual Rows'],blocks:plan[0].Plan['Shared Hit Blocks'],executionMs:plan[0]['Execution Time'],sql,parameters:values,plan:plan[0].Plan});
     }
   }
   mkdirSync(resolve('.superpowers'),{recursive:true});writeFileSync(resolve('.superpowers/task3.1-owner-explain.json'),JSON.stringify(evidence,null,2));
