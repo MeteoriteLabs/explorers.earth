@@ -57,7 +57,7 @@ async function beginRecovery() {
   const intent = cookie(started, recoveryIntentCookie);
   const signIn = await request(composed.app).post("/api/auth/sign-in/social")
     .set("origin", config.baseURL).set("cookie", intent)
-    .send({ provider: "google", callbackURL: "/app/recover" });
+    .send({ provider: "google", callbackURL: "/reactivate-confirm" });
   expect(signIn.status).toBe(200);
   const state = new URL(signIn.body.url).searchParams.get("state");
   if (!state) throw new Error("Google state missing");
@@ -103,7 +103,7 @@ describe("pinned Google callback recovery adapter", () => {
     await simulateGoogleIdentity(identity);
     const signIn = await request(composed.app).post("/api/auth/sign-in/social")
       .set("origin", config.baseURL)
-      .send({ provider: "google", callbackURL: "/app/recover", additionalData: { explorersRecoveryIntent: "spoofed" } });
+      .send({ provider: "google", callbackURL: "/reactivate-confirm", additionalData: { explorersRecoveryIntent: "spoofed" } });
     expect(signIn.status).toBe(200);
     const state = new URL(signIn.body.url).searchParams.get("state");
     if (!state) throw new Error("Google state missing");
@@ -156,7 +156,7 @@ describe("pinned Google callback recovery adapter", () => {
     const response = await request(composed.app).get("/api/auth/callback/google")
       .query({ code: "fixture-code", state: first.state })
       .set("cookie", [second.intent, ...first.callbackCookies.split("; ").slice(1)].join("; "));
-    expect(response.headers.location).toBe(`${config.baseURL}/app/recover?error=recovery_unavailable`);
+    expect(response.headers.location).toBe(`${config.baseURL}/reactivate-confirm?error=recovery_unavailable`);
     expect(hasPositiveNormalAuthCookie(response)).toBe(false);
     expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
     expect((await pool.query("SELECT count(*)::int AS count FROM auth_session WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
@@ -174,6 +174,23 @@ describe("pinned Google callback recovery adapter", () => {
     expect((await pool.query("SELECT count(*)::int AS count FROM account_recovery_proofs WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
   });
 
+  it("an ambiguous Google binding returns retryable recovery without any credential", async () => {
+    const identity = await seedIdentity();
+    await pool.query("INSERT INTO auth_account(id,account_id,provider_id,user_id,updated_at) VALUES ($1,$2,'google',$3,now())",
+      [randomUUID(), `second-${randomUUID()}`, identity.userId]);
+    await simulateGoogleIdentity(identity);
+    const { state, callbackCookies } = await beginRecovery();
+    const response = await request(composed.app).get("/api/auth/callback/google")
+      .query({ code: "fixture-code", state }).set("cookie", callbackCookies);
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(`${config.baseURL}/reactivate-confirm?error=recovery_unavailable`);
+    expect(hasPositiveNormalAuthCookie(response)).toBe(false);
+    expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
+    expect((await pool.query("SELECT count(*)::int AS count FROM auth_session WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
+    expect((await pool.query("SELECT count(*)::int AS count FROM account_recovery_proofs WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
+    expect((await pool.query("SELECT status FROM creator_accounts WHERE id=$1", [identity.accountId])).rows[0].status).toBe("suspended");
+  });
+
   it("issuance failure for an active account discards the normal session and proof", async () => {
     const identity = await seedIdentity("active");
     await simulateGoogleIdentity(identity);
@@ -181,7 +198,7 @@ describe("pinned Google callback recovery adapter", () => {
     const response = await request(composed.app).get("/api/auth/callback/google")
       .query({ code: "fixture-code", state }).set("cookie", callbackCookies);
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe(`${config.baseURL}/app/recover?error=recovery_unavailable`);
+    expect(response.headers.location).toBe(`${config.baseURL}/reactivate-confirm?error=recovery_unavailable`);
     expect(hasPositiveNormalAuthCookie(response)).toBe(false);
     expect(hasPositiveRecoveryProofCookie(response)).toBe(false);
     expect((await pool.query("SELECT count(*)::int AS count FROM auth_session WHERE user_id=$1", [identity.userId])).rows[0].count).toBe(0);
@@ -197,7 +214,7 @@ describe("pinned Google callback recovery adapter", () => {
         const started = await agent.post("/api/explorers/v1/recovery/start").set("origin", config.baseURL);
         expect(started.status).toBe(204);
         const signIn = await agent.post("/api/auth/sign-in/social").set("origin", config.baseURL)
-          .send({ provider: "google", callbackURL: "/app/recover" });
+          .send({ provider: "google", callbackURL: "/reactivate-confirm" });
         expect(signIn.status).toBe(200);
         const state = new URL(signIn.body.url).searchParams.get("state");
         if (!state) throw new Error("Google state missing");
@@ -222,7 +239,7 @@ describe("pinned Google callback recovery adapter", () => {
       await expect(consumeRecoveryProof(pool, previousToken)).rejects.toThrow();
 
       const signIn = await agent.post("/api/auth/sign-in/social").set("origin", config.baseURL)
-        .send({ provider: "google", callbackURL: "/app/recover" });
+        .send({ provider: "google", callbackURL: "/reactivate-confirm" });
       const state = new URL(signIn.body.url).searchParams.get("state");
       if (!state) throw new Error("Google state missing");
       if (outcome === "mismatched") {

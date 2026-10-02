@@ -63,7 +63,7 @@ export function createRecoveryOAuthHooks(pool: Pool, config: ExplorersAuthConfig
       const cookieIntent = readRecoveryIntent(raw ?? undefined, config.secret);
       if (!pending || !cookieIntent || stateIntent !== cookieIntent) {
         if (pending) await ctx.context.internalAdapter.deleteSession(pending.session.token);
-        if (pending) throw ctx.redirect(`${config.baseURL}/app/recover?error=recovery_unavailable`);
+        if (pending) throw ctx.redirect(`${config.baseURL}/reactivate-confirm?error=recovery_unavailable`);
         return;
       }
 
@@ -82,7 +82,7 @@ export function createRecoveryOAuthHooks(pool: Pool, config: ExplorersAuthConfig
         });
       } catch {
         await ctx.context.internalAdapter.deleteSession(pending.session.token).catch(() => undefined);
-        throw ctx.redirect(`${config.baseURL}/app/recover?error=recovery_unavailable`);
+        throw ctx.redirect(`${config.baseURL}/reactivate-confirm?error=recovery_unavailable`);
       }
     }),
   };
