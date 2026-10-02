@@ -33,3 +33,9 @@ Logs in the clean export: frontend-{unit-final,build}.log, books-focused-final.l
 ## Limits
 
 Provider transport is deterministic local evidence; live Google/OAuth/S3/QA storage qualification remains3.5. No hosted rollout, production operation, push, merge, all-category UI adoption or complete3.3 milestone claim is made. The broad historical browser harness/root platform:test:e2e wrapper is not invented as evidence. Independent review follows the scope-qualified source commit. Unrelated scratch, audit documents, robots/sitemap and reports remain preserved.
+
+## Committed-source evidence
+
+Source commit: e8336f70, 44 scoped files, 1099 insertions/663 deletions, based on f289a643. Final clean Books qualification is 13 files52/52 (16.36s, zero skips); final affected frontend production build passed. Browser-source-final log records14/14 (1.7m), retries0 and zero skips. The earlier4037 full frontend and588 critical coverage runs retain their stated source provenance; no later full aggregate is claimed.
+
+After the source commit, the owned normal51538 PostgreSQL harness was stopped and freshly started with the e8336f70 attestation. With explicit MUSIC_C5_POSTGRES_TEST=1, N --import ./node_modules/tsx/dist/loader.mjs scripts/.shared-notes-harness.ts test server/test/books-public-gateway.integration.test.ts server/test/music-runtime-role.integration.test.ts passed29/29 across2 files (11.18s), zero skips. This qualifies the final bounded snapshot query and post-COMMIT privacy recheck using actual protected runtime authority. Log: tunes/.superpowers/books-ui-committed-pg.log. The harness was normally stopped after qualification. No new container-image or hosted qualification is claimed by package B.
