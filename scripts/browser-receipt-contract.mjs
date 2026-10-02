@@ -13,7 +13,7 @@ export function validateReceipts(plan, receipts, expectedProducer) {
   const seen=new Set();let count=0;
   for(const receipt of receipts){
     exactFields(receipt,['schemaVersion','planHash','assignmentHash','shard','jobId','provenance','producer','conclusion','cleanup','results'],'receipt');
-    if(receipt.schemaVersion!==1||!Number.isSafeInteger(receipt.shard)||receipt.shard<1||receipt.shard>plan.shards.length||seen.has(receipt.shard))fail('Invalid/duplicate shard');seen.add(receipt.shard);
+    if(receipt.schemaVersion!==plan.schemaVersion||!Number.isSafeInteger(receipt.shard)||receipt.shard<1||receipt.shard>plan.shards.length||seen.has(receipt.shard))fail('Invalid/duplicate shard');seen.add(receipt.shard);
     const assignment=plan.shards[receipt.shard-1];
     if(receipt.jobId!==expectedProducer.shardJobs[receipt.shard]||receipt.planHash!==plan.planHash||receipt.assignmentHash!==assignment.assignmentHash||canonical(receipt.provenance)!==canonical(plan.provenance)||canonical(receipt.producer)!==canonical(expectedProducer))fail('Receipt provenance mismatch');
     if(receipt.conclusion!=='success'||receipt.cleanup!=='passed')fail('Shard did not finish cleanly');

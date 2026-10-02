@@ -23,7 +23,9 @@ export function checkedIdentities(identities) {
   return [...identities].sort((a,b)=>identityKey(a)<identityKey(b)?-1:identityKey(a)>identityKey(b)?1:0);
 }
 export function checkedProvenance(p) {
-  exactFields(p,['sha','sourceHash','configHash','lockHash'],'provenance');
+  const fields=['sha','sourceHash','configHash','lockHash'];
+  if(Object.hasOwn(p??{},'schemaVersion')) { if(p.schemaVersion!==2) fail('Unknown provenance schema'); fields.push('schemaVersion'); }
+  exactFields(p,fields,'provenance');
   if(!/^[a-f0-9]{40}$/.test(p.sha)||['sourceHash','configHash','lockHash'].some(k=>!/^[a-f0-9]{64}$/.test(p[k]))) fail('Invalid source provenance');
 }
 /** --list reports no execution results: its status=skipped is not a runtime pass. */
@@ -66,12 +68,12 @@ export function planShards({identities,provenance,shardCount,timings=[],atomicGr
   const shards=Array.from({length:shardCount},(_,index)=>({index:index+1,identities:[],estimatedDurationMs:0}));
   for(const u of weighted){const shard=[...shards].sort((a,b)=>a.estimatedDurationMs-b.estimatedDurationMs||a.identities.length-b.identities.length||a.index-b.index)[0];shard.identities.push(...u.identities);shard.estimatedDurationMs+=u.weight;}
   for(const s of shards){s.identities=checkedIdentities(s.identities);s.assignmentHash=digest({index:s.index,identities:s.identities});}
-  const plan={schemaVersion:1,provenance:structuredClone(provenance),inventoryHash:digest(inventory),identities:inventory,shards};
+  const plan={schemaVersion:provenance.schemaVersion??1,provenance:structuredClone(provenance),inventoryHash:digest(inventory),identities:inventory,shards};
   plan.planHash=digest(plan);return plan;
 }
 export function validatePlan(plan) {
   exactFields(plan,['schemaVersion','provenance','inventoryHash','identities','shards','planHash'],'plan');
-  if(plan.schemaVersion!==1)fail('Unknown plan schema');checkedProvenance(plan.provenance);const ids=checkedIdentities(plan.identities);
+  if(![1,2].includes(plan.schemaVersion)||plan.schemaVersion!==(plan.provenance?.schemaVersion??1))fail('Unknown/inconsistent plan schema');checkedProvenance(plan.provenance);const ids=checkedIdentities(plan.identities);
   const {planHash,...body}=plan;if(planHash!==digest(body)||plan.inventoryHash!==digest(ids)||!Array.isArray(plan.shards)||!plan.shards.length)fail('Plan digest mismatch');
   const all=[];for(const [n,s] of plan.shards.entries()){exactFields(s,['index','identities','estimatedDurationMs','assignmentHash'],'assignment');if(s.index!==n+1||!Number.isFinite(s.estimatedDurationMs)||s.estimatedDurationMs<0)fail('Invalid assignment');checkedIdentities(s.identities);if(s.assignmentHash!==digest({index:s.index,identities:s.identities}))fail('Assignment digest mismatch');all.push(...s.identities);}
   if(canonical(checkedIdentities(all))!==canonical(ids))fail('Assignment union mismatch');return true;
