@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
 import { submitPinnedCategoryUnpublish } from './setup/category-navigation-helpers';
+import { bookFixtureId } from './setup/books-owner-content';
 
 for (const category of categories) {
   // Break caught: Off forgets only visibility, or On silently restores saved pin.
@@ -142,6 +143,8 @@ test('last list Draft and Delete preserve category settings/pins, private items 
   const privateList = { ...structuredClone(state.lists.bookLists[0]), documentId: 'private-books-list', List_Name: 'Private fixture list', slug: 'private-fixture', visibility: false };
   state.lists.bookLists.push(privateList);
   const before = { public_books: state.account.public_books, pins: [...state.account.pinned_nav_tabs] };
+  const publicCollectionPath = `/api/explorers/v1/collections/${bookFixtureId('collection', 'books-list')}`;
+  const privateCollectionPath = `/api/explorers/v1/collections/${bookFixtureId('collection', 'private-books-list')}`;
   const owner = await openFixture(browser, baseURL!, state, { owner: true }); const guest = await openFixture(browser, baseURL!, state);
   try {
     await guest.page.goto(`/${fixtureUser.username}/books`);
@@ -151,7 +154,7 @@ test('last list Draft and Delete preserve category settings/pins, private items 
     const card = owner.page.locator('div.group').filter({ has: owner.page.getByRole('heading', { name: 'Public books', exact: true }) });
     await card.getByRole('switch', { name: 'Toggle', exact: true }).click();
     await expect(card.getByText('Draft', { exact: true })).toBeVisible();
-    expect(state.writes.map(r => r.name)).toEqual(['UpdateBookList']);
+    expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`]);
     await owner.page.reload(); await expect(card.getByText('Draft', { exact: true })).toBeVisible();
     await guest.page.reload(); await expect(guest.page.getByText('Public books', { exact: true })).toHaveCount(0);
     await owner.page.getByRole('heading', { name: 'Public books', exact: true }).click();
@@ -159,12 +162,12 @@ test('last list Draft and Delete preserve category settings/pins, private items 
     owner.page.once('dialog', dialog => dialog.accept());
     await owner.page.getByRole('button', { name: 'Delete', exact: true }).click();
     await expect(owner.page).toHaveURL(`${baseURL}/recommendations/books`);
-    expect(state.writes.map(r => r.name)).toEqual(['UpdateBookList', 'DeleteBookList']);
+    expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`, `DELETE ${publicCollectionPath}`]);
     await owner.page.getByRole('heading', { name: 'Private fixture list', exact: true }).click();
     await owner.page.getByRole('button', { name: 'manage', exact: true }).click();
     owner.page.once('dialog', dialog => dialog.accept()); await owner.page.getByRole('button', { name: 'Delete', exact: true }).click();
     await expect(owner.page.getByText('Build your library', { exact: true })).toBeVisible();
-    expect(state.lists.bookLists).toEqual([]); expect(state.writes.map(r => r.name)).toEqual(['UpdateBookList', 'DeleteBookList', 'DeleteBookList']);
+    expect(state.lists.bookLists).toEqual([]); expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`, `DELETE ${publicCollectionPath}`, `DELETE ${privateCollectionPath}`]);
     expect({ public_books: state.account.public_books, pins: state.account.pinned_nav_tabs }).toEqual(before);
     await settings(owner.page, true); await expect(owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeChecked();
     await expect(owner.page.getByRole('checkbox', { name: 'Pin Books Tab' })).toBeChecked();
