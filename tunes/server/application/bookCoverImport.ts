@@ -63,7 +63,7 @@ export class BookCoverImportService {
   }catch(error){
    // Failed attachment keeps old covers. Retire progress before removing newly
    // uploaded bytes; media's durable pending_delete survives deletion failure.
-   if(progress&&!completed){await db.query("UPDATE application_command_receipts SET status='retired',response=NULL WHERE account_id=$1 AND operation='importBookCovers' AND idempotency_key_hash=$2 AND status='pending'",[actor.accountId,keyHash]).catch(()=>{});for(const mediaId of new Set(Object.values(progress.slots).filter((s:any)=>s.status==='copied').map((s:any)=>s.media.id)))await media.deleteMedia(actor,mediaId,context).catch(()=>{});}
+   if(progress&&!completed){await db.query("UPDATE application_command_receipts SET status='retired',response=NULL WHERE account_id=$1 AND operation='importBookCovers' AND idempotency_key_hash=$2 AND status='pending'",[actor.accountId,keyHash]).catch(()=>{});for(const mediaId of Array.from(new Set(Object.values(progress.slots).filter((s:any)=>s.status==='copied').map((s:any)=>s.media.id))))await media.deleteMedia(actor,mediaId,context).catch(()=>{});}
    throw error;
   }finally{if(locked)await db.query('SELECT pg_advisory_unlock(44035,hashtext($1))',[`${actor.accountId}:${key}`]).catch(()=>{});db.release();}
  }

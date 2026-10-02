@@ -1,5 +1,7 @@
 import {lookup} from 'node:dns/promises';
 import {isIP} from 'node:net';
+import type {TcpNetConnectOpts} from 'node:net';
+import type {RequestOptions} from 'node:https';
 import {request} from 'node:https';
 
 export class BookCoverFetchFailure extends Error {constructor(){super('Book cover unavailable');}}
@@ -18,8 +20,9 @@ type Target=Address&{url:URL;servername:'books.google.com';signal:AbortSignal};
 type Response={status:number;mimeType:string;body:AsyncIterable<Uint8Array>;length?:number};
 type Fixture={mode:'deterministic-fixture';resolve:(hostname:string)=>Promise<Address[]>;connect:(target:Target)=>Promise<Response>;deadlineMs?:number};
 function connect(target:Target):Promise<Response>{return new Promise((resolve,reject)=>{
- const req=request(target.url,{method:'GET',agent:false,family:target.family,autoSelectFamily:false,servername:target.servername,rejectUnauthorized:true,signal:target.signal,
-  lookup:(_hostname,_options,callback)=>callback(null,target.address,target.family)},res=>resolve({status:res.statusCode??0,mimeType:String(res.headers['content-type']??'').split(';')[0].trim().toLowerCase(),length:res.headers['content-length']===undefined?undefined:Number(res.headers['content-length']),body:res}));
+ const options:RequestOptions&Pick<TcpNetConnectOpts,'autoSelectFamily'>={method:'GET',agent:false,family:target.family,autoSelectFamily:false,servername:target.servername,rejectUnauthorized:true,signal:target.signal,
+  lookup:(_hostname,_options,callback)=>callback(null,target.address,target.family)};
+ const req=request(target.url,options,res=>resolve({status:res.statusCode??0,mimeType:String(res.headers['content-type']??'').split(';')[0].trim().toLowerCase(),length:res.headers['content-length']===undefined?undefined:Number(res.headers['content-length']),body:res}));
  req.on('error',reject);req.end();
 });}
 function sniff(b:Buffer){if(b.length>=8&&b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';if(b.length>=3&&b[0]===255&&b[1]===216&&b[2]===255)return 'image/jpeg';if(b.length>=12&&b.toString('ascii',0,4)==='RIFF'&&b.toString('ascii',8,12)==='WEBP')return 'image/webp';if(b.length>=6&&/^GIF8[79]a$/.test(b.toString('ascii',0,6)))return 'image/gif';return undefined;}

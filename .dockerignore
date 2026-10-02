@@ -534,8 +534,14 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Authentication/components/VerificationForm.tsx
 !explorers-earth/src/features/Authentication/data.ts
 !explorers-earth/src/features/Authentication/hooks/useCurrentUser.ts
+!explorers-earth/src/features/Books/api/booksClient.ts
+!explorers-earth/src/features/Books/api/booksViewModel.ts
 !explorers-earth/src/features/Books/api/mutation.ts
+!explorers-earth/src/features/Books/api/publicBooksContinuation.ts
 !explorers-earth/src/features/Books/api/query.ts
+!explorers-earth/src/features/Books/api/useBookListCommands.ts
+!explorers-earth/src/features/Books/api/useBooksNavigation.ts
+!explorers-earth/src/features/Books/api/useBooksOwnerContent.ts
 !explorers-earth/src/features/Books/components/dashboard/AddBookPage.tsx
 !explorers-earth/src/features/Books/components/dashboard/BookListView.tsx
 !explorers-earth/src/features/Books/components/dashboard/BooksHome.tsx
@@ -1082,6 +1088,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/tsconfig.json
 !explorers-earth/tsconfig.node.json
 !explorers-earth/vite.config.ts
+!tunes/shared/explorersBookContract.ts
+!tunes/shared/explorersBookCoverContract.ts
 !tunes/shared/explorersContract.ts
 !tunes/shared/explorersOwnerContentContract.ts
 !tunes/shared/explorersPublicContentContract.ts

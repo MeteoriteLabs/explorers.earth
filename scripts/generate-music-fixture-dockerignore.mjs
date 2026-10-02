@@ -36,6 +36,8 @@ const fixedFiles = [
   "tunes/shared/explorersSearchContract.ts",
   "tunes/shared/explorersPublicContentContract.ts",
   "tunes/shared/explorersRichNoteContract.ts",
+  "tunes/shared/explorersBookContract.ts",
+  "tunes/shared/explorersBookCoverContract.ts",
 ];
 // The compose file explicitly builds explorers-earth/Dockerfile.music-fixture,
 // so this small allowlist affects only the disposable Music UAT image.  It
