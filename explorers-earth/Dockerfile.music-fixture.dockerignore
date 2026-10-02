@@ -399,6 +399,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/assets/icons/YoutubeMusic.tsx
 !explorers-earth/src/assets/profile_background.avif
 !explorers-earth/src/assets/react.svg
+!explorers-earth/src/bootstrap.ts
 !explorers-earth/src/components/AuthSyncManager.tsx
 !explorers-earth/src/components/CategoryEmptyState.tsx
 !explorers-earth/src/components/CategoryVisibilityModal.tsx
@@ -978,6 +979,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/explorersApiClient.ts
 !explorers-earth/src/lib/localTunesApiClient.ts
 !explorers-earth/src/lib/musicCredentialStore.ts
+!explorers-earth/src/lib/publicRuntimeConfig.ts
+!explorers-earth/src/lib/publicRuntimeContract.ts
 !explorers-earth/src/lib/queryClient.ts
 !explorers-earth/src/lib/utils.ts
 !explorers-earth/src/main.tsx
