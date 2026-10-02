@@ -30,3 +30,13 @@ Portable schema2 provenance hashes canonical arrays of repository-relative path,
 No module performs child execution, HTTP, Docker or filesystem work. A later trusted collector/executor must retrieve the inputs, verify actual file kind/mode/Git policy and source/install/browser versions, allocate resources, independently prove cleanup and authenticate source/run/job/artifacts. It must include its own executor/reporter/manifest dependencies in qualification provenance; the current app-discovery snapshot is not full release attestation. Real observed red hosted browser runs remain red.
 
 Focused verification: `node --test scripts/browser-contract.test.mjs scripts/browser-executor-preparation.test.mjs`.
+
+## Versioned copied-tree closure repair
+
+`music-v3.json`, `publishing-v3.json`, `source-v3.json`, and `discovery-closure-v3.json` retain schema2 semantics and independently version the source8d922e66 discovery evidence. Historical schema1 and incomplete v2 snapshots remain unchanged. The v2 nine selection probes ran in a complete Git archive; copying only its admitted inventory revealed the missing frontend scripts import. Therefore v2 is historical full-checkout discovery evidence, not proof of isolated admitted-tree closure.
+
+`discoverySourcePaths` now conservatively admits all tracked frontend scripts in addition to the prior src/e2e/config/package/shared scopes. `attestDiscoverySource` requires exact inventory equality to independently trusted repository paths, reachable parsed import roots/edges within that inventory, and the unchanged strict observed/committed source attestation. The caller must independently parse imports and enumerate every relevant untracked/ignored regular file; the pure module does not authenticate Git metadata, parse syntax or scan a filesystem.
+
+V3 has1,217 committed regular files, materialized as exact Git blob bytes in an owned copied tree. All36 frontend scripts are bound; the independent installed TypeScript AST literal-import walk from six config/spec roots records18 reachable files and23 relative edges. Package/Node imports are separately listed as external dependencies. Nonliteral runtime resolution, provider/Vite/assets/bootstrap and dependency installation qualification remain separate scope. A copied-tree full discovery and all nine lists pass: Music19/19/19/18 and Publishing14/14/14/14/13, preserving exact historical75/69 structured identities. No browser runtime or ownership qualification is claimed.
+
+Additional focused contracts: `node --test scripts/browser-source-inventory.test.mjs`.
