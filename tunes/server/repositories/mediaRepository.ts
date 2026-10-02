@@ -28,7 +28,7 @@ export class MediaRepository {
     finally { if (!connection) client.release(); }
   }
 
-  async markReady(id: string, versionId?: string, connection?: PoolClient): Promise<void> {
+  async markReady(id: string, versionId?: string, connection?: PoolClient, readyWrite?: (db: PoolClient) => Promise<void>): Promise<void> {
     const client = connection ?? await this.db.connect();
     try {
       await client.query("BEGIN");
@@ -36,6 +36,7 @@ export class MediaRepository {
       const result = await client.query(`UPDATE media_assets SET status='ready',ready_at=now(),updated_at=now()
         WHERE id=$1 AND status='uploading' RETURNING id`, [id]);
       if (!result.rows[0]) throw new Error("Upload reservation disappeared");
+      if (readyWrite) await readyWrite(client);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { if (!connection) client.release(); }

@@ -7,8 +7,8 @@ import {BookCatalog} from '../services/bookCatalog';
 import {MediaService} from '../application/media';
 import type {Actor} from '../application/actor';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==','base64');
-const bytes=new Map<string,Buffer>();let storageReads=0;
-const storage={environment:'local' as const,put:async(k:string,b:Buffer)=>{bytes.set(k,b);},get:async(k:string)=>{storageReads++;return bytes.get(k)!;},delete:async(k:string)=>{if(failDelete)throw Error('fixture delete unavailable');bytes.delete(k);}};
+const bytes=new Map<string,Buffer>();let storageReads=0;let storagePuts=0;
+const storage={environment:'local' as const,put:async(k:string,b:Buffer)=>{storagePuts++;bytes.set(k,b);},get:async(k:string)=>{storageReads++;return bytes.get(k)!;},delete:async(k:string)=>{if(failDelete)throw Error('fixture delete unavailable');bytes.delete(k);}};
 let providerTitle='Provider title';const providerFetch=vi.fn(async(url:URL)=>new Response(JSON.stringify(url.pathname.endsWith('/volumes')?{items:[{id:'fixture-v1',volumeInfo:{title:providerTitle,authors:['Writer'],publishedDate:'2024-03',industryIdentifiers:[{type:'ISBN_10',identifier:'123456789X'}],description:'<p>Book summary</p>'}}],totalItems:1}:{id:url.pathname.split('/').at(-1),volumeInfo:{title:providerTitle,authors:['Writer'],publishedDate:'2024-03',industryIdentifiers:[{type:'ISBN_10',identifier:'123456789X'}],description:'<p>Book summary</p>'}})));
 const books=new BookCatalog({apiKey:'deterministic-only',secret:'cursor-test-secret',fetch:providerFetch as any});import { createHmac, randomUUID } from 'node:crypto';
 import pg from 'pg';
@@ -20,7 +20,7 @@ import { resolveExplorersAuthConfig } from '../auth/betterAuth';
 const config=resolveExplorersAuthConfig({EXPLORERS_PUBLIC_ORIGIN:'http://127.0.0.1:51474',EXPLORERS_AUTH_SECRET:'integration-secret-'.repeat(4),GOOGLE_CLIENT_ID:'fixture-google-id',GOOGLE_CLIENT_SECRET:'fixture-google-secret'});
 let pool:pg.Pool,runtimePool:pg.Pool, composed:ReturnType<typeof createCanonicalApp>;
 const runtimeRole='book_cover_fixture_runtime',runtimeOwnership=`book-cover-fixture:${randomUUID()}`;
-beforeAll(async()=>{pool=new pg.Pool({connectionString:process.env.DATABASE_URL_TEST,max:4});const password=createHash('sha256').update(randomUUID()).digest('base64url');await provisionMusicRuntimeLogin(pool,{loginRole:runtimeRole,password},{ownershipComment:runtimeOwnership});const target=new URL(process.env.DATABASE_URL_TEST!);target.username=runtimeRole;target.password=password;runtimePool=new pg.Pool({connectionString:target.toString(),max:1});composed=createCanonicalApp(runtimePool,config,{bookCatalog:books,mediaStorage:storage,bookCoverFetcher:coverFetcher});});
+beforeAll(async()=>{pool=new pg.Pool({connectionString:process.env.DATABASE_URL_TEST,max:4});const password=createHash('sha256').update(randomUUID()).digest('base64url');await provisionMusicRuntimeLogin(pool,{loginRole:runtimeRole,password},{ownershipComment:runtimeOwnership});const target=new URL(process.env.DATABASE_URL_TEST!);target.username=runtimeRole;target.password=password;runtimePool=new pg.Pool({connectionString:target.toString(),max:1});runtimePool.on('error',()=>undefined);composed=createCanonicalApp(runtimePool,config,{bookCatalog:books,mediaStorage:storage,bookCoverFetcher:coverFetcher});});
 afterAll(async()=>{await runtimePool?.end();if(pool){const role=(await pool.query("SELECT shobj_description(oid,'pg_authid') ownership FROM pg_roles WHERE rolname=$1",[runtimeRole])).rows[0];if(role?.ownership===runtimeOwnership)await pool.query('DROP ROLE book_cover_fixture_runtime');await pool.end();}});
 it('provides a real shared-connection upload seam for bounded importer pools',async()=>{
  const service=new MediaService(runtimePool,storage);expect(service.usingConnection).toBeTypeOf('function');
@@ -131,3 +131,30 @@ it('never resurrects a retired or expired pending receipt after remote work',asy
  const a=await persona(),{r}=await fixtureBook(a),key=randomUUID();duringFetch=async()=>{await pool.query("UPDATE application_command_receipts SET status='retired',response=NULL,replay_until=clock_timestamp()-interval '1 second' WHERE account_id=$1 AND operation='importBookCovers'",[a.accountId]);};
  const result=await command(a,'post',`/recommendations/${r.id}/book-covers`,{expectedRevision:1},key);expect(result.status).toBe(409);expect((await pool.query('SELECT 1 FROM recommendation_book_covers WHERE recommendation_id=$1',[r.id])).rowCount).toBe(0);expect((await pool.query('SELECT revision FROM recommendations WHERE id=$1',[r.id])).rows[0].revision).toBe('1');expect((await pool.query("SELECT status FROM application_command_receipts WHERE account_id=$1 AND operation='importBookCovers'",[a.accountId])).rows[0].status).toBe('retired');expect((await pool.query('SELECT status FROM media_assets WHERE account_id=$1',[a.accountId])).rows.every(v=>v.status==='deleted')).toBe(true);
 });
+import {BookCoverImportService} from '../application/bookCoverImport';
+async function loseCommittedConnection(stage:'ready'|'completed'){
+ const a=await persona(),{r}=await fixtureBook(a,true),key=randomUUID(),beforeFetch=fetchCount,beforePut=storagePuts;
+ let fired=false;
+ const faultPool={query:runtimePool.query.bind(runtimePool),connect:async()=>{
+  const db=await runtimePool.connect();db.on('error',()=>undefined);let armed=false,dead=false;
+  return {query:async(sql:any,args?:any)=>{
+   if(dead)throw Error('fixture connection lost after commit');
+   const result=await db.query(sql,args);
+   if(typeof sql==='string'&&((stage==='ready'&&sql.includes("SET status='ready'"))||(stage==='completed'&&sql.includes("SET status='completed'"))))armed=true;
+   if(sql==='COMMIT'&&armed&&!fired){fired=true;dead=true;await pool.query('SELECT pg_terminate_backend($1)',[db.processID]);throw Error('fixture committed acknowledgement lost');}
+   return result;
+  },release:()=>db.release(true)};
+ }} as unknown as pg.Pool;
+ const actor:Actor={userId:a.userId,accountId:a.accountId,role:'owner',credential:{kind:'web-session',sessionId:a.sessionId,sessionVersion:1}},context={requestId:randomUUID(),idempotencyKey:key};
+ await expect(new BookCoverImportService(faultPool,new MediaService(faultPool,storage),coverFetcher).import(actor,r.id,{expectedRevision:1},context)).rejects.toThrow();expect(fired).toBe(true);
+ const receipt=(await pool.query("SELECT status,response FROM application_command_receipts WHERE account_id=$1 AND operation='importBookCovers'",[a.accountId])).rows[0];
+ expect(receipt.status).toBe(stage==='ready'?'pending':'completed');expect(receipt.response.slots.cover.status).toBe('copied');
+ const resumed=await new BookCoverImportService(runtimePool,new MediaService(runtimePool,storage),coverFetcher).import(actor,r.id,{expectedRevision:1},context);
+ expect(resumed.slots.cover.status).toBe('copied');expect(resumed.slots.thumbnail.media.id).toBe(resumed.slots.cover.media.id);
+ expect(fetchCount).toBe(beforeFetch+1);expect(storagePuts).toBe(beforePut+1);
+ const assets=(await pool.query('SELECT id,status FROM media_assets WHERE account_id=$1',[a.accountId])).rows;expect(assets).toEqual([{id:resumed.slots.cover.media.id,status:'ready'}]);
+ expect([...bytes.keys()].filter(k=>k.includes(a.accountId))).toHaveLength(1);expect((await pool.query('SELECT revision FROM recommendations WHERE id=$1',[r.id])).rows[0].revision).toBe('2');
+ const replay=await new BookCoverImportService(runtimePool,new MediaService(runtimePool,storage),coverFetcher).import(actor,r.id,{expectedRevision:1},context);expect(replay).toEqual(resumed);expect(storagePuts).toBe(beforePut+1);
+}
+it('resumes after actual ready commit and lost connection without an extra fetch, asset or object put',async()=>{await loseCommittedConnection('ready');});
+it('replays final committed attachment after its response is lost without cleanup or duplicate work',async()=>{await loseCommittedConnection('completed');});

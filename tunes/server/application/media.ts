@@ -52,7 +52,9 @@ export class MediaService {
     }
   }
 
-  async createMedia(actor: Actor, input: MediaUploadInput, _context: RequestContext): Promise<MediaDto> {
+  /** readyWrite performs database-only receipt work in the ready transaction;
+   * remote storage has already completed before that transaction begins. */
+  async createMedia(actor: Actor, input: MediaUploadInput, _context: RequestContext, readyWrite?: (db: PoolClient, media: MediaDto) => Promise<void>): Promise<MediaDto> {
     await authorizeOperation(this.db, actor, "media:create", actor.accountId);
     await this.retryPendingDeletes(actor.accountId);
     const limit = limits[input.purpose];
@@ -61,6 +63,8 @@ export class MediaService {
       || (input.purpose !== "feed" && !input.mimeType.startsWith("image/"))) throw new MediaInputError("Invalid media upload");
     const id = randomUUID();
     const key = `${this.storage.environment}/${actor.accountId}/${id}`;
+    const dto: MediaDto = { id, url: `/api/explorers/v1/media/${id}/content`, mimeType: input.mimeType,
+      size: input.bytes.length, alternativeText: input.alternativeText ?? null, caption: input.caption ?? null };
     const hash = createHash("sha256").update(input.bytes).digest();
     // Keep a session advisory lock until the put and its metadata/compensation
     // settle. A terminal worker never sweeps a live writer's reservation.
@@ -79,16 +83,20 @@ export class MediaService {
     let versionId: string | undefined;
     try {
       versionId = (await this.storage.put(key, input.bytes)) || undefined;
-      await this.repo.markReady(id, versionId, gate);
+      await this.repo.markReady(id, versionId, gate, readyWrite ? db => readyWrite(db, dto) : undefined);
     } catch (error) {
+      // A lost COMMIT acknowledgement may already have persisted ready metadata
+      // and the caller's receipt. Never compensate committed or uncertain work.
+      let existing;
+      try { existing = await this.repo.find(id); } catch { throw new MediaUnavailable("Storage completion uncertain"); }
+      if (existing?.status === "ready") return dto;
       // The reservation survives even if both cleanup and metadata finalization fail.
       await this.repo.markUploadForCleanup(id, versionId, gate).catch(() => undefined);
       try { await this.storage.delete(key, versionId); await this.repo.finalizeDelete(id, gate); }
       catch { /* durable reservation is retried by the cleanup pass */ }
       throw new MediaUnavailable("Storage unavailable");
     }
-    return { id, url: `/api/explorers/v1/media/${id}/content`, mimeType: input.mimeType,
-      size: input.bytes.length, alternativeText: input.alternativeText ?? null, caption: input.caption ?? null };
+    return dto;
     } finally {
       if (uploadLocked) await gate.query("SELECT pg_advisory_unlock(44024,hashtext($1))", [actor.accountId])
         .catch(() => undefined);

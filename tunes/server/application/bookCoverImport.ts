@@ -38,7 +38,11 @@ export class BookCoverImportService {
    for(const slot of ['cover','thumbnail'] as const){
     if(progress.slots[slot])continue;const url=urls[slot],other=slot==='cover'?'thumbnail':'cover';let result:any={status:'fallback'};
     if(url&&urls[other]===url&&progress.slots[other])result=progress.slots[other];
-    else if(url){try{const image=await this.fetcher.fetch(url);const asset=await media.createMedia(actor,{purpose:'recommendation',filename:'book-cover',mimeType:image.mimeType,length:image.bytes.length,bytes:image.bytes},context);result={status:'copied',media:asset};}catch{/* Optional copy failure is recorded and leaves provider fallback available. */}}
+    else if(url){try{const image=await this.fetcher.fetch(url);const asset=await media.createMedia(actor,{purpose:'recommendation',filename:'book-cover',mimeType:image.mimeType,length:image.bytes.length,bytes:image.bytes},context,async(db,asset)=>{
+      const staged={...progress!,slots:{...progress!.slots,[slot]:{status:'copied',media:asset}}};
+      const saved=await db.query("UPDATE application_command_receipts SET response=$3 WHERE account_id=$1 AND operation='importBookCovers' AND idempotency_key_hash=$2 AND status='pending' AND replay_until>clock_timestamp()",[actor.accountId,keyHash,JSON.stringify(staged)]);
+      if(saved.rowCount!==1)throw new RecommendationFailure(409,'Cover import receipt expired');
+     });result={status:'copied',media:asset};}catch{/* Optional copy failure is recorded and leaves provider fallback available. */}}
     progress.slots[slot]=result;
     const saved=await db.query("UPDATE application_command_receipts SET response=$3 WHERE account_id=$1 AND operation='importBookCovers' AND idempotency_key_hash=$2 AND status='pending' AND replay_until>clock_timestamp()",[actor.accountId,keyHash,JSON.stringify(progress)]);
     if(saved.rowCount!==1)throw new RecommendationFailure(409,'Cover import receipt expired');
