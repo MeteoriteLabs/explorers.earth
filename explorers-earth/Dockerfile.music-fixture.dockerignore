@@ -1084,5 +1084,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/vite.config.ts
 !tunes/shared/explorersContract.ts
 !tunes/shared/explorersOwnerContentContract.ts
+!tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersRichNoteContract.ts
+!tunes/shared/explorersSearchContract.ts
 !tunes/shared/musicPublicationContract.ts

@@ -33,6 +33,8 @@ const fixedFiles = [
   "tunes/shared/musicPublicationContract.ts",
   "tunes/shared/explorersContract.ts",
   "tunes/shared/explorersOwnerContentContract.ts",
+  "tunes/shared/explorersSearchContract.ts",
+  "tunes/shared/explorersPublicContentContract.ts",
   "tunes/shared/explorersRichNoteContract.ts",
 ];
 // The compose file explicitly builds explorers-earth/Dockerfile.music-fixture,

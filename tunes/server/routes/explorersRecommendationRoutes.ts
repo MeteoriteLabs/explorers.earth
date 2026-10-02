@@ -10,6 +10,7 @@ import { OwnerContentService } from '../application/ownerContent';
 import { RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { requireActor, sendActorError } from '../middleware/explorersPrincipal';
 import type { RequestContext } from '../../shared/explorersContract';
+import {SearchFailure} from '../application/searchQuery';
 
 export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig) {
   const service=new RecommendationService(pool),catalog=new CatalogService(pool);
@@ -36,6 +37,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const actor=await requireActor(request,auth,pool),result=await work(actor,String(request.params.id??''),request.query);
       return response.json(name?{[name]:result}:result);
     } catch(error) {
+      if(error instanceof SearchFailure)return response.status(error.status).json({error:{code:error.status===503?'UNAVAILABLE':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':error.status===404?'NOT_FOUND':'INVALID_INPUT',message:error.message,requestId,...(error.status===503?{retryable:true}:{})}});
       if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
     }
@@ -61,7 +63,11 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.patch('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.updateCollection(a,id,b,c),'collection'));
   routes.patch('/api/explorers/v1/collections/:id/order',mutation((a,id,b,c)=>service.reorderCollection(a,id,b,c),'collection'));
   routes.delete('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.archiveCollection(a,id,b,c),'collection'));
-  // Reserve static search before /:id; pagination/search is a subsequent slice.
+  routes.get('/api/explorers/v1/recommendations/search',read((a,_id,q)=>{
+    if(Object.values(q as object).some(v=>typeof v!=='string'))throw new RecommendationFailure(422,'Search parameters must be scalar');
+    if(Object.hasOwn(q as object,'scope'))throw new RecommendationFailure(422,'Scope is specified by the route');
+    return ownerContent.searchRecommendations(a,{...(q as object),scope:'owner',...((q as any).entityIds!==undefined?{entityIds:typeof (q as any).entityIds==='string'?(q as any).entityIds.split(','):(q as any).entityIds}:{})});
+  }));
   routes.all('/api/explorers/v1/recommendations/search',unsupported);
   routes.get('/api/explorers/v1/recommendations/:id',read((a,id,q)=>ownerContent.getRecommendation(a,id,q),'recommendation'));
   routes.get('/api/explorers/v1/recommendations/:id/editable',read((a,id,q)=>ownerContent.getRecommendation(a,id,q,true),'recommendation'));

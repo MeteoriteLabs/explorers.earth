@@ -8,6 +8,8 @@ import { RecommendationFailure } from '../repositories/explorersRecommendationRe
 import { contentIdSchema,displayOverridesReadSchema,entityCoreDtoSchema } from '../../shared/explorersContract';
 import * as wire from '../../shared/explorersOwnerContentContract';
 import { normalizeRichNote } from './richNote';
+import {ownerSearchRequestSchema,ownerSearchPageSchema} from '../../shared/explorersSearchContract';
+import {SearchQuery,SearchFailure,searchError} from './searchQuery';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -42,15 +44,29 @@ export class OwnerContentService {
   const token=Buffer.concat([nonce,cipher.getAuthTag(),data]).toString('base64url');
   if(token.length>4096) throw new RecommendationFailure(422,'Invalid continuation');return token;
  }
- private async read<T>(actor:Actor,operations:string[],work:(db:PoolClient)=>Promise<T>) {
+ private async read<T>(actor:Actor,operations:string[],work:(db:PoolClient)=>Promise<T>,search=false) {
   for(const op of operations) await authorizeOperation(this.pool,actor,op,actor?.accountId);
   const db=await this.pool.connect();
   try {
    await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+   if(search)await db.query("SET LOCAL statement_timeout = '2000ms'");
    for(const op of operations) await authorizeOperation(db,actor,op,actor.accountId);
    const result=await work(db);await db.query('COMMIT');
    for(const op of operations) await authorizeOperation(db,actor,op,actor.accountId);return result;
   } catch(error) {await db.query('ROLLBACK');throw error;} finally {db.release();}
+ }
+ async searchRecommendations(actor:Actor,raw:unknown) {
+  try{return await this.read(actor,['recommendations:read',...(raw&&typeof raw==='object'&&Object.hasOwn(raw,'collectionId')?['collections:read']:[])],async db=>{
+   const input=parseContent(ownerSearchRequestSchema,raw),query=new SearchQuery(this.key.toString('hex')),cursor=query.decode(input.cursor);
+   const binding=query.binding(input,actor.accountId);
+   if(cursor?.binding!==undefined&&cursor.binding!==binding)throw new SearchFailure(422,'Invalid continuation');
+   if(cursor&&input.snapshotToken&&input.snapshotToken!==cursor.snapshotToken)throw new SearchFailure(422,'Invalid snapshot');
+   const snapshot=await this.snapshot(db,actor,input.category,input.snapshotToken??cursor?.snapshotToken);
+   query.validate(cursor,binding,actor.accountId,snapshot.state.revision);
+   if(input.collectionId&&!(await db.query('SELECT id FROM collections WHERE id=$1 AND account_id=$2 AND category=$3 AND archived_at IS NULL',[input.collectionId,actor.accountId,input.category])).rows.length)throw new RecommendationFailure(404,'Resource unavailable');
+   const rows=await query.rows(db,input,actor.accountId,cursor);
+   return ownerSearchPageSchema.parse(query.page(rows,input,{version:'explorers-search/v1',scope:'owner',snapshot:snapshot.state.revision,snapshotToken:snapshot.token,expiresAt:snapshot.state.expires},{v:1,binding,account:actor.accountId,revision:snapshot.state.revision,snapshotToken:snapshot.token,issued:snapshot.state.issued,expires:snapshot.state.expires}));
+  },true);}catch(error){searchError(error);}
  }
  private async snapshot(db:PoolClient,actor:Actor,category:string,token?:string) {
   const row=(await db.query(`SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision,

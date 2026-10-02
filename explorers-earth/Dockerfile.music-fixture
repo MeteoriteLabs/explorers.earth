@@ -25,6 +25,8 @@ COPY explorers-earth/ ./
 COPY tunes/shared/musicPublicationContract.ts /workspace/tunes/shared/musicPublicationContract.ts
 COPY tunes/shared/explorersContract.ts /workspace/tunes/shared/explorersContract.ts
 COPY tunes/shared/explorersOwnerContentContract.ts /workspace/tunes/shared/explorersOwnerContentContract.ts
+COPY tunes/shared/explorersSearchContract.ts /workspace/tunes/shared/explorersSearchContract.ts
+COPY tunes/shared/explorersPublicContentContract.ts /workspace/tunes/shared/explorersPublicContentContract.ts
 COPY tunes/shared/explorersRichNoteContract.ts /workspace/tunes/shared/explorersRichNoteContract.ts
 RUN npm run build
 

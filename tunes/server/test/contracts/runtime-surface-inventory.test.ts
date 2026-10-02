@@ -42,7 +42,9 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(3);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(4);
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/public/recommendations/search',classification:'tombstone'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/public/recommendations/search',classification:'public',policy:'explicit-public-contract'}));
     expect(inventory.routes.every((route) => route.line > 0)).toBe(true);
     expect(inventory.routes.filter((route) => route.policy === "none").every((route) => route.classification !== "public")).toBe(true);
     expect(inventory.events).toEqual(expect.arrayContaining([
@@ -66,6 +68,7 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
       ['GET','/api/explorers/v1/recommendations'], ['GET','/api/explorers/v1/recommendations/:id'],
+      ['GET','/api/explorers/v1/recommendations/search'],
       ['GET','/api/explorers/v1/collections/:id/editable'], ['GET','/api/explorers/v1/recommendations/:id/editable'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],

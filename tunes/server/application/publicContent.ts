@@ -6,6 +6,9 @@ import { publicContentRequestSchema, type PublicContentPage, type PublicContentR
 import { publicRecommendationDetailRequestSchema,publicRecommendationDetailSchema,publicRecommendationSummarySchema } from '../../shared/explorersPublicContentContract';
 import { displayOverridesReadSchema,catalogTitleSchema } from '../../shared/explorersContract';
 import { normalizeRichNote } from './richNote';
+import {publicSearchRequestSchema,publicSearchPageSchema,publicCollectionByIdSchema} from '../../shared/explorersSearchContract';
+import {contentIdSchema} from '../../shared/explorersContract';
+import {SearchQuery,SearchFailure,searchError,publicAccountGate,publicCollectionGate} from './searchQuery';
 
 export class PublicContentFailure extends Error {
   constructor(readonly status:400|409|413) {super(status===400?'Invalid public content request':status===413?'Public detail exceeds the response bound':'Collection changed; restart pagination');}
@@ -26,6 +29,37 @@ function effectiveTitle(row:any) {
 export class PublicContentService {
   private readonly key:Buffer;
   constructor(private readonly pool:Pool,secret:string) {this.key=createHash('sha256').update('explorers-public-content-cursor/v1\0').update(secret).digest();}
+  async getCollectionById(raw:unknown){
+   const parsed=contentIdSchema.safeParse(raw);if(!parsed.success)throw new SearchFailure(400);
+   const db=await this.pool.connect();try{
+    await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout = '2000ms'");
+    const size="octet_length(to_json(c.title)::text)+octet_length(to_json(c.slug)::text)+coalesce(octet_length(to_json(c.description)::text),4)+coalesce(octet_length(to_json(c.heading)::text),4)";
+    const row=(await db.query(`SELECT c.id,c.category,${size} AS item_bytes,
+     CASE WHEN ${size}<=32768 THEN c.title END AS title,CASE WHEN ${size}<=32768 THEN c.slug END AS slug,
+     CASE WHEN ${size}<=32768 THEN c.description END AS description,CASE WHEN ${size}<=32768 THEN c.heading END AS heading
+     FROM collections c JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
+     WHERE c.id=$1 AND ${publicAccountGate} AND ${publicCollectionGate}`,[parsed.data])).rows[0];
+    if(row&&Number(row.item_bytes)>32768)throw new SearchFailure(413,'Collection exceeds read bound');
+    const result=row?publicCollectionByIdSchema.parse({id:row.id,category:row.category,title:row.title,slug:row.slug,description:row.description,heading:row.heading}):undefined;
+    await db.query('COMMIT');return result;
+   }catch(error){await db.query('ROLLBACK');searchError(error);}finally{db.release();}
+  }
+  async searchRecommendations(raw:unknown){
+   const parsed=publicSearchRequestSchema.safeParse(raw);if(!parsed.success)throw new SearchFailure(400);
+   const input=parsed.data,query=new SearchQuery(this.key.toString('hex')),db=await this.pool.connect();
+   try{
+    await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout = '2000ms'");
+    let account:string|null=null,revision:string|null=null;
+    if(input.creatorHandle){const row=(await db.query(`SELECT a.id FROM creator_accounts a JOIN account_category_settings s ON s.account_id=a.id AND s.category=$2 WHERE a.handle_key=$1 AND ${publicAccountGate}`,[input.creatorHandle,input.category])).rows[0];if(!row)throw new SearchFailure(404,'Resource unavailable');account=row.id;
+     revision=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision",[account,input.category])).rows[0].revision;
+    }
+    if(input.collectionId&&!(await db.query(`SELECT c.id FROM collections c JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category WHERE c.id=$1 AND c.category=$2 AND ($3::uuid IS NULL OR c.account_id=$3) AND ${publicAccountGate} AND ${publicCollectionGate}`,[input.collectionId,input.category,account])).rows.length)throw new SearchFailure(404,'Resource unavailable');
+    const binding=query.binding(input,account),cursor=query.decode(input.cursor);query.validate(cursor,binding,account,revision);
+    const issued=cursor?.issued??Date.now(),expires=cursor?.expires??issued+600000;
+    const result=publicSearchPageSchema.parse(query.page(await query.rows(db,input,account,cursor),input,{version:'explorers-search/v1',scope:'public',consistency:account?'category-fenced':'live',expiresAt:expires},{v:1,binding,account,revision,issued,expires}));
+    await db.query('COMMIT');return result;
+   }catch(error){await db.query('ROLLBACK');if(error instanceof SearchFailure&&error.status===422)throw new SearchFailure(400,error.message);searchError(error);}finally{db.release();}
+  }
   private binding(input:PublicContentRequest) {return JSON.stringify([input.username,input.category,input.slug??null,input.limit,'display_order,id/v1']);}
   private decode(value:string|undefined,binding:string):Cursor|undefined {
     if(!value) return undefined;

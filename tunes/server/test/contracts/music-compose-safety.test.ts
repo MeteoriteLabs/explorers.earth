@@ -80,6 +80,8 @@ describe("Music Compose ownership safety", () => {
       "explorers-earth/src/features/music/components/MusicSectionTabs.css",
       "explorers-earth/src/features/music/components/musicPlaybackCommand.ts",
       "tunes/shared/explorersOwnerContentContract.ts",
+      "tunes/shared/explorersSearchContract.ts",
+      "tunes/shared/explorersPublicContentContract.ts",
     ]));
     expect(manifest).not.toEqual(expect.arrayContaining([
       "explorers-earth/src/features/music/components/__tests__/MusicSectionTabs.test.tsx",

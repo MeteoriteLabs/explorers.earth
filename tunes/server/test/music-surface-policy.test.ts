@@ -20,6 +20,7 @@ describe("Music surface authorization policy", () => {
     ['PATCH','/api/explorers/v1/recommendations/:id'],['DELETE','/api/explorers/v1/recommendations/:id'],
     ['GET','/api/explorers/v1/collections'],['GET','/api/explorers/v1/collections/:id'],
     ['GET','/api/explorers/v1/recommendations'],['GET','/api/explorers/v1/recommendations/:id'],
+    ['GET','/api/explorers/v1/recommendations/search'],
     ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
     ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],
     ['GET','/api/explorers/v1/categories/:category/memberships'],
@@ -70,6 +71,7 @@ describe("Music surface authorization policy", () => {
 
   it.each([
     '/api/explorers/v1/public/profiles/:username/collections/:category',
+    '/api/explorers/v1/public/recommendations/search',
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
   ])('recognizes only the exact public content GET source and path %s',path=>{
     const route={method:'GET',path,source:'tunes/server/routes/explorersPublicContentRoutes.ts',classification:'private'};

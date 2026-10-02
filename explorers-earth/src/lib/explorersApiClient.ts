@@ -1,4 +1,5 @@
 import type { AccountDto, MediaDto, RevisionInput, UpdateAccountInput } from "../../../tunes/shared/explorersContract";
+import {searchRequestSchema,searchPageSchema,SEARCH_PAGE_BYTES,type SearchInput} from '../../../tunes/shared/explorersSearchContract';
 import useAuthStore from "../store/store";
 import {categoryTopPicksInputSchema,categoryTopPicksResultSchema,commandKeySchema,topPickCategorySchema,type CategoryTopPicksInput} from '../../../tunes/shared/explorersContract';
 import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollectionDtoSchema, ownerRecommendationDtoSchema,
@@ -289,6 +290,27 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
+  async searchRecommendations(raw:SearchInput,signal?:AbortSignal) {
+   const input=searchRequestSchema.parse(raw),initial=useAuthStore.getState(),controller=new AbortController();
+   const current=()=>input.scope==='public'||(useAuthStore.getState().isAuthenticated&&useAuthStore.getState().generation===initial.generation&&useAuthStore.getState().accountId===initial.accountId);
+   if(input.scope==='owner'&&(!initial.isAuthenticated||!initial.accountId))throw new ExplorersApiError(401,'UNAUTHENTICATED','Sign in is required');
+   const stop=()=>controller.abort(),check=()=>{if(controller.signal.aborted||!current())throw new DOMException('Search cancelled','AbortError');};
+   const unsubscribe=input.scope==='owner'?useAuthStore.subscribe(()=>{if(!current())stop();}):()=>{};
+   signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
+   try{
+    check();const params=new URLSearchParams();for(const [key,value] of Object.entries(input))if(key!=='scope'&&value!==undefined)params.set(key,Array.isArray(value)?value.join(','):String(value));
+    const response=await fetch(`/api/explorers/v1${input.scope==='public'?'/public':''}/recommendations/search?${params}`,{credentials:input.scope==='public'?'omit':'include',cache:'no-store',signal:controller.signal});check();
+    const declared=Number(response.headers.get('Content-Length'));if(Number.isFinite(declared)&&declared>SEARCH_PAGE_BYTES){await response.body?.cancel();throw new ExplorersApiError(413,'RESOURCE_TOO_LARGE','Search response exceeds byte bound');}
+    let bytes=0;const chunks:Uint8Array[]=[],reader=response.body?.getReader();
+    try{if(reader)while(true){check();const part=await reader.read();check();if(part.done)break;bytes+=part.value.byteLength;if(bytes>SEARCH_PAGE_BYTES)throw new ExplorersApiError(413,'RESOURCE_TOO_LARGE','Search response exceeds byte bound');chunks.push(part.value);}}finally{await reader?.cancel().catch(()=>{});reader?.releaseLock();}
+    check();const buffer=new Uint8Array(bytes);let offset=0;for(const chunk of chunks){buffer.set(chunk,offset);offset+=chunk.byteLength;}
+    const body=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(buffer));
+    if(input.scope==='owner')handleExpiredSession(response,initial.generation);
+    if(!response.ok)throw new ExplorersApiError(response.status,body?.error?.code??'UNAVAILABLE',body?.error?.message??'Search failed');
+    const page=searchPageSchema.parse(body);if(page.scope!==input.scope||page.items.length>input.limit||(page.scope==='owner'&&page.items.some(v=>v.accountId!==initial.accountId||v.category!==input.category)))throw new ExplorersApiError(503,'UNAVAILABLE','Invalid search page');
+    return page;
+   }finally{unsubscribe();signal?.removeEventListener('abort',stop);}
+  },
   async resolveManualEntity(input:ResolveManualEntityInput,key:string,signal?:AbortSignal) {
    const body=commandInput(resolveManualEntitySchema,input);
    const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',entityCoreDtoSchema,signal);

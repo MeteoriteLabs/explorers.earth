@@ -2,8 +2,21 @@ import { Router, type Express, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import type { Pool } from 'pg';
 import { PublicContentFailure, PublicContentService } from '../application/publicContent';
+import {SearchFailure} from '../application/searchQuery';
 export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:string):void {
   const router=Router({caseSensitive:true,strict:true}),service=new PublicContentService(pool,secret);
+  router.use('/api/explorers/v1/public/recommendations',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:120,standardHeaders:'draft-7',legacyHeaders:false}));
+  router.get('/api/explorers/v1/public/recommendations/search',async(req,res)=>{
+   try{
+    if(Object.values(req.query).some(v=>typeof v!=='string'))throw new SearchFailure(400);
+    if(Object.hasOwn(req.query,'scope'))throw new SearchFailure(400);
+    return res.json(await service.searchRecommendations({...req.query,scope:'public',...(req.query.entityIds!==undefined?{entityIds:typeof req.query.entityIds==='string'?req.query.entityIds.split(','):req.query.entityIds}:{})}));
+   }catch(error){
+    const status=error instanceof SearchFailure?error.status:503;
+    return res.status(status).json({version:'explorers-public-error/v1',error:{code:status===404?'NOT_FOUND':status===409?'PAGE_CHANGED':status===413?'RESOURCE_TOO_LARGE':status===503?'UNAVAILABLE':'BAD_REQUEST',...(status===409?{restart:true}:{}),...(status===503?{retryable:true}:{})}});
+   }
+  });
+  router.all('/api/explorers/v1/public/recommendations/search',(_req,res)=>res.status(405).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}}));
   router.use('/api/explorers/v1/public/profiles',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:120,standardHeaders:'draft-7',legacyHeaders:false}));
   const read=async(req:Request,res:Response)=>{
     try {
