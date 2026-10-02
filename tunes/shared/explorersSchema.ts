@@ -188,3 +188,8 @@ export const bookEntityDetails=pgTable('book_entity_details',{
 export const bookRecommendationContext=pgTable('book_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),buyLinks:jsonb('buy_links').notNull().default([]),
 },t=>[index('book_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
+
+// 0035 owns composite ownership FKs, image/reverse guards and category revisions.
+export const recommendationBookCovers=pgTable('recommendation_book_covers',{
+ recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),slot:text('slot').notNull(),mediaId:uuid('media_id').notNull(),
+},t=>[primaryKey({columns:[t.recommendationId,t.slot]}),index('recommendation_book_covers_asset_idx').on(t.mediaId,t.accountId),index('recommendation_book_covers_account_idx').on(t.accountId,t.recommendationId)]);

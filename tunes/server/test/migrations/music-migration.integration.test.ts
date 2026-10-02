@@ -55,7 +55,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Before override','before',0)",[account]);
     const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
-    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context']);
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import']);
     expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
     expect((await pool.query('SELECT count(*)::int n FROM recommendation_display_overrides')).rows[0].n).toBe(0);
@@ -70,7 +70,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Prior list','prior',0)",[account]);
     const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
-    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context']);
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import']);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
     const indexes=(await pool.query("SELECT indexname FROM pg_indexes WHERE schemaname='public' AND indexname IN ('collections_owner_order_idx','recommendations_owner_id_idx','collection_items_owner_page_idx','collection_items_owner_collection_order_idx') ORDER BY indexname")).rows;
     expect(indexes).toHaveLength(4);
@@ -126,14 +126,14 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Old list','old',0),($1,'guides','Old guide','guide',0)",[account]);
-    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision','0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context']);
+    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision','0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import']);
     expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[account])).rows).toEqual([{category:'books',revision:'1'},{category:'guides',revision:'1'}]);
     const db=await pool.connect();try {await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
       await db.query("UPDATE collections SET heading='Post upgrade' WHERE account_id=$1 AND category='books'",[account]);await db.query('COMMIT');
     } finally {await db.query('ROLLBACK');db.release();}
     expect((await pool.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[account])).rows[0].revision).toBe('2');
     expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
-    const triggers=await pool.query("SELECT count(*)::int AS count FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE '%_content_revision_%'");expect(triggers.rows[0].count).toBe(28);
+    const triggers=await pool.query("SELECT count(*)::int AS count FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE '%_content_revision_%'");expect(triggers.rows[0].count).toBe(31);
     await resources.closePool(pool);
   });
   it("migrates a fresh database, creates all 56 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {

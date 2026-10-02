@@ -1,3 +1,5 @@
+import {BookCoverImportService} from '../application/bookCoverImport';
+import {MediaService} from '../application/media';
 import { randomUUID } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import { Router } from 'express';
@@ -13,7 +15,7 @@ import type { RequestContext } from '../../shared/explorersContract';
 import {SearchFailure} from '../application/searchQuery';
 import {BookProviderFailure,BookCatalog} from '../services/bookCatalog';
 
-export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog) {
+export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog,coverImporter=new BookCoverImportService(pool,new MediaService(pool))) {
   const service=new RecommendationService(pool),catalog=new CatalogService(pool,books);
   const ownerContent=new OwnerContentService(pool,config.secret);
   const routes=Router({caseSensitive:true,strict:true});
@@ -74,6 +76,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.get('/api/explorers/v1/recommendations/:id',read((a,id,q)=>ownerContent.getRecommendation(a,id,q),'recommendation'));
   routes.get('/api/explorers/v1/recommendations/:id/editable',read((a,id,q)=>ownerContent.getRecommendation(a,id,q,true),'recommendation'));
   routes.post('/api/explorers/v1/recommendations',mutation((a,_id,b,c)=>service.createRecommendation(a,b,c),'recommendation',201));
+  routes.post('/api/explorers/v1/recommendations/:id/book-covers',mutation((a,id,b,c)=>coverImporter.import(a,id,b,c),'coverImport'));
   routes.post('/api/explorers/v1/recommendations/:id/entity',mutation((a,id,b,c)=>service.replaceRecommendationEntity(a,id,b,c),'recommendation'));
   routes.patch('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.updateRecommendation(a,id,b,c),'recommendation'));
   routes.delete('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.archiveRecommendation(a,id,b,c),'recommendation'));
@@ -85,6 +88,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.all('/api/explorers/v1/recommendations',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id/editable',unsupported);
+  routes.all('/api/explorers/v1/recommendations/:id/book-covers',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id/entity',unsupported);
   routes.all('/api/explorers/v1/categories/:category/content-snapshot',unsupported);
   routes.all('/api/explorers/v1/categories/:category/content-snapshot/validate',unsupported);

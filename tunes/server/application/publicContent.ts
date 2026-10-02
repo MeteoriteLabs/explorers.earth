@@ -1,3 +1,4 @@
+import {readBookCovers} from '../repositories/bookCovers';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 import { z } from 'zod/v3';
@@ -95,7 +96,7 @@ export class PublicContentService {
       if(Number(size.bytes)>1024*1024||Number(size.title_bytes)>(input.category==='books'?1048576:8192)||Number(size.bytes)+Number(size.title_bytes)+1024>4*1024*1024)throw new PublicContentFailure(413);
       const row=(await db.query(`SELECT r.id,r.account_id,r.entity_id,${boundedTitle},e.kind,r.user_rating,r.note ${eligible}`,values)).rows[0];
       const book=row.kind==='book'?await readBookEntity(db,row.entity_id):undefined;
-      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note),...(book?{bookDetails:effectiveBookDetails(book.details,displayOverridesReadSchema.parse(row.display_values??{})),bookContext:await readBookContext(db,row.id,row.account_id)}:{})}});
+      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note),...(book?{bookCovers:await readBookCovers(db,row.id),bookDetails:effectiveBookDetails(book.details,displayOverridesReadSchema.parse(row.display_values??{})),bookContext:await readBookContext(db,row.id,row.account_id)}:{})}});
       if(Buffer.byteLength(JSON.stringify(value))>4*1024*1024)throw new PublicContentFailure(413);
       await db.query('COMMIT');return value;
     }catch(error){await db.query('ROLLBACK');if((error as {status?:number}).status===413)throw new PublicContentFailure(413);throw error;}finally{db.release();}

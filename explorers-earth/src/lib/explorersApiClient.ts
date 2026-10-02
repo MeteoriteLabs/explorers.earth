@@ -1,3 +1,4 @@
+import {importBookCoversSchema,bookCoverImportResultSchema} from '../../../tunes/shared/explorersBookCoverContract';
 import type { AccountDto, MediaDto, RevisionInput, UpdateAccountInput } from "../../../tunes/shared/explorersContract";
 import {searchRequestSchema,searchPageSchema,SEARCH_PAGE_BYTES,type SearchInput} from '../../../tunes/shared/explorersSearchContract';
 import useAuthStore from "../store/store";
@@ -309,6 +310,12 @@ export const explorersApiClient = {
    const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',schema as z.ZodType<any>,signal);
    if(entity.kind!=='book'||body.kind==='provider'&&entity.provenance?.externalId!==body.externalId||body.kind==='manual'&&entity.title!==body.details.title)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved Book identity');
    return entity;
+  },
+  async importBookCovers(observed:RecommendationObservation,key:string,signal?:AbortSignal){
+   assertOwnerDetailObservation(observed,'recommendation');
+   if(observed.detail.category!=='books')throw new ExplorersApiError(422,'INVALID_INPUT','Book cover import requires Books');
+   const body=commandInput(importBookCoversSchema,{expectedRevision:observed.resourceRevision});
+   return contentCommand(`/recommendations/${observed.resourceId}/book-covers`,'POST',body,key,'coverImport',bookCoverImportResultSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
   async replaceRecommendationEntity(observed:RecommendationObservation,entityId:string,key:string,signal?:AbortSignal){
    assertOwnerDetailObservation(observed,'recommendation');const body=commandInput(replaceRecommendationEntitySchema,{entityId,expectedRevision:observed.resourceRevision});

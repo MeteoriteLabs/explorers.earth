@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import type { Actor } from "./actor";
 import { authorizeOperation, AuthorizationError } from "./authorization";
 import type { MediaDto, RequestContext } from "../../shared/explorersContract";
@@ -29,6 +29,15 @@ export class MediaService {
   private readonly repo: MediaRepository;
   constructor(private readonly db: Pool, private readonly storage: ObjectStorage = resolveObjectStorage()) {
     this.repo = new MediaRepository(db);
+  }
+
+  /** Borrow an already reserved session between transactions. Upload reservation,
+   * cleanup and ready transitions still use their normal short transactions; the
+   * caller retains responsibility for releasing its connection. */
+  usingConnection(connection: PoolClient): MediaService {
+    const query=connection.query.bind(connection);
+    const borrowed={query,release:()=>undefined} as unknown as PoolClient;
+    return new MediaService({query,connect:async()=>borrowed} as unknown as Pool,this.storage);
   }
 
   /** Bounded retry for metadata retained after a failed object deletion. */

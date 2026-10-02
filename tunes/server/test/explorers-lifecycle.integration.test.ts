@@ -92,11 +92,13 @@ describe("canonical account lifecycle", () => {
       bytes:png,hash:createHash('sha256').update(png).digest(),key,environment:'local'});
     await storage.put(key,png); await media.markReady(mediaId);
     await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[list.id,owner.accountId,mediaId]);
+    const storedCover=await new MediaService(pool,storage).createMedia(await webActor(owner),{purpose:'recommendation',filename:'book.png',mimeType:'image/png',bytes:png,length:png.length},{requestId:randomUUID()});
+    await pool.query("INSERT INTO recommendation_book_covers(recommendation_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3),($1,$2,'thumbnail',$3)",[item.id,owner.accountId,storedCover.id]);
     const operation=await pendingDeletion(owner);
     await runAccountLifecycleMaintenance(pool,new LocalObjectStorage());
     expect((await pool.query('SELECT status FROM creator_accounts WHERE id=$1',[owner.accountId])).rows[0].status).toBe('deleted');
     expect((await pool.query('SELECT state FROM account_lifecycle_operations WHERE id=$1',[operation])).rows[0].state).toBe('succeeded');
-    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','book_recommendation_context','category_recommendation_pins','account_category_pin_state','media_assets']) {
+    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_book_covers','book_recommendation_context','category_recommendation_pins','account_category_pin_state','media_assets']) {
       expect((await pool.query(`SELECT 1 FROM ${table} WHERE account_id=$1`,[owner.accountId])).rowCount,table).toBe(0);
     }
     expect((await pool.query('SELECT id FROM entities WHERE id=$1',[shared])).rowCount).toBe(1);

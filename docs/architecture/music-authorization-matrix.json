@@ -1299,6 +1299,25 @@
     },
     {
       "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/book-covers",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
       "path": "/api/explorers/v1/recommendations/:id/entity",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "explorers-owner",
@@ -1490,6 +1509,25 @@
     {
       "method": "ALL",
       "path": "/api/explorers/v1/recommendations/:id/editable",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/book-covers",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "tombstone",
       "allowed": {
@@ -2937,6 +2975,17 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/bookCatalog.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/bookCoverFetch.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,

@@ -6,7 +6,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100) throw new Error("Invalid maintenance batch size");
   await pool.query("SELECT purge_expired_account_recovery_proofs($1)", [batchSize]);
   await pool.query(`WITH due AS (SELECT id FROM application_command_receipts
-    WHERE status='completed' AND replay_until<=clock_timestamp() ORDER BY replay_until,id LIMIT $1)
+    WHERE status IN ('completed','pending') AND replay_until<=clock_timestamp() ORDER BY replay_until,id LIMIT $1)
     UPDATE application_command_receipts r SET status='retired',response=NULL FROM due WHERE r.id=due.id`, [batchSize]);
   await pool.query(`WITH due AS (SELECT id FROM deletion_feedback WHERE reason IS NOT NULL
     AND created_at<=clock_timestamp()-interval '30 days' ORDER BY created_at,id LIMIT $1)
@@ -93,7 +93,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
           WHERE account_id=$1 AND revoked_at IS NULL`, [operation.account_id]);
         await db.query(`UPDATE deletion_feedback SET reason=NULL,user_id=NULL,purged_at=clock_timestamp()
           WHERE account_id=$1 AND reason IS NOT NULL`, [operation.account_id]);
-        await db.query("UPDATE application_command_receipts SET status='retired',response=NULL WHERE account_id=$1 AND status='completed'", [operation.account_id]);
+        await db.query("UPDATE application_command_receipts SET status='retired',response=NULL WHERE account_id=$1 AND status IN ('completed','pending')", [operation.account_id]);
         await db.query("DELETE FROM auth_session WHERE user_id=$1", [account.rows[0].user_id]);
         await db.query(`UPDATE auth_account SET access_token=NULL,refresh_token=NULL,id_token=NULL,password=NULL,
           updated_at=clock_timestamp() WHERE user_id=$1`, [account.rows[0].user_id]);

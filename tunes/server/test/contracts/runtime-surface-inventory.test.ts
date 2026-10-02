@@ -67,7 +67,7 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
-      ['POST','/api/explorers/v1/recommendations/:id/entity'],
+      ['POST','/api/explorers/v1/recommendations/:id/entity'], ['POST','/api/explorers/v1/recommendations/:id/book-covers'],
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
       ['GET','/api/explorers/v1/recommendations'], ['GET','/api/explorers/v1/recommendations/:id'],
       ['GET','/api/explorers/v1/recommendations/search'],
@@ -84,7 +84,7 @@ describe("runtime route/event/job inventory", () => {
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
       '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',
-      '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order','/api/explorers/v1/recommendations/:id/entity'];
+      '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order','/api/explorers/v1/recommendations/:id/entity','/api/explorers/v1/recommendations/:id/book-covers'];
     expect(routes).toHaveLength(ownerCommands.length+methodBoundaries.length);
     for(const [method,path] of ownerCommands) expect(routes).toContainEqual(expect.objectContaining({
       method,path,classification:'canonical-explorers-owner',ownerSource:'verified-google-session+active-initial-account-binding',

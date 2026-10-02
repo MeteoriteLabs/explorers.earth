@@ -52,7 +52,7 @@ export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
 const revisionTriggers = Object.freeze([
-  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
     [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
       table,name:`${table}_content_revision_${event}`,enabled:'O',type,
       function:`explorers_content_revision_${event}`,
@@ -68,6 +68,9 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'book_entity_details',name:'book_entity_details_kind_guard',enabled:'O',type:21}),
   Object.freeze({table:'book_recommendation_context',name:'book_recommendation_context_category_guard',enabled:'O',type:21}),
   Object.freeze({table:'recommendations',name:'recommendations_book_context_category_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_book_covers',name:'recommendation_book_cover_ready_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_asset_book_cover_reverse_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendation_book_cover_category_guard',enabled:'O',type:17}),
   Object.freeze({ table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 }),
   Object.freeze({ table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 }),

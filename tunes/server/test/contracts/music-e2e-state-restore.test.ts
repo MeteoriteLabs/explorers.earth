@@ -124,7 +124,7 @@ describe("Music E2E transactional state restore", () => {
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "profile_feed_items", "profile_media", "recommendation_display_overrides", "recommendation_media", "recommendations", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
+      "playlists", "profile_feed_items", "profile_media", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendations", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
@@ -150,7 +150,7 @@ describe("Music E2E transactional state restore", () => {
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
       "0033_explorers_recommendation_display_overrides",
-      "0034_explorers_books_provider_context",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -174,6 +174,8 @@ describe("Music E2E transactional state restore", () => {
       { table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 },
       { table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 },
     ];
+    expectedTriggers.push({table:'recommendation_book_covers',name:'recommendation_book_cover_ready_guard',enabled:'O',type:21},{table:'media_assets',name:'media_asset_book_cover_reverse_guard',enabled:'O',type:17},{table:'recommendations',name:'recommendation_book_cover_category_guard',enabled:'O',type:17});
+    for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const)expectedTriggers.push({table:'recommendation_book_covers',name:'recommendation_book_covers_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
     expectedTriggers.push({table:'entities',name:'entities_book_details_kind_guard',enabled:'O',type:17},{table:'book_entity_details',name:'book_entity_details_kind_guard',enabled:'O',type:21},{table:'book_recommendation_context',name:'book_recommendation_context_category_guard',enabled:'O',type:21},{table:'recommendations',name:'recommendations_book_context_category_guard',enabled:'O',type:17});
     for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const)expectedTriggers.push({table:'book_recommendation_context',name:'book_recommendation_context_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
     expectedTriggers.push({table:"collections",name:"collections_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});

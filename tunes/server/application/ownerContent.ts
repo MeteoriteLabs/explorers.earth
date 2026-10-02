@@ -1,3 +1,4 @@
+import {readBookCovers} from '../repositories/bookCovers';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod/v3';
@@ -214,7 +215,7 @@ export class OwnerContentService {
    if(!values.success||!entity.success||detail.override_schema_version!==null&&detail.override_schema_version!==1)throw new RecommendationFailure(422,'Invalid stored presentation');
    const displayTitle=Object.hasOwn(values.data,'title')?values.data.title:entity.data.title;
    const book= row.category==='books'?await readBookEntity(db,detail.entity_id):undefined;
-   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??entity.data,displayOverrides:values.data,displayTitle,...(book?{bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{})});
+   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??entity.data,displayOverrides:values.data,displayTitle,...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{})});
    if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });
  }

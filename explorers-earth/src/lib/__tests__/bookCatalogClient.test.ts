@@ -19,6 +19,11 @@ it('candidate completion is fenced through account generation and creates no cat
  vi.stubGlobal('fetch',()=>new Promise<Response>(r=>release=r));const pending=explorersApiClient.searchBookCandidates({query:'book'});
  await vi.waitFor(()=>expect(release).toBeTypeOf('function'));store.setState({generation:901});release(response({version:'explorers-book-candidates/v1',items:[],nextCursor:null,expiresAt:Date.now()+1000}));await expect(pending).rejects.toBeDefined();
 });
+it('imports covers only through issued recommendation observation and validates receipt authority',async()=>{
+ expect(explorersApiClient.importBookCovers).toBeTypeOf('function');let sent:any;
+ vi.stubGlobal('fetch',async(_url:string,options:RequestInit)=>{if(!options.method)return response({recommendation:child});sent=JSON.parse(options.body as string);return response({coverImport:{id,revision:3,slots:{cover:{status:'fallback'},thumbnail:{status:'fallback'}}}});});
+ const observed=await explorersApiClient.getMyEditableRecommendation(id);await expect(explorersApiClient.importBookCovers({...observed},'cover-key')).rejects.toMatchObject({status:409});const result=await explorersApiClient.importBookCovers(observed,'cover-key');expect(sent).toEqual({expectedRevision:2});expect(result.revision).toBe(3);await expect(explorersApiClient.importBookCovers(observed,'cover-key-two')).rejects.toMatchObject({status:409});
+});
 
 it('rejects malformed provider errors, oversized candidate responses and forged fields before sending',async()=>{
  vi.stubGlobal('fetch',async()=>response({error:{code:'UNREVIEWED',message:'raw upstream',requestId:'test'}},503));await expect(explorersApiClient.searchBookCandidates({query:'book'})).rejects.toMatchObject({status:503,code:'INVALID_OWNER_CONTENT'});

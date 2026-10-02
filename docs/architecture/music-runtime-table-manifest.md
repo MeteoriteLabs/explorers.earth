@@ -183,3 +183,21 @@ The shared public-content v1 is an unadopted internal checkpoint: its coordinate
 nullable title change is permitted before released consumer adoption. Public
 projections expose effective title only; existing category screens still use their
 legacy gateway and are not qualified consumers of this contract.
+
+## Provider Book cover copying (0035)
+
+`recommendation_book_covers` owns the independent `cover` and `thumbnail` slots.
+Both composite foreign keys bind the recommendation and ready recommendation-purpose
+image to the same account; snapshots remain in `recommendation_media`. Deferred
+forward and reverse guards require Books, supported image MIME and at most 5 MiB.
+Cover writes participate in category revisions. Runtime receives relation CRUD,
+but cannot execute the guard function. Terminal recommendation purge cascades both
+slots before deleting their media objects; shared Book facts remain retained.
+
+The named owner command `/recommendations/:id/book-covers` accepts only an issued
+recommendation revision plus idempotency key. Trusted canonical provider facts
+supply exact approved `books.google.com` URLs. HTTPS connections pin a validated
+public DNS answer while preserving hostname/TLS verification; redirects are denied.
+Receipt progress is durable between short transactions, optional copy failures retain
+external fallback, and stale attachment leaves previous covers intact. Media reference
+counts, public ancestor byte gates and populated restore include both slots.

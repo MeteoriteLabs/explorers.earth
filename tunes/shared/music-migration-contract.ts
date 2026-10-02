@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0034_explorers_books_provider_context" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0035_explorers_book_cover_import" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -33,6 +33,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0031_explorers_content_revision",
   "0032_explorers_owner_page_indexes",
   "0033_explorers_recommendation_display_overrides",
+  "0034_explorers_books_provider_context",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -71,6 +72,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0031_explorers_content_revision",
   "0032_explorers_owner_page_indexes",
   "0033_explorers_recommendation_display_overrides",
+  "0034_explorers_books_provider_context",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

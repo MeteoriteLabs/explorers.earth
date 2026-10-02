@@ -1,3 +1,4 @@
+import {bookCoversSchema} from './explorersBookCoverContract';
 import { z } from 'zod/v3';
 import { richNoteSchema } from './explorersRichNoteContract';
 import { catalogTitleSchema } from './explorersContract';
@@ -14,7 +15,7 @@ export const publicRecommendationDetailRequestSchema=publicContentRequestSchema.
 // v1 is an unadopted internal checkpoint: coordinated nullable presentation
 // change precedes released consumer adoption. Null explicitly clears the title.
 export const publicRecommendationSummarySchema=z.object({id:z.string().uuid(),title:catalogTitleSchema.nullable(),kind:z.enum(['place','movie','book','game','app','product','person']),userRating:z.number().int().min(1).max(10).nullable()}).strict();
-export const publicRecommendationDetailSchema=z.object({version:z.literal('explorers-public-content/v1'),recommendation:publicRecommendationSummarySchema.extend({note:richNoteSchema.nullable(),bookDetails:bookEntityDetailsSchema.optional(),bookContext:bookRecommendationContextSchema.optional()}).strict().refine(v=>v.kind==='book'||v.bookDetails===undefined&&v.bookContext===undefined)}).strict();
+export const publicRecommendationDetailSchema=z.object({version:z.literal('explorers-public-content/v1'),recommendation:publicRecommendationSummarySchema.extend({note:richNoteSchema.nullable(),bookCovers:bookCoversSchema.optional(),bookDetails:bookEntityDetailsSchema.optional(),bookContext:bookRecommendationContextSchema.optional()}).strict().refine(v=>v.kind==='book'||v.bookDetails===undefined&&v.bookContext===undefined&&v.bookCovers===undefined)}).strict();
 export type PublicCollectionSummary={id:string;title:string;slug:string;description:string|null;heading:string|null};
 export type PublicRecommendationSummary=z.infer<typeof publicRecommendationSummarySchema>;
 export type PublicContentPage<T>={version:'explorers-public-content/v1';items:T[];nextCursor:string|null};

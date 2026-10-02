@@ -52,6 +52,7 @@ const expectedRuntimeTables = [
   "playlists",
   "profile_feed_items",
   "profile_media",
+  "recommendation_book_covers",
   "recommendation_display_overrides",
   "recommendation_media",
   "recommendations",
@@ -118,6 +119,7 @@ const expectedRuntimeFunctions = [
   "finalize_music_identity_deletion(integer,text,text)",
   "guard_book_entity_details()",
   "guard_book_recommendation_context()",
+  "guard_recommendation_book_cover()",
   "guard_recommendation_entity_kind()",
   "guard_recommendation_media()",
   "lock_music_identity_pair(text,text)",
@@ -595,7 +597,7 @@ export async function provisionMusicRuntimeLogin(
       ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entity_identifiers,book_entity_details FROM ${capabilityRole}`);
-    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context() FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON account_music_identity FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
@@ -791,7 +793,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
-          && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature)))) {
+          && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 
