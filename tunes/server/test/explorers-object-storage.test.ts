@@ -42,3 +42,12 @@ describe("private environment-selected media storage", () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 });
+it('bounds S3 get and complete version cleanup with an abort deadline',async()=>{
+ const send=(_command:unknown,options?:{abortSignal?:AbortSignal})=>new Promise<any>((_resolve,reject)=>{if(!options?.abortSignal){reject(new Error('Missing storage deadline'));return;}options.abortSignal.addEventListener('abort',()=>reject(new Error('Timed out')),{once:true});});
+ const storage=new S3ObjectStorage('qa','private-fixture-bucket',{send} as unknown as S3Client,10);
+ await expect(storage.get(key)).rejects.toThrow('Storage deadline exceeded');await expect(storage.delete(key,'v1')).rejects.toThrow('Storage deadline exceeded');await expect(storage.delete(key)).rejects.toThrow('Storage deadline exceeded');
+});
+it('bounds S3 response body even when headers arrive and body stalls',async()=>{
+ const storage=new S3ObjectStorage('qa','private-fixture-bucket',{send:async()=>({Body:{transformToByteArray:()=>new Promise(()=>{})}})} as unknown as S3Client,10);
+ await expect(storage.get(key)).rejects.toThrow('Storage deadline exceeded');
+});

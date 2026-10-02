@@ -11,9 +11,10 @@ import { RecommendationFailure } from '../repositories/explorersRecommendationRe
 import { requireActor, sendActorError } from '../middleware/explorersPrincipal';
 import type { RequestContext } from '../../shared/explorersContract';
 import {SearchFailure} from '../application/searchQuery';
+import {BookProviderFailure,BookCatalog} from '../services/bookCatalog';
 
-export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig) {
-  const service=new RecommendationService(pool),catalog=new CatalogService(pool);
+export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog) {
+  const service=new RecommendationService(pool),catalog=new CatalogService(pool,books);
   const ownerContent=new OwnerContentService(pool,config.secret);
   const routes=Router({caseSensitive:true,strict:true});
   const unsupported=(_request:Request,response:Response)=>response.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}});
@@ -27,6 +28,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const result=await work(actor,String(request.params.id??''),request.body,{requestId,idempotencyKey:request.get('Idempotency-Key')});
       return response.status(status).json({[name]:result});
     } catch(error) {
+      if(error instanceof BookProviderFailure){if(error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
       if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
     }
@@ -72,6 +74,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.get('/api/explorers/v1/recommendations/:id',read((a,id,q)=>ownerContent.getRecommendation(a,id,q),'recommendation'));
   routes.get('/api/explorers/v1/recommendations/:id/editable',read((a,id,q)=>ownerContent.getRecommendation(a,id,q,true),'recommendation'));
   routes.post('/api/explorers/v1/recommendations',mutation((a,_id,b,c)=>service.createRecommendation(a,b,c),'recommendation',201));
+  routes.post('/api/explorers/v1/recommendations/:id/entity',mutation((a,id,b,c)=>service.replaceRecommendationEntity(a,id,b,c),'recommendation'));
   routes.patch('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.updateRecommendation(a,id,b,c),'recommendation'));
   routes.delete('/api/explorers/v1/recommendations/:id',mutation((a,id,b,c)=>service.archiveRecommendation(a,id,b,c),'recommendation'));
   routes.all('/api/explorers/v1/entities/resolve',unsupported);
@@ -82,6 +85,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.all('/api/explorers/v1/recommendations',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id',unsupported);
   routes.all('/api/explorers/v1/recommendations/:id/editable',unsupported);
+  routes.all('/api/explorers/v1/recommendations/:id/entity',unsupported);
   routes.all('/api/explorers/v1/categories/:category/content-snapshot',unsupported);
   routes.all('/api/explorers/v1/categories/:category/content-snapshot/validate',unsupported);
   routes.all('/api/explorers/v1/categories/:category/memberships',unsupported);

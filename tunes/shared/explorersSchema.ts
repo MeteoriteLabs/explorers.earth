@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, bigint, boolean, timestamp, jsonb, integer, smallint, primaryKey, uniqueIndex, index, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, bigint, boolean, timestamp, jsonb, integer, smallint, primaryKey, uniqueIndex, index, customType, numeric } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { auth_user } from "./authSchema";
 
@@ -180,3 +180,11 @@ export const recommendationMedia=pgTable('recommendation_media',{
   recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),mediaId:uuid('media_id').notNull(),
   displayOrder:integer('display_order').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[primaryKey({columns:[t.recommendationId,t.mediaId]})]);
+// 0034 owns kind/category guards, cascading composite FK, revision triggers and grants.
+export const bookEntityDetails=pgTable('book_entity_details',{
+ entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
+ subtitle:text('subtitle'),authors:text('authors').array().notNull().default(sql`'{}'::text[]`),publisher:text('publisher'),publishedDateText:text('published_date_text'),yearText:text('year_text'),description:text('description'),coverUrl:text('cover_url'),coverLargeUrl:text('cover_large_url'),subjects:text('subjects').array().notNull().default(sql`'{}'::text[]`),pageCount:integer('page_count'),isbn13:text('isbn_13'),isbn10:text('isbn_10'),providerRating:numeric('provider_rating',{precision:3,scale:2}),ratingsCount:bigint('ratings_count',{mode:'number'}),languageTag:text('language_tag'),previewUrl:text('preview_url'),
+});
+export const bookRecommendationContext=pgTable('book_recommendation_context',{
+ recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),buyLinks:jsonb('buy_links').notNull().default([]),
+},t=>[index('book_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);

@@ -10,6 +10,11 @@ export interface ObjectStorage {
   get(key: string): Promise<Buffer>;
   delete(key: string, versionId?: string | null): Promise<void>;
 }
+async function storageDeadline<T>(milliseconds:number,work:(signal:AbortSignal)=>Promise<T>):Promise<T>{
+ const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
+ const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Storage deadline exceeded'));},milliseconds);});
+ try{return await Promise.race([work(controller.signal),deadline]);}finally{clearTimeout(timer!);}
+}
 
 export function assertObjectKey(key: string, environment: StorageEnvironment): void {
   if (!new RegExp(`^${environment}/[0-9a-f-]{36}/[0-9a-f-]{36}$`, "i").test(key))
@@ -33,14 +38,14 @@ export class LocalObjectStorage implements ObjectStorage {
     await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
     await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal: AbortSignal.timeout(120_000) });
   }
-  async get(key: string): Promise<Buffer> { return readFile(this.path(key)); }
-  async delete(key: string): Promise<void> { await rm(this.path(key), { force: true }); }
+  async get(key: string): Promise<Buffer> { return storageDeadline(120000,signal=>readFile(this.path(key),{signal})); }
+  async delete(key: string): Promise<void> { await storageDeadline(120000,()=>rm(this.path(key), { force: true })); }
 }
 
 /** The bucket remains private. The server is the only byte-delivery authority. */
 export class S3ObjectStorage implements ObjectStorage {
   constructor(readonly environment: "qa" | "prod", private readonly bucket: string,
-    private readonly client: S3Client) {
+    private readonly client: S3Client,private readonly deadlineMs=120000) {
     if (!/^[a-z0-9][a-z0-9.-]{2,62}$/.test(bucket)) throw new Error("Invalid private media bucket");
   }
   async put(key: string, bytes: Buffer): Promise<string | undefined> {
@@ -51,14 +56,18 @@ export class S3ObjectStorage implements ObjectStorage {
   }
   async get(key: string): Promise<Buffer> {
     assertObjectKey(key, this.environment);
-    const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    return storageDeadline(this.deadlineMs,async signal=>{
+    const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }),{abortSignal:signal});
     if (!result.Body) throw new Error("Media object is missing");
-    return Buffer.from(await result.Body.transformToByteArray());
+    const abort=()=>{if(result.Body&&'destroy' in result.Body)result.Body.destroy();};signal.addEventListener('abort',abort,{once:true});
+    try{return Buffer.from(await result.Body.transformToByteArray());}finally{signal.removeEventListener('abort',abort);}
+    });
   }
   async delete(key: string, versionId?: string | null): Promise<void> {
     assertObjectKey(key, this.environment);
+    return storageDeadline(this.deadlineMs,async signal=>{
     if (versionId) {
-      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key, VersionId: versionId }));
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key, VersionId: versionId }),{abortSignal:signal});
       return;
     }
     // An upload may have succeeded just before metadata failed. Enumerate exact
@@ -68,18 +77,19 @@ export class S3ObjectStorage implements ObjectStorage {
     let found = false;
     do {
       const listed = await this.client.send(new ListObjectVersionsCommand({ Bucket: this.bucket,
-        Prefix: key, KeyMarker: keyMarker, VersionIdMarker: versionMarker, MaxKeys: 1000 }));
+        Prefix: key, KeyMarker: keyMarker, VersionIdMarker: versionMarker, MaxKeys: 1000 }),{abortSignal:signal});
       for (const entry of [...(listed.Versions ?? []), ...(listed.DeleteMarkers ?? [])]) {
         if (entry.Key !== key || !entry.VersionId) continue;
         found = true;
-        await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key, VersionId: entry.VersionId }));
+        await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key, VersionId: entry.VersionId }),{abortSignal:signal});
       }
       if (!listed.IsTruncated) break;
       keyMarker = listed.NextKeyMarker;
       versionMarker = listed.NextVersionIdMarker;
       if (!keyMarker) throw new Error("Incomplete media version listing");
     } while (true);
-    if (!found) await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+    if (!found) await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),{abortSignal:signal});
+    });
   }
 }
 

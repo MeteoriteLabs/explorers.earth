@@ -135,7 +135,7 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
             const classification = classificationFor(method.toUpperCase(), path, legacyClassification, source);
             let policy = routePolicy;
             if (classification === "public") policy = path === "/api/explorers/v1/media/:id/content"
-              ? "ready-media+owner-or-visible-public-profile-attachment" : "explicit-public-contract";
+              ? "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment" : "explicit-public-contract";
             else if (path === "/{*musicRetiredPath}") policy = "normalized-executable-retirement-matcher";
             else if (classification === "local-music-owner") policy = "c5-principal+local-lifecycle+owner-sql";
             else if (classification === "paid-local-music-owner") policy = "c5-principal+local-lifecycle+fresh-entitlement+owner-sql";

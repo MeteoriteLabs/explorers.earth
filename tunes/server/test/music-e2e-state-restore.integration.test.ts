@@ -85,6 +85,8 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'guides','Restore guide',$2,0)",[revisionAccount,randomUUID()]);
     const item=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'books',$2) RETURNING id",[revisionAccount,entity])).rows[0].id;
     const other=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'books',$2) RETURNING id",[revisionAccount,entity])).rows[0].id;
+    await fixture.query("INSERT INTO book_entity_details(entity_id,authors,isbn_10,published_date_text) VALUES($1,ARRAY['Restored author'],'123456789X','2024-03')",[entity]);
+    await fixture.query('INSERT INTO book_recommendation_context(recommendation_id,account_id,buy_links) VALUES($1,$2,$3)',[item,revisionAccount,JSON.stringify([{name:'Restored shop',url:'https://shop.example/book'}])]);
     await fixture.query('INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$3,$4),($2,$3,$5)',[item,other,revisionAccount,{title:null},{}]);
     await fixture.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[item,JSON.stringify({version:1,format:'quill-html',html:'<p>😀 Restored author note</p>'})]);
     await fixture.query("INSERT INTO collection_items VALUES($1,$2,$3,'books',0,now())",[list,item,revisionAccount]);
@@ -126,6 +128,8 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
   });
 
   it('preserves nonempty category counters exactly and advances after replay',async()=>{
+    const bookFacts=(await fixture!.query('SELECT * FROM book_entity_details')).rows;
+    const bookContexts=(await fixture!.query('SELECT * FROM book_recommendation_context')).rows;
     const overrides=(await fixture!.query('SELECT recommendation_id,display_values FROM recommendation_display_overrides WHERE account_id=$1 ORDER BY recommendation_id',[revisionAccount])).rows;
     expect(overrides.map(row=>row.display_values)).toEqual(expect.arrayContaining([{title:null},{}]));
     const notes=(await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows;
@@ -139,6 +143,8 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect((await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows).toEqual(before);
     expect((await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows).toEqual(notes);
     expect((await fixture!.query('SELECT recommendation_id,display_values FROM recommendation_display_overrides WHERE account_id=$1 ORDER BY recommendation_id',[revisionAccount])).rows).toEqual(overrides);
+    expect((await fixture!.query('SELECT * FROM book_entity_details')).rows).toEqual(bookFacts);
+    expect((await fixture!.query('SELECT * FROM book_recommendation_context')).rows).toEqual(bookContexts);
     await fixture!.query("UPDATE collections SET heading='After restore' WHERE account_id=$1 AND category='books'",[revisionAccount]);
     const next=(await fixture!.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[revisionAccount])).rows[0].revision;
     expect(BigInt(next)).toBeGreaterThan(BigInt(before.find(row=>row.category==='books')!.revision));

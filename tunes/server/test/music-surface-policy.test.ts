@@ -18,6 +18,7 @@ describe("Music surface authorization policy", () => {
     ['PATCH','/api/explorers/v1/collections/:id'],['PATCH','/api/explorers/v1/collections/:id/order'],
     ['DELETE','/api/explorers/v1/collections/:id'],['POST','/api/explorers/v1/recommendations'],
     ['PATCH','/api/explorers/v1/recommendations/:id'],['DELETE','/api/explorers/v1/recommendations/:id'],
+    ['POST','/api/explorers/v1/recommendations/:id/entity'],
     ['GET','/api/explorers/v1/collections'],['GET','/api/explorers/v1/collections/:id'],
     ['GET','/api/explorers/v1/recommendations'],['GET','/api/explorers/v1/recommendations/:id'],
     ['GET','/api/explorers/v1/recommendations/search'],
@@ -34,6 +35,7 @@ describe("Music surface authorization policy", () => {
     expect(decisionForRoute({...route,classification:'tombstone'})).toBe('tombstone');
   });
   it.each([
+    ["explorersCatalogRoutes", "GET", "/api/explorers/v1/catalog/books", "explorers-owner"],
     ["explorersAccountRoutes", "PATCH", "/api/explorers/v1/account", "explorers-owner"],
     ["explorersMediaRoutes", "POST", "/api/explorers/v1/media", "explorers-owner"],
     ["explorersMediaRoutes", "DELETE", "/api/explorers/v1/media/:id", "explorers-owner"],

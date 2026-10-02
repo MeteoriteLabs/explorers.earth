@@ -11,6 +11,7 @@ import { z } from 'zod/v3';
 import { createCollectionSchema,updateCollectionSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
+import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -20,7 +21,7 @@ export function assertCompleteOwnerContent<T>(value:CompleteOwnerContent<T>):voi
   if(!value||!completedSets.has(value)||!value.complete||!current.isAuthenticated||current.generation!==value.generation||current.accountId!==value.accountId)
     throw new ExplorersApiError(409,'CONFLICT','Reload the complete owner content before saving');
 }
-async function ownerRead<T>(path:string,query:Record<string,unknown>,schema:z.ZodType<T>,signal?:AbortSignal):Promise<T> {
+async function ownerRead<T>(path:string,query:Record<string,unknown>,schema:z.ZodType<T>,signal?:AbortSignal,strict=false):Promise<T> {
   const initial=useAuthStore.getState(),controller=new AbortController();
   const isCurrent=()=>{const now=useAuthStore.getState();return now.isAuthenticated&&now.generation===initial.generation&&now.accountId===initial.accountId;};
   if(!initial.isAuthenticated||!initial.accountId) throw new ExplorersApiError(401,'UNAUTHENTICATED','Sign in is required');
@@ -28,12 +29,21 @@ async function ownerRead<T>(path:string,query:Record<string,unknown>,schema:z.Zo
   const unsubscribe=useAuthStore.subscribe(()=>{if(!isCurrent()) stop();});
   signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted) stop();
   try {
+    if(controller.signal.aborted||!isCurrent())throw new DOMException('Owner changed','AbortError');
     const params=new URLSearchParams();for(const [key,value] of Object.entries(query)) if(value!==undefined) params.set(key,String(value));
     const response=await fetch(`/api/explorers/v1${path}?${params}`,{credentials:'include',cache:'no-store',signal:controller.signal});
-    const body=await responseBody<unknown>(response,initial.generation);
+    const body=strict?await strictOwnerResponse(response,initial.generation):await responseBody<unknown>(response,initial.generation);
     if(controller.signal.aborted||!isCurrent()) throw new DOMException('Owner changed','AbortError');
-    return schema.parse(body);
+    const parsed=schema.safeParse(body);if(!parsed.success){if(strict)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Book response');throw parsed.error;}return parsed.data;
   } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
+}
+async function strictOwnerResponse(response:Response,generation:number):Promise<unknown>{
+ const limit=4*1024*1024;if(Number(response.headers.get('Content-Length'))>limit){await response.body?.cancel();throw new ExplorersApiError(413,'RESOURCE_TOO_LARGE','Book response exceeds the byte bound');}
+ const chunks:Uint8Array[]=[];let bytes=0;const reader=response.body?.getReader();
+ try{if(reader)while(true){const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes>limit)throw new ExplorersApiError(413,'RESOURCE_TOO_LARGE','Book response exceeds the byte bound');chunks.push(part.value);}}finally{await reader?.cancel().catch(()=>{});reader?.releaseLock();}
+ const buffer=new Uint8Array(bytes);let offset=0;for(const part of chunks){buffer.set(part,offset);offset+=part.byteLength;}
+ let body:unknown;try{body=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(buffer));}catch{throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Book response');}
+ handleExpiredSession(response,generation);if(!response.ok){const failure=apiErrorSchema.safeParse(body);if(!failure.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Book error');throw new ExplorersApiError(response.status,failure.data.error.code,failure.data.error.message);}return body;
 }
 type OwnerPage<T>={items:T[];snapshot:string;nextCursor:string|null};
 async function allOwnerContent<T extends {id:string;accountId:string}>(input:Record<string,unknown>,read:(input:Record<string,unknown>,signal?:AbortSignal)=>Promise<OwnerPage<T>>,signal?:AbortSignal):Promise<CompleteOwnerContent<T>> {
@@ -290,6 +300,20 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
+  async searchBookCandidates(input:{query:string;limit?:number;cursor?:string},signal?:AbortSignal){
+   const parsed=commandInput(bookCandidateRequestSchema,input);return ownerRead('/catalog/books',parsed,bookCandidatesSchema,signal,true);
+  },
+  async resolveBookEntity(input:z.input<typeof resolveProviderBookSchema>|z.input<typeof resolveManualBookSchema>,key:string,signal?:AbortSignal){
+   const body=commandInput(z.union([resolveProviderBookSchema,resolveManualBookSchema]),input);
+   const schema=body.kind==='manual'&&Object.keys(body.details).length===1?entityCoreDtoSchema:bookEntityDtoSchema;
+   const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',schema as z.ZodType<any>,signal);
+   if(entity.kind!=='book'||body.kind==='provider'&&entity.provenance?.externalId!==body.externalId||body.kind==='manual'&&entity.title!==body.details.title)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved Book identity');
+   return entity;
+  },
+  async replaceRecommendationEntity(observed:RecommendationObservation,entityId:string,key:string,signal?:AbortSignal){
+   assertOwnerDetailObservation(observed,'recommendation');const body=commandInput(replaceRecommendationEntitySchema,{entityId,expectedRevision:observed.resourceRevision});
+   return contentCommand(`/recommendations/${observed.resourceId}/entity`,'POST',body,key,'recommendation',recommendationCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
   async searchRecommendations(raw:SearchInput,signal?:AbortSignal) {
    const input=searchRequestSchema.parse(raw),initial=useAuthStore.getState(),controller=new AbortController();
    const current=()=>input.scope==='public'||(useAuthStore.getState().isAuthenticated&&useAuthStore.getState().generation===initial.generation&&useAuthStore.getState().accountId===initial.accountId);
@@ -331,7 +355,7 @@ export const explorersApiClient = {
    assertOwnerDetailObservation(observed,'collection');return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
   },
   async createMyRecommendation(parent:CollectionObservation,input:Omit<CreateRecommendationInput,'collectionId'|'expectedCollectionRevision'|'category'>,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(parent,'collection');const editable=commandInput(createRecommendationSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict(),input);
+   assertOwnerDetailObservation(parent,'collection');const editable=commandInput(createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict(),input);
    const body=commandInput(createRecommendationSchema,{...editable,collectionId:parent.resourceId,category:parent.detail.category,expectedCollectionRevision:parent.resourceRevision});return contentCommand('/recommendations','POST',body,key,'recommendation',recommendationCoreDtoSchema,signal,parent,undefined,1);
   },
   async updateMyRecommendation(observed:RecommendationObservation,patch:Omit<UpdateRecommendationInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
@@ -398,7 +422,7 @@ export const explorersApiClient = {
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
     return (await responseBody<{ account: AccountDto }>(response, generation)).account;
   },
-  async createMedia(file: File, purpose: "profile" | "background" | "feed", signal?: AbortSignal): Promise<MediaDto> {
+  async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation", signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media", { method: "POST", credentials: "include", signal,
       headers: { "Content-Type": file.type, "X-Media-Purpose": purpose, "X-File-Name": file.name }, body: file });

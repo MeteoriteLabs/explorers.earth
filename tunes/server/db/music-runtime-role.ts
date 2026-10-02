@@ -20,6 +20,8 @@ const expectedRuntimeTables = [
   "auth_session",
   "auth_user",
   "auth_verification",
+  "book_entity_details",
+  "book_recommendation_context",
   "category_recommendation_pins",
   "collection_items",
   "collection_media",
@@ -114,6 +116,8 @@ const expectedRuntimeFunctions = [
   "explorers_content_revision_lifecycle()",
   "explorers_content_revision_update()",
   "finalize_music_identity_deletion(integer,text,text)",
+  "guard_book_entity_details()",
+  "guard_book_recommendation_context()",
   "guard_recommendation_entity_kind()",
   "guard_recommendation_media()",
   "lock_music_identity_pair(text,text)",
@@ -590,7 +594,8 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
-      ON entity_identifiers FROM ${capabilityRole}`);
+      ON entity_identifiers,book_entity_details FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON account_music_identity FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT,INSERT ON music_credential_revocation_operations TO ${capabilityRole}`);
@@ -732,7 +737,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       ? [true, false, false, false]
       : row.object_name === "account_music_identity"
         ? [true, true, false, false]
-      : row.object_name === "entity_identifiers"
+      : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details"
         ? [true, true, false, false]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
@@ -785,7 +790,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(functionRows.map((row) => row.function_signature), expectedRuntimeFunctions)
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
-          && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)))) {
+          && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
+          && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 

@@ -132,6 +132,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',
   ].includes(route.path)) return 'public';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/books')return 'explorers-owner';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
       && [
         ["POST", "/api/explorers/v1/entities/resolve"],
@@ -153,6 +154,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["PATCH", "/api/explorers/v1/collections/:id/order"],
         ["DELETE", "/api/explorers/v1/collections/:id"],
         ["POST", "/api/explorers/v1/recommendations"],
+        ["POST", "/api/explorers/v1/recommendations/:id/entity"],
         ["PATCH", "/api/explorers/v1/recommendations/:id"],
         ["DELETE", "/api/explorers/v1/recommendations/:id"],
       ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";

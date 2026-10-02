@@ -119,7 +119,7 @@ describe("Music E2E transactional state restore", () => {
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
       "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
-      "auth_verification", "category_recommendation_pins", "collection_items", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
+      "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects", "music_credential_revocation_operations",
       "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
@@ -150,6 +150,7 @@ describe("Music E2E transactional state restore", () => {
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
       "0033_explorers_recommendation_display_overrides",
+      "0034_explorers_books_provider_context",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -173,6 +174,8 @@ describe("Music E2E transactional state restore", () => {
       { table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 },
       { table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 },
     ];
+    expectedTriggers.push({table:'entities',name:'entities_book_details_kind_guard',enabled:'O',type:17},{table:'book_entity_details',name:'book_entity_details_kind_guard',enabled:'O',type:21},{table:'book_recommendation_context',name:'book_recommendation_context_category_guard',enabled:'O',type:21},{table:'recommendations',name:'recommendations_book_context_category_guard',enabled:'O',type:17});
+    for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const)expectedTriggers.push({table:'book_recommendation_context',name:'book_recommendation_context_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
     expectedTriggers.push({table:"collections",name:"collections_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
     expectedTriggers.push({table:"collections",name:"collections_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
     expectedTriggers.push({table:"collections",name:"collections_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});

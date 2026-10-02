@@ -7,6 +7,7 @@ import type { Actor } from './actor';
 import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { normalizeRichNote } from './richNote';
+import {replaceRecommendationEntitySchema} from '../../shared/explorersBookContract';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
   const parsed=schema.safeParse(input);
@@ -60,6 +61,12 @@ export class RecommendationService {
     return this.authorized(actor,'recommendations:write',async()=>{
       parseContent(contentIdSchema,id);const {expectedRevision,...editable}=parseContent(updateRecommendationSchema,this.noteInput(input));
       return recommendationCoreDtoSchema.parse(await this.repository.updateRecommendation(actor.accountId,id,expectedRevision,editable,this.key(context)));
+    });
+  }
+  async replaceRecommendationEntity(actor:Actor,id:string,input:unknown,context:RequestContext){
+    return this.authorized(actor,'recommendations:write',async()=>{
+      parseContent(contentIdSchema,id);const parsed=parseContent(replaceRecommendationEntitySchema,input);
+      return recommendationCoreDtoSchema.parse(await this.repository.replaceRecommendationEntity(actor.accountId,id,parsed.expectedRevision,parsed.entityId,this.key(context)));
     });
   }
   async reorderCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {

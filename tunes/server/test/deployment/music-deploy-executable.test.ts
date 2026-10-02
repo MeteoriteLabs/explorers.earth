@@ -394,7 +394,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0033_explorers_recommendation_display_overrides",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0034_explorers_books_provider_context",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -433,7 +433,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0033_explorers_recommendation_display_overrides",
+          "migration=0034_explorers_books_provider_context",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -651,9 +651,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0033_explorers_recommendation_display_overrides\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0034_explorers_books_provider_context\t`);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0033_explorers_recommendation_display_overrides\tcurrent\t");
+      .toContain("\t0034_explorers_books_provider_context\tcurrent\t");
   }, deploymentProcessRecoveryTimeoutMs);
 
   it('denies rollback to a 0030 executable after installing the SELECT-only revision boundary',()=>{
@@ -689,7 +689,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0033_explorers_recommendation_display_overrides\tpending\t");
+      .toContain("\t0034_explorers_books_provider_context\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -702,7 +702,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0033_explorers_recommendation_display_overrides\tcurrent\t");
+      .toContain("\t0034_explorers_books_provider_context\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -762,8 +762,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0033_explorers_recommendation_display_overrides", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0033_explorers_recommendation_display_overrides", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0034_explorers_books_provider_context", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0034_explorers_books_provider_context", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -771,9 +771,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0033_explorers_recommendation_display_overrides\tcurrent\t");
+      .toContain("\t0034_explorers_books_provider_context\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0033_explorers_recommendation_display_overrides\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0034_explorers_books_provider_context\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1168,7 +1168,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0033_explorers_recommendation_display_overrides", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0034_explorers_books_provider_context", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

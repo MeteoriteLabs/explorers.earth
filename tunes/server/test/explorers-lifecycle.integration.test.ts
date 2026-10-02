@@ -81,6 +81,8 @@ describe("canonical account lifecycle", () => {
     await repository.createCollection(owner.accountId,{category:'guides',title:'Empty guide',slug:'guide'},randomUUID());
     const otherList=await repository.createCollection(other.accountId,{category:'books',title:'Other list',slug:'reading'},randomUUID());
     const otherItem=await repository.createRecommendation(other.accountId,{category:'books',entityId:shared,collectionId:otherList.id,expectedCollectionRevision:1},randomUUID());
+    await pool.query("INSERT INTO book_entity_details(entity_id,authors) VALUES($1,ARRAY['Shared author'])",[shared]);
+    await pool.query('INSERT INTO book_recommendation_context(recommendation_id,account_id,buy_links) VALUES($1,$2,$3),($4,$5,$6)',[item.id,owner.accountId,JSON.stringify([{name:'Owner shop',url:'https://shop.example/a'}]),otherItem.id,other.accountId,JSON.stringify([{name:'Other shop',url:'https://shop.example/b'}])]);
     await pool.query("INSERT INTO account_category_pin_state(account_id,category) VALUES($1,'books')",[owner.accountId]);
     await pool.query("INSERT INTO category_recommendation_pins VALUES($1,'books',$2,$3,0)",[owner.accountId,item.id,list.id]);
     // 3.2 owns transport upload purposes; provision this typed attachment through
@@ -94,11 +96,13 @@ describe("canonical account lifecycle", () => {
     await runAccountLifecycleMaintenance(pool,new LocalObjectStorage());
     expect((await pool.query('SELECT status FROM creator_accounts WHERE id=$1',[owner.accountId])).rows[0].status).toBe('deleted');
     expect((await pool.query('SELECT state FROM account_lifecycle_operations WHERE id=$1',[operation])).rows[0].state).toBe('succeeded');
-    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','category_recommendation_pins','account_category_pin_state','media_assets']) {
+    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','book_recommendation_context','category_recommendation_pins','account_category_pin_state','media_assets']) {
       expect((await pool.query(`SELECT 1 FROM ${table} WHERE account_id=$1`,[owner.accountId])).rowCount,table).toBe(0);
     }
     expect((await pool.query('SELECT id FROM entities WHERE id=$1',[shared])).rowCount).toBe(1);
     expect((await pool.query('SELECT id FROM recommendations WHERE id=$1',[otherItem.id])).rowCount).toBe(1);
+    expect((await pool.query('SELECT authors FROM book_entity_details WHERE entity_id=$1',[shared])).rows[0].authors).toEqual(['Shared author']);
+    expect((await pool.query('SELECT recommendation_id FROM book_recommendation_context WHERE recommendation_id=$1',[otherItem.id])).rowCount).toBe(1);
     await expect(storage.get(key)).rejects.toMatchObject({code:'ENOENT'});
     expect(await runAccountLifecycleMaintenance(pool,new LocalObjectStorage())).toBe(0);
   });

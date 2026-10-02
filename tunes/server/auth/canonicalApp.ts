@@ -23,13 +23,15 @@ import type { ObjectStorage } from "../services/objectStorage";
 import { setupExplorersLifecycleRoutes } from "../routes/explorersLifecycleRoutes";
 import { setupExplorersRecommendationRoutes } from "../routes/explorersRecommendationRoutes";
 import { setupExplorersPublicContentRoutes } from "../routes/explorersPublicContentRoutes";
+import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
+import {BookCatalog} from '../services/bookCatalog';
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
 }
 
 export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
-  options: { mediaStorage?: ObjectStorage } = {}): { app: Express; auth: ReturnType<typeof createExplorersAuth> } {
+  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog } = {}): { app: Express; auth: ReturnType<typeof createExplorersAuth> } {
   const app = express();
   const auth = createExplorersAuth(pool, config);
 
@@ -48,7 +50,9 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.use(contentBodyParser());
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersAccountRoutes(app, pool, auth, config);
-  setupExplorersRecommendationRoutes(app, pool, auth, config);
+  const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
+  setupExplorersRecommendationRoutes(app, pool, auth, config,books);
+  setupExplorersCatalogRoutes(app,pool,auth,config,books);
   setupExplorersPublicContentRoutes(app, pool, config.secret);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage));

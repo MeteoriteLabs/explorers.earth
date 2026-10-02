@@ -10,6 +10,7 @@ import * as wire from '../../shared/explorersOwnerContentContract';
 import { normalizeRichNote } from './richNote';
 import {ownerSearchRequestSchema,ownerSearchPageSchema} from '../../shared/explorersSearchContract';
 import {SearchQuery,SearchFailure,searchError} from './searchQuery';
+import {readBookEntity,readBookContext,effectiveBookDetails} from '../repositories/bookCatalogRepository';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -207,12 +208,13 @@ export class OwnerContentService {
    if(!editable)return recommendation;
    const size=(await db.query(`SELECT coalesce(octet_length(r.note::text),0) AS bytes,coalesce(octet_length(o.display_values::text),0)+octet_length(to_json(e.title)::text) AS title_bytes FROM recommendations r JOIN entities e ON e.id=r.entity_id LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id WHERE r.id=$1 AND r.account_id=$2`,[id,actor.accountId])).rows[0];
    if(Number(size.bytes)>1024*1024)throw new RecommendationFailure(413,'Owner note exceeds the response bound');
-   if(Number(size.title_bytes)>8192)throw new RecommendationFailure(413,'Owner title exceeds the response bound');
-   const detail=(await db.query("SELECT r.note,e.id AS entity_id,e.kind,e.title,o.display_values,coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$2 AND category=r.category),'0') AS category_revision FROM recommendations r JOIN entities e ON e.id=r.entity_id LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id WHERE r.id=$1 AND r.account_id=$2",[id,actor.accountId])).rows[0];
+   if(Number(size.title_bytes)>(row.category==='books'?1024*1024:8192))throw new RecommendationFailure(413,'Owner title exceeds the response bound');
+   const detail=(await db.query("SELECT r.note,e.id AS entity_id,e.kind,e.title,o.display_values,o.schema_version AS override_schema_version,coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$2 AND category=r.category),'0') AS category_revision FROM recommendations r JOIN entities e ON e.id=r.entity_id LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id WHERE r.id=$1 AND r.account_id=$2",[id,actor.accountId])).rows[0];
    const values=displayOverridesReadSchema.safeParse(detail.display_values??{}),entity=entityCoreDtoSchema.safeParse({id:detail.entity_id,kind:detail.kind,title:detail.title});
-   if(!values.success||!entity.success)throw new RecommendationFailure(422,'Invalid stored title');
+   if(!values.success||!entity.success||detail.override_schema_version!==null&&detail.override_schema_version!==1)throw new RecommendationFailure(422,'Invalid stored presentation');
    const displayTitle=Object.hasOwn(values.data,'title')?values.data.title:entity.data.title;
-   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:entity.data,displayOverrides:values.data,displayTitle});
+   const book= row.category==='books'?await readBookEntity(db,detail.entity_id):undefined;
+   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??entity.data,displayOverrides:values.data,displayTitle,...(book?{bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{})});
    if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });
  }

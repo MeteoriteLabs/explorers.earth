@@ -36,10 +36,10 @@ describe("Music liveness and readiness", () => {
   it("binds current-image readiness to the 0021 journal marker and checksum", async () => {
     // Break caught: a 0020 image can report ready against the 0019 schema or
     // against a different migration checksum.
-    expect(CURRENT_MIGRATION_MARKER).toBe("0033_explorers_recommendation_display_overrides");
+    expect(CURRENT_MIGRATION_MARKER).toBe("0034_explorers_books_provider_context");
     const currentImage = {
       ...image,
-      migrationMarker: "0033_explorers_recommendation_display_overrides" as ImageCandidate["migrationMarker"],
+      migrationMarker: "0034_explorers_books_provider_context" as ImageCandidate["migrationMarker"],
     };
     const checksum = "fcb3b932c7c5ea853bd14d8131bc100b898317bdd76c60e3f8386d4c8593ceee";
     const attestation = createGateAttestation(currentImage, key, checksum);

@@ -18,8 +18,8 @@ it("preserves the established rollback compatibility floors for additive migrati
     .toBe("0031_explorers_content_revision");
   expect(rollbackCompatibilityFloorMarker("0032_explorers_owner_page_indexes"))
     .toBe("0032_explorers_owner_page_indexes");
-  expect(rollbackCompatibilityFloorMarker("0033_explorers_recommendation_display_overrides"))
-    .toBe("0033_explorers_recommendation_display_overrides");
+  expect(rollbackCompatibilityFloorMarker("0034_explorers_books_provider_context"))
+    .toBe("0034_explorers_books_provider_context");
   expect(rollbackCompatibilityFloorMarker("0018_transactional_queue_replacement"))
     .toBe("0017_publication_idempotency_key_retirement");
   expect(rollbackCompatibilityFloorMarker("0019_queue_visibility_control"))

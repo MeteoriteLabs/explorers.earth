@@ -8,6 +8,7 @@ import { displayOverridesReadSchema,catalogTitleSchema } from '../../shared/expl
 import { normalizeRichNote } from './richNote';
 import {publicSearchRequestSchema,publicSearchPageSchema,publicCollectionByIdSchema} from '../../shared/explorersSearchContract';
 import {contentIdSchema} from '../../shared/explorersContract';
+import {readBookEntity,readBookContext,effectiveBookDetails} from '../repositories/bookCatalogRepository';
 import {SearchQuery,SearchFailure,searchError,publicAccountGate,publicCollectionGate} from './searchQuery';
 
 export class PublicContentFailure extends Error {
@@ -18,11 +19,13 @@ const cursorSchema=z.object({version:z.literal(1),binding:z.string(),account:z.s
 type Cursor=z.infer<typeof cursorSchema>;
 const overrideJoin='LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id';
 const titleBytes='octet_length(to_json(e.title)::text)+coalesce(octet_length(o.display_values::text),0)';
-const boundedTitle=`CASE WHEN ${titleBytes}<=8192 THEN e.title END AS canonical_title,CASE WHEN ${titleBytes}<=8192 THEN o.display_values END AS display_values,${titleBytes} AS title_bytes`;
+const boundedTitle=`CASE WHEN ${titleBytes}<=CASE WHEN r.category='books' THEN 1048576 ELSE 8192 END THEN e.title END AS canonical_title,CASE WHEN ${titleBytes}<=CASE WHEN r.category='books' THEN 1048576 ELSE 8192 END THEN o.display_values END AS display_values,${titleBytes} AS title_bytes,r.category AS content_category,o.schema_version AS override_schema_version`;
 function effectiveTitle(row:any) {
- if(Number(row.title_bytes)>8192)throw new PublicContentFailure(413);
+ if(Number(row.title_bytes)>(row.content_category==='books'?1048576:8192))throw new PublicContentFailure(413);
+ if(row.override_schema_version!==null&&row.override_schema_version!==undefined&&row.override_schema_version!==1)throw new PublicContentFailure(400);
  const title=catalogTitleSchema.safeParse(row.canonical_title),overrides=displayOverridesReadSchema.safeParse(row.display_values??{});
  if(!title.success||!overrides.success)throw new PublicContentFailure(400);
+ if(row.content_category!=='books'&&Object.keys(overrides.data).some(k=>k!=='title'))throw new PublicContentFailure(400);
  return Object.hasOwn(overrides.data,'title')?overrides.data.title:title.data;
 }
 /** Live public pages, never a complete-set owner read. Each page has one consistent database snapshot. */
@@ -89,9 +92,11 @@ export class PublicContentService {
       const values=[input.username,input.category,input.slug,input.id];
       const size=(await db.query(`SELECT coalesce(octet_length(r.note::text),0) AS bytes,${titleBytes} AS title_bytes ${eligible}`,values)).rows[0];
       if(!size){await db.query('COMMIT');return undefined;}
-      if(Number(size.bytes)>1024*1024||Number(size.title_bytes)>8192||Number(size.bytes)+Number(size.title_bytes)+1024>4*1024*1024)throw new PublicContentFailure(413);
-      const row=(await db.query(`SELECT r.id,${boundedTitle},e.kind,r.user_rating,r.note ${eligible}`,values)).rows[0];
-      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note)}});
+      if(Number(size.bytes)>1024*1024||Number(size.title_bytes)>(input.category==='books'?1048576:8192)||Number(size.bytes)+Number(size.title_bytes)+1024>4*1024*1024)throw new PublicContentFailure(413);
+      const row=(await db.query(`SELECT r.id,r.account_id,r.entity_id,${boundedTitle},e.kind,r.user_rating,r.note ${eligible}`,values)).rows[0];
+      const book=row.kind==='book'?await readBookEntity(db,row.entity_id):undefined;
+      const value=publicRecommendationDetailSchema.parse({version:'explorers-public-content/v1',recommendation:{id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating,note:normalizeRichNote(row.note),...(book?{bookDetails:effectiveBookDetails(book.details,displayOverridesReadSchema.parse(row.display_values??{})),bookContext:await readBookContext(db,row.id,row.account_id)}:{})}});
+      if(Buffer.byteLength(JSON.stringify(value))>4*1024*1024)throw new PublicContentFailure(413);
       await db.query('COMMIT');return value;
     }catch(error){await db.query('ROLLBACK');if((error as {status?:number}).status===413)throw new PublicContentFailure(413);throw error;}finally{db.release();}
   }

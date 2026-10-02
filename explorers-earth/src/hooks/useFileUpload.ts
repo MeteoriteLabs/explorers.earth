@@ -13,7 +13,7 @@ import {
 export { ACCEPT_STRINGS } from '../utils/fileValidation';
 
 interface UseFileUploadOptions extends FileValidationOptions {
-  canonicalPurpose?: "profile" | "background" | "feed";
+  canonicalPurpose?: "profile" | "background" | "feed" | "recommendation";
   onValidFiles?: (files: File[]) => void;
   onInvalidFiles?: (invalidFiles: { file: File; error: string }[]) => void;
   showToastOnError?: boolean;
