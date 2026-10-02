@@ -1,7 +1,7 @@
-import { createHmac, randomBytes, randomUUID } from 'node:crypto';
-import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { spawn, spawnSync, execFileSync, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -15,19 +15,14 @@ import { MUSIC_UAT_DATABASE_ACK, startOwnedUatDatabase, stopOwnedUatDatabase,
   type OwnedUatDatabaseAuthority } from './music-uat-database';
 import { prepareFixtureMusicTokenSecret, cleanupFixtureMusicTokenSecret } from './music-fixture-secret';
 import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
+import { provisionMusicRuntimeLogin } from '../server/db/music-runtime-role';
+import { startLifecycleControl } from './lifecycle-browser-support';
+import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');
-const suite = process.argv[2] === '--suite' && process.argv[3] === 'auth' ? 'auth' : 'profile';
-const expectedArgs = suite === 'auth' ? `--suite auth --ack ${MUSIC_UAT_DATABASE_ACK}` : `--ack ${MUSIC_UAT_DATABASE_ACK}`;
-if (process.argv.slice(2).join(' ') !== expectedArgs)
-  throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');
-for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD',
-  'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_DEPLOY_PROD']) {
-  if (process.env[key]) throw new Error('Ambient database or Docker authority is forbidden');
-}
-if (process.env.NODE_ENV === 'production' || Object.keys(process.env).some((key) => key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_')))
-  throw new Error('Production or unrelated database authority is forbidden');
+const suite = parseBrowserSuite(process.argv.slice(2));
+assertBrowserEnvironment(process.env);
 const runId = randomBytes(16).toString('hex');
 const database = `music_uat_${runId}`;
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
@@ -35,6 +30,10 @@ const disposable = mkdtempSync(join(tmpdir(), 'explorers-profile-e2e-'));
 const passwordFile = prepareFixtureMusicTokenSecret(root);
 let authority: OwnedUatDatabaseAuthority | undefined;
 let db: pg.Pool | undefined;
+let runtime: pg.Pool | undefined;
+let lifecycleControl: Awaited<ReturnType<typeof startLifecycleControl>> | undefined;
+let lifecycleReceipt: Record<string, unknown> | undefined;
+const artifacts = suite === 'lifecycle' ? mkdtempSync(join(tmpdir(), 'explorers-lifecycle-artifacts-')) : undefined;
 let apiServer: ReturnType<ReturnType<typeof createCanonicalApp>['app']['listen']> | undefined;
 let vite: ChildProcess | undefined;
 let browser: ChildProcess | undefined;
@@ -63,6 +62,14 @@ function stopChild(child: ChildProcess | undefined): void {
   if (!child || child.exitCode !== null) return;
   child.kill();
 }
+async function stopLifecycleChild(child: ChildProcess | undefined): Promise<void> {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise<void>((done, reject) => {
+    const timer = setTimeout(() => reject(new Error('Owned child did not exit')), 5000);
+    child.once('exit', () => { clearTimeout(timer); done(); });
+    child.kill();
+  });
+}
 async function dropOwnedDatabase(owned: OwnedUatDatabaseAuthority, password: string): Promise<void> {
   const url = new URL('postgresql://127.0.0.1/postgres');
   url.username = 'music_migrator'; url.password = password; url.port = String(owned.port);
@@ -85,7 +92,15 @@ async function main(): Promise<number> {
   const config = resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: origin,
     EXPLORERS_AUTH_SECRET: randomBytes(32).toString('hex'),
     GOOGLE_CLIENT_ID: 'profile-fixture-google', GOOGLE_CLIENT_SECRET: 'profile-fixture-secret' });
-  const composed = createCanonicalApp(db, config);
+  if (suite === 'lifecycle') {
+    const runtimePassword = randomBytes(32).toString('hex');
+    await provisionMusicRuntimeLogin(db, { loginRole: 'lifecycle_runtime', password: runtimePassword },
+      { ownershipComment: `owned-lifecycle:${runId}:${commit}` });
+    const runtimeUrl = new URL(dbUrl); runtimeUrl.username = 'lifecycle_runtime'; runtimeUrl.password = runtimePassword;
+    runtime = new pg.Pool({ connectionString: runtimeUrl.toString(), max: 5 });
+  }
+  const composed = createCanonicalApp(runtime ?? db, config);
+  if (suite === 'lifecycle') lifecycleControl = await startLifecycleControl(db, composed, config, await freePort(51000, 51999));
   apiServer = await new Promise((done) => {
     const server = composed.app.listen(apiPort, '127.0.0.1', () => done(server));
   });
@@ -114,7 +129,7 @@ async function main(): Promise<number> {
       subject: `google-${recovery.userId}`, sessionId: temporary.id })).token;
   }
   const fixturePath = join(disposable, 'sessions.json');
-  writeFileSync(fixturePath, JSON.stringify({ origin, personas, recoveryProof }), { mode: 0o600 });
+  writeFileSync(fixturePath, JSON.stringify({ origin, personas, recoveryProof, lifecycleControl }), { mode: 0o600 });
   vite = spawn(process.execPath, [resolve(frontend, 'node_modules/vite/bin/vite.js'),
     '--config', 'e2e/replatform/profile.vite.config.ts'], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
@@ -122,13 +137,36 @@ async function main(): Promise<number> {
       PROFILE_E2E_API_PORT: String(apiPort) },
   });
   await waitFor(origin);
+  const lifecycleConfig = ['--config', 'e2e/replatform/lifecycle.playwright.config.ts', '--project=lifecycle-chromium', '--retries=0'];
+  const lifecycleEnv = { ...process.env, LIFECYCLE_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+  let discovered: string[] = [];
+  if (suite === 'lifecycle') {
+    const listPath = join(artifacts!, 'discovery.json');
+    const result = spawnSync(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'), 'test', ...lifecycleConfig, '--list', '--reporter=json'],
+      { cwd: frontend, windowsHide: true, encoding: 'utf8', env: { ...lifecycleEnv, PLAYWRIGHT_JSON_OUTPUT_NAME: listPath } });
+    if (result.status !== 0) throw new Error('Lifecycle discovery failed');
+    const collect = (report: any): any[] => [...(report.specs ?? []), ...(report.suites ?? []).flatMap(collect)];
+    discovered = collect(JSON.parse(readFileSync(listPath, 'utf8'))).map(spec => spec.title);
+    // Reject omissions/additions before executing any lifecycle case.
+    assertLifecycleResults(discovered, discovered.map(title => ({ title, status: 'passed', retry: 0 })));
+  }
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
-    'test', `e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'], {
+    'test', ...(suite === 'lifecycle' ? [...lifecycleConfig, '--reporter=json,line'] : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'])], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
-      [suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
+      [suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
+      ...(suite === 'lifecycle' ? { PLAYWRIGHT_JSON_OUTPUT_NAME: join(artifacts!, 'execution.json') } : {}),
       PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
   });
-  return await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
+  const exitCode = await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
+  if (suite === 'lifecycle') {
+    if (exitCode !== 0) throw new Error('Lifecycle browser child failed');
+    const collect = (report: any): any[] => [...(report.specs ?? []), ...(report.suites ?? []).flatMap(collect)];
+    const results = collect(JSON.parse(readFileSync(join(artifacts!, 'execution.json'), 'utf8'))).flatMap(spec => spec.tests.flatMap((test: any) => test.results.map((result: any) => ({ title: spec.title, status: result.status, retry: result.retry }))));
+    assertLifecycleResults(discovered, results);
+    const paths = ['tunes/scripts/profile-browser-fixture.ts', 'tunes/scripts/lifecycle-browser-support.ts', 'tunes/scripts/lifecycle-browser-guards.ts', 'tunes/server/auth/recoveryCallback.ts', 'tunes/package.json', 'explorers-earth/e2e/replatform/lifecycle.spec.ts', 'explorers-earth/e2e/replatform/lifecycle.playwright.config.ts'];
+    lifecycleReceipt = { version: 'canonical-lifecycle-browser/v1', sourceCommit: commit, runId, sourceHashes: Object.fromEntries(paths.map(path => [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')])), discovered, results, provider: 'simulated validateAuthorizationCode/getUserInfo only', runtime: 'separate protected lifecycle_runtime', postgres: { database, containerId: authority.containerId, imageId: authority.imageId }, cleanup: 'pending' };
+  }
+  return exitCode;
 }
 const signal = () => { interrupted = true; stopChild(browser); stopChild(vite); };
 process.once('SIGINT', signal);
@@ -139,14 +177,23 @@ try {
   process.stderr.write(`Profile E2E fixture failed: ${error instanceof Error ? error.message.replaceAll(disposable, '<fixture>') : 'unknown'}\n`);
   process.exitCode = 1;
 } finally {
-  stopChild(browser); stopChild(vite);
-  await new Promise<void>((done) => apiServer?.close(() => done()) ?? done());
-  await db?.end();
-  if (authority) {
-    const password = await readSecureMusicSecretFile(passwordFile, { mode: 'fixture' });
-    await stopOwnedUatDatabase(authority, { dropDatabase: (owned) => dropOwnedDatabase(owned, password) });
-  }
-  cleanupFixtureMusicTokenSecret(root, passwordFile);
-  rmSync(disposable, { recursive: true, force: true });
+  const failures: string[] = [];
+  const cleanup = async (label: string, action: () => unknown) => { try { await action(); } catch { failures.push(label); } };
+  await cleanup('browser child', () => suite === 'lifecycle' ? stopLifecycleChild(browser) : stopChild(browser));
+  await cleanup('Vite child', () => suite === 'lifecycle' ? stopLifecycleChild(vite) : stopChild(vite));
+  await cleanup('API server', () => new Promise<void>((done, reject) => apiServer?.close(error => error ? reject(error) : done()) ?? done()));
+  await cleanup('private lifecycle control', () => lifecycleControl?.close());
+  await cleanup('runtime pool', () => runtime?.end());
+  await cleanup('seed pool', () => db?.end());
+  await cleanup('attested owned database/container', async () => {
+    if (authority) {
+      const password = await readSecureMusicSecretFile(passwordFile, { mode: 'fixture' });
+      await stopOwnedUatDatabase(authority, { dropDatabase: (owned) => dropOwnedDatabase(owned, password) });
+    }
+  });
+  await cleanup('fixture secret', () => cleanupFixtureMusicTokenSecret(root, passwordFile));
+  await cleanup('private fixture directory', () => rmSync(disposable, { recursive: true, force: true }));
+  try { assertOwnedCleanup(failures); } catch (error) { process.exitCode = 1; process.stderr.write(`${(error as Error).message}\n`); }
+  if (lifecycleReceipt && artifacts) { lifecycleReceipt.cleanup = failures.length ? { failed: failures } : 'owned database dropped; attested container removed; pools/control/children closed; secret removed'; writeFileSync(join(artifacts, 'receipt.json'), JSON.stringify(lifecycleReceipt, null, 2)); process.stdout.write(`Lifecycle receipt: ${join(artifacts, 'receipt.json')}\n`); }
   if (interrupted) process.exitCode = 130;
 }

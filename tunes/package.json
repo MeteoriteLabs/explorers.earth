@@ -27,6 +27,7 @@
     "music:test:uat-database": "tsx scripts/music-uat-database.ts",
     "explorers:test:profile-browser": "tsx scripts/profile-browser-fixture.ts",
     "explorers:test:auth-browser": "tsx scripts/profile-browser-fixture.ts --suite auth",
+    "explorers:test:lifecycle-browser": "tsx scripts/profile-browser-fixture.ts --suite lifecycle",
     "explorers:auth:live-local": "tsx scripts/live-google-local.ts",
     "music:local:check": "tsx scripts/music-local.ts check",
     "music:local:provision": "tsx scripts/music-local.ts provision",
