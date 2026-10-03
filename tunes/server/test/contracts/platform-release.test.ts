@@ -6,11 +6,11 @@ import { join, resolve } from 'node:path';
 import { resolveExplorersAuthConfig } from '../../auth/betterAuth';
 import { resolveObjectStorage } from '../../services/objectStorage';
 import { resolveMusicDatabaseConnection } from '../../config/music-database-config';
-import { canonicalDigest, parseRelease, parseReadiness, validateEnvironmentPair, runtimeMapping, verifyRelease, parseStrictJson } from '../../../../scripts/platform-release-contract';
+import { SCHEMA_FLOOR, canonicalDigest, parseRelease, parseReadiness, validateEnvironmentPair, runtimeMapping, verifyRelease, parseStrictJson } from '../../../../scripts/platform-release-contract';
 
 const sha = 'a'.repeat(40), digest = 'sha256:' + 'b'.repeat(64);
 function release() {
-  const value: any = { version: 1, sourceCommit: sha, schemaVersion: 36, producerRunId: '123', producerRepository: 'tandavkrishna27/explorers.earth', producerWorkflow: '.github/workflows/platform-candidate.yml', testEvidenceRef: 'artifact:123/qualification', images: { api: { repository: 'ghcr.io/tandavkrishna27/explorers-api', digest, platforms: { 'linux/amd64': { digest, smokeEvidenceRef: 'artifact:123/api-smoke' } } }, web: { repository: 'ghcr.io/tandavkrishna27/explorers-web', digest, platforms: { 'linux/amd64': { digest, smokeEvidenceRef: 'artifact:123/web-smoke' } } } } };
+  const value: any = { version: 1, sourceCommit: sha, schemaVersion: SCHEMA_FLOOR, producerRunId: '123', producerRepository: 'tandavkrishna27/explorers.earth', producerWorkflow: '.github/workflows/platform-candidate.yml', testEvidenceRef: 'artifact:123/qualification', images: { api: { repository: 'ghcr.io/tandavkrishna27/explorers-api', digest, platforms: { 'linux/amd64': { digest, smokeEvidenceRef: 'artifact:123/api-smoke' } } }, web: { repository: 'ghcr.io/tandavkrishna27/explorers-web', digest, platforms: { 'linux/amd64': { digest, smokeEvidenceRef: 'artifact:123/web-smoke' } } } } };
   value.manifestDigest = canonicalDigest(value); return value;
 }
 function readiness(environment: 'qa' | 'production' = 'qa') {
@@ -18,13 +18,17 @@ function readiness(environment: 'qa' | 'production' = 'qa') {
   return { version: 1, environment, hostAlias: prefix + '-host', sshUser: 'deploy', sshPort: 22, knownHostKeyRef: prefix + '_KNOWN_HOST', architecture: 'linux/amd64', dockerVersion: '29.2.1', composeVersion: '2.39.0', publicOrigin: `https://${prefix}.example.test`, internalPorts: { api: 5000, web: 80, postgres: 5432 }, database: { name: prefix + '_db', volume: prefix + '_data', runtimeRole: prefix + '_app', migratorRole: prefix + '_migrator', runtimePasswordRef: prefix + '_DB_PASSWORD_FILE', migratorPasswordRef: prefix + '_MIGRATOR_PASSWORD_FILE' }, storage: { bucket: 'shared-private-bucket', region: 'ap-south-1', prefix: prefix + '/', boundary: 'application-shared-principal' }, google: { clientIdRef: 'GOOGLE_CLIENT_ID', clientSecretRef: 'GOOGLE_CLIENT_SECRET', callback: `https://${prefix}.example.test/api/auth/callback/google` }, appSecretRef: prefix + '_APP_SECRET', publicConfig: { origin: `https://${prefix}.example.test`, apiPath: '/api', socketPath: '/socket.io' } };
 }
 describe('offline platform release contracts', () => {
-  it('accepts complete structural manifests without granting authority', () => { expect(parseRelease(release()).schemaVersion).toBe(36); expect(() => verifyRelease(release(), readiness())).toThrow('TRUSTED_AUTHORITY_UNAVAILABLE'); });
+  it.each([35, 36])('rejects historical schema floor %s even with a coherent detached digest', schemaVersion => {
+    const value = release(); value.schemaVersion = schemaVersion; value.manifestDigest = canonicalDigest(value);
+    expect(() => parseRelease(value)).toThrow('RELEASE_SCHEMA_INVALID');
+  });
+  it('accepts complete structural manifests without granting authority', () => { expect(parseRelease(release()).schemaVersion).toBe(SCHEMA_FLOOR); expect(() => verifyRelease(release(), readiness())).toThrow('TRUSTED_AUTHORITY_UNAVAILABLE'); });
   it('canonicalizes ordering and excludes only detached digest', () => { expect(canonicalDigest({ z: 'é', a: { b: 1 } })).toBe(canonicalDigest({ a: { b: 1 }, z: 'é', manifestDigest: 'ignored' })); expect(canonicalDigest({ a: { b: 2 } })).not.toBe(canonicalDigest({ a: { b: 1 } })); });
   it.each([NaN, Infinity, undefined])('rejects non JSON canonical value %s', value => expect(() => canonicalDigest({ value })).toThrow());
   it('rejects duplicate JSON keys even escaped aliases', () => { expect(() => parseStrictJson('{"a":1,"\\u0061":2}')).toThrow('DUPLICATE_JSON_KEY'); expect(parseStrictJson('{"a":{"a":1}}')).toEqual({ a: { a: 1 } }); });
   it.each(['sourceCommit','schemaVersion','manifestDigest','producerRunId','producerWorkflow','producerRepository','images','testEvidenceRef'])('rejects malformed release %s', key => { const v = release(); v[key] = null; expect(() => parseRelease(v)).toThrow(); });
   it('rejects tampering and caller trust assertions', () => { const v = release(); v.sourceCommit = 'c'.repeat(40); expect(() => parseRelease(v)).toThrow('MANIFEST_DIGEST_MISMATCH'); expect(() => parseRelease({ ...release(), trusted: true })).toThrow('RELEASE_SCHEMA_INVALID'); });
-  it('rejects unsupported schema and foreign image repository', () => { const v = release(); v.schemaVersion = 35; v.manifestDigest = canonicalDigest(v); expect(() => parseRelease(v)).toThrow(); v.schemaVersion = 36; v.images.api.repository = 'ghcr.io/attacker/api'; v.manifestDigest = canonicalDigest(v); expect(() => parseRelease(v)).toThrow(); });
+  it('rejects unsupported schema and foreign image repository', () => { const v = release(); v.schemaVersion = SCHEMA_FLOOR - 1; v.manifestDigest = canonicalDigest(v); expect(() => parseRelease(v)).toThrow(); v.schemaVersion = SCHEMA_FLOOR; v.images.api.repository = 'ghcr.io/attacker/api'; v.manifestDigest = canonicalDigest(v); expect(() => parseRelease(v)).toThrow(); });
   it('rejects mutable tags and missing architecture evidence', () => { const v = release(); v.images.api.digest = 'latest'; expect(() => parseRelease(v)).toThrow(); const w = release(); w.images.web.platforms = {}; w.manifestDigest = canonicalDigest(w); expect(() => parseRelease(w)).toThrow(); });
   it('rejects raw caller authority irrespective of successful claims', () => expect(() => verifyRelease(release(), readiness(), { success: true, trusted: true } as never)).toThrow('TRUSTED_AUTHORITY_UNAVAILABLE'));
   it('validates separate environments with shared bucket and Google references', () => expect(() => validateEnvironmentPair(readiness(), readiness('production'))).not.toThrow());

@@ -1,6 +1,8 @@
 """Independent deterministic stdlib fixtures. No application/validator imports."""
 import base64, copy, gzip, hashlib, io, json, pathlib, tarfile
 OUT=pathlib.Path(__file__).parent
+# Explicit reviewed fixture revision; no application/validator import.
+SCHEMA_VERSION=37
 INDEX='application/vnd.oci.image.index.v1+json'
 MANIFEST='application/vnd.oci.image.manifest.v1+json'
 CONFIG='application/vnd.oci.image.config.v1+json'
@@ -98,7 +100,7 @@ def graph(role,mode='multi',target=None):
         root=enc(dict(schemaVersion=2,mediaType=INDEX,manifests=[entries[0],ad]));pool.append(root)
     return dict(repository='ghcr.io/tandavkrishna27/explorers-'+role,digest=sha(root),platforms=platforms),pool
 def release(images):
-    obj=dict(version=1,sourceCommit='a'*40,schemaVersion=36,producerRunId='100',producerRepository='tandavkrishna27/explorers.earth',producerWorkflow='.github/workflows/platform-candidate.yml',testEvidenceRef='artifact:100/qualification',images=images)
+    obj=dict(version=1,sourceCommit='a'*40,schemaVersion=SCHEMA_VERSION,producerRunId='100',producerRepository='tandavkrishna27/explorers.earth',producerWorkflow='.github/workflows/platform-candidate.yml',testEvidenceRef='artifact:100/qualification',images=images)
     obj['manifestDigest']=sha(json.dumps(obj,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode());return enc(obj)
 CASES=[]
 def case(name,target=None,mode='single',error=None):

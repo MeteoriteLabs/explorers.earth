@@ -2,11 +2,19 @@ import {it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {acquireProjectOciEvidence,inspectUnqualifiedReleaseOciGraph as inspectGraph} from '../../deployment/platform-oci-evidence';
+import {SCHEMA_FLOOR,canonicalDigest} from '../../deployment/platform-release-contract';
 type Fixture={name:string;expectedError:string|null;release:string;api:string[];web:string[]};
 const dir='./fixtures/platform-oci/';
 const read=(name:string)=>readFileSync(new URL(dir+name,import.meta.url));
 const fixtures:Fixture[]=JSON.parse(read('cases.json').toString());
 const decode=(f:Fixture)=>({release:Buffer.from(f.release,'base64'),api:f.api.map(b=>Buffer.from(b,'base64')),web:f.web.map(b=>Buffer.from(b,'base64'))});
+it('keeps independently regenerated release claims at the current schema floor',()=>{
+ for(const fixture of fixtures)expect(JSON.parse(decode(fixture).release.toString()).schemaVersion).toBe(SCHEMA_FLOOR);
+});
+it('rejects coherent historical schema36 release claims before OCI graph acceptance',()=>{
+ const bytes=decode(fixtures[0]);const release=JSON.parse(bytes.release.toString());release.schemaVersion=36;release.manifestDigest=canonicalDigest(release);
+ expect(()=>inspectGraph(Buffer.from(JSON.stringify(release)),bytes.api,bytes.web)).toThrow('OCI_METADATA_INVALID');
+});
 it.each(fixtures)('independent $name has intended first error category',f=>{const b=decode(f);if(f.expectedError){expect(()=>inspectGraph(b.release,b.api,b.web)).toThrowError(f.expectedError);}else{const result=inspectGraph(b.release,b.api,b.web);expect(result).toMatchObject({releaseQualified:false,cryptographicallyVerified:false,registryAuthenticated:false,runtimeVerified:false,layerContentsVerified:false,executedSmokeVerified:false,status:'OCI_GRAPH_STRUCTURALLY_VALID_UNQUALIFIED'});expect(Object.isFrozen(result)).toBe(true);}});
 it('verifies independent tar/gzip and case bytes against generator receipts',()=>{const receipts=JSON.parse(read('receipt.json').toString());for(const name of Object.keys(receipts)){const b=read(name);expect(b.length).toBe(receipts[name].size);expect('sha256:'+createHash('sha256').update(b).digest('hex')).toBe(receipts[name].digest);}});
 it.each(['release','metadata','count','not-buffer','not-array'])('denies %s input limits before graph work',mode=>{const b=decode(fixtures[0]);if(mode==='release')b.release=Buffer.alloc(65537);if(mode==='metadata')b.api[0]=Buffer.alloc(65537);if(mode==='count')b.api=Array(6).fill(Buffer.from('{}'));if(mode==='not-buffer')b.release={} as any;if(mode==='not-array')b.api={} as any;expect(()=>inspectGraph(b.release,b.api,b.web)).toThrowError('OCI_INPUT_LIMIT');});
