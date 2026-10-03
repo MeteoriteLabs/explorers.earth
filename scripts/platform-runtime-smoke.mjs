@@ -7,6 +7,7 @@ import {randomBytes,createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import https from 'node:https';
 import {buildLocalRuntimePlan,validateApiEnvironment} from './platform-runtime-plan.ts';
+import {assertUnauthenticatedSession,assertRestartQualification,selectCompiledExport} from './platform-runtime-smoke-contract.mjs';
 if(process.argv[2]!=='--owned-synthetic-local-only')throw new Error('EXPLICIT_LOCAL_REHEARSAL_REQUIRED');
 const nonce=randomBytes(8).toString('hex'), project='platform-rehearsal-'+nonce, volume=project+'-fixture';
 const stage=mkdtempSync(join(tmpdir(),project+'-')),context=JSON.parse(execFileSync('docker',['context','inspect'],{encoding:'utf8'}));
@@ -55,14 +56,26 @@ try{
  const port=Number(compose('port','proxy','443').trim().split(':').pop());assert.ok(port>0&&port<=65535,'BOUND_LOCAL_PROXY_PORT_REQUIRED');
  const fetch=(path,body)=>new Promise((resolve,reject)=>{const req=https.request({hostname:'127.0.0.1',port,path,method:body?'POST':'GET',servername:'qa.platform.invalid',headers:{Host:'qa.platform.invalid',Origin:'https://qa.platform.invalid',...(body?{'Content-Type':'application/json'}:{})},rejectUnauthorized:false,timeout:10000},r=>{let text='';r.on('data',b=>text+=b);r.on('end',()=>resolve({status:r.statusCode,headers:r.headers,body:text}));});req.on('timeout',()=>req.destroy(new Error('LOCAL_REQUEST_TIMEOUT')));req.on('error',reject);req.end(body?JSON.stringify(body):undefined);});
  for(const path of ['/','/profile','/runtime-config.json','/robots.txt','/sitemap.xml']){const r=await fetch(path);check('https-web-'+path,()=>{assert.equal(r.status,200);assert.equal(r.headers['x-robots-tag'],'noindex,nofollow');});}
- for(const path of ['/api/auth/get-session','/api/explorers/analytics/summary','/graphql','/socket.io/?EIO=4&transport=polling']){const r=await fetch(path);check('canonical-route-'+path,()=>{assert.equal(r.headers['cache-control'],'no-store');assert.notEqual(r.status,502);if(path.includes('summary'))assert.equal(r.status,401);if(path.startsWith('/socket.io')||path==='/graphql')assert.equal(r.status,404);});}
+ for(const path of ['/api/auth/get-session','/api/explorers/analytics/summary','/graphql','/socket.io/?EIO=4&transport=polling']){const r=await fetch(path);check('canonical-route-'+path,()=>{assert.equal(r.headers['cache-control'],'no-store');if(path==='/api/auth/get-session')assertUnauthenticatedSession(r);if(path.includes('summary'))assert.equal(r.status,401);if(path.startsWith('/socket.io')||path==='/graphql')assert.equal(r.status,404);});}
  const signin=await fetch('/api/auth/sign-in/social',{provider:'google',callbackURL:'https://qa.platform.invalid/'});
  check('synthetic-google-init-secure-cookie',()=>{assert.equal(signin.status,200);assert.ok(signin.headers['set-cookie']?.some(v=>/; Secure(?:;|$)/i.test(v)&&/; HttpOnly(?:;|$)/i.test(v)));const redirect=new URL(JSON.parse(signin.body).url);assert.equal(redirect.origin,'https://accounts.google.com');assert.equal(redirect.searchParams.get('redirect_uri'),'https://qa.platform.invalid/api/auth/callback/google');});
  check('runtime-owner-role-refused-before-listen',()=>{assert.throws(()=>compose('run','--rm','--no-deps','-e','MUSIC_DATABASE_USER=platform_owner','api'),error=>error.status===1&&/runtime database role must be distinct/.test(error.stderr));});
  const sql=query=>d(['exec',pgContainer,'psql','-v','ON_ERROR_STOP=1','-U','platform_owner','-d','platform_qa','-Atc',query]).trim();
  const oldChecksum=sql("select checksum from music_schema_migrations where id='0036_explorers_analytics_events'");assert.match(oldChecksum,/^[a-f0-9]{64}$/);
  try{sql("update music_schema_migrations set checksum=repeat('0',64) where id='0036_explorers_analytics_events'");check('schema-corruption-refused-before-listen',()=>assert.throws(()=>compose('run','--rm','--no-deps','api'),error=>error.status===1&&/schema is not ready/.test(error.stderr)));}finally{sql("update music_schema_migrations set checksum='"+oldChecksum+"' where id='0036_explorers_analytics_events'");}
- check('restart-retains-schema',()=>{compose('restart','api');assert.equal(d(['exec',pgContainer,'psql','-U','platform_owner','-d','platform_qa','-Atc',"select count(*) from pg_roles where rolname='platform_login'"]).trim(),'1');});
+ const readinessProbe=`const {default:pg}=await import('pg');const {default:fs}=await import('node:fs');const selectCompiledExport=${selectCompiledExport.toString()};const load=async name=>{const entries=fs.readdirSync('./dist/server').filter(file=>/^chunk-[A-Z0-9]+[.]js$/.test(file)).map(file=>({file,source:fs.readFileSync('./dist/server/'+file,'utf8')}));const m=await import('./dist/server/'+selectCompiledExport(entries,name));if(typeof m[name]!=='function')throw new Error('CANONICAL_COMPILED_EXPORT_INVALID');return m[name];};const resolveMusicDatabaseConnection=await load('resolveMusicDatabaseConnection');const checkMusicDatabaseReadiness=await load('checkMusicDatabaseReadiness');const c=await resolveMusicDatabaseConnection(process.env,'runtime');const p=new pg.Pool({connectionString:c.connectionString});try{const state=await checkMusicDatabaseReadiness(p);const row=(await p.query('select schema_checksum from music_schema_migrations order by id desc limit 1')).rows[0];process.stdout.write(JSON.stringify({...state,schemaChecksum:row.schema_checksum}));}finally{await p.end();}`;
+ const schemaState=()=>JSON.parse(d(['exec',apiContainer,'node','--input-type=module','-e',readinessProbe]));
+ const beforeRestart=schemaState();
+ compose('restart','api');
+ let restartedSession,healthy=false;const restartDeadline=Date.now()+30000;
+ while(Date.now()<restartDeadline){
+  healthy=d(['inspect',apiContainer,'--format','{{.State.Health.Status}}']).trim()==='healthy';
+  if(healthy){try{const response=await fetch('/api/auth/get-session');assertUnauthenticatedSession(response);restartedSession=response;break;}catch{/* bounded startup verification, not a test retry */}}
+  await new Promise(resolve=>setTimeout(resolve,250));
+ }
+ const afterRestart=schemaState();
+ check('restart-retains-schema',()=>assertRestartQualification({healthy,session:restartedSession,schema:afterRestart,roleCount:Number(sql("select count(*) from pg_roles where rolname='platform_login'"))},beforeRestart));
+ receipt.restartSchema=afterRestart;
 }catch(error){process.stderr.write('Local rehearsal failed before qualification; stage '+receipt.checks.length+'\n');throw error;}finally{
  if(extracted)d(['rm','-f',extracted]);
  // No unrelated resource can be removed: project names are random, and each
