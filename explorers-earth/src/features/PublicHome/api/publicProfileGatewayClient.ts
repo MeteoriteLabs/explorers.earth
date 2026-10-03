@@ -56,6 +56,7 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
     return query ? `?${query}` : "";
   };
   return {
+    async movieGenrePage(username:string,genreSlug:string,page:PublicProfilePage={},signal?:AbortSignal,bypassCache=false):Promise<unknown>{return request(`${categoryPath(username,'movies')}/genres/${encodeURIComponent(genreSlug)}${pageQuery(page)}`,signal,bypassCache);},
     async shell(username: string, signal?: AbortSignal, bypassCache = false): Promise<unknown> {
       return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}`, signal, bypassCache);
     },

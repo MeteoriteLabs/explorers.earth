@@ -12,12 +12,13 @@ function ownerAuthoritySource(file: string, source: string): string {
     return source.replace('service.page({...req.query,username:req.params.username,','service.page({...req.query,username:publicLocator,');
   }
   if (file.replaceAll("\\", "/") !== "tunes/server/routes/explorersPublicProfileRoutes.ts") return source;
-  // These three parser inputs locate public resources. Mask only one exact
+  // These four parser inputs locate public resources. Mask only one exact
   // occurrence per reader, leaving the rest of the file and line scanned.
   return source
     .replace("parsePublicProfileUsername(req.params.username)", "parsePublicProfileUsername(publicLocator)")
     .replace("parsePublicProfileRequest({ username: req.params.username,", "parsePublicProfileRequest({ username: publicLocator,")
-    .replace("parsePublicProfileDetailRequest({ username: req.params.username,", "parsePublicProfileDetailRequest({ username: publicLocator,");
+    .replace("parsePublicProfileDetailRequest({ username: req.params.username,", "parsePublicProfileDetailRequest({ username: publicLocator,")
+    .replace("parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query})", "parsePublicMovieGenreRequest({username:publicLocator,genreSlug:req.params.genreSlug,...req.query})");
 }
 
 function productionFiles(directory: string): string[] {
@@ -152,6 +153,7 @@ describe("forbidden Music authority search contract", () => {
     "parsePublicProfileUsername(req.params.username)",
     "parsePublicProfileRequest({ username: req.params.username, category: req.params.category })",
     "parsePublicProfileDetailRequest({ username: req.params.username, category: req.params.category, slug: req.params.slug })",
+    "parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query})",
   ])("recognizes a validated public profile locator without excluding other authority access: %s", (locator) => {
     const file = "tunes/server/routes/explorersPublicProfileRoutes.ts";
     expect(ownerAuthoritySource(file, locator)).not.toMatch(ownerTargetAccess);

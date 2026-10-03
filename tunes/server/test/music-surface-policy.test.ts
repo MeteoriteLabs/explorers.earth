@@ -261,3 +261,11 @@ describe("Music surface authorization policy", () => {
 });
 
 it('admits Movies catalog only through its exact canonical source and GET while preserving retired guards',()=>{const r={source:'tunes/server/routes/explorersCatalogRoutes.ts',method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'private'};expect(decisionForRoute(r)).toBe('explorers-owner');for(const change of [{method:'ALL'},{method:'POST'},{source:'tunes/server/routes/legacyMovies.ts'},{path:'/api/explorers/v1/catalog/movies/internal'},{path:'/api/movies'},{classification:'tombstone'}])expect(decisionForRoute({...r,...change})).toBe('tombstone');});
+
+it('admits global Movie genre reads only through canonical source and exact GET',()=>{const r={source:'tunes/server/routes/explorersCatalogRoutes.ts',method:'GET',path:'/api/explorers/v1/catalog/movie-genres',classification:'private'};expect(decisionForRoute(r)).toBe('explorers-owner');for(const change of [{method:'ALL'},{method:'POST'},{source:'tunes/server/routes/legacyMovies.ts'},{path:'/api/explorers/v1/catalog/movie-genres/internal'},{path:'/api/movie-genres'},{classification:'tombstone'}])expect(decisionForRoute({...r,...change})).toBe('tombstone');});
+
+it('admits exact canonical Movie genre GET and import POST only',()=>{
+ const routes=[{source:'tunes/server/routes/explorersPublicProfileRoutes.ts',method:'GET',path:'/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug',classification:'public'},{source:'tunes/server/routes/explorersRecommendationRoutes.ts',method:'POST',path:'/api/explorers/v1/recommendations/:id/movie-media/import',classification:'canonical-explorers-owner'}];
+ expect(decisionForRoute(routes[0])).toBe('public');expect(decisionForRoute(routes[1])).toBe('explorers-owner');
+ for(const r of routes)for(const patch of [{source:'tunes/server/routes/legacyMovies.ts'},{method:'ALL'},{path:r.path+'/internal'},{classification:'tombstone'}])expect(decisionForRoute({...r,...patch})).toBe('tombstone');
+});

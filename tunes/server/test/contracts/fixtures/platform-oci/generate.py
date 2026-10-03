@@ -2,7 +2,7 @@
 import base64, copy, gzip, hashlib, io, json, pathlib, tarfile
 OUT=pathlib.Path(__file__).parent
 # Explicit reviewed fixture revision; no application/validator import.
-SCHEMA_VERSION=37
+SCHEMA_VERSION=38
 INDEX='application/vnd.oci.image.index.v1+json'
 MANIFEST='application/vnd.oci.image.manifest.v1+json'
 CONFIG='application/vnd.oci.image.config.v1+json'

@@ -48,6 +48,7 @@ export function assertProviderCode(code: string | undefined, expected: string | 
 export function assertOwnedCleanup(failures: string[]) { if (failures.length)
     throw new Error('Owned cleanup failed: ' + failures.join(', ')); }
 export const LIFECYCLE_FONT_QUERIES = [
+    'family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Space+Grotesk:wght@300..700&display=swap',
     'family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap',
     'family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Space+Grotesk:wght@300..700&display=swap',
 ].map(query => new URLSearchParams(query).toString());
@@ -62,7 +63,7 @@ export function classifyLifecycleRequest(input: {
         return u.pathname.startsWith('/api/') && !u.pathname.startsWith('/api/explorers/v1/') && !u.pathname.startsWith('/api/auth/') ? 'deny' : 'local';
     if (u.origin === 'https://accounts.google.com' && u.pathname === '/o/oauth2/v2/auth' && input.navigation && u.searchParams.get('redirect_uri') === input.origin + '/api/auth/callback/google' && u.searchParams.get('state'))
         return 'google';
-    if (u.origin === 'https://fonts.googleapis.com' && u.pathname === '/css2' && input.resource === 'stylesheet' && LIFECYCLE_FONT_QUERIES.includes(u.searchParams.toString()))
+    if (u.origin === 'https://fonts.googleapis.com' && u.pathname === '/css2' && input.resource === 'stylesheet' && !input.navigation && LIFECYCLE_FONT_QUERIES.includes(u.searchParams.toString()))
         return 'font';
     if (u.origin === 'https://zupimages.net' && ['/up/19/34/4820.gif', '/up/19/34/6vlb.gif'].includes(u.pathname) && !u.search && input.resource === 'image')
         return 'image';

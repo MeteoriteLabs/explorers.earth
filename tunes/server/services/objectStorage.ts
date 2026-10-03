@@ -4,11 +4,32 @@ import { tmpdir } from "node:os";
 import { DeleteObjectCommand, GetObjectCommand, ListObjectVersionsCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 export type StorageEnvironment = "local" | "qa" | "prod";
+export type OwnedStoragePut = {
+  completion: Promise<string | undefined | void>;
+  /** Never rejects; resolves only after actual native work has settled. */
+  settlement: Promise<void>;
+  /** Late native version/error is retained for safe compensation after settlement. */
+  nativeResult: Promise<string | undefined | void>;
+};
 export interface ObjectStorage {
   readonly environment: StorageEnvironment;
   put(key: string, bytes: Buffer): Promise<string | undefined | void>;
+  putOwned?(key: string, bytes: Buffer, deadlineMs: number): OwnedStoragePut;
   get(key: string): Promise<Buffer>;
   delete(key: string, versionId?: string | null): Promise<void>;
+}
+function ownedPut(deadlineMs: number, work: (signal: AbortSignal) => Promise<string | undefined | void>): OwnedStoragePut {
+  if (!Number.isSafeInteger(deadlineMs) || deadlineMs < 1 || deadlineMs > 5000) throw new Error("Invalid owned storage deadline");
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  // Call exactly once. Native rejection remains observed even after caller timeout.
+  const nativeResult = work(controller.signal);
+  const settlement = nativeResult.then(() => undefined, () => undefined);
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => { controller.abort(); reject(new Error("Storage deadline exceeded")); }, deadlineMs);
+  });
+  const completion = Promise.race([nativeResult, deadline]).finally(() => clearTimeout(timer!));
+  return { completion, settlement, nativeResult };
 }
 async function storageDeadline<T>(milliseconds:number,work:(signal:AbortSignal)=>Promise<T>):Promise<T>{
  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
@@ -38,6 +59,14 @@ export class LocalObjectStorage implements ObjectStorage {
     await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
     await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal: AbortSignal.timeout(120_000) });
   }
+  putOwned(key: string, bytes: Buffer, deadlineMs: number): OwnedStoragePut {
+    const path = this.path(key);
+    return ownedPut(deadlineMs, async signal => {
+      await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
+      if (signal.aborted) throw new Error("Storage deadline exceeded");
+      await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal });
+    });
+  }
   async get(key: string): Promise<Buffer> { return storageDeadline(120000,signal=>readFile(this.path(key),{signal})); }
   async delete(key: string): Promise<void> { await storageDeadline(120000,()=>rm(this.path(key), { force: true })); }
 }
@@ -53,6 +82,13 @@ export class S3ObjectStorage implements ObjectStorage {
     const result = await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes }),
       { abortSignal: AbortSignal.timeout(120_000) });
     return result.VersionId;
+  }
+  putOwned(key: string, bytes: Buffer, deadlineMs: number): OwnedStoragePut {
+    assertObjectKey(key, this.environment);
+    return ownedPut(deadlineMs, async signal => {
+      const result = await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes }), { abortSignal: signal });
+      return result.VersionId;
+    });
   }
   async get(key: string): Promise<Buffer> {
     assertObjectKey(key, this.environment);

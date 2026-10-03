@@ -474,6 +474,44 @@
     },
     {
       "method": "GET",
+      "path": "/api/explorers/v1/catalog/movie-genres",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/movie-genres",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/explorers/v1/catalog/books",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
       "decision": "explorers-owner",
@@ -957,6 +995,25 @@
     },
     {
       "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
       "decision": "public",
@@ -1356,6 +1413,25 @@
     },
     {
       "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/movie-media/import",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
       "path": "/api/explorers/v1/recommendations/:id/book-covers",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "explorers-owner",
@@ -1566,6 +1642,25 @@
     {
       "method": "ALL",
       "path": "/api/explorers/v1/recommendations/:id/editable",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/movie-media/import",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "tombstone",
       "allowed": {
@@ -2996,6 +3091,17 @@
       }
     },
     {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/movieMediaImport.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/auth/canonicalStartup.ts",
@@ -3064,7 +3170,29 @@
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/movieImageFetch.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/musicPublicChangeListener.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,

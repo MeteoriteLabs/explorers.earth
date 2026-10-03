@@ -61,6 +61,7 @@ const expectedRuntimeTables = [
   "recommendation_book_covers",
   "recommendation_display_overrides",
   "recommendation_media",
+  "recommendation_movie_media",
   "recommendation_taxonomy",
   "recommendations",
   "seo_settings",
@@ -131,12 +132,14 @@ const expectedRuntimeFunctions = [
   "guard_movie_context()",
   "guard_movie_details()",
   "guard_movie_genres()",
+  "guard_movie_media()",
   "guard_recommendation_book_cover()",
   "guard_recommendation_entity_kind()",
   "guard_recommendation_media()",
   "guard_recommendation_taxonomy()",
   "guard_taxonomy_tree()",
   "lock_movie_genre_parent()",
+  "lock_movie_media_parent()",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",
   "lock_recommendation_taxonomy_parent()",
@@ -154,6 +157,7 @@ const expectedRuntimeFunctions = [
   "retain_music_identity_tombstone_on_delete()",
   "stamp_explorers_session_version()",
   "validate_movie_context(uuid,text,bigint[])",
+  "validate_movie_media(uuid)",
 ] as const;
 
 export interface MusicRuntimeLoginInput {
@@ -617,7 +621,7 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entity_identifiers,book_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
-    await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
@@ -822,7 +826,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
-          && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
+          && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }

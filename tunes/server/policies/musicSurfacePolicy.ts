@@ -119,6 +119,10 @@ const OWNER_PREFIXES = [
 ];
 
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification"> & Partial<Pick<RuntimeRouteSurface, "source">>): MusicSurfaceDecision {
+  const movieGenrePath='/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug';
+  const movieImportPath='/api/explorers/v1/recommendations/:id/movie-media/import';
+  if(route.path===movieGenrePath||route.path.startsWith(movieGenrePath+'/'))return route.classification!=='tombstone'&&route.classification!=='admin-tombstone'&&route.source==='tunes/server/routes/explorersPublicProfileRoutes.ts'&&route.method==='GET'&&route.path===movieGenrePath?'public':'tombstone';
+  if(route.path===movieImportPath||route.path.startsWith(movieImportPath+'/'))return route.classification!=='tombstone'&&route.classification!=='admin-tombstone'&&route.source==='tunes/server/routes/explorersRecommendationRoutes.ts'&&route.method==='POST'&&route.path===movieImportPath?'explorers-owner':'tombstone';
   if(route.classification!=='tombstone'&&route.classification!=='admin-tombstone'){
     if(route.source==='tunes/server/routes/explorersAnalyticsRoutes.ts'&&route.path==='/api/explorers/analytics/events'){
       if(route.method==='POST')return 'public';
@@ -139,6 +143,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',
   ].includes(route.path)) return 'public';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movie-genres')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/books')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
@@ -162,7 +167,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["PATCH", "/api/explorers/v1/collections/:id/order"],
         ["DELETE", "/api/explorers/v1/collections/:id"],
         ["POST", "/api/explorers/v1/recommendations"],
-        ["POST", "/api/explorers/v1/recommendations/:id/entity"], ["POST", "/api/explorers/v1/recommendations/:id/book-covers"],
+        ["POST", "/api/explorers/v1/recommendations/:id/movie-media/import"], ["POST", "/api/explorers/v1/recommendations/:id/entity"], ["POST", "/api/explorers/v1/recommendations/:id/book-covers"],
         ["PATCH", "/api/explorers/v1/recommendations/:id"],
         ["DELETE", "/api/explorers/v1/recommendations/:id"],
       ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";

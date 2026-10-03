@@ -24,6 +24,11 @@ describe("generated full Music authorization matrix", () => {
       expect.objectContaining({ method: "ALL", path: "/api/auth/*splat", decision: "explorers-auth" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/start", decision: "explorers-recovery" }),
       expect.objectContaining({ method: "GET", path: "/api/explorers/v1/me", decision: "explorers-owner" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/catalog/movie-genres", decision: "explorers-owner" }),
+      expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/catalog/movie-genres", decision: "tombstone" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug", decision: "public" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recommendations/:id/movie-media/import", decision: "explorers-owner" }),
+      expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/recommendations/:id/movie-media/import", decision: "tombstone" }),
     ]));
     expect(matrix.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ direction: "receive", event: "connection", decision: "owner-or-guest" }),

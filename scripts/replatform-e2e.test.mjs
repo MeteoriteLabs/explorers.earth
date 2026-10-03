@@ -19,13 +19,13 @@ test('ambient hosted/database/production authority is rejected before any child'
  for(const key of ['DATABASE_URL','DATABASE_URL_TEST','DOCKER_HOST','DOCKER_CONTEXT','PLAYWRIGHT_EXTERNAL_BASE_URL','GATE_PROD','MUSIC_C10_STANDALONE_POSTGRES_ACK'])assert.throws(()=>assertEnvironment({[key]:'unowned'}));
  assert.throws(()=>assertEnvironment({NODE_ENV:'production'}));assert.doesNotThrow(()=>assertEnvironment({}));
 });
-test('manifest requires exactly four nonempty unique delivered lanes and pending obligations',()=>{
+test('manifest requires exactly five nonempty unique delivered lanes and pending obligations',()=>{
  assert.equal(validateManifest(manifest()),true);
  for(const change of [m=>m.lanes.pop(),m=>m.lanes.push(m.lanes[0]),m=>m.lanes[0].identities.pop(),m=>m.lanes[0].identities[0].file='../escape',m=>m.lanes[0].identities[0].titlePath=[],m=>m.pending=[],m=>m.version=2]){const m=manifest();change(m);assert.throws(()=>validateManifest(m));}
 });
 test('fake children qualify only scoped delivery while full milestone remains incomplete',async()=>{
  const m=manifest();const seen=[];const receipt=await qualifyLanes({manifest:m,provenance,runLane:async lane=>{seen.push(lane.name);return child(lane);}});
- assert.deepEqual(seen,['auth','profile','books','lifecycle']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,38);
+ assert.deepEqual(seen,['auth','profile','books','lifecycle','movies']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,62);
 });
 for(const [name,change] of [
  ['nonzero',c=>c.status=1],['signal',c=>c.signal='SIGTERM'],['spawn error',c=>c.error='failed'],['missing receipt',c=>delete c.receipt],['wrong source',c=>c.receipt.provenance.commit='0'.repeat(40)],['source hash',c=>c.receipt.provenance.sourceHash='0'.repeat(64)],['wrong config',c=>c.receipt.config='other.config.ts'],['wrong project',c=>c.receipt.projects=['other']],['loader error',c=>c.receipt.errors.push({message:'missing module'})],['missing discovery',c=>c.receipt.discovery.pop()],['extra discovery',c=>c.receipt.discovery.push({...c.receipt.discovery[0],titlePath:['extra']})],['duplicate discovery',c=>c.receipt.discovery.push(c.receipt.discovery[0])],['missing result',c=>c.receipt.results.pop()],['extra result',c=>c.receipt.results.push(c.receipt.results[0])],['dynamic skip',c=>c.receipt.results[0].attempts[0].status='skipped'],['fixme',c=>c.receipt.results[0].expectedStatus='skipped'],['timeout',c=>c.receipt.results[0].attempts[0].status='timedOut'],['interrupted',c=>c.receipt.results[0].attempts[0].status='interrupted'],['retry pass',c=>c.receipt.results[0].attempts.push({status:'passed',retry:1})],['flaky',c=>c.receipt.results[0].status='flaky'],['empty attempts',c=>c.receipt.results[0].attempts=[]],['cleanup failure',c=>c.receipt.cleanup.status='failed'],['unowned database',c=>c.receipt.authority.owned=false],['failed browser child',c=>c.receipt.child.status=1]
@@ -100,3 +100,9 @@ test('failure diagnostic allowlist rejects credentials, arbitrary messages and u
  const lane=manifest().lanes[1],c=structuredClone(child(lane));c.status=1;const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts,diagnostics:[{identity:lane.identities[1],kind:'assertion',matcher:'toHaveValue',locations:[{line:110,column:7}]}]};assert.doesNotThrow(()=>validateFailureRecord(lane,failure,provenance,c));
  for(const mutation of [r=>r.diagnostics[0].message='private cookie',r=>r.diagnostics[0].matcher='private cookie',r=>r.diagnostics[0].locations[0].file='private cookie',r=>r.diagnostics[0].locations[0].line=0,r=>r.diagnostics[0].identity={...lane.identities[1],titlePath:['unreviewed']},r=>r.diagnostics[0].kind='private cookie']){const changed=structuredClone(failure);mutation(changed);assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
 });
+
+test('Movies is a distinct mandatory24-identity lane and cannot be omitted or relabeled Books',()=>{
+ const m=manifest(),movies=m.lanes.find(l=>l.name==='movies');assert.ok(movies);assert.equal(movies.identities.length,24);assert.deepEqual(movies.projects,['movies-desktop','movies-mobile']);
+ for(const mutate of [x=>x.lanes.splice(x.lanes.findIndex(l=>l.name==='movies'),1),x=>x.lanes.find(l=>l.name==='movies').runner='tunes/scripts/books-browser-fixture.ts',x=>x.lanes.find(l=>l.name==='movies').identities[0].project='books-desktop',x=>x.lanes.find(l=>l.name==='movies').identities.pop()]){const changed=structuredClone(m);mutate(changed);assert.throws(()=>validateManifest(changed));}
+});
+test('ambient Movies fixture authority is denied before protected allocation',()=>{for(const key of ['MOVIES_E2E_FIXTURE_PATH','MOVIES_E2E_ARTIFACT_DIR','MOVIES_E2E_LOCAL_AUTHORITY'])assert.throws(()=>assertEnvironment({[key]:'unowned'}));});

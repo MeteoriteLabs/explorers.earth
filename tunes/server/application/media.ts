@@ -54,6 +54,38 @@ export class MediaService {
 
   /** readyWrite performs database-only receipt work in the ready transaction;
    * remote storage has already completed before that transaction begins. */
+  createMediaOwned(actor: Actor, input: MediaUploadInput, context: RequestContext,
+    readyWrite?: (db: PoolClient, media: MediaDto) => Promise<void>): {completion: Promise<MediaDto>; settlement: Promise<void>} {
+    if (!this.storage.putOwned) {
+      const completion = Promise.reject<MediaDto>(new MediaUnavailable("Owned storage settlement unavailable"));
+      completion.catch(() => undefined);
+      return { completion, settlement: Promise.resolve() };
+    }
+    let complete!: (media: MediaDto) => void;
+    let fail!: (reason: unknown) => void;
+    const completion = new Promise<MediaDto>((resolve,reject) => {complete=resolve;fail=reject;});
+    const nativeStorage = this.storage;
+    const storage: ObjectStorage = {
+      environment:nativeStorage.environment,
+      get:nativeStorage.get.bind(nativeStorage),delete:nativeStorage.delete.bind(nativeStorage),
+      put:async(key,bytes)=>{
+        const operation=nativeStorage.putOwned!(key,bytes,5000);
+        try { return await operation.completion; }
+        catch(error) {
+          // Caller returns while the original writer still owns its DB gate.
+          // Existing createMedia compensation runs only after actual put settlement.
+          fail(new MediaUnavailable("Storage unavailable"));
+          await operation.settlement;
+          throw error;
+        }
+      },
+    };
+    const work = new MediaService(this.db,storage).createMedia(actor,input,context,readyWrite);
+    const settlement=work.then(value=>{complete(value);},error=>{fail(error);});
+    // Observe rejection even when a caller is still waiting for admission metadata.
+    completion.catch(()=>undefined);
+    return {completion,settlement};
+  }
   async createMedia(actor: Actor, input: MediaUploadInput, _context: RequestContext, readyWrite?: (db: PoolClient, media: MediaDto) => Promise<void>): Promise<MediaDto> {
     await authorizeOperation(this.db, actor, "media:create", actor.accountId);
     await this.retryPendingDeletes(actor.accountId);
@@ -114,6 +146,19 @@ export class MediaService {
       catch { throw new MediaUnavailable("Media unavailable"); }
     }
     const bytes = await this.storage.get(record.object_key);
+    // Storage can outlive publication/account/source replacement. No bytes or
+    // cache validators leave this service until the current relation is checked.
+    const current = await this.repo.find(id);
+    if (!current || current.status !== "ready" || current.storage_environment !== this.storage.environment
+      || current.account_id !== record.account_id || current.object_key !== record.object_key
+      || current.mime_type !== record.mime_type || !current.content_sha256.equals(record.content_sha256))
+      throw new MediaUnavailable("Media unavailable");
+    const stillPublic = current.purpose !== "claim-evidence" && await this.repo.isPublicAttachment(id);
+    if (!stillPublic) {
+      if (!actor || actor.accountId !== current.account_id) throw new MediaUnavailable("Media unavailable");
+      try { await authorizeOperation(this.db, actor, "media:read", current.account_id); }
+      catch { throw new MediaUnavailable("Media unavailable"); }
+    }
     return { key: record.object_key, mimeType: record.mime_type, length: bytes.length, bytes,
       sha256: record.content_sha256.toString("hex") };
   }

@@ -1,4 +1,4 @@
-import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { explorersApiClient } from "../../lib/explorersApiClient";
 import { canonicalAccountFixture } from "../../test/canonicalAccountFixture";
@@ -31,6 +31,8 @@ const { accountQuery, accountScope, translate } = vi.hoisted(() => ({
     return messages[key] ?? key;
   }),
 }));
+const nativeMovies = vi.hoisted(()=>({read:vi.fn()}));
+vi.mock('../../features/Movies/api/explorersAdapter',async(importOriginal)=>({...await importOriginal<typeof import('../../features/Movies/api/explorersAdapter')>(),useMoviesOwner:nativeMovies.read}));
 
 vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
@@ -88,6 +90,7 @@ describe("Home analytics", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    nativeMovies.read.mockReturnValue({data:{movieLists:[]},loading:false,error:undefined,refetch:vi.fn()});
     vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(canonicalAccountFixture());
     Element.prototype.scrollIntoView = vi.fn();
     accountQuery.loading = false;
@@ -141,6 +144,17 @@ describe("Home analytics", () => {
       }
       return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as never;
     });
+  });
+
+  it('reads Movies summary through native ownership without a legacy Movies Apollo query',async()=>{
+    readEvents.mockResolvedValue([]);
+    nativeMovies.read.mockReturnValue({data:{movieLists:[{documentId:'native-list',List_Name:'Native Movie summary',Visibility:true,recommended_movies:[{poster_path:'/api/explorers/v1/media/poster/content',title:'Native recommendation'}]}]},loading:false,error:undefined,refetch:vi.fn()});
+    render(<Home/>);
+    fireEvent.click(await screen.findByRole('button',{name:/Movies/}));
+    expect(await screen.findByText('Native Movie summary')).toBeInTheDocument();
+    expect(nativeMovies.read).toHaveBeenCalled();
+    expect(queryMock.mock.calls.map(call=>operationName(call[0]))).not.toContain('MovieListsByAccount');
+    expect(screen.getByAltText('Native Movie summary')).toHaveAttribute('src','/api/explorers/v1/media/poster/content');
   });
 
   it("builds exactly the last 90 local calendar dates", () => {

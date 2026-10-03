@@ -5,9 +5,10 @@ import {tmpdir} from 'node:os';
 import {resolve,join,dirname,basename,relative,isAbsolute} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
+// Stable compatibility identifier. Scope contents are explicitly bound below.
 const SCOPE='delivered-auth-profile-books';
 const MANIFEST='explorers-earth/e2e/replatform/suite-manifest.json';
-const lanes={auth:{count:6,runner:'tunes/scripts/profile-browser-fixture.ts',config:'explorers-earth/playwright.config.ts',projects:['chromium-pr-safe']},profile:{count:2,runner:'tunes/scripts/profile-browser-fixture.ts',config:'explorers-earth/playwright.config.ts',projects:['chromium-pr-safe']},books:{count:20,runner:'tunes/scripts/books-browser-fixture.ts',config:'explorers-earth/e2e/replatform/books.playwright.config.ts',projects:['books-desktop','books-mobile']},lifecycle:{count:10,runner:'tunes/scripts/profile-browser-fixture.ts',config:'explorers-earth/e2e/replatform/lifecycle.playwright.config.ts',projects:['lifecycle-chromium']}};
+const lanes={auth:{count:6,runner:'tunes/scripts/profile-browser-fixture.ts',config:'explorers-earth/playwright.config.ts',projects:['chromium-pr-safe']},profile:{count:2,runner:'tunes/scripts/profile-browser-fixture.ts',config:'explorers-earth/playwright.config.ts',projects:['chromium-pr-safe']},books:{count:20,runner:'tunes/scripts/books-browser-fixture.ts',config:'explorers-earth/e2e/replatform/books.playwright.config.ts',projects:['books-desktop','books-mobile']},lifecycle:{count:10,runner:'tunes/scripts/profile-browser-fixture.ts',config:'explorers-earth/e2e/replatform/lifecycle.playwright.config.ts',projects:['lifecycle-chromium']},movies:{count:24,runner:'tunes/scripts/movies-browser-fixture.ts',config:'explorers-earth/e2e/replatform/movies.playwright.config.ts',projects:['movies-desktop','movies-mobile']}};
 const fail=message=>{throw new Error(message);};
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
 const digest=value=>createHash('sha256').update(canonical(value)).digest('hex');
@@ -39,7 +40,7 @@ export function identityKey(identity){
 }
 function inventory(identities){if(!Array.isArray(identities)||!identities.length)fail('Empty discovery');const keys=identities.map(identityKey);if(new Set(keys).size!==keys.length)fail('Duplicate identity');return keys.sort();}
 export function assertEnvironment(env){
- if(env.NODE_ENV==='production'||Object.keys(env).some(key=>key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_')||/^(?:AUTH|PROFILE|BOOKS|LIFECYCLE)_E2E_/.test(key))||['DATABASE_URL','DATABASE_URL_TEST','DOCKER_HOST','DOCKER_CONTEXT','GATE_PROD','MUSIC_DEPLOY_PRODUCTION','MUSIC_DEPLOY_PROD','PLAYWRIGHT_EXTERNAL_BASE_URL'].some(key=>Boolean(env[key])))fail('Ambient database, Docker, hosted fixture or production authority is forbidden');
+ if(env.NODE_ENV==='production'||Object.keys(env).some(key=>key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_')||/^(?:AUTH|PROFILE|BOOKS|LIFECYCLE|MOVIES)_E2E_/.test(key))||['DATABASE_URL','DATABASE_URL_TEST','DOCKER_HOST','DOCKER_CONTEXT','GATE_PROD','MUSIC_DEPLOY_PRODUCTION','MUSIC_DEPLOY_PROD','PLAYWRIGHT_EXTERNAL_BASE_URL'].some(key=>Boolean(env[key])))fail('Ambient database, Docker, hosted fixture or production authority is forbidden');
 }
 export function parseArguments(args){
  if(args.length!==6)fail('Expected exact --milestone, --ack and --receipt flags');const flags={};for(let i=0;i<args.length;i+=2){if(!['--milestone','--ack','--receipt'].includes(args[i])||flags[args[i]]!==undefined||!args[i+1])fail('Unknown/duplicate/missing flag');flags[args[i]]=args[i+1];}
@@ -49,7 +50,7 @@ export function parseArguments(args){
  return {milestone:SCOPE,receiptDirectory:resolve(path)};
 }
 export function validateManifest(manifest){
- if(manifest?.version!==1||manifest.scope!==SCOPE||!Array.isArray(manifest.lanes)||!equal(manifest.lanes.map(l=>l.name),Object.keys(lanes))||!Array.isArray(manifest.pending)||manifest.pending.length<7||manifest.pending.some(o=>!o.ticket||!o.obligation||o.status!=='pending')||!Array.isArray(manifest.limits)||manifest.limits.length<4)fail('Invalid delivered-slice manifest or pending ledger');
+ if(manifest?.version!==1||manifest.scope!==SCOPE||manifest.scopeCompatibilityIdentifier!==true||!equal(manifest.scopeContents,Object.keys(lanes))||!Array.isArray(manifest.lanes)||!equal(manifest.lanes.map(l=>l.name),Object.keys(lanes))||!Array.isArray(manifest.pending)||manifest.pending.length<7||manifest.pending.some(o=>!o.ticket||!o.obligation||o.status!=='pending')||!Array.isArray(manifest.limits)||manifest.limits.length<4)fail('Invalid delivered-slice manifest or pending ledger');
  for(const lane of manifest.lanes){const expected=lanes[lane.name];if(lane.runner!==expected.runner||lane.config!==expected.config||lane.spec!==`explorers-earth/e2e/replatform/${lane.name}.spec.ts`||!equal(lane.projects,expected.projects)||lane.identities?.length!==expected.count)fail('Lane inventory/config mismatch');inventory(lane.identities);if(lane.identities.some(i=>i.file!==lane.spec||!lane.projects.includes(i.project)))fail('Unknown lane identity');}
  return true;
 }
@@ -103,7 +104,7 @@ export function validateFailureRecord(lane,failure,provenance,child){
 }
 export async function qualifyLanes({manifest,provenance,runLane,expectedPlaywright}){
  validateManifest(manifest);const receipts=[];for(const lane of manifest.lanes){const receipt=validateLaneReceipt(lane,await runLane(lane),provenance);if(expectedPlaywright&&receipt.playwright!==expectedPlaywright)fail('Installed Playwright version mismatch');receipts.push(receipt);}
- return {version:1,scope:SCOPE,deliveredSlice:'passed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance,identities:receipts.reduce((sum,r)=>sum+r.results.length,0),lanes:receipts,pending:manifest.pending,limits:manifest.limits,producer:'local owned-fixture development evidence; no hosted release provenance'};
+ return {version:1,scope:SCOPE,scopeContents:Object.keys(lanes),scopeCompatibilityIdentifier:true,deliveredSlice:'passed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance,identities:receipts.reduce((sum,r)=>sum+r.results.length,0),lanes:receipts,pending:manifest.pending,limits:manifest.limits,producer:'local owned-fixture development evidence; no hosted release provenance'};
 }
 export function snapshotSource(root){
  const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8',windowsHide:true}).trim();
@@ -119,12 +120,12 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',...authority]);
  const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
  if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
- const paths=[...new Set([...tracked,MANIFEST,'scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','scripts/node-owned-npm.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts'])].sort();
+ const paths=[...new Set([...tracked,MANIFEST,'scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','scripts/node-owned-npm.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts'])].sort();
  const dependencies=new Set([...paths,...authority,...frontendRoot]);
  // Follow relative source imports from the runner/helper roots, including additions
  // ignored by Git. Every resolved dependency must be tracked or an explicit overlay.
  const reviewed=new Set([...tracked,...frontendRoot,...authority]);
- const overlay=new Set(['tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/lifecycle-browser-guards.ts']);
+ const overlay=new Set(['tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/lifecycle-browser-guards.ts']);
  const queue=[...authority,...overlay];const scanned=new Set();
  while(queue.length){const path=queue.pop();if(scanned.has(path)||! /\.(?:[cm]?js|tsx?)$/.test(path))continue;scanned.add(path);
   const text=readFileSync(join(root,path),'utf8');const imports=/\b(?:import|export)[\s\S]*?\bfrom\s+['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)|\bimport\s+['"](\.[^'"]+)['"]/g;
@@ -170,7 +171,7 @@ export async function main(args=process.argv.slice(2)){
    const selector=lane.name==='auth'||lane.name==='lifecycle'?['--suite',lane.name]:[];
    const childArgs=['--import',pathToFileURL(join(root,'tunes/node_modules/tsx/dist/loader.mjs')).href,join(root,lane.runner),...selector,...suffix];
    const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
-   if(child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
+   if(child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
    const failurePath=join(directory,'failure.json');if(existsSync(failurePath))childRecord.failure=validateFailureRecord(lane,JSON.parse(readFileSync(failurePath,'utf8')),source.provenance,child);
    if(!equal(snapshotSource(root).provenance,source.provenance))fail('Source changed during lane execution');
@@ -180,7 +181,7 @@ export async function main(args=process.argv.slice(2)){
   writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify(result,null,2),{mode:0o600,flag:'wx'});
   process.stdout.write(`Delivered slice passed: ${result.identities} identities. Overall milestone/full parity incomplete. Receipt: ${join(options.receiptDirectory,'qualification.json')}\n`);
   return result;
- }catch(error){writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify({version:1,scope:SCOPE,deliveredSlice:'failed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance:source.provenance,children,error:'Protected lane or qualification contract failed',pending:manifest.pending},null,2),{mode:0o600,flag:'wx'});throw error;}
+ }catch(error){writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify({version:1,scope:SCOPE,scopeContents:Object.keys(lanes),scopeCompatibilityIdentifier:true,deliveredSlice:'failed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance:source.provenance,children,error:'Protected lane or qualification contract failed',pending:manifest.pending},null,2),{mode:0o600,flag:'wx'});throw error;}
  finally{for(const lane of manifest.lanes){const marker=join(options.receiptDirectory,lane.name,'.protected-owned.json');if(existsSync(marker))unlinkSync(marker);}}
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))main().catch(error=>{process.stderr.write(`Scoped qualification failed: ${error.message}\n`);process.exitCode=1;});

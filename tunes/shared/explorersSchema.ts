@@ -224,3 +224,8 @@ export const recommendationTaxonomy=pgTable('recommendation_taxonomy',{
 export const movieRecommendationContext=pgTable('movie_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
 },t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
+
+// 0038 SQL owns source binding, inverse guards, immutable identity and grants.
+export const recommendationMovieMedia=pgTable('recommendation_movie_media',{
+ recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),sourceEntityId:uuid('source_entity_id').notNull(),sourceExternalKind:text('source_external_kind').notNull(),sourceExternalId:text('source_external_id').notNull(),sourceFetchedAt:bigint('source_fetched_at',{mode:'number'}).notNull(),sourceMappingVersion:smallint('source_mapping_version').notNull(),slot:text('slot').notNull(),slotIndex:integer('slot_index').notNull(),castOrdinal:integer('cast_ordinal'),personId:bigint('person_id',{mode:'number'}),creditId:text('credit_id'),mediaId:uuid('media_id').notNull(),
+},t=>[primaryKey({columns:[t.recommendationId,t.slotIndex]}),index('recommendation_movie_media_asset_idx').on(t.mediaId,t.accountId),index('recommendation_movie_media_account_idx').on(t.accountId,t.recommendationId)]);

@@ -708,8 +708,13 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/LandingPage/hooks/useScrollAnimation.tsx
 !explorers-earth/src/features/LandingPage/types/index.ts
 !explorers-earth/src/features/LandingPage/utils/utils.ts
+!explorers-earth/src/features/Movies/api/explorersAdapter.ts
+!explorers-earth/src/features/Movies/api/moviesClient.ts
+!explorers-earth/src/features/Movies/api/moviesViewModel.ts
 !explorers-earth/src/features/Movies/api/mutation.ts
+!explorers-earth/src/features/Movies/api/publicMoviesContinuation.ts
 !explorers-earth/src/features/Movies/api/query.ts
+!explorers-earth/src/features/Movies/api/usePublicMovieGenre.ts
 !explorers-earth/src/features/Movies/components/dashboard/AddMoviePage.tsx
 !explorers-earth/src/features/Movies/components/dashboard/MovieListView.tsx
 !explorers-earth/src/features/Movies/components/dashboard/MoviesHome.tsx
@@ -1095,6 +1100,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersBookCoverContract.ts
 !tunes/shared/explorersContract.ts
 !tunes/shared/explorersMovieContract.ts
+!tunes/shared/explorersMovieMediaContract.ts
 !tunes/shared/explorersOwnerContentContract.ts
 !tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersRichNoteContract.ts

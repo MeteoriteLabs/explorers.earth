@@ -30,6 +30,11 @@ const fixedFiles = [
   "explorers-earth/scripts/check-landing-hardcoded-copy.mjs",
   "explorers-earth/scripts/generate-static-files.js",
   "explorers-earth/scripts/check-music-production-bundle.mjs",
+  "explorers-earth/src/features/Movies/api/explorersAdapter.ts",
+  "explorers-earth/src/features/Movies/api/moviesClient.ts",
+  "explorers-earth/src/features/Movies/api/moviesViewModel.ts",
+  "explorers-earth/src/features/Movies/api/publicMoviesContinuation.ts",
+  "explorers-earth/src/features/Movies/api/usePublicMovieGenre.ts",
   "tunes/shared/musicPublicationContract.ts",
   "tunes/shared/explorersContract.ts",
   "tunes/shared/explorersOwnerContentContract.ts",
@@ -39,6 +44,7 @@ const fixedFiles = [
   "tunes/shared/explorersBookContract.ts",
   "tunes/shared/explorersBookCoverContract.ts",
   "tunes/shared/explorersMovieContract.ts",
+  "tunes/shared/explorersMovieMediaContract.ts",
 ];
 // The compose file explicitly builds explorers-earth/Dockerfile.music-fixture,
 // so this small allowlist affects only the disposable Music UAT image.  It

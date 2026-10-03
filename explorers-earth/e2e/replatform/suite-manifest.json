@@ -351,13 +351,218 @@
           "repeat": 0
         }
       ]
+    },
+    {
+      "name": "movies",
+      "runner": "tunes/scripts/movies-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/movies.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "projects": [
+        "movies-desktop",
+        "movies-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "owner manual form all fields snapshot repeat edits and archive reload"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "owner manual form all fields snapshot repeat edits and archive reload"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "canonical both-kind provider search resolves typed facts and copies original cast slots"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "canonical both-kind provider search resolves typed facts and copies original cast slots"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "anonymous category later list complete hero and modal preserve zero fields"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "anonymous category later list complete hero and modal preserve zero fields"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "global TMDB taxonomy and signed genre continuation include later list memberships"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "global TMDB taxonomy and signed genre continuation include later list memberships"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "optional provider image failures and immutable replay remain separate from manual snapshots"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "optional provider image failures and immutable replay remain separate from manual snapshots"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "foreign owner denial and original edit observation preserve an unsaved stale draft"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "foreign owner denial and original edit observation preserve an unsaved stale draft"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "delayed real canonical search continuation cannot append after query replacement"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "delayed real canonical search continuation cannot append after query replacement"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "manual television zero season is typed and does not acquire provider authority"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "manual television zero season is typed and does not acquire provider authority"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "public signed continuations deny malformed cross-scope and changed-limit tokens"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "public signed continuations deny malformed cross-scope and changed-limit tokens"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        }
+      ]
     }
   ],
   "limits": [
     "Auth is one Chromium desktop project",
     "Profile uses two viewport cases in one desktop project; 390px is not a mobile device project",
     "Books has desktop and mobile Chromium projects",
-    "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance"
+    "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance",
+    "The stable delivered-auth-profile-books CLI scope is a compatibility identifier; actual scope includes Movies desktop/mobile Chromium in its separate exact24-identity lane, not live TMDB or deployed QA qualification."
   ],
   "pending": [
     {
@@ -377,7 +582,7 @@
     },
     {
       "ticket": "4/5",
-      "obligation": "Other six canonical category producer families",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
       "status": "pending"
     },
     {
@@ -395,5 +600,13 @@
       "obligation": "Removal, rename, exact QA digest promotion and deployment",
       "status": "pending"
     }
-  ]
+  ],
+  "scopeContents": [
+    "auth",
+    "profile",
+    "books",
+    "lifecycle",
+    "movies"
+  ],
+  "scopeCompatibilityIdentifier": true
 }

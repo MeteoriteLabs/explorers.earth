@@ -1,3 +1,4 @@
+import {publicMoviesProjection} from './publicMoviesProjection';
 import type { Pool } from "pg";
 import type { PublicProfileGateway } from "./publicProfileService";
 import type { PublicCategory } from "./publicProfilePolicy";
@@ -9,7 +10,7 @@ const flag: Record<string, string> = { places: "public_recommendations", guides:
 
 /** Compatibility shell only; category content remains an Epic 3/7 dependency. */
 export class PostgresPublicProfileGateway implements PublicProfileGateway {
-  constructor(private readonly db: Pool) {}
+  constructor(private readonly db: Pool,private readonly movieCursorSecret="") {}
 
   async resolveAccount(username: string): Promise<Record<string, unknown> | undefined> {
     const result = await this.db.query(`SELECT a.id,a.handle,a.display_name,a.account_type,a.bio_plain,a.bio_rich,
@@ -49,9 +50,11 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
   }
 
   async resolveCategory(username: string, category: PublicCategory, limit=12,cursor?:string): Promise<unknown> {
-    return category==='books'?publicBooksProjection(this.db,username,limit,cursor):{ items: [], nextCursor: null };
+    return category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor):{ items: [], nextCursor: null };
   }
   async resolveDetail(username:string,category:PublicCategory,slug:string,limit=12,cursor?:string): Promise<unknown> {
-    return category==='books'?publicBooksProjection(this.db,username,limit,cursor,slug):undefined;
+    return category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor,slug):undefined;
   }
+  async resolveMovieGenre(username:string,genreSlug:string,limit:number,cursor?:string):Promise<unknown>{return publicMoviesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret,genreSlug);}
+
 }

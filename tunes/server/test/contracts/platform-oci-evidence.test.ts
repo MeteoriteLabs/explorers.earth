@@ -11,8 +11,8 @@ const decode=(f:Fixture)=>({release:Buffer.from(f.release,'base64'),api:f.api.ma
 it('keeps independently regenerated release claims at the current schema floor',()=>{
  for(const fixture of fixtures)expect(JSON.parse(decode(fixture).release.toString()).schemaVersion).toBe(SCHEMA_FLOOR);
 });
-it('rejects coherent historical schema36 release claims before OCI graph acceptance',()=>{
- const bytes=decode(fixtures[0]);const release=JSON.parse(bytes.release.toString());release.schemaVersion=36;release.manifestDigest=canonicalDigest(release);
+it.each([36,37])('rejects coherent historical schema%i release claims before OCI graph acceptance',schemaVersion=>{
+ const bytes=decode(fixtures[0]);const release=JSON.parse(bytes.release.toString());release.schemaVersion=schemaVersion;release.manifestDigest=canonicalDigest(release);
  expect(()=>inspectGraph(Buffer.from(JSON.stringify(release)),bytes.api,bytes.web)).toThrow('OCI_METADATA_INVALID');
 });
 it.each(fixtures)('independent $name has intended first error category',f=>{const b=decode(f);if(f.expectedError){expect(()=>inspectGraph(b.release,b.api,b.web)).toThrowError(f.expectedError);}else{const result=inspectGraph(b.release,b.api,b.web);expect(result).toMatchObject({releaseQualified:false,cryptographicallyVerified:false,registryAuthenticated:false,runtimeVerified:false,layerContentsVerified:false,executedSmokeVerified:false,status:'OCI_GRAPH_STRUCTURALLY_VALID_UNQUALIFIED'});expect(Object.isFrozen(result)).toBe(true);}});

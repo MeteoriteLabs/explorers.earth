@@ -88,7 +88,7 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     await fixture.query("INSERT INTO book_entity_details(entity_id,authors,isbn_10,published_date_text) VALUES($1,ARRAY['Restored author'],'123456789X','2024-03')",[entity]);
     await fixture.query('INSERT INTO book_recommendation_context(recommendation_id,account_id,buy_links) VALUES($1,$2,$3)',[item,revisionAccount,JSON.stringify([{name:'Restored shop',url:'https://shop.example/book'}])]);
     await fixture.query('INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$3,$4),($2,$3,$5)',[item,other,revisionAccount,{title:null},{}]);
-    await fixture.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[item,JSON.stringify({version:1,format:'quill-html',html:'<p>😀 Restored author note</p>'})]);
+    await fixture.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[item,JSON.stringify({version:1,format:'quill-html',html:'<p>ðŸ˜€ Restored author note</p>'})]);
     await fixture.query("INSERT INTO collection_items VALUES($1,$2,$3,'books',0,now())",[list,item,revisionAccount]);
     await fixture.query("INSERT INTO account_category_pin_state VALUES($1,'books',7)",[revisionAccount]);
     await fixture.query("INSERT INTO category_recommendation_pins VALUES($1,'books',$2,$3,0)",[revisionAccount,item,list]);
@@ -108,6 +108,13 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     await fixture.query("INSERT INTO movie_recommendation_context(recommendation_id,account_id,selected_provider_ids) VALUES($1,$2,'{}')",[movieRec,revisionAccount]);
     const genre=(await fixture.query("SELECT id FROM taxonomy_terms WHERE category='movies' AND slug='animation'")).rows[0].id;
     await fixture.query("INSERT INTO recommendation_taxonomy(recommendation_id,account_id,category,term_id,position) VALUES($1,$2,'movies',$3,0)",[movieRec,revisionAccount,genre]);
+    const providerMovie=(await fixture.query("INSERT INTO entities(kind,title,origin) VALUES('movie','Restored provider Movie','provider') RETURNING id")).rows[0].id;
+    await fixture.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id,fetched_at,source_url) VALUES($1,'tmdb','movie','42',to_timestamp(1700000000),'https://api.themoviedb.org/3/movie/42')",[providerMovie]);
+    await fixture.query("INSERT INTO movie_entity_details(entity_id,media_type,poster_url,backdrop_url) VALUES($1,'movie','https://image.tmdb.org/t/p/w780/poster.jpg','https://image.tmdb.org/t/p/w1280/backdrop.jpg')",[providerMovie]);
+    const providerRec=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'movies',$2) RETURNING id",[revisionAccount,providerMovie])).rows[0].id;
+    const providerImage=(await fixture.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'recommendation','ready','image/png',8,now(),decode(repeat('00',32),'hex')) RETURNING id",[revisionAccount])).rows[0].id;
+    await fixture.query("INSERT INTO media_objects(media_id,variant,storage_environment,object_key,mime_type,byte_size,content_sha256) VALUES($1,'original','local',$2,'image/png',8,decode(repeat('00',32),'hex'))",[providerImage,`local/${revisionAccount}/${providerImage}`]);
+    await fixture.query("INSERT INTO recommendation_movie_media(recommendation_id,account_id,source_entity_id,source_external_kind,source_external_id,source_fetched_at,source_mapping_version,slot,slot_index,media_id) VALUES($1,$2,$3,'movie','42',1700000000000,1,'poster',0,$4),($1,$2,$3,'movie','42',1700000000000,1,'backdrop',1,$4)",[providerRec,revisionAccount,providerMovie,providerImage]);
     await fixture.query("UPDATE account_category_content_state SET revision=revision+123 WHERE account_id=$1",[revisionAccount]);
   });
 
@@ -140,9 +147,10 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
 
   it('preserves nonempty category counters exactly and advances after replay',async()=>{
     const analytics=(await fixture!.query('SELECT * FROM analytics_events ORDER BY id')).rows,receipts=(await fixture!.query('SELECT * FROM analytics_event_receipts ORDER BY client_event_id')).rows;expect(analytics).toHaveLength(1);expect(receipts).toHaveLength(2);
-    expect((await fixture!.query('SELECT media_type,runtime_minutes,season_count FROM movie_entity_details')).rows).toEqual([{media_type:'tv',runtime_minutes:0,season_count:0}]);
+    expect((await fixture!.query("SELECT media_type,runtime_minutes,season_count FROM movie_entity_details WHERE media_type='tv'")).rows).toEqual([{media_type:'tv',runtime_minutes:0,season_count:0}]);
     expect((await fixture!.query('SELECT selected_provider_ids FROM movie_recommendation_context')).rows).toEqual([{selected_provider_ids:[]}]);
     expect((await fixture!.query('SELECT position FROM recommendation_taxonomy')).rows).toEqual([{position:0}]);
+    const movieMedia=(await fixture!.query('SELECT * FROM recommendation_movie_media ORDER BY recommendation_id,slot_index')).rows;expect(movieMedia).toHaveLength(2);expect(new Set(movieMedia.map(row=>row.media_id)).size).toBe(1);
     const bookFacts=(await fixture!.query('SELECT * FROM book_entity_details')).rows;
     const bookCovers=(await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows;expect(bookCovers).toHaveLength(2);
     const bookContexts=(await fixture!.query('SELECT * FROM book_recommendation_context')).rows;
@@ -161,6 +169,7 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect((await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows).toEqual(notes);
     expect((await fixture!.query('SELECT recommendation_id,display_values FROM recommendation_display_overrides WHERE account_id=$1 ORDER BY recommendation_id',[revisionAccount])).rows).toEqual(overrides);
     expect((await fixture!.query('SELECT * FROM analytics_events ORDER BY id')).rows).toEqual(analytics);expect((await fixture!.query('SELECT * FROM analytics_event_receipts ORDER BY client_event_id')).rows).toEqual(receipts);
+    expect((await fixture!.query('SELECT * FROM recommendation_movie_media ORDER BY recommendation_id,slot_index')).rows).toEqual(movieMedia);
     expect((await fixture!.query('SELECT * FROM book_entity_details')).rows).toEqual(bookFacts);
     expect((await fixture!.query('SELECT * FROM book_recommendation_context')).rows).toEqual(bookContexts);
     expect((await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows).toEqual(bookCovers);

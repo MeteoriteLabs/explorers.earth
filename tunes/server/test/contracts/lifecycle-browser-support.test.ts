@@ -1,7 +1,23 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { parseBrowserSuite, assertBrowserEnvironment, validateLifecycleControl, assertLifecycleResults, assertProviderCode, assertOwnedCleanup, classifyLifecycleRequest, LIFECYCLE_CASES, LIFECYCLE_FONT_QUERIES } from '../../../scripts/lifecycle-browser-guards';
 const ack = 'TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 describe('owned lifecycle browser boundary', () => {
+    it('locally intercepts the exact current bootstrap typography without widening font authority', () => {
+        const bootstrap = readFileSync(new URL('../../../../explorers-earth/src/bootstrap.ts', import.meta.url), 'utf8');
+        const href = bootstrap.match(/fonts\.href\s*=\s*'([^']+)'/)?.[1];
+        expect(href).toBeDefined();
+        const current = new URL(href!);
+        expect(current.searchParams.getAll('family').map(family => family.split(':')[0])).toEqual(['DM Sans', 'Fraunces', 'Inter', 'Lato', 'Montserrat', 'Poppins', 'Space Grotesk']);
+        const classify = (url: string, resource = 'stylesheet', navigation = false) => classifyLifecycleRequest({url, resource, navigation, origin: 'http://127.0.0.1:53111'});
+        expect(classify(current.href)).toBe('font');
+        for (const query of LIFECYCLE_FONT_QUERIES) expect(classify('https://fonts.googleapis.com/css2?' + query)).toBe('font');
+        const alteredFamily = new URL(current);alteredFamily.searchParams.set('family', 'Unowned Family:wght@400');
+        const extraQuery = new URL(current);extraQuery.searchParams.set('token', 'unowned');
+        for (const url of [alteredFamily.href, extraQuery.href, current.href.replace('fonts.googleapis.com', 'fonts.googleapis.com.evil'), current.href.replace('https:', 'http:'), current.href.replace('/css2?', '/api?')]) expect(classify(url)).toBe('deny');
+        for (const resource of ['fetch', 'script', 'font', 'document']) expect(classify(current.href, resource)).toBe('deny');
+        expect(classify(current.href, 'stylesheet', true)).toBe('deny');
+    });
     it('accepts only exact existing and lifecycle selectors', () => {
         expect(parseBrowserSuite(['--ack', ack])).toBe('profile');
         for (const suite of ['auth', 'lifecycle'])

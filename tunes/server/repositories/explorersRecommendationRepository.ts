@@ -288,6 +288,21 @@ export class ExplorersRecommendationRepository {
       if(current.category==='movies'&&(await db.query('SELECT 1 FROM movie_recommendation_context WHERE recommendation_id=$1',[id])).rows[0])await checkMovieContext(db,entityId,await readMovieContext(db,id,accountId));
       const parent=(await db.query('SELECT c.id FROM collections c JOIN collection_items ci ON ci.collection_id=c.id AND ci.account_id=c.account_id AND ci.category=c.category WHERE ci.recommendation_id=$1 AND c.account_id=$2 AND c.archived_at IS NULL ORDER BY c.id FOR UPDATE OF c',[id,accountId])).rows;
       if(!parent.length)throw new RecommendationFailure(404,'Recommendation aggregate unavailable');
+      if(current.category==='movies') {
+        const detached=await db.query<{media_id:string}>('DELETE FROM recommendation_movie_media WHERE recommendation_id=$1 AND account_id=$2 RETURNING media_id',[id,accountId]);
+        const mediaIds=Array.from(new Set(detached.rows.map(row=>row.media_id))).sort();
+        for(const mediaId of mediaIds) {
+          const media=await db.query("SELECT id FROM media_assets WHERE id=$1 AND account_id=$2 AND status='ready' FOR UPDATE",[mediaId,accountId]);
+          if(!media.rows[0])continue;
+          const refs=await db.query<{count:string}>(`SELECT ((SELECT count(*) FROM profile_media WHERE media_id=$1)
+            +(SELECT count(*) FROM profile_feed_items WHERE media_id=$1)
+            +(SELECT count(*) FROM collection_media WHERE media_id=$1)
+            +(SELECT count(*) FROM recommendation_media WHERE media_id=$1)
+            +(SELECT count(*) FROM recommendation_book_covers WHERE media_id=$1)
+            +(SELECT count(*) FROM recommendation_movie_media WHERE media_id=$1))::text AS count`,[mediaId]);
+          if(Number(refs.rows[0]?.count)===0)await db.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now(),updated_at=now() WHERE id=$1 AND account_id=$2 AND status='ready'",[mediaId,accountId]);
+        }
+      }
       const result=(await db.query('UPDATE recommendations SET entity_id=$2,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id,entityId])).rows[0];
       return this.recommendationRecord(db,result);
     });

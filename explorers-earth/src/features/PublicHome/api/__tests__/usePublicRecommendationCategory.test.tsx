@@ -144,3 +144,10 @@ describe("usePublicRecommendationCategory", () => {
     expect(result.current.data?.appLists).not.toContainEqual({ documentId: "unpublished" });
   });
 });
+
+it('uses signed Movie category cursors and stops on authoritative null',async()=>{
+ category.mockResolvedValueOnce({movieLists:Array.from({length:12},(_,i)=>({documentId:'l'+i,slug:'list'+i,recommended_movies:[],recommended_movies_next_cursor:null})),topPicks:[],nextCursor:'signed.category'});
+ categoryPage.mockResolvedValueOnce({movieLists:[{documentId:'last',slug:'last',recommended_movies:[],recommended_movies_next_cursor:null}],topPicks:[],nextCursor:null});
+ const {result}=renderHook(()=>usePublicRecommendationCategory('reader','movies',true));await waitFor(()=>expect(result.current.loading).toBe(false));await act(()=>result.current.loadMore());
+ expect(categoryPage).toHaveBeenLastCalledWith('reader','movies',{limit:12,cursor:'signed.category'},expect.any(AbortSignal),false);expect(result.current.hasMore).toBe(false);
+});

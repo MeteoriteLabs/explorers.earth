@@ -124,7 +124,7 @@ describe("Music E2E transactional state restore", () => {
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "profile_feed_items", "profile_media", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
+      "playlists", "profile_feed_items", "profile_media", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_movie_media", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
@@ -150,7 +150,7 @@ describe("Music E2E transactional state restore", () => {
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
       "0033_explorers_recommendation_display_overrides",
-      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -213,7 +213,14 @@ describe("Music E2E transactional state restore", () => {
     expectedTriggers.push({table:'taxonomy_terms',name:'taxonomy_tree_constraint',enabled:'O',type:21});
     expectedTriggers.push({table:'movie_recommendation_context',name:'movie_context_constraint',enabled:'O',type:23});
     expectedTriggers.push({table:'recommendations',name:'movie_context_replacement_constraint',enabled:'O',type:19});
-    for(const table of ['movie_recommendation_context','recommendation_taxonomy']) for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table,name:table+'_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
+    expectedTriggers.push({table:'recommendation_movie_media',name:'movie_media_parent_lock',enabled:'O',type:31});
+    expectedTriggers.push({table:'recommendation_movie_media',name:'movie_media_source_guard',enabled:'O',type:29});
+    expectedTriggers.push({table:'recommendations',name:'movie_media_recommendation_reverse_guard',enabled:'O',type:17});
+    expectedTriggers.push({table:'media_assets',name:'movie_media_asset_reverse_guard',enabled:'O',type:17});
+    expectedTriggers.push({table:'entities',name:'movie_media_entity_reverse_guard',enabled:'O',type:17});
+    expectedTriggers.push({table:'movie_entity_details',name:'movie_media_facts_reverse_guard',enabled:'O',type:25});
+    expectedTriggers.push({table:'entity_identifiers',name:'movie_media_identity_reverse_guard',enabled:'O',type:25});
+    for(const table of ['recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy']) for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table,name:table+'_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_MIGRATION_IDS)).toBe(true);

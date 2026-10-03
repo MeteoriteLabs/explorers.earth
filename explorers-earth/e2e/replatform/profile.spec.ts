@@ -102,10 +102,15 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await page.getByRole('tab', { name: 'Gallery' }).click();
     const landscape = await sharp({ create: { width: 191, height: 100, channels: 3,
       background: { r: 40, g: 100, b: 170 } } }).png().toBuffer();
+    const galleryUpload = page.waitForResponse(response => new URL(response.url()).pathname === '/api/explorers/v1/media' && response.request().method() === 'POST');
     await page.locator('input[type="file"][multiple]').setInputFiles({
       name: 'landscape.png', mimeType: 'image/png', buffer: landscape,
     });
+    expect((await galleryUpload).status()).toBe(201);
+    await expect(page.getByRole('button', { name: 'Remove image', exact: true })).toBeVisible();
+    const galleryPublish = page.waitForResponse(response => new URL(response.url()).pathname === '/api/explorers/v1/account' && response.request().method() === 'PATCH');
     await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    expect((await galleryPublish).status()).toBe(200);
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { feedItems: [expect.objectContaining({

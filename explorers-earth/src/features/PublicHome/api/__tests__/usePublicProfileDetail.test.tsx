@@ -119,3 +119,10 @@ describe("usePublicProfileDetail", () => {
     expect(result.current.loading).toBe(false);
   });
 });
+
+it('uses exact signed Movie list cursor and terminal null independently of child count',async()=>{
+ detail.mockResolvedValueOnce({movieLists:[{documentId:'list',recommended_movies:Array.from({length:12},(_,i)=>({documentId:'m'+i})),recommended_movies_next_cursor:'signed.list'}]});
+ detailPage.mockResolvedValueOnce({movieLists:[{documentId:'list',recommended_movies:[{documentId:'last'}],recommended_movies_next_cursor:null}]});
+ const {result}=renderHook(()=>usePublicProfileDetail('reader','movies','list'));await waitFor(()=>expect(result.current.loading).toBe(false));await act(()=>result.current.loadMore());
+ expect(detailPage).toHaveBeenLastCalledWith('reader','movies','list',{limit:12,cursor:'signed.list'},expect.any(AbortSignal),false);expect(result.current.hasMore).toBe(false);
+});

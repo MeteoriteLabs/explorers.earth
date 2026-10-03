@@ -1,6 +1,7 @@
 import { canReadPublicCategory, type PublicCategory } from "./publicProfilePolicy";
 
 export interface PublicProfileGateway {
+  resolveMovieGenre?(username:string,genreSlug:string,limit:number,cursor?:string):Promise<unknown>;
   resolveAccount(username: string): Promise<Record<string, unknown> | undefined>;
   resolveCategory(username: string, category: PublicCategory, limit: number, cursor?: string): Promise<unknown>;
   resolveDetail(username: string, category: PublicCategory, slug: string, limit: number, cursor?: string): Promise<unknown>;
@@ -72,7 +73,7 @@ export class PublicProfileService {
   }
 
   async category(username: string, category: PublicCategory, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
-    if (category === 'books') return this.freshBooksRead(username, () => this.gateway.resolveCategory(username, category, limit, options.cursor));
+    if (category === 'books' || category === 'movies') return this.freshBooksRead(username, category, () => this.gateway.resolveCategory(username, category, limit, options.cursor));
     const key = `${username}:${category}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
@@ -89,7 +90,7 @@ export class PublicProfileService {
   }
 
   async detail(username: string, category: PublicCategory, slug: string, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
-    if (category === 'books') return this.freshBooksRead(username, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
+    if (category === 'books' || category === 'movies') return this.freshBooksRead(username, category, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
     const key = `${username}:${category}:${slug}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
@@ -100,13 +101,15 @@ export class PublicProfileService {
     return value;
   }
 
-  // Books content never consumes cached or coalesced authorization. Recheck after
+  async movieGenre(username:string,genreSlug:string,limit:number,options:PublicProfileReadOptions={}):Promise<unknown|undefined>{return this.freshBooksRead(username,'movies',()=>this.gateway.resolveMovieGenre?.(username,genreSlug,limit,options.cursor)??Promise.resolve(undefined));}
+
+  // Books and Movies content never consume cached or coalesced authorization. Recheck after
   // composition too: a pre-hide request cannot repopulate or return an old read.
-  private async freshBooksRead(username: string, resolve: () => Promise<unknown>): Promise<unknown | undefined> {
+  private async freshBooksRead(username: string, category: PublicCategory, resolve: () => Promise<unknown>): Promise<unknown | undefined> {
     const before = await this.gateway.resolveAccount(username);
-    if (!before || !canReadPublicCategory(before, 'books')) return undefined;
+    if (!before || !canReadPublicCategory(before, category)) return undefined;
     const value = await resolve();
     const after = await this.gateway.resolveAccount(username);
-    return after && canReadPublicCategory(after, 'books') ? value : undefined;
+    return after && canReadPublicCategory(after, category) ? value : undefined;
   }
 }

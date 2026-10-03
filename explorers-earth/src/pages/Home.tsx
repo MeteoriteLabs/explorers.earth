@@ -36,7 +36,7 @@ import { publicMusicShareUrl } from "../features/music/musicShareUrl";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 
 // Category integrations
-import { MOVIE_LISTS_BY_ACCOUNT } from "../features/Movies/api/query";
+import { useMoviesOwner } from "../features/Movies/api/explorersAdapter";
 import { BOOK_LISTS_BY_ACCOUNT } from "../features/Books/api/query";
 import { GAME_LISTS_BY_ACCOUNT } from "../features/Games/api/query";
 import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
@@ -124,6 +124,7 @@ const resolveCoverUrl = (
 
   // If it's already a full URL, return it
   if (path.startsWith("http")) return path;
+  if (type === 'movie' && path.startsWith('/api/')) return path;
 
   // If it starts with /uploads/ (local Strapi upload), prepend backend URL
   if (path.startsWith("/uploads/")) {
@@ -195,6 +196,7 @@ const Home = memo(() => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const sessionGeneration = useAuthStore((state) => state.generation);
+  const nativeAccountId = useAuthStore((state) => state.accountId);
   const canonicalAccount = useCanonicalAccount();
   const canonicalHandle = canonicalAccount.data?.handle ?? "";
   const token = useAuthStore((state) => state.token);
@@ -334,12 +336,8 @@ const Home = memo(() => {
   const selectedAccount = selectCompletedAccount(accountDataForGuides?.usersPermissionsUser?.accounts);
   const accountDocumentId = selectedAccount?.documentId;
 
-  // Fetch movie lists
-  const { data: movieListsData, refetch: refetchMovies } = useQuery(MOVIE_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId || !user?.username,
-    fetchPolicy: "network-only",
-  });
+  // Native Movies are scoped to the canonical account, independently of legacy categories.
+  const { data: movieListsData, refetch: refetchMovies, loading: moviesLoading, error: moviesError } = useMoviesOwner();
   const movieLists = movieListsData?.movieLists || [];
 
   // Fetch book lists
@@ -1315,7 +1313,7 @@ const Home = memo(() => {
 
                   {activeTab === "movies" && (
                     <>
-                      {movieLists.length === 0 ? (
+                      {moviesError ? <div role="alert">Movies could not be loaded. <button onClick={refetchMovies}>Retry</button></div> : moviesLoading ? <div role="status">Loading Movies…</div> : movieLists.length === 0 ? (
                         <CategoryEmptyState
                           category="movies"
                           onAddClick={handleAddNewItem}
@@ -1859,14 +1857,14 @@ const Home = memo(() => {
         />
       )}
 
-      {showCreateMoviesModal && accountDocumentId && (
+      {showCreateMoviesModal && nativeAccountId && (
         <CreateMovieListModal
           open={showCreateMoviesModal}
           onClose={() => {
             setShowCreateMoviesModal(false);
             setPrefillTitle("");
           }}
-          accountDocumentId={accountDocumentId}
+          accountDocumentId={nativeAccountId}
           currentListCount={movieLists.length}
           username={canonicalHandle}
           defaultListName={prefillTitle}

@@ -1,3 +1,4 @@
+import {movieGenreTermsResultSchema,importMovieMediaRequestSchema,movieMediaImportResultSchema} from '../../../tunes/shared/explorersMovieMediaContract';
 import {movieSearchRequestSchema,movieCandidatesSchema,movieEntityDtoSchema,resolveProviderMovieSchema,resolveManualMovieSchema} from '../../../tunes/shared/explorersMovieContract';
 import {importBookCoversSchema,bookCoverImportResultSchema} from '../../../tunes/shared/explorersBookCoverContract';
 import type { AccountDto, MediaDto, RevisionInput, UpdateAccountInput } from "../../../tunes/shared/explorersContract";
@@ -302,6 +303,13 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
+  async getMovieGenres(signal?:AbortSignal){return ownerRead('/catalog/movie-genres',{},movieGenreTermsResultSchema,signal,true);},
+  async importMovieMedia(observed:RecommendationObservation,key:string,signal?:AbortSignal){
+   assertOwnerDetailObservation(observed,'recommendation');if(observed.detail.category!=='movies')throw new ExplorersApiError(422,'INVALID_INPUT','Movie import requires Movies');
+   const body=commandInput(importMovieMediaRequestSchema,{expectedRevision:observed.resourceRevision});
+   const result=await contentCommand(`/recommendations/${observed.resourceId}/movie-media/import`,'POST',body,key,'movieMediaImport',movieMediaImportResultSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+   if(result.source.entityId!==observed.detail.entityId)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Movie source identity');return result;
+  },
   async searchMovieCandidates(input:z.input<typeof movieSearchRequestSchema>,signal?:AbortSignal){
    const parsed=commandInput(movieSearchRequestSchema,input);const result=await ownerRead('/catalog/movies',parsed,movieCandidatesSchema,signal,true);if(parsed.mediaType&&result.items.some(x=>x.externalKind!==parsed.mediaType))throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Movie candidate kind');return result;
   },

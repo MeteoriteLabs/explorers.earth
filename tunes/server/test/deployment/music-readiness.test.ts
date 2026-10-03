@@ -35,10 +35,10 @@ describe("Music liveness and readiness", () => {
     expect(ready).toEqual({ ready: true, ...image });
   });
 
-  it("binds current-image readiness to the approved 0037 journal marker and committed SQL checksum", async () => {
+  it("binds current-image readiness to the approved 0038 journal marker and approved SQL checksum", async () => {
     // A current image must refuse a historical journal or a different checksum.
     // The attestation is synthetic; its checksum comes from committed SQL bytes.
-    expect(CURRENT_MIGRATION_MARKER).toBe("0037_explorers_movies_provider_context");
+    expect(CURRENT_MIGRATION_MARKER).toBe("0038_explorers_movie_media");
     const currentImage = {
       ...image,
       migrationMarker: CURRENT_MIGRATION_MARKER,
@@ -64,6 +64,10 @@ describe("Music liveness and readiness", () => {
     await expect(evaluateReadiness({
       ...common,
       migrationState: async () => ({ ready: true, currentId: "0036_explorers_analytics_events", currentChecksum: checksum }),
+    })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
+    await expect(evaluateReadiness({
+      ...common,
+      migrationState: async () => ({ ready: true, currentId: "0037_explorers_movies_provider_context", currentChecksum: checksum }),
     })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
     await expect(evaluateReadiness(common)).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
     await expect(evaluateReadiness({

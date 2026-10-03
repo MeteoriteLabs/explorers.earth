@@ -1,3 +1,4 @@
+import {movieProviderMediaSchema} from './explorersMovieMediaContract';
 import {movieEntityDtoSchema,movieDetailsSchema,movieContextSchema,movieTermsSchema,movieDisplayFieldsSchema} from './explorersMovieContract';
 import {bookCoversSchema} from './explorersBookCoverContract';
 import { z } from 'zod/v3';
@@ -14,12 +15,21 @@ export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.st
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
 export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision}).strict();
-export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional()}).strict().superRefine((v,ctx)=>{
+export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional()}).strict().superRefine((v,ctx)=>{
  const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};
  const title=Object.prototype.hasOwnProperty.call(v.displayOverrides,'title')?v.displayOverrides.title:v.entity.title;
  if(v.entity.id!==v.entityId||!expected[v.category].includes(v.entity.kind)||v.displayTitle!==title)ctx.addIssue({code:'custom',message:'Inconsistent catalog presentation'});
  if(v.category!=='books'&&(v.bookCovers!==undefined||v.bookContext!==undefined||v.effectiveBookDetails!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Book presentation'});
- if(v.category!=='movies'&&(v.movieContext!==undefined||v.effectiveMovieDetails!==undefined||v.movieTerms!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Movie presentation'});
+ if(v.category!=='movies'&&(v.movieContext!==undefined||v.effectiveMovieDetails!==undefined||v.movieTerms!==undefined||v.providerMedia!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Movie presentation'});
+ if(v.providerMedia){
+  const media=v.providerMedia;
+  if(v.entity.kind!=='movie'||!('details' in v.entity)||!('provenance' in v.entity)||!v.entity.provenance)ctx.addIssue({code:'custom',message:'Movie copies require canonical provider source'});
+  else {
+   const p=v.entity.provenance,source=media.source,facts=v.entity.details;
+   if(source.entityId!==v.entityId||source.provider!==p.provider||source.externalKind!==p.externalKind||source.externalId!==p.externalId||source.fetchedAt!==p.fetchedAt||source.mappingVersion!==p.mappingVersion)ctx.addIssue({code:'custom',message:'Inconsistent Movie copy source'});
+   if(media.poster&&!facts.posterUrl||media.backdrop&&!facts.backdropUrl||media.cast.length!==Math.min(10,facts.cast.length)||media.cast.some((entry,index)=>{const cast=facts.cast[index];return !cast||entry.slot.ordinal!==index||entry.slot.personId!==cast.personId||entry.slot.creditId!==cast.creditId||!!entry.media&&!cast.profileUrl;}))ctx.addIssue({code:'custom',message:'Inconsistent Movie copy slots'});
+  }
+ }
  const {title:_title,...fields}=v.displayOverrides;
  if(v.category==='books'?!bookDisplayFieldsSchema.safeParse(fields).success:v.category==='movies'?!movieDisplayFieldsSchema.safeParse(fields).success:Object.keys(fields).length>0)ctx.addIssue({code:'custom',message:'Inconsistent category overrides'});
  if('details' in v.entity){

@@ -87,7 +87,7 @@ export const resolveManualEntitySchema=z.object({kind:z.literal('manual'),catego
 export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema,resolveProviderBookSchema,resolveManualBookSchema,resolveProviderMovieSchema,resolveManualMovieSchema]);
 export type ResolveManualEntityInput=z.input<typeof resolveManualEntitySchema>;
 
-export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE"] as const;
+export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "READ_LIMIT", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE"] as const;
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.enum(apiErrorCodes),

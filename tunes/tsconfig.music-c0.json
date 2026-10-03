@@ -7,6 +7,16 @@
     "types": ["node", "vite/client", "passport"]
   },
   "include": [
+    "shared/explorersMovieMediaContract.ts",
+    "scripts/movies-browser-fixture.ts",
+    "server/services/movieImageFetch.ts",
+    "server/repositories/movieMedia.ts",
+    "server/application/movieMediaImport.ts",
+    "server/test/movie-media-import.integration.test.ts",
+    "server/test/movie-image-fetch.test.ts",
+    "server/test/movie-image-production-transport.test.ts",
+    "server/test/movies-public-gateway.integration.test.ts",
+    "server/test/explorers-object-storage.test.ts",
     "server/services/movieCatalog.ts",
     "server/explorers/categories/movies.ts",
     "server/test/movie-catalog.test.ts",

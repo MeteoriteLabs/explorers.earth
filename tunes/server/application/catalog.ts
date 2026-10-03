@@ -1,3 +1,4 @@
+import {movieGenreTermsResultSchema} from '../../shared/explorersMovieMediaContract';
 import {MovieCatalog} from '../services/movieCatalog';
 import {movieEntityDtoSchema,resolveManualMovieSchema} from '../../shared/explorersMovieContract';
 import type { Pool } from 'pg';
@@ -9,10 +10,22 @@ import { RecommendationFailure,ExplorersRecommendationRepository } from '../repo
 import {BookCatalog} from '../services/bookCatalog';
 import {bookEntityDtoSchema} from '../../shared/explorersBookContract';
 
+export class MovieGenreFailure extends Error {constructor(readonly status:422|503,readonly code:'INVALID_INPUT'|'READ_LIMIT'){super(code==='INVALID_INPUT'?'Genre parameters are not supported':'Movie genre configuration unavailable');}}
+const reviewedMovieGenreMappings:Readonly<Record<string,string>>={"movie:28": "action", "movie:12": "adventure", "movie:16": "animation", "movie:35": "comedy", "movie:80": "crime", "movie:99": "documentary", "movie:18": "drama", "movie:10751": "family", "movie:14": "fantasy", "movie:36": "history", "movie:27": "horror", "movie:10402": "music", "movie:9648": "mystery", "movie:10749": "romance", "movie:878": "science-fiction", "movie:10770": "tv-movie", "movie:53": "thriller", "movie:10752": "war", "movie:37": "western", "tv:10759": "action-adventure", "tv:16": "animation", "tv:35": "comedy", "tv:80": "crime", "tv:99": "documentary", "tv:18": "drama", "tv:10751": "family", "tv:10762": "kids", "tv:9648": "mystery", "tv:10763": "news", "tv:10764": "reality", "tv:10765": "sci-fi-fantasy", "tv:10766": "soap", "tv:10767": "talk", "tv:10768": "war-politics", "tv:37": "western"};
 /** Existing owned catalog context only. Provider ingestion/fetch is a separate
  * trusted server adapter; HTTP callers cannot supply or overwrite shared facts. */
 export class CatalogService {
   constructor(private readonly db:Pool,private readonly books=new BookCatalog(),private readonly movies=new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(db,a,'entities:resolve',a.accountId)})) {}
+  async movieGenres(actor:Actor,input:unknown){
+    await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);
+    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw new MovieGenreFailure(422,'INVALID_INPUT');
+    const terms=(await this.db.query("SELECT t.id,t.slug,x.label FROM taxonomy_terms t JOIN taxonomy_term_translations x ON x.term_id=t.id AND x.locale='en' WHERE t.category='movies' AND t.active ORDER BY t.slug,t.id LIMIT 28")).rows;
+    if(terms.length!==27)throw new MovieGenreFailure(503,'READ_LIMIT');
+    const mappings=(await this.db.query("SELECT m.term_id,m.external_kind,m.provider_genre_id,t.slug FROM movie_provider_genre_terms m JOIN taxonomy_terms t ON t.id=m.term_id AND t.category=m.category WHERE m.category='movies' AND t.active ORDER BY m.external_kind,m.provider_genre_id LIMIT 36")).rows;
+    if(mappings.length!==35||mappings.some(m=>reviewedMovieGenreMappings[`${m.external_kind}:${m.provider_genre_id}`]!==m.slug)||new Set(mappings.map(m=>`${m.external_kind}:${m.provider_genre_id}`)).size!==35||new Set(mappings.map(m=>m.term_id)).size!==27)throw new MovieGenreFailure(503,'READ_LIMIT');
+    const result=movieGenreTermsResultSchema.parse({version:'explorers-movie-genres/v1',items:terms.map(t=>({...t,providerMappings:mappings.filter(m=>m.term_id===t.id).map(m=>({externalKind:m.external_kind,providerGenreId:Number(m.provider_genre_id)}))}))});
+    await authorizeOperation(this.db,actor,'entities:resolve',actor.accountId);return result;
+  }
   async searchBooks(actor:Actor,input:unknown){await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);return this.books.search(actor.accountId,input);}
   async searchMovies(actor:Actor,input:unknown){return this.movies.search(actor,input);}
   async resolveEntity(actor:Actor,input:unknown,context?:RequestContext) {
