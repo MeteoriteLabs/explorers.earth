@@ -35,7 +35,12 @@ it.each([['books','book'],['movies','movie'],['games','game'],['apps','app'],['p
  expect((await command(a,'post','/entities/resolve',{...input,details:{title:'😀 Canonical'}},key)).body).toEqual(one.body);
  expect((await command(a,'post','/entities/resolve',{...input,details:{title:'Changed'}},key)).status).toBe(409);
  const distinct=await command(a,'post','/entities/resolve',input);expect(distinct.body.entity.id).not.toBe(one.body.entity.id);
- expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveManualEntity'",[a.accountId])).rows[0].n).toBe(2);
+ if(category==='movies') {
+  expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveMovieEntity' AND status='completed'",[a.accountId])).rows[0].n).toBe(2);
+  expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveManualEntity'",[a.accountId])).rows[0].n).toBe(0);
+ } else {
+  expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveManualEntity'",[a.accountId])).rows[0].n).toBe(2);
+ }
  await pool.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1",[a.accountId]);expect((await command(a,'post','/entities/resolve',input,key)).status).toBe(403);
 });
 it('keeps recommendation title overrides independent and observes omission/reset/clear/replay/rollback',async()=>{
