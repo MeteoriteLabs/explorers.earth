@@ -1,12 +1,14 @@
+import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import { readFileSync } from 'node:fs';
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona; ownerC: Persona }; recoveryProof: string };
 const fixturePath = process.env.AUTH_E2E_FIXTURE_PATH;
-if (!fixturePath || process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:') !== true)
+if (!fixturePath)
   throw new Error('Auth E2E requires the owned loopback fixture runner');
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as Fixture;
+assertFixtureOrigin(fixture);
 if (fixture.origin !== process.env.PLAYWRIGHT_EXTERNAL_BASE_URL || !fixture.recoveryProof)
   throw new Error('Auth fixture authority mismatch');
 
@@ -115,7 +117,7 @@ test('real local session gates onboarding and cross-tab logout revokes both tabs
 
 test('purpose-bound proof recovers once against real API and requires a fresh ordinary session', async ({ context, page }) => {
   await context.addCookies([{ name: 'explorers_recovery_proof', value: fixture.recoveryProof,
-    domain: '127.0.0.1', path: '/api/explorers/v1/recovery', sameSite: 'Lax', httpOnly: true }]);
+    domain: new URL(fixture.origin).hostname, path: '/api/explorers/v1/recovery', sameSite: 'Lax', httpOnly: true }]);
   await localOnly(page);
   await page.goto('/reactivate-confirm?token=legacy-url-token');
   await expect(page.getByRole('button', { name: 'Reactivate account' })).toBeVisible();

@@ -1,3 +1,4 @@
+import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import { readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
 import sharp from 'sharp';
@@ -5,9 +6,10 @@ import sharp from 'sharp';
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona } };
 const fixturePath = process.env.PROFILE_E2E_FIXTURE_PATH;
-if (!fixturePath || process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:') !== true)
+if (!fixturePath)
   throw new Error('Profile E2E requires the owned loopback fixture runner');
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as Fixture;
+assertFixtureOrigin(fixture);
 if (fixture.origin !== process.env.PLAYWRIGHT_EXTERNAL_BASE_URL) throw new Error('Profile fixture origin mismatch');
 
 async function signInAs(page: Page, persona: Persona) {

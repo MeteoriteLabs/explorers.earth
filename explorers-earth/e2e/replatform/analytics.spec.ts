@@ -1,8 +1,21 @@
+import {assertFixtureOrigin,publicReadBudgetDelayMs} from './proxy-fixture-authority.mjs';
 import {readFileSync} from 'node:fs';
-import {test,expect,type Page} from '@playwright/test';
-const fixture=JSON.parse(readFileSync(process.env.BOOKS_E2E_FIXTURE_PATH!,'utf8'));
+import {test,expect,request,type Page} from '@playwright/test';
+const fixture=JSON.parse(readFileSync(process.env.ANALYTICS_E2E_FIXTURE_PATH??process.env.BOOKS_E2E_FIXTURE_PATH!,'utf8'));
+assertFixtureOrigin(fixture);
 if(fixture.origin!==process.env.PLAYWRIGHT_EXTERNAL_BASE_URL)throw new Error('Analytics fixture origin mismatch');
 const endpoint='/api/explorers/analytics/events';
+test.beforeAll(async()=>{
+ if(!fixture.proxyAuthority)return;
+ const client=await request.newContext({baseURL:fixture.origin,ignoreHTTPSErrors:true});
+ try{
+  let response=await client.get(`/api/explorers/v1/profiles/${fixture.personas.ownerB.handle}`);
+  expect([200,429]).toContain(response.status());
+  const delay=publicReadBudgetDelayMs(response.headers().ratelimit);
+  if(delay){await new Promise(resolve=>setTimeout(resolve,delay));response=await client.get(`/api/explorers/v1/profiles/${fixture.personas.ownerB.handle}`);}
+  expect(response.status()).toBe(200);expect(publicReadBudgetDelayMs(response.headers().ratelimit)).toBe(0);
+ }finally{await client.dispose();}
+});
 async function oracle(page:Page){const r=await page.request.get('/api/__analytics-observer',{headers:{Authorization:`Bearer ${fixture.observerToken}`}});expect(r.status()).toBe(200);return r.json();}
 async function setup(page:Page,consent:boolean){await page.addInitScript(value=>{if(localStorage.getItem('explorers-cookie-consent')===null)localStorage.setItem('explorers-cookie-consent',JSON.stringify({analytics:value}));},consent);await page.route('**/*',route=>{const u=new URL(route.request().url());return u.origin===fixture.origin||['data:','blob:'].includes(u.protocol)?route.continue():route.abort();});}
 async function owner(page:Page){const p=fixture.personas.ownerB;const i=p.cookie.indexOf('=');await page.context().addCookies([{name:p.cookie.slice(0,i),value:p.cookie.slice(i+1),url:fixture.origin,sameSite:'Lax'}]);return p;}
@@ -18,8 +31,8 @@ test('profile Books list subject and card events persist issued targets',async({
  const state=await oracle(page);for(const body of bodies){expect(body.accountId).toMatch(/^[0-9a-f-]{36}$/);const rows=state.events.filter((r:any)=>r.client_event_id===body.eventId);expect(rows).toHaveLength(1);expect(rows[0].account_id).toBe(body.accountId);expect(rows[0].canonical_path).toBe(body.event.canonicalPath);if(body.locationId)expect(rows[0].collection_id).toBe(body.locationId);if(body.recommendationId)expect(rows[0].recommendation_id).toBe(body.recommendationId);}
 });
 test('committed lost acknowledgement replays identical bytes to one event',async({page})=>{
- await setup(page,true);const bodies:string[]=[];await page.route(`**${endpoint}`,async route=>{bodies.push(route.request().postData()!);if(bodies.length===1){const response=await route.fetch();expect(response.status()).toBe(201);await route.abort('failed');}else await route.continue();});
- await page.goto(`/${fixture.personas.ownerB.handle}/books`);await expect.poll(()=>bodies.length).toBe(2);expect(bodies[1]).toBe(bodies[0]);const id=JSON.parse(bodies[0]).eventId;await expect.poll(async()=>(await oracle(page)).events.filter((r:any)=>r.client_event_id===id).length).toBe(1);expect((await oracle(page)).receipts.filter((r:any)=>r.client_event_id===id)).toHaveLength(1);
+ await setup(page,true);page.on('response',response=>{const path=new URL(response.url()).pathname;if(path.startsWith('/api/explorers/'))test.info().annotations.push({type:'lost-ack-response',description:JSON.stringify({project:test.info().project.name,family:path.includes('/profiles/')?'profiles':path.includes('/public/')?'public-content':'other',status:response.status()})});});const bodies:string[]=[];await page.route(`**${endpoint}`,async route=>{bodies.push(route.request().postData()!);test.info().annotations.push({type:'lost-ack-attempt',description:JSON.stringify({project:test.info().project.name,attempt:bodies.length,sameBytes:bodies[0]===bodies[bodies.length-1]})});if(bodies.length===1){const response=await route.fetch();test.info().annotations.push({type:'lost-ack-commit',description:JSON.stringify({project:test.info().project.name,status:response.status()})});expect(response.status()).toBe(201);await route.abort('failed');}else await route.continue();});
+ test.info().annotations.push({type:'lost-ack-phase',description:JSON.stringify({project:test.info().project.name,phase:'before-goto'})});await page.goto(`/${fixture.personas.ownerB.handle}/books`);test.info().annotations.push({type:'lost-ack-phase',description:JSON.stringify({project:test.info().project.name,phase:'after-goto'})});const state=await page.evaluate(()=>{let consent=false,authenticated=false;try{consent=JSON.parse(localStorage.getItem('explorers-cookie-consent')||'null')?.analytics===true;authenticated=JSON.parse(localStorage.getItem('auth-storage')||'null')?.state?.isAuthenticated===true;}catch{}return {consent,authenticated,dedupKeys:Object.keys(sessionStorage).filter(k=>k.startsWith('analytics_')).length};});test.info().annotations.push({type:'lost-ack-state',description:JSON.stringify({project:test.info().project.name,...state})});await expect.poll(()=>bodies.length).toBe(2);expect(bodies[1]).toBe(bodies[0]);const id=JSON.parse(bodies[0]).eventId;await expect.poll(async()=>(await oracle(page)).events.filter((r:any)=>r.client_event_id===id).length).toBe(1);expect((await oracle(page)).receipts.filter((r:any)=>r.client_event_id===id)).toHaveLength(1);
 });
 test('consent withdrawal after committed lost acknowledgement stops retry',async({page})=>{
  await setup(page,true);let attempts=0;let id='';await page.route(`**${endpoint}`,async route=>{attempts++;id=route.request().postDataJSON().eventId;const response=await route.fetch();expect(response.status()).toBe(201);await page.evaluate(()=>{localStorage.setItem('explorers-cookie-consent',JSON.stringify({analytics:false}));window.dispatchEvent(new Event('explorers:analytics-consent-changed'));});await route.abort('failed');});

@@ -1,7 +1,9 @@
+import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import {readFileSync} from 'node:fs';
 import {test,expect,type Page,type BrowserContext,type APIRequestContext} from '@playwright/test';
 type Persona={userId:string;cookie:string;handle:string};
 const fixture=JSON.parse(readFileSync(process.env.BOOKS_E2E_FIXTURE_PATH!,'utf8')) as {origin:string;personas:{ownerA:Persona;ownerB:Persona}};
+assertFixtureOrigin(fixture);
 if(fixture.origin!==process.env.PLAYWRIGHT_EXTERNAL_BASE_URL)throw new Error('Books fixture origin mismatch');
 const base='/api/explorers/v1';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==','base64');
