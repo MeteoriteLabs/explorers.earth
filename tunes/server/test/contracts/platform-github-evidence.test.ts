@@ -51,3 +51,25 @@ describe('deadline and complete pagination', () => {
   it('rejects changing page totals',async()=>{const f=fixture((u,v)=>{if(!u.pathname.endsWith('/jobs'))return v;return u.searchParams.get('page')==='1'?{total_count:101,jobs:Array.from({length:100},(_,i)=>({...v.jobs[0],id:10000+i,name:'ordinary-'+i}))}:{total_count:102,jobs:v.jobs};});await expect(qualifyGitHubChecks(input,{token:'x',transport:f.transport})).rejects.toMatchObject({code:'JOB_PAGINATION_INVALID'});});
 });
 
+
+describe('deadline includes non-cooperative stream cleanup', () => {
+  it.each(['oversized','stalled'])('settles %s body even when cancellation never settles', async mode => {
+    vi.useFakeTimers(); const controller = new AbortController();
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+    let result: string | undefined; let cancelCalls = 0;
+    const stream = new ReadableStream<Uint8Array>({ start(c) { if (mode === 'oversized') c.enqueue(new Uint8Array(1048577)); }, cancel() { cancelCalls++; return new Promise<void>(() => {}); } });
+    try {
+      const pending = qualifyGitHubChecks(input, { token: 'x', transport: async () => new Response(stream, { headers: { 'content-type': 'application/json' } }) }).then(() => { result = 'unexpected-success'; }, error => { result = error.code; });
+      await vi.advanceTimersByTimeAsync(0); controller.abort(); await vi.advanceTimersByTimeAsync(10500);
+      expect(result).toBe(mode === 'oversized' ? 'API_BODY_LIMIT' : 'API_TIMEOUT'); expect(cancelCalls).toBe(1); await pending;
+    } finally { spy.mockRestore(); vi.useRealTimers(); }
+  });
+  it('absorbs later cleanup rejection and preserves first body-limit error', async () => {
+    let rejectCancel!: (error: Error) => void;
+    const stream = new ReadableStream<Uint8Array>({start(c){c.enqueue(new Uint8Array(1048577));},cancel(){return new Promise<void>((_,reject)=>{rejectCancel=reject;});}});
+    let settled: string | undefined;
+    const pending=qualifyGitHubChecks(input,{token:'x',transport:async()=>new Response(stream,{headers:{'content-type':'application/json'}})}).then(()=>{settled='success';},error=>{settled=error.code;});
+    await new Promise(resolve=>setTimeout(resolve,10)); expect(settled).toBe('API_BODY_LIMIT');
+    rejectCancel(new Error('private cleanup message')); await pending; await new Promise(resolve=>setTimeout(resolve,0));
+  });
+});

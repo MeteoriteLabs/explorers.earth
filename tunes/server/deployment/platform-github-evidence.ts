@@ -36,7 +36,9 @@ export async function qualifyGitHubChecks(input: unknown, options: GitHubEvidenc
       const length = response.headers.get('content-length'); if (length && (!/^\d+$/.test(length) || Number(length) > 1048576)) fail('API_BODY_LIMIT');
       const reader = response.body?.getReader(); if (!reader) fail('API_BODY_INVALID');
       const chunks: Uint8Array[] = []; let size = 0;
-      try { while (true) { const part = await Promise.race([reader.read(), timeoutPromise]); if (part.done) break; size += part.value.byteLength; if (size > 1048576) fail('API_BODY_LIMIT'); chunks.push(part.value); } } finally { await reader.cancel().catch(() => {}); }
+      try { while (true) { const part = await Promise.race([reader.read(), timeoutPromise]); if (part.done) break; size += part.value.byteLength; if (size > 1048576) fail('API_BODY_LIMIT'); chunks.push(part.value); } } finally { // Request cleanup without allowing a non-cooperative stream to block the first failure or deadline.
+        try { void reader.cancel().catch(() => {}); } catch { /* Preserve the acquisition outcome even if cancellation throws synchronously. */ }
+      }
       const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
       try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown; } catch { return fail('API_JSON_INVALID'); }
     } catch (error) { if (error instanceof GitHubEvidenceError) throw error; return fail(signal.aborted ? 'API_TIMEOUT' : 'API_REQUEST_FAILED'); } finally { signal.removeEventListener('abort', onTimeout); }
@@ -68,6 +70,7 @@ export async function qualifyGitHubChecks(input: unknown, options: GitHubEvidenc
   }
   return Object.freeze({ releaseQualified: false as const, sourceCommit: selected.sourceCommit, repositoryId: GITHUB_CHECK_POLICY.repositoryId, checks: Object.freeze(checks.map(check => Object.freeze(check))) });
 }
+
 
 
 
