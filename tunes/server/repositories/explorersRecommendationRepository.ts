@@ -1,9 +1,11 @@
+import {insertMovieDetails,readMovieEntity,writeMovieContext,readMovieContext,checkMovieContext,writeMovieTerms} from './movieCatalogRepository';
+import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveManualMovieSchema,type MovieContext} from '../../shared/explorersMovieContract';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides } from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
-import {emptyBookDetails,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
+import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
 import {insertBookDetails,readBookEntity,writeBookContext} from './bookCatalogRepository';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
@@ -140,6 +142,19 @@ export class ExplorersRecommendationRepository {
       return readBookEntity(db,entity.id);
     });
   }
+  async resolveMovieEntity(accountId:string,input:{kind:'provider';category:'movies';externalKind:'movie'|'tv';externalId:string}|{kind:'manual';category:'movies';details:Record<string,unknown>},key:string,fetchCandidate:()=>Promise<any>) {
+    return this.command(accountId,'resolveMovieEntity',input,key,async db=>{
+      if(input.kind==='manual'){const parsed=resolveManualMovieSchema.parse(input);const {title,mediaType,...fields}=parsed.details;const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('movie',$1,'manual',to_tsvector('simple',$1)) RETURNING id",[title])).rows[0];await insertMovieDetails(db,entity.id,movieDetailsSchema.parse({...emptyMovieDetails(mediaType),...fields}));return readMovieEntity(db,entity.id);}
+      const candidate=await fetchCandidate();
+      await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[canonical(['tmdb',input.externalKind,input.externalId])]);
+      const prior=(await db.query("SELECT entity_id FROM entity_identifiers WHERE provider='tmdb' AND external_kind=$1 AND external_id=$2",[input.externalKind,input.externalId])).rows[0];
+      if(prior)return readMovieEntity(db,prior.entity_id);
+      const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('movie',$1,'provider',to_tsvector('simple',$1)) RETURNING id",[candidate.title])).rows[0];
+      await insertMovieDetails(db,entity.id,candidate.details);
+      await db.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id,fetched_at,source_url) VALUES($1,'tmdb',$2,$3,$4,$5)",[entity.id,input.externalKind,input.externalId,new Date(candidate.provenance.fetchedAt),candidate.provenance.sourceUrl]);
+      return readMovieEntity(db,entity.id);
+    });
+  }
   private async replaceOverrides(db:PoolClient,accountId:string,id:string,values:DisplayOverrides) {
     if(Object.keys(values).length===0) {await db.query('DELETE FROM recommendation_display_overrides WHERE recommendation_id=$1 AND account_id=$2',[id,accountId]);return;}
     await db.query(`INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$2,$3::jsonb)
@@ -180,7 +195,7 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext},key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[]},key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
@@ -192,6 +207,7 @@ export class ExplorersRecommendationRepository {
       await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1',[input.collectionId]);
       if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,result.rows[0].id,input.displayOverrides);
       if(input.bookContext!==undefined) await writeBookContext(db,result.rows[0].id,accountId,input.bookContext);
+      if(input.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[input.entityId])).rows[0]){await writeMovieContext(db,result.rows[0].id,accountId,input.entityId,input.movieContext??{region:'US',selectedProviderIds:null});await writeMovieTerms(db,result.rows[0].id,accountId,input.entityId,input.movieTermIds);}
       await this.replaceMedia(db,accountId,result.rows[0].id,input.mediaIds??[]);
       return this.recommendationRecord(db,result.rows[0]);
     });
@@ -244,16 +260,19 @@ export class ExplorersRecommendationRepository {
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
   }
-  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext},key:string):Promise<RecommendationRecord> {
+  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[]},key:string):Promise<RecommendationRecord> {
     if(input.userRating!==undefined&&input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockRecommendation(db,accountId,id,expectedRevision);
-      if(locked.category!=='books'&&(input.bookContext!==undefined||Object.keys(input.displayOverrides??{}).some(k=>k!=='title')))throw new RecommendationFailure(422,'Book values require books category');
+      if(locked.category!=='books'&&input.bookContext!==undefined||locked.category!=='movies'&&(input.movieContext!==undefined||input.movieTermIds!==undefined))throw new RecommendationFailure(422,'Category context mismatch');
+      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
       const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
         publication_state=coalesce($4,publication_state),note=CASE WHEN $5 THEN $6::jsonb ELSE note END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null,input.note!==undefined,input.note==null?null:JSON.stringify(input.note)]);
       if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,id,input.displayOverrides);
       if(input.bookContext!==undefined) await writeBookContext(db,id,accountId,input.bookContext);
+      if(input.movieContext!==undefined)await writeMovieContext(db,id,accountId,locked.entity_id,input.movieContext);
+      if(input.movieTermIds!==undefined)await writeMovieTerms(db,id,accountId,locked.entity_id,input.movieTermIds);
       if(input.mediaIds!==undefined) await this.replaceMedia(db,accountId,id,input.mediaIds);
       return this.recommendationRecord(db,result.rows[0]);
     });
@@ -266,6 +285,7 @@ export class ExplorersRecommendationRepository {
       if(!entity)throw new RecommendationFailure(404,'Entity unavailable');
       const expected:Record<string,string[]>={places:['place','person'],books:['book'],movies:['movie'],games:['game'],apps:['app'],products:['product'],people:['person']};
       if(!expected[current.category]?.includes(entity.kind))throw new RecommendationFailure(422,'Entity category mismatch');
+      if(current.category==='movies'&&(await db.query('SELECT 1 FROM movie_recommendation_context WHERE recommendation_id=$1',[id])).rows[0])await checkMovieContext(db,entityId,await readMovieContext(db,id,accountId));
       const parent=(await db.query('SELECT c.id FROM collections c JOIN collection_items ci ON ci.collection_id=c.id AND ci.account_id=c.account_id AND ci.category=c.category WHERE ci.recommendation_id=$1 AND c.account_id=$2 AND c.archived_at IS NULL ORDER BY c.id FOR UPDATE OF c',[id,accountId])).rows;
       if(!parent.length)throw new RecommendationFailure(404,'Recommendation aggregate unavailable');
       const result=(await db.query('UPDATE recommendations SET entity_id=$2,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id,entityId])).rows[0];

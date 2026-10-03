@@ -44,6 +44,7 @@ describe("Music surface authorization policy", () => {
   });
   it.each([
     ["explorersCatalogRoutes", "GET", "/api/explorers/v1/catalog/books", "explorers-owner"],
+    ["explorersCatalogRoutes", "GET", "/api/explorers/v1/catalog/movies", "explorers-owner"],
     ["explorersAccountRoutes", "PATCH", "/api/explorers/v1/account", "explorers-owner"],
     ["explorersMediaRoutes", "POST", "/api/explorers/v1/media", "explorers-owner"],
     ["explorersMediaRoutes", "DELETE", "/api/explorers/v1/media/:id", "explorers-owner"],
@@ -258,3 +259,5 @@ describe("Music surface authorization policy", () => {
     ]);
   });
 });
+
+it('admits Movies catalog only through its exact canonical source and GET while preserving retired guards',()=>{const r={source:'tunes/server/routes/explorersCatalogRoutes.ts',method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'private'};expect(decisionForRoute(r)).toBe('explorers-owner');for(const change of [{method:'ALL'},{method:'POST'},{source:'tunes/server/routes/legacyMovies.ts'},{path:'/api/explorers/v1/catalog/movies/internal'},{path:'/api/movies'},{classification:'tombstone'}])expect(decisionForRoute({...r,...change})).toBe('tombstone');});

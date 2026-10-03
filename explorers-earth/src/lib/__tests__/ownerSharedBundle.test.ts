@@ -11,7 +11,7 @@ it('bundles sibling owner validators without sibling dependencies and executes s
   if(!directory.startsWith(resolve(tmpdir(),'owner-shared-bundle-'))) throw new Error('Unexpected test directory');
   try {
     const frontend=resolve(directory,'frontend'),shared=resolve(directory,'tunes/shared');mkdirSync(frontend,{recursive:true});mkdirSync(shared,{recursive:true});
-    for(const file of ['explorersOwnerContentContract.ts','explorersContract.ts','explorersRichNoteContract.ts','explorersBookContract.ts','explorersBookCoverContract.ts']) writeFileSync(resolve(shared,file),readFileSync(resolve(import.meta.dirname,'../../../../tunes/shared',file)));
+    for(const file of ['explorersOwnerContentContract.ts','explorersContract.ts','explorersRichNoteContract.ts','explorersBookContract.ts','explorersBookCoverContract.ts','explorersMovieContract.ts']) writeFileSync(resolve(shared,file),readFileSync(resolve(import.meta.dirname,'../../../../tunes/shared',file)));
     const entry=resolve(frontend,'entry.ts');writeFileSync(entry,"export {ownerCollectionsRequestSchema,ownerTopPicksRequestSchema,ownerTopPickPageSchema} from '../tunes/shared/explorersOwnerContentContract'; export {categoryTopPicksInputSchema} from '../tunes/shared/explorersContract';");
     const config=await viteConfig({command:'build',mode:'production',isSsrBuild:false,isPreview:false});
     const output=await build({configFile:false,envDir:false,root:frontend,resolve:config.resolve,logLevel:'silent',build:{write:false,minify:false,lib:{entry,name:'ownerValidator',formats:['iife']}}});

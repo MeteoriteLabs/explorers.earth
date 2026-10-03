@@ -1,3 +1,5 @@
+import {MovieCatalog} from '../services/movieCatalog';
+import {authorizeOperation} from '../application/authorization';
 import {setupCanonicalAnalyticsRoutes} from '../routes/explorersCanonicalAnalyticsRoutes';
 import { contentBodyParser } from '../application/contentBodyParser';
 import { randomUUID } from "node:crypto";
@@ -34,7 +36,7 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 }
 
 export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
-  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher } = {}): { app: Express; auth: ReturnType<typeof createExplorersAuth> } {
+  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog } = {}): { app: Express; auth: ReturnType<typeof createExplorersAuth> } {
   const app = express();
   const auth = createExplorersAuth(pool, config);
 
@@ -55,8 +57,9 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   setupExplorersAccountRoutes(app, pool, auth, config);
   setupCanonicalAnalyticsRoutes(app,pool,auth);
   const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
-  setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher));
-  setupExplorersCatalogRoutes(app,pool,auth,config,books);
+  const movies=options.movieCatalog??new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(pool,a,'entities:resolve',a.accountId)});
+  setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies);
+  setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
   setupExplorersPublicContentRoutes(app, pool, config.secret);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage));

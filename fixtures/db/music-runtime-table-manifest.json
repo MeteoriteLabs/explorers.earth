@@ -2,8 +2,8 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0036_explorers_analytics_events",
-    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql", "0018_transactional_queue_replacement.sql", "0019_queue_visibility_control.sql", "0020_public_snapshot_revision.sql", "0021_explorers_analytics_receipts.sql", "0022_explorers_identity.sql", "0023_explorers_authorization.sql", "0024_explorers_profile_media.sql", "0025_explorers_media_attachment_guard.sql", "0026_explorers_media_slot_compatibility.sql", "0027_explorers_lifecycle.sql", "0028_explorers_recovery_proof_retention.sql", "0029_explorers_recommendations.sql", "0030_explorers_media_purpose_guard.sql", "0031_explorers_content_revision.sql", "0032_explorers_owner_page_indexes.sql", "0033_explorers_recommendation_display_overrides.sql", "0034_explorers_books_provider_context.sql", "0035_explorers_book_cover_import.sql", "0036_explorers_analytics_events.sql"],
+    "expectedId": "0037_explorers_movies_provider_context",
+    "files": ["0001_runtime_baseline.sql", "0002_identity_lifecycle.sql", "0003_identity_lifecycle_hardening.sql", "0004_identity_delete_saga.sql", "0005_resource_bound_deletion_history.sql", "0006_numeric_identity_lock.sql", "0007_identity_provider_snapshot.sql", "0008_credential_revocation_operations.sql", "0009_credential_revocation_history_immutability.sql", "0010_least_privilege_runtime_role.sql", "0011_durable_publication_idempotency.sql", "0012_publication_replay_expiry_guard.sql", "0013_publication_operation_database_clock.sql", "0014_durable_reactivation_authority.sql", "0015_publication_operation_archive.sql", "0016_publication_operation_retention.sql", "0017_publication_idempotency_key_retirement.sql", "0018_transactional_queue_replacement.sql", "0019_queue_visibility_control.sql", "0020_public_snapshot_revision.sql", "0021_explorers_analytics_receipts.sql", "0022_explorers_identity.sql", "0023_explorers_authorization.sql", "0024_explorers_profile_media.sql", "0025_explorers_media_attachment_guard.sql", "0026_explorers_media_slot_compatibility.sql", "0027_explorers_lifecycle.sql", "0028_explorers_recovery_proof_retention.sql", "0029_explorers_recommendations.sql", "0030_explorers_media_purpose_guard.sql", "0031_explorers_content_revision.sql", "0032_explorers_owner_page_indexes.sql", "0033_explorers_recommendation_display_overrides.sql", "0034_explorers_books_provider_context.sql", "0035_explorers_book_cover_import.sql", "0036_explorers_analytics_events.sql", "0037_explorers_movies_provider_context.sql"],
     "controlTables": ["music_schema_migrations", "music_identity_tombstones", "music_identity_lifecycle_operations", "music_credential_revocation_operations", "music_publication_operations", "music_publication_operation_archive", "music_reactivation_tokens", "music_owner_operations", "explorers_analytics_receipts"]
   },
   "generatedFrom": ["tunes/shared/schema.ts", "tunes/shared/authSchema.ts", "tunes/shared/explorersSchema.ts", "tunes/server/**/*.ts"],
@@ -69,7 +69,14 @@
     { "name": "youtube_music", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
     { "name": "youtube_music_playlists", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
     { "name": "youtube_playlists", "managedBy": "unmanaged-raw-sql", "family": "user-content", "lifecycle": "delete" },
-    { "name": "youtube_tokens", "managedBy": "unmanaged-raw-sql", "family": "security-audit", "lifecycle": "revoke-delete" }
+    { "name": "youtube_tokens", "managedBy": "unmanaged-raw-sql", "family": "security-audit", "lifecycle": "revoke-delete" },
+    { "name": "movie_entity_details", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" },
+    { "name": "movie_entity_provider_genres", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" },
+    { "name": "movie_provider_genre_terms", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" },
+    { "name": "movie_recommendation_context", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "recommendation_taxonomy", "managedBy": "drizzle", "family": "user-content", "lifecycle": "strip-on-deletion" },
+    { "name": "taxonomy_term_translations", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" },
+    { "name": "taxonomy_terms", "managedBy": "drizzle", "family": "user-content", "lifecycle": "retain-shared-catalog" }
   ],
   "systemReferences": ["pg_stat_activity"]
 }

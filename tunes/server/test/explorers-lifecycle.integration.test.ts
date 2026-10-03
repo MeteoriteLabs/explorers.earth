@@ -94,17 +94,29 @@ describe("canonical account lifecycle", () => {
     await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[list.id,owner.accountId,mediaId]);
     const storedCover=await new MediaService(pool,storage).createMedia(await webActor(owner),{purpose:'recommendation',filename:'book.png',mimeType:'image/png',bytes:png,length:png.length},{requestId:randomUUID()});
     await pool.query("INSERT INTO recommendation_book_covers(recommendation_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3),($1,$2,'thumbnail',$3)",[item.id,owner.accountId,storedCover.id]);
+    const sharedMovie=(await pool.query("INSERT INTO entities(kind,title,origin) VALUES('movie','Retained Movie facts','manual') RETURNING id")).rows[0].id;
+    await pool.query("INSERT INTO movie_entity_details(entity_id,media_type,runtime_minutes) VALUES($1,'movie',0)",[sharedMovie]);
+    const movieList=await repository.createCollection(owner.accountId,{category:'movies',title:'Movies',slug:'movies'},randomUUID());
+    const movieItem=await repository.createRecommendation(owner.accountId,{category:'movies',entityId:sharedMovie,collectionId:movieList.id,expectedCollectionRevision:1},randomUUID());
+    const otherMovieList=await repository.createCollection(other.accountId,{category:'movies',title:'Movies',slug:'movies'},randomUUID());
+    const retainedMovie=await repository.createRecommendation(other.accountId,{category:'movies',entityId:sharedMovie,collectionId:otherMovieList.id,expectedCollectionRevision:1},randomUUID());
+    const sharedTerm=(await pool.query("SELECT id FROM taxonomy_terms WHERE category='movies' AND slug='animation'")).rows[0].id;
+    await pool.query("INSERT INTO recommendation_taxonomy(recommendation_id,account_id,category,term_id,position) VALUES($1,$2,'movies',$3,0),($4,$5,'movies',$3,0)",[movieItem.id,owner.accountId,sharedTerm,retainedMovie.id,other.accountId]);
     const operation=await pendingDeletion(owner);
     await runAccountLifecycleMaintenance(pool,new LocalObjectStorage());
     expect((await pool.query('SELECT status FROM creator_accounts WHERE id=$1',[owner.accountId])).rows[0].status).toBe('deleted');
     expect((await pool.query('SELECT state FROM account_lifecycle_operations WHERE id=$1',[operation])).rows[0].state).toBe('succeeded');
-    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_book_covers','book_recommendation_context','category_recommendation_pins','account_category_pin_state','media_assets']) {
+    for(const table of ['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_book_covers','book_recommendation_context','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state','media_assets']) {
       expect((await pool.query(`SELECT 1 FROM ${table} WHERE account_id=$1`,[owner.accountId])).rowCount,table).toBe(0);
     }
     expect((await pool.query('SELECT id FROM entities WHERE id=$1',[shared])).rowCount).toBe(1);
     expect((await pool.query('SELECT id FROM recommendations WHERE id=$1',[otherItem.id])).rowCount).toBe(1);
     expect((await pool.query('SELECT authors FROM book_entity_details WHERE entity_id=$1',[shared])).rows[0].authors).toEqual(['Shared author']);
     expect((await pool.query('SELECT recommendation_id FROM book_recommendation_context WHERE recommendation_id=$1',[otherItem.id])).rowCount).toBe(1);
+    expect((await pool.query('SELECT runtime_minutes FROM movie_entity_details WHERE entity_id=$1',[sharedMovie])).rows).toEqual([{runtime_minutes:0}]);
+    expect((await pool.query('SELECT id FROM taxonomy_terms WHERE id=$1',[sharedTerm])).rowCount).toBe(1);
+    expect((await pool.query('SELECT recommendation_id FROM recommendation_taxonomy WHERE recommendation_id=$1',[retainedMovie.id])).rowCount).toBe(1);
+    expect((await pool.query('SELECT recommendation_id FROM movie_recommendation_context WHERE recommendation_id=$1',[retainedMovie.id])).rowCount).toBe(1);
     await expect(storage.get(key)).rejects.toMatchObject({code:'ENOENT'});
     expect(await runAccountLifecycleMaintenance(pool,new LocalObjectStorage())).toBe(0);
   });

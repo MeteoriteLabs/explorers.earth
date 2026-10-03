@@ -1,3 +1,4 @@
+import {movieContextSchema,movieDisplayFieldsSchema,resolveProviderMovieSchema,resolveManualMovieSchema} from './explorersMovieContract';
 import { z } from "zod/v3";
 import { richNoteSchema } from './explorersRichNoteContract';
 import {bookDisplayFieldsSchema,bookRecommendationContextSchema,resolveProviderBookSchema,resolveManualBookSchema} from './explorersBookContract';
@@ -51,8 +52,8 @@ const recommendationMediaIds = z.array(contentIdSchema).max(20).refine(ids=>new 
 // normalize boundary whitespace and reject controls and malformed Unicode.
 export const catalogTitleSchema=z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500,'Invalid title length');
 export const displayTitleWriteSchema=z.string().trim().pipe(catalogTitleSchema).refine(v=>!/[\u0000-\u001f\u007f]/.test(v)&&!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v),'Invalid title characters');
-export const displayOverridesSchema=bookDisplayFieldsSchema.extend({title:displayTitleWriteSchema.nullable().optional()}).strict();
-export const displayOverridesReadSchema=bookDisplayFieldsSchema.extend({title:z.string().refine(v=>v===v.trim(),'Unnormalized stored title').pipe(displayTitleWriteSchema).nullable().optional()}).strict();
+export const displayOverridesSchema=bookDisplayFieldsSchema.extend(movieDisplayFieldsSchema.shape).extend({title:displayTitleWriteSchema.nullable().optional()}).strict();
+export const displayOverridesReadSchema=bookDisplayFieldsSchema.extend(movieDisplayFieldsSchema.shape).extend({title:z.string().refine(v=>v===v.trim(),'Unnormalized stored title').pipe(displayTitleWriteSchema).nullable().optional()}).strict();
 export type DisplayOverrides=z.infer<typeof displayOverridesSchema>;
 export const contentRevisionSchema = z.object({expectedRevision:contentRevision}).strict();
 export const createCollectionSchema = z.object({category:contentCategorySchema,title:contentTitle,slug:contentSlug,
@@ -64,9 +65,9 @@ export const updateCollectionSchema = z.object({expectedRevision:contentRevision
   .refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const createRecommendationSchema = z.object({category:recommendationCategorySchema,entityId:contentIdSchema,
   collectionId:contentIdSchema,expectedCollectionRevision:contentRevision,userRating:userRating.default(null),
-  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([]),note:richNoteSchema.nullable().default(null),displayOverrides:displayOverridesSchema.optional(),bookContext:bookRecommendationContextSchema.optional()}).strict().refine(v=>v.category==='books'||v.bookContext===undefined&&Object.keys(v.displayOverrides??{}).every(k=>k==='title'),'Book values require books category');
+  publicationState:publicationState.default('draft'),mediaIds:recommendationMediaIds.default([]),note:richNoteSchema.nullable().default(null),displayOverrides:displayOverridesSchema.optional(),bookContext:bookRecommendationContextSchema.optional(),movieContext:movieContextSchema.optional(),movieTermIds:z.array(contentIdSchema).max(32).refine(v=>new Set(v).size===v.length).optional()}).strict().refine(v=>(v.category==='books'?v.movieContext===undefined&&v.movieTermIds===undefined&&bookDisplayFieldsSchema.extend({title:displayTitleWriteSchema.nullable().optional()}).safeParse(v.displayOverrides??{}).success:v.category==='movies'?v.bookContext===undefined&&movieDisplayFieldsSchema.extend({title:displayTitleWriteSchema.nullable().optional()}).safeParse(v.displayOverrides??{}).success:v.bookContext===undefined&&v.movieContext===undefined&&v.movieTermIds===undefined&&Object.keys(v.displayOverrides??{}).every(k=>k==='title')),'Book values require books category');
 export const updateRecommendationSchema = z.object({expectedRevision:contentRevision,userRating:userRating.optional(),
-  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional(),note:richNoteSchema.nullable().optional(),displayOverrides:displayOverridesSchema.optional(),bookContext:bookRecommendationContextSchema.optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
+  publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional(),note:richNoteSchema.nullable().optional(),displayOverrides:displayOverridesSchema.optional(),bookContext:bookRecommendationContextSchema.optional(),movieContext:movieContextSchema.optional(),movieTermIds:z.array(contentIdSchema).max(32).refine(v=>new Set(v).size===v.length).optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const reorderCollectionSchema = z.object({expectedRevision:contentRevision,
   orderedRecommendationIds:z.array(contentIdSchema).max(10000)}).strict();
 export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,
@@ -83,10 +84,10 @@ export type RecommendationCoreDto = z.infer<typeof recommendationCoreDtoSchema>;
 export const resolveExistingEntitySchema = z.object({entityId:contentIdSchema,category:recommendationCategorySchema}).strict();
 export const entityCoreDtoSchema = z.object({id:contentIdSchema,kind:catalogKindSchema,title:catalogTitleSchema}).strict();
 export const resolveManualEntitySchema=z.object({kind:z.literal('manual'),category:topPickCategorySchema,details:z.object({title:displayTitleWriteSchema}).strict()}).strict();
-export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema,resolveProviderBookSchema,resolveManualBookSchema]);
+export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema,resolveProviderBookSchema,resolveManualBookSchema,resolveProviderMovieSchema,resolveManualMovieSchema]);
 export type ResolveManualEntityInput=z.input<typeof resolveManualEntitySchema>;
 
-export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE"] as const;
+export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE"] as const;
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.enum(apiErrorCodes),

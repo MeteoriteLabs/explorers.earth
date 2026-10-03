@@ -140,6 +140,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
     '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',
   ].includes(route.path)) return 'public';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/books')return 'explorers-owner';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
       && [
         ["POST", "/api/explorers/v1/entities/resolve"],

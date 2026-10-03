@@ -39,6 +39,10 @@ const expectedRuntimeTables = [
   "initial_account_bindings",
   "media_assets",
   "media_objects",
+  "movie_entity_details",
+  "movie_entity_provider_genres",
+  "movie_provider_genre_terms",
+  "movie_recommendation_context",
   "music_credential_revocation_operations",
   "music_identity_lifecycle_operations",
   "music_identity_tombstones",
@@ -57,11 +61,14 @@ const expectedRuntimeTables = [
   "recommendation_book_covers",
   "recommendation_display_overrides",
   "recommendation_media",
+  "recommendation_taxonomy",
   "recommendations",
   "seo_settings",
   "session",
   "songs",
   "system_settings",
+  "taxonomy_term_translations",
+  "taxonomy_terms",
   "team_members",
   "user_activity",
   "user_profiles",
@@ -121,11 +128,19 @@ const expectedRuntimeFunctions = [
   "finalize_music_identity_deletion(integer,text,text)",
   "guard_book_entity_details()",
   "guard_book_recommendation_context()",
+  "guard_movie_context()",
+  "guard_movie_details()",
+  "guard_movie_genres()",
   "guard_recommendation_book_cover()",
   "guard_recommendation_entity_kind()",
   "guard_recommendation_media()",
+  "guard_recommendation_taxonomy()",
+  "guard_taxonomy_tree()",
+  "lock_movie_genre_parent()",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",
+  "lock_recommendation_taxonomy_parent()",
+  "lock_taxonomy_tree()",
   "music_compact_publication_operations(integer)",
   "music_lookup_publication_operation_archive(integer,text)",
   "provision_music_runtime_login(name,text)",
@@ -138,6 +153,7 @@ const expectedRuntimeFunctions = [
   "reject_unauthorized_music_identity_delete()",
   "retain_music_identity_tombstone_on_delete()",
   "stamp_explorers_session_version()",
+  "validate_movie_context(uuid,text,bigint[])",
 ] as const;
 
 export interface MusicRuntimeLoginInput {
@@ -599,7 +615,9 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
-      ON entity_identifiers,book_entity_details FROM ${capabilityRole}`);
+      ON entity_identifiers,book_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
+    await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
@@ -744,13 +762,13 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
       || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
-    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state"
+    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms"].includes(row.object_name)
       ? [true, false, false, false]
       : ["analytics_events","analytics_event_receipts"].includes(row.object_name)
         ? [true,true,false,false]
       : row.object_name === "account_music_identity"
         ? [true, true, false, false]
-      : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details"
+      : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
         ? [true, true, false, false]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
@@ -804,6 +822,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
+          && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }

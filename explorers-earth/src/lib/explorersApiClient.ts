@@ -1,3 +1,4 @@
+import {movieSearchRequestSchema,movieCandidatesSchema,movieEntityDtoSchema,resolveProviderMovieSchema,resolveManualMovieSchema} from '../../../tunes/shared/explorersMovieContract';
 import {importBookCoversSchema,bookCoverImportResultSchema} from '../../../tunes/shared/explorersBookCoverContract';
 import type { AccountDto, MediaDto, RevisionInput, UpdateAccountInput } from "../../../tunes/shared/explorersContract";
 import {searchRequestSchema,searchPageSchema,SEARCH_PAGE_BYTES,type SearchInput} from '../../../tunes/shared/explorersSearchContract';
@@ -301,6 +302,13 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
+  async searchMovieCandidates(input:z.input<typeof movieSearchRequestSchema>,signal?:AbortSignal){
+   const parsed=commandInput(movieSearchRequestSchema,input);const result=await ownerRead('/catalog/movies',parsed,movieCandidatesSchema,signal,true);if(parsed.mediaType&&result.items.some(x=>x.externalKind!==parsed.mediaType))throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Movie candidate kind');return result;
+  },
+  async resolveMovieEntity(input:z.input<typeof resolveProviderMovieSchema>|z.input<typeof resolveManualMovieSchema>,key:string,signal?:AbortSignal){
+   const body=commandInput(z.union([resolveProviderMovieSchema,resolveManualMovieSchema]),input);const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',movieEntityDtoSchema,signal);
+   if(body.kind==='provider'?(entity.origin!=='provider'||entity.provenance?.externalKind!==body.externalKind||entity.provenance?.externalId!==body.externalId):(entity.origin!=='manual'||entity.provenance!==null||entity.title!==body.details.title||entity.details.mediaType!==body.details.mediaType))throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved Movie identity');return entity;
+  },
   async searchBookCandidates(input:{query:string;limit?:number;cursor?:string},signal?:AbortSignal){
    const parsed=commandInput(bookCandidateRequestSchema,input);return ownerRead('/catalog/books',parsed,bookCandidatesSchema,signal,true);
   },

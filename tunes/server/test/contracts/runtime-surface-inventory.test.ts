@@ -42,7 +42,9 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(5);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(6);
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'canonical-explorers-owner'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/movies',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/books',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/public/recommendations/search',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/public/recommendations/search',classification:'public',policy:'explicit-public-contract'}));

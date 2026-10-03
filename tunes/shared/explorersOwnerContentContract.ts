@@ -1,8 +1,9 @@
+import {movieEntityDtoSchema,movieDetailsSchema,movieContextSchema,movieTermsSchema,movieDisplayFieldsSchema} from './explorersMovieContract';
 import {bookCoversSchema} from './explorersBookCoverContract';
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema,entityCoreDtoSchema,displayOverridesReadSchema,catalogTitleSchema } from './explorersContract';
 import { richNoteSchema } from './explorersRichNoteContract';
-import {bookEntityDtoSchema,bookEntityDetailsSchema,bookRecommendationContextSchema} from './explorersBookContract';
+import {bookEntityDtoSchema,bookEntityDetailsSchema,bookRecommendationContextSchema,bookDisplayFieldsSchema} from './explorersBookContract';
 const status=z.enum(['active','archived','all']).default('active');
 const token=z.string().min(1).max(4096);
 const limit=z.union([z.number().int().min(1).max(100),z.string().regex(/^[1-9][0-9]{0,2}$/).transform(Number).pipe(z.number().max(100))]).default(24);
@@ -13,14 +14,18 @@ export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.st
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
 export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision}).strict();
-export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional()}).strict().superRefine((v,ctx)=>{
+export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional()}).strict().superRefine((v,ctx)=>{
  const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};
  const title=Object.prototype.hasOwnProperty.call(v.displayOverrides,'title')?v.displayOverrides.title:v.entity.title;
  if(v.entity.id!==v.entityId||!expected[v.category].includes(v.entity.kind)||v.displayTitle!==title)ctx.addIssue({code:'custom',message:'Inconsistent catalog presentation'});
- if(v.category!=='books'&&(v.bookCovers!==undefined||v.bookContext!==undefined||v.effectiveBookDetails!==undefined||Object.keys(v.displayOverrides).some(k=>k!=='title')))ctx.addIssue({code:'custom',message:'Inconsistent Book presentation'});
+ if(v.category!=='books'&&(v.bookCovers!==undefined||v.bookContext!==undefined||v.effectiveBookDetails!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Book presentation'});
+ if(v.category!=='movies'&&(v.movieContext!==undefined||v.effectiveMovieDetails!==undefined||v.movieTerms!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Movie presentation'});
+ const {title:_title,...fields}=v.displayOverrides;
+ if(v.category==='books'?!bookDisplayFieldsSchema.safeParse(fields).success:v.category==='movies'?!movieDisplayFieldsSchema.safeParse(fields).success:Object.keys(fields).length>0)ctx.addIssue({code:'custom',message:'Inconsistent category overrides'});
  if('details' in v.entity){
-  if(v.category!=='books'||!v.bookContext||!v.effectiveBookDetails)ctx.addIssue({code:'custom',message:'Missing Book presentation'});
-  else for(const [key,value] of Object.entries(v.entity.details))if(JSON.stringify((v.effectiveBookDetails as any)[key])!==JSON.stringify(Object.prototype.hasOwnProperty.call(v.displayOverrides,key)?(v.displayOverrides as any)[key]:value))ctx.addIssue({code:'custom',message:'Inconsistent effective Book details'});
+  const effective=v.entity.kind==='book'?v.effectiveBookDetails:v.effectiveMovieDetails;
+  if(v.entity.kind==='book'?v.category!=='books'||!v.bookContext||!effective:v.category!=='movies'||!v.movieContext||!v.movieTerms||!effective)ctx.addIssue({code:'custom',message:'Missing typed presentation'});
+  else for(const [key,value] of Object.entries(v.entity.details))if(JSON.stringify((effective as any)[key])!==JSON.stringify(Object.prototype.hasOwnProperty.call(v.displayOverrides,key)?(v.displayOverrides as any)[key]:value))ctx.addIssue({code:'custom',message:'Inconsistent effective details'});
  }
 });
 export type EditableOwnerCollection=z.infer<typeof editableOwnerCollectionSchema>;

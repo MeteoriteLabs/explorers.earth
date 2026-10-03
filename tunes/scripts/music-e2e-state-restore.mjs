@@ -52,7 +52,7 @@ export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
 const revisionTriggers = Object.freeze([
-  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
     [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
       table,name:`${table}_content_revision_${event}`,enabled:'O',type,
       function:`explorers_content_revision_${event}`,
@@ -87,6 +87,18 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 }),
   Object.freeze({ table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 }),
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_details',name:'movie_details_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'movie_details_entity_constraint',enabled:'O',type:17}),
+  Object.freeze({table:'entity_identifiers',name:'movie_details_identity_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_provider_genres',name:'movie_genre_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'movie_entity_provider_genres',name:'movie_genres_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_details',name:'movie_genres_details_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'taxonomy_terms',name:'taxonomy_tree_lock',enabled:'O',type:23}),
+  Object.freeze({table:'taxonomy_terms',name:'taxonomy_tree_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'movie_recommendation_context',name:'movie_context_constraint',enabled:'O',type:23}),
+  Object.freeze({table:'recommendations',name:'movie_context_replacement_constraint',enabled:'O',type:19}),
   ...revisionTriggers,
 ].sort((a,b) => a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
 

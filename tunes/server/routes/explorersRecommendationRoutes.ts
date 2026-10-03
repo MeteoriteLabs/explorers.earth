@@ -1,3 +1,4 @@
+import {MovieCatalog,MovieProviderFailure} from '../services/movieCatalog';
 import {BookCoverImportService} from '../application/bookCoverImport';
 import {MediaService} from '../application/media';
 import { randomUUID } from 'node:crypto';
@@ -15,8 +16,8 @@ import type { RequestContext } from '../../shared/explorersContract';
 import {SearchFailure} from '../application/searchQuery';
 import {BookProviderFailure,BookCatalog} from '../services/bookCatalog';
 
-export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog,coverImporter=new BookCoverImportService(pool,new MediaService(pool))) {
-  const service=new RecommendationService(pool),catalog=new CatalogService(pool,books);
+export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog,coverImporter=new BookCoverImportService(pool,new MediaService(pool)),movies?:MovieCatalog) {
+  const service=new RecommendationService(pool),catalog=new CatalogService(pool,books,movies);
   const ownerContent=new OwnerContentService(pool,config.secret);
   const routes=Router({caseSensitive:true,strict:true});
   const unsupported=(_request:Request,response:Response)=>response.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}});
@@ -30,7 +31,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const result=await work(actor,String(request.params.id??''),request.body,{requestId,idempotencyKey:request.get('Idempotency-Key')});
       return response.status(status).json({[name]:result});
     } catch(error) {
-      if(error instanceof BookProviderFailure){if(error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
+      if(error instanceof BookProviderFailure||error instanceof MovieProviderFailure){if(error instanceof BookProviderFailure&&error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
       if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
     }

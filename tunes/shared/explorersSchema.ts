@@ -200,3 +200,27 @@ export const analyticsEvents=pgTable('analytics_events',{
 export const analyticsEventReceipts=pgTable('analytics_event_receipts',{
  accountId:uuid('account_id').notNull(),clientEventId:text('client_event_id').notNull(),inputHash:bytea('input_hash').notNull(),eventId:uuid('event_id'),acceptedAt:timestamp('accepted_at',{withTimezone:true}).notNull().defaultNow(),retiredAt:timestamp('retired_at',{withTimezone:true}),
 },t=>[primaryKey({columns:[t.accountId,t.clientEventId]})]);
+
+// 0037 owns all composite ownership/category FKs, deferred bounds, taxonomy tree guards and grants.
+// These declarations are inventory mappings, not authority to replace SQL-owned constraints.
+export const movieEntityDetails=pgTable('movie_entity_details',{
+ entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),mediaType:text('media_type').notNull(),originalTitle:text('original_title'),yearText:text('year_text'),posterUrl:text('poster_url'),backdropUrl:text('backdrop_url'),genres:text('genres').array().notNull().default(sql`'{}'::text[]`),director:text('director'),runtimeMinutes:integer('runtime_minutes'),providerRating:numeric('provider_rating',{precision:4,scale:2}),overview:text('overview'),seasonCount:integer('season_count'),watchProviders:jsonb('watch_providers').notNull().default({}),castDetails:jsonb('cast_details').notNull().default([]),
+},t=>[index('movie_entity_details_genres_idx').using('gin',t.genres)]);
+export const movieEntityProviderGenres=pgTable('movie_entity_provider_genres',{
+ entityId:uuid('entity_id').notNull().references(()=>movieEntityDetails.entityId,{onDelete:'cascade'}),position:integer('position').notNull(),providerGenreId:bigint('provider_genre_id',{mode:'number'}).notNull(),name:text('name').notNull(),
+},t=>[primaryKey({columns:[t.entityId,t.position]})]);
+export const taxonomyTerms=pgTable('taxonomy_terms',{
+ id:uuid('id').defaultRandom().primaryKey(),category:text('category').notNull(),parentId:uuid('parent_id'),slug:text('slug').notNull(),position:integer('position').notNull().default(0),active:boolean('active').notNull().default(true),
+},t=>[index('taxonomy_terms_parent_position_idx').on(t.parentId,t.position,t.id)]);
+export const taxonomyTermTranslations=pgTable('taxonomy_term_translations',{
+ termId:uuid('term_id').notNull().references(()=>taxonomyTerms.id,{onDelete:'cascade'}),locale:text('locale').notNull(),label:text('label').notNull(),
+},t=>[primaryKey({columns:[t.termId,t.locale]}),index('taxonomy_term_translations_locale_idx').on(t.locale,t.termId)]);
+export const movieProviderGenreTerms=pgTable('movie_provider_genre_terms',{
+ externalKind:text('external_kind').notNull(),providerGenreId:bigint('provider_genre_id',{mode:'number'}).notNull(),termId:uuid('term_id').notNull(),category:text('category').notNull().default('movies'),
+},t=>[primaryKey({columns:[t.externalKind,t.providerGenreId]})]);
+export const recommendationTaxonomy=pgTable('recommendation_taxonomy',{
+ recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),category:text('category').notNull(),termId:uuid('term_id').notNull(),position:integer('position').notNull().default(0),
+},t=>[primaryKey({columns:[t.recommendationId,t.termId]}),index('recommendation_taxonomy_term_idx').on(t.termId,t.recommendationId),index('recommendation_taxonomy_account_idx').on(t.accountId,t.recommendationId)]);
+export const movieRecommendationContext=pgTable('movie_recommendation_context',{
+ recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
+},t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
