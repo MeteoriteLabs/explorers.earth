@@ -47,7 +47,9 @@ export async function qualifyGitHubChecks(input: unknown, options: GitHubEvidenc
   function matchRepository(value: z.infer<typeof repository>) { if (value.id !== GITHUB_CHECK_POLICY.repositoryId || value.full_name !== GITHUB_CHECK_POLICY.repository) fail('REPOSITORY_IDENTITY_MISMATCH'); }
   matchRepository(validate(repository, await acquire('')));
   const checks: GitHubCheckEvidence['checks'][number][] = [];
-  for (const [index, runId] of [selected.replatformRunId, selected.musicRunId].entries()) {
+  const runIds = [selected.replatformRunId, selected.musicRunId];
+  for (let index = 0; index < runIds.length; index++) {
+    const runId = runIds[index];
     const policy = GITHUB_CHECK_POLICY.workflows[index];
     const workflow = validate(workflowSchema, await acquire('/actions/workflows/' + policy.id));
     if (workflow.id !== policy.id || workflow.path !== policy.path || workflow.state !== 'active') fail('WORKFLOW_IDENTITY_MISMATCH');
@@ -70,6 +72,7 @@ export async function qualifyGitHubChecks(input: unknown, options: GitHubEvidenc
   }
   return Object.freeze({ releaseQualified: false as const, sourceCommit: selected.sourceCommit, repositoryId: GITHUB_CHECK_POLICY.repositoryId, checks: Object.freeze(checks.map(check => Object.freeze(check))) });
 }
+
 
 
 
