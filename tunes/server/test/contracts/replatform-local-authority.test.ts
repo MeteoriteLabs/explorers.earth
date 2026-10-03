@@ -11,6 +11,8 @@ import {
   assertResetResourceInventory,
   assertResetContainerMounts,
   resetPlatformLocal,
+  stopPlatformLocal,
+  classifyPlatformBuildStage,
   parsePlatformCommand,
   validateProvisionSecretInventory,
   platformViteEnvironment,
@@ -64,6 +66,48 @@ const resetModel = {
 };
 
 describe("replatform local authority", () => {
+  it("stops a PostgreSQL-only interrupted build without requiring qualification health", async () => {
+    const partial = { ...ownedContainer, State: { Running: false } };
+    let mutations = 0;
+    let inventories = 0;
+    expect(() => buildAndStartPlatformServices(() => { throw new Error("deterministic service build failure"); })).toThrow();
+    await stopPlatformLocal(receipt, { ...receipt }, async () => partial, async () => resetModel,
+      async () => { inventories++; }, async model => { expect(model).toBe(resetModel); mutations++; });
+    expect(inventories).toBe(1);
+    expect(mutations).toBe(1);
+    expect(() => assertPlatformContainer(receipt, partial)).toThrow(/authority/i);
+  });
+
+  it("refuses interrupted cleanup before mutation for tampered receipts, models or inventory", async () => {
+    let mutations = 0;
+    const mutate = async () => { mutations++; };
+    await expect(stopPlatformLocal(receipt, { ...receipt, commit: "c".repeat(40) }, async () => ownedContainer,
+      async () => resetModel, async () => {}, mutate)).rejects.toThrow(/authority/i);
+    await expect(stopPlatformLocal(receipt, { ...receipt }, async () => ownedContainer,
+      async () => ({ ...resetModel, volumes: {} }), async () => {}, mutate)).rejects.toThrow(/authority/i);
+    await expect(stopPlatformLocal(receipt, { ...receipt }, async () => ownedContainer,
+      async () => resetModel, async () => { throw new Error("foreign resource authority rejected"); }, mutate)).rejects.toThrow(/authority/i);
+    expect(mutations).toBe(0);
+  });
+
+  it("permits absent declared resources but rejects foreign, extra and duplicate ownership inventory", () => {
+    expect(() => assertResetResourceInventory(["pg", "app"], ["pg"], ["pg", "unrelated"])).not.toThrow();
+    expect(() => assertResetResourceInventory(["pg", "app"], ["pg"], ["pg", "app"])).toThrow(/authority/i);
+    expect(() => assertResetResourceInventory(["pg", "app"], ["pg", "unknown"], ["pg", "unknown"])).toThrow(/authority/i);
+    expect(() => assertResetResourceInventory(["pg", "app"], ["pg", "pg"], ["pg"])).toThrow(/authority/i);
+  });
+
+  it.each([
+    ["#7 [runner internal] load metadata for sensitive.invalid/image\n#7 ERROR: 429 Too Many Requests", "base-image-pull"],
+    ["#9 [builder 4/6] RUN npm ci\n#9 3.0 npm error 429 secret-url", "npm-build-command"],
+    ["#7 [runner internal] load metadata for sensitive.invalid/image\n#7 DONE\n#9 [builder 4/6] RUN npm ci\n#9 ERROR: 429", "npm-build-command"],
+    ["#7 [runner internal] load metadata for image\n429", "unknown"],
+  ])("reports only evidence-bound sanitized failing build stages (%#)", (raw, stage) => {
+    expect(classifyPlatformBuildStage(raw)).toBe(stage);
+    const diagnostic = formatPlatformFailure("service-build", classifyPlatformBuildFailure(raw), classifyPlatformBuildStage(raw));
+    expect(diagnostic).toContain(`build-stage=${stage}`);
+    expect(diagnostic).not.toMatch(/sensitive\.invalid|secret-url/);
+  });
   it("uses pinned Docker Official Images from the public mirror for every platform registry input", () => {
     const root = resolve(import.meta.dirname, "../../../..");
     const compose = readFileSync(resolve(root, "docker-compose.replatform.yml"), "utf8");

@@ -115,6 +115,7 @@ export function assertResetComposeModel<T>(model: T): T {
 }
 
 export function assertResetResourceInventory(targets: string[], owned: string[], existing: string[]): void {
+  if ([targets, owned, existing].some(names => new Set(names).size !== names.length)) refuse();
   for (const name of targets) if (existing.includes(name) && !owned.includes(name)) refuse();
   for (const name of owned) if (!targets.includes(name)) refuse();
 }
@@ -181,6 +182,23 @@ export async function resetPlatformLocal(
   const model = assertResetComposeModel(await inspectModel());
   await mutate(model);
 }
+
+// Cleanup authority is independent of delivery readiness: a failed image build
+// can leave only the attested database and a subset of declared resources.
+export async function stopPlatformLocal(
+  receipt: PlatformAuthority,
+  target: PlatformAuthority,
+  inspect: () => Promise<unknown>,
+  inspectModel: () => Promise<unknown>,
+  inspectInventory: () => Promise<void>,
+  mutate: (attestedModel: unknown) => Promise<void>,
+): Promise<void> {
+  assertPlatformResetTarget(receipt, target);
+  assertPlatformContainer(receipt, await inspect(), true);
+  const model = assertResetComposeModel(await inspectModel());
+  await inspectInventory();
+  await mutate(model);
+}
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -205,6 +223,24 @@ type PlatformBuildFailure = "registry-rate-limit" | "registry-auth" | "image-res
   | "resource-exhaustion" | "service-health" | "build-command" | "unclassified";
 let failurePhase: PlatformPhase = "docker-endpoint";
 let failureCause: PlatformBuildFailure | undefined;
+type PlatformBuildStage = "base-image-pull" | "npm-build-command" | "build-command" | "unknown";
+let failureStage: PlatformBuildStage | undefined;
+
+export function classifyPlatformBuildStage(output: string): PlatformBuildStage {
+  const steps = new Map<string, PlatformBuildStage>();
+  const failures = new Set<PlatformBuildStage>();
+  // Bound parsing; correlate error lines to their BuildKit step rather than
+  // inferring a failed registry from unrelated successful progress output.
+  for (const line of output.slice(-1024 * 1024).split(/\r?\n/)) {
+    const match = /^(#\d+)\s+(.*)$/.exec(line);
+    if (!match) continue;
+    const [, id, detail] = match;
+    if (/\[.*\]\s+(?:load metadata for|FROM\s)/i.test(detail)) steps.set(id, "base-image-pull");
+    if (/\[.*\]\s+RUN\s/i.test(detail)) steps.set(id, /\bnpm\s+(?:ci|install|run)\b/i.test(detail) ? "npm-build-command" : "build-command");
+    if (/\bERROR:|\bnpm (?:ERR!|error)|toomanyrequests|\b429\b/i.test(detail)) failures.add(steps.get(id) ?? "unknown");
+  }
+  return failures.size === 1 ? [...failures][0] : "unknown";
+}
 
 export function classifyPlatformBuildFailure(output: string): PlatformBuildFailure {
   if (/toomanyrequests|rate.limit|\b429\b/i.test(output)) return "registry-rate-limit";
@@ -232,8 +268,8 @@ export function classifyPlatformBuildFailure(output: string): PlatformBuildFailu
   return "unclassified";
 }
 
-export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure): string {
-  return `Replatform local command refused or failed; phase=${phase}${cause ? `; cause=${cause}` : ""}; authority details redacted.\n`;
+export function formatPlatformFailure(phase: PlatformPhase, cause?: PlatformBuildFailure, stage?: PlatformBuildStage): string {
+  return `Replatform local command refused or failed; phase=${phase}${cause ? `; cause=${cause}` : ""}${stage ? `; build-stage=${stage}` : ""}; authority details redacted.\n`;
 }
 
 export function validateProvisionSecretInventory(entries: Array<{ name: string; kind: "file" | "directory" | "symlink"; nlink: number; size: number }>): "create" | "reuse" {
@@ -296,7 +332,9 @@ function run(file: string, args: string[], environment = childEnvironment(), tim
   });
   if (result.error || result.status !== 0) {
     if (failurePhase === "service-build") {
-      failureCause = classifyPlatformBuildFailure(`${result.stderr ?? ""}\n${result.stdout ?? ""}\n${result.error?.message ?? ""}`);
+      const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}\n${result.error?.message ?? ""}`;
+      failureCause = classifyPlatformBuildFailure(output);
+      failureStage = classifyPlatformBuildStage(output);
     }
     throw new Error("local subprocess failed");
   }
@@ -356,6 +394,7 @@ function readReceipt(forExactReset = false): PlatformAuthority {
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 4096) refuse();
   const value = JSON.parse(readFileSync(RECEIPT, "utf8")) as PlatformAuthority;
   validatePlatformAuthority(value, "", forExactReset ? value.commit : sourceCommit(), process.env);
+  assertPlatformResetTarget(value, { ...value });
   return value;
 }
 
@@ -482,9 +521,10 @@ async function seed(host: string, receipt: PlatformAuthority): Promise<unknown> 
   return { dataset: "acceptance", existingMusicIdentityRows: 1, stableMusicIdentityId: rows[1], canonicalDomainSeeds: "pending-owning-epics" };
 }
 
-function stop(host: string, receipt: PlatformAuthority): unknown {
-  check(host, receipt);
-  compose(host, ["stop"], 120_000);
+async function stop(host: string, receipt: PlatformAuthority): Promise<unknown> {
+  await stopPlatformLocal(receipt, { ...receipt }, async () => inspectPostgres(host, receipt, true),
+    async () => checkedModel(host), async () => verifyAllProjectResources(host, receipt),
+    async model => { composeFromAttestedModel(host, model, ["stop"], 120_000); });
   return { stopped: true, project: receipt.project };
 }
 
@@ -492,19 +532,27 @@ function verifyAllProjectResources(host: string, receipt: PlatformAuthority): vo
   const ids = run(DOCKER, ["--host", host, "ps", "--all", "--no-trunc", "--quiet", "--filter", `label=com.docker.compose.project=${PLATFORM_PROJECT}`]).split(/\r?\n/).filter(Boolean);
   if (!ids.includes(receipt.containerId) || ids.length < 1 || ids.length > 5) refuse();
   const allowedServices = new Set(["postgres", "strapi", "tunes-migrate", "tunes", "explorers"]);
+  const seenServices = new Set<string>();
   for (const id of ids) {
     if (!/^[a-f0-9]{64}$/.test(id)) refuse();
     const value = JSON.parse(run(DOCKER, ["--host", host, "inspect", "--type", "container", "--format", "{{json .}}", id])) as Record<string, any>;
     const labels = value.Config?.Labels ?? {};
     const service = labels["com.docker.compose.service"];
-    if (value.Id !== id || !allowedServices.has(service) || value.Name !== `/${PLATFORM_PROJECT}-${service}-1`
+    if (value.Id !== id || !allowedServices.has(service) || seenServices.has(service) || value.Name !== `/${PLATFORM_PROJECT}-${service}-1`
       || labels["com.docker.compose.project"] !== PLATFORM_PROJECT
       || labels["com.explorers.replatform.fixture"] !== "true" || labels["com.explorers.replatform.project"] !== PLATFORM_PROJECT) refuse();
     assertResetContainerMounts(value.Mounts);
+    seenServices.add(service);
+    const networks = Object.keys(value.NetworkSettings?.Networks ?? {});
+    const allowedNetworks = service === "explorers" ? [`${PLATFORM_PROJECT}_replatform-local`, `${PLATFORM_PROJECT}_replatform-edge`] : [`${PLATFORM_PROJECT}_replatform-local`];
+    if (networks.some(name => !allowedNetworks.includes(name))) refuse();
   }
+  const allNames = run(DOCKER, ["--host", host, "ps", "--all", "--format", "{{.Names}}"] ).split(/\r?\n/).filter(Boolean);
+  assertResetResourceInventory([...allowedServices].map(service => `${PLATFORM_PROJECT}-${service}-1`),
+    [...seenServices].map(service => `${PLATFORM_PROJECT}-${service}-1`), allNames);
   for (const kind of ["network", "volume"] as const) {
     const names = run(DOCKER, ["--host", host, kind, "ls", "--quiet", "--filter", `label=com.docker.compose.project=${PLATFORM_PROJECT}`]).split(/\r?\n/).filter(Boolean);
-    if (!names.length || names.length > 2) refuse();
+    if (names.length > 2) refuse();
     const ownedNames: string[] = [];
     for (const name of names) {
       const value = JSON.parse(run(DOCKER, ["--host", host, kind, "inspect", "--format", "{{json .}}", name])) as Record<string, any>;
@@ -527,6 +575,7 @@ async function main(args: string[]): Promise<void> {
   const command = parsePlatformCommand(args);
   failurePhase = "docker-endpoint";
   failureCause = undefined;
+  failureStage = undefined;
   if (command.command === "test:integration") {
     const host = localDockerHost();
     failurePhase = "receipt-check";
@@ -584,7 +633,7 @@ async function main(args: string[]): Promise<void> {
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   main(process.argv.slice(2)).catch(() => {
-    process.stderr.write(formatPlatformFailure(failurePhase, failureCause));
+    process.stderr.write(formatPlatformFailure(failurePhase, failureCause, failureStage));
     process.exitCode = 1;
   });
 }
