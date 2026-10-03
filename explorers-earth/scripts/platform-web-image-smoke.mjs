@@ -53,7 +53,7 @@ try{
       page.on('pageerror',()=>errors.push('PAGE_ERROR'));
       page.on('requestfailed',req=>errors.push(new URL(req.url()).pathname+':'+req.failure()?.errorText));
       page.on('console',message=>{if(message.type()==='error')errors.push('CONSOLE_ERROR');});
-      await page.route('**/*',route=>{if(new URL(route.request().url()).origin!==origin){const host=new URL(route.request().url()).origin;external.push({host,type:route.request().resourceType()});return ['https://fonts.googleapis.com','https://fonts.gstatic.com'].includes(host)||route.request().resourceType()==='image'?route.continue():route.abort();}return route.continue();});
+      await page.route('**/*',route=>{if(new URL(route.request().url()).origin!==origin){const host=new URL(route.request().url()).origin;external.push({host,type:route.request().resourceType()});return route.request().resourceType()==='image'?route.continue():route.abort();}return route.continue();});
       await page.goto(origin+'/login');
       try { await page.waitForFunction(()=>document.querySelector('#root')?.childElementCount>0 || document.querySelector('#root')?.getAttribute('role')==='alert'); }
       catch { throw new Error('BOOTSTRAP_RENDER_TIMEOUT:'+JSON.stringify({errors})); }
@@ -62,7 +62,9 @@ try{
       if(clientRequests.length)throw new Error('UNEXPECTED_EXTERNAL_CLIENT_TRAFFIC:'+JSON.stringify(clientRequests));
       const canonical=await page.locator('link[rel=canonical]').last().getAttribute('href');
       if(!canonical?.startsWith(origin))throw new Error('CANONICAL_FAILURE');
-      results.push({environment,origin,image,metadata:'pass',bootstrap:'pass',legacyFallback:'denied',externalClientTraffic:0,publicAssetOrigins:[...new Set(external.map(({host})=>host))]});
+      const deniedFontRequests=external.filter(({host})=>['https://fonts.googleapis.com','https://fonts.gstatic.com'].includes(host)).length;
+      if(deniedFontRequests===0)throw new Error('FONT_DENIAL_NOT_EXERCISED');
+      results.push({environment,origin,image,metadata:'pass',bootstrap:'pass',legacyFallback:'denied',externalClientTraffic:0,deniedFontRequests,publicAssetOrigins:[...new Set(external.filter(({type})=>type==='image').map(({host})=>host))]});
     }finally{await context?.close();await new Promise(resolve=>tls.close(resolve));}
   }
   if(JSON.stringify(before)!==JSON.stringify(hashes(join(root,'html'))))throw new Error('ASSET_MUTATION');
