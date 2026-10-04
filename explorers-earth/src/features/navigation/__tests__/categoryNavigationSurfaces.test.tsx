@@ -4,9 +4,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loginSurface, ordinaryCategories, surfaceHarness as renderSurface } from './surfaceHarness';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { canonicalAccountFixture } from '../../../test/canonicalAccountFixture';
-import { explorersApiClient } from '../../../lib/explorersApiClient';
+import { explorersApiClient, type CompleteMyCategoryContent, type CollectionObservation } from '../../../lib/explorersApiClient';
+import { invalidateMovies } from '../../Movies/api/explorersAdapter';
 
-vi.mock('../../../lib/explorersApiClient', () => ({ explorersApiClient: { getMyProfile: vi.fn() } }));
+vi.mock('../../../lib/explorersApiClient', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../../lib/explorersApiClient')>();
+  return { ...actual,
+    // These observations enter at the native API boundary. The real owner hook,
+    // complete-read coordination and view models still run; transport branding
+    // is covered by the API client's own contract tests.
+    assertCompleteMyCategoryContent: vi.fn(),
+    explorersApiClient: { ...actual.explorersApiClient, getMyProfile: vi.fn(),
+      getCompleteMyCategoryTopPicks: vi.fn(), getMyEditableCollection: vi.fn(), archiveMyCollection: vi.fn() },
+  };
+});
+
+function movieObservation(title?: string): CompleteMyCategoryContent {
+  const current = useAuthStore.getState();
+  return { complete: true, category: 'movies', status: 'active', accountId: current.accountId!, generation: current.generation,
+    revision: '1', snapshotToken: 'native-navigation-fixture', expiresAt: Date.now() + 60_000, pinRevision: 0,
+    collections: title ? [{ id: 'list-1', accountId: current.accountId!, category: 'movies', title, description: null,
+      heading: null, slug: 'list', visibility: 'public', publicationState: 'published', coverMediaId: null,
+      displayOrder: 0, revision: 1, archived: false }] : [], recommendations: [], memberships: [], topPicks: [] };
+}
 
 function surfaceHarness(child: React.ReactNode, options: Parameters<typeof renderSurface>[1] = {}) {
   vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(canonicalAccountFixture());
@@ -52,7 +72,7 @@ const headers = [
 const listFixture = { recommendationLists: [{ documentId: 'place-list', List_Name: 'My places', slug: 'places', Visibility: true, createdAt: '2026-01-01', recommended_places: [], List_Name_Details: {} }] };
 const guideFixture = { documentId: 'g1', Title: 'Test guide', Visibility: true, guide_sections: [], Guide_Media: [], Guide_Tags: [], Number_Of_Days: 1 };
 describe('ordinary category headers use verified navigation', () => {
-  beforeEach(async () => { loginSurface(); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
+  beforeEach(async () => { loginSurface(); vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(movieObservation()); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.clearAllMocks(); });
   it.each(headers)('%s Off removes only the target saved pin and desktop/mobile share confirmed state', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
@@ -68,7 +88,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { [category]: 'Yes' } });
   });
-  it.each(headers)('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
+  it.each(headers.filter(([category]) => category !== 'public_movie'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
     const listFields = { public_books: 'bookLists', public_movie: 'movieLists', public_games: 'gameLists', public_apps: 'appLists', public_products: 'productLists', public_people: 'personLists', public_guides: 'guides', public_recommendations: 'recommendationLists' };
     const field = listFields[category];
     const lists: Record<string, unknown> = { [field]: [{ ...listFixture.recommendationLists[0], ...guideFixture,
@@ -90,6 +110,24 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility[category]).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', category, 'public_music']);
+  });
+  it('public_movie native empty list refresh never changes category visibility or saved pins', async () => {
+    const read = vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks);
+    read.mockResolvedValue(movieObservation('Before refresh'));
+    const h = surfaceHarness(<MoviesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_music'] } });
+    await h.ready();
+    expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
+    const readsBefore = read.mock.calls.length;
+    read.mockResolvedValue(movieObservation());
+    act(() => invalidateMovies());
+    await waitFor(() => expect(screen.queryByText('Before refresh')).not.toBeInTheDocument());
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(readsBefore + 2));
+    expect(read).toHaveBeenLastCalledWith({ category: 'movies', status: 'active' }, expect.any(AbortSignal));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(h.requests.some(request => request.name === 'MovieListsByAccount')).toBe(false);
+    expect(h.writes).toEqual([]);
+    expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
   });
   it.each(headers)('%s uses the verified selected account, not incomplete accounts[0]', async (_category, Component) => {
     const h = surfaceHarness(<Component />, { incompleteFirst: true, lists: listFixture }); await h.ready();
@@ -116,10 +154,21 @@ describe('ordinary category headers use verified navigation', () => {
       { documentId: 'a1', data: { [category]: 'Yes' } },
     ]);
   });
-  it.each(headers)('%s failed list refresh has no category side effects', async (_category, Component) => {
+  it.each(headers.filter(([category]) => category !== 'public_movie'))('%s failed list refresh has no category side effects', async (_category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture }); await h.ready(); h.failLists = true;
     await act(async () => { await h.client.refetchQueries({ include: 'active' }).catch(() => {}); });
     expect(h.writes).toEqual([]);
+  });
+  it('public_movie failed native refresh has no category side effects', async () => {
+    const h = surfaceHarness(<MoviesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_music'] } });
+    await h.ready();
+    await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryTopPicks).toHaveBeenCalledTimes(2));
+    vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockRejectedValue(new Error('Native lists unavailable'));
+    act(() => invalidateMovies());
+    expect(await screen.findByRole('alert')).toHaveTextContent('Movies could not be loaded');
+    expect(h.writes).toEqual([]);
+    expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
   });
   it.each([
     ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'], ['public_guides', GuidesPage, 'justCreatedGuide'],
@@ -163,15 +212,24 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(h.requests.some(r => r.name === 'UpdateGuide')).toBe(true));
     expect(h.requests.find(r => r.name === 'UpdateGuide')?.variables).toEqual({ documentId: 'g1', data: { Visibility: false } }); expect(h.writes).toEqual([]);
   });
-  it.each([['movies', MovieListView, 'movieLists', 'DeleteMovieList']] as const)('%s list delete never unpublishes the category or changes saved pins', async (kind, Component, listField, operation) => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const fixture = { documentId: 'list-1', List_Name: 'Test list', visibility: true, slug: 'list', recommended_books: [], recommended_movies: [] };
-    const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<Component />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', lists: { [listField]: [fixture] }, respond: name => name === operation ? { [kind === 'books' ? 'deleteBookList' : 'deleteMovieList']: { documentId: 'list-1' } } : undefined }); await h.ready();
+  it('movies native list archive never unpublishes the category or changes saved pins', async () => {
+    const observation = movieObservation('Test list');
+    const observed = { complete: true, detail: observation.collections[0] } as CollectionObservation;
+    vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(observation);
+    vi.mocked(explorersApiClient.getMyEditableCollection).mockResolvedValue(observed);
+    vi.mocked(explorersApiClient.archiveMyCollection).mockResolvedValue({ ...observed.detail, archived: true });
+    const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<MovieListView />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_music'] } }); await h.ready();
     fireEvent.click(await screen.findByRole('button', { name: /^manage$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
-    if (kind === 'movies') fireEvent.click(screen.getAllByRole('button', { name: /^Delete$/i }).at(-1)!);
-    await waitFor(() => expect(h.requests.some(r => r.name === operation)).toBe(true)); expect(h.writes).toEqual([]);
-    expect(h.requests.find(r => r.name === operation)?.variables).toEqual({ documentId: 'list-1' });
+    fireEvent.click(screen.getByRole('button', { name: /^Archive list$/i }));
+    expect(explorersApiClient.archiveMyCollection).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole('button', { name: /^Archive list$/i }).at(-1)!);
+    await screen.findByText('Returned to lists');
+    expect(explorersApiClient.getMyEditableCollection).toHaveBeenCalledWith('list-1');
+    expect(explorersApiClient.archiveMyCollection).toHaveBeenCalledExactlyOnceWith(observed, expect.any(String));
+    expect(h.requests.some(request => request.name === 'DeleteMovieList')).toBe(false);
+    expect(h.writes).toEqual([]);
+    expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
   });
   it('Favorites per-list Visibility never changes category visibility or saved pins', async () => {
     const list = { ...listFixture.recommendationLists[0], recommended_places: [{ documentId: 'p1' }] };
