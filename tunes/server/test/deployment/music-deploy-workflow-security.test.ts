@@ -46,7 +46,8 @@ describe("Tunes workflow provenance and input boundary", () => {
     const step = workflow.jobs["build-test-scan-push"].steps.find(
       (candidate: any) => candidate.name === "Test Tunes",
     );
-    expect(step.run).toContain("npm test -- --maxWorkers=2");
+    expect(step.run).toContain("node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts");
+    expect(read("tunes/scripts/music-image-ci-tests.ts")).toContain('["test", "--", "--maxWorkers=2"]');
   });
 
   it("blocks fixable high vulnerabilities and retains a complete disclosure scan", () => {
