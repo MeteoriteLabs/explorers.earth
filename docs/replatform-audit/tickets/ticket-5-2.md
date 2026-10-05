@@ -50,3 +50,17 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent review correction (2026-10-05)
 
 Create-and-link input includes parentLocationCollectionId and a required parentExpectedRevision when a parent is supplied; reject incomplete parent/revision pairs. The shared core create transaction locks and validates the parent, atomically creates/links child, increments the parent relation revision and returns child plus resulting parent revision. Freeze exact current revision names/DTO in producer preflight. Stale-parent or foreign-owner failure leaves neither orphan child nor changed link. Same command id replays its receipt without another child/revision bump; changed input conflicts. Ticket 5.2 owns this core extension jointly allocated by the coordinator.
+
+## Independent review verification (2026-10-05)
+
+**NOT-STARTED, confirmed by negative evidence** against source at `225d83e5`:
+
+- `tunes/shared/explorersContract.ts:60-62` declares `createCollectionSchema` as `.strict()` over `category`, `title`, `slug`, `visibility`, `publicationState`, `description`, `heading`, `coverMediaId` — **no parent fields**. A `.strict()` schema rejects unknown keys, so the `:43` obligation to add `parentLocationCollectionId?:string` is a shared-contract change, not an additive client change.
+- `parentLocationCollectionId` and `parentExpectedRevision` have **zero** hits across `tunes/` and `explorers-earth/`.
+- `tunes/server/test/explorers/placeLinks.integration.test.ts` and `explorers-earth/e2e/replatform/place-links.spec.ts` do not exist.
+
+### Ownership is currently unallocated
+
+This ticket owns `parentExpectedRevision`, the atomic create-and-link transaction and idempotent receipts (per `:50-52` above and `:43-44`). But the shared **core create extension** it needs is coordinator-reserved: `ticket-5-2.md:17` reserves shared schema and `:52` states the extension is "jointly allocated by the coordinator", and the shared contract file `tunes/shared/explorersContract.ts` is not in any single ticket's writer allowlist. **This ticket therefore has no allocated owner for the change it cannot proceed without.** Allocation is a coordinator preflight, not something a 5.2 writer may self-grant by editing the shared contract.
+
+The `:43` constraint "consume the same core create operation, not another list creator" is the reason this cannot be worked around: forking a second create path to avoid the shared file would violate the ticket's own gate.

@@ -12,7 +12,7 @@ Read the [re-groomed dependency and ownership plan](../../superpowers/plans/2026
 
 **Disposition:** complete. **Technical inputs:** 1.1. Dependencies refer to reviewed interfaces for partial packages; complete-ticket acceptance retains all original gates.
 
-**Next package:** Reuse accepted runtime; new seeds and migrations belong to the consuming feature.
+**Next package:** Reuse accepted runtime; new seeds and migrations belong to the consuming feature. **Open obligation (2026-10-05):** the route-graph invariant is unmet — the parity inventory still probes only six legacy/analytics paths and asserts exactly 6. Extending it to the landed canonical routes is a shared-file change requiring coordinator allocation. See [Independent review correction (2026-10-05)](#independent-review-correction-2026-10-05) below. The recorded acceptance is not reopened.
 
 **Ownership:** The ticket owns its category/feature files listed below. Shared schema, migration identifiers, route registration, auth clients, Settings, seeds and protected manifests require coordinator allocation before any writer starts. Do not dispatch overlapping writers.
 
@@ -41,3 +41,24 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Run `npm run platform:local -- provision`, `npm run platform:local -- check`, `npm run platform:seed -- --dataset acceptance` twice. Compare row counts and stable relationships. Run `npm run platform:test:integration`; prove wrong-target rejection with the authority tests, not by attempting to connect to a real production URL.
 - [ ] Extend `explorers-earth/e2e/setup/deny-hosted-egress.ts` to the new fixture host allowlist and retain the unit-test containment runner. Confirm fixture provider attempts fail closed.
 - [ ] Document prerequisites, ports, stop/reset behavior and OS differences; commit. **Gate:** clean local startup and deterministic seeds work with no production credential/data requirement. Seed evolution is included in every following functional ticket.
+
+## Independent review correction (2026-10-05)
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §6 row 1.2 and §7 Epic 01. The review re-executed this ticket's recorded acceptance locally and confirmed it. **That acceptance is not reopened.** What follows is an additional open obligation and a factual correction to the harness contract, both of which the recorded acceptance did not close.
+
+### Open obligation: the route-graph invariant is unmet
+
+The **Route-graph invariant** above (restated at `docs/replatform-audit/epics/epic-01.md:106`) requires the platform fixture runtime to mount the same canonical application route graph as the replacement production runtime, asserting "auth, profiles, content, analytics, lifecycle and Music routes are present **as their owning epics land**." Epics 2–3 have since landed canonical routes, and the inventory was not extended with them. Verified at the review SHA:
+
+- `scripts/replatform-route-parity.ts:4-8,23` inventories only six legacy/Strapi/analytics paths: `/api/check`, `/api/csrf-token`, `/api/user/reactivate`, `/api/explorers/analytics/events`, `/api/music-fixture/readiness` (`:4-8`) and `/api/users/me` (`:23`). Zero canonical paths are probed.
+- `tunes/server/test/contracts/platform-route-parity.test.ts:22` asserts `expect(await verifyPlatformIngress(...)).toBe(6)` — the count is pinned to exactly those six, so the invariant can never fail for a missing canonical route.
+
+The invariant therefore currently passes vacuously with respect to every canonical surface. This is an **open 1.2 obligation**, not a defect in the recorded acceptance.
+
+- [ ] Extend the parity inventory in `scripts/replatform-route-parity.ts` with the landed canonical routes — `/api/auth/*`, `/api/explorers/v1/me`, `/account/lifecycle` and `/collections` — and raise the expected count asserted at `tunes/server/test/contracts/platform-route-parity.test.ts:22` to match. Do not weaken or delete the existing six probes, and do not lower the expected count to accommodate an absent route: a canonical route promised by a landed epic and missing from the fixture graph is a failure, not a skip.
+- [ ] **Coordinator allocation is required before any writer starts.** Both `scripts/replatform-route-parity.ts` and `tunes/server/test/contracts/platform-route-parity.test.ts` are shared files that every epic landing a canonical route must extend. Allocate an exclusive window; do not dispatch overlapping writers. Each later epic appends its own routes to the same inventory under the same allocation rule rather than forking a second parity script.
+- [ ] Preserve the production half of the invariant unchanged: production must still reject fixture session authority even though the route graph is equivalent.
+
+### Correction: the shared harness was delivered with a different layout
+
+`epic-01.md:155` specifies the shared real-API browser harness as `scripts/replatform-e2e.ts`, `explorers-earth/playwright.replatform.config.ts`, `explorers-earth/e2e/replatform/fixtures.ts` and `explorers-earth/e2e/replatform/global-setup.ts`. Verified at the review SHA: **`playwright.replatform.config.ts`, `e2e/replatform/fixtures.ts` and `e2e/replatform/global-setup.ts` do not exist**, and the runner is `scripts/replatform-e2e.mjs` (not `.ts`), which drives per-category configs through the inner fixture runners rather than one shared Playwright config and one shared fixtures module. The historical specification above is retained as the **originally proposed** layout; the delivered layout is authoritative for execution. See the corrected command contract in `epic-01.md` and the [command custody correction](../command-custody-2026-10-05.md). A writer must not create the three absent files on the assumption they were lost, and must not cite the proposed layout as a delivered interface.

@@ -39,3 +39,12 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Run existing bounded baseline suites after safe provisioning in 1.2, then append actual outcomes here. Record pre-existing failures separately; no invented green baseline.
 - [ ] Read GitHub branch/ruleset configuration through authenticated read-only tooling when available and record exact required check names; otherwise mark unavailable, not guessed.
 - [ ] Commit only baseline documents/evidence references. **Gate:** the provisional route/scenario matrix unblocks 1.2; baseline executions finish after 1.2 provisions the safe environment, so there is no circular dependency. Final baseline completion requires every retained flow to have an owner/scenario and every claimed result to have a run record.
+
+## Independent review record (2026-10-05)
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §6 row 1.1. Verdict **ACCEPTED (narrow)**. Acceptance is not reopened; the following scope facts qualify what the acceptance covers and must not be read as broader parity evidence.
+
+- The 44-row scope matrix is pinned to application baseline `79ef17d0`, and **every row still reads `status=planned`**. The matrix is an accepted inventory, not a record of executed scenarios.
+- Executed evidence is **4 real browser results plus screenshots across 2 marketing routes**. It does not evidence owner, second-owner or suspended personas, nor any category, Music, lifecycle or upload scenario enumerated above.
+- **No hosted run is claimed or required** for this ticket, and none exists. Do not cite 1.1 as hosted evidence for any downstream gate.
+- Consequence for consumers: 1.1 satisfies only the "provisional route/scenario matrix unblocks 1.2" gate at the bottom of the list above. The final-baseline condition — every retained flow has an owner/scenario and every claimed result has a run record — remains an open requirement owned here, and each new journey's evidence is appended only through its owning ticket.

@@ -50,3 +50,30 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 
 - [ ] Map each micro-editor to the current-revision aggregate operation. For full-section replacement, assemble validated complete state; missing partial fields never become null. Test each editor save against the real API and verify untouched blocks remain deep-equal. A stale conflict preserves entered form data and keeps the modal open.
 - [ ] Enforce publish-before-pin and atomic unpublish+unpin for Guides and Places collection pins. No inferred15 limit. Test guide type/category/days/month/budget/location/multicity filter combinations and stable pinned-first results after reload.
+
+## Independent review verification (2026-10-05)
+
+**NOT-STARTED, confirmed by negative evidence** against source at `225d83e5`:
+
+- `tunes/server/explorers/categories/guides.ts` does not exist (`tunes/server/explorers/categories/` holds only `movies.ts`, `movieGenreSeeds.ts`).
+- `explorers-earth/src/features/Guides/api/explorersAdapter.ts` does not exist.
+- `tunes/server/test/explorers/guides.test.ts`, `guides.integration.test.ts` and `explorers-earth/e2e/replatform/guides.spec.ts` do not exist.
+- No Guide or guide-section aggregate exists anywhere in `tunes/shared`.
+
+### Guides is schema-unreachable, not merely unimplemented
+
+This is a structural correction, and it adds an obligation this ticket did not previously carry.
+
+`tunes/migrations/0029_explorers_recommendations.sql:25` admits `'guides'` in the `collections.category` CHECK constraint. But `0029:40` (`recommendations.category`) and `0029:51` (`collection_items.category`) **omit** `'guides'`:
+
+- `:25` — `CHECK(category IN ('places','guides','movies','books','games','apps','products','people'))`
+- `:40` — `CHECK(category IN ('places','movies','books','games','apps','products','people'))`
+- `:51` — `CHECK(category IN ('places','movies','books','games','apps','products','people'))`
+
+A guides recommendation row, and any guides `collection_items` row, is therefore **rejected by the database**. Code alone cannot deliver this ticket.
+
+Any reasoning of the form "the `guides` enum is present, therefore the category is covered" was **wrong**: it read `0029:25` and not `0029:40`/`0029:51`. Note that `0022:123`, `0031:12`, `0036:8` and `0037:19,35` do admit `'guides'`, which makes the `0029` omission easy to miss by grep.
+
+- [ ] Author a **new** append-only migration — next available id is `0039`, the chain head being `tunes/migrations/0038_explorers_movie_media.sql` — adding `'guides'` to the `recommendations.category` and `collection_items.category` CHECK constraints. Do not edit `0029`; the chain is append-only and checksummed.
+- [ ] Update the expected chain, manifest, checksum and catalog/role tests in the same change, per the Epic 6 migration rule.
+- [ ] Add a migration test asserting a guides recommendation and a guides `collection_items` row now persist, and that the other category constraints are unchanged. Do not widen either CHECK to accept arbitrary text as a shortcut.

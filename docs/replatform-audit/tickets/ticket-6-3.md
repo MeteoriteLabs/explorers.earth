@@ -32,3 +32,13 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Preserve hashed guest capability, durable encrypted replay and retired-key semantics; update account lookups to canonical mapping and keep guest transport separate from owner authentication.
 - [ ] Run two browser contexts (owner and guest), guest request/owner acceptance, player-state update, connection drop/reconnect, revocation while connected and suspension. Verify hidden data never appears through socket payloads or direct public endpoint fetches.
 - [ ] Run PostgreSQL publication integration, socket/security tests and real-stack browser spec plus existing Music public qualification command with its documented environment. Commit. **Done:** full owner/public/guest music coverage is ready for Milestone 2; no deferred UI rebuild is needed.
+
+## Independent review verification (2026-10-05)
+
+NOT-STARTED, and correctly **blocked behind 6.2** (and transitively 6.1). The `:13` disposition "waiting" stands. Measured reasons, against source at `225d83e5`:
+
+- The socket is still keyed on the general 600-second HTTP bearer, not a purpose-limited handshake. `explorers-earth/src/hooks/useTunesDashboard.ts:107-109` passes the HTTP credential token into the owner subscription; `tunes/server/socket/musicSocketServer.ts:272,278` consumes it as the handshake value; `tunes/server/services/musicTokenService.ts:127-128` pins that token's lifetime to exactly 600 seconds. The `:32` obligation "keep guest transport separate from owner authentication" cannot be verified while owner socket and owner HTTP share one credential — that separation is 6.1's `musicSocketCredential` work, which does not exist yet.
+- Owner clients still ride the legacy bearer (`explorers-earth/src/lib/localTunesApiClient.ts:194`), so the `:32` obligation to "update account lookups to canonical mapping" has no canonical mapping to update against: `tunes/server/repositories/musicDomainRepository.ts:1196,1209` still key on `strapi_account_document_id`.
+- 6.1 is undispatchable until [ADR-005](../../adr/005-music-identity-migration-deployment-authority.md) `:16-20` is superseded — see [ADR-006](../../adr/006-canonical-music-identity-supersedes-strapi-proof.md) (Proposed). That preflight transitively gates this ticket.
+
+Note for 7.1: `ticket-7-1.md:13` lists 6.3 among its technical inputs, but the shared canonical navigation slice runs with no Music producer. That is a phantom dependency for the shared slice only; full 7.1 parity does consume Music public/unlisted/revoked semantics from this ticket.

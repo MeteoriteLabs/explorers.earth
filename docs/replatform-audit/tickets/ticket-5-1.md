@@ -48,3 +48,19 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent review correction (2026-10-05)
 
 Qualification package PLACES-CORE selects only Places core owned scenarios. It must not select future place-links (5.2) or claims (5.4) merely because an old suite alias groups them. Add and independently review guarded exact discovery before execution. Full milestone discovery still requires all three packages; no positive is removed or skipped to qualify core.
+
+## Independent review verification (2026-10-05)
+
+**NOT-STARTED, confirmed by negative evidence** against source at `225d83e5`:
+
+- `tunes/server/explorers/categories/places.ts` does not exist. `tunes/server/explorers/categories/` contains only `movies.ts` and `movieGenreSeeds.ts`.
+- `explorers-earth/src/features/Favorites/api/explorersAdapter.ts` does not exist. The only `explorersAdapter.ts` files in the repository are under `src/features/Games/api/` and `src/features/Movies/api/`.
+- `tunes/server/test/explorers/places.test.ts`, `places.integration.test.ts` and `explorers-earth/e2e/replatform/places.spec.ts` do not exist.
+
+The `:29`–`:45` implementation and acceptance requirements are unchanged by this note; none is satisfied.
+
+### The epic-level gate still pulls 5.2/5.4 artifacts — now fixed in the epic
+
+The correction at `:48-50` above is prose-level only; the gate it corrects lived elsewhere. [`epic-05.md:68`](../epics/epic-05.md) defines the `places` suite as including place-links/claims, and `epic-05.md:130` (measured at `225d83e5`) requires "the exact category suite" for desktop and mobile runs — together these required 5.1 to run `place-links.spec.ts` (5.2) and `claims.spec.ts` (5.4). Both epic lines are corrected as of 2026-10-05: the alias line is still `epic-05.md:68` with its correction at `:70`, and the full-stack completion check is now `epic-05.md:132` with its correction at `:134`. `epic-01.md:159` carries the same grouped selection and is owned by another agent; raise it with the coordinator before 5.1 qualification.
+
+All three packages (5.1 core, 5.2 place-links, 5.4 claims) remain mandatory in full milestone discovery. Nothing is removed, skipped or relabelled optional to let core qualify.

@@ -49,3 +49,35 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent subpackage preparation (2026-10-05)
 
 Dashboard canonical cookie authority and reference-content source/locales inventory can be prepared without waiting for unrelated category implementations. Preserve 3.4 event foundation and a single ingestion writer. Full category breakdown/public behavior remains dependent on landed typed producers. Capture a first actual dashboard request failure before product repair; the source bearer/legacy-query gap is not universal runtime causality. Missing real legal/FAQ/taxonomy rows remain an explicit source input, not invented seed text. Settings edits are serialized after current navigation/lifecycle ownership.
+
+## Independent review verification (2026-10-05)
+
+Measured against source at `225d83e5`. **NOT-STARTED.**
+
+### The dashboard is structurally dead, not merely unmigrated
+
+It cannot fire at all under canonical auth, so there is no "migrate the queries" slice that leaves a working dashboard behind:
+
+- `explorers-earth/src/features/Analytics/components/AnalyticsDashboard.tsx:38` reads `token` from `useAuthStore()`; `:66-68` issues `query GetAccountId($documentId: ID!) { usersPermissionsUser(documentId: $documentId) ... }`; `:85` reads `accountData?.usersPermissionsUser?.accounts`.
+- `:211` gates on `!token` and `:232` sends `token`.
+- `explorers-earth/src/services/explorersAnalyticsClient.ts:176` throws `'Analytics dashboard authentication is required'` when `!scope.token`, and `:197` sends `Authorization: Bearer ${scope.token}`.
+- Canonical auth sets `token: null` on every verification (`explorers-earth/src/store/store.ts:76`).
+
+So the blocker is the **frontend consumer**, not the producer: the 3.4 producer input named at `:29` **is landed and mounted** (`tunes/server/routes/explorersAnalyticsRoutes.ts`, `services/explorers-analytics-service.ts`, `services/explorers-analytics-adapters.ts` all exist and are listed at `:31`).
+
+- [ ] Capture the **first actual dashboard request failure** before converting anything, per the `:19` execution gate and the `:51` note above. The source-level bearer/legacy-query gap is strong evidence but is not a substitute for an observed failure; do not convert first and infer the failure afterwards.
+
+### Reference, legal and FAQ content has no canonical destination at all
+
+- `tunes/server/application/referenceContent.ts` does not exist.
+- `tunes/server/routes/explorersReferenceRoutes.ts` does not exist.
+- No reference-content seeds exist.
+
+So the `:42` obligation is a from-scratch build, not a rewiring. Additionally, legacy `faq` and `platform-term` (terms, privacy, cookies) are **i18n-localized** in the legacy source, and the canonical schema has one `locale` column plus taxonomy translations — there is no canonical per-field locale equivalent. The `:35` instruction "Preserve current language behavior" is an instruction, not an authorization to drop localization.
+
+- [ ] Treat missing real legal copy, FAQ text and localized bodies as a **blocked acceptance input**. `:39` and `:43` already forbid invented legal copy and fabricated defaults; those negatives stay. Record the blocker rather than seeding placeholder text to turn `referenceContent.test.ts` green.
+- [ ] Resolve the per-field-locale gap explicitly before implementing `:43`'s two-locale sentinel assertions — "two locales" is not satisfiable until a canonical locale representation exists for these bodies.
+
+### Shared-file collision
+
+`explorers-earth/src/features/Settings/api/mutation.ts` is listed at `:31` and is **double-listed with 2.4**. This is a file duplication, not a requirement duplication, so the ticket split stands — but per `:17` and the `:51` serialization note, the coordinator must serialize it. Do not dispatch a 7.2 Settings writer while 2.4 holds that file.

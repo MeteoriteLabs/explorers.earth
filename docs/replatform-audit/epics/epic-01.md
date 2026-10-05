@@ -12,11 +12,22 @@ Individual [ticket plans](../ticket-index.md), [execution packages](../execution
 | Ticket | Current disposition | Next owned package |
 |---|---|---|
 | [1.1](../tickets/ticket-1-1.md) | complete | Preserve accepted scope matrix; update new journey evidence only through its owning ticket. |
-| [1.2](../tickets/ticket-1-2.md) | complete | Reuse accepted runtime; new seeds and migrations belong to the consuming feature. |
+| [1.2](../tickets/ticket-1-2.md) | complete; **epic route-graph invariant unmet** | Reuse accepted runtime; new seeds and migrations belong to the consuming feature. **Open obligation (2026-10-05):** extend the route-parity inventory to the landed canonical routes and raise its expected count — shared files, coordinator allocation required. See the correction at the Route-graph invariant below. |
 | [1.3](../tickets/ticket-1-3.md) | complete | Preserve required hosted checks and immutable promotion contract. |
 | [1.4](../tickets/ticket-1-4.md) | complete | Reuse API-only runtime; preserve build and production dependency gates. |
 
 **Status:** consult the [durable implementation ledger](../../../.superpowers/sdd/epic-01/progress.md); remaining checkboxes are requirements, not completion claims. [Master plan](../implementation-plan.md) · [Backlog](../epics-and-tickets.md) · [Shared execution checklist](../execution-checklist.md)
+
+### Epic exit status — independent review (2026-10-05)
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §6–§7. Epic verdict **INCOMPLETE**. Ticket-level evidence, verified:
+
+- **1.1 ACCEPTED (narrow)** — matrix pinned to `79ef17d0` with every row still `status=planned`; executed evidence is 4 browser results across 2 marketing routes. No hosted run claimed or present.
+- **1.2** recorded acceptance re-executed and confirmed, **but the epic's route-graph invariant is unmet** (correction below) and the shared harness was delivered with a different layout than this epic specifies (correction below).
+- **1.3 ACCEPTED** — 8/8 hosted runs `success` at `c64a274e`; the branch-protection receipt is a real before/after API readback and still matches live protection as read on 2026-10-05.
+- **1.4 ACCEPTED** — 4/4 hosted `success`.
+
+Two epic-level claims are not currently supported and must not be cited as met: **"continuously verifiable"** is false at the review SHA — both protected aggregates (`replatform-required`, `music-required`) were red — and this epic's own **command contract** below references a harness that does not exist. Neither finding reopens an accepted ticket; both are recorded as open obligations at the paragraphs they affect.
 
 # Development, CI and Deployment Implementation Plan
 
@@ -105,6 +116,10 @@ Branch protection required-check names, GitHub environments, host architectures,
 
 **Route-graph invariant:** reuse the Music harness's database authority protections, not its restricted local route composition. The current Music local profile omits optional native auth/analytics/reactivation integrations. The new platform fixture runtime must mount the same canonical application route graph as the replacement production runtime, with external providers injected as fixtures. Add `tunes/server/test/contracts/platform-route-parity.test.ts` and run it before real-API E2E; assert auth, profiles, content, analytics, lifecycle and Music routes are present as their owning epics land. Production must reject fixture session authority even though the route graph is equivalent.
 
+> **Independent review correction (2026-10-05) — this invariant is UNMET.** Verified at `codex/unified-replatform` @ `225d83e5`: `scripts/replatform-route-parity.ts:4-8,23` inventories only six legacy/Strapi/analytics paths — `/api/check`, `/api/csrf-token`, `/api/user/reactivate`, `/api/explorers/analytics/events`, `/api/music-fixture/readiness` (`:4-8`) and `/api/users/me` (`:23`) — and **zero canonical paths**, while `tunes/server/test/contracts/platform-route-parity.test.ts:22` asserts `toBe(6)`, pinning the count to exactly those six. Epics 2–3 have since landed canonical routes, so the "as their owning epics land" clause above is not being honored and the invariant currently passes vacuously for every canonical surface.
+>
+> **Open 1.2 obligation:** extend the inventory with the landed canonical routes — `/api/auth/*`, `/api/explorers/v1/me`, `/account/lifecycle` and `/collections` — and raise the expected count at `platform-route-parity.test.ts:22` to match. Do not weaken or delete the existing six probes and do not lower the expected count to accommodate an absent route; a canonical route promised by a landed epic and missing from the fixture graph is a failure, not a skip. Both files are **shared** — every epic landing a canonical route must extend the same inventory — so this change **requires coordinator allocation and an exclusive window** before any writer starts, and no second parity script may be forked. Recorded as an open obligation in [ticket 1.2](../tickets/ticket-1-2.md); 1.2's recorded acceptance is **not** reopened. The production half of the invariant is unchanged.
+
 - [ ] Add failing authority tests: reject production-style hostname, unrecognized database, mismatched compose project, missing attestation and simultaneous test authorities; accept only provisioned local target. Assert reset refuses all other targets before connection or deletion.
 - [ ] Run `npm test --prefix tunes -- --run server/test/contracts/replatform-local-authority.test.ts`; verify specific authority assertions fail before implementing wrapper.
 - [ ] Implement wrapper using process argument arrays and hidden Windows child processes. Preserve existing PG15 test authority and isolated DB-per-test semantics; do not weaken integration-global-setup guards. Never recycle protected PowerShell variables.
@@ -152,11 +167,35 @@ Branch protection required-check names, GitHub environments, host architectures,
 
 These are proposed interfaces to implement, not existing exports. All feature plans consume this one harness rather than inventing separate login shortcuts or test databases.
 
+> **Independent review correction (2026-10-05) — the delivered runner differs from the contract below. Read this before running or citing any command in this subsection.**
+>
+> Verified at `codex/unified-replatform` @ `225d83e5`. The paragraphs that follow are retained as the **originally proposed** harness contract and remain the statement of the behavioral obligations; they are **not** a description of delivered interfaces.
+>
+> **What does not exist.** `explorers-earth/playwright.replatform.config.ts`, `explorers-earth/e2e/replatform/fixtures.ts` and `explorers-earth/e2e/replatform/global-setup.ts` **do not exist**, and the runner is `scripts/replatform-e2e.mjs`, not `scripts/replatform-e2e.ts`. There is no single shared Playwright config and no shared `fixtures.ts` exporting `signInAs(...)`; the delivered runner drives **per-category configs** through the inner fixture runners. A writer must not create those three files on the assumption they were lost, and must not cite them as a delivered interface. Epic 04 is separately affected: six lanes roll bespoke setup because the mandated shared `fixtures.ts` with `signInAs(...)` was never delivered.
+>
+> **The real command and its only accepted flags.** The platform runner is `scripts/replatform-e2e.mjs`. It accepts **exactly three flags, exactly six arguments** (`scripts/replatform-e2e.mjs:47-49`), and rejects anything else before startup:
+>
+> ```
+> --milestone delivered-auth-profile-books --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt <fresh owned temp dir>
+> ```
+>
+> `--milestone` accepts only the single literal scope token `delivered-auth-profile-books` (`:9`, `:48`); `--ack` accepts only `TASK4_FIXTURE_OWNED_DISPOSABLE_PG15` (`:7`, `:48`); `--receipt` must be an **absolute, not-yet-existing** directory placed directly in the system temp directory and named `replatform-e2e-<8-64 safe chars>` (`:49`). Unknown, duplicated or missing flags fail before any work.
+>
+> **Proposed, not implemented — on the platform CLI.** The generic spellings `--suite`, `--project`, `--environment` and `--milestone 1|2` (and the `3|4` variants), and the project names `desktop-chromium` and `mobile-chromium`, are **proposed interfaces that the platform CLI does not implement**. Every command in the paragraphs below and in the per-ticket test matrices of the feature epics that uses those spellings is proposed, not executable. Do not report a run as performed on their basis.
+>
+> **Scope of that caveat: the platform CLI only.** `--suite` **is live on the inner fixture runner** — `scripts/replatform-e2e.mjs:172` passes `['--suite', lane.name]` to `scripts/profile-browser-fixture.ts` for the `auth` and `lifecycle` lanes, and `:166` pins the `explorers:test:{auth,profile,lifecycle}-browser` package targets to those invocations. So `--suite` is non-executable **as a platform-CLI flag**, and executable **as an inner fixture-runner flag**. This narrows the corresponding sentence in the [command custody correction](../command-custody-2026-10-05.md), which overcorrected by describing `--suite` as non-executable without qualification.
+>
+> The behavioral obligations stated in the proposed contract below — bounded named selection, zero retries for local acceptance, retained failure traces, a missing spec promised by the selected milestone being a failure rather than a silent skip, no flag relabelling a completed milestone to bypass required tests, and production never being an accepted E2E environment — all remain **required** regardless of the flag spellings used to reach them.
+
 **Files:** create root `scripts/replatform-e2e.ts`, `explorers-earth/playwright.replatform.config.ts`, `explorers-earth/e2e/replatform/fixtures.ts`, `explorers-earth/e2e/replatform/global-setup.ts`; add `platform:test:e2e` to root package scripts. Specs live under `explorers-earth/e2e/replatform/<feature>.spec.ts`. Projects are `desktop-chromium` and `mobile-chromium` (390×844 viewport); Firefox/WebKit qualification projects may be added without making every PR run every permutation.
 
 **Command:** `npm run platform:test:e2e -- --suite books --project desktop-chromium --environment local`. Accepted suites are `auth`, `profile`, `books`, `movies`, `games`, `apps`, `products`, `people`, `places`, `guides`, `music`, `music-owner`, `music-public`, `platform`, `all`; environment is `local` or `qa`. `--suite all` is milestone qualification, not a default quick ticket check. The wrapper uses process argument arrays and supplies environment directly to children, so the command is the same on Windows and Linux; never require shell-specific inline environment assignments. Unknown suite/project/environment fails before startup. Production is not an accepted E2E environment.
 
-Suite mapping includes `places` → `places.spec.ts`, `place-links.spec.ts`, `claims.spec.ts`; `platform` → `public-parity.spec.ts`, `analytics-content.spec.ts`, `deployment.spec.ts`, `no-strapi.spec.ts`; other named suites target their corresponding file. Direct invocation through `npm --prefix explorers-earth run test:e2e -- --config=playwright.replatform.config.ts replatform/movies.spec.ts` is allowed only after the wrapper has provisioned the verified environment. Prefer the root wrapper for normal local/CI execution so no ticket skips authority setup.
+Suite mapping includes `places` → `places.spec.ts`, `place-links.spec.ts`, `claims.spec.ts`; `platform` → `public-parity.spec.ts`, `analytics-content.spec.ts`, `deployment.spec.ts`, `no-strapi.spec.ts`; other named suites target their corresponding file.
+
+> **Independent review correction (2026-10-05) — Places suite selection.** The `places` → three-spec mapping above was never changed to match the separated PLACES-CORE gate recorded at `../tickets/ticket-5-1.md:50`, so the prose was corrected there while this gate still pulled downstream specs. Corrected here: **PLACES-CORE qualification must not require `place-links.spec.ts` or `claims.spec.ts`.** Ticket 5.1 qualifies on `places.spec.ts` alone; `place-links.spec.ts` belongs to 5.2 and `claims.spec.ts` to 5.4, and 5.1 is independent of both in the dependency graph, so requiring their specs blocks an unblocked ticket on producers that do not exist.
+>
+> **No gate is weakened by this.** All three tickets remain **mandatory in full** — 5.1, 5.2 and 5.4 each keep every requirement and negative-test obligation they carry — and the complete `places` → `places.spec.ts` + `place-links.spec.ts` + `claims.spec.ts` selection above remains required for **full milestone discovery** and for `--suite all` / `platform` milestone qualification. A missing spec promised by the selected milestone stays a failure, not a silent skip. Only the narrower PLACES-CORE qualification step is scoped to `places.spec.ts`. The same unchanged pull exists in `epic-05.md:68,130`, which is not owned by this file and must be corrected by its owner. Direct invocation through `npm --prefix explorers-earth run test:e2e -- --config=playwright.replatform.config.ts replatform/movies.spec.ts` is allowed only after the wrapper has provisioned the verified environment. Prefer the root wrapper for normal local/CI execution so no ticket skips authority setup.
 
 Maintain `explorers-earth/e2e/replatform/suite-manifest.json` with required spec paths per suite and delivered milestone. Add `--milestone 1|2|3|4` to the root wrapper, required for `platform` and `all`: milestone1 platform selection includes deployment only, milestone2 adds public-parity/analytics-content, milestone3 adds no-strapi. A missing spec promised by the selected milestone is a failure, not a silent skip. No flag may relabel a completed milestone to bypass its required tests. Later ticket gates use their own suite or the full delivered-milestone manifest. This resolves early QA versus not-yet-implemented retirement scenarios without masking omissions.
 

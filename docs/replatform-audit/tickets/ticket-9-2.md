@@ -47,3 +47,17 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent review correction (2026-10-05)
 
 Linked-user analytics preference is a named 7.2/9.2 contract handoff: persistence, explicit user control, current consent and revoke behavior must exist before linked-user analytics activation. Until reviewed, keep those product events disabled by default. Public discovery remains usable without consent; no inferred impressions. Real delegated opt-in qualification joins 10.1 rather than blocking anonymous discovery.
+
+### Second correction pass (2026-10-05, independent review)
+
+**Verdict: NOT-STARTED, confirmed by evidence.** Every requirement and gate above is retained. Verified absent at the review SHA: no `tunes/server/mcp/` directory, no `@modelcontextprotocol` dependency in any `package.json`, no `McpServer`/`StreamableHTTP` reference in any tracked source file, no `creatorTools.ts`, and no `docs/replatform-audit/mcp-release/` directory — so `discovery-results.md` does not exist. The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`.
+
+**The default-deny currently holds VACUOUSLY.** Because no MCP analytics code exists, there is no code path that could emit a per-user or product event, so the contract above ("anonymous calls default to no per-user/product analytics event") is satisfied only by absence. **It is not an implemented control.** Treat it as an unbuilt requirement, not a delivered safety property:
+
+- The pinned assertion `anonymous_tool_has_no_behavioral_event` has no subject to assert against and has never run.
+- No future review may cite today's default-deny as prior evidence that the control works. The control must be implemented and its negative tests must execute and pass before any such claim.
+- A test that passes because the emitting code does not exist is a vacuous pass and does not qualify this gate.
+
+**The 7.2 consent-persistence handoff has no producer in tree.** The linked-user MCP analytics preference requires server-side persistence, explicit user control, current-consent resolution and revoke behavior from 7.2. 7.2 is NOT-STARTED: no reference-content module, routes or seeds exist, and its analytics dashboard is structurally dead (it gates on a `token` that canonical auth never sets). So the handoff above names a producer that currently produces nothing.
+
+- [ ] Linked-user product analytics stay disabled by default until the 7.2 persistence, control, current-consent and revoke behaviors exist and have been reviewed. Absence of a consumer is not authorization to enable them, and a 9.2 fixture must not stand in for the missing 7.2 producer.

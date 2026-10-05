@@ -13,10 +13,42 @@ Individual [ticket plans](../ticket-index.md), [execution packages](../execution
 |---|---|---|
 | [2.1](../tickets/ticket-2-1.md) | complete | Reuse canonical cookie authority; no legacy subject substitution. |
 | [2.2](../tickets/ticket-2-2.md) | complete | Reuse Actor contract; Music implementation belongs to 6.1. |
-| [2.3](../tickets/ticket-2-3.md) | complete | Preserve 8ce52776 acceptance; new navigation overlay belongs to repair review, not reopening this ticket. |
-| [2.4](../tickets/ticket-2-4.md) | partial | Package L: map original 18 plus 3 recovery behaviors against accepted 12; implement missing held completion, response-loss and reload cases. Socket closure joins reviewed 6.1. |
+| [2.3](../tickets/ticket-2-3.md) | complete | Preserve the accepted 2.3 scope; new navigation overlay belongs to repair review, not reopening this ticket. **Correction (2026-10-05):** `8ce52776` is the acceptance-time **hosted head**, not the delivering commit — delivery is `79edeea8`. |
+| [2.4](../tickets/ticket-2-4.md) | partial | Package L: map original 18 plus 3 recovery behaviors against the **10 committed** browser cases (corrected from "accepted 12"; cases 11-12 are overlay-only); implement missing held completion, response-loss and reload cases. Socket closure joins reviewed 6.1. **Blocking prerequisite:** the frozen 18+3 map is unwritten. |
 
 **Status:** consult the [durable implementation ledger](../../../.superpowers/sdd/epic-01/progress.md); remaining checkboxes are requirements, not completion claims. [Master plan](../implementation-plan.md) · [Backlog](../epics-and-tickets.md) · [Shared execution checklist](../execution-checklist.md)
+
+### Epic exit status — independent review (2026-10-05)
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §3 P0-1, §6 rows 2.1–2.4, §7 Epic 02. Epic verdict **INCOMPLETE**.
+
+**Exit criteria: 2.1, 2.2 and 2.3 are met. 2.4 is open.**
+
+| Ticket | Verdict | Basis / what remains |
+|---|---|---|
+| 2.1 | **ACCEPTED** | Better Auth pinned 1.7.6, password auth off, implicit linking disabled, explicit callback allowlist, 3 mandatory failing tests present, 4/4 hosted `success`. Real Google smoke explicitly deferred to 2.4/3.5. One open test-lane defect below. |
+| 2.2 | **ACCEPTED** (strongest in the set) | Commit content matches the claim: server-only Actor, ambiguous-header rejection, immutable mapping; 4/4 hosted `success`. |
+| 2.3 | **ACCEPTED** | Implementation plus integration coverage present; 4/4 hosted `success`, 2026-10-01 confirmed. Delivery is `79edeea8`; `8ce52776…` is the acceptance-time hosted head. |
+| 2.4 | **OPEN / INCOMPLETE** | Canonical server and client lifecycle are real, but: 10 committed browser cases (not 12); the frozen 18+3 requirement-to-receipt map is **unwritten**; the L0 observation contract is unresolved (and its absence claim overstated — see below); the real Google callback is absent; socket revocation is deferred to 6.1; and the legacy browser spec is unmigrated, leaving **no merge path**. Full detail and obligations in [ticket 2.4](../tickets/ticket-2-4.md). |
+
+**Review-focus item 3 is UNPROVEN and deferred.** "A logged-out or suspended owner must lose socket authority as well as HTTP access" (Review focus §3 below, owned 2.4 + 6.1) has **no evidence** at the review SHA. `tunes/server/music/canonicalMusicPrincipal.ts:8` is an explicit mapping-lookup-only module that self-documents owner provisioning and socket credentials as belonging to 6.1, so socket authority closure is deferred to **reviewed 6.1** and is not evidenced by anything in Epic 2. Do not read 2.2's accepted Actor boundary as satisfying it: 2.2 delivers the HTTP-side adapter contract, not socket revocation.
+
+#### How the auth constraint actually stands — P0, shared 2.4 / 7.1
+
+The global constraint at the end of this section ("No browser authority from account IDs, persisted JWTs or UI visibility") holds **for bearer credentials** and is **violated for subjects**. Both halves are true and must be read together; one reviewer's "no violating path" finding was scoped to bearers only.
+
+- **Bearer path — clean.** No canonical credential reaches a browser bearer path. `explorers-earth/src/store/store.ts:76` and `:83` force `token: null` on every verified transition and on verification failure, and the legacy bearer getters dead-end from there (`src/features/music/musicApi.ts:20` `getStrapiBearer` always yields `undefined`).
+- **Subject path — violated.** The canonical account UUID **is** passed as a legacy Strapi *user* subject. `store.ts:76-77` sets `accountId: account.id` and `user: {id: account.userId, documentId: account.id}`; committed `src/features/navigation/categoryNavigationApi.ts:7-9` feeds that `documentId` straight into `usersPermissionsUser(documentId: $documentId)`, and `:86` into `updateAccount(documentId: origin.accountDocumentId)`. Two identifier spaces are conflated against a backend that mounts no GraphQL.
+
+This is a **P0 shared 2.4 / 7.1 seam**, not an Epic 2 regression to be fixed in place by either ticket alone: it is the single defect behind the first failure of all three red Explorers lanes (category navigation A/B and Publishing), and after Strapi retirement those paths fail permanently. The correction is canonical transport plus renaming `documentId` → `accountId` in the store shape so the type system rejects the conflation. **Coordinator allocation is required** — the store and the navigation client are shared between 2.4 and 7.1, and `AuthSyncManager.tsx` / `Settings*` are on the never-parallel list.
+
+- [ ] Resolve the canonical-UUID-as-legacy-subject conflation under coordinator allocation across 2.4 and 7.1, renaming the store field so the conflation is statically rejected rather than only removed at one call site. Removing the legacy query document alone is insufficient while the store still exports a canonical UUID under a legacy subject name.
+
+**Latent defence-in-depth gap — a negative test is owed.** `explorers-earth/src/lib/localTunesApiClient.ts:53` defines `STRAPI_PROOF_PATTERN = /^[A-Za-z0-9._~-]{16,4096}$/`, which **would match a 36-character canonical account UUID**. Nothing at that boundary distinguishes a canonical account identifier from a legacy proof, so the boundary offers no second line of defence against the conflation above.
+
+- [ ] Add a negative test asserting that a value shaped like a canonical `accountId` is **rejected** at the `localTunesApiClient` boundary as a legacy proof or subject. This is an owed negative, additional to the transport fix — do not substitute one for the other, and do not relax `STRAPI_PROOF_PATTERN` in a way that widens what the boundary accepts.
+
+**2.1 open test-lane defect.** `tunes/server/test/account-recovery.test.ts` is **database-backed** (`:9` `let pool: pg.Pool`; `:28` `new pg.Pool({connectionString: process.env.DATABASE_URL_TEST})` in `beforeAll`) but carries no `.integration` segment in its filename, so it is **misfiled into the unit lane**. Per **Grounded test commands and preconditions** below, database suites run through `npm --prefix tunes run test:integration` with the attested disposable PostgreSQL 15 authority and the applicable suite flags, none of which the unit command supplies. A **ticket-mandated recovery proof may therefore not execute under the unit command** while appearing satisfied — and a skipped suite is not a pass. Recorded as an open obligation in [ticket 2.1](../tickets/ticket-2-1.md); 2.1's acceptance is not reopened.
 
 # Identity, recommendation core and Music implementation plan
 
@@ -41,7 +73,7 @@ Apply the [shared execution checklist](../execution-checklist.md) to affected ti
 - Preserve screens, fields, ordering, privacy and routes; auth screens are the agreed exception. Internal adapters may change.
 - Existing SQL migration history is immutable. Append reviewed migrations and update migration manifests/readiness/privileges; do not use ad hoc schema push as a production migration strategy.
 - All paths below are repository-relative and pre-rename. Epic 8 mechanically moves `tunes` to `apps/api`; services and contracts retain their names.
-- No browser authority from account IDs, persisted JWTs or UI visibility. Account ownership is resolved server-side on every operation.
+- No browser authority from account IDs, persisted JWTs or UI visibility. Account ownership is resolved server-side on every operation. **Status (2026-10-05): holds for bearers, violated for subjects** — `store.ts:76,83` force `token:null`, but `store.ts:76-77` exports the canonical account UUID as `user.documentId`, which `categoryNavigationApi.ts:7-9,86` feeds into legacy Strapi `documentId` operations. P0, shared 2.4/7.1; see [Epic exit status — independent review (2026-10-05)](#epic-exit-status--independent-review-2026-10-05) above.
 - Local and CI PostgreSQL tests use the attested disposable database. QA and production each run their own self-hosted PostgreSQL; no RDS dependency. Agent acceptance is evidence, not product-owner sign-off.
 - Use one existing S3 bucket with disjoint `qa/` and `prod/` prefixes, reusing existing AWS credentials after permission checks. Derive the prefix only from validated server configuration; neither caller input nor a media ID can select another environment. Use local storage emulation/fixtures for ordinary tests, not production objects.
 - The accepted shared AWS principal may reach both prefixes: this is application-enforced environment separation, **not IAM credential isolation**. Tests must reject cross-prefix reads/writes/deletes at the application boundary; document that a compromised shared credential still has its configured bucket reach. Do not silently introduce separate IAM users or claim shared-key isolation.
@@ -51,7 +83,7 @@ Apply the [shared execution checklist](../execution-checklist.md) to affected ti
 
 1. Concurrent Google callbacks or retry after failed onboarding must create one owner account (2.1).
 2. A public-looking nested resource must remain inaccessible when its account/category/list is private (3.1, 3.3, 6.3).
-3. A logged-out or suspended owner must lose socket authority as well as HTTP access (2.4, 6.1).
+3. A logged-out or suspended owner must lose socket authority as well as HTTP access (2.4, 6.1). **Status (2026-10-05): UNPROVEN, deferred to 6.1** — `tunes/server/music/canonicalMusicPrincipal.ts:8` defers socket credentials to 6.1, so no evidence for this item exists in Epic 2. The requirement stands in full; it is not satisfied by 2.2's HTTP-side Actor boundary.
 4. Provider identifiers can identify an edition/item, but similar titles or names cannot safely merge catalog entities (3.1, 3.2).
 5. Retried publication/queue writes and post-commit notifications must retain their existing transactional behavior (6.2, 6.3).
 

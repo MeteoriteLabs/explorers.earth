@@ -54,6 +54,18 @@ The current [epic-and-ticket backlog](epics-and-tickets.md) organizes execution 
 
 The schema exports contain **structure, not seed rows**. Category names, FAQ/terms content and reasons-for-leaving values cannot be recovered from type definitions alone. Before acceptance, create explicit reviewed seed fixtures from product requirements or a selective read-only reference-data export. No complete content/user migration is needed.
 
+### Historical data: confirmed out of scope (owner decision, 2026-10-05)
+
+**There is no historical data to migrate.** The repository owner confirmed on 2026-10-05 that the legacy Strapi instance holds no production content worth carrying over. The no-import position stated above is therefore now an explicit decision rather than an unexamined assumption, no import ticket is owed, and no final export or archive step is required before decommissioning. Whether anything is worth recovering can be revisited after the replatform is complete; nothing in Epics 1–10 depends on that revisit.
+
+**This decision does not reduce the canonical schema work, and must not be read as doing so.** The 122 MISSING attributes recorded in the [coverage register](strapi-coverage-register.md) are missing *structure for future content*, not unmigrated rows. Every one of them still has to be built before Strapi can be switched off. Three consequences specifically are **not** covered by "no historical data":
+
+- **An email suppression table is still required.** `unsubscribe.email` is one of only two unique constraints in the entire legacy schema. "No users to migrate" authorizes **zero rows**, not **no table**: a new unsubscribe must be honored from the first outbound email, or an opted-out address can be mailed again. Owner: 7.2.
+- **Seed rows must be authored, not recovered.** Category names, FAQ text and legal/policy copy are product content to be written fresh and reviewed. Their absence is a content-authoring obligation on the owning category tickets and 7.2, unaffected by this decision.
+- **Live quota and presentation fields are features, not history.** `song-limit` (live in `BillingTab.tsx`, `Checkout.tsx`, `useAIGuideQuota.ts`), `recommendation_list.List_Name_Details` (live in three components) and `account.localtunes_public` are in-use behavior with no canonical destination. Dropping the quota in particular removes an abuse/cost control, which this document's deferral of *monetization* does not authorize. These remain open owner decisions in the coverage register's decision list.
+
+Genuinely safe drops, confirmed by live-reference search: `account.profile_place_media_details` and `account.Is_Claimable` have zero live references anywhere in the tree.
+
 ### Operational observations to avoid carrying forward
 
 The Strapi workflow generates environment configuration before the Docker build and the Dockerfile copies that file into the image. The unified backend should inject secrets at runtime rather than reproduce this pattern. This audit did not read secret values or determine exposure of any deployed image.

@@ -42,3 +42,40 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] In the adapter test and browser spec, round-trip platforms/screenshots/download URL, restore focus to the originating card after modal close, and preserve draft text when enrichment is unavailable. Test keyboard activation and escape in the actual retained modal. Execute the new adapter test file explicitly.
 
 **Acceptance gate:** manual Apps flow is fully persisted, existing list return navigation works after add/edit, and tier metadata does not require any retired billing endpoint.
+
+## Independent review correction (2026-10-05)
+
+**Verdict confirmed: NOT-STARTED.** All five mandated files at `:33` are missing, verified path-by-path at `225d83e5`:
+
+| Mandated path | State |
+|---|---|
+| `tunes/server/explorers/categories/apps.ts` | **MISSING** |
+| `explorers-earth/src/features/AppsAndTools/api/explorersAdapter.ts` | **MISSING** |
+| `tunes/server/test/explorers/apps.test.ts` | **MISSING** |
+| `tunes/server/test/explorers/apps.integration.test.ts` | **MISSING** |
+| `explorers-earth/e2e/replatform/apps.spec.ts` | **MISSING** |
+
+**The live consumer is still Apollo/Strapi GraphQL.** `explorers-earth/src/features/AppsAndTools/api/query.ts:1` is `import { gql } from "@apollo/client"` and `:6` declares `APP_LISTS_BY_ACCOUNT` as a `gql` query over `appLists(...)` keyed on `$accountDocumentId`. This ticket's own audit status is honest about Apps being incomplete with a live Apollo consumer, and that honesty is preserved here: nothing below implies otherwise.
+
+### The canonical backend has no typed storage or write path for the Apps legacy fields
+
+This is the correction that changes the ticket's scope. It is not a UI-adapter job.
+
+- Manual entity resolution accepts **`{title}` only**: `resolveManualEntitySchema` at `tunes/shared/explorersContract.ts:87` is `z.object({kind:z.literal('manual'), category:topPickCategorySchema, details:z.object({title:displayTitleWriteSchema}).strict()}).strict()`. The `.strict()` on `details` rejects every other key.
+- The public read path **rejects any display-override key other than `title`** for non-books/non-movies categories: `tunes/server/application/publicContent.ts:34` — `else if(row.content_category!=='books' && Object.keys(overrides.data).some(k=>k!=='title')) throw new PublicContentFailure(400)`.
+
+So the legacy required fields are **currently unrepresentable** end to end: `app_url` (`explorers-earth/src/features/AppsAndTools/types/index.ts:22`) and `price_tier` with the exact enum `Free | Freemium | Paid | Subscription | null` (`:28`), plus developer/platforms, screenshots and download URL required by `:35`.
+
+- [ ] **This ticket owes a contract + migration + storage, not just an adapter.** Add the typed Apps details to the shared contract, author the next append-only migration for its storage, implement the repository/storage write path, and extend the public display-override allowlist for `apps` — then build the adapter. `price_tier_and_platforms_round_trip` at `:37` cannot pass until that chain exists, and parameterizing `apps.integration.test.ts` over the five tier values (`:41`) has nowhere to persist to today.
+
+### Dependency prose correction
+
+- [ ] `:29` reads "**Depends on:** Epic 3", which is a blanket epic edge. The real edges are **3.1 and 3.2**, as this ticket's own execution card already records ("Technical inputs: 3.1, 3.2"). Read the prose as 3.1/3.2. Epic 3 is explicitly not a blanket prerequisite for its consumers; a reviewed producer interface from 3.1/3.2 is what this ticket consumes, and no part of Epic 3's unrelated closure gates it.
+
+### The epic-mandated shared fixtures module does not exist — 4.3 creates it
+
+`docs/replatform-audit/epics/epic-04.md:71` mandates that `explorers-earth/e2e/replatform/fixtures.ts` export `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context, with the Authentication owner defining the fixture rather than category tickets.
+
+**`explorers-earth/e2e/replatform/fixtures.ts` DOES NOT EXIST.** All six existing lanes (`auth`, `profile`, `books`, `lifecycle`, `movies`, `games`) roll **bespoke setup** instead, which is why no two lanes share an identity model.
+
+- [ ] **Creating the shared `fixtures.ts` is folded into this package, as the first category package of Epic 4.** It must export the exact surface epic-04 names — `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context — create real in-process sessions via its identity test factory, and mount **no** public test-login endpoint. 4.4, 4.5 and later category lanes consume it rather than each re-deriving sign-in. Folding the file into this package does not transfer authority over the identity model away from the Authentication owner, and it does not permit weakening the contained-test network restrictions to make a new suite pass.

@@ -218,6 +218,26 @@ All commands were verified against package scripts/configuration by inspection; 
 
 **Auth qualification update:** [Pinned Better Auth schema and local probe results](../auth-schema-qualification.md) now resolve the generated-schema uncertainty. Application integration, live Google callbacks, recovery negative tests and later delegated issuance/revocation remain named acceptance work.
 
+## Independent review verification (2026-10-05)
+
+Epic 7 is **INCOMPLETE**. Measured against source at `225d83e5`; per-ticket detail lives in [7.1](../tickets/ticket-7-1.md), [7.2](../tickets/ticket-7-2.md) and [7.3](../tickets/ticket-7-3.md). The `:14`–`:16` dispositions stand.
+
+Five measured facts set the epic's state:
+
+1. **One uncommitted shared slice against roughly nine ticket-level gates.** The canonical navigation/settings slice exists only in the uncommitted working-tree overlay, and that overlay was reviewed **REVISE**: `explorers-earth/e2e/setup/category-navigation.ts:407` throws `legacy navigation GraphQL denied` for `SettingsAccount`/`PublicCategoryListCounts`/`CheckPublishedLists`/`UpdateTabVisibility`, while unmodified `explorers-earth/e2e/category-navigation-a.spec.ts:478` and `explorers-earth/e2e/music-publish-controls.spec.ts:85,139,149,265,320,427` still assert exactly those operations. Uncommitted work is not delivered scope and must not be recorded as a receipt.
+
+2. **3 of 9 public categories.** `tunes/server/publicProfile/postgresPublicProfileGateway.ts:58` dispatches only `games`, `movies` and `books`; places, guides, music, apps, products and people fall through to `{ items: [], nextCursor: null }`, and `:61` returns `undefined` for their details. An all-category 7.1 pass would read "category empty" rather than "unimplemented", so 7.1 now owes an explicit typed unsupported-category error until each producer lands.
+
+3. **The analytics dashboard is unmigrated and structurally dead.** `explorers-earth/src/features/Analytics/components/AnalyticsDashboard.tsx:38,66-68,85` reads `usersPermissionsUser(documentId)`→`accounts`, `:211` gates on `token` and `:232` sends it; `explorers-earth/src/services/explorersAnalyticsClient.ts:176,197` require and send a Bearer — while canonical auth sets `token: null` (`explorers-earth/src/store/store.ts:76`). Its 3.4 producer input **is** landed and mounted, so the blocker is the frontend consumer.
+
+4. **No reference content.** `tunes/server/application/referenceContent.ts`, `tunes/server/routes/explorersReferenceRoutes.ts` and reference-content seeds do not exist. Legacy `faq` and `platform-term` are i18n-localized with no canonical per-field locale equivalent; missing real legal and localized copy is a blocked acceptance input, never invented seed text.
+
+5. **No milestone evidence.** `docs/replatform/evidence/milestone-2.md` does not exist, and 7.3's mandated wrapper flags (`--suite all --milestone 2 --project desktop-chromium --environment local`) are not accepted by `scripts/replatform-e2e.mjs:47-48`, which takes exactly `--milestone delivered-auth-profile-books --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt <fresh owned temp dir>` over a fixed six-lane set. Weakening that runner guard to satisfy the documented spelling is forbidden.
+
+Also open: the P0 subject conflation behind the first failure of all three red Explorers lanes — `explorers-earth/src/store/store.ts:76-77` places the canonical account UUID in `user.documentId`, and `explorers-earth/src/features/navigation/categoryNavigationApi.ts:7-9` and `:86` feed it into `usersPermissionsUser(documentId:)` and `updateAccount(documentId:)`. And the public media boundary at `explorers-earth/src/features/PublicHome/components/publicPlaceMedia.ts:35-38,59` still admits the Strapi origin and any S3 host, so hiding an attachment does not deny its bytes.
+
+Nothing above weakens an exit criterion. The epic remains INCOMPLETE.
+
 ## Individual ticket files
 
 - [Ticket 7.1: Public navigation and profile parity](../tickets/ticket-7-1.md)

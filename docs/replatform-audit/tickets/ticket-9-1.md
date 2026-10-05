@@ -48,3 +48,22 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent review correction (2026-10-05)
 
 Public MCP closure uses anonymous transport and public authority negatives. Early owner-token tests may use clearly labelled service/transport fixtures only; actual delegated OAuth evidence is owned by 10.1 after grant implementation and then reruns the retained 9.1 authority regression. Do not make 9.1 implementation recursively depend on 10.1 or call fixture OAuth live qualification.
+
+### Second correction pass (2026-10-05, independent review)
+
+**Verdict: NOT-STARTED, confirmed by evidence.** Every requirement and gate above is retained. No MCP code exists in the repository; nothing in this ticket has been started.
+
+Verified absent at the review SHA (read-only, repository-wide):
+
+- no `tunes/server/mcp/` directory (and no `apps/api/`, the post-rename target)
+- no `@modelcontextprotocol` dependency in any `package.json`
+- no reference to `McpServer` or `StreamableHTTP` in any tracked `.ts`/`.tsx` file
+- no `oauthPrincipal.ts`, no `resolveMcpActor`, no `creatorTools.ts`
+- no `docs/replatform-audit/mcp-release/` directory, so `compatibility.md` does not exist
+
+The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`. Research output is not an implementation receipt and does not satisfy any checkbox above.
+
+**Prerequisite re-point — PROPOSED, for the coordinator to accept or reject.** This ticket's technical input is recorded as 8.5. 8.5 has not started and has produced no artifact (see the ticket 8.5 correction), so 9.1 is currently blocked behind a recovery drill. A public read-only MCP surface has **no technical need** for the platform recovery drill: it reads already-delivered public query services and writes nothing. The recommendation is to re-point 9.1's technical prerequisite from **8.5 to 7.3**, which is the real producer of the public read surface 9.1 consumes.
+
+- This is a **proposed** re-point recorded for coordinator decision. It is **not** applied: the execution card above still reads 8.5, and no dependency edge has been changed by this correction.
+- Release sequencing remains a **separate gate** either way. Re-pointing the technical prerequisite does not make 9.1 releasable ahead of Milestone 3, and does not relax any release-eligibility requirement.

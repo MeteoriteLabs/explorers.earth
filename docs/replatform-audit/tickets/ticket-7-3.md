@@ -33,14 +33,44 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 **Existing:** all category E2E specs, dedicated public/theme/Music configs, package scripts and CI jobs qualified by Epic 1. **Create:** `docs/replatform/evidence/milestone-2.md` during execution; the evidence document contains actual run results, not prefilled PASS entries.
 
 - [ ] Run the complete frontend unit suite, backend unit suite and applicable disposable-database integration suite using existing package scripts; preserve required coverage gates or replace obsolete paths with equivalent behavioral coverage in the same change.
-- [ ] Run all new real API scenarios using `npm run platform:test:e2e -- --suite all --milestone 2 --project desktop-chromium --environment local`; run retained Music full-stack/capability suites through the commands pinned by Epic 6.
+- [ ] Run all new real API scenarios through the reviewed per-category guarded runners for every category that has a landed producer, each entered with its own exact scope token, owned-disposable acknowledgement and fresh owned receipt directory, at desktop and mobile projects; run retained Music full-stack/capability suites through the commands pinned by Epic 6. *(Corrected 2026-10-05: the historical spelling `npm run platform:test:e2e -- --suite all --milestone 2 --project desktop-chromium --environment local` does not exist — see the verification section below. Every behavioral obligation of the original step is retained: all nine categories, both projects, real API, no browser mocks.)*
 - [ ] Run applicable baseline presentation suites, keyboard/accessibility checks and desktop/mobile visual comparisons. Fail on unexpected required scenario skips; record baseline defects separately.
 - [ ] On QA, exercise Google login and each external provider with nonproduction configuration. Record provider quotas/outages as blocked checks, not successful fixture tests.
 - [ ] Drive all nine categories and profile/settings/analytics/claim flows in the browser. Record expected versus actual behavior, screenshots/traces where useful, environment and exact tested commit; no claim of owner sign-off.
 - [ ] Capture a network log proving retained runtime flows no longer require Strapi. Separately verify environment-neutral canonical URL output from static generation; the inspected generator has no established live Strapi fetch. Categorize remaining traffic rather than blocking all external catalog/CDN calls indiscriminately.
 - [ ] Run branch CI at the tested checkpoint and link its results. Publish milestone report with delivered scope, local automated results, browser acceptance, QA/provider checks, remote CI, defects, blocked cases and optional owner reproduction steps.
 - [ ] Gate Milestone 2 on all required category/ownership/privacy scenarios passing. Do not start destructive retirement work merely because mock UI tests pass.
-- [ ] Repeat the milestone-2 wrapper with `--project mobile-chromium`, then both projects with `--environment qa`. Record exact discovered/executed/passed/failed/skipped scenario counts; fail the milestone for a required scenario that is absent from discovery, skipped or retried into an unexplained pass.
+- [ ] Repeat every per-category guarded run at its mobile project, then repeat both projects against the QA environment under Epic 1's safety rules, each with its own fresh owned receipt. Record exact discovered/executed/passed/failed/skipped scenario counts per lane; fail the milestone for a required scenario that is absent from discovery, skipped or retried into an unexplained pass. *(Corrected 2026-10-05: `--project mobile-chromium` and `--environment qa` are not accepted flags — see the verification section below. The desktop-and-mobile and local-and-QA obligations are retained in full; project names come from each lane's own reviewed configuration.)*
 - [ ] Attach a nine-row category coverage table to the milestone report: owner create/edit/item-delete/list-delete, order/pin, publish/hide, anonymous detail, B denial, media byte check, desktop/mobile and real-provider result. Guides add parent/section round-trip and deletion; Music refers to its distinct owner/guest/socket/publication cases rather than generic collection semantics.
 
 **Acceptance gate:** the route matrix from 1.1 reconciles one-to-one with executed scenarios or explicit agreed exclusions; optional owner testing is not a prerequisite, but required technical checks cannot be waived by silence.
+
+## Independent review verification (2026-10-05)
+
+Measured against source at `225d83e5`. **NOT-STARTED.**
+
+### The mandated commands do not exist
+
+`scripts/replatform-e2e.mjs:47-48` accepts **exactly six arguments** and exactly three flags:
+
+```
+--milestone delivered-auth-profile-books
+--ack       TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
+--receipt   <fresh, absolute, direct-child-of-tmpdir, non-existent replatform-e2e-* directory>
+```
+
+`:47` fails on `args.length !== 6`, on any flag outside that set, and on a duplicate or empty value. `:48` fails unless `--milestone` equals the `SCOPE` constant at `:9` and `--ack` equals the `ACK` constant at `:7`. `:49-50` require the receipt path to be absolute, a direct child of the real temp directory, matching `^replatform-e2e-[A-Za-z0-9-]{8,64}$`, not already existing, and not reached through a symlink.
+
+So none of `--suite`, `--project`, `--environment`, `--milestone 2`, `--project desktop-chromium` or `--project mobile-chromium` is accepted. The lane set is fixed at `:11` to `auth`, `profile`, `books`, `lifecycle`, `movies`, `games`, each with a pinned runner, config, project list and exact identity count, validated by `validateManifest` at `:53-56`.
+
+Steps `:36` and `:43` are rewritten above to consume reviewed per-category guarded runners instead.
+
+**Weakening the runner guard to satisfy the old command spelling is forbidden.** The `--ack`/`--receipt`/scope checks at `:47-50`, the ambient-authority refusal at `:43-44` (which rejects production `NODE_ENV`, ambient `DATABASE_URL`, Docker context and hosted fixture variables), and the exact lane/identity validation at `:53-56` are the mechanism that makes a receipt mean anything. Adding a permissive `--suite all` path, relaxing the receipt ownership test, or widening the accepted flag set to make the documented command run is a stop condition, not a fix. New per-category lanes are added by reviewed extension of the lane table and manifest, with their own exact identity counts.
+
+### No milestone evidence exists
+
+`docs/replatform/evidence/milestone-2.md` **does not exist**. `docs/replatform/evidence/` holds `2026-09-30/`, `README.md`, `ci-hosted-validation.md` and `main-protection-settings.json`. The `:33` instruction to create it during execution stands, and its warning that the document must contain actual run results rather than prefilled PASS entries stays in force.
+
+### The scope token is milestone-shaped and should be renamed or gated first
+
+`scripts/replatform-e2e.mjs:9` sets `SCOPE='delivered-auth-profile-books'` and `:8` labels it a "stable compatibility identifier". It is consumed through the `--milestone` flag, so a reader of a receipt sees a *milestone* value that actually names a delivered slice of six lanes — none of which is the nine-category milestone-2 scope this ticket must publish. Before 7.3 publishes any evidence, the token must be renamed to a scope-shaped identifier, or the evidence document must explicitly gate the distinction, so that a `--milestone delivered-auth-profile-books` receipt can never be read as milestone-2 attestation.

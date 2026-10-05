@@ -116,6 +116,28 @@ All five tickets have prerequisites, exact proposed file scope, named behaviors 
 
 **Auth qualification update:** [Pinned Better Auth schema and local probe results](../auth-schema-qualification.md) now resolve the generated-schema uncertainty. Application integration, live Google callbacks, recovery negative tests and later delegated issuance/revocation remain named acceptance work.
 
+## Independent review correction (2026-10-05)
+
+**Epic verdict: NOT-STARTED.** All three tickets (10.1, 10.2, 10.3) are unstarted. Every requirement and gate in this epic and in its ticket files is retained.
+
+### No MCP implementation exists
+
+Verified absent at the review SHA, repository-wide and read-only: no `tunes/server/mcp/` directory (and no `apps/api/`, the rename target this epic's paths assume), no `@modelcontextprotocol` dependency in any `package.json`, no reference to `McpServer` or `StreamableHTTP` in any tracked source file, no `oauthPrincipal.ts`, no `resolveMcpActor`, no `creatorTools.ts`, no `docs/replatform-audit/mcp-release/` directory, and no `plugins/` directory — so the proposed `plugins/explorers/` distributable does not exist. The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`; research output is not an implementation receipt. This epic's prerequisites are also unmet: Epic 9 is NOT-STARTED and Milestone 3 has no evidence document, because ticket 8.5 has not started.
+
+### `get_my_profile` ownership overlap — resolved
+
+`get_my_profile` is claimed twice. `epic-10.md:84` lists `getMyProfile(actor)` among 10.2's interfaces and `:87` lists `get_my_profile` among the tools 10.2 implements, while `../tickets/ticket-10-1.md:49` assigns 10.1 a minimal protected `getMyProfile` read probe to qualify grant scope, current membership and revocation. The same overlap appears in `../tickets/ticket-10-2.md:33` and `:36`.
+
+**Disposition: 10.1 owns the minimal protected probe and lands it first. 10.2 owns the full creator tool catalog and extends the already-registered `get_my_profile` tool rather than creating a second one.** A deferring sentence has been added to `../tickets/ticket-10-2.md` so a writer who reads only that file cannot re-implement the probe; the registration freeze is coordinated with the coordinator before either ticket touches it.
+
+Both tickets' requirements for this tool are retained unchanged: `profile:read` scope, active account membership, and no implementation by a public-profile lookup. The lines above are retained as historical text; the ownership split is the correction, and it removes no requirement.
+
+### Text duplication across epics 08–10
+
+Ticket bodies 10.1–10.3 are triplicated verbatim at `:59-111` — once in the canonical ticket files under `../tickets/`, once here, and once in the grouped implementation document shared with Epic 9. This contradicts the principle each ticket file states, that shared contracts are maintained once in the epic rather than copied into conflicting versions, and the `get_my_profile` overlap above is an instance of the resulting drift: the correction was recorded in `ticket-10-1.md` while two other copies kept the superseded assignment.
+
+**Recommendation (not applied in this pass):** reduce this epic file to the disposition table plus links, keeping only genuinely epic-level content (global constraints, file map, review focus). **No requirement text is deleted in this pass.** Until the coordinator designates which copy is authoritative, the canonical ticket files under `../tickets/` govern where the copies disagree.
+
 ## Individual ticket files
 
 - [Ticket 10.1: OAuth linking and delegated principal](../tickets/ticket-10-1.md)

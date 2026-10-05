@@ -41,3 +41,12 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Run changed workflow contract tests and existing `server/test/contracts` suite. Validate workflow syntax with available GitHub/actionlint tooling; do not install tools solely to claim validation when unavailable.
 - [ ] Push the integration branch created in 1.1 and create its draft PR only after static trigger review. Inspect real run conclusions and exact source revision. Resolve baseline failures openly; no green-by-skip claim. Record required-check settings separately from source.
 - [ ] Commit workflow/check-map changes. **Gate:** feature branch has executed validation, no deployment job was invoked, and required checks resolve. CI syntax tests alone do not establish remote CI success.
+
+## Independent review record (2026-10-05)
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §6 row 1.3. Verdict **ACCEPTED**, evidence independently verified:
+
+- **8/8 hosted workflow runs concluded `success` at `c64a274e`**, the recorded acceptance head.
+- The branch-protection receipt is a real before/after read-only API readback, not a workflow-file inference, and **it still matches live protection as read on 2026-10-05**: `strict=true` with required contexts exactly `replatform-required` (`.github/workflows/ci.yml:462`) and `music-required` (`.github/workflows/test.yml:300`). The "Verified configuration gap" paragraph above is therefore closed by executed evidence, satisfying its own rule that CI enforcement is never claimed from workflow files alone.
+
+Two protection facts the receipt does not cover, recorded here so no consumer reads 1.3 as evidence for them: `enforce_admins=false` and `required_pull_request_reviews=null`. The review classes both as a protection-policy decision for the repository owner, not a workflow change and not a 1.3 defect. Acceptance is not reopened. Note separately that image build and "Music C0 contracts" are **not** protected contexts, and that `music-required` is emitted by `test.yml` ("Backend validation"), not by the "Music C0 contracts" workflow — do not substitute one for the other when reading a required-check result.

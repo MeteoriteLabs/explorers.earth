@@ -39,3 +39,10 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] **Pinned regression assertions:** Each review case records setup, explicit action, expected state, actual state, artifact/run link and pass/fail/blocked; verify the package contains no credential values and all declared tools match the running QA tool list.
 
 **Done:** review-ready integration and evidence; public availability is not claimed before separate publication succeeds.
+
+
+## Independent review correction (2026-10-05)
+
+**Verdict: NOT-STARTED, confirmed by evidence.** Every requirement and gate above is retained. Verified absent at the review SHA: no `tunes/server/mcp/` directory (and no `apps/api/`), no `@modelcontextprotocol` dependency in any `package.json`, no `McpServer`/`StreamableHTTP` reference in any tracked source file, no `creatorTools.ts`, no `oauthPrincipal.ts`/`resolveMcpActor`, no `docs/replatform-audit/mcp-release/` directory — so `review-cases.md`, `privacy-data-map.md`, `release-checklist.md` and `uat-results.md` do not exist — and no `plugins/` directory, so there is no distributable package. The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`.
+
+Both of this ticket's prerequisites (9.2 and 10.2) are themselves NOT-STARTED, so there is no running QA tool list to validate declared tools against, and no Milestone 4 report can be produced. Nothing above has been attempted.

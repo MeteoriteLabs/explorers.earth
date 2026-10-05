@@ -203,6 +203,39 @@ Music suite mapping: `music-owner` selects `e2e/replatform/music-owner.spec.ts`;
 
 **Auth qualification update:** [Pinned Better Auth schema and local probe results](../auth-schema-qualification.md) now resolve the generated-schema uncertainty. Application integration, live Google callbacks, recovery negative tests and later delegated issuance/revocation remain named acceptance work.
 
+## Independent review correction (2026-10-05)
+
+**Epic verdict: NOT-STARTED.** All five tickets (8.1–8.5) are unstarted. Every requirement and gate in this epic and in its ticket files is retained. The per-ticket evidence lives in the canonical ticket files; this section records only the epic-level corrections.
+
+### Epic-level exit criteria (previously missing)
+
+Until now this epic defined closure only as the union of its five tickets' gates. That is insufficient: several of the obligations below are cross-ticket and would otherwise have no owner at closure. These are epic-level exit criteria, additional to — never in place of — every ticket gate:
+
+- [ ] **No Strapi requirement anywhere in the startup path.** The canonical application boots with no `STRAPI_*` variable set and with outbound Strapi access denied, in all three compose files (`docker-compose.yml`, `docker-compose.replatform.yml`, `deploy/platform.compose.yml`), and both 8.1 subpackages (8.1a server/compose/workflow, 8.1b frontend) are accepted on their own evidence.
+- [ ] **Exactly one promotion authority exists.** The retirement/supersession decision owed for `.github/workflows/explorers.yml` (dead at `:15`, `if: ${{ false }}`) and `.github/workflows/tunes-deploy.yml` is recorded and executed, and no two live production promotion paths remain.
+- [ ] **Production promotion still requires a second human after the migration.** The `required_reviewers` and `prevent_self_review` protection currently carried by the `tunes-production` environment is reproduced on whichever environment the replacement workflow binds. Protection must be verified against the live API, not asserted from workflow source.
+- [ ] **The 8.5 recovery receipt is a required workflow step, not prose.** The promotion authority fails closed on a missing, stale or failed recovery receipt for the exact candidate. 8.4 is not mechanism-complete until that step exists.
+- [ ] **No milestone is relabelled to close this epic.** Every browser/CI receipt cited at closure is re-attested at the exact closure SHA; a count carried over from an earlier freeze is not a receipt.
+- [ ] **No destructive retirement is performed as a documentation action.** Old-service shutdown, DNS/proxy changes, secret deletion and volume/image deletion remain separate authorized operational actions with their own records.
+
+### Harness milestone contract — proposed, not implemented
+
+The command contract above at `epic-08.md:176` specifies `--milestone 1|2|3|4` on the root wrapper with a `platform` lane mapping to `public-parity.spec.ts`, `analytics-content.spec.ts`, `deployment.spec.ts` and `no-strapi.spec.ts`, and `:172` lists fifteen accepted suites. **The implemented runner does not support any of that.** Measured:
+
+- `explorers-earth/e2e/replatform/suite-manifest.json:3` declares `"scope": "delivered-auth-profile-books"`.
+- `scripts/replatform-e2e.mjs:9` defines that single literal as `SCOPE`, and `:47-48` require exactly three flags (`--milestone`, `--ack`, `--receipt`) with `--milestone` **equal to that one token**. Any numeric milestone value fails before startup.
+- `scripts/replatform-e2e.mjs:11` fixes the lane set to `auth`, `profile`, `books`, `lifecycle`, `movies`, `games`. There is **no `platform` lane**, and `explorers-earth/e2e/replatform/no-strapi.spec.ts` does not exist.
+
+The numbered-milestone spelling and the `platform` lane are therefore **proposed interfaces, not implemented runner behavior**, and the text at `:170-176` is retained as historical proposal. The *obligations* it carries — a maintained per-lane manifest, a missing promised spec being a failure rather than a silent skip, and no flag relabelling a completed milestone — remain required and are unchanged. A dispatched writer must read `scripts/replatform-e2e.mjs` for the current invocation, per the [command custody correction](../command-custody-2026-10-05.md).
+
+Separately, the 8.1 Files paragraph duplicated at `epic-08.md:87` names `explorers-earth/src/graphql/`, which **does not exist**. The corrected list and the measured retirement denominator are in `../tickets/ticket-8-1.md`; the duplicate above is retained as historical text and is not the authority.
+
+### Text duplication across epics 08–10
+
+The ticket bodies in this epic (`:83-161`) are triplicated verbatim: once in the canonical ticket files under `../tickets/`, once here, and once in the grouped implementation documents. This directly contradicts the principle each ticket file states — that shared contracts are "maintained once in the epic, rather than copied into thirty-eight potentially conflicting versions" — and it is how divergence such as the stale `src/graphql/` path survives in one copy after being corrected in another.
+
+**Recommendation (not applied in this pass):** reduce this epic file to the disposition table plus links to the canonical ticket files, keeping only genuinely epic-level content (global constraints, review focus, source anchors, harness contract, the exit criteria above). **No requirement text is deleted in this pass** — doing so needs the coordinator's agreement on which copy becomes authoritative, and a check that nothing cites the epic's line numbers. Until then, the canonical ticket files under `../tickets/` are the authority where the two copies disagree.
+
 ## Individual ticket files
 
 - [Ticket 8.1: Remove remaining Strapi coupling](../tickets/ticket-8-1.md)

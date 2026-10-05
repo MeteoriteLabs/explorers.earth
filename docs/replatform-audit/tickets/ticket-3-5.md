@@ -62,3 +62,29 @@ Prepare nonsecret readiness/artifact verification independently. A selected Mile
 ## Independent review correction (2026-10-05)
 
 Q1 preparation requires no green deployment claim. Q2 trusted-candidate creation explicitly remains blocked by required hosted Backend/Explorers failures at the current committed checkpoint. Q3 requires Q2 plus exact artifact provenance, selected QA fixture coverage, real configuration/permissions and separate deployment decision. Do not weaken required checks to unblock candidate production.
+
+### No artifact producer exists (verified 2026-10-05)
+
+**Both workflows mandated by the `**Files:**` line at `:33` and by the `**Artifact producer:**` section at `:37` are absent from the repository.** Checked path-by-path at `225d83e5`; `.github/workflows/` contains exactly `ci.yml`, `explorers.yml`, `frontend-e2e-qualification.yml`, `music-c0-contracts.yml`, `music-reconcile.yml`, `test.yml`, `tunes-deploy.yml`, `tunes-host-preflight.yml`, `tunes.yml`.
+
+| Mandated path | State |
+|---|---|
+| `.github/workflows/platform-candidate.yml` | **DOES NOT EXIST** |
+| `.github/workflows/platform-qa.yml` | **DOES NOT EXIST** |
+| `explorers-earth/playwright.replatform.config.ts` | **DOES NOT EXIST** |
+| `explorers-earth/e2e/replatform/deployment.spec.ts` | **DOES NOT EXIST** |
+| `scripts/platform-release.ts` | exists |
+
+Consequences, stated plainly:
+
+- **Q2 trusted-candidate creation cannot be attempted at all.** It is not merely blocked by red gates; the producer that would build, scan, publish and attest the images does not exist.
+- **`scripts/platform-release.ts` has no trusted producer to verify.** The `producerRunId` / `producerWorkflow` / `manifestDigest` provenance contract at `:37`–`:39` has no workflow emitting it, so any manifest it verified today would be caller-authored — exactly what `:37` forbids. This is why the verifier's own evidence self-labels synthetic with placeholder digests.
+- [ ] **Q1 is hereby scoped to authoring the two missing workflows** (`platform-candidate.yml` and `platform-qa.yml`) plus `explorers-earth/playwright.replatform.config.ts` and `explorers-earth/e2e/replatform/deployment.spec.ts`, with the dispatch-only / integration-branch / required-CI-result preconditions and the permission split at `:37` (candidate holds registry permissions and no SSH deployment credentials; QA holds QA-only authority). Authoring them is not a deployment claim and not a green claim.
+- [ ] **Q2 remains blocked by the red required aggregates.** At the current head `225d83e5`, Backend validation is a **FAILURE** with `music-required` failing. `music-required` (emitted by `test.yml:300`, not by the green "Music C0 contracts" workflow) and `replatform-required` (`ci.yml:462`) are the two required contexts. Q2 must not be attempted, and must not be declared attemptable, while either is red at the candidate SHA.
+
+### The only category e2e in CI today is a mock lane — never read it as category parity
+
+`.github/workflows/frontend-e2e-qualification.yml:40` is the `general-pages` lane, and it is the **only** place in CI where per-category specs run. It executes the **legacy MOCK** specs — `e2e/analytics.spec.ts e2e/apps.spec.ts e2e/books.spec.ts e2e/categories.spec.ts e2e/games.spec.ts e2e/guides.spec.ts e2e/locations.spec.ts e2e/marketing-pages.spec.ts e2e/movies.spec.ts e2e/people.spec.ts e2e/products.spec.ts` — under `playwright.general-e2e.config.ts`, whose Vite config points the app at a **fake GraphQL origin** (`explorers-earth/e2e/general.vite.config.ts:15` defines `VITE_API_URL` as `` `${origin}/graphql` ``) and supplies **fixture tokens** (`:27` `VITE_PUBLIC_ACCESS_TOKEN='fixture-public-token'`, `:28` `VITE_FULL_ACCESS_TOKEN='fixture-full-token'`) alongside fixture provider keys at `:22`–`:26`. It is one case per category.
+
+- **This lane must never be read as category parity, canonical-backend coverage, or evidence for any Epic 4 / Epic 5 category.** It proves the mock app renders; it exercises no canonical route and no PostgreSQL.
+- [ ] **All real-backend replatform evidence is local-only and has never been re-attested at an exact SHA.** `platform:test:e2e` and the six canonical lanes (`auth`, `profile`, `books`, `lifecycle`, `movies`, `games`) appear in **no workflow**, so every canonical browser receipt in this plan is an owned-fixture local run. Register the canonical lanes in CI — with a one-to-one behavioral map **before** any legacy spec is retired — and only then treat canonical browser results as attested. Do not retire a legacy mock spec in exchange for an unregistered canonical one.

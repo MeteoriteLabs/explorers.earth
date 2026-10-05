@@ -45,3 +45,22 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] In `api/__tests__/explorersAdapter.test.ts`, assert runtime zero versus null, no fabricated year, and watch-provider/cast arrays preserved. In the real browser spec, pin two items, reorder them, reload and assert exact card order; remove one item and separately remove its list, verifying public direct URLs return unavailable.
 
 **Acceptance gate:** common category assertions plus movie/TV disambiguation, genre/list public navigation and both deletion scopes pass. Provider timeout preserves entered creator notes and offers the existing retry/error state.
+
+## Independent review correction (2026-10-05)
+
+Disposition stays **BOUNDED-SLICE** for the manual owner/public flow.
+
+**The Movies bounded slice verifies exactly.** Recounted from source at `225d83e5`:
+
+- `explorers-earth/e2e/replatform/movies.spec.ts` declares **12** `test(` cases; `explorers-earth/e2e/replatform/movies.playwright.config.ts:3` declares **2** projects (`movies-desktop`, `movies-mobile`, `retries:0`). 12 × 2 = **24 identities**.
+- Both files are **committed and clean**, and 24 matches the `movies` lane in the committed `suite-manifest.json` and `movies:{count:24}` at `scripts/replatform-e2e.mjs:11`. No overlay inflation; no `test.skip`/`describe.skip`/`.todo`/`fixme` anywhere in the replatform specs.
+
+**Per-assertion traceability is owed.** The slice count is sound; the mapping from this ticket's named requirements to named assertions is not:
+
+- [ ] **`movie_and_tv_same_id_remain_distinct`** (mandated at `:39`) **does not exist by that name anywhere in source** — 0 non-documentation hits repo-wide.
+- [ ] **`creator_note_does_not_mutate_catalog_or_other_creator`** (mandated at `:39`) **does not exist by that name anywhere in source** — 0 non-documentation hits repo-wide.
+- [ ] The adapter test `explorers-earth/src/features/Movies/api/__tests__/explorersAdapter.test.ts` holds **3** `it(` cases (`:4` nested-preview draining with global pins preserved, `:8` repeated/cross-list continuation rejection, `:13` newest-cursor with distinct recommendation IDs under one provider identity). The independent review records the adapter as covering **3 of the required field cases**; none of the three required field assertions named at `:45` — runtime **zero versus null**, **no fabricated year**, **watch-provider/cast arrays preserved** — maps to a case by name. Produce the per-assertion map (requirement → file:line → assertion) rather than inferring coverage from the file's existence.
+
+Behavior may well be covered by differently-named cases; that is precisely what the traceability map must establish, and it is not established today. Absence by name is recorded here as absence of traceable evidence, not as proof the behavior is broken.
+
+**Live TMDB qualification stays open.** `:37` keeps provider enrichment server-side with no catalog credential in Vite; the real-provider smoke is separately reported and is not satisfied by the fixture lane. The acceptance gate above is unchanged.

@@ -12,7 +12,7 @@ Read the [re-groomed dependency and ownership plan](../../superpowers/plans/2026
 
 **Disposition:** complete. **Technical inputs:** 2.2. Dependencies refer to reviewed interfaces for partial packages; complete-ticket acceptance retains all original gates.
 
-**Next package:** Preserve 8ce52776 acceptance; new navigation overlay belongs to repair review, not reopening this ticket.
+**Next package:** Preserve the accepted 2.3 scope; new navigation overlay belongs to repair review, not reopening this ticket. **Correction (2026-10-05):** `8ce52776` is the acceptance-time **hosted head**, not the delivering commit — delivery is `79edeea8`. See [Independent review correction (2026-10-05) — acceptance SHA relabelled](#independent-review-correction-2026-10-05--acceptance-sha-relabelled) below.
 
 **Ownership:** The ticket owns its category/feature files listed below. Shared schema, migration identifiers, route registration, auth clients, Settings, seeds and protected manifests require coordinator allocation before any writer starts. Do not dispatch overlapping writers.
 
@@ -52,3 +52,18 @@ Define `UpdateAccountInput` in `shared/explorersContract.ts` as the explicit edi
 
 
 **Verified completed status:** Original2.3 accepted2026-10-01 at8ce5277665cda33b36b59ab0495ab51c9c39c8f7 after independent review and all four exact-head hosted workflows succeeded. Later navigation repair qualification is a separate shared package; do not restart or reopen the original ticket by inference. External Google/AWS/QA evidence remains separately owned.
+
+## Independent review correction (2026-10-05) — acceptance SHA relabelled
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §6 row 2.3. Verdict **ACCEPTED** and **not reopened**: the implementation and integration coverage are present, 4/4 exact-head hosted workflows concluded `success`, and the 2026-10-01 confirmation stands. The correction below is to the *labelling* of the commits, not to the status.
+
+The preceding paragraph and the execution card above call `8ce52776…` the commit at which 2.3 was accepted, which invites a reader to look there for this ticket's source. The hash resolves on the branch, but its diff contains **no 2.3 source**: `8ce5277665cda33b36b59ab0495ab51c9c39c8f7` is *"Pin official mirrored platform images and include canonical contract"*, touching `.dockerignore`, `tunes/Dockerfile`, `explorers-earth/Dockerfile.music-fixture`, `docker-compose.replatform.yml`, `scripts/replatform-local.ts` and image/deployment contract tests. Corrected attribution:
+
+| Role | Commit | Basis |
+|---|---|---|
+| **Delivery of 2.3** | `79edeea8` — *"integrate canonical profile onboarding and local media"* | Carries the canonical profile/onboarding and local media source this ticket specifies. |
+| **Acceptance-time hosted head** | `8ce52776…` | The branch head at which the 4/4 hosted workflows ran `success`, 2026-10-01 confirmed. It proves the gate held at that head, not that it implemented the seam. |
+
+Cite `79edeea8` when looking for or reviewing this ticket's implementation, and `8ce52776…` only as the hosted-evidence head. Where earlier prose names `8ce52776` as "the acceptance", read it as the acceptance-time head; that prose is retained as historical and is not restated.
+
+**Not a second commit:** the fragment `/65cda33b36b59ab0495ab51c9c39c8f7` appearing in historical notes is the tail of the same 40-character hash `8ce5277665cda33b36b59ab0495ab51c9c39c8f7`, split across a line or path boundary. Do not treat it as a distinct revision or attempt to resolve it.

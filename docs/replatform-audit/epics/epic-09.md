@@ -95,6 +95,28 @@ Apply the [shared execution checklist](../execution-checklist.md) to changed web
 **Done:** the seeded quality cases pass and actual-client behavior is documented. Future following-based discovery remains excluded.
 
 
+## Independent review correction (2026-10-05)
+
+**Epic verdict: NOT-STARTED.** Both tickets (9.1, 9.2) are unstarted. Every requirement and gate in this epic and in its ticket files is retained.
+
+### No MCP implementation exists
+
+Verified absent at the review SHA, repository-wide and read-only: no `tunes/server/mcp/` directory (and no `apps/api/`, the rename target this epic's paths assume), no `@modelcontextprotocol` dependency in any `package.json`, no reference to `McpServer` or `StreamableHTTP` in any tracked source file, no `publicTools.ts`, `oauthPrincipal.ts` or `creatorTools.ts`, and no `docs/replatform-audit/mcp-release/` directory — so neither `compatibility.md` nor `discovery-results.md` exists. The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`; research output is not an implementation receipt.
+
+Consequently 9.2's default-deny on anonymous analytics holds **vacuously** — there is no code path that could emit an event — and must be treated as an unbuilt requirement, not a delivered control. The per-ticket detail is in `../tickets/ticket-9-2.md`.
+
+### Milestone 3 prerequisite is unmet
+
+This epic's global constraints state at `:37` that "Milestone 3 is prerequisite." **That prerequisite is unmet, because ticket 8.5 has not started.** 8.5 is prose only: `scripts/platform-backup.ts`, `scripts/platform-restore-drill.ts`, `docs/replatform/release-and-recovery.md`, `docs/replatform/evidence/milestone-3.md` and the `platform-recovery` contract test are all absent, and no `platform:backup` or `platform:restore-drill` script exists in any `package.json`. There is therefore no Milestone 3 evidence document of any kind, and no recovery evidence for the platform database or media.
+
+A **proposed** re-point of 9.1's technical prerequisite from 8.5 to 7.3 is recorded in `../tickets/ticket-9-1.md` for the coordinator to accept or reject. It is not applied here, and release sequencing remains a separate gate regardless: re-pointing the technical input would not make this epic releasable ahead of Milestone 3.
+
+### Text duplication across epics 08–10
+
+Ticket bodies 9.1 and 9.2 are triplicated verbatim at `:58-95` — once in the canonical ticket files under `../tickets/`, once here, and once in the grouped implementation document shared with Epic 10. This contradicts the principle each ticket file states, that shared contracts are maintained once in the epic rather than copied into conflicting versions, and it is how one copy drifts after the other is corrected.
+
+**Recommendation (not applied in this pass):** reduce this epic file to the disposition table plus links, keeping only genuinely epic-level content (global constraints, file map, review focus). **No requirement text is deleted in this pass.** Until the coordinator designates which copy is authoritative, the canonical ticket files under `../tickets/` govern where the copies disagree.
+
 ## Individual ticket files
 
 - [Ticket 9.1: MCP adapter and public tools](../tickets/ticket-9-1.md)

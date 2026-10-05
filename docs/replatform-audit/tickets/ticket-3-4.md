@@ -12,7 +12,7 @@ Read the [re-groomed dependency and ownership plan](../../superpowers/plans/2026
 
 **Disposition:** partial. **Technical inputs:** 3.1. Dependencies refer to reviewed interfaces for partial packages; complete-ticket acceptance retains all original gates.
 
-**Next package:** Preserve event foundation and canonical 10; inventory unexecuted consent/privacy/consumer obligations. Dashboard UI belongs to 7.2.
+**Next package:** Preserve event foundation; the "canonical 10" is **authored, unattested** — see the 2026-10-05 correction below before quoting it. Inventory unexecuted consent/privacy/consumer obligations. Dashboard UI belongs to 7.2.
 
 **Ownership:** The ticket owns its category/feature files listed below. Shared schema, migration identifiers, route registration, auth clients, Settings, seeds and protected manifests require coordinator allocation before any writer starts. Do not dispatch overlapping writers.
 
@@ -38,3 +38,29 @@ Define `recordAnalyticsEvent(input:ExplorersAnalyticsInput,context:RequestContex
 - [ ] Replace Strapi publisher with a PostgreSQL event/receipt transaction. Existing receipt storage does not hold full event payload; add explicit event rows, minimal permitted attribution fields and retention/deletion behavior. Preserve metadata allowlist, rate limits and public target validation.
 - [ ] Wire profile/Books instrumentation and assert consent controls both browser submission and server acceptance. Count observed events only; no inferred ChatGPT impressions.
 - [ ] Run analytics service/client tests and new integration tests. Commit. **Done:** repeatable fixture counts stored independently of Strapi and readable only by owning account; Epic 7 completes dashboard/category coverage.
+
+## Independent review correction (2026-10-05)
+
+Disposition stays **INCOMPLETE**, and the browser evidence must be restated.
+
+**The producer chain is real and mounted.** Verified at `225d83e5`:
+
+- Migration `tunes/migrations/0036_explorers_analytics_events.sql` exists in the gap-free `0001`–`0038` chain.
+- `tunes/server/repositories/explorersAnalyticsEventRepository.ts:121` implements the bounded owner aggregate (`aggregate(db, accountId, input: AnalyticsQuery): Promise<AnalyticsAggregateRow[]>`).
+- `tunes/server/application/analytics.ts` authorizes owner reads with `authorizeOperation(db, actor, 'analytics:read', actor.accountId)` at `:73`, `:78` and `:80`, satisfying the OAuth `analytics:read` requirement stated at `:35` of this ticket.
+- `tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts:31` serves `getCreatorAnalytics(actor, request.query)`, and that router **is mounted** — `setupCanonicalAnalyticsRoutes(app,pool,auth)` at `tunes/server/auth/canonicalApp.ts:60` (imported at `:5`).
+
+**The claimed "10 browser cases" are authored with no supported runner, and 0 are attested.** The arithmetic is real but the run is not:
+
+- `explorers-earth/e2e/replatform/analytics.spec.ts` declares **5** `test(` cases (`:22`, `:26`, `:33`, `:37`, `:41`) and `analytics.playwright.config.ts` declares 2 projects, so 5 × 2 = 10 **identities authored**.
+- There is **no analytics lane** in `explorers-earth/e2e/replatform/suite-manifest.json`. Its lanes are exactly `auth`, `profile`, `books`, `lifecycle`, `movies`, `games`.
+- There is **no analytics lane** in the protected runner either: `scripts/replatform-e2e.mjs:11` defines exactly those same six lanes. The runner validates the manifest and will not discover a lane that is not declared, so the authored spec cannot be executed through the supported path at all.
+- **No npm script in any `package.json` invokes `tunes/scripts/analytics-browser-fixture.ts`**, and no workflow references it.
+- The only receipt is **prose**: `task3.4-analytics-browser-report.md:9,23`. The run JSON was deleted on exit, and the independent reviewer performed **no execution** of any kind. There is therefore no artifact, no identity list and no pass/fail/skip count behind the "10 cases".
+
+**Restated status: analytics browser acceptance is AUTHORED, UNATTESTED (0 of 10 identities attested).** Any document, ledger row or dispatch card that reads "canonical 10" as delivered evidence is overstating it.
+
+- [ ] **Register an analytics lane** in `explorers-earth/e2e/replatform/suite-manifest.json` **and** in the `lanes` map at `scripts/replatform-e2e.mjs:11`, with its exact identity list, projects and fixture runner, **and** add the npm script that invokes `tunes/scripts/analytics-browser-fixture.ts`. No analytics acceptance claim may be made before that registration exists and the lane has produced a retained receipt.
+- [ ] Until then, the consent-denied, duplicate, same-ID/different-payload, forged-target, receipt-retry and owner-isolation cases at `:37` stay open, and the server-side obligations at `:38`–`:39` are unaffected by the authored browser spec.
+
+The 7.2 analytics **dashboard** stays in 7.2. This correction does not move it here, and it does not relieve 7.2 of the dashboard's own defect record.

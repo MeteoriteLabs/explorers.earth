@@ -44,3 +44,22 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] In real browser acceptance create/publish a place first, then use the current search/details/verification route. Assert successful pending receipt does not change membership count, `Is_Claimed` semantics or account permissions. Fetch the evidence byte URL as anonymous and B and assert 404 even when the place is public; owner A can retrieve its evidence.
 
 **Acceptance gate:** an empty fresh deployment acquires eligible lookup data through normal Places use; no fixture-only directory or implicit ownership grant is needed.
+
+## Independent review verification (2026-10-05)
+
+**NOT-STARTED, confirmed by negative evidence** against source at `225d83e5`:
+
+- `tunes/server/application/claims.ts`, `tunes/server/repositories/claimRepository.ts` and `tunes/server/routes/explorersClaimRoutes.ts` do not exist.
+- `tunes/server/test/explorers/claims.test.ts`, `claims.integration.test.ts` and `explorers-earth/e2e/replatform/claims.spec.ts` do not exist.
+- No claim or evidence migration exists; the chain head is `tunes/migrations/0038_explorers_movie_media.sql`, so the `:42` append-only claim/evidence migration would be `0039` or later depending on allocation order with 5.3's guides CHECK migration (coordinator serializes migration ids).
+
+### The entire legacy claim surface has no canonical equivalent
+
+The legacy Strapi content types this ticket replaces — `claimable-place-profile`, `verify-claim` and `account.Is_Claimable` — have **no canonical counterpart**: no table, no route, no service, no write path. Two consequences follow, and both are input blockers rather than implementation detail:
+
+1. **`explorers-earth/src/pages/ClaimAccount.tsx` is unserved after Strapi retirement.** It is named at `:31` as an existing file to adapt, but there is nothing canonical to adapt it to. Epic 8 must not retire the legacy surface before this ticket lands, or the route breaks with no replacement.
+2. **The `:35` invariant "Submission is pending evidence, not verified ownership; no membership or account ownership change results" has nowhere to be enforced.** That negative obligation — a pending claim must not grant ownership — is the ticket's central safety property, and today there is no service, repository or constraint that could hold it. It must be enforced in `tunes/server/application/claims.ts` as the sole command service per `:42`, with the `:44` assertion that a successful pending receipt changes no membership count, `Is_Claimed` semantics or account permissions.
+
+Do not weaken either point by treating a fixture-seeded claimable directory as evidence; `:46` already forbids that, and it remains in force.
+
+This ticket is also a 5.1 consumer: its `:44` browser acceptance requires creating and publishing a real place first, and 5.1 is itself NOT-STARTED. The `:50` note on `ticket-5-1.md` is the matching correction — 5.1's own qualification must **not** pull `claims.spec.ts`, while full milestone discovery still requires it.

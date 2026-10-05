@@ -43,3 +43,39 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent review correction (2026-10-05)
 
 Separate promotion mechanism implementation from production release eligibility. Mechanism work can precede 8.5; actual production dispatch additionally consumes successful 8.5 recovery/capacity/final-acceptance evidence for the exact candidate, all required CI and QA evidence, plus separate release authorization. A failed or missing recovery receipt blocks dispatch. This acceptance join is not a reverse implementation dependency.
+
+### Second correction pass (2026-10-05, independent review)
+
+**Verdict: BOUNDED-SLICE.** All requirements and gates above are retained. The corrections below record what exists, what is synthetic and where the real gap is.
+
+**The intended production workflow does not exist.** `.github/workflows/platform-production.yml` is **absent**; the workflows directory contains only `ci.yml`, `explorers.yml`, `frontend-e2e-qualification.yml`, `music-c0-contracts.yml`, `music-reconcile.yml`, `test.yml`, `tunes-deploy.yml`, `tunes-host-preflight.yml` and `tunes.yml`.
+
+**The compose graph self-labels as non-authoritative.** `deploy/platform.compose.yml:1-2` reads, verbatim, that it is a "Synthetic local reference graph; not hosted deployment authority" and that "supplied image digests below are placeholders"; `:38` carries `…@sha256:aaaaaaaa…`. It must not be cited as evidence of a hosted topology.
+
+**The real production authority today is the legacy path, and it is genuinely gated.** This is a correction in the ticket's favour and must not be read as licence to relax it:
+
+- `.github/workflows/tunes-deploy.yml:68` restricts the deploy job to `github.ref == 'refs/heads/main'` and requires the preflight to have succeeded.
+- `:69` sets `environment: tunes-production`.
+- `:63` runs a runtime GitHub-API policy check, `node tunes/deployment/verify-production-environment-policy.mjs`.
+- `:140` pins the caller workflow ref to `…/.github/workflows/tunes.yml@refs/heads/main`.
+- `:176` runs `gh attestation verify "oci://${IMAGE_REPOSITORY}@${DIGEST}"` (the ticket's earlier `:168` cite is the step name; the command is at `:176`).
+
+The `tunes-production` environment really does carry protection — verified read-only against the live repository: `protected_branches=true`, `custom_branch_policies=false`, a `required_reviewers` rule naming one reviewer, and `prevent_self_review=true`. **Production promotion therefore needs a second human today.** Preserve every one of these when building the replacement; a new workflow that reproduces the mechanism without reproducing the environment protection is a regression.
+
+**The real gap: the 8.5 acceptance join is not wired into any workflow step.** The recovery-receipt obligation recorded above exists only as prose in this ticket. No workflow — not `tunes-deploy.yml`, and not the absent `platform-production.yml` — reads, validates or blocks on an 8.5 recovery receipt, so the join **cannot currently be evaluated** by any automated gate. Compounding this, 8.5 has produced no artifact of any kind (see the ticket 8.5 correction), so there is nothing for such a step to consume.
+
+- [ ] The recovery receipt check becomes a **required step** in whichever workflow becomes the promotion authority: it resolves the receipt for the exact candidate digest/commit, fails closed on a missing, stale or failed receipt, and cannot be satisfied by a manually asserted input.
+- [ ] **8.4 is not mechanism-complete until that step exists.** A promotion workflow that passes its own contract tests while the recovery join remains prose does not satisfy this ticket.
+
+**Explicit retirement/supersession decision owed.** The ticket requires retiring old deployment workflows "explicitly"; that decision is still unrecorded for two files and is owed as part of this ticket:
+
+- [ ] `.github/workflows/explorers.yml` is dead at `:15` (`if: ${{ false }}`) with a source comment deferring to the Epic 8 release workflow. Record whether it is deleted or superseded, and by what.
+- [ ] `.github/workflows/tunes-deploy.yml` is the current real production authority. Record whether `platform-production.yml` replaces it or runs alongside it, and which one holds the `tunes-production` environment binding afterwards. Do not leave two live promotion paths.
+
+### Environment gap owed to the operations owner (not a workflow edit)
+
+Recorded here because it belongs to deployment authority, and is an operations action rather than a change to any workflow file:
+
+The `music-reconciliation-staging-apply` environment referenced by `.github/workflows/music-reconcile.yml:184-191` **does not exist** in the repository. Verified read-only: the environment API returns 404; the environments that do exist are `explorers-qa`, `music-reconciliation-production-report` and `tunes-production`. GitHub auto-creates a referenced-but-missing environment on first run **with no protection rules**, so that job's `environment:` gate is currently **vacuous**. Its real gates are the manual dispatch condition, the main-only ref condition, reviewed-run provenance and an approval token — which hold, but are not the environment protection the workflow's shape implies.
+
+- [ ] Operations owner: create `music-reconciliation-staging-apply` and apply protection (required reviewers and branch policy) **before** that job is next dispatched, so the declared gate is real. No workflow edit is required or authorized for this.

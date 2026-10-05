@@ -38,3 +38,12 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Implement MIME sniffing, explicit allowed types/limits from existing UI baseline, environment-separated keys, ownership and ready state. Public delivery checks visibility; no private object is exposed merely because its storage URL is known. Disallow arbitrary remote fetch or constrain it to approved provider origins with redirect/address checks.
 - [ ] Implement server-side Google Books lookup with timeouts and bounded caching; provider metadata is not trusted HTML. Seed only reviewed taxonomy rows with deterministic IDs; record missing reference values as acceptance blockers.
 - [ ] Run media DB and provider unit tests plus profile/Books upload browser cases. Smoke the real QA storage/provider in 3.5. Commit. **Done:** uploaded data survives reload and invalid/private media does not leak or become orphaned after failed save.
+
+## Independent review correction (2026-10-05)
+
+Disposition stays **partial**. The Books provider and recommendation media routes are mounted, but two mandated frontend modifications in the `**Modify:**` list at `:33` were **not made** and remain open:
+
+- [ ] `explorers-earth/src/hooks/useFileUpload.ts` — still selection-validation only. The file is 141 lines and its own header comment at `:31` reads "Custom hook for file upload validation and handling"; a grep for `/api/explorers` in it returns nothing, so it issues **no canonical upload call**. The `POST /media` multipart contract at `:35` therefore has no frontend producer in this hook.
+- [ ] `explorers-earth/src/features/Profile/components/ImageUpload.tsx` — no `/api/explorers` reference either, so profile image replacement is not yet routed through the canonical media boundary.
+
+Live storage and live provider smoke remain **deferred to 3.5** as `:40` already states; that deferral is unchanged and is not an acceptance waiver. Nothing in the delivered Books media slice ticks `:37`–`:40`, and the wrong-owner attach/delete, storage-timeout and retry-cleanup negatives at `:37` stay required.

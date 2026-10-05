@@ -682,3 +682,19 @@ Source: [src/extensions/users-permissions/content-types/user/schema.json](https:
 | instagramAccountType | string | false |  |  |
 | instagramAccessToken | text | false |  |  |
 | movie_lists | relation / oneToMany | false |  | api::movie-list.movie-list; mappedBy account |
+
+---
+
+## Canonical coverage: see the coverage register
+
+This file is a **field inventory of the legacy Strapi schemas only**. It records what each legacy type declares; it says nothing about whether a canonical destination exists, whether a drop was authorized, or who owes the work.
+
+For that, see **[`strapi-coverage-register.md`](strapi-coverage-register.md)** — a per-type, per-field Strapi→canonical coverage register covering all 40 types and all 401 declared attributes, classifying each as MIGRATED, DROPPED-AUTHORIZED, MISSING or UNVERIFIED with a cited `file:line` on both sides.
+
+Read these three framing points before using either document:
+
+1. **This is not a data migration.** Historical user, media and analytics import is explicitly excluded (`migration-gap-audit-2026-10-05/identity-platform.md:17`; `revised-direction.md:51,55`). In the register, **MIGRATED means a canonical structure exists for the field's semantics** — never that rows move, that a write path is implemented, or that a UI consumes it.
+2. **The authorization base is thin.** The only field- or type-level exclusion authority anywhere in this package is the 13-row agreed-scope table at `revised-direction.md:13-25` plus `:49` and `:53`, and `identity-platform.md:17`. There was no field-level drop register before the coverage register; every **MISSING** row there therefore records the *absence of an authorization record*, which is weaker than a recorded decision to drop.
+3. **A field appearing in the tables above is not evidence that it survives.** As of `225d83e5`, 122 of the 401 attributes inventoried here have no canonical equivalent and no authorization record. The register's §7 lists the ones needing a product decision (`unsubscribe` email suppression, per-field i18n, Instagram token storage, the claim flow, `song-limit`, and three residual live-consumed fields) and its §8 names the owning ticket for each MISSING cluster.
+
+Both documents read the same pinned legacy source, `50b6c6e180de4a1290b0c0a3c8450ac5947566d5`. The register re-derived all 40 schemas first-hand from the GitHub API rather than from this extraction, and its counts supersede any derived from `inspect-strapi.cjs` output where the two disagree.

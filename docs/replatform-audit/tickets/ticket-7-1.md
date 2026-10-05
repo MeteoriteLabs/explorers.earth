@@ -55,3 +55,49 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Shared slice versus all-category parity (2026-10-05)
 
 The shared canonical navigation/settings repair was advanced as an explicit prerequisite slice. All-nine stored preference mapping and safe hide/unpin are separate from publication/pin eligibility: only complete native Books/Movies/Games content is currently supported, Music uses its own reviewed transactional contract, and the five remaining category positives stay required. Category writers hand off complete typed query contracts to the controller before extending shared eligibility/public registration. Full7.1 remains dependent on all category/Music producer and active-consumer closure; exact schema enums or contained fixtures do not satisfy that gate.
+
+## Independent review verification (2026-10-05)
+
+Measured against source at `225d83e5`. **BOUNDED-SLICE (uncommitted)** — the shared canonical navigation slice exists **only in the uncommitted working-tree overlay**, and that overlay was reviewed **REVISE**. It is not delivered scope and must not be recorded as one.
+
+### The overlay converts a shared fixture out from under two unmigrated importers
+
+`explorers-earth/e2e/setup/category-navigation.ts:407` (modified, uncommitted) now throws `legacy navigation GraphQL denied` for `SettingsAccount`, `PublicCategoryListCounts`, `CheckPublishedLists` and `UpdateTabVisibility`. Two importers of that shared fixture are **unmodified** and still assert exactly those operations:
+
+- `explorers-earth/e2e/category-navigation-a.spec.ts:478` — `expect(state.writes.at(-1)?.variables.data).toEqual(...)`
+- `explorers-earth/e2e/music-publish-controls.spec.ts:85,139,149,265,320,427` — asserts and faults on `UpdateTabVisibility`
+
+Category A and Publishing are two of the three lanes this slice targets, so the overlay converts them to a *new* failure mode without migration.
+
+- [ ] Migrate both specs in the **same commit** as the fixture throw, or gate the throw per-spec. Do not land the fixture conversion alone.
+- [ ] Translate every assertion the specs carry; do not delete a negative assertion to make the new fixture pass.
+
+### P0 seam: a canonical account UUID is passed as a legacy Strapi *user* subject
+
+This is the first failure of all three red Explorers lanes, and it is a committed defect, not an overlay one:
+
+- `explorers-earth/src/store/store.ts:76-77` sets `accountId: account.id` and `user: { id: account.userId, documentId: account.id, ... }` — the canonical account UUID lands in `user.documentId`.
+- `explorers-earth/src/features/navigation/categoryNavigationApi.ts:7-9` (committed) feeds that `documentId` into `usersPermissionsUser(documentId: $documentId)`.
+- `categoryNavigationApi.ts:86` (committed) feeds `origin.accountDocumentId` into `updateTabVisibilityMutation` as `documentId:`, i.e. `updateAccount(documentId:)`.
+
+Two identifier spaces are conflated — a canonical account UUID used as a legacy Strapi user/account subject — against a backend that mounts no GraphQL. Category navigation and Settings publishing fail closed for every user, and fail permanently after Strapi retirement. Note this is the **subject** conflation, distinct from (and not refuted by) the separately verified finding that no canonical UUID is used as a *bearer*; both statements are true.
+
+- [ ] Convert to canonical transport and rename `documentId`→`accountId` in the store shape so the type system rejects the conflation. The overlay has begun this but still retains the legacy query document.
+- [ ] A canonical UUID appearing as a legacy subject or bearer is a stop condition for dependent work.
+
+### The public gateway covers 3 of 9 categories and returns empty success for the rest
+
+`tunes/server/publicProfile/postgresPublicProfileGateway.ts:58` dispatches only `games`, `movies` and `books`; every other category falls through to `{ items: [], nextCursor: null }` — places, guides, music, apps, products and people. `:61` (`resolveDetail`) likewise returns `undefined` for them.
+
+So an all-category pass of `:44`'s nine category routes would read "category empty", not "unimplemented", masking the gate. This is the exact failure mode `:46` and the Epic 5 review focus ("an empty dataset hides missing seeds or truncation") exist to prevent.
+
+- [ ] Return an explicit typed unsupported-category error for every category with no landed producer, until that producer lands. An empty page is not an acceptable stand-in for an absent producer.
+- [ ] Assert the unsupported-category error in `publicVisibility.integration.test.ts`, so removing the error without landing the producer fails a test.
+
+### The media boundary still admits arbitrary Strapi and S3 hosts
+
+`explorers-earth/src/features/PublicHome/components/publicPlaceMedia.ts:35-38` defines `isAmazonS3Host` matching any `*.amazonaws.com` S3 pattern, and `:59` returns the URL when `parsed.origin === publicStrapiOrigin() || isAmazonS3Host(parsed.hostname)`. The `:42` obligation above — "admit only the controlled same-origin media-content route alongside explicitly retained approved provider imagery; do not introduce a generic URL proxy" — is therefore unmet. **Hiding an attachment does not deny its bytes**, which is exactly what `:44` requires ("Upload URL bytes fetched after hiding the only public attachment must be denied independently of the page cache").
+
+### Dependency correction
+
+`:13` lists 6.3 among this ticket's technical inputs. For the **shared slice** that is a phantom dependency: the navigation slice runs with no Music producer. Full 7.1 parity does consume Music public/unlisted/revoked semantics per `:38`, so the 6.3 edge stays for N-full and is dropped only for N-shared.

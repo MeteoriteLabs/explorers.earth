@@ -32,3 +32,13 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Replace principal plumbing only where needed; preserve existing URL/DTO/domain semantics and map canonical account profile data into existing screens.
 - [ ] Run real PostgreSQL concurrency tests: rollback queue replacement leaves prior queue intact, duplicate command does not append twice, stale revision conflicts, notifications occur after commit only. Keep owner predicate tests against forged playlist/song IDs.
 - [ ] Run existing Music client suites and new real-stack browser spec desktop/mobile; exercise refresh/reconnect and provider failure. Commit. **Done:** Music owner behavior matches baseline without duplicate Tunes UI or Strapi authentication.
+
+## Independent review verification (2026-10-05)
+
+NOT-STARTED, and correctly **blocked behind 6.1**. The `:13` disposition "waiting" stands. Measured reasons, against source at `225d83e5`:
+
+- Owner clients still ride the legacy bearer: `explorers-earth/src/lib/localTunesApiClient.ts:194` sends `Authorization: Bearer ${active.token}` on every owner request, where `active` is the Strapi-proof-derived Music credential. The `:34` **Done** condition "without ... Strapi authentication" cannot be met until 6.1 replaces that credential path.
+- `tunes/server/repositories/musicDomainRepository.ts:1196` (`WHERE u.strapi_account_document_id=$1`) and `:1209` (`OR tombstone.strapi_account_document_id=$1`) still key owner lookup on the Strapi document ID. These are the queries the 6.1 obligation at `ticket-6-1.md:38` requires to resolve through canonical mapping; `musicDomainRepository.ts` is listed in both tickets' **Modify** sets, so the coordinator must serialize them.
+- 6.1 is itself undispatchable until [ADR-005](../../adr/005-music-identity-migration-deployment-authority.md) `:16-20` is superseded — see [ADR-006](../../adr/006-canonical-music-identity-supersedes-strapi-proof.md) (Proposed) and `ticket-6-1.md`. That preflight transitively gates this ticket.
+
+Do not treat a reviewed 6.1 interface as satisfying this ticket's `:34` gate: a reviewed producer interface permits planning, not closure.

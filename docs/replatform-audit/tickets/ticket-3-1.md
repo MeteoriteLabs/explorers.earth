@@ -26,7 +26,9 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 
 ## Implementation and acceptance
 
-**Depends on:** Epic 2. **Extend:** `tunes/shared/explorersContract.ts` with recommendation/category DTOs and existing `explorers-earth/src/lib/explorersApiClient.ts`. **Create:** `tunes/server/application/recommendations.ts`, `tunes/server/application/catalog.ts`, `tunes/server/application/discovery.ts`, `tunes/server/repositories/explorersRecommendationRepository.ts`, `tunes/server/routes/explorersRecommendationRoutes.ts`, the next append-only `explorers_recommendations` migration, `tunes/server/test/explorers-recommendations.integration.test.ts`.
+**Depends on:** Epic 2. **Extend:** `tunes/shared/explorersContract.ts` with recommendation/category DTOs and existing `explorers-earth/src/lib/explorersApiClient.ts`. **Modify (file-list relabelled 2026-10-05; see the correction below):** `tunes/server/application/recommendations.ts`, `tunes/server/application/catalog.ts`, `tunes/server/application/discovery.ts`, `tunes/server/repositories/explorersRecommendationRepository.ts`, `tunes/server/routes/explorersRecommendationRoutes.ts`, the next append-only `explorers_recommendations` migration (`tunes/migrations/0029_explorers_recommendations.sql` already landed; later schema changes take the next free identifier), `tunes/server/test/explorers-recommendations.integration.test.ts`.
+
+> **File-label correction (2026-10-05).** Every path in the list above was labelled **Create** when authored and all seven now exist in current source, verified file-by-file at `225d83e5`. A literal "Create" reading invites a writer to overwrite reviewed, route-mounted code, so the label is **Modify**. This relabels the paths only; every implementation and acceptance requirement in this section is unchanged and none of its checkboxes is satisfied by the files' mere existence.
 
 **Modify:** schema exports, migration manifest/readiness/role grants and `tunes/server/routes/index.ts`.
 
@@ -56,11 +58,40 @@ Finite shared-contract handoff is ready. Dedicated top-pick GET/observed client 
 
 The completed clean bare backend aggregate reports146files/2573pass/4skip/exit0; production overlays match22456 but later search-page tests were absent and final integration assertions ran separately. Three fixed Windows skips reproduced; fourth identity is not recoverable from the quiet aggregate log yet. Full contained frontend4023 and clean builds passed. This supersedes the earlier stalled/no-aggregate status for local application-source qualification only.
 
-Original rich typed provider/category detail and cover/metadata/context contracts remain delegated3.2/4.x/5.x. Explicit revision-checked identity replacement is absent from updateRecommendationSchema and must be assigned/frozen in that producer preflight; it is not accepted as delivered. No provider caller facts/arbitrary JSON/implicit replacement is allowed. Full original contract acceptance remains conditional on these named dependencies.
+Original rich typed provider/category detail and cover/metadata/context contracts remain delegated3.2/4.x/5.x. ~~Explicit revision-checked identity replacement is absent from updateRecommendationSchema and must be assigned/frozen in that producer preflight; it is not accepted as delivered.~~ **(Historical as of 2026-10-05 — superseded by the independent review correction below. Identity replacement is delivered as its own command, not as a field of the PATCH schema. `updateRecommendationSchema` at `tunes/shared/explorersContract.ts:70-71` does carry `expectedRevision`; what it does not carry is `entityId`, which is correct, because replacement is a separate frozen command at `tunes/shared/explorersBookContract.ts:20`. The 2026-10-02 wording is retained for provenance only and must not be read as a current blocker.)** No provider caller facts/arbitrary JSON/implicit replacement is allowed. Full original contract acceptance remains conditional on these named dependencies.
 
 Manager adoption/retry/save/account sequencing stays3.3/4.x; Places/Guides pins/sections5.x, Music6.x, public/cache/media parity7.1, hosted/browser/milestone3.5/7.3 and advanced creator/overlap/MCP9.x. Existing hosted red/cancelled auth/lifecycle/Music/category gates are retained. Local finite shared handoff does not claim full UI/provider/browser CI or production acceptance.
 
 
 ## Independent review correction (2026-10-05)
 
-Package CORE-REPLACE explicitly owns the missing revision-checked recommendation entity replacement producer. Freeze its command schema/signature, expected revisions, locking, idempotency and return shape from current source before category dispatch. Required negatives: stale revision, foreign owner, unchanged other creators and no caller-authored provider facts. This operation is not delivered. Category preflight must identify whether that category consumes replacement and join this package when it does; ordinary manual creation does not wait for unrelated full-core closure.
+**Withdrawn as a producer gap: revision-checked entity replacement IS delivered and route-mounted.** The paragraph previously printed here — "Package CORE-REPLACE explicitly owns the missing revision-checked recommendation entity replacement producer … This operation is not delivered" — was factually false and was introduced by the head commit `225d83e5` (a docs-only commit) itself. It is withdrawn, not softened. A writer dispatched against it would have re-implemented reviewed, route-registered production code, which is the highest-risk class of duplicate work in this plan.
+
+Verified against current source at `225d83e5`:
+
+- **Producer:** `replaceRecommendationEntity` at `tunes/server/repositories/explorersRecommendationRepository.ts:301` — expected-revision lock via `lockRecommendation(db,accountId,id,expectedRevision)`; idempotency through `this.command(accountId,'replaceRecommendationEntity',{id,expectedRevision,entityId},key,…)`; `422` when the entity is unchanged; `404` when the entity or the owning aggregate is unavailable; the category/kind matrix (`places:['place','person']`, `books:['book']`, `movies:['movie']`, `games:['game']`, `apps:['app']`, `products:['product']`, `people:['person']`) with `422` on mismatch; detached-media cleanup for movies; and a `revision=revision+1` bump.
+- **Application seam:** `tunes/server/application/recommendations.ts:75-78`.
+- **Route, mounted:** `POST /api/explorers/v1/recommendations/:id/entity` at `tunes/server/routes/explorersRecommendationRoutes.ts:89`.
+- **Frozen command contract:** `replaceRecommendationEntitySchema` at `tunes/shared/explorersBookContract.ts:20` (`{expectedRevision, entityId}`, `.strict()`).
+- **Client:** `explorers-earth/src/lib/explorersApiClient.ts:377-378`, which derives `expectedRevision` from the observed resource revision rather than accepting a caller-authored one.
+- **Stale/replay negatives:** `explorers-earth/src/lib/__tests__/bookCatalogClient.test.ts:13-15` (409 on stale observation, exact request body, 409 on replay with a changed payload under a repeated key).
+- **Frozen surface inventory:** `tunes/server/test/contracts/runtime-surface-inventory.test.ts:78` (owner-command matrix) and `:96` (method-boundary list).
+- **Landed in:** commit `4aa1f67e` ("Implement bounded Books provider and recommendation media producer"), i.e. before the head commit that declared it missing.
+
+**What is actually outstanding on replacement** — these remain open requirements and are not waived by the delivery above:
+
+- [ ] Server negative: a **foreign owner** attempting replacement on another account's recommendation is denied, with the denial asserted at the repository/route level rather than inferred from the client.
+- [ ] Server negative: replacement by one creator leaves **another creator's** recommendation of the same entity, and the shared catalog entity itself, **unchanged** (no caller-authored provider facts, no cross-creator mutation).
+- [ ] **UI adoption.** `explorersApiClient.replaceRecommendationEntity` has **no non-test caller anywhere in `explorers-earth/src`** — the only references are its own definition at `explorersApiClient.ts:377` plus the contract import at `:19`, and the test file above. The producer is delivered; the consumer is absent. Category preflight must still identify whether a category consumes replacement, because adoption is what is missing, not the operation.
+
+Ordinary manual creation does not wait on any of this. Another agent owns correcting the 11 dependency edges in `execution-packages.json` that still carry the withdrawn blocker; until those are corrected, the edge states for 3.2–3.4, 4.1–4.5, 5.1, 5.3 and 6.1 should be read as stale, never as a reason to re-author the producer.
+
+## Still-open 3.1 obligations (recorded 2026-10-05)
+
+Delivery of the backend core and of entity replacement closes none of the following. Each remains a requirement.
+
+- [ ] **Frontend aggregate closure** (restates `:39`–`:41` above, which are unmet): category-wide top-pick tables with cross-list pins; max-15 **explicit** save; mixed staged membership/autosave; stale-revision and foreign-membership rejection; and bounded sequential continuation in which a **page-2 failure blocks complete-set writes** and surfaces retry state rather than returning partial success. List-only reorder remains not a substitute.
+- [ ] **`private_parent_hides_all_descendants`** negative (required by `:33`): a repo-wide search for this behavior by name finds no test in `tunes/server/test` or `explorers-earth/e2e`.
+- [ ] **Reorder atomicity** negative (required by `:33`): rejection of omitted/duplicate/foreign members with an atomic commit. `tunes/server/test/explorers-recommendations.integration.test.ts:123` covers atomic swaps versus duplicate final positions; the omitted-member and foreign-member arms are not traceable to a named assertion.
+
+No status in this section is a pass claim. The single correction here is that one specific producer exists; every gate, negative obligation and acceptance requirement in this ticket stands unchanged.

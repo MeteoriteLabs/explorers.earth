@@ -185,6 +185,18 @@ Repeat browser suites with the mobile project defined by Epic 1 and on QA at mil
 
 **Auth qualification update:** [Pinned Better Auth schema and local probe results](../auth-schema-qualification.md) now resolve the generated-schema uncertainty. Application integration, live Google callbacks, recovery negative tests and later delegated issuance/revocation remain named acceptance work.
 
+## Independent review verification (2026-10-05)
+
+Epic 6 is **INCOMPLETE**. Measured against source at `225d83e5`; per-ticket detail lives in [6.1](../tickets/ticket-6-1.md), [6.2](../tickets/ticket-6-2.md) and [6.3](../tickets/ticket-6-3.md).
+
+**The epic's own exit criterion is currently contradicted by source.** The `:156` **Done** condition requires Music to start and operate "with zero required Strapi configuration". `tunes/server/routes/index.ts:84-85` eagerly constructs `StrapiIdentityGateway` from a **required** `musicConfig.strapiOrigin`, and the runtime identity path still exchanges a Strapi proof upstream (`tunes/server/routes/musicIdentityRoutes.ts:83` → `tunes/server/services/strapiIdentityGateway.ts:346`). Source does the opposite of the exit criterion; that criterion is not weakened here, it is unmet.
+
+**Blocking preflight for 6.1.** [ADR-005](../../adr/005-music-identity-migration-deployment-authority.md) `:16-20` is still Accepted and ratifies the bodyless `POST /api/music/identity/ensure` proof boundary that 6.1 exists to delete. [ADR-006](../../adr/006-canonical-music-identity-supersedes-strapi-proof.md) is drafted but **Proposed**; accepting it is the repository owner's decision. No 6.1 writer may be dispatched before that supersession, or the proof exchange will be rebuilt. 6.2 and 6.3 are transitively gated.
+
+**The numeric→canonical bridge must close with 6.1.** `account_music_identity.music_user_id` is an `integer` FK to the serial `users(id)` (`tunes/migrations/0023_explorers_authorization.sql:17`), documented as transitional at `0023:14` ("Physical Music owner remains users until the 6.1 canonical Music migration") and hardened by the immutability trigger at `0023:24-25`. This is the only numeric→canonical identity bridge in the schema. The `:153` obligation to retain numeric IDs stands; retaining the numeric principal internally is not the same as retaining the Strapi-keyed bridge, and `tunes/server/repositories/musicDomainRepository.ts:1196,1209` still key on `strapi_account_document_id`.
+
+**The 6.1 contract at `:150` describes a route and a lifetime that do not exist.** There is no `POST /api/explorers/v1/music/socket-credential` and no `tunes/server/music/musicSocketCredential.ts`; the owner socket consumes the same general HTTP bearer (`explorers-earth/src/hooks/useTunesDashboard.ts:107-109` → `tunes/server/socket/musicSocketServer.ts:272,278`) whose lifetime is pinned to **600** seconds by `tunes/server/services/musicTokenService.ts:127-128`, not 60. Read `:150` as the target contract, never as current behavior.
+
 ## Individual ticket files
 
 - [Ticket 6.1: Replace the identity bridge](../tickets/ticket-6-1.md)

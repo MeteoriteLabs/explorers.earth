@@ -37,3 +37,9 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Build API only, run existing server graph/runtime contract tests and smoke local API through the wrapper. Verify a container built without duplicate-client output boots and shuts down cleanly.
 - [ ] Run `npm run build:api --prefix tunes`, `npm test --prefix tunes -- --run server/test/contracts/api-only-build.test.ts`, existing `music:types:scoped` and `music:types:baseline`. Full `check` status must be reported separately from scoped baseline status.
 - [ ] Commit. **Gate:** API build/runtime is independently valid; deleting the client is still prohibited until equivalent coverage and Milestone 2.
+
+## Independent review record (2026-10-05)
+
+Source: the second independent read-only review of `codex/unified-replatform` @ `225d83e5` (2026-10-05), §6 row 1.4. Verdict **ACCEPTED**, evidence independently verified: **4/4 hosted workflow runs concluded `success`** at the recorded acceptance head, and the required behaviors above — API-only startup, structured JSON 404s instead of HTML, clean shutdown of owned listeners/pools, and metafile-asserted exclusion of client output — are all covered.
+
+One scope caveat, recorded so no consumer over-reads the receipt: the recorded acceptance SHA is a **one-line documentation commit**, so the hosted 4/4 proves the gate held at that head, not that the same commit implemented the seam. Acceptance is not reopened. The final gate above stands unchanged: client deletion remains prohibited until 8.2 has equivalent replacement coverage and Milestone 2.

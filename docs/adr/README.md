@@ -13,6 +13,9 @@ Architecture Decision Records capture important architectural decisions made dur
 | [003](003-realtime-websockets.md) | Socket.IO for real-time communication | Accepted |
 | [004](004-database-orm-choice.md) | PostgreSQL with Drizzle ORM | Superseded in part |
 | [005](005-music-identity-migration-deployment-authority.md) | Canonical Music identity, migrations, and deployment authority | Accepted |
+| [006](006-canonical-music-identity-supersedes-strapi-proof.md) | Canonical session ensure for Music identity, superseding ADR-005's Strapi proof boundary | Proposed |
+
+> **Pending owner decision (2026-10-05).** ADR-006 is **Proposed**, not Accepted. It supersedes only ADR-005 `:16-20` and `:30` — the bodyless `POST /api/music/identity/ensure` proof boundary and its three distinct scopes; ADR-005's migration and deployment-authority decisions stay in force unchanged. Accepting ADR-006 is the repository owner's decision, and two things follow from it that must not be done pre-emptively: ADR-005's status row above stays **Accepted** until that decision, and the "superseded in part by ADR-006" pointer belongs inside ADR-005 at that point, following the precedent set by [002](002-auth-strategies.md). Until then ticket 6.1 stays blocked, because a writer following current ADR authority would rebuild the Strapi proof exchange that 6.1 exists to remove.
 
 ## Template
 

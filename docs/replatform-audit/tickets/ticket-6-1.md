@@ -42,3 +42,68 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Current startup dependency (2026-10-05)
 
 The original publishing outage case fails before /api/music/dashboard. Canonical auth intentionally keeps token null; musicApi still requests a Strapi proof, and production AuthSyncManager has no Music reconcile startup. Extend frontend ownership to `src/features/music/musicApi.ts`, `src/components/AuthSyncManager.tsx`, `src/hooks/useTunesDashboard.ts` and their focused startup tests. Implement session HTTP under the existing Actor contract, not another HTTP bearer. Keep the 60-second socket credential purpose-limited and memory-only. Reproduce verified-cookie/token-null startup, wrong owner, logout and verified ABA before repair; real HTTP/socket qualification is required. 6.2/6.3 own the remaining publication/workspace transaction parity. Do not issue a fake fixture credential to turn the original publishing case green.
+
+## Independent review verification (2026-10-05)
+
+Measured against source at `225d83e5`. Nothing below is a completion claim; every item is an obligation or a correction to an obligation stated above.
+
+### Blocking preflight: ADR authority contradicts this ticket
+
+[ADR-005](../../adr/005-music-identity-migration-deployment-authority.md) `:16-20` is still **Accepted** and ratifies exactly the design this ticket exists to delete: the bodyless `POST /api/music/identity/ensure` proof boundary, with `005:30` keeping session, Explorer bearer and Music credential as distinct scopes. Nothing supersedes it — `docs/adr/` holds 001–005 plus `README.md`. [ADR-006](../../adr/006-canonical-music-identity-supersedes-strapi-proof.md) is drafted but **Proposed**, not Accepted; accepting it is the repository owner's decision.
+
+**Do not dispatch a 6.1 writer until ADR-005's identity-issuance decision is superseded.** A writer following current ADR authority would rebuild the proof exchange this ticket removes — the highest-cost possible misread of the contract at `:33`.
+
+### Measured startup reality (reproduces the publishing outage exactly)
+
+Record this chain as the failure to reproduce before any production change, per the `:19` execution gate:
+
+- `explorers-earth/src/store/store.ts:76` forces `token: null` on every canonical verification (`acceptVerified`). This is the contract, not a defect.
+- `explorers-earth/src/features/music/musicApi.ts:19` wires `getStrapiBearer: async () => useAuthStore.getState().token ?? undefined`, so it always yields `undefined`. (The parent epic text and earlier notes cite this as `:20`; measured line is `:19`.)
+- `explorers-earth/src/lib/localTunesApiClient.ts:127-128` is the only credential path. It throws `"proof unavailable"` unless a Strapi-shaped proof matching `STRAPI_PROOF_PATTERN` exists, surfacing as `MusicClientError("AUTH_UNAVAILABLE", 503)`.
+- The backend still exchanges that proof upstream: `tunes/server/routes/musicIdentityRoutes.ts:83` → `tunes/server/services/strapiIdentityGateway.ts:346` (`/api/users/me`).
+- `tunes/server/routes/index.ts:84-85` eagerly constructs `StrapiIdentityGateway` from a **required** `musicConfig.strapiOrigin`.
+
+Consequence: Music returns 503 before any dashboard request is made. The `:39` **Done** condition — "zero required Strapi configuration" — is contradicted by `routes/index.ts:84-85` today.
+
+### Missing production writer — explicit obligation
+
+`ensureMusicAccount` **does not exist anywhere in source.** The contract at `:33` names it; nothing implements it.
+
+- `tunes/server/music/canonicalMusicPrincipal.ts:13-16` is `SELECT`-only and self-documents at `:8` that owner provisioning and socket credentials "belong to 6.1".
+- Every `INSERT INTO account_music_identity` in the repository is a test fixture: `tunes/server/test/explorers-lifecycle.integration.test.ts:338,374` and `tunes/server/test/explorers-analytics-events.integration.test.ts:149,174`.
+
+So a real new owner can never obtain a mapping row, and any 6.1 slice would pass only on seeded rows. A seeded-row pass is not evidence.
+
+- [ ] Implement `ensureMusicAccount(actor)` as a single transaction that is the sole production mapping writer, idempotent under concurrent first-visit requests.
+- [ ] Add a provisioning-concurrency test **in the same package as the writer**: concurrent first-visit ensures for one account produce exactly one `account_music_identity` row.
+- [ ] Prove the new-owner path without any seeded mapping row. A test that pre-inserts the row does not qualify.
+
+### Socket contract corrections
+
+The `:33` contract describes a route and a lifetime that do not exist:
+
+- There is **no** `POST /api/explorers/v1/music/socket-credential` route and **no** `tunes/server/music/musicSocketCredential.ts`. The `:29` **Create** list is correct that these are to be created; the `:33` contract must not be read as describing current behavior.
+- The owner socket consumes the **same general HTTP bearer**: `explorers-earth/src/hooks/useTunesDashboard.ts:107-109` passes `credential.token` into `subscribeToOwnerMusic`, consumed at `tunes/server/socket/musicSocketServer.ts:272,278`.
+- That credential's lifetime is hard-pinned to **600 seconds**, not 60: `tunes/server/services/musicTokenService.ts:127-128` throws unless `tokenLifetimeSeconds === 600`. The `60_000` at `explorers-earth/src/lib/localTunesApiClient.ts:84` is `MUSIC_IDENTITY_RELIABILITY_CONTRACT.refreshWindowMs` — a pre-expiry refresh window, not a TTL.
+- Therefore a leaked socket handshake value **is** a full ten-minute HTTP bearer, violating the `:33` clause "it is not a general HTTP bearer or OAuth token" by construction.
+
+Already true, and not to be weakened while separating the transports:
+
+- memory-only credential storage — `explorers-earth/src/lib/musicCredentialStore.ts:8`;
+- verified audience, expiry and session version — `musicTokenService.ts:81,86-87,160-169`;
+- per-event re-authorization and revocation — `musicSocketServer.ts:194,231,378-379`.
+
+Missing, and owed by this ticket: purpose limitation (a handshake value rejected on HTTP routes and no HTTP credential accepted at the handshake), the 60-second bound, session-ID binding, and OAuth-Actor exclusion from web socket credentials.
+
+### Coordinator path has no production caller
+
+- `musicIdentityCoordinator.reconcile(...)` has no production caller. The only call outside the coordinator itself (`explorers-earth/src/features/music/musicIdentityCoordinator.ts:98,208`) and its own unit tests is `explorers-earth/src/features/music/__tests__/musicPublishHarness.tsx:12`.
+- `musicApi.setAuthority(...)` likewise has no production caller: `explorers-earth/src/features/music/musicApi.ts:27` exports it and `:21` sets authority on the internal client, but the only external callers are tests.
+- `explorers-earth/src/components/AuthSyncManager.tsx:15` only calls `authClient.refresh()`, and `:20-21` only `musicApi.logout()` / `musicIdentityCoordinator.reset()`. Nothing reconciles.
+- So the coordinator stays `idle`, and `explorers-earth/src/hooks/useTunesDashboard.ts:97` (`enabled: identityStatus === "ready" && scope !== undefined`) never fires.
+
+### Path and ownership corrections
+
+- `explorers-earth/src/lib/musicCredentialStore.ts` is the actual location. The `:31` **Modify** list spells it as a bare `musicCredentialStore.ts` following `localTunesApiClient.ts`; it is **not** under `src/features/music/`.
+- `explorers-earth/src/components/AuthSyncManager.tsx` is **shared with 2.4**. It must not be edited by a 6.1 writer and a 2.4 writer concurrently; the coordinator serializes it.
+- `tunes/server/routes/index.ts` and `tunes/shared/schema.ts` remain coordinator-allocated shared files per `:17`.

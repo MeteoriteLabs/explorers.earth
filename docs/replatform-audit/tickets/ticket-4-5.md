@@ -42,3 +42,35 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] In `api/__tests__/explorersAdapter.test.ts`, compare canonical and compatibility aliases, including `twitter`/`x` presentation normalization, missing avatar fallback and sector names. In the browser spec enter external social URLs and tags manually, save/reload, open/close detail by keyboard, and confirm the sector route lists only visible records.
 
 **Acceptance gate:** recommended people remain data rather than identities, and external follower-count presentation creates no follower-network persistence or API dependency.
+
+## Independent review correction (2026-10-05)
+
+**Verdict confirmed: NOT-STARTED.** All five mandated files at `:33` are missing, verified path-by-path at `225d83e5`:
+
+| Mandated path | State |
+|---|---|
+| `tunes/server/explorers/categories/people.ts` | **MISSING** |
+| `explorers-earth/src/features/People/api/explorersAdapter.ts` | **MISSING** |
+| `tunes/server/test/explorers/people.test.ts` | **MISSING** |
+| `tunes/server/test/explorers/people.integration.test.ts` | **MISSING** |
+| `explorers-earth/e2e/replatform/people.spec.ts` | **MISSING** |
+
+**The live consumer is still Apollo/Strapi GraphQL.** `explorers-earth/src/features/People/api/query.ts:1` is `import { gql } from "@apollo/client"` and `:6` declares `PERSON_LISTS_BY_ACCOUNT` as a `gql` query over `personLists(...)` keyed on `$accountDocumentId`. The audit's record of People as incomplete with a live Apollo consumer is correct and is preserved here.
+
+### The canonical backend has no typed storage or write path for the People legacy fields
+
+- Manual entity resolution accepts **`{title}` only**: `resolveManualEntitySchema` at `tunes/shared/explorersContract.ts:87` — `details:z.object({title:displayTitleWriteSchema}).strict()`.
+- The public read path **rejects any display-override key other than `title`** for non-books/non-movies categories: `tunes/server/application/publicContent.ts:34`.
+
+So the legacy required fields are **currently unrepresentable** end to end: person `name` (`explorers-earth/src/features/People/types/index.ts:23`), `primary_platform` with the exact enum `instagram | linkedin | twitter | github | youtube | website | other | null` (`:32`), and `social_urls` as a JSON object (`:33`), plus headline, location, avatar/media, skills/tags and sector required by `:35`. Note that a person entity is reachable as a catalog **kind** — `places:['place','person']` and `people:['person']` appear in the replacement category matrix at `tunes/server/repositories/explorersRecommendationRepository.ts:301` — but kind reachability is not typed field storage.
+
+- [ ] **This ticket owes a contract + migration + storage, not just an adapter.** Add the typed People details contract (including the `primary_platform` enum and `social_urls`), author the next append-only migration, implement the storage, and extend the public display-override allowlist for `people` — then build the adapter and the alias edge at `:35`. Until that chain exists, the social/alias round-trip at `:37` and the canonical-versus-compatibility alias comparison at `:42` have no persistence to round-trip through.
+- The two negatives at `:37` remain mandatory and are **not** satisfied by the absence of storage: `same_name_people_remain_distinct` and `matching_login_handle_grants_no_authority`. The second is a safety obligation — matching an account handle must confer no ownership or login linkage (`:35`, `:41`) — and must be asserted server-side once storage exists, never inferred from the UI.
+
+### Dependency prose correction
+
+- [ ] `:29` reads "**Depends on:** Epic 3", which is a blanket epic edge. The real edges are **3.1 and 3.2**, as this ticket's execution card already records ("Technical inputs: 3.1, 3.2"). Read the prose as 3.1/3.2; Epic 3 is explicitly not a blanket prerequisite for its consumers.
+
+### Shared fixtures module
+
+The epic-mandated `explorers-earth/e2e/replatform/fixtures.ts` (specified at `docs/replatform-audit/epics/epic-04.md:71`, exporting `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context) **DOES NOT EXIST**; all six existing lanes roll bespoke setup. Creating it is folded into **4.3** as the first category package of Epic 4. This ticket's `people.spec.ts` consumes that fixture — in particular its `ownerA`/`ownerB`/`suspended` identities, which the foreign-owner and handle-collision negatives need — rather than deriving its own sign-in, and must not add a publicly mounted test-login endpoint or relax the contained-test network restrictions.

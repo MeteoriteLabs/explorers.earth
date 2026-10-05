@@ -47,3 +47,9 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 ## Independent review correction (2026-10-05)
 
 Ticket 10.1 owns a minimal protected read probe through the existing canonical getMyProfile service to qualify grant scope, current membership and revocation. It does not wait for the broader creator tool catalog in 10.2. Freeze route/tool registration with coordinator and reuse the shared service; 10.2 expands the catalog afterward.
+
+### Second correction pass (2026-10-05, independent review)
+
+**Verdict: NOT-STARTED, confirmed by evidence.** Every requirement and gate above is retained. Verified absent at the review SHA: no `tunes/server/mcp/` directory (and no `apps/api/`), no `@modelcontextprotocol` dependency in any `package.json`, no `McpServer`/`StreamableHTTP` reference in any tracked source file, no `oauthPrincipal.ts`, no `resolveMcpActor`, and no `docs/replatform-audit/mcp-release/`. The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`.
+
+**`get_my_profile` ownership is resolved in 10.1's favour, for the probe only.** The paragraph above (`ticket-10-1.md:49`) gives 10.1 the minimal protected `getMyProfile` read probe, while `ticket-10-2.md:33` and `:36` — and `epic-10.md:84` and `:87` — still list `get_my_profile` among 10.2's tools. The disposition is: **10.1 owns the minimal probe; 10.2 owns the full catalog tool and the broader creator surface.** A deferring sentence has been added to `ticket-10-2.md` so ownership is unambiguous for a dispatched writer who reads only one file. Neither ticket's `get_my_profile` requirements — `profile:read` scope, active account membership, and no public-profile-lookup implementation — are relaxed by this split.

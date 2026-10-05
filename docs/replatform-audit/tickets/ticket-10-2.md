@@ -42,3 +42,12 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] **Pinned regression assertions:** `same_key_same_payload_one_write`: repeated creation returns the recorded result and exactly one recommendation exists. `same_key_changed_payload_conflict`: conflicting payload cannot mutate the first result. `stale_revision_preserves_current_row`: stale update fails and the newer row remains unchanged.
 
 **Done:** web and MCP produce the same persisted behavior through the same operations; actual client confirmation behavior is recorded, not assumed from annotation flags.
+
+
+## Independent review correction (2026-10-05)
+
+**Verdict: NOT-STARTED, confirmed by evidence.** Every requirement and gate above is retained. Verified absent at the review SHA: no `tunes/server/mcp/` directory (and no `apps/api/`), no `@modelcontextprotocol` dependency in any `package.json`, no `McpServer`/`StreamableHTTP` reference in any tracked source file, no `creatorTools.ts`, no `oauthPrincipal.ts`/`resolveMcpActor`, and no `docs/replatform-audit/mcp-release/`. The only MCP-adjacent material in the tree is research output under `docs/replatform-audit/auth-qualification/`.
+
+**`get_my_profile` — 10.2 defers the probe to 10.1.** `get_my_profile` is double-claimed: it appears in 10.2's interface list at `:33` and in 10.2's implementation step at `:36` (and in `epic-10.md:84` and `:87`), while `ticket-10-1.md:49` assigns 10.1 a minimal protected `getMyProfile` read probe. **Ticket 10.1 owns that minimal probe and lands it first; 10.2 does not re-implement it.** 10.2 owns the full creator tool catalog and extends the already-registered `get_my_profile` tool rather than creating a second one. Coordinate the registration freeze with the coordinator before touching it.
+
+Both tickets' `get_my_profile` requirements are retained unchanged: `profile:read` scope, active account membership, and no implementation by a public-profile lookup. This correction assigns ownership; it removes no requirement from either ticket.

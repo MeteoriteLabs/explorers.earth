@@ -48,3 +48,31 @@ Create `npm run platform:backup -- --environment qa --output-manifest <file>` an
 - [ ] Verify recovery, cold restart, invalid config, provider outage and graceful socket reconnect. Check built assets/network for exposed provider secrets and unexpected hosted dependencies.
 - [ ] Write final evidence and explicit old-service retirement checklist (DNS/proxy, scheduled jobs, unused secret references, obsolete images/volumes retention). No destructive shutdown or deletion is performed as a planning/documentation action.
 - [ ] Commit final report. **Gate:** all required retained flows pass with no unexplained skips; remote CI and QA identify the exact release; recovery works; remaining provider/credential limitations block the affected claim rather than being hidden.
+
+
+## Independent review correction (2026-10-05)
+
+**Verdict: NOT-STARTED — prose only.** Every requirement and gate above is retained in full. Stated plainly: **this ticket has no mechanism, and there is no restore evidence of any kind for the platform database or for media.**
+
+### Every named artifact is absent
+
+Verified absent at the review SHA:
+
+- `scripts/platform-backup.ts`
+- `scripts/platform-restore-drill.ts`
+- `docs/replatform/release-and-recovery.md`
+- `docs/replatform/evidence/milestone-3.md`
+- the `platform-recovery` contract test (`apps/api/server/test/contracts/platform-recovery.test.ts`; `apps/api/` itself does not exist, and no `platform-recovery` test exists under `tunes/server/test/contracts/` either — only `platform-release.test.ts`)
+
+No `platform:backup` or `platform:restore-drill` script is defined in any `package.json` in the repository, so the two commands specified above are not invocable.
+
+### The nearest real code does not satisfy the contract
+
+The closest existing artifact is `tunes/scripts/music-e2e-state-restore.mjs`. It is **fixture state reset**, not a logical database backup: it does not produce a `pg_dump` custom-format dump, a backup manifest, checksums, a schema/artifact identity pairing or a media version inventory, and it does not restore into a fresh disposable target. It therefore does not satisfy the self-hosted PostgreSQL recovery contract above, and must not be cited as partial recovery evidence.
+
+### Consequence for dependent claims
+
+- There is **no measured recovery duration and no observed recovery point** for the platform database. Any such figure appearing elsewhere would be invented.
+- There is **no media backup or restore evidence** of any kind.
+- Because 8.5 has produced nothing, the 8.4 acceptance join to 8.5 recovery evidence cannot currently be evaluated. See the 8.4 correction.
+- Milestone 3 has no evidence document, so Epic 9's Milestone 3 prerequisite is unmet. See the epic-09 correction.

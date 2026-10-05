@@ -19,6 +19,30 @@ Individual [ticket plans](../ticket-index.md), [execution packages](../execution
 
 **Status:** consult the [durable implementation ledger](../../../.superpowers/sdd/epic-01/progress.md); remaining checkboxes are requirements, not completion claims. [Master plan](../implementation-plan.md) · [Backlog](../epics-and-tickets.md) · [Shared execution checklist](../execution-checklist.md)
 
+## Independent review correction (2026-10-05)
+
+**Epic verdict: INCOMPLETE.** Unchanged. No exit criterion is relaxed and nothing below is a pass claim.
+
+**2 of 6 producers exist.** Counting the category producers this epic is responsible for, verified path-by-path at `225d83e5`: Movies and Games have delivered manual slices; **Apps, Products and People have none of their five mandated files each — 15 of 15 absent** — and their live consumers are still Apollo/Strapi GraphQL (`features/AppsAndTools/api/query.ts:1,6`, `features/Products/api/query.ts:1,6`, `features/People/api/query.ts:1,6`). The sixth producer in the epic's declared set, Places (5.1), is owned by Epic 5 and is also unstarted. That record of Apps/Products/People as incomplete with live Apollo consumers is correct and is preserved exactly as it stands.
+
+| Ticket | Corrected disposition | Correction that changes how the row reads |
+|---|---|---|
+| 4.1 | BOUNDED-SLICE | **24 identities verified** (12 `test(` × 2 projects), committed. The two cases named at `ticket-4-1.md:39` — `movie_and_tv_same_id_remain_distinct`, `creator_note_does_not_mutate_catalog_or_other_creator` — **do not exist by name anywhere in source**, and the adapter test covers 3 of the required field cases, so per-assertion traceability is owed. Live TMDB qualification open. |
+| 4.2 | INCOMPLETE | Manual slice real (**20 identities**, 10 × 2) and browser-credential retirement delivered. But **the provider is dead code**: `tunes/server/application/catalog.ts:35` throws unconditionally and `:41` does the same for provider-games, while a complete IGDB/Twitch implementation in `services/gameCatalog.ts` and `gameProviderTransport.ts` has **no production call site**. `tunes/shared` has **no `game_entity_details` table in any of the 38 migrations**, so `GameProviderFacts` cannot round-trip. Four named provider cases absent by name; `VITE_IGDB_*` still declared as build inputs at `explorers-earth/e2e/general.vite.config.ts:25-26`. |
+| 4.3 | NOT-STARTED | All five mandated files missing. Owes a **contract + migration + storage**, not just a UI adapter — plus the shared fixtures module (below). |
+| 4.4 | NOT-STARTED | All five mandated files missing. Owes a **contract + migration + storage**. |
+| 4.5 | NOT-STARTED | All five mandated files missing. Owes a **contract + migration + storage**. |
+
+**The legacy category fields are currently unrepresentable, so 4.3–4.5 are backend tickets, not adapter tickets.** Manual resolve accepts `{title}` only — `resolveManualEntitySchema` at `tunes/shared/explorersContract.ts:87` has `details:z.object({title:displayTitleWriteSchema}).strict()` — and `tunes/server/application/publicContent.ts:34` **rejects any display-override key other than `title`** for every category except books and movies. There is therefore no typed storage and no write path for `app_url` / `price_tier` (`Free|Freemium|Paid|Subscription|null`), `product_url` / `price` / `currency`, or person `name` / `primary_platform` / `social_urls`. Each of 4.3, 4.4 and 4.5 owes a shared-contract extension, an append-only migration, a storage implementation and a public display-override allowlist entry before its adapter and its round-trip assertions can exist. The dispositions "ready after shared handoff" in the table above must be read with that scope: the handoff they await is a typed-storage producer, not only the 3.1/3.2 interface.
+
+**The mandated shared fixtures module does not exist.** `epic-04.md:71` of this file requires `explorers-earth/e2e/replatform/fixtures.ts` to export `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context, with the Authentication owner defining it rather than category tickets. **The file DOES NOT EXIST**, and all six existing lanes (`auth`, `profile`, `books`, `lifecycle`, `movies`, `games`) roll **bespoke setup** instead — which is why no two lanes share an identity model and why the foreign-owner and suspended-owner negatives are not uniformly available.
+
+- [ ] **Creating `explorers-earth/e2e/replatform/fixtures.ts` is folded into the first category package, 4.3**, with the exact surface named at `:71`. 4.4, 4.5 and later lanes consume it instead of re-deriving sign-in. Folding the file in does not transfer authority over the identity model away from the Authentication owner, must not add a publicly mounted test-login endpoint, and must not weaken the contained-test network restrictions to make a new suite pass.
+
+**Count discipline.** The committed `explorers-earth/e2e/replatform/suite-manifest.json` totals **82 identities across six lanes**: auth 6 + profile 2 + books 20 + lifecycle 10 + movies 24 + games 20. The **Games lane is 20** and the **Movies lane is 24**. "Canonical 82" is the whole suite; presenting it as a Games figure overstates that lane 4×, and it must never be counted as Games while its Books-20 and Movies-24 components are counted separately elsewhere.
+
+**Preserved honesty.** No `test.skip`, `describe.skip`, `.todo` or conditional skip exists anywhere in `explorers-earth/e2e/replatform/`. Nothing in this correction implies Apps, Products or People is started, or that any lane is attested beyond its committed, local owned-fixture receipt.
+
 # Category parity and acceptance implementation plan
 
 **Database authority:** [Consolidated target schema](../target-database-schema.md). Its table names, ownership, constraints, deletion and indexing contracts supersede the earlier schema investigation; version-specific library generation is an explicit ticket gate.

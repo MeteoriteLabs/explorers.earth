@@ -34,3 +34,17 @@ Read the [authoritative database schema](../target-database-schema.md) and apply
 - [ ] Adapt existing components behind typed API calls; retain current forms, routes, empty/error states and sort behavior. Migrate public category reads through the existing public gateway seam, not direct privileged owner endpoints.
 - [ ] Add E2E fixtures for owner A/B and anonymous sessions: create list, lookup/add book, edit note/rating/media, reorder/pin, hide/reveal, delete, reload, subject navigation and public detail. Assert another owner cannot mutate by changing request IDs and anonymous cannot fetch hidden items directly.
 - [ ] Run client tests, existing Books helper/list-navigation/toggle/publish tests and real local browser spec desktop/mobile. Commit. **Done:** no Books flow requires Strapi; seed + Google + profile + Books demo is reproducible.
+
+## Independent review correction (2026-10-05)
+
+**The Books slice is a genuine bounded slice — the identity count verifies exactly, with no overlay inflation.** Recounted from source at `225d83e5`:
+
+- `explorers-earth/e2e/replatform/books.spec.ts` declares **10** `test(` cases (`:47`, `:73`, `:84`, `:95`, `:123`, `:144`, `:151`, `:159`, `:167`, `:173`).
+- `explorers-earth/e2e/replatform/books.playwright.config.ts:3` declares **2** projects, `books-desktop` and `books-mobile`, with `retries:0`.
+- 10 × 2 = **20 identities**, which matches the `books` lane in the **committed** `explorers-earth/e2e/replatform/suite-manifest.json` (20 identities) and the `books:{count:20}` entry in `scripts/replatform-e2e.mjs:11`.
+- Both the spec and its config are **committed and clean** (`git status --porcelain` returns nothing for either), so this count is `dirty:false` — unlike the lifecycle and navigation receipts, it is not overlay scope.
+- Neither file contains `test.skip`, `describe.skip`, `.todo` or `test.fixme`; the 20 are real executed identities, not placeholders.
+
+**Still unproven, and therefore still required:** the `**Done:**` clause at `:36` — "no Books flow requires Strapi" — is **not attested at an exact SHA**. The real-backend Books spec runs against a **local owned fixture only**: `books.playwright.config.ts:2` hard-requires `BOOKS_E2E_FIXTURE_PATH` and a `http://127.0.0.1:` base URL, and the lane appears in no workflow, so it has never been re-attested hosted at a named commit. `books.spec.ts:21` does install a request monitor that treats `localhost:1337`, `https://legacy-rest.invalid` and the named legacy GraphQL operations as forbidden — that is real evidence of a *fixture-local* Strapi-free run, and it is not evidence of an exact-SHA hosted one.
+
+- [ ] Re-attest the Books lane at an exact committed SHA before any claim that no Books flow requires Strapi. A local fixture pass is not that attestation.
