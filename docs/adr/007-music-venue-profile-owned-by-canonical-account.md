@@ -2,13 +2,17 @@
 
 ## Status
 
-Proposed (2026-10-05)
+Accepted (2026-10-06)
 
-> Not accepted. Accepting this ADR is the repository owner's decision. It refines
-> how [ADR-006](006-canonical-music-identity-supersedes-strapi-proof.md) is
+> Accepted by the repository owner on 2026-10-06, drafted 2026-10-05. This ADR
+> refines how [ADR-006](006-canonical-music-identity-supersedes-strapi-proof.md) is
 > implemented and does not change ADR-006's decision. It supersedes nothing in
 > [ADR-005](005-music-identity-migration-deployment-authority.md): the schema
 > model, append-only migrations and deployment authority there remain in force.
+>
+> Ticket 6.1 implements the Decision below. A writer must not populate a password
+> to satisfy a constraint, must not write a Strapi document id during canonical
+> provisioning, and must not drop the ownership constraint in decision 5.
 
 ## Context
 
