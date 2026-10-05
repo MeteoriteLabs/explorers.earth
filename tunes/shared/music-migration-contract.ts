@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0039_music_venue_account_ownership" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0038_explorers_movie_media" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -37,7 +37,6 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0035_explorers_book_cover_import",
   "0036_explorers_analytics_events",
   "0037_explorers_movies_provider_context",
-  "0038_explorers_movie_media",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -80,7 +79,6 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0035_explorers_book_cover_import",
   "0036_explorers_analytics_events",
   "0037_explorers_movies_provider_context",
-  "0038_explorers_movie_media",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 
