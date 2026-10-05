@@ -13,12 +13,12 @@
     },
     {
       "id": "1.2",
-      "state": "complete",
+      "state": "partial",
       "dispatchable": false,
       "after": [
         "1.1"
       ],
-      "next": "Reuse accepted runtime; new seeds and migrations belong to the consuming feature.",
+      "next": "Reuse accepted runtime; new seeds and migrations belong to the consuming feature. State corrected from \"complete\" to \"partial\" on 2026-10-05: the recorded acceptance stands and is not reopened, but 1.2's own route-graph invariant (epic-01.md:106, mirrored at ticket-1-2.md:35) is unmet, because scripts/replatform-route-parity.ts:4-8,23 inventories six legacy/Strapi/analytics paths and zero canonical ones while platform-route-parity.test.ts:22 asserts exactly 6, so the invariant passes vacuously for every canonical surface. Extending that inventory and raising the expected count is a coordinator-allocated shared edit. ticket-index.md and epic-01.md both record INCOMPLETE; this field previously contradicted them.",
       "consumedInputs": [
         {
           "ticket": "1.1",

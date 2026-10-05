@@ -45,7 +45,7 @@ Execute ready prerequisites using the corrected dependency order below: shared r
 
 ### Corrected execution order (2026-10-05)
 
-This supersedes any earlier ordering prose in this file and in the historical backlog. The graph was rebuilt and independently verified: **38 nodes, acyclic, no dangling prerequisite, longest chain 20.**
+This supersedes any earlier ordering prose in this file and in the historical backlog. The graph was rebuilt and independently verified against `execution-packages.json` by topological sort: **38 nodes, acyclic (all 38 ordered), no dangling prerequisite, no duplicate id, single root at 1.1, and a longest path of 21 tickets / 20 edges.** Stated both ways because "longest chain 20" was ambiguous between nodes and edges.
 
 ```
 1.1 → 1.2 → {1.3 ‖ 1.4} → 2.1 → 2.2 → {2.3, 3.1-verify}
