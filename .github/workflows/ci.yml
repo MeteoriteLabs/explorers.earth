@@ -160,7 +160,7 @@ jobs:
   e2e-category-a:
     name: 🎭 E2E Category A
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -222,7 +222,7 @@ jobs:
   e2e-category-b:
     name: 🎭 E2E Category B
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -282,7 +282,7 @@ jobs:
   e2e-public-shell:
     name: 🎭 E2E Public shell
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -342,7 +342,7 @@ jobs:
   e2e-publishing:
     name: 🎭 E2E Publishing
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -402,7 +402,7 @@ jobs:
   e2e-music-account:
     name: 🎭 E2E Music and account
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -418,9 +418,18 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run Playwright E2E tests
-        run: npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual
+        # This lane passes no --config, so it inherits the root playwright.config.ts.
+        # retries and the reporter are therefore set explicitly here: without them it
+        # inherits CI retries=2 (tripling every failure's wall clock) and a line-only
+        # reporter that produces no machine-readable result. The other four E2E lanes
+        # get both from their own --config; this keeps them consistent.
+        run: npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0 --reporter=line,json
         env:
           CI: true
+          # Must be written somewhere the upload step can actually find it; the
+          # inherited line reporter never created the playwright-report/ directory
+          # the upload previously pointed at, so this lane retained no evidence.
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ../.artifacts/music-account/report.json
           # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
           # it must end in /graphql for the specs' **/graphql route mocks to match.
           VITE_API_URL: http://localhost:5173/graphql
@@ -447,12 +456,15 @@ jobs:
         if: always()
         with:
           name: playwright-report-music-account
-          path: explorers-earth/playwright-report/
+          path: .artifacts/music-account/report.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload screenshots/videos on failure
+      # always(), not failure(): this lane has been cancelled at the job timeout on
+      # every recorded SHA, and a cancelled job never satisfies failure(), so the
+      # traces for the slowest and least understood lane were discarded each time.
+      - name: Upload screenshots/videos
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: e2e-failure-music-account
           path: explorers-earth/test-results/

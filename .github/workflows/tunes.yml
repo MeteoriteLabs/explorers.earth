@@ -134,12 +134,28 @@ jobs:
             BUILD_SOURCE=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=explorers-tunes
           cache-to: type=gha,mode=max,scope=explorers-tunes
-      - name: Prove gate entrypoint is in the exact image
+      # The migration list here was previously a hardcoded literal that stopped at
+      # 0035 while EXPECTED_MUSIC_MIGRATION_CHAIN had advanced to 0038, so an image
+      # missing three migrations passed this gate and failed only later, inside the
+      # deploy-time migration gate. It is now derived from the contract, which makes
+      # it self-maintaining, and it asserts set equality in both directions so an
+      # unexpected extra .sql in the image is also a failure.
+      - name: Prove gate entrypoint and the exact migration chain are in the image
         shell: bash
-        run: >-
-          docker run --rm --entrypoint node
-          "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
-          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql','/app/migrations/0008_credential_revocation_operations.sql','/app/migrations/0009_credential_revocation_history_immutability.sql','/app/migrations/0010_least_privilege_runtime_role.sql','/app/migrations/0011_durable_publication_idempotency.sql','/app/migrations/0012_publication_replay_expiry_guard.sql','/app/migrations/0013_publication_operation_database_clock.sql','/app/migrations/0014_durable_reactivation_authority.sql','/app/migrations/0015_publication_operation_archive.sql','/app/migrations/0016_publication_operation_retention.sql','/app/migrations/0017_publication_idempotency_key_retirement.sql','/app/migrations/0018_transactional_queue_replacement.sql','/app/migrations/0019_queue_visibility_control.sql','/app/migrations/0020_public_snapshot_revision.sql','/app/migrations/0021_explorers_analytics_receipts.sql','/app/migrations/0022_explorers_identity.sql','/app/migrations/0023_explorers_authorization.sql','/app/migrations/0024_explorers_profile_media.sql','/app/migrations/0025_explorers_media_attachment_guard.sql','/app/migrations/0026_explorers_media_slot_compatibility.sql','/app/migrations/0027_explorers_lifecycle.sql','/app/migrations/0028_explorers_recovery_proof_retention.sql','/app/migrations/0029_explorers_recommendations.sql','/app/migrations/0030_explorers_media_purpose_guard.sql','/app/migrations/0031_explorers_content_revision.sql','/app/migrations/0032_explorers_owner_page_indexes.sql','/app/migrations/0033_explorers_recommendation_display_overrides.sql','/app/migrations/0034_explorers_books_provider_context.sql','/app/migrations/0035_explorers_book_cover_import.sql'])if(!existsSync(p))process.exit(1)"
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Import the real constant rather than pattern-matching the source: the
+          # chain's last element is the identifier EXPECTED_MUSIC_MIGRATION_ID, not a
+          # string literal, so a text scan silently drops the newest migration. Node
+          # 24 strips the erasable TypeScript in this file natively.
+          node --input-type=module -e 'const m=await import("./tunes/shared/music-migration-contract.ts");const ids=[...m.EXPECTED_MUSIC_MIGRATION_CHAIN];if(!ids.length){console.error("EXPECTED_MUSIC_MIGRATION_CHAIN is empty");process.exit(1)}console.log(ids.slice().sort().join("\n"))' > /tmp/expected-chain.txt
+          echo "Contract declares $(wc -l < /tmp/expected-chain.txt) migrations."
+          docker run --rm --entrypoint node "$IMAGE" -e "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js'])if(!existsSync(p)){console.error('missing from image: '+p);process.exit(1)}"
+          docker run --rm --entrypoint sh "$IMAGE" -c 'ls -1 /app/migrations | sed -n "s/\.sql$//p" | sort' > /tmp/image-chain.txt
+          # Fails closed on any divergence, and prints exactly which ids differ.
+          diff -u /tmp/expected-chain.txt /tmp/image-chain.txt
       - name: Prove the exact production image loads its server graph
         shell: bash
         run: |

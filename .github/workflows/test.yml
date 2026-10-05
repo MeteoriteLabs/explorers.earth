@@ -168,6 +168,18 @@ jobs:
           VITE_LOCAL_TUNES_ENABLED: "true"
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
         run: npm run test:e2e --prefix explorers-earth -- music.spec.ts account-lifecycle.spec.ts music-accessibility.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
+      # This workflow previously contained no upload-artifact step at all, so the
+      # traces Playwright writes under trace: 'retain-on-failure' were discarded
+      # with the runner and this lane's failures were reconstructible only from log
+      # text. Diagnostics only; it adds no gate and changes no result.
+      - name: Upload browser diagnostics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: browser-diagnostics
+          path: explorers-earth/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   load-chaos:
     needs: browser
