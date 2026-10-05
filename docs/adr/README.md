@@ -12,10 +12,10 @@ Architecture Decision Records capture important architectural decisions made dur
 | [002](002-auth-strategies.md) | Different auth strategies per app (JWT vs sessions) | Superseded in part |
 | [003](003-realtime-websockets.md) | Socket.IO for real-time communication | Accepted |
 | [004](004-database-orm-choice.md) | PostgreSQL with Drizzle ORM | Superseded in part |
-| [005](005-music-identity-migration-deployment-authority.md) | Canonical Music identity, migrations, and deployment authority | Accepted |
-| [006](006-canonical-music-identity-supersedes-strapi-proof.md) | Canonical session ensure for Music identity, superseding ADR-005's Strapi proof boundary | Proposed |
+| [005](005-music-identity-migration-deployment-authority.md) | Canonical Music identity, migrations, and deployment authority | Superseded in part |
+| [006](006-canonical-music-identity-supersedes-strapi-proof.md) | Canonical session ensure for Music identity, superseding ADR-005's Strapi proof boundary | Accepted |
 
-> **Pending owner decision (2026-10-05).** ADR-006 is **Proposed**, not Accepted. It supersedes only ADR-005 `:16-20` and `:30` — the bodyless `POST /api/music/identity/ensure` proof boundary and its three distinct scopes; ADR-005's migration and deployment-authority decisions stay in force unchanged. Accepting ADR-006 is the repository owner's decision, and two things follow from it that must not be done pre-emptively: ADR-005's status row above stays **Accepted** until that decision, and the "superseded in part by ADR-006" pointer belongs inside ADR-005 at that point, following the precedent set by [002](002-auth-strategies.md). Until then ticket 6.1 stays blocked, because a writer following current ADR authority would rebuild the Strapi proof exchange that 6.1 exists to remove.
+> **Decision recorded (2026-10-05).** ADR-006 is **Accepted**. It supersedes ADR-005's identity-issuance decision only — the bodyless proof boundary and its three distinct credential scopes — and ADR-005 stays the current authority for the schema model, append-only migrations, deployment authority and image-digest promotion. ADR-005's status row above reads "Superseded in part" accordingly, following the precedent of [002](002-auth-strategies.md) and [004](004-database-orm-choice.md). Ticket 6.1 is unblocked: a writer implementing it follows ADR-006, and must not reinstate the Strapi proof exchange or mint a fixture proof to work around it.
 
 ## Template
 

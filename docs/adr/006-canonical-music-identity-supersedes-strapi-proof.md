@@ -2,17 +2,16 @@
 
 ## Status
 
-Proposed (2026-10-05)
+Accepted (2026-10-05)
 
-> Not accepted. Accepting this ADR is the repository owner's decision. Until it is
-> accepted, [ADR-005](005-music-identity-migration-deployment-authority.md) remains
-> the Accepted authority for Music identity issuance, and a writer following current
-> ADR authority will rebuild the proof exchange that ticket 6.1 exists to delete.
+> Accepted by the repository owner on 2026-10-05. This ADR supersedes ADR-005's
+> identity-issuance decision only — specifically its bodyless proof boundary and
+> its three distinct credential scopes. ADR-005 remains the current authority for
+> the schema model, append-only migrations, deployment authority and image-digest
+> promotion, and is unamended in those respects.
 >
-> **Blocking preflight.** Superseding ADR-005's identity-issuance decision is a
-> blocking preflight for dispatching
-> ticket 6.1 (`docs/replatform-audit/tickets/ticket-6-1.md`). Do not dispatch a 6.1
-> writer while `005:16-20` is the only ratified identity boundary.
+> Ticket 6.1 is unblocked by this acceptance. A writer implementing it follows the
+> Decision below, not ADR-005's proof exchange.
 
 ## Context
 
