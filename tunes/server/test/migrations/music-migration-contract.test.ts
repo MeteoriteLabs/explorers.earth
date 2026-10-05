@@ -4,6 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
+import { IMAGE_TEST_COMMANDS, imageTestEnvironment } from "../../../scripts/music-image-ci-tests";
+import { parseC10StandalonePostgresAuthority, validateC10StandalonePostgresInspect } from "../../../scripts/music-qualification-postgres";
 import {
   DEPLOYABLE_MUSIC_MIGRATION_MARKERS,
   EXPECTED_MUSIC_MIGRATION_ID,
@@ -279,11 +281,36 @@ describe("Music migration authority contracts", () => {
   });
 
   it("runs the PostgreSQL 15 integration chain in authoritative image CI", () => {
-    const workflow = read(".github/workflows/tunes.yml");
-    expect(workflow).toMatch(/image:\s*postgres:15-alpine/);
-    expect(workflow).toContain("MUSIC_C3_POSTGRES_TEST: \"1\"");
-    expect(workflow).toContain("DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
-    expect(workflow).toContain("npm run test:integration");
+    const job = parseYaml(read(".github/workflows/tunes.yml")).jobs["build-test-scan-push"];
+    const step = job.steps.find((candidate: any) => candidate.name === "Test Tunes");
+    expect(step.workingDirectory ?? step["working-directory"]).toBe("tunes");
+    expect(step.run.trim().split(/\r?\n/).map((line: string) => line.trim())).toEqual([
+      "npm ci --legacy-peer-deps",
+      "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts",
+    ]);
+    expect(job.services).toBeUndefined();
+    expect(job.env?.DATABASE_URL_TEST).toBeUndefined();
+    expect(step.env.DATABASE_URL_TEST).toBeUndefined();
+    expect(IMAGE_TEST_COMMANDS[1]).toEqual(["run", "test:integration"]);
+    const authority = { port: 51643, containerId: "a".repeat(64), commit: "b".repeat(40),
+      imageId: `sha256:${"c".repeat(64)}`, contextHost: "unix:///var/run/docker.sock", owned: true as const };
+    const environment = imageTestEnvironment({}, authority, "fixture-password");
+    expect(environment.MUSIC_C3_POSTGRES_TEST).toBe("1");
+    expect(environment.DATABASE_URL_TEST).toBe("postgresql://music_migrator:fixture-password@127.0.0.1:51643/music_fixture");
+    expect(environment.MUSIC_C10_STANDALONE_POSTGRES_ACK).toBe("C10_LABELED_LOCAL_PG15");
+    expect(parseC10StandalonePostgresAuthority(environment)).toEqual({
+      port: authority.port, containerId: authority.containerId, commit: authority.commit,
+    });
+    const inspect = { Id: authority.containerId, Name: `/music-c10-qualification-${authority.commit.slice(0, 7)}-pg15`,
+      Image: authority.imageId, Config: { Image: "postgres:15-alpine", Labels: {
+        "com.explorers.music.c10-qualification": "true", "com.explorers.music.owner": "task10",
+        "com.explorers.music.commit": authority.commit } }, State: { Running: true, Health: { Status: "healthy" } },
+      HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: String(authority.port) }] } } };
+    expect(validateC10StandalonePostgresInspect(authority, { ...authority, inspect }).imageId).toBe(authority.imageId);
+    expect(() => validateC10StandalonePostgresInspect(authority, { ...authority,
+      inspect: { ...inspect, Config: { ...inspect.Config, Image: "postgres:16-alpine" } } })).toThrow(/owned PG15/);
+    expect(() => parseC10StandalonePostgresAuthority({ ...environment, MUSIC_C10_STANDALONE_POSTGRES_PORT: "55432" })).toThrow(/reserved/);
+    expect(() => imageTestEnvironment({ DATABASE_URL_TEST: environment.DATABASE_URL_TEST }, authority, "fixture-password")).toThrow(/ambient/);
   });
 
   it("permits a loopback-only Strapi host-port override for full fixture rehearsal", () => {
