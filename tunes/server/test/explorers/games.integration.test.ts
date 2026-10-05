@@ -1,5 +1,5 @@
 import {spawnSync,execFileSync} from 'node:child_process';
-import {validateGamesOwnedPostgres} from '../helpers/games-owned-postgres-authority';
+import {captureGamesOwnedPostgres,validateGamesRestore,type GamesPostgresSnapshot} from '../helpers/games-owned-postgres-authority';
 import {createHash,createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join,resolve,sep} from 'node:path';
 import pg from 'pg';import request from 'supertest';import {beforeAll,afterAll,it,expect} from 'vitest';
@@ -8,12 +8,13 @@ import {runAccountLifecycleMaintenance} from '../../application/accountLifecycle
 import {RecommendationService} from '../../application/recommendations';
 import {provisionMusicRuntimeLogin} from '../../db/music-runtime-role';import {LocalObjectStorage} from '../../services/objectStorage';
 const config=resolveExplorersAuthConfig({EXPLORERS_PUBLIC_ORIGIN:'http://127.0.0.1:51643',EXPLORERS_AUTH_SECRET:'games-owned-integration-'.repeat(4),GOOGLE_CLIENT_ID:'fixture-only',GOOGLE_CLIENT_SECRET:'fixture-only'});
+let sourceAuthority:GamesPostgresSnapshot;
 let storageGate:{entered:()=>void;settled:Promise<void>}|undefined;
 let admin:pg.Pool,runtime:pg.Pool,app:ReturnType<typeof createCanonicalApp>,storage:LocalObjectStorage,storageRoot:string;
 const role='games_owner_'+randomBytes(8).toString('hex'),ownership='games-a3m:'+role;
 beforeAll(async()=>{
  const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:process.cwd(),encoding:'utf8',windowsHide:true,timeout:10_000,stdio:['ignore','pipe','pipe']}).trim();
- const url=validateGamesOwnedPostgres(process.env,sourceCommit);
+ sourceAuthority=captureGamesOwnedPostgres(process.env,sourceCommit);const url=new URL(sourceAuthority.target);
  admin=new pg.Pool({connectionString:url.toString(),max:4});const password=randomBytes(32).toString('base64url');await provisionMusicRuntimeLogin(admin,{loginRole:role,password},{ownershipComment:ownership});url.username=role;url.password=password;runtime=new pg.Pool({connectionString:url.toString(),max:4});
  expect((await runtime.query('SELECT current_user')).rows[0].current_user).toBe(role);
  storageRoot=await mkdtemp(join(tmpdir(),'games-a3m-owned-'));storage=new LocalObjectStorage(storageRoot);
@@ -140,9 +141,9 @@ it('actual copied local image bytes are denied after every public ancestor chang
 });
 
 it('populated native Games dump restores exact schema38 rows and runtime grants in an exclusively owned temporary database',async()=>{
- const container=process.env.MUSIC_C10_STANDALONE_POSTGRES_CONTAINER_ID;if(!container||!/^[0-9a-f]{64}$/.test(container)||process.env.MUSIC_C10_STANDALONE_POSTGRES_PORT!=='51642')throw Error('Owned restore container authority absent');
- const database='games_restore_'+randomBytes(8).toString('hex'),comment='games-a3m-restore:'+database,url=new URL(process.env.DATABASE_URL_TEST!);const source=url.pathname.slice(1);if(!/^[a-z_][a-z0-9_]*$/.test(source))throw Error('Unsafe owned database name');
- const invoke=(args:string[],input?:Buffer)=>{const child=spawnSync(process.platform==='win32'?'docker.exe':'docker',['exec','-i',container,...args],{input,windowsHide:true,timeout:15000,maxBuffer:64*1024*1024});if(child.status!==0||!Buffer.isBuffer(child.stdout))throw Error('Owned restore child failed');return child.stdout;};
+ // Source authority is immutable and separate from the temporary restore destination.
+ const database='games_restore_'+randomBytes(8).toString('hex'),comment='games-a3m-restore:'+database,url=new URL(sourceAuthority.target);const source=url.pathname.slice(1);if(!/^[a-z_][a-z0-9_]*$/.test(source))throw Error('Unsafe owned database name');
+ const invoke=(args:string[],input?:Buffer)=>{const currentHead=execFileSync('git',['rev-parse','HEAD'],{cwd:process.cwd(),encoding:'utf8',windowsHide:true,timeout:10_000,stdio:['ignore','pipe','pipe']}).trim();const fresh=validateGamesRestore(process.env,currentHead,sourceAuthority);const container=fresh.containerId;const child=spawnSync(process.platform==='win32'?'docker.exe':'docker',['exec','-i',container,...args],{input,windowsHide:true,timeout:15000,maxBuffer:64*1024*1024});if(child.status!==0||!Buffer.isBuffer(child.stdout))throw Error('Owned restore child failed');return child.stdout;};
  const before=(await admin.query("SELECT id,checksum,schema_checksum FROM music_schema_migrations ORDER BY id")).rows;
  // collection_items has composite identity, so source census is explicit and deterministic.
  const countSql="SELECT (SELECT count(*) FROM collections WHERE category='games')::text AS lists,(SELECT count(*) FROM recommendations WHERE category='games')::text AS recommendations,(SELECT count(*) FROM collection_items WHERE category='games')::text AS memberships,(SELECT count(*) FROM recommendation_media rm JOIN recommendations r ON r.id=rm.recommendation_id WHERE r.category='games')::text AS media";
