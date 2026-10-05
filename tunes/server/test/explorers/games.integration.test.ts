@@ -1,4 +1,5 @@
-import {spawnSync} from 'node:child_process';
+import {spawnSync,execFileSync} from 'node:child_process';
+import {validateGamesOwnedPostgres} from '../helpers/games-owned-postgres-authority';
 import {createHash,createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join,resolve,sep} from 'node:path';
 import pg from 'pg';import request from 'supertest';import {beforeAll,afterAll,it,expect} from 'vitest';
@@ -11,8 +12,8 @@ let storageGate:{entered:()=>void;settled:Promise<void>}|undefined;
 let admin:pg.Pool,runtime:pg.Pool,app:ReturnType<typeof createCanonicalApp>,storage:LocalObjectStorage,storageRoot:string;
 const role='games_owner_'+randomBytes(8).toString('hex'),ownership='games-a3m:'+role;
 beforeAll(async()=>{
- if(process.env.MUSIC_C5_POSTGRES_TEST!=='1'||!process.env.DATABASE_URL_TEST)throw Error('Explicit owned Games PG authority required');
- const url=new URL(process.env.DATABASE_URL_TEST);if(url.hostname!=='127.0.0.1'||Number(url.port)!==51642)throw Error('Exclusive guarded Games PG required');
+ const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:process.cwd(),encoding:'utf8',windowsHide:true,timeout:10_000,stdio:['ignore','pipe','pipe']}).trim();
+ const url=validateGamesOwnedPostgres(process.env,sourceCommit);
  admin=new pg.Pool({connectionString:url.toString(),max:4});const password=randomBytes(32).toString('base64url');await provisionMusicRuntimeLogin(admin,{loginRole:role,password},{ownershipComment:ownership});url.username=role;url.password=password;runtime=new pg.Pool({connectionString:url.toString(),max:4});
  expect((await runtime.query('SELECT current_user')).rows[0].current_user).toBe(role);
  storageRoot=await mkdtemp(join(tmpdir(),'games-a3m-owned-'));storage=new LocalObjectStorage(storageRoot);
