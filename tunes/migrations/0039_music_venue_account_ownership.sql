@@ -16,10 +16,14 @@ LOCK TABLE public.account_music_identity IN SHARE ROW EXCLUSIVE MODE;
 
 -- A canonical venue has no password to store and no login path that would read one.
 ALTER TABLE public.users ALTER COLUMN password DROP NOT NULL;
--- Legacy-only from here. Never written by canonical provisioning. The existing UNIQUE
--- index continues to reject duplicate legacy ids, and Postgres permits many NULLs in
--- it, so any number of canonically-owned venues may coexist.
+-- Legacy-only from here. Neither is written by canonical provisioning. Both keep
+-- their UNIQUE indexes, which continue to reject duplicate legacy ids, and Postgres
+-- permits many NULLs in a unique index, so any number of canonically-owned venues
+-- may coexist. Both are relaxed together because a canonical account has neither a
+-- Strapi user nor a Strapi account document id; relaxing only the first would move
+-- the same failure one column to the right.
 ALTER TABLE public.users ALTER COLUMN strapi_user_document_id DROP NOT NULL;
+ALTER TABLE public.users ALTER COLUMN strapi_account_document_id DROP NOT NULL;
 
 CREATE FUNCTION public.assert_music_venue_owned() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
