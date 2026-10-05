@@ -39,9 +39,12 @@ it('admits only typed Book additions and excludes them from every non-Book publi
  const response=(values:Record<string,unknown>)=>({version:'explorers-public-content/v1',recommendation:{...recommendation,...values}});
  expect(publicRecommendationDetailSchema.parse(response(additions))).toEqual(response(additions));
  for(const kind of ['place','movie','game','app','product','person']){
-  expect(publicRecommendationDetailSchema.safeParse(response({kind})).success).toBe(true);
-  for(const [field,value] of Object.entries(additions))expect(publicRecommendationDetailSchema.safeParse(response({kind,[field]:value})).success).toBe(false);
+  const typedKind=kind==='game'?{kind,gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null}}:{kind};
+  expect(publicRecommendationDetailSchema.safeParse(response(typedKind)).success).toBe(true);
+  for(const [field,value] of Object.entries(additions))expect(publicRecommendationDetailSchema.safeParse(response({...typedKind,[field]:value})).success).toBe(false);
  }
+ expect(publicRecommendationDetailSchema.safeParse(response({kind:'game'})).success).toBe(false);
+ for(const gamePresentation of [{},{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null,secret:'private'}])expect(publicRecommendationDetailSchema.safeParse(response({kind:'game',gamePresentation})).success).toBe(false);
  for(const extra of [{accountId:recommendation.id},{entityId:recommendation.id},{displayOverrides:{title:'raw'}},{provenance:{provider:'google_books'}},{storageKey:'private/object'}])
   expect(publicRecommendationDetailSchema.safeParse(response({...additions,...extra})).success).toBe(false);
  for(const bad of [{bookDetails:{...emptyBookDetails(),secret:'private'}},{bookContext:{buyLinks:[{name:'Unsafe',url:'javascript:alert(1)'}]}},{bookCovers:{cover:null,thumbnail:null,rawUrl:'https://private.invalid'}}])
