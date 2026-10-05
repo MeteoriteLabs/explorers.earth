@@ -134,12 +134,24 @@ jobs:
             BUILD_SOURCE=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=explorers-tunes
           cache-to: type=gha,mode=max,scope=explorers-tunes
-      # The migration list here was previously a hardcoded literal that stopped at
-      # 0035 while EXPECTED_MUSIC_MIGRATION_CHAIN had advanced to 0038, so an image
-      # missing three migrations passed this gate and failed only later, inside the
-      # deploy-time migration gate. It is now derived from the contract, which makes
-      # it self-maintaining, and it asserts set equality in both directions so an
-      # unexpected extra .sql in the image is also a failure.
+      # The literal list below is pinned by server/test/deployment/music-deployment-files.test.ts,
+      # which asserts each path appears in this workflow. It once caught a migration
+      # gate command declared in compose but never copied into the runner image, so it
+      # is kept verbatim rather than replaced. It was stale (it stopped at 0035 while the
+      # chain head was 0038) and is now complete; the following step makes staleness
+      # impossible to reintroduce silently.
+      - name: Prove gate entrypoint is in the exact image
+        shell: bash
+        run: >-
+          docker run --rm --entrypoint node
+          "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
+          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql','/app/migrations/0008_credential_revocation_operations.sql','/app/migrations/0009_credential_revocation_history_immutability.sql','/app/migrations/0010_least_privilege_runtime_role.sql','/app/migrations/0011_durable_publication_idempotency.sql','/app/migrations/0012_publication_replay_expiry_guard.sql','/app/migrations/0013_publication_operation_database_clock.sql','/app/migrations/0014_durable_reactivation_authority.sql','/app/migrations/0015_publication_operation_archive.sql','/app/migrations/0016_publication_operation_retention.sql','/app/migrations/0017_publication_idempotency_key_retirement.sql','/app/migrations/0018_transactional_queue_replacement.sql','/app/migrations/0019_queue_visibility_control.sql','/app/migrations/0020_public_snapshot_revision.sql','/app/migrations/0021_explorers_analytics_receipts.sql','/app/migrations/0022_explorers_identity.sql','/app/migrations/0023_explorers_authorization.sql','/app/migrations/0024_explorers_profile_media.sql','/app/migrations/0025_explorers_media_attachment_guard.sql','/app/migrations/0026_explorers_media_slot_compatibility.sql','/app/migrations/0027_explorers_lifecycle.sql','/app/migrations/0028_explorers_recovery_proof_retention.sql','/app/migrations/0029_explorers_recommendations.sql','/app/migrations/0030_explorers_media_purpose_guard.sql','/app/migrations/0031_explorers_content_revision.sql','/app/migrations/0032_explorers_owner_page_indexes.sql','/app/migrations/0033_explorers_recommendation_display_overrides.sql','/app/migrations/0034_explorers_books_provider_context.sql','/app/migrations/0035_explorers_book_cover_import.sql','/app/migrations/0036_explorers_analytics_events.sql','/app/migrations/0037_explorers_movies_provider_context.sql','/app/migrations/0038_explorers_movie_media.sql'])if(!existsSync(p))process.exit(1)"
+      # Complements the pinned list above, which cannot detect a migration that nobody
+      # added to it — exactly how it came to stop at 0035 while the chain head was 0038,
+      # letting an image missing three migrations pass and fail only later inside the
+      # deploy-time gate. This check derives the expected set from the contract, so it is
+      # self-maintaining, and asserts set equality in both directions: a missing migration
+      # and an unexpected extra .sql both fail.
       - name: Prove gate entrypoint and the exact migration chain are in the image
         shell: bash
         env:

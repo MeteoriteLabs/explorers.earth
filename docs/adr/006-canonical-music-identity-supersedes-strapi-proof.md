@@ -11,7 +11,7 @@ Proposed (2026-10-05)
 >
 > **Blocking preflight.** Superseding ADR-005's identity-issuance decision is a
 > blocking preflight for dispatching
-> [ticket 6.1](../replatform-audit/tickets/ticket-6-1.md). Do not dispatch a 6.1
+> ticket 6.1 (`docs/replatform-audit/tickets/ticket-6-1.md`). Do not dispatch a 6.1
 > writer while `005:16-20` is the only ratified identity boundary.
 
 ## Context
@@ -99,7 +99,7 @@ authenticated deployment runbook and security/schema floors.
 - `tunes/server/routes/index.ts:84-85` must stop requiring `musicConfig.strapiOrigin`
   to construct a runtime gateway, so Music can start with zero required Strapi
   configuration — the Epic 6 exit criterion
-  ([epic-06.md:156](../replatform-audit/epics/epic-06.md)).
+  (`docs/replatform-audit/epics/epic-06.md:156`).
 - `musicIdentityRoutes.ts:83` → `strapiIdentityGateway.ts:346` leaves the runtime
   identity path; legacy path files are removed only in Epic 8.
 - `ensureMusicAccount` must be written. It does not exist anywhere in source today:

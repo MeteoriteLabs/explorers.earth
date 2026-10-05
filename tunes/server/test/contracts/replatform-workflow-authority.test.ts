@@ -57,7 +57,15 @@ describe("replatform workflow authority", () => {
         expect(upload.with["if-no-files-found"]).toBe("ignore");
       }
       expect(uploads[0].if).toBe("always()");
-      expect(uploads[1].if).toBe("failure()");
+      // The report upload stays always(). The trace upload is failure() for the
+      // four lanes that fail normally; e2e-music-account is the exception and must
+      // be always(), because it has been cancelled at its job timeout on every
+      // recorded SHA (46eea549, 1a5c6942, 225d83e5) and a cancelled job never
+      // satisfies failure() — so the one lane whose failures are least understood
+      // was the only lane discarding its traces. always() retains strictly more
+      // than failure() and is never the weaker condition, so this pins a stronger
+      // per-lane policy rather than relaxing the check.
+      expect(uploads[1].if).toBe(name === "e2e-music-account" ? "always()" : "failure()");
     });
     expect(ci.jobs["backend-validation"]).toBeUndefined();
     expect(required.if).toContain("always()");
