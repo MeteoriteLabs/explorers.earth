@@ -1,3 +1,4 @@
+import {gameCatalogRequestSchema} from '../../shared/explorersGameOwnerContract';
 import {movieGenreTermsResultSchema} from '../../shared/explorersMovieMediaContract';
 import {MovieCatalog} from '../services/movieCatalog';
 import {movieEntityDtoSchema,resolveManualMovieSchema} from '../../shared/explorersMovieContract';
@@ -11,6 +12,10 @@ import {BookCatalog} from '../services/bookCatalog';
 import {bookEntityDtoSchema} from '../../shared/explorersBookContract';
 
 export class MovieGenreFailure extends Error {constructor(readonly status:422|503,readonly code:'INVALID_INPUT'|'READ_LIMIT'){super(code==='INVALID_INPUT'?'Genre parameters are not supported':'Movie genre configuration unavailable');}}
+export class GameCatalogFailure extends Error {
+ readonly status=503;readonly code='PROVIDER_UNAVAILABLE' as const;
+ constructor(){super('Games provider is unavailable');}
+}
 const reviewedMovieGenreMappings:Readonly<Record<string,string>>={"movie:28": "action", "movie:12": "adventure", "movie:16": "animation", "movie:35": "comedy", "movie:80": "crime", "movie:99": "documentary", "movie:18": "drama", "movie:10751": "family", "movie:14": "fantasy", "movie:36": "history", "movie:27": "horror", "movie:10402": "music", "movie:9648": "mystery", "movie:10749": "romance", "movie:878": "science-fiction", "movie:10770": "tv-movie", "movie:53": "thriller", "movie:10752": "war", "movie:37": "western", "tv:10759": "action-adventure", "tv:16": "animation", "tv:35": "comedy", "tv:80": "crime", "tv:99": "documentary", "tv:18": "drama", "tv:10751": "family", "tv:10762": "kids", "tv:9648": "mystery", "tv:10763": "news", "tv:10764": "reality", "tv:10765": "sci-fi-fantasy", "tv:10766": "soap", "tv:10767": "talk", "tv:10768": "war-politics", "tv:37": "western"};
 /** Existing owned catalog context only. Provider ingestion/fetch is a separate
  * trusted server adapter; HTTP callers cannot supply or overwrite shared facts. */
@@ -27,11 +32,13 @@ export class CatalogService {
     await authorizeOperation(this.db,actor,'entities:resolve',actor.accountId);return result;
   }
   async searchBooks(actor:Actor,input:unknown){await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);return this.books.search(actor.accountId,input);}
+  async searchGames(actor:Actor,input:unknown){await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);parseContent(gameCatalogRequestSchema,input);throw new GameCatalogFailure();}
   async searchMovies(actor:Actor,input:unknown){return this.movies.search(actor,input);}
   async resolveEntity(actor:Actor,input:unknown,context?:RequestContext) {
     await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);
     const parsed=parseContent(resolveEntitySchema,input);
     if('kind' in parsed) {
+      if(parsed.kind==='provider'&&parsed.category==='games')throw new GameCatalogFailure();
       if(parsed.kind==='manual'&&parsed.category==='movies')return movieEntityDtoSchema.parse(await new ExplorersRecommendationRepository(this.db).resolveMovieEntity(actor.accountId,parseContent(resolveManualMovieSchema,parsed),parseContent(commandKeySchema,context?.idempotencyKey),async()=>{throw new RecommendationFailure(422,'Manual Movie cannot fetch provider authority');}));
       if(parsed.kind==='provider'&&parsed.category==='movies')return movieEntityDtoSchema.parse(await new ExplorersRecommendationRepository(this.db).resolveMovieEntity(actor.accountId,parsed,parseContent(commandKeySchema,context?.idempotencyKey),()=>this.movies.resolve(actor,parsed.externalKind,parsed.externalId)));
       const key=parseContent(commandKeySchema,context?.idempotencyKey),repository=new ExplorersRecommendationRepository(this.db);

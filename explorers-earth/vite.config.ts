@@ -40,18 +40,6 @@ export default defineConfig(({ mode }) => {
          rewrite: (path) => path.replace(/^\/__localtunes/, ''),
          secure: true,
        } } : {}),
-       '/twitch-api': {
-         target: 'https://id.twitch.tv',
-         changeOrigin: true,
-         rewrite: (path) => path.replace(/^\/twitch-api/, ''),
-         secure: false,
-       },
-       '/igdb-api': {
-         target: 'https://api.igdb.com',
-         changeOrigin: true,
-         rewrite: (path) => path.replace(/^\/igdb-api/, ''),
-         secure: false,
-       },
         '/itunes-api': {
           target: 'http://127.0.0.1:5000',
           changeOrigin: true,

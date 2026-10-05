@@ -17,7 +17,7 @@ const usernameSchema = z.string().trim().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 export type PublicProfileRequest = { username: string; category: PublicCategory; limit: number; cursor?: string };
 
 export function parsePublicProfileRequest(value: unknown): PublicProfileRequest {
-  const p=requestSchema.parse(value);if(p.cursor&&p.category!=='movies'&&!/^o(?:0|[1-9][0-9]{0,4})$/.test(p.cursor))throw new Error('Invalid cursor');return p;
+  const p=requestSchema.parse(value);if(p.cursor&&p.category!=='movies'&&p.category!=='games'&&!/^o(?:0|[1-9][0-9]{0,4})$/.test(p.cursor))throw new Error('Invalid cursor');return p;
 }
 
 export function parsePublicProfileUsername(value: unknown): string {
@@ -27,7 +27,7 @@ export function parsePublicProfileUsername(value: unknown): string {
 export type PublicProfileDetailRequest = PublicProfileRequest & { slug: string };
 
 export function parsePublicProfileDetailRequest(value: unknown): PublicProfileDetailRequest {
-  const p=detailRequestSchema.parse(value);if(p.cursor&&p.category!=='movies'&&!/^o(?:0|[1-9][0-9]{0,4})$/.test(p.cursor))throw new Error('Invalid cursor');return p;
+  const p=detailRequestSchema.parse(value);if(p.cursor&&p.category!=='movies'&&p.category!=='games'&&!/^o(?:0|[1-9][0-9]{0,4})$/.test(p.cursor))throw new Error('Invalid cursor');return p;
 }
 
 /** Cursor values are deliberately opaque to callers; only this BFF translates

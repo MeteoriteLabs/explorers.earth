@@ -91,3 +91,9 @@ describe('gameHelpers', () => {
     });
   });
 });
+
+describe('native Games identity and zero provenance',()=>{
+ it('preserves a provider rating zero distinctly from absence',()=>{expect(formatRating(0)).toBe('0.0');expect(formatRating(null)).toBe('');});
+ it('never merges distinct recommendation UUIDs sharing a provider ID',()=>{const rows=[{documentId:'a',igdb_id:42},{documentId:'b',igdb_id:42}];expect(deduplicateGames(rows)).toEqual(rows);});
+ it('keeps canonical media on its authenticated native route',()=>{expect(buildCoverUrl('/api/explorers/v1/media/owned/content')).toBe('/api/explorers/v1/media/owned/content');});
+});

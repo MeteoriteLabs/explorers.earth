@@ -21,6 +21,29 @@ async function setList(api:APIRequestContext,id:string,visible:boolean){const c=
 function monitor(page:Page){const forbidden:string[]=[];page.on('request',request=>{const url=request.url();if(url.startsWith('https://legacy-rest.invalid')||url.includes('localhost:1337'))forbidden.push(url);const body=request.postData()??'';if(/\/api\/instagram|https:\/\/www\.googleapis\.com\/books\/|[?&]key=/.test(url)||/graphql/.test(url)&&/MyAccountForBooks|BookLists|BooksByList|RecommendedBook|BookList|CategoryNavigationAccount/.test(body))forbidden.push(url);});return forbidden;}
 async function createList(api:APIRequestContext,title:string){const r=await command(api,'post','/collections',{category:'books',title,slug:`fixture-${crypto.randomUUID()}`,visibility:'private',publicationState:'draft'});expect(r.status()).toBe(201);return (await r.json()).collection;}
 
+// BEGIN BOOKS CONTINUATION CONTRACT
+async function settledBooksContinuation(page:Page,expectedURL:string,title:string){
+ if(page.url()!==expectedURL)return false;
+ const row=page.getByText(title,{exact:true});
+ if(await row.count()!==1||!await row.isVisible())return false;
+ if(await page.locator('[aria-busy="true"], [role="status"], [role="alert"]').count()!==0)return false;
+ if(await page.getByRole('button',{name:/^(Load more|Retry) books$/,exact:true}).count()!==0)return false;
+ return page.url()===expectedURL;
+}
+async function completeBooksContinuation(page:Page,expectedURL:string,title:string){
+ // The observer can finish the page while an ordinary click scrolls its target into view.
+ if(await settledBooksContinuation(page,expectedURL,title))return;
+ try{
+  await page.getByRole('button',{name:'Load more books',exact:true}).click();
+ }catch(actionError){
+  try{if(await settledBooksContinuation(page,expectedURL,title))return;}catch{
+   // An observation failure cannot replace the original action failure.
+  }
+  throw actionError;
+ }
+}
+// END BOOKS CONTINUATION CONTRACT
+
 test('owner form create, Add with all fields, publication, repeat edits and archive reload',async({page},info)=>{
  const owner=fixture.personas.ownerA;await signIn(page,owner);const forbidden=monitor(page);await setCategory(page.request,false);
  await page.goto('/recommendations/books');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();
@@ -52,7 +75,7 @@ test('anonymous later list, complete subject children, full eligible hero and mo
  await page.route('**/*',r=>new URL(r.request().url()).origin===fixture.origin?r.continue():r.abort());
  await page.goto(`/${owner.handle}/books`);await expect(page.getByText(`${owner.userId}`,{exact:true})).toHaveCount(0);
  const result=await page.request.get(`${base}/profiles/${owner.handle}/recommendations/books`);expect(result.status()).toBe(200);const data=await result.json();expect(data.bookLists).toHaveLength(12);expect(data.topReads).toHaveLength(15);expect(data.topReads.some((b:any)=>b.title==='ownerB seed book 13-0')).toBe(true);expect(data.topReads[0].pin_order).toBe(0);
- await page.goto(`/${owner.handle}/books/seed-list-0`);await page.getByRole("button",{name:"Load more books",exact:true}).click();await expect(page.getByText('ownerB seed book 0-29',{exact:true})).toBeVisible();await page.getByText('ownerB seed book 0-29',{exact:true}).click();await expect(page.getByText('Seed rich note 😀')).toBeVisible();await page.keyboard.press('Escape');
+ await page.goto(`/${owner.handle}/books/seed-list-0`);await completeBooksContinuation(page,new URL(`/${owner.handle}/books/seed-list-0`,fixture.origin).href,'ownerB seed book 0-29');await expect(page.getByText('ownerB seed book 0-29',{exact:true})).toBeVisible();await page.getByText('ownerB seed book 0-29',{exact:true}).click();await expect(page.getByText('Seed rich note 😀')).toBeVisible();await page.keyboard.press('Escape');
  await page.goto(`/${owner.handle}/books/subject/later-subject`);await expect(page.getByText('ownerB seed book 0-29',{exact:true})).toBeVisible();
   await page.goto(`/${owner.handle}/books/subject/page-two-subject`);await expect(page.getByText('ownerB seed book 13-0',{exact:true})).toBeVisible();await expect(page.getByText('No books found for this subject.',{exact:true})).toHaveCount(0);
  await page.goto(`/${owner.handle}/books/seed-list-13`);await expect(page.getByText('ownerB seed book 13-0',{exact:true})).toBeVisible();expect(forbidden).toEqual([]);await page.screenshot({path:info.outputPath('public-books.png'),fullPage:true});

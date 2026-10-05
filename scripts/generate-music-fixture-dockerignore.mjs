@@ -45,6 +45,12 @@ const fixedFiles = [
   "tunes/shared/explorersBookCoverContract.ts",
   "tunes/shared/explorersMovieContract.ts",
   "tunes/shared/explorersMovieMediaContract.ts",
+  "tunes/shared/explorersGameContract.ts",
+  "tunes/shared/explorersGameOwnerContract.ts",
+  "explorers-earth/src/features/Games/api/gamesClient.ts",
+  "explorers-earth/src/features/Games/api/gamesViewModel.ts",
+  "explorers-earth/src/features/Games/api/explorersAdapter.ts",
+  "explorers-earth/src/features/Games/hooks/useGamesOwner.ts",
 ];
 // The compose file explicitly builds explorers-earth/Dockerfile.music-fixture,
 // so this small allowlist affects only the disposable Music UAT image.  It

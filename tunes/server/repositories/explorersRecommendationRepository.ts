@@ -249,6 +249,27 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale recommendation revision');
     return result.rows[0];
   }
+  async writeGameMembership(accountId:string,collectionId:string,recommendationId:string,input:{expectedCollectionRevision:number;expectedRecommendationRevision:number},key:string,attached:boolean){
+    return this.command(accountId,attached?'attachGameMembership':'detachGameMembership',{category:'games',collectionId,recommendationId,...input},key,async db=>{
+      const collection=await this.lockCollection(db,accountId,collectionId,input.expectedCollectionRevision);
+      const recommendation=await this.lockRecommendation(db,accountId,recommendationId,input.expectedRecommendationRevision);
+      if(collection.category!=='games'||recommendation.category!=='games')throw new RecommendationFailure(422,'Games membership required');
+      const existing=await db.query('SELECT 1 FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[collectionId,recommendationId]);
+      if(attached){
+        if(existing.rowCount)throw new RecommendationFailure(409,'Membership already exists');
+        await db.query("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) SELECT $1,$2,$3,'games',coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1",[collectionId,recommendationId,accountId]);
+      }else{
+        if(!existing.rowCount)throw new RecommendationFailure(404,'Membership unavailable');
+        const pins=await db.query("DELETE FROM category_recommendation_pins WHERE account_id=$1 AND category='games' AND collection_id=$2 AND recommendation_id=$3 RETURNING position",[accountId,collectionId,recommendationId]);
+        if(pins.rowCount)await db.query("UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category='games'",[accountId]);
+        await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[collectionId,recommendationId]);
+        await db.query('WITH ranks AS (SELECT recommendation_id,row_number() OVER(ORDER BY display_order,recommendation_id)-1 AS position FROM collection_items WHERE collection_id=$1) UPDATE collection_items ci SET display_order=ranks.position FROM ranks WHERE ci.collection_id=$1 AND ci.recommendation_id=ranks.recommendation_id',[collectionId]);
+      }
+      const list=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[collectionId]);
+      const row=await db.query('UPDATE recommendations SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[recommendationId]);
+      return{collection:await this.collectionRecord(db,list.rows[0]),recommendation:await this.recommendationRecord(db,row.rows[0]),attached};
+    });
+  }
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
       await this.lockCollection(db,accountId,id,expectedRevision);

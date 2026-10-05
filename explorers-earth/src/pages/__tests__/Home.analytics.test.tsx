@@ -31,6 +31,8 @@ const { accountQuery, accountScope, translate } = vi.hoisted(() => ({
     return messages[key] ?? key;
   }),
 }));
+const nativeGames = vi.hoisted(()=>({read:vi.fn()}));
+vi.mock('../../features/Games/hooks/useGamesOwner',()=>({useGamesOwner:nativeGames.read}));
 const nativeMovies = vi.hoisted(()=>({read:vi.fn()}));
 vi.mock('../../features/Movies/api/explorersAdapter',async(importOriginal)=>({...await importOriginal<typeof import('../../features/Movies/api/explorersAdapter')>(),useMoviesOwner:nativeMovies.read}));
 
@@ -90,6 +92,7 @@ describe("Home analytics", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    nativeGames.read.mockReturnValue({data:{gameLists:[]},loading:false,error:undefined,refetch:vi.fn()});
     nativeMovies.read.mockReturnValue({data:{movieLists:[]},loading:false,error:undefined,refetch:vi.fn()});
     vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(canonicalAccountFixture());
     Element.prototype.scrollIntoView = vi.fn();
@@ -155,6 +158,17 @@ describe("Home analytics", () => {
     expect(nativeMovies.read).toHaveBeenCalled();
     expect(queryMock.mock.calls.map(call=>operationName(call[0]))).not.toContain('MovieListsByAccount');
     expect(screen.getByAltText('Native Movie summary')).toHaveAttribute('src','/api/explorers/v1/media/poster/content');
+  });
+
+  it('reads Games summary through native ownership without a legacy Games Apollo query',async()=>{
+    readEvents.mockResolvedValue([]);
+    nativeGames.read.mockReturnValue({data:{gameLists:[{documentId:'native-list',List_Name:'Native Game summary',Visibility:true,recommended_games:[{cover_url:'/api/explorers/v1/media/poster/content',title:'Native recommendation'}]}]},loading:false,error:undefined,refetch:vi.fn()});
+    render(<Home/>);
+    fireEvent.click(await screen.findByRole('button',{name:/Games/}));
+    expect(await screen.findByText('Native Game summary')).toBeInTheDocument();
+    expect(nativeGames.read).toHaveBeenCalled();
+    expect(queryMock.mock.calls.map(call=>operationName(call[0]))).not.toContain('GameListsByAccount');
+    expect(screen.getByAltText('Native Game summary')).toHaveAttribute('src','/api/explorers/v1/media/poster/content');
   });
 
   it("builds exactly the last 90 local calendar dates", () => {

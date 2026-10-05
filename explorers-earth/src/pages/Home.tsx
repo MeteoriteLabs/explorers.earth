@@ -38,7 +38,7 @@ import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount
 // Category integrations
 import { useMoviesOwner } from "../features/Movies/api/explorersAdapter";
 import { BOOK_LISTS_BY_ACCOUNT } from "../features/Books/api/query";
-import { GAME_LISTS_BY_ACCOUNT } from "../features/Games/api/query";
+import { useGamesOwner } from "../features/Games/hooks/useGamesOwner";
 import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
 import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
 import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
@@ -125,6 +125,7 @@ const resolveCoverUrl = (
   // If it's already a full URL, return it
   if (path.startsWith("http")) return path;
   if (type === 'movie' && path.startsWith('/api/')) return path;
+  if (type === 'game' && path.startsWith('/api/explorers/v1/media/')) return path;
 
   // If it starts with /uploads/ (local Strapi upload), prepend backend URL
   if (path.startsWith("/uploads/")) {
@@ -349,11 +350,7 @@ const Home = memo(() => {
   const bookLists = bookListsData?.bookLists || [];
 
   // Fetch game lists
-  const { data: gameListsData, refetch: refetchGames } = useQuery(GAME_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId || !user?.username,
-    fetchPolicy: "network-only",
-  });
+  const { data: gameListsData, refetch: refetchGames } = useGamesOwner(undefined, Boolean(accountDocumentId && user?.username));
   const gameLists = gameListsData?.gameLists || [];
 
   // Fetch apps & tools lists

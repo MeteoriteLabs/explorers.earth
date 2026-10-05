@@ -42,7 +42,9 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(7);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(8);
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/games',classification:'canonical-explorers-owner'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/games',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movie-genres',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/movie-genres',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'canonical-explorers-owner'}));
@@ -67,6 +69,8 @@ describe("runtime route/event/job inventory", () => {
   it("discovers every bounded recommendation owner command and fail-closed method boundary", () => {
     const routes=inventoryRuntimeSurfaces(repositoryRoot).routes.filter(route=>route.source === "tunes/server/routes/explorersRecommendationRoutes.ts");
     const ownerCommands=[
+      ['POST','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
+      ['DELETE','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
       ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
@@ -84,6 +88,7 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/categories/:category/top-picks/order'],
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
+      '/api/explorers/v1/collections/:id/memberships/:recommendationId',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',

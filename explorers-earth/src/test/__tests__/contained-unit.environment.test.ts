@@ -58,8 +58,6 @@ const SYNTHETIC_ENV = {
   VITE_PUBLIC_PROFILE_GATEWAY_URL: 'http://127.0.0.1:9',
   VITE_LOCAL_TUNES_API_URL: 'https://music.invalid',
   VITE_BASE_URL: 'https://app.invalid',
-  VITE_IGDB_CLIENT_ID: 'test-client-id',
-  VITE_IGDB_CLIENT_SECRET: 'test-client-secret',
   VITE_PUBLIC_ACCESS_TOKEN: '',
   VITE_GOOGLE_MAPS_API_KEY: '',
   VITE_GOOGLE_CUSTOM_SEARCH_API_KEY: '',

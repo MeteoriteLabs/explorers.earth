@@ -4,6 +4,12 @@ const { detail, detailPage } = vi.hoisted(() => ({ detail: vi.fn(), detailPage: 
 vi.mock("../publicProfileGatewayClient", () => ({ publicProfileGatewayClient: { detail, detailPage } }));
 import { usePublicProfileDetail } from "../usePublicProfileDetail";
 import { publishPublicProfileInvalidation } from "../publicProfileInvalidation";
+it('uses the actual signed Games list cursor and honors a terminal full page',async()=>{
+ detail.mockResolvedValueOnce({gameLists:[{documentId:'list',recommended_games:Array.from({length:12},(_,i)=>({documentId:'g'+i})),nextCursor:'signed.games.list'}]});
+ detailPage.mockImplementationOnce(async(_username,_category,_slug,query)=>{if(query.cursor!=='signed.games.list')throw Error('PUBLIC_PROFILE_400');return{gameLists:[{documentId:'list',recommended_games:Array.from({length:12},(_,i)=>({documentId:'last'+i})),nextCursor:null}]};});
+ const {result}=renderHook(()=>usePublicProfileDetail('reader','games','list'));await waitFor(()=>expect(result.current.loading).toBe(false));await act(()=>result.current.loadMore());
+ expect(detailPage).toHaveBeenLastCalledWith('reader','games','list',{limit:12,cursor:'signed.games.list'},expect.any(AbortSignal),false);expect(result.current.hasMore).toBe(false);
+});
 
 const page = (start = 0, count = 12, parent = "parent") => ({ appLists: [{ documentId: parent, List_Name: "Original", recommended_apps: Array.from({ length: count }, (_, i) => ({ documentId: `app-${start + i}` })) }] });
 describe("usePublicProfileDetail", () => {

@@ -857,3 +857,14 @@ describe("deterministic Music fixture services", () => {
     await expect(import("../../../scripts/music-smoke.ts")).resolves.toBeDefined();
   });
 });
+
+it('includes both Games contract dependencies in fixture COPY and default-deny context',()=>{
+ const repository=resolve(import.meta.dirname,'../../../..');const dockerfile=readFileSync(resolve(repository,'explorers-earth/Dockerfile.music-fixture'),'utf8');
+ for(const file of ['explorersGameContract.ts','explorersGameOwnerContract.ts']){
+  expect(dockerfile).toContain(`COPY tunes/shared/${file} /workspace/tunes/shared/${file}`);
+  for(const ignore of ['.dockerignore','explorers-earth/Dockerfile.music-fixture.dockerignore'])expect(readFileSync(resolve(repository,ignore),'utf8')).toContain(`!tunes/shared/${file}`);
+ }
+});
+it('admits exact uncommitted native Games production client modules in default-deny fixture context',()=>{
+ const repository=resolve(import.meta.dirname,'../../../..');for(const file of ['api/gamesClient.ts','api/gamesViewModel.ts','api/explorersAdapter.ts','hooks/useGamesOwner.ts'])for(const ignore of ['.dockerignore','explorers-earth/Dockerfile.music-fixture.dockerignore'])expect(readFileSync(resolve(repository,ignore),'utf8')).toContain(`!explorers-earth/src/features/Games/${file}`);
+});

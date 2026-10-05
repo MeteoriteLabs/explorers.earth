@@ -1,3 +1,5 @@
+import {GameCatalogFailure} from '../application/catalog';
+import {GamePresentationUnavailable} from '../repositories/gameManualRepository';
 import {MovieMediaImportService} from '../application/movieMediaImport';
 import {MovieCatalog,MovieProviderFailure} from '../services/movieCatalog';
 import {BookCoverImportService} from '../application/bookCoverImport';
@@ -32,7 +34,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const result=await work(actor,String(request.params.id??''),request.body,{requestId,idempotencyKey:request.get('Idempotency-Key')});
       return response.status(status).json({[name]:result});
     } catch(error) {
-      if(error instanceof BookProviderFailure||error instanceof MovieProviderFailure){if(error instanceof BookProviderFailure&&error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
+      if(error instanceof BookProviderFailure||error instanceof MovieProviderFailure||error instanceof GameCatalogFailure){if(error instanceof BookProviderFailure&&error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
       if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
     }
@@ -43,6 +45,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       const actor=await requireActor(request,auth,pool),result=await work(actor,String(request.params.id??''),request.query);
       return response.json(name?{[name]:result}:result);
     } catch(error) {
+      if(error instanceof GamePresentationUnavailable)return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});
       if(error instanceof SearchFailure)return response.status(error.status).json({error:{code:error.status===503?'UNAVAILABLE':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':error.status===404?'NOT_FOUND':'INVALID_INPUT',message:error.message,requestId,...(error.status===503?{retryable:true}:{})}});
       if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
       sendActorError(request,response,error);
@@ -53,6 +56,9 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
     return {...(query as object),category:request.params.category};
   };
   routes.get('/api/explorers/v1/collections',read((a,_id,q)=>ownerContent.listCollections(a,q)));
+  routes.post('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,true),'membership')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,false),'membership')(req,res));
+  routes.all('/api/explorers/v1/collections/:id/memberships/:recommendationId',unsupported);
   routes.get('/api/explorers/v1/collections/:id',read((a,id,q)=>ownerContent.getCollection(a,id,q),'collection'));
   routes.get('/api/explorers/v1/collections/:id/editable',read((a,id,q)=>ownerContent.getCollection(a,id,q,true),'collection'));
   routes.get('/api/explorers/v1/recommendations',read((a,_id,q)=>ownerContent.listRecommendations(a,q)));

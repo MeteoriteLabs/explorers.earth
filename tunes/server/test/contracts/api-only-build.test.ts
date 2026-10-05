@@ -115,6 +115,7 @@ describe("API-only build and startup", () => {
       write: false,
       metafile: true,
     });
+    for (const file of ['shared/explorersGameContract.ts','shared/explorersGameOwnerContract.ts']) expect(Object.keys(result.metafile.inputs)).toContain(file);
     expect(Object.keys(result.metafile.inputs).filter((path) => /(^|\/)client\/|(^|\/)vite\.config\.ts$|(^|\/)server\/vite\.ts$/.test(path))).toEqual([]);
   });
 });

@@ -32,6 +32,8 @@ COPY tunes/shared/explorersBookContract.ts /workspace/tunes/shared/explorersBook
 COPY tunes/shared/explorersBookCoverContract.ts /workspace/tunes/shared/explorersBookCoverContract.ts
 COPY tunes/shared/explorersMovieContract.ts /workspace/tunes/shared/explorersMovieContract.ts
 COPY tunes/shared/explorersMovieMediaContract.ts /workspace/tunes/shared/explorersMovieMediaContract.ts
+COPY tunes/shared/explorersGameContract.ts /workspace/tunes/shared/explorersGameContract.ts
+COPY tunes/shared/explorersGameOwnerContract.ts /workspace/tunes/shared/explorersGameOwnerContract.ts
 RUN npm run build
 
 FROM public.ecr.aws/docker/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner

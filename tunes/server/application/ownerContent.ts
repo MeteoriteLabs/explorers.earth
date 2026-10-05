@@ -1,3 +1,4 @@
+import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
 import {readMovieEntity,readMovieContext,readMovieTerms,effectiveMovieDetails} from '../repositories/movieCatalogRepository';
 import {readBookCovers} from '../repositories/bookCovers';
@@ -217,7 +218,7 @@ export class OwnerContentService {
    if(!values.success||!entity.success||detail.override_schema_version!==null&&detail.override_schema_version!==1)throw new RecommendationFailure(422,'Invalid stored presentation');
    const displayTitle=Object.hasOwn(values.data,'title')?values.data.title:entity.data.title;
    const book= row.category==='books'?await readBookEntity(db,detail.entity_id):undefined;const movie=row.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readMovieEntity(db,detail.entity_id):undefined;
-   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??movie??entity.data,displayOverrides:values.data,displayTitle,...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{}),...(movie?{movieContext:await readMovieContext(db,id,actor.accountId),effectiveMovieDetails:effectiveMovieDetails(movie.details,values.data),movieTerms:await readMovieTerms(db,id,actor.accountId),providerMedia:await readMovieProviderMedia(db,id,actor.accountId)}:{})});
+   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??movie??entity.data,displayOverrides:values.data,displayTitle,...(row.category==='games'?{gamePresentation:await readManualGamePresentation(db,id,actor.accountId)}:{}),...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{}),...(movie?{movieContext:await readMovieContext(db,id,actor.accountId),effectiveMovieDetails:effectiveMovieDetails(movie.details,values.data),movieTerms:await readMovieTerms(db,id,actor.accountId),providerMedia:await readMovieProviderMedia(db,id,actor.accountId)}:{})});
    if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });
  }

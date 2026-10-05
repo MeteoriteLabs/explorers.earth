@@ -8,6 +8,7 @@ import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { normalizeRichNote } from './richNote';
 import {replaceRecommendationEntitySchema} from '../../shared/explorersBookContract';
+import {gameMembershipCommandSchema,gameMembershipResultSchema} from '../../shared/explorersGameOwnerContract';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
   const parsed=schema.safeParse(input);
@@ -31,6 +32,14 @@ export class RecommendationService {
     }
   }
   private key(context:RequestContext) {return parseContent(commandKeySchema,context?.idempotencyKey);}
+  async gameMembership(actor:Actor,collectionId:string,recommendationId:string,input:unknown,context:RequestContext,attached:boolean){
+    return this.authorized(actor,'collections:write',async()=>{
+      await authorizeOperation(this.db,actor,'recommendations:write',actor.accountId);
+      parseContent(contentIdSchema,collectionId);parseContent(contentIdSchema,recommendationId);
+      const command=parseContent(gameMembershipCommandSchema,input);
+      return gameMembershipResultSchema.parse(await this.repository.writeGameMembership(actor.accountId,collectionId,recommendationId,command,this.key(context),attached));
+    });
+  }
   async setCategoryTopPicks(actor:Actor,category:string,input:unknown,context:RequestContext) {
     return this.topPicks(actor,category,input,context,true);
   }
