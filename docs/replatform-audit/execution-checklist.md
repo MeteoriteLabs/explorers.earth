@@ -1,5 +1,8 @@
 # Shared execution checklist
 
+**Current amendment (2026-10-05):** Read the [re-groomed execution plan](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md) for verified checkpoint results, remaining prerequisites and current ownership. Earlier pending/base/agent-reuse wording below is historical where superseded: exact1a5c image/C0 succeeded; navigation6/lifecycle12 remain bounded separate proofs; Category B17/26 passed and Music startup remains open. Every new assignment uses a fresh agent. No full parity, operational QA or release claim follows from these slices.
+
+
 
 **Current finite status (2026-10-05):** A3M manual Games locally qualified and independently reviewed: source104, frontend4231 and canonical protected82 PASS. Scoped commit preparation only; hosted exact-commit qualification, full IGDB/provider parity, operational QA and release remain open. Earlier pending/failed sections are preserved historical evidence, not the current execution state.
 

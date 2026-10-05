@@ -1,5 +1,8 @@
 # Category delivery learnings and parallel work
 
+**Current amendment (2026-10-05):** Read the [re-groomed execution plan](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md) for verified checkpoint results, remaining prerequisites and current ownership. Earlier pending/base/agent-reuse wording below is historical where superseded: exact1a5c image/C0 succeeded; navigation6/lifecycle12 remain bounded separate proofs; Category B17/26 passed and Music startup remains open. Every new assignment uses a fresh agent. No full parity, operational QA or release claim follows from these slices.
+
+
 
 **Current finite status (2026-10-05):** A3M manual Games locally qualified and independently reviewed: source104, frontend4231 and canonical protected82 PASS. Scoped commit preparation only; hosted exact-commit qualification, full IGDB/provider parity, operational QA and release remain open. Earlier pending/failed sections are preserved historical evidence, not the current execution state.
 
@@ -55,3 +58,12 @@ The reviewed eight-file owner repair package contains two proved defect families
 The two-file Books paging change is proactive synchronization robustness, separately proved against the actual hook/observer/predicate. It accepts completed current-route required content only with no busy/error/continuation; normal click/modal/later-page/privacy duties remain. Historical Books18/2/cover and Games81/1 causes remain unresolved, alongside later source-bound passing receipts.
 
 Diagnostic mistakes also remain evidence: normalized LF preparation missed actual CRLF transform anchors, and private Git inventory omitted two reviewed new tests. Both were corrected in exact bounded preparation/custody scopes, with rejected runs preserved; neither was a product failure. No equivalent rerun loops, quota/retry/assertion waivers or fabricated authority were used. Future briefs require actual raw-source transform/build checks and complete reviewed file inventory before resource execution.
+
+## Reconciliation learnings for the resumed backlog
+
+- Verify producer, actual mounted consumer, fixture and hosted job as one chain. Strapi source access enabled field comparison; it did not automatically close canonical startup or transport consumers.
+- Read prerequisites before broad QA. Seventeen Category B passes and nine diagnosed failures establish progress and missing production work; they do not justify another unchanged full run or relaxed guards.
+- Canonical cookie login deliberately has no legacy bearer. Music needs its native startup/principal contract, not restored qrtoken or a fixture ready-state shortcut.
+- First-page optional snapshot issuance differs from continuation authorization. Validate full stream contracts and authenticate before allocation; denied requests must have no side effects.
+- Preserve privacy assertions through protocol changes: exact inert persisted envelope is allowed; authority fields are not. Independent review must assess the translated invariant.
+- Use fresh agents for every new assignment. If capacity prevents dispatch, record it, continue safe independent work and retain the unfulfilled review gate.
