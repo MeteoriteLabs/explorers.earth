@@ -56,7 +56,7 @@ export function createMusicPublishAdapter(input: AdapterInput): Ports {
                 return;
             }
             const latest = assertAccount(await transaction.read());
-            const decision = planCategoryIntent(latest, { category: 'public_music', action: 'unpublish' }, 'allowed');
+            const decision = planCategoryIntent(latest, { category: 'public_music', action: 'unpublish' });
             if (decision.kind === 'write') {
                 const saved = assertAccount(await transaction.commit(decision.patch));
                 if (saved.visibility.public_music !== 'No' || (decision.patch.pinned_nav_tabs !== undefined

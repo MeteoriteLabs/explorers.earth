@@ -4,7 +4,7 @@ import { explorersApiClient } from '../../lib/explorersApiClient';
 import useAuthStore from '../../store/store';
 import { createAccountNavigationWriter, NavigationError, type AccountNavigationWriter, type MusicPinVerifier, type NavigationOutcome, type Transaction } from './accountNavigationWriter';
 import { createCategoryNavigationApi } from './categoryNavigationApi';
-import { CATEGORY_IDS, planCategoryIntent, type CategoryId, type Eligibility, type GenericNavigationIntent, type IntentAuthority, type NavigationSnapshot } from './categoryNavigationPolicy';
+import { CATEGORY_IDS, planCategoryIntent, type CategoryId, type GenericNavigationIntent, type IntentAuthority, type NavigationSnapshot } from './categoryNavigationPolicy';
 import { publishPublicProfileInvalidation, type PublicProfileInvalidationAction, type PublicProfileInvalidationCategory } from '../PublicHome/api/publicProfileInvalidation';
 
 export type NavigationPendingOperation = Readonly<{
@@ -188,7 +188,6 @@ function createNavigationController(verifier: () => MusicPinVerifier | undefined
     const captured = Object.freeze({ ...origin });
     return execute(captured, async (transaction) => {
       const snapshot = await transaction.read();
-      let eligibility: Eligibility = 'allowed';
       if (command.action === 'pin') {
         if (snapshot.visibility[command.category] !== 'Yes') return { kind: 'blocked', reason: 'not-public' };
         if (command.category === 'public_music') {
@@ -196,13 +195,12 @@ function createNavigationController(verifier: () => MusicPinVerifier | undefined
           try { result = await verifier()?.(transaction, captured) ?? 'unknown'; } catch { /* A Music outage fails closed for new pins only. */ }
           if (!transaction.isCurrent()) throw new NavigationError('blocked', 'Account changed. Reopen this control.');
           if (result !== 'public') return { kind: 'blocked', reason: result === 'not-public' ? 'not-public' : 'unknown' };
-        } else if (!(Array.isArray(snapshot.savedPins) && snapshot.savedPins.includes(command.category))) {
-          eligibility = await api.eligibility(command.category, captured);
         }
       }
-      // No eligibility read for 'publish': visibility no longer depends on content,
-      // so this also drops a round-trip from the common toggle path.
-      const plan = planCategoryIntent(snapshot, command, eligibility);
+      // No content-eligibility read at all now: neither visibility nor placement
+      // depends on current inventory, which also drops a round-trip from both paths.
+      // Music keeps its own publication verification above.
+      const plan = planCategoryIntent(snapshot, command);
       if (plan.kind === 'blocked') return plan;
       if (plan.kind === 'noop') return { kind: 'confirmed', snapshot };
       const confirmed = await transaction.commit(plan.patch);

@@ -81,10 +81,12 @@ describe('CategoryNavigationProvider', () => {
     expect(h.value.content?.eligibility.public_apps).toBe('unknown');
     act(()=>useAuthStore.getState().logout()); expect(h.value.content).toBeUndefined();
   });
-  it('blocks a new native pin when complete content is unavailable', async () => {
+  it('permits a new native pin when complete content is unavailable', async () => {
+    // Placement no longer consults content, so an unavailable content read cannot
+    // take the owner's pin control away from them.
     const h=harness(); h.failContent=true; await h.ready();
-    expect(await h.request({category:'public_books',action:'pin'})).toEqual({kind:'blocked',reason:'unknown'});
-    expect(h.requests.filter(r=>r.name==='UpdateAccount')).toHaveLength(0);
+    expect((await h.request({category:'public_books',action:'pin'})).kind).toBe('confirmed');
+    expect(h.saved.pinned_nav_tabs).toContain('public_books');
   });
   it.each(['public_books','public_movie','public_games'] as const)('publishes and pins %s with complete native authority', async category => {
     const h=harness({initial:{[category]:'No'}});await h.ready();
@@ -92,17 +94,15 @@ describe('CategoryNavigationProvider', () => {
     expect((await h.request({category,action:'pin'})).kind).toBe('confirmed');
     expect(h.saved.pinned_nav_tabs).toContain(category);
   });
-  it.each(['public_recommendations','public_guides','public_apps','public_products','public_people'] as const)('allows %s visibility while still denying a new pin for an unbuilt category', async category=>{
+  it.each(['public_recommendations','public_guides','public_apps','public_products','public_people'] as const)('allows %s visibility and a new pin for an unbuilt category', async category=>{
     const h=harness();await h.ready();
-    // Visibility is the owner's declared intent. An unbuilt producer reports
-    // eligibility 'unknown', which must not block the toggle, or our own missing
-    // backend presents as the owner's control being broken. This fixture is already
-    // public, so it confirms as a no-op rather than writing.
+    // Both controls are the owner's declared intent and neither depends on current
+    // inventory, or our own missing backend presents as the owner's controls being
+    // broken. This fixture is already public, so publish confirms as a no-op.
     expect((await h.request({category,action:'publish'})).kind).toBe('confirmed');
-    // A new pin still fails closed: a pinned tab with nothing behind it is a dead
-    // link in a five-slot public nav.
-    expect(await h.request({category,action:'pin'})).toEqual({kind:'blocked',reason:'unknown'});
-    expect(h.saved[category]).toBe('Yes');expect(h.requests.some(r=>r.name==='UpdateAccount')).toBe(false);
+    expect((await h.request({category,action:'pin'})).kind).toBe('confirmed');
+    expect(h.saved[category]).toBe('Yes');
+    expect(h.saved.pinned_nav_tabs).toContain(category);
   });
   it.each(['public_recommendations','public_guides','public_apps','public_products','public_people'] as const)('writes %s visibility on for an unbuilt category', async category=>{
     const h=harness({initial:{[category]:'No'}});await h.ready();
@@ -116,10 +116,10 @@ describe('CategoryNavigationProvider', () => {
     if(category!=='public_music')expect((await h.request({category,action:'unpublish'})).kind).toBe('confirmed');
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile']);
   });
-  it('complete zero blocks a new native pin with no-content',async()=>{
+  it('permits a new native pin when the owner has no content yet',async()=>{
     const h=harness();vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({version:'explorers-owner-content/v2',snapshot:'1',snapshotToken:'opaque',expiresAt:Date.now()+600000,items:[],nextCursor:null}),{headers:{'Content-Type':'application/json'}})));await h.ready();
-    expect(await h.request({category:'public_books',action:'pin'})).toEqual({kind:'blocked',reason:'no-content'});
-    expect(h.requests.some(r=>r.name==='UpdateAccount')).toBe(false);
+    expect((await h.request({category:'public_books',action:'pin'})).kind).toBe('confirmed');
+    expect(h.saved.pinned_nav_tabs).toContain('public_books');
   });
   it('a delayed earlier content read cannot overwrite a newer refresh',async()=>{
     const h=harness();const pause=deferred();let first=true;
@@ -208,11 +208,13 @@ describe('CategoryNavigationProvider', () => {
     expect(h.requests).toEqual([]);
     h.active(true); await h.ready(); expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music']);
   });
-  it('denies new native pin on owner-content outage without changing stored preferences', async () => {
+  it('appends a new native pin on owner-content outage without disturbing stored preferences', async () => {
     const h = harness(); await h.ready(); h.failContent = true;
     h.saved = account({ pinned_nav_tabs: ['public_profile', 'public_music', 'public_guides'] });
-    expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('blocked');
-    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_guides']);
+    expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('confirmed');
+    // The existing placements are preserved and the new one is appended, never
+    // reordered or replaced, even while content reads are failing.
+    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_guides', 'public_books']);
     expect(h.requests.some((r) => r.name === 'CheckPublishedLists')).toBe(false);
   });
   it.each([
@@ -238,15 +240,14 @@ describe('CategoryNavigationProvider', () => {
     await h.ready(); expect((await h.request({ category: 'public_music', action: 'pin' })).kind).toBe('confirmed');
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music']);
   });
-  it('keeps visibility available through a content outage while a new pin fails closed', async () => {
+  it('keeps visibility and placement available through a content outage', async () => {
     const h = harness({ initial: { public_books: 'No' } }); h.failContent=true; await h.ready();
-    // An owner-content outage no longer costs the owner their visibility control.
+    // An owner-content outage no longer costs the owner either control: neither
+    // decision reads content, so a failing content read cannot block them.
     expect((await h.request({ category: 'public_books', action: 'publish' })).kind).toBe('confirmed');
     expect(h.saved.public_books).toBe('Yes');
-    // The pin guard is what still fails closed here: we cannot establish there is
-    // anything behind the tab while content reads are failing.
     h.failContent = true;
-    expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('blocked');
+    expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('confirmed');
     // Off remains available regardless, as before.
     h.failContent = true;
     expect((await h.request({ category: 'public_books', action: 'unpublish' })).kind).toBe('confirmed');
@@ -347,7 +348,7 @@ describe('CategoryNavigationProvider', () => {
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books', 'public_games']);
     expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music', 'public_books', 'public_games']);
   });
-  it('captures a mutable caller authority before any awaited eligibility check', async () => {
+  it('captures a mutable caller authority before any awaited read', async () => {
     const h = harness({ initial: { public_books: 'No' } }); await h.ready();
     const origin = { ...h.value.authority! }; const pause = deferred(); h.pauseNextRead(pause.promise);
     let request!: Promise<NavigationOutcome>;
