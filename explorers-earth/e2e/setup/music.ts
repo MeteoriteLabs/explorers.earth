@@ -1020,7 +1020,18 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   // be durable across read and write: publishing Music commits `public_music` through
   // PATCH /api/explorers/v1/account and re-reads to confirm it, so a fixture that
   // always replied with the seed would report the publication unconfirmed.
-  let canonicalAccount = canonicalCategoryAccount({ handle: "testuser" });
+  // An Explorer who cannot use Music must not get a Music identity provisioned, and
+  // under ADR-006 the canonical account is what says so: an unconfirmed profile and an
+  // absent Explorer account both mean onboarding is unfinished, which is exactly the
+  // "Finish your Explorer profile to use Music." state these cases render. The legacy
+  // `confirmed` flag and the GraphQL accounts list are the retiring Strapi expression of
+  // the same condition, so the canonical account is kept consistent with them here
+  // rather than letting the two disagree.
+  const canonicallyEligible = (options.confirmed ?? true) && (options.accounts ?? [completeMusicAccount]).length > 0;
+  let canonicalAccount = canonicalCategoryAccount({
+    handle: "testuser",
+    ...(canonicallyEligible ? {} : { onboardingStatus: "incomplete" as const }),
+  });
 
   await page.route("**/api/explorers/v1/me", route => {
     if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== new URL(String(base.info().project.use.baseURL)).origin) return route.abort("blockedbyclient");
