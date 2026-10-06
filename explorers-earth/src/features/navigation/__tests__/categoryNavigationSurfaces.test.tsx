@@ -68,6 +68,18 @@ vi.mock('../../../hooks/useRecommendationsWalkthrough', () => ({ useRecommendati
 vi.mock('../../../components/SEO', () => ({ default: () => null }));
 vi.mock('react-joyride', () => ({ default: () => null }));
 vi.mock('../../Favorites/hooks/useCreateLocation', () => ({ useCreateLocation: () => ({ handleLocationSubmit: vi.fn(), accountData: {} }) }));
+
+// Canonical writes include all nine preference rows. Compare the full payload,
+// including unchanged visibility and pin ranks, rather than a legacy partial patch.
+function canonicalWrite(category?: string, isPublic?: boolean, pins = ['public_profile', 'public_music'], expectedRevision = 1) {
+  const fields = ['public_recommendations','public_music','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'];
+  const categories = ['places','music','guides','movies','books','games','apps','products','people'];
+  return { input: { expectedRevision, categories: categories.map((name, displayOrder) => ({
+    category: name, displayOrder, isPublic: fields[displayOrder] === category ? isPublic : true,
+    pinnedOrder: pins.includes(fields[displayOrder]) ? pins.indexOf(fields[displayOrder]) - 1 : null,
+  })) } };
+}
+
 const headers = [
   ['public_movie', MoviesHome], ['public_games', GamesHome], ['public_apps', AppsHome],
   ['public_products', ProductsHome], ['public_people', PeopleHome], ['public_guides', GuidesPage], ['public_recommendations', Favorites],
@@ -76,20 +88,20 @@ const listFixture = { recommendationLists: [{ documentId: 'place-list', List_Nam
 const guideFixture = { documentId: 'g1', Title: 'Test guide', Visibility: true, guide_sections: [], Guide_Media: [], Guide_Tags: [], Number_Of_Days: 1 };
 describe('ordinary category headers use verified navigation', () => {
   beforeEach(async () => { loginSurface(); vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(gameObservation()); vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(movieObservation()); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
-  afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.clearAllMocks(); });
+  afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
   it.each(headers)('%s Off removes only the target saved pin and desktop/mobile share confirmed state', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
     const switches = await screen.findAllByRole('checkbox');
     expect(switches[0]).toBeChecked(); fireEvent.click(switches[0]);
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { [category]: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite(category, false));
     await waitFor(() => expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked());
   });
   it.each(headers)('%s On only publishes after a fresh content check', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { [category]: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } }); await h.ready();
     fireEvent.click((await screen.findAllByRole('checkbox'))[0]);
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { [category]: 'Yes' } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
   });
   it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games'))('%s empty list refresh never changes category visibility or saved pins', async (category, Component) => {
     const listFields = { public_books: 'bookLists', public_movie: 'movieLists', public_games: 'gameLists', public_apps: 'appLists', public_products: 'productLists', public_people: 'personLists', public_guides: 'guides', public_recommendations: 'recommendationLists' };
@@ -171,8 +183,8 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(screen.getAllByRole('checkbox')[1]).not.toBeChecked());
     fireEvent.click(screen.getAllByRole('checkbox')[1]); await waitFor(() => expect(screen.getAllByRole('checkbox')[1]).toBeChecked());
     expect(h.writes.map(r => r.variables)).toEqual([
-      { documentId: 'a1', data: { [category]: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } },
-      { documentId: 'a1', data: { [category]: 'Yes' } },
+      canonicalWrite(category, false),
+      canonicalWrite(category, true, ['public_profile', 'public_music'], 2),
     ]);
   });
   it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games'))('%s failed list refresh has no category side effects', async (_category, Component) => {
@@ -208,13 +220,13 @@ describe('ordinary category headers use verified navigation', () => {
     const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, lists: listFixture, route: { pathname: '/', state: { [stateKey]: true } } }); await h.ready();
     const confirm = await screen.findByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeEnabled(); fireEvent.click(confirm);
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { [category]: 'Yes' } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite(category, true, ['public_profile', 'public_music', 'public_books']));
   });
   it('GuideDetails existing creation prompt publishes only Guides', async () => {
     const h = surfaceHarness(<Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname: '/guides/g1', state: { justCreatedGuide: true } } }); await h.ready();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, Make Public' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { public_guides: 'Yes' } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite('public_guides', true, ['public_profile', 'public_music', 'public_books']));
   });
   it.each(['switch', 'switch-back', 'logout-login'])('GuideDetails prompt retains its origin through %s', async transition => {
     const h = surfaceHarness(<Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname: '/guides/g1', state: { justCreatedGuide: true } } }); await h.ready();
@@ -286,7 +298,7 @@ describe('Settings verified ordinary publication', () => {
     expect(h.writes).toEqual([]);
     fireEvent.click(screen.getByRole('button', { name: /^Unpublish / }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { [category]: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite(category, false));
   });
   it.each(ordinaryCategories)('%s cancelling unpublish preserves visibility and saved pins', async category => {
     const pins = ['public_profile', category, 'public_music'];
@@ -312,7 +324,7 @@ describe('Settings verified ordinary publication', () => {
     const categories = ['public_profile', 'public_recommendations', 'public_guides', 'public_movie', 'public_books', 'public_games', 'public_apps', 'public_products', 'public_people'];
     fireEvent.click(screen.getAllByRole('checkbox')[categories.indexOf(category)]);
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { [category]: 'Yes' } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
   });
   it('explicit Manual mode changes only mode and preserves the stored manual array', async () => {
     const h = surfaceHarness(<Settings />, { initial: { auto_pinning: true } }); await h.ready();
@@ -320,7 +332,7 @@ describe('Settings verified ordinary publication', () => {
     expect(screen.getByRole('checkbox', { name: 'Pin Books Tab' })).toBeDisabled();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Auto-pin navigation tabs' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { auto_pinning: false } });
+    expect(h.writes[0].variables).toEqual({ input: { expectedRevision: 1, autoPinning: false } });
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books']);
   });
   it.each([null, []])('fresh manual saved pins %j stay unwritten until an explicit Pin', async pins => {
@@ -328,15 +340,17 @@ describe('Settings verified ordinary publication', () => {
     fireEvent.click(screen.getByRole('button', { name: /Pinned Navigation Tabs/ })); expect(h.writes).toEqual([]);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pin Books Tab' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual({ documentId: 'a1', data: { pinned_nav_tabs: ['public_profile', 'public_books'] } });
+    expect(h.writes[0].variables).toEqual(canonicalWrite(undefined, undefined, ['public_profile', 'public_books']));
   });
   it('does not allow a new hidden Music pin', async () => {
     const h = surfaceHarness(<Settings />, { initial: { public_music: 'No', pinned_nav_tabs: ['public_profile'] } }); await h.ready();
     fireEvent.click(screen.getByRole('button', { name: /Pinned Navigation Tabs/ }));
     expect(screen.getByRole('checkbox', { name: 'Pin Music Tab' })).toBeDisabled();
   });
-  it('ranks navigation using the verified account even while the separate Settings details query is pending', async () => {
+  it('uses canonical navigation without either redundant Settings GraphQL operation', async () => {
     const h = surfaceHarness(<Settings />, { initial: { documentId: 'verified-account' }, respond: name => name === 'SettingsAccount' ? new Promise(() => {}) : undefined }); await h.ready();
-    await waitFor(() => expect(h.requests.find(r => r.name === 'PublicCategoryListCounts')?.variables).toEqual({ accountDocumentId: 'verified-account' }));
+    await waitFor(() => expect(h.navigation.content).toBeDefined());
+    expect(h.requests.filter(r => ['SettingsAccount','PublicCategoryListCounts'].includes(r.name))).toEqual([]);
+    expect(h.navigation.snapshot?.scope.accountDocumentId).toBe('11111111-1111-4111-8111-111111111111');
   });
 });

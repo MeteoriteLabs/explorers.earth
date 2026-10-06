@@ -101,15 +101,22 @@ describe('planCategoryIntent', () => {
   });
 
   it.each([
-    ['publish', 'not-public', { kind: 'blocked', reason: 'not-public' }],
-    ['publish', 'no-content', { kind: 'blocked', reason: 'no-content' }],
-    ['publish', 'unknown', { kind: 'blocked', reason: 'unknown' }],
     ['pin', 'not-public', { kind: 'blocked', reason: 'not-public' }],
     ['pin', 'no-content', { kind: 'blocked', reason: 'no-content' }],
     ['pin', 'unknown', { kind: 'blocked', reason: 'unknown' }],
   ] as const)('blocks a new %s when eligibility is %s', (action, eligibility, expected) => {
     expect(planCategoryIntent(snapshotFor('public_books', 'Yes', false, false), { category: 'public_books', action }, eligibility))
       .toEqual(expected);
+  });
+
+  // Visibility is the owner's intent, so publishing is permitted whatever the
+  // content eligibility says — including 'unknown', which only means we have not
+  // built that category's producer yet. Previously every value here blocked, which
+  // made our own gap look like the owner's control failing.
+  it.each(['allowed', 'not-public', 'no-content', 'unknown'] as const)(
+    'permits publishing regardless of eligibility %s', (eligibility) => {
+      expect(planCategoryIntent(snapshotFor('public_books', 'No', false, false), { category: 'public_books', action: 'publish' }, eligibility))
+        .toEqual({ kind: 'write', patch: { public_books: 'Yes' } });
   });
 
   it('allows explicit cleanup despite an unknown availability read', () => {
