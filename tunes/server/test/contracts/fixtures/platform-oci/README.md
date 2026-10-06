@@ -8,11 +8,11 @@ Positive legal reference reuse includes the same config content across distinct 
 
 SHA256 receipt contents:
 
-- cases.json: 364217 bytes, 63c34fae1ef5d898360acc7dccb587ea2fd0c7a607970be077cdb8694ad4fc37
+- cases.json: 364217 bytes, 912a3d3dc3d0c3f1b91f1703a047b338ae80a82a1b73e3b5a190aff03e984e75
 - layer.tar: 10240 bytes, 72b328d868963c3b4b755045274ec5cefafb9c06c3f09518be448e8a1eb65566
 - layer.tar.gz: 135 bytes, e6385f552ab942f5a56188f0352347a41a0b67d65d05614031bc7c87e0365430
 
-Local .gitattributes preserves JSON/tar/gzip bytes without text conversion. Metadata snapshot limits are64KiB each/five per role/640KiB metadata plus64KiB release (704KiB total). Unsupported Docker/nested/attestation/artifact/embedded/foreign profiles are eligibility failures, not universal OCI-invalidity claims; provenance descriptors are neither stripped nor counted as runnable platforms. Source/schema/run/repository fields in the generated release are structural caller fixture claims only. Generator SCHEMA_VERSION=38 is the explicitly reviewed current fixture floor; regenerate release bytes and detached digests normally when that floor changes. Historical schema36 and37 rejection remains explicit, and image/config/layer bytes remain unchanged.
+Local .gitattributes preserves JSON/tar/gzip bytes without text conversion. Metadata snapshot limits are64KiB each/five per role/640KiB metadata plus64KiB release (704KiB total). Unsupported Docker/nested/attestation/artifact/embedded/foreign profiles are eligibility failures, not universal OCI-invalidity claims; provenance descriptors are neither stripped nor counted as runnable platforms. Source/schema/run/repository fields in the generated release are structural caller fixture claims only. Generator SCHEMA_VERSION=39 is the explicitly reviewed current fixture floor; regenerate release bytes and detached digests normally when that floor changes. Historical schema36,37 and38 rejection remains explicit, and image/config/layer bytes remain unchanged.
 
 Known ordinary config fields have required types. config may be omitted or null; when runtime fields are present, string arrays/string maps/empty-valued port-volume maps have their declared types, not null substitutes. Optional created/author/history strings and empty_layer boolean are shape checks, not time or layer execution evidence. Baseline absent-v1/amd64 and absent-v8/arm64 normalization is the reviewed local profile assumption; host instruction support is unverified.
 

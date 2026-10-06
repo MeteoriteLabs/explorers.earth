@@ -67,7 +67,8 @@
     "0035_explorers_book_cover_import",
     "0036_explorers_analytics_events",
     "0037_explorers_movies_provider_context",
-    "0038_explorers_movie_media"
+    "0038_explorers_movie_media",
+    "0039_music_venue_account_ownership"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

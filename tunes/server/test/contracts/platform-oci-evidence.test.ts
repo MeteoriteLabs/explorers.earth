@@ -11,7 +11,7 @@ const decode=(f:Fixture)=>({release:Buffer.from(f.release,'base64'),api:f.api.ma
 it('keeps independently regenerated release claims at the current schema floor',()=>{
  for(const fixture of fixtures)expect(JSON.parse(decode(fixture).release.toString()).schemaVersion).toBe(SCHEMA_FLOOR);
 });
-it.each([36,37])('rejects coherent historical schema%i release claims before OCI graph acceptance',schemaVersion=>{
+it.each([36,37,38])('rejects coherent historical schema%i release claims before OCI graph acceptance',schemaVersion=>{
  const bytes=decode(fixtures[0]);const release=JSON.parse(bytes.release.toString());release.schemaVersion=schemaVersion;release.manifestDigest=canonicalDigest(release);
  expect(()=>inspectGraph(Buffer.from(JSON.stringify(release)),bytes.api,bytes.web)).toThrow('OCI_METADATA_INVALID');
 });
