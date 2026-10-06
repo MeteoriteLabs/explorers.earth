@@ -20,7 +20,7 @@ The **Verdict** column carries the dispositions of the independent read-only rev
 
 Two cautions that apply to the whole table:
 
-- **Every checkbox in all 38 ticket documents is unticked (262 of 262), including in the tickets whose verdict is ACCEPTED.** No per-requirement disposition is recordable from the ticket files themselves; it lives only in the ledger and the status docs. `[ ]` is a requirement, never a receipt — do not tick one to record this column.
+- **Every checkbox in all 39 ticket documents is unticked, including in the tickets whose verdict is ACCEPTED.** The 262-of-262 count was measured on 2026-10-05 against 38 documents; ticket 6.4 was added on 2026-10-06, so re-measure rather than cite that figure. No per-requirement disposition is recordable from the ticket files themselves; it lives only in the ledger and the status docs. `[ ]` is a requirement, never a receipt — do not tick one to record this column.
 - A verdict here is a ticket-level judgement. It does **not** imply a hosted pass: at `225d83e5` both protected aggregates were red (`music-required` FAILURE; Explorers validation FAILURE with Category A, Category B and Publishing failed, Music-and-account still running, so `replatform-required` had not concluded).
 
 | Ticket | Implementation plan | Epic | Verdict (2026-10-05) |
@@ -50,6 +50,7 @@ Two cautions that apply to the whole table:
 | 6.1 | [Replace the identity bridge](tickets/ticket-6-1.md) | [Epic 6](epics/epic-06.md) | **INCOMPLETE** — lookup-only stub; **next package to dispatch (M2), after the preflights** |
 | 6.2 | [Owner Music parity](tickets/ticket-6-2.md) | [Epic 6](epics/epic-06.md) | **NOT-STARTED** — blocked behind 6.1 |
 | 6.3 | [Guest, public and socket parity](tickets/ticket-6-3.md) | [Epic 6](epics/epic-06.md) | **NOT-STARTED** — blocked behind 6.2; socket still keyed on the general HTTP bearer |
+| 6.4 | [Canonical Music owner deletion saga](tickets/ticket-6-4.md) | [Epic 6](epics/epic-06.md) | **NOT-STARTED** — added 2026-10-06; a real Music owner's deletion request never finalises, because 6.1 delivered provisioning without the release ADR-008 decision 5 deferred. Blocking preflight: an ADR must first decide how a canonical owner is represented in the Strapi-keyed lifecycle tables |
 | 7.1 | [Public navigation and profile parity](tickets/ticket-7-1.md) | [Epic 7](epics/epic-07.md) | **BOUNDED-SLICE (uncommitted)** — canonical navigation slice exists only in the dirty overlay, which is itself REVISE; split shared→full |
 | 7.2 | [Analytics and platform content](tickets/ticket-7-2.md) | [Epic 7](epics/epic-07.md) | **NOT-STARTED** — dashboard is structurally dead (gates on a token canonical auth never sets); no reference-content module |
 | 7.3 | [All-category regression and milestone evidence](tickets/ticket-7-3.md) | [Epic 7](epics/epic-07.md) | **NOT-STARTED** — no milestone-2 evidence; its mandated command flags do not exist in the runner |
