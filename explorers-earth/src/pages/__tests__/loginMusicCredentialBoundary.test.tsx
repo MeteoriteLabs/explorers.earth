@@ -47,7 +47,11 @@ describe("Google login replaces Music authority centrally", () => {
     vi.stubGlobal("fetch", fetcher);
     mount("/google-auth/callback?access_token=legacy-strapi-jwt");
     await waitFor(() => expect(screen.getByText("Home")).toBeInTheDocument());
-    expect(useAuthStore.getState().user?.documentId).toBe("account-b");
+    // The verified session supplies the user subject; the canonical account id lives in
+    // accountId, not in user.documentId, which is the user's own document id.
+    expect(useAuthStore.getState().accountId).toBe("account-b");
+    expect(useAuthStore.getState().user?.id).toBe("user-b");
+    expect(useAuthStore.getState().user?.documentId).toBe("user-b");
     expect(useAuthStore.getState().token).toBeNull();
     expect(getMusicCredential()).toBeUndefined();
     expect(fetcher.mock.calls.every(([path]) => !String(path).includes("legacy-strapi-jwt"))).toBe(true);

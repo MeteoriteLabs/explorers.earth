@@ -74,7 +74,12 @@ const useAuthStore = create<AuthState>()(
         if (get().generation !== generation || get().status !== "loading") return;
         set({ status: account.onboardingStatus === "complete" ? "active-complete" : "active-incomplete",
           accountId: account.id, isAuthenticated: true, token: null,
-          user: { id: account.userId, documentId: account.id, username: account.username,
+          // documentId is the *user* document id, which is what the legacy
+          // `usersPermissionsUser(documentId:)` consumers pass it as. Setting it to the
+          // account id made every one of them query a user by an account id, which the
+          // contained E2E owner guard rejects as a wrong owner subject. The canonical
+          // account id is `accountId`, above.
+          user: { id: account.userId, documentId: account.userId, username: account.username,
             email: account.email, blocked: false } });
       },
       verificationFailed: (generation, status) => {
