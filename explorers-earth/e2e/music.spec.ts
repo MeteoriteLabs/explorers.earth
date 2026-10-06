@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { setupMockAuthentication } from "./setup/auth";
-import { canonicalAccountFixture } from "../src/test/canonicalAccountFixture";
+import { canonicalAccountFixture, canonicalCategoryAccount } from "../src/test/canonicalAccountFixture";
 
 const artifactDirectory = resolve(process.cwd(), "../.artifacts/task-9");
 const credential = "browser-only-music-credential";
@@ -47,13 +47,51 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
   const pageErrors: string[] = [];
   const playlists = options.playlists ?? [];
 
+  // The canonical account is the one the navigation reads and writes, so it has to be
+  // durable across the read and the write below: publishing Music commits
+  // `public_music` through PATCH /api/explorers/v1/account and then re-reads to confirm
+  // it, and a fixture that always replied with the seed would report it unconfirmed.
+  let canonicalAccount = canonicalCategoryAccount({
+    handle: "testuser", displayName: accountState.Account_Name,
+    mobileNumber: accountState.mobile_number,
+  });
+
   await page.route("**/api/explorers/v1/me", route => {
     if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== new URL(String(test.info().project.use.baseURL)).origin) return route.abort("blockedbyclient");
     return route.fulfill({
-    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalAccountFixture({
-      handle: "testuser", displayName: accountState.Account_Name,
-      mobileNumber: accountState.mobile_number,
-    }) }),
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ account: canonicalAccount }),
+    });
+  });
+
+  // The navigation client no longer issues the legacy UpdateTabVisibility mutation; it
+  // writes the whole canonical preference set through this one command.
+  await page.route("**/api/explorers/v1/account", async route => {
+    const request = route.request();
+    if (request.method() !== "PATCH") return route.abort("blockedbyclient");
+    const patch = request.postDataJSON() as {
+      expectedRevision?: number;
+      categories?: Array<{ category: string; isPublic: boolean; displayOrder: number; pinnedOrder: number | null }>;
+      autoPinning?: boolean;
+    };
+    if (patch.expectedRevision !== canonicalAccount.revision) {
+      return route.fulfill({
+        status: 409, contentType: "application/json",
+        body: JSON.stringify({ error: { code: "CONFLICT", message: "Fixture revision moved.", requestId: "music-e2e-account" } }),
+      });
+    }
+    canonicalAccount = {
+      ...canonicalAccount,
+      revision: canonicalAccount.revision + 1,
+      ...(patch.categories ? { categories: patch.categories.map(row => ({ ...row })) } : {}),
+      ...(patch.autoPinning === undefined ? {} : { autoPinning: patch.autoPinning }),
+    };
+    // Keep the legacy projection the GraphQL eligibility query still reads in step.
+    const music = canonicalAccount.categories.find(row => row.category === "music");
+    if (music) accountState = { ...accountState, public_music: music.isPublic ? "Yes" : "No" };
+    return route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ account: canonicalAccount }),
     });
   });
 
@@ -175,7 +213,10 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
       }),
     });
   });
-  await page.route("**/api/music/public-profile/account-document-123", (route) => route.fulfill({
+  // The owner scope is keyed on the canonical account id, so the descriptor is
+  // discovered by that id rather than the Strapi account document id. Derived from the
+  // shared fixture so the two cannot drift apart.
+  await page.route(`**/api/music/public-profile/${canonicalAccountFixture().id}`, (route) => route.fulfill({
     status: publicationMode === "public" ? 200 : 404,
     contentType: "application/json",
     body: publicationMode === "public"
@@ -355,7 +396,14 @@ test("account-generation resets Music authority across tabs without logging Expl
   await expect(second).toHaveURL(/\/recommendations\/music$/);
   await expect.poll(secondAudit.ensureCalls).toBeGreaterThanOrEqual(2);
   await expect(second.getByRole("button", { name: /^Old account playlist/ })).toHaveCount(0);
-  expect(await second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(true);
+  // The replaced assertion read `auth-storage`.state.isAuthenticated. The store now
+  // persists nothing (`partialize: () => ({})`) because the canonical session cookie is
+  // the only authority, so that key is permanently empty and cannot witness anything.
+  // The behaviour it guarded - resetting Music authority must not sign the Explorer out
+  // - is asserted here against what a signed-out tab would actually do: ProtectedRoute
+  // sends it to /login and the authenticated shell disappears.
+  await expect(second).not.toHaveURL(/\/login$/);
+  await expect(second.getByRole("heading", { name: "Music", level: 1 })).toBeAttached();
   releaseSecondEnsure();
   await expect(second.getByRole("button", { name: /^Old account playlist/ })).toBeVisible();
   expect(secondAudit.ensureCalls()).toBeGreaterThanOrEqual(2);
@@ -368,12 +416,22 @@ test("logout boundary clears Explorer authentication in another tab", async ({ p
   await installMusicMocks(second);
   await page.goto("/recommendations/music");
   await second.goto("/recommendations/music");
+  // ADR-006: the canonical session cookie is the authority, so a logout is the session
+  // actually ending. The cookie goes first, because a tab that re-verifies a still-valid
+  // cookie is entitled to come straight back - the replaced localStorage assertion could
+  // not tell those two outcomes apart.
+  await context.clearCookies({ name: "better-auth.session_token" });
   await page.evaluate(() => {
     const event = { version: "music-session/v1", kind: "logout", eventId: crypto.randomUUID() };
     localStorage.setItem("explorers-music-session", JSON.stringify(event));
     localStorage.removeItem("explorers-music-session");
   });
-  await expect.poll(() => second.evaluate(() => JSON.parse(localStorage.getItem("auth-storage") ?? "null")?.state?.isAuthenticated)).toBe(false);
+  // The replaced assertion read `auth-storage`.state.isAuthenticated, which the store no
+  // longer persists at all. The safety behaviour it guarded - a logout in one tab really
+  // does de-authenticate the other - is asserted against the canonical consequence: the
+  // other tab loses its authority and ProtectedRoute sends it to the login route.
+  await expect(second).toHaveURL(/\/login$/);
+  await expect(second.getByRole("heading", { name: "Music", level: 1 })).toHaveCount(0);
   await second.close();
 });
 

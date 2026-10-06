@@ -2,7 +2,7 @@ import { test as base, type Page, type TestInfo } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { canonicalAccountFixture } from "../../src/test/canonicalAccountFixture";
+import { canonicalCategoryAccount } from "../../src/test/canonicalAccountFixture";
 
 // Ensure accepts the canonical same-origin route (ADR-006/008) and the legacy
 // Music-origin path, because the full-stack fixtures still answer the latter.
@@ -1016,13 +1016,45 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   const heldEnsure = new Promise<void>((resolveHeld) => { releaseHeldEnsure = resolveHeld; });
 
   // The canonical account gates the dashboard independently of the Music
-  // eligibility/provider/lifecycle fault scenarios in this synthetic fixture.
+  // eligibility/provider/lifecycle fault scenarios in this synthetic fixture. It has to
+  // be durable across read and write: publishing Music commits `public_music` through
+  // PATCH /api/explorers/v1/account and re-reads to confirm it, so a fixture that
+  // always replied with the seed would report the publication unconfirmed.
+  let canonicalAccount = canonicalCategoryAccount({ handle: "testuser" });
+
   await page.route("**/api/explorers/v1/me", route => {
     if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== new URL(String(base.info().project.use.baseURL)).origin) return route.abort("blockedbyclient");
     return route.fulfill({
-    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalAccountFixture({
-      handle: "testuser",
-    }) }),
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ account: canonicalAccount }),
+    });
+  });
+
+  // The navigation client no longer issues the legacy UpdateTabVisibility mutation; it
+  // writes the whole canonical preference set through this one command.
+  await page.route("**/api/explorers/v1/account", async route => {
+    const request = route.request();
+    if (request.method() !== "PATCH") return route.abort("blockedbyclient");
+    const patch = request.postDataJSON() as {
+      expectedRevision?: number;
+      categories?: Array<{ category: string; isPublic: boolean; displayOrder: number; pinnedOrder: number | null }>;
+      autoPinning?: boolean;
+    };
+    if (patch.expectedRevision !== canonicalAccount.revision) {
+      return route.fulfill({
+        status: 409, contentType: "application/json",
+        body: JSON.stringify({ error: { code: "CONFLICT", message: "Fixture revision moved.", requestId: "music-qualification-account" } }),
+      });
+    }
+    canonicalAccount = {
+      ...canonicalAccount,
+      revision: canonicalAccount.revision + 1,
+      ...(patch.categories ? { categories: patch.categories.map(row => ({ ...row })) } : {}),
+      ...(patch.autoPinning === undefined ? {} : { autoPinning: patch.autoPinning }),
+    };
+    return route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ account: canonicalAccount }),
     });
   });
 

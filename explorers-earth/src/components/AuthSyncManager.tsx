@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useApolloClient } from "@apollo/client";
 import useAuthStore from "../store/store";
 import { authClient } from "../lib/authClient";
 import { queryClient } from "../lib/queryClient";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
+import { musicSessionBoundary } from "../features/music/musicSessionBoundary";
 import { clearMusicPublicationCommands } from "../features/music/musicPublicationCommandRegistry";
 import { clearAllMusicWorkspaceQueries } from "../hooks/useTunesDashboard";
 
@@ -11,6 +12,14 @@ import { clearAllMusicWorkspaceQueries } from "../hooks/useTunesDashboard";
 export default function AuthSyncManager() {
   const apollo = useApolloClient();
   const { generation, status, isAuthenticated, user, accountId } = useAuthStore();
+  // An account-generation event from another tab resets the Music coordinator, so owner
+  // provisioning has to run again here. Nothing consumed these two boundary members,
+  // which is why a reset tab stayed unprovisioned until a full page load.
+  const musicGeneration = useSyncExternalStore(
+    musicSessionBoundary.subscribeAccountGeneration,
+    musicSessionBoundary.getAccountGenerationSnapshot,
+    musicSessionBoundary.getAccountGenerationSnapshot,
+  );
   const previous = useRef<number | null>(null);
   useEffect(() => { void authClient.refresh(); }, []);
   useEffect(() => {
@@ -47,7 +56,7 @@ export default function AuthSyncManager() {
       userDocumentId,
       account: { documentId: accountId },
     }).catch(() => {});
-  }, [isAuthenticated, status, userDocumentId, accountId, generation]);
+  }, [isAuthenticated, status, userDocumentId, accountId, generation, musicGeneration]);
 
   return null;
 }

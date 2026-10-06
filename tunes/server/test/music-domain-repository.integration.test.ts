@@ -974,6 +974,39 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     ]) await expect(domain.resolvePublicDescriptor(accountDocumentId)).resolves.toBeUndefined();
   });
 
+  it("resolves a canonically provisioned owner by canonical account ID, and fails closed for an unmapped one", async () => {
+    // Break caught: ADR-007 leaves strapi_account_document_id NULL on a canonically
+    // provisioned venue, so a Strapi-only descriptor lookup can never resolve one and
+    // every Google-only owner's public Music page is unreachable. The legacy arm is
+    // exercised by the cases above, which also prove the canonical comparison does not
+    // coerce $1 to uuid - that would raise 22P02 on each of those string IDs.
+    const owner = await identities.ensureIdentity(identityInput("canonical-descriptor"));
+    const accountId = (await pool.query(
+      "INSERT INTO creator_accounts DEFAULT VALUES RETURNING id",
+    )).rows[0].id as string;
+    const unmapped = (await pool.query(
+      "INSERT INTO creator_accounts DEFAULT VALUES RETURNING id",
+    )).rows[0].id as string;
+    await pool.query(
+      "INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
+      [accountId, owner.id],
+    );
+    // Ownership is recorded before the Strapi column is released, so the venue is
+    // never momentarily unowned.
+    await pool.query(
+      "UPDATE users SET guest_discoverable=true,public_snapshot_revision=12,strapi_account_document_id=NULL WHERE id=$1",
+      [owner.id],
+    );
+
+    await expect(domain.resolvePublicDescriptor(accountId)).resolves.toEqual({
+      mode: "public", publicSlug: "c6-public-canonical-descriptor", revision: 12,
+    });
+    await expect(domain.resolvePublicDescriptor(unmapped)).resolves.toBeUndefined();
+    // The released Strapi document ID must stop resolving with the column.
+    await expect(domain.resolvePublicDescriptor("c6-account-canonical-descriptor"))
+      .resolves.toBeUndefined();
+  });
+
   it("fails closed only while another User document ID collides with a live public Account document ID", async () => {
     // Break caught: cross-column namespace corruption turns stable Account discovery into ambiguous authority.
     const target = await identities.ensureIdentity(identityInput("descriptor-cross-column-target"));

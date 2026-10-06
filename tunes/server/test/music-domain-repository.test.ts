@@ -907,6 +907,29 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(harness.calls[0].text).not.toMatch(/SELECT\s+u\.id\b/i);
   });
 
+  it("resolves a canonically provisioned owner through account_music_identity without coercing the id to uuid", async () => {
+    // Break caught: ADR-007 leaves strapi_account_document_id NULL for a canonically
+    // provisioned venue, so a Strapi-only lookup can never resolve one and its public
+    // Music page stays permanently unreachable.
+    // Break caught: comparing the uuid column straight to $1 makes Postgres coerce a
+    // legacy Strapi document id to uuid and raise 22P02, which would fail every
+    // pre-0039 lookup instead.
+    const harness = recordingPool([{ publicSlug: "canonical-public-slug", revision: "4" }]);
+    const accountId = "11111111-2222-4333-8444-555555555555";
+
+    await expect(new MusicDomainRepository(harness.pool).resolvePublicDescriptor(accountId))
+      .resolves.toEqual({ mode: "public", publicSlug: "canonical-public-slug", revision: 4 });
+
+    expect(harness.calls[0].values).toEqual([accountId]);
+    const canonicalSql = harness.calls[0].text.replace(/\s+/g, " ");
+    expect(canonicalSql).toContain("WHERE (u.strapi_account_document_id=$1 OR EXISTS ( SELECT 1 FROM account_music_identity owner WHERE owner.music_user_id=u.id AND owner.account_id::text=$1 ))");
+    expect(canonicalSql).not.toContain("owner.account_id=$1");
+    // The canonical arm must not relax a single guard the legacy arm carries.
+    expect(canonicalSql).toContain("AND u.identity_status='active'");
+    expect(canonicalSql).toContain("AND u.guest_discoverable=true");
+    expect(canonicalSql).toContain("AND NOT EXISTS ( SELECT 1 FROM music_identity_tombstones tombstone WHERE tombstone.strapi_user_document_id=$1 OR tombstone.strapi_account_document_id=$1 )");
+  });
+
   it("fails closed when stable Account descriptor lookup is absent, colliding, or malformed", async () => {
     // Break caught: a corrupt or ambiguous repository result publishes one arbitrary account.
     const absent = recordingPool();

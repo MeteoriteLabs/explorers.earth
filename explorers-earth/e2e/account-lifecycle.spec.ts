@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { setupMockAuthentication } from "./setup/auth";
-import { canonicalAccountFixture } from "../src/test/canonicalAccountFixture";
+import { canonicalCategoryAccount } from "../src/test/canonicalAccountFixture";
 
 type LifecycleOperation = {
   operationId: string;
@@ -69,7 +69,7 @@ async function mockSettings(
   await context.route("**/api/explorers/v1/me", route => {
     if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== fixtureOrigin.origin) return route.abort("blockedbyclient");
     return route.fulfill({
-    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalAccountFixture({
+    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalCategoryAccount({
       handle: "testuser",
     }) }),
     });

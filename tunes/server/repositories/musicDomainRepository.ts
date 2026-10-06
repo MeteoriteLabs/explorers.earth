@@ -1191,9 +1191,23 @@ export class MusicDomainRepository {
     revision: number;
   } | undefined> {
     const rows = (await this.pool.query(
+      // The descriptor id is the owner's account identifier, and after ADR-007 a
+      // canonically provisioned venue has NULL in strapi_account_document_id, so the
+      // legacy arm alone can never resolve one. The canonical arm joins through
+      // account_music_identity, as explorersAnalyticsEventRepository already does.
+      // account_id is compared as text deliberately: $1 is still a legacy Strapi
+      // document id for pre-0039 venues, and `account_id=$1` would make Postgres
+      // coerce that to uuid and raise 22P02, failing every legacy lookup.
+      // Canonical owners have no representable tombstone (ADR-008 decision 5), so the
+      // tombstone and collision guards below remain keyed on the Strapi columns.
       `SELECT u.guest_url AS "publicSlug",u.public_snapshot_revision AS revision
          FROM users u
-        WHERE u.strapi_account_document_id=$1
+        WHERE (u.strapi_account_document_id=$1
+               OR EXISTS (
+                 SELECT 1 FROM account_music_identity owner
+                  WHERE owner.music_user_id=u.id
+                    AND owner.account_id::text=$1
+               ))
           AND u.identity_status='active'
           AND u.guest_discoverable=true
           AND u.guest_url IS NOT NULL

@@ -178,7 +178,7 @@ export function MusicPageContent({
 }
 
 const MusicPage = () => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, accountId } = useAuthStore();
   const navigate = useNavigate();
   const statusRef = useRef<HTMLDivElement>(null);
   const eligibility = useQuery(musicPageEligibilityQuery, {
@@ -190,9 +190,15 @@ const MusicPage = () => {
   const selection = selectExplorerAccountState(eligibility.data?.usersPermissionsUser?.accounts, {
     authoritative: !eligibility.loading && !eligibility.error && Array.isArray(eligibility.data?.usersPermissionsUser?.accounts),
   });
-  const scope = selection.kind === "selected" && user?.documentId ? {
+  // The owner scope must be keyed on the canonical account id. AuthSyncManager
+  // reconciles Music provisioning with that id, and musicIdentityCoordinator.isReadyFor()
+  // compares `userDocumentId:accountDocumentId` against the key the reconcile completed
+  // with - so using the Strapi `selection.account.documentId` here could never match,
+  // which left every Music publication control disabled. The eligibility query still
+  // decides *whether* this Explorer has a usable account; it no longer supplies its id.
+  const scope = selection.kind === "selected" && user?.documentId && accountId ? {
     userDocumentId: user.documentId,
-    accountDocumentId: selection.account.documentId,
+    accountDocumentId: accountId,
   } : undefined;
   const data = useTunesDashboard(scope);
   const [ownerWorkspace, setOwnerWorkspace] = useState(false);
