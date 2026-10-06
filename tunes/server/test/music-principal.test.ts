@@ -4,6 +4,7 @@ import {
   MusicPrincipalService,
   assertMusicResourceOwner,
   createMusicSocketCredentialVerifier,
+  type CanonicalMusicCredentialSubjectState,
   type MusicCredentialSubjectState,
 } from "../middleware/musicPrincipal";
 import { MusicTokenService, type MusicTokenConfiguration } from "../services/musicTokenService";
@@ -28,11 +29,19 @@ function tokenService(configuration = tokenConfiguration, now = NOW): MusicToken
   return new MusicTokenService(configuration, { now: () => now, randomBytes: () => Buffer.alloc(16, 0x44) });
 }
 
-function repository(initial: MusicCredentialSubjectState) {
+const canonicalVenue = { musicUserId: 41, sessionVersion: 3, identityStatus: "active" as const };
+
+function repository(
+  initial: MusicCredentialSubjectState,
+  canonicalInitial: CanonicalMusicCredentialSubjectState = { venue: undefined, tombstoned: false },
+) {
   let state = initial;
+  let canonicalState = canonicalInitial;
   return {
     resolveCredentialSubject: async () => state,
+    resolveCanonicalCredentialSubject: async () => canonicalState,
     set: (next: MusicCredentialSubjectState) => { state = next; },
+    setCanonical: (next: CanonicalMusicCredentialSubjectState) => { canonicalState = next; },
   };
 }
 
@@ -100,5 +109,45 @@ describe("local Music principal resolution", () => {
     local.set({ identity: active, tombstoned: false });
     now = NOW + 5_000;
     await expectPrincipalError(() => socketVerifier.recheck(context), "TOKEN_INVALID");
+  });
+
+  it("resolves a canonical credential through the account mapping", () => {
+    const repo = repository({ identity: undefined, tombstoned: false }, { venue: canonicalVenue, tombstoned: false });
+    const tokens = tokenService();
+    const minted = tokens.mintCanonical({ accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 });
+    return expect(new MusicPrincipalService(tokens, repo).resolve(minted.token)).resolves.toEqual({
+      musicUserId: 41,
+      subject: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411",
+      accountDocumentId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411",
+      sessionVersion: 3,
+    });
+  });
+
+  it("never falls back to the legacy subject for a canonical credential", () => {
+    // The property that matters: a canonical claim must not be satisfiable by a
+    // Strapi-keyed row that happens to carry the same string.
+    const repo = repository(
+      { identity: { ...active, strapiUserDocumentId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411" }, tombstoned: false },
+      { venue: undefined, tombstoned: false },
+    );
+    const tokens = tokenService();
+    const minted = tokens.mintCanonical({ accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 });
+    return expectPrincipalError(() => new MusicPrincipalService(tokens, repo).resolve(minted.token), "TOKEN_REVOKED");
+  });
+
+  it.each([
+    ["an unmapped account", { venue: undefined, tombstoned: false }, "TOKEN_REVOKED"],
+    ["a tombstoned venue", { venue: canonicalVenue, tombstoned: true }, "TOKEN_REVOKED"],
+    ["a suspended venue", { venue: { ...canonicalVenue, identityStatus: "suspended" as const }, tombstoned: false }, "IDENTITY_SUSPENDED"],
+    ["a venue pending deletion", { venue: { ...canonicalVenue, identityStatus: "pending_deletion" as const }, tombstoned: false }, "IDENTITY_PENDING_DELETION"],
+    ["a revoked session version", { venue: { ...canonicalVenue, sessionVersion: 4 }, tombstoned: false }, "TOKEN_REVOKED"],
+  ])("refuses a canonical credential for %s", (_label, canonicalState, code) => {
+    const repo = repository({ identity: undefined, tombstoned: false }, canonicalState);
+    const tokens = tokenService();
+    const minted = tokens.mintCanonical({ accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 });
+    return expectPrincipalError(
+      () => new MusicPrincipalService(tokens, repo).resolve(minted.token),
+      code as MusicPrincipalError["code"],
+    );
   });
 });

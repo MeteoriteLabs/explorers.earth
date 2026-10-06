@@ -1,5 +1,5 @@
-import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
-import { MusicTokenError, type MusicTokenService } from "../services/musicTokenService";
+import type { CanonicalMusicVenue, MusicIdentityProjection } from "../repositories/musicIdentityRepository";
+import { CANONICAL_SUBJECT_KIND, MusicTokenError, type MusicTokenService } from "../services/musicTokenService";
 import type { Request, RequestHandler } from "express";
 
 export interface MusicPrincipal {
@@ -14,8 +14,15 @@ export interface MusicCredentialSubjectState {
   tombstoned: boolean;
 }
 
+export interface CanonicalMusicCredentialSubjectState {
+  venue?: CanonicalMusicVenue;
+  tombstoned: boolean;
+}
+
 export interface MusicCredentialSubjectRepository {
   resolveCredentialSubject(subject: string): Promise<MusicCredentialSubjectState>;
+  /** ADR-008. Resolves a canonical account subject through account_music_identity. */
+  resolveCanonicalCredentialSubject(accountId: string): Promise<CanonicalMusicCredentialSubjectState>;
 }
 
 export type MusicPrincipalErrorCode =
@@ -53,6 +60,7 @@ export class MusicPrincipalService {
       }
       throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid.");
     }
+    if (claims.subjectKind === CANONICAL_SUBJECT_KIND) return this.resolveCanonical(claims.sub, claims.sessionVersion);
     const state = await this.repository.resolveCredentialSubject(claims.sub);
     const identity = state.identity;
     if (!identity || state.tombstoned || identity.strapiUserDocumentId !== claims.sub) {
@@ -72,6 +80,41 @@ export class MusicPrincipalService {
       subject: identity.strapiUserDocumentId,
       accountDocumentId: identity.strapiAccountDocumentId,
       sessionVersion: identity.sessionVersion,
+    };
+  }
+
+  /**
+   * ADR-008. A canonical credential is accepted only when account_music_identity maps
+   * that exact account to a venue row. It never falls back to the legacy subject
+   * resolution, so a canonical claim cannot be satisfied by a Strapi-keyed row.
+   *
+   * sessionVersion is the venue's users.session_version, not the canonical web
+   * session's, because that is the counter Music credential revocation bumps.
+   */
+  private async resolveCanonical(accountId: string, claimedSessionVersion: number): Promise<MusicPrincipal> {
+    const state = await this.repository.resolveCanonicalCredentialSubject(accountId);
+    const venue = state.venue;
+    if (!venue || state.tombstoned) {
+      throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+    }
+    if (venue.identityStatus === "suspended") {
+      throw new MusicPrincipalError("IDENTITY_SUSPENDED", 403, "This Music identity is suspended.");
+    }
+    if (venue.identityStatus === "pending_deletion") {
+      throw new MusicPrincipalError("IDENTITY_PENDING_DELETION", 409, "This Music identity is pending deletion.");
+    }
+    if (venue.sessionVersion !== claimedSessionVersion) {
+      throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
+    }
+    return {
+      musicUserId: venue.musicUserId,
+      subject: accountId,
+      // Opaque stable per-account identifier, used for feature allowlists and cohort
+      // hashing. The canonical account id is the right value; note it buckets
+      // differently from a legacy Strapi subject, so percentage rollouts re-bucket an
+      // owner on migration.
+      accountDocumentId: accountId,
+      sessionVersion: venue.sessionVersion,
     };
   }
 }
