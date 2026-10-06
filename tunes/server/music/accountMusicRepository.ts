@@ -74,7 +74,9 @@ export function createAccountMusicRepository(
         ]);
       const musicUserId = venue.rows[0]?.id;
       if (!Number.isSafeInteger(musicUserId) || Number(musicUserId) <= 0) {
-        throw new AuthorizationError(500, "INTERNAL_ERROR", "Music venue profile could not be created");
+        // Not an AuthorizationError: the actor is permitted, the insert misbehaved.
+        // AuthorizationError carries only 401/403/404/422/503 and four refusal codes.
+        throw new Error("Music venue profile could not be created");
       }
 
       // The primary key is the idempotency key. A loser inserts nothing and is told so.
@@ -88,7 +90,8 @@ export function createAccountMusicRepository(
         await client.query("ROLLBACK");
         const winner = await existingMapping(pool, actor.accountId);
         if (winner === undefined) {
-          throw new AuthorizationError(409, "CONFLICT", "Music account provisioning conflicted");
+          // A lost race whose winner we then cannot read is transient, not a refusal.
+          throw new Error("Music account provisioning conflicted");
         }
         return { musicUserId: winner, accountId: actor.accountId, provisioned: false };
       }
