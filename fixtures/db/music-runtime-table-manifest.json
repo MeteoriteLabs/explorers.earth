@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0039_music_venue_account_ownership",
+    "expectedId": "0040_canonical_music_venue_provisioning",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -42,7 +42,8 @@
       "0036_explorers_analytics_events.sql",
       "0037_explorers_movies_provider_context.sql",
       "0038_explorers_movie_media.sql",
-      "0039_music_venue_account_ownership.sql"
+      "0039_music_venue_account_ownership.sql",
+      "0040_canonical_music_venue_provisioning.sql"
     ],
     "controlTables": [
       "music_schema_migrations",

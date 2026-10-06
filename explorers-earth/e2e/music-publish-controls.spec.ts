@@ -394,7 +394,10 @@ test('delayed cross-device old Public can win backend ordering and must surface 
 });
 
 test('pending account read across A→B→A and logout never authorizes a stale publication', async ({ browser, baseURL }) => {
-  const state = fixtureState(); const owner = await openFixture(browser, baseURL!, state, { owner: true }); let release!: () => void;
+  // This case signs out, which is a canonical same-origin command the fixture only
+  // answers on request - the containment spec asserts it stays denied by default.
+  const state = fixtureState(); state.signOutHandled = true;
+  const owner = await openFixture(browser, baseURL!, state, { owner: true }); let release!: () => void;
   try {
     await settings(owner.page); state.faults.set('/api/explorers/v1/me', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
     await owner.page.getByRole('switch', { name: 'Music public visibility' }).click(); await expect(owner.page.getByRole('switch', { name: 'Music public visibility' })).toBeDisabled();

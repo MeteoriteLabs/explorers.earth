@@ -68,7 +68,8 @@
     "0036_explorers_analytics_events",
     "0037_explorers_movies_provider_context",
     "0038_explorers_movie_media",
-    "0039_music_venue_account_ownership"
+    "0039_music_venue_account_ownership",
+    "0040_canonical_music_venue_provisioning"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

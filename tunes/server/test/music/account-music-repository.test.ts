@@ -28,13 +28,18 @@ function fakePool(script: Array<[RegExp, Reply]>, log: string[] = []) {
     const hit = script.find(([pattern]) => pattern.test(sql));
     return hit ? hit[1] : {};
   };
-  const run = async (sql: string) => {
-    log.push(sql.replace(/\s+/g, " ").trim());  // not truncated: assertions inspect the VALUES list
+  // Parameters are recorded alongside the text, so a case can pin what a placeholder
+  // actually carries rather than only that the statement has the right shape.
+  const parameters: Array<{ sql: string; values: unknown[] }> = [];
+  const run = async (sql: string, values?: unknown[]) => {
+    const text = sql.replace(/\s+/g, " ").trim();
+    log.push(text);  // not truncated: assertions inspect the VALUES list
+    if (values) parameters.push({ sql: text, values });
     const reply = answer(sql);
     return { rows: reply.rows ?? [], rowCount: reply.rowCount ?? (reply.rows ?? []).length };
   };
   const client = { query: run, release: () => {} };
-  return { pool: { query: run, connect: async () => client }, log, client };
+  return { pool: { query: run, connect: async () => client }, log, parameters, client };
 }
 
 const membership: [RegExp, Reply] = [
@@ -57,7 +62,7 @@ describe("canonical Music venue provisioning", () => {
 
   it("provisions a venue and its mapping in one transaction, leaving password and both Strapi ids null", async () => {
     const statements: string[] = [];
-    const { pool, log } = fakePool([
+    const { pool, log, parameters } = fakePool([
       membership, liveSession, accountRow,
       [/FROM account_music_identity/, { rows: [] }],
       [/INSERT INTO users/, { rows: [{ id: 77 }] }],
@@ -76,8 +81,14 @@ describe("canonical Music venue provisioning", () => {
     // no Strapi document id is written during canonical provisioning. Asserted on the
     // literal VALUES list so a later edit cannot quietly reintroduce either.
     const insert = log.find((entry) => /INSERT INTO users/i.test(entry)) ?? "";
-    expect(insert).toContain("VALUES ($1,NULL,NULL,$2,$3,NULL,NULL,$4)");
+    expect(insert).toContain("VALUES ($1,NULL,NULL,$2,$3,NULL,NULL,$4,$5)");
     expect(insert).toMatch(/password,.*strapi_user_document_id,strapi_account_document_id/s);
+    // lifecycle_operation_id is NOT NULL with no default, so it has to be supplied.
+    // Break caught: the placeholder is filled with a Strapi document id, or anything
+    // else that would make a canonical venue look externally identified.
+    expect(insert).toMatch(/guest_capability_hash,\s*lifecycle_operation_id\)/);
+    const venueValues = parameters.find((entry) => /INSERT INTO users/i.test(entry.sql))?.values ?? [];
+    expect(venueValues[4]).toBe(`canonical-provision:${ACCOUNT}`);
   });
 
   it("locks the account row before inserting, so same-account callers serialise", async () => {

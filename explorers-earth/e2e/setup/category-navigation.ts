@@ -60,6 +60,9 @@ export function fixtureState(extra: Record<string, unknown> = {}, mode: 'private
   }]])) as Record<string, Record<string, any>[]>;
   return {
     account, lists, mode, revision: 1, canonicalAccountRevision: 1, identityReady: true, ownerWorkspace: true,
+    // Opt-in, because contained-auth-session.spec.ts asserts that every auth path other
+    // than get-session stays denied. Only a case that actually signs out enables it.
+    signOutHandled: false,
     alternateAccounts: new Map<string, Record<string, any>>(),
     guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: true },
     playlists: [{ id: 1, name: 'Private owner playlist', description: null, isVisibleToGuests: false, songs: [] }],
@@ -274,8 +277,10 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
     }
     // Signing out is a canonical same-origin command and ends the session by expiring the
     // cookie, exactly as the server does, so a later get-session reports signed out.
-    // Without this branch the deny-by-default guard records it as an unexpected request.
-    if (url.origin === origin && url.pathname === '/api/auth/sign-out' && url.search === '' && request.method() === 'POST') {
+    // Without this branch the deny-by-default guard records it as an unexpected request;
+    // with it unconditionally, the containment spec's "every other auth path stays denied"
+    // assertion would no longer hold, hence the opt-in.
+    if (state.signOutHandled && url.origin === origin && url.pathname === '/api/auth/sign-out' && url.search === '' && request.method() === 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{}',
         headers: { 'set-cookie': `${sessionCookie}=; Path=/; Max-Age=0` } });
     }

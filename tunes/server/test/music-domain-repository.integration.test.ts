@@ -993,9 +993,12 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       accountId = (await client.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
       musicUserId = (await client.query(
         `INSERT INTO users(username,password,email,guest_url,venue_name,
-           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
-         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
-        [`explorers-music-${accountId}`, publicSlug, createHash("sha256").update(`canonical-${accountId}`).digest("hex")],
+           strapi_user_document_id,strapi_account_document_id,guest_capability_hash,
+           lifecycle_operation_id)
+         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3,$4) RETURNING id`,
+        [`explorers-music-${accountId}`, publicSlug,
+          createHash("sha256").update(`canonical-${accountId}`).digest("hex"),
+          `canonical-provision:${accountId}`],
       )).rows[0].id as number;
       await client.query(
         "INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
@@ -1026,6 +1029,63 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       mode: "public", publicSlug, revision: 12,
     });
     await expect(domain.resolvePublicDescriptor(unmapped)).resolves.toBeUndefined();
+  });
+
+  it("admits a canonical venue without a Strapi lifecycle operation and still refuses a half external identity", async () => {
+    // Break caught: migration 0040's guard writes a Strapi-keyed provision operation for
+    // a canonical venue, whose strapi document id columns are NOT NULL, so every
+    // canonical provisioning fails with 23502 and no Google-only owner can get a venue.
+    // Break caught: skipping the mirror also skips the numeric tombstone check, which is
+    // what stops a retired numeric Music user id being reused.
+    // Break caught: a venue carrying exactly one Strapi column is admitted and then
+    // treated as whichever kind the reader assumes.
+    const insertVenue = (client: pg.PoolClient, accountId: string, columns: {
+      strapiUser?: string | null; strapiAccount?: string | null;
+    } = {}) => client.query<{ id: number }>(
+      `INSERT INTO users(username,password,email,guest_url,venue_name,
+         strapi_user_document_id,strapi_account_document_id,guest_capability_hash,
+         lifecycle_operation_id)
+       VALUES($1,NULL,NULL,$2,'Explorers Music',$3,$4,$5,$6) RETURNING id`,
+      [`explorers-music-${accountId}`, `slug-${accountId}`.slice(0, 60),
+        columns.strapiUser ?? null, columns.strapiAccount ?? null,
+        createHash("sha256").update(`guard-${accountId}`).digest("hex"),
+        `canonical-provision:${accountId}`]);
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const accountId = (await client.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+      const musicUserId = (await insertVenue(client, accountId)).rows[0].id;
+      await client.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)", [accountId, musicUserId]);
+      await client.query("COMMIT");
+
+      // No Strapi-keyed provision operation exists for it, and its own lifecycle column
+      // says so rather than claiming a completed operation it never had.
+      expect((await pool.query(
+        "SELECT count(*)::int AS rows FROM music_identity_lifecycle_operations WHERE music_user_id=$1",
+        [musicUserId],
+      )).rows[0].rows).toBe(0);
+      expect((await pool.query(
+        "SELECT lifecycle_state AS state FROM users WHERE id=$1", [musicUserId],
+      )).rows[0].state).toBe("none");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    // Exactly one Strapi column is neither a legacy nor a canonical identity.
+    const half = await pool.connect();
+    try {
+      await half.query("BEGIN");
+      const accountId = (await half.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+      await expect(insertVenue(half, accountId, { strapiAccount: `c6-half-${accountId}` }))
+        .rejects.toMatchObject({ message: expect.stringContaining("external identity must be complete or absent") });
+    } finally {
+      await half.query("ROLLBACK");
+      half.release();
+    }
   });
 
   it("fails closed only while another User document ID collides with a live public Account document ID", async () => {
