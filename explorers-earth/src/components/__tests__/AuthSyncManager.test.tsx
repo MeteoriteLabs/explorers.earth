@@ -5,10 +5,12 @@ import useAuthStore from "../../store/store";
 
 const calls = vi.hoisted(() => ({ refresh: vi.fn(async () => undefined), clearStore: vi.fn(async () => undefined),
   logout: vi.fn(), reset: vi.fn(), clearCommands: vi.fn(), clearWorkspace: vi.fn(async () => undefined),
-  cancelQueries: vi.fn(async () => undefined), removeQueries: vi.fn() }));
+  cancelQueries: vi.fn(async () => undefined), removeQueries: vi.fn(),
+  reconcile: vi.fn(async () => undefined) }));
 vi.mock("@apollo/client", () => ({ useApolloClient: () => ({ clearStore: calls.clearStore }) }));
 vi.mock("../../lib/authClient", () => ({ authClient: { refresh: calls.refresh } }));
-vi.mock("../../features/music/musicApi", () => ({ musicApi: { logout: calls.logout }, musicIdentityCoordinator: { reset: calls.reset } }));
+vi.mock("../../features/music/musicApi", () => ({ musicApi: { logout: calls.logout },
+  musicIdentityCoordinator: { reset: calls.reset, reconcile: calls.reconcile } }));
 vi.mock("../../features/music/musicPublicationCommandRegistry", () => ({ clearMusicPublicationCommands: calls.clearCommands }));
 vi.mock("../../hooks/useTunesDashboard", () => ({ clearAllMusicWorkspaceQueries: calls.clearWorkspace }));
 vi.mock("../../lib/queryClient", () => ({ queryClient: { cancelQueries: calls.cancelQueries, removeQueries: calls.removeQueries } }));
@@ -24,6 +26,19 @@ describe("AuthSyncManager canonical session boundary", () => {
   it("starts cookie verification on mount", () => {
     render(<AuthSyncManager />);
     expect(calls.refresh).toHaveBeenCalledTimes(1);
+  });
+  it("reconciles Music owner provisioning from the verified canonical session", async () => {
+    // Nothing called reconcile() before this, so isReadyFor() stayed false and every
+    // Music publication control rendered disabled in the real application.
+    verify("account-a");
+    render(<AuthSyncManager />);
+    await waitFor(() => expect(calls.reconcile).toHaveBeenCalledTimes(1));
+    expect(calls.reconcile).toHaveBeenCalledWith({ provider: "google", authenticated: true, verified: true,
+      userDocumentId: "user-account-a", account: { documentId: "account-a" } });
+  });
+  it("reconciles no Music owner without a verified session", () => {
+    render(<AuthSyncManager />);
+    expect(calls.reconcile).not.toHaveBeenCalled();
   });
   it("clears account caches when the session ends", async () => {
     verify("account-a");

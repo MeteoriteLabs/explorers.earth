@@ -1,6 +1,5 @@
 import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 import { createLocalTunesApiClient, type LocalTunesApiClient } from "../../lib/localTunesApiClient";
-import useAuthStore from "../../store/store";
 import { createMusicIdentityCoordinator } from "./musicIdentityCoordinator";
 import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
 
@@ -16,7 +15,6 @@ function getClient(): LocalTunesApiClient {
     client = createLocalTunesApiClient({
       baseUrl: musicOrigin,
       fetchImpl: createMusicDevelopmentFetch(fetch, import.meta.env.DEV, musicOrigin),
-      getStrapiBearer: async () => useAuthStore.getState().token ?? undefined,
     });
     client.setAuthority(authority);
   }

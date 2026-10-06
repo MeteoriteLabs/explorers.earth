@@ -461,6 +461,19 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         ...(path === '/api/music/publication' ? { body: request.postDataJSON() } : {}) });
       const fault = state.faults.get(path)?.shift(); if (fault?.gate) await fault.gate;
       if (fault?.kind === 'error') return json({ version: 'music-error/v1', error: { code: 'UPSTREAM_UNAVAILABLE', message: 'Contained fixture failure', action: 'retry', retryable: true, requestId: 'fixture-failure' } }, fault.status ?? 503, { 'retry-after': '1' });
+      // ADR-006 canonical Music owner provisioning: cookie authority only. The subject
+      // comes from the server-side Actor, so there is no bearer and no account id in the
+      // request. Deliberately not recorded in state.writes - it is not a preference
+      // write, and cases asserting no writes are still entitled to a Music session.
+      if (path === '/api/explorers/v1/music/identity/ensure' && request.method() === 'POST') {
+        if (!await hasOwnerSession()) {
+          expectedHttpErrors.set(request.url(), 401);
+          return json({ error: { code: 'UNAUTHENTICATED', message: 'Fixture session is required',
+            requestId: 'category-fixture-music-ensure' } }, 401);
+        }
+        return json({ version: 'music-identity/v1', identity: { musicUserId: 41, status: 'active' },
+          credential: { token: credential, expiresAt: Date.now() + 600000 } });
+      }
       if (path === '/api/music/identity/ensure' && request.method() === 'POST' && owner) return json({ version: 'music-identity/v1', identity: { musicUserId: 41, status: 'active' }, credential: { token: credential, expiresAt: Date.now() + 600000 } });
       if (path === '/api/music/identity/lifecycle/status' && owner) return json({ error: { code: 'LIFECYCLE_NOT_FOUND', message: 'No fixture deletion' } }, 404);
       const musicOwner = request.headers().authorization === `Bearer ${credential}`;
