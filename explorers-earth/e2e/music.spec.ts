@@ -6,6 +6,9 @@ import { canonicalAccountFixture } from "../src/test/canonicalAccountFixture";
 
 const artifactDirectory = resolve(process.cwd(), "../.artifacts/task-9");
 const credential = "browser-only-music-credential";
+// Ensure accepts the canonical same-origin route and the legacy Music-origin
+// path, because the full-stack fixtures still answer the latter.
+const ENSURE_ROUTE = /\/api\/(?:explorers\/v1\/)?music\/identity\/ensure$/;
 const completeAccount = {
   __typename: "Account",
   documentId: "account-document-123",
@@ -96,7 +99,7 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: {} }) });
   });
 
-  await page.route("**/api/music/identity/ensure", async (route) => {
+  await page.route(ENSURE_ROUTE, async (route) => {
     ensureCalls += 1;
     if (options.ensureGate && ensureCalls >= options.ensureGate.call) await options.ensureGate.wait;
     if (options.ensureDelayMs) await new Promise((resolveDelay) => setTimeout(resolveDelay, options.ensureDelayMs));

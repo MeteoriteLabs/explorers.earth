@@ -6,20 +6,54 @@ interface MockAuthenticationOptions {
   user?: { id: string; documentId: string; username: string; email: string; blocked: boolean };
 }
 
+// The canonical session the application actually verifies. `authClient.refresh()`
+// reads GET /api/auth/get-session, and it deletes the legacy `auth-storage` blob
+// this helper injects before doing so, so the localStorage injection below can no
+// longer authenticate a fixture page on its own. Matches the cookie name the
+// canonical fixtures in `category-navigation.ts` use.
+const SESSION_COOKIE = 'better-auth.session_token';
+const SESSION_VALUE = 'fixture-canonical-session';
+const SESSION_ID = 'fixture-canonical-session-id';
+
 export async function setupMockAuthentication(context: BrowserContext, options: MockAuthenticationOptions = {}) {
   const token = options.token ?? 'mock-jwt-token-xyz';
   const user = options.user ?? {
     id: 'mock-user-123', documentId: 'mock-user-123', username: 'testuser', email: 'test@explorers.earth', blocked: false,
   };
   // Populate storage state / session data to skip login
+  const cookieDomain = options.cookieDomain ?? 'localhost';
   await context.addCookies([
     {
       name: 'token',
       value: token,
-      domain: options.cookieDomain ?? 'localhost',
+      domain: cookieDomain,
       path: '/',
-    }
+    },
+    {
+      name: SESSION_COOKIE,
+      value: SESSION_VALUE,
+      domain: cookieDomain,
+      path: '/',
+    },
   ]);
+
+  // Authentication follows the cookie this request actually carries, so a fixture
+  // that clears it represents a signed-out browser rather than a permanently
+  // authenticated one. Playwright's abbreviated headers() collection can omit
+  // Cookie, so read it through headerValue.
+  await context.route('**/api/auth/get-session', async route => {
+    const request = route.request();
+    if (request.method() !== 'GET') return route.abort('blockedbyclient');
+    const authenticated = ((await request.headerValue('cookie')) ?? '')
+      .split(';').some(cookie => cookie.trim() === `${SESSION_COOKIE}=${SESSION_VALUE}`);
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(authenticated
+        ? { user: { id: user.documentId, email: user.email }, session: { id: SESSION_ID } }
+        : null),
+    });
+  });
   
   // Inject localStorage login state safely
   await context.addInitScript(({ fixtureToken, fixtureUser }) => {

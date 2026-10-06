@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { canonicalAccountFixture } from "../../src/test/canonicalAccountFixture";
+
+// Ensure accepts the canonical same-origin route (ADR-006/008) and the legacy
+// Music-origin path, because the full-stack fixtures still answer the latter.
+const ENSURE_ROUTE = /\/api\/(?:explorers\/v1\/)?music\/identity\/ensure$/;
 import {
   LIVE_PROFILE_BATCH_FAILURE_CODES,
   LIVE_PROFILE_BATCH_FAILURE_STAGES,
@@ -1057,7 +1061,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: {} }) });
   });
 
-  await page.route("**/api/music/identity/ensure", async (route) => {
+  await page.route(ENSURE_ROUTE, async (route) => {
     ensureCalls += 1;
     markEnsureStarted();
     requests.push({
