@@ -369,15 +369,28 @@ describe("canonical account lifecycle", () => {
     // deletion saga's own work.
     const owner = await identity();
     const canonical = randomUUID();
-    const venue = await pool.query<{ id: number }>(
-      `INSERT INTO users(username,password,email,guest_url,venue_name,
-         strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
-       VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
-      [`explorers-music-${canonical}`, `canonical-${canonical}`.slice(0, 60),
-        createHash("sha256").update(canonical).digest("hex")]);
-    const musicUserId = venue.rows[0].id;
-    await pool.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
-      [owner.accountId, musicUserId]);
+    // One transaction, as accountMusicRepository provisions: 0039's ownership check is a
+    // deferred constraint trigger, so a venue inserted on its own autocommits unowned and
+    // is rejected at that COMMIT.
+    const client = await pool.connect();
+    let musicUserId: number;
+    try {
+      await client.query("BEGIN");
+      musicUserId = (await client.query<{ id: number }>(
+        `INSERT INTO users(username,password,email,guest_url,venue_name,
+           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
+        [`explorers-music-${canonical}`, `canonical-${canonical}`.slice(0, 60),
+          createHash("sha256").update(canonical).digest("hex")])).rows[0].id;
+      await client.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
+        [owner.accountId, musicUserId]);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
 
     const feedback = await request(app.app).post("/api/explorers/v1/account/deletion-feedback")
       .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
