@@ -2400,6 +2400,25 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/api/music/socket-ticket",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "GET",
       "path": "/api/music/dashboard",
       "source": "tunes/server/routes/musicSurfaceRoutes.ts",

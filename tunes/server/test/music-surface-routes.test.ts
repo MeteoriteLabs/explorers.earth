@@ -591,6 +591,46 @@ describe("canonical Music REST surfaces", () => {
     expect(calls.filter((entry) => entry[0] === "append-queue")).toHaveLength(3);
   });
 
+  it("mints a purpose-limited socket handshake ticket only for a proven owner behind an exact origin", async () => {
+    // Break caught: the handshake ticket route is mounted without the origin guard, so any
+    // site a signed-in owner visits can mint a live socket capability for that owner.
+    const mintSocketTicket = vi.fn(() => ({ token: "ticket.aaa.bbb", expiresAt: 1760000060 }));
+    const { app } = appFor({}, { mintSocketTicket });
+    const { request } = await loopback.open({ app });
+    const headers = { Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" };
+
+    const minted = await request.post("/api/music/socket-ticket").set(headers).send({});
+    expect(minted.status).toBe(200);
+    expect(minted.body).toEqual({ version: "music-socket-ticket/v1", ticket: { token: "ticket.aaa.bbb", expiresAt: 1760000060 } });
+    expect(mintSocketTicket).toHaveBeenCalledWith({ subject: "subject", sessionVersion: 3 });
+
+    const foreign = await request.post("/api/music/socket-ticket")
+      .set({ ...headers, Origin: "https://evil.example" }).send({});
+    expect(foreign.status).toBe(403);
+    expect(foreign.body.error.code).toBe("ORIGIN_FORBIDDEN");
+
+    const originless = await request.post("/api/music/socket-ticket")
+      .set({ Authorization: "Bearer aaa.bbb.ccc" }).send({});
+    expect(originless.status).toBe(403);
+
+    const unauthenticated = await request.post("/api/music/socket-ticket")
+      .set({ Origin: "https://explorers.example" }).send({});
+    expect(unauthenticated.status).toBe(401);
+
+    expect(mintSocketTicket).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the socket handshake route unmounted when no minter is wired", async () => {
+    // Break caught: an optional dependency is treated as present and the route answers
+    // with a 500 instead of not existing, which advertises a capability the server cannot mint.
+    const { app } = appFor();
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/music/socket-ticket")
+      .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" }).send({});
+
+    expect(response.status).toBe(404);
+  });
+
   it("requires durable idempotency for saved-playlist song insertion", async () => {
     // Break caught: POST /api/playlists/:id/songs ignores its key and inserts twice after a lost response.
     const { app, calls } = appFor();

@@ -342,7 +342,7 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
   // the client asks again per connection attempt rather than holding one.
   if (dependencies.mintSocketTicket) {
     const mintSocketTicket = dependencies.mintSocketTicket;
-    app.post("/api/music/socket-ticket", ...owner(async (req, res, next) => {
+    app.post("/api/music/socket-ticket", ...mutation(async (req, res, next) => {
       try {
         const principal = req.musicPrincipal!;
         const ticket = mintSocketTicket({
