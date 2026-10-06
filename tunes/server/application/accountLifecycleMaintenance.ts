@@ -13,29 +13,6 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
     UPDATE deletion_feedback f SET reason=NULL,user_id=NULL,purged_at=clock_timestamp()
     FROM due WHERE f.id=due.id`, [batchSize]);
 
-  // Release the canonical Music venue a deletion owns, before the boundary below is
-  // evaluated. 6.1 made the boundary reachable for real: it provisions a mapping for
-  // every verified account, where previously nothing in production created one, so an
-  // unreleased venue turned every such deletion request into one that never completes.
-  //
-  // Deleting the venue row is the release. Every foreign key into users(id) is ON DELETE
-  // CASCADE or SET NULL, so the Music content and the mapping go with it, and 0039's
-  // deferred ownership trigger tolerates the mapping disappearing while the venue row is
-  // going away in the same statement. Migration 0041 is what allows the delete at all,
-  // by skipping the Strapi-keyed tombstone a canonical venue cannot satisfy.
-  //
-  // Only a canonical venue is released. A legacy venue carries a Strapi identity that has
-  // to be retired through its own saga, so it still reaches the boundary below.
-  await pool.query(`WITH due AS (SELECT mi.music_user_id FROM account_lifecycle_operations o
-    JOIN creator_accounts a ON a.id=o.account_id
-    JOIN account_music_identity mi ON mi.account_id=o.account_id
-    JOIN users u ON u.id=mi.music_user_id
-    WHERE o.kind='delete' AND o.state='pending' AND a.status='pending_deletion'
-      AND a.deletion_requested_at<=clock_timestamp()
-      AND u.strapi_user_document_id IS NULL AND u.strapi_account_document_id IS NULL
-    ORDER BY o.created_at,o.id LIMIT $1)
-    DELETE FROM users u USING due WHERE u.id=due.music_user_id`, [batchSize]);
-
   // Music ownership is delivered in 6.1. Record that boundary once, then leave
   // these operations out of the claim window so they cannot starve other owners.
   await pool.query(`WITH blocked AS (SELECT o.id FROM account_lifecycle_operations o

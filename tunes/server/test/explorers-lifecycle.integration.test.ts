@@ -360,58 +360,6 @@ describe("canonical account lifecycle", () => {
     expect(recovered.body.lifecycle.status).toBe("active");
   });
 
-  it("releases a canonical Music venue so the deletion it owns actually finalises", async () => {
-    // Break caught: 6.1 provisions a mapping for every verified account, where nothing in
-    // production created one before, so the 6.1 boundary above became reachable for real
-    // and every such deletion request parked at MUSIC_BOUNDARY_PENDING forever. A
-    // canonical venue carries no Strapi identity to retire, so maintenance releases it;
-    // the legacy case above still blocks, because retiring a Strapi identity is the
-    // deletion saga's own work.
-    const owner = await identity();
-    const canonical = randomUUID();
-    // One transaction, as accountMusicRepository provisions: 0039's ownership check is a
-    // deferred constraint trigger, so a venue inserted on its own autocommits unowned and
-    // is rejected at that COMMIT.
-    const client = await pool.connect();
-    let musicUserId: number;
-    try {
-      await client.query("BEGIN");
-      musicUserId = (await client.query<{ id: number }>(
-        `INSERT INTO users(username,password,email,guest_url,venue_name,
-           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
-         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
-        [`explorers-music-${canonical}`, `canonical-${canonical}`.slice(0, 60),
-          createHash("sha256").update(canonical).digest("hex")])).rows[0].id;
-      await client.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
-        [owner.accountId, musicUserId]);
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-
-    const feedback = await request(app.app).post("/api/explorers/v1/account/deletion-feedback")
-      .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
-      .send({ reason: "Canonical Music owner" });
-    const pending = await request(app.app).post("/api/explorers/v1/account/deletion")
-      .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
-      .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
-    expect(pending.status).toBe(200);
-
-    expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(1);
-    expect((await pool.query("SELECT status FROM creator_accounts WHERE id=$1", [owner.accountId])).rows[0].status)
-      .toBe("deleted");
-    expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1",
-      [pending.body.lifecycle.operationId])).rows[0]).toMatchObject({ state: "completed", failure_code: null });
-    // The venue and its mapping are both gone, the mapping by cascade from the venue row.
-    expect((await pool.query("SELECT 1 FROM users WHERE id=$1", [musicUserId])).rowCount).toBe(0);
-    expect((await pool.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [owner.accountId])).rowCount).toBe(0);
-    // A canonical venue has no external identity, so it leaves no Strapi-keyed tombstone
-    // behind either; migration 0041 is what lets the delete through without one.
-    expect((await pool.query("SELECT 1 FROM music_identity_tombstones WHERE music_user_id=$1", [musicUserId])).rowCount).toBe(0);
-  });
 
   it("does not starve an unmapped deletion behind Music-blocked owners with batch size one", async () => {
     const blocked = await identity();
