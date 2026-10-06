@@ -140,6 +140,14 @@ jobs:
       # the browsers have to be installed there rather than under tunes.
       - run: npx playwright install --with-deps chromium
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
+      # The fixture attests an exact, already-present image and never pulls one itself -
+      # its whole Docker path is read-only apart from `run`. A fresh runner has no
+      # postgres:15-alpine, so the attestation fails with "read-only Docker attestation
+      # failed", which is the image inspect and not the daemon. Supplying the image is
+      # the caller's job, exactly as it is on a developer machine.
+      - name: Fetch the pinned fixture PostgreSQL image
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
+        run: docker pull postgres:15-alpine
       - name: Run owned real-stack lane
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
         working-directory: tunes
