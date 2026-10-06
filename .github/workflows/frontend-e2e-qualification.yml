@@ -8,6 +8,11 @@ on:
       # A real-stack lane owns a PostgreSQL container and builds the frontend, so
       # proving one costs far less than running thirteen. The schedule always runs
       # everything; this only narrows a manual dispatch.
+      #
+      # The filter is applied per step, because a job-level `if` cannot see matrix.lane,
+      # so a lane this input excludes still reports success with its work skipped. A
+      # filtered dispatch is therefore evidence about the selected lane only - read the
+      # unfiltered scheduled run, or the individual job's steps, for anything else.
       lane:
         description: "Single lane to run, or all"
         required: false
