@@ -34,6 +34,15 @@
 -- goes backwards, and 0040's insert guard still checks the numeric tombstone column for
 -- any id that does carry one.
 
+--
+-- The body below is 0005's, not 0003's, with only the canonical early return added.
+-- 0005 replaced this function to record music_user_id, which is what the numeric
+-- recreation guards read, to default the reason to 'database-delete', and to stop
+-- synthesising a lifecycle operation id so that a delete without
+-- music.lifecycle_operation_id fails its NOT NULL instead of inventing one. Replacing a
+-- function in an append-only chain from the wrong ancestor silently reverts every later
+-- hardening, so the latest definition is the one to extend.
+
 CREATE OR REPLACE FUNCTION retain_music_identity_tombstone_on_delete() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -45,14 +54,11 @@ BEGIN
   END IF;
   requested_operation_id := nullif(current_setting('music.lifecycle_operation_id',true),'');
   requested_reason := nullif(current_setting('music.lifecycle_delete_reason',true),'');
-  IF requested_operation_id IS NULL THEN
-    requested_operation_id := 'automatic-delete:' || OLD.id::text || ':' || txid_current()::text;
-  END IF;
   INSERT INTO music_identity_tombstones(
-    strapi_user_document_id,strapi_account_document_id,reason,lifecycle_operation_id
+    strapi_user_document_id,strapi_account_document_id,music_user_id,reason,lifecycle_operation_id
   ) VALUES (
-    OLD.strapi_user_document_id,OLD.strapi_account_document_id,
-    coalesce(requested_reason,'direct-database-delete'),requested_operation_id
+    OLD.strapi_user_document_id,OLD.strapi_account_document_id,OLD.id,
+    coalesce(requested_reason,'database-delete'),requested_operation_id
   );
   RETURN OLD;
 END;
