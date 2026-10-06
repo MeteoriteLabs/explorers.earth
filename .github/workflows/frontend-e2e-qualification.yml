@@ -28,7 +28,6 @@ defaults:
 jobs:
   browser-matrix:
     name: ${{ matrix.lane }}
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
@@ -58,10 +57,14 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
       - name: Install Music fixture dependencies
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - run: npx playwright install --with-deps chromium firefox webkit
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
       - name: Run isolated qualification lane
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
         run: ${{ matrix.command }} --reporter=line,json
         env:
           CI: true
@@ -103,7 +106,6 @@ jobs:
   # the acknowledgement has to be passed verbatim as the only argument.
   replatform-real-stack:
     name: real-stack ${{ matrix.lane }}
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
@@ -125,12 +127,16 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
       - name: Install fixture runner dependencies
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
         run: npm ci --prefix ../tunes --legacy-peer-deps
       # The fixture drives explorers-earth's own Playwright CLI from that directory, so
       # the browsers have to be installed there rather than under tunes.
       - run: npx playwright install --with-deps chromium
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
       - name: Run owned real-stack lane
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
         working-directory: tunes
         run: ${{ matrix.command }} --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
         env:
