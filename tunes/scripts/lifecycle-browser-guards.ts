@@ -9,6 +9,8 @@ export const LIFECYCLE_CASES = [
     'terminal maintenance preserves tombstone and denies recovery',
     'foreign and absent origins cannot mutate lifecycle state',
     'delayed old lifecycle response cannot navigate a new owner',
+    'held feedback cannot mutate navigate or log out verified replacement B',
+    'held feedback cannot mutate navigate or log out a fresh verified returning A session',
 ] as const;
 export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' {
     const ack = 'TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
@@ -31,8 +33,10 @@ export function validateLifecycleControl(input: {
     expectedCapability: string;
     caseId: string;
     action: string;
+    owner?: unknown;
+    activeCaseId?: string;
 }) {
-    if (input.remote !== '127.0.0.1' || input.host !== input.expectedHost || !/^[a-f0-9]{64}$/.test(input.capability) || input.capability !== input.expectedCapability || !(LIFECYCLE_CASES as readonly string[]).includes(input.caseId) || !['prepare', 'observe', 'provider', 'expire', 'bump', 'terminal'].includes(input.action))
+    if (input.remote !== '127.0.0.1' || input.host !== input.expectedHost || !/^[a-f0-9]{64}$/.test(input.capability) || input.capability !== input.expectedCapability || !(LIFECYCLE_CASES as readonly string[]).includes(input.caseId) || !['prepare', 'observe', 'provider', 'expire', 'bump', 'terminal', 'session'].includes(input.action) || (input.action === 'session' && (input.activeCaseId !== input.caseId || (input.owner !== 0 && input.owner !== 1))))
         throw new Error('Lifecycle control authority mismatch');
 }
 export function assertLifecycleResults(discovered: string[], results: {

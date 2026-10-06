@@ -46,9 +46,12 @@ export async function startLifecycleControl(pool: Pool, composed: ReturnType<typ
         await pool.query("INSERT INTO auth_account(id,account_id,provider_id,user_id,updated_at) VALUES($1,$2,'google',$3,now())", [randomUUID(), subject, userId]);
         const { accountId } = await ensureInitialAccount(pool, userId);
         await pool.query("UPDATE creator_accounts SET handle=$2,display_name='Owned lifecycle',onboarding_status='complete',account_type='Personal' WHERE id=$1", [accountId, handle]);
+        return { userId, subject, email, accountId, handle, cookie: await issueSession(userId) };
+    }
+    async function issueSession(userId: string) {
         const session = await authContext.internalAdapter.createSession(userId, false);
         const signature = createHmac('sha256', config.secret).update(session.token).digest('base64');
-        return { userId, subject, email, accountId, handle, cookie: `${authContext.authCookies.sessionToken.name}=${session.token}.${signature}` };
+        return `${authContext.authCookies.sessionToken.name}=${session.token}.${signature}`;
     }
     const server = createServer(async (req, res) => {
         try {
@@ -61,7 +64,7 @@ export async function startLifecycleControl(pool: Pool, composed: ReturnType<typ
                     throw new Error('Control request too large');
             }
             const body = JSON.parse(bytes);
-            validateLifecycleControl({ remote: req.socket.remoteAddress ?? '', host: req.headers.host ?? '', expectedHost: host, capability: String(req.headers['x-lifecycle-capability'] ?? ''), expectedCapability: capability, caseId: body.caseId, action: body.action });
+            validateLifecycleControl({ remote: req.socket.remoteAddress ?? '', host: req.headers.host ?? '', expectedHost: host, capability: String(req.headers['x-lifecycle-capability'] ?? ''), expectedCapability: capability, caseId: body.caseId, action: body.action, owner: body.owner, activeCaseId: active?.caseId });
             if (Object.keys(body).some(key => !['caseId', 'action', 'owner', 'wrongSubject'].includes(key)))
                 throw new Error('Unknown control input');
             if (body.action === 'prepare') {
@@ -76,6 +79,11 @@ export async function startLifecycleControl(pool: Pool, composed: ReturnType<typ
             if (index !== 0 && index !== 1)
                 throw new Error('Unknown owned identity');
             const selected = active.owners[index];
+            if (body.action === 'session') {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ cookie: await issueSession(selected.userId) }));
+                return;
+            }
             if (body.action === 'provider') {
                 if (body.wrongSubject !== undefined && typeof body.wrongSubject !== 'boolean')
                     throw new Error('Invalid provider selection');

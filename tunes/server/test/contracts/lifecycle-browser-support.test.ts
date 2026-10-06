@@ -44,6 +44,16 @@ describe('owned lifecycle browser boundary', () => {
             expect(() => assertLifecycleResults([...LIFECYCLE_CASES], altered)).toThrow();
         expect(() => assertLifecycleResults([...LIFECYCLE_CASES].reverse(), results)).toThrow();
     });
+    it('bounds replacement sessions to a current case and an existing owned identity', () => {
+        const input = { remote: '127.0.0.1', host: '127.0.0.1:55001', expectedHost: '127.0.0.1:55001', capability: 'a'.repeat(64), expectedCapability: 'a'.repeat(64), caseId: LIFECYCLE_CASES[10], activeCaseId: LIFECYCLE_CASES[10], action: 'session', owner: 0 };
+        for (const owner of [0, 1]) expect(() => validateLifecycleControl({ ...input, owner })).not.toThrow();
+        for (const patch of [{ owner: 2 }, { owner: -1 }, { owner: '0' }, { owner: undefined }, { activeCaseId: undefined }, { activeCaseId: LIFECYCLE_CASES[0] }, { capability: 'b'.repeat(64) }, { remote: '10.0.0.1' }])
+            expect(() => validateLifecycleControl({ ...input, ...patch } as typeof input)).toThrow();
+        expect(LIFECYCLE_CASES).toHaveLength(12);
+        const results = LIFECYCLE_CASES.map(title => ({ title, status: 'passed', retry: 0 }));
+        expect(() => assertLifecycleResults([...LIFECYCLE_CASES].slice(0, 10), results.slice(0, 10))).toThrow();
+        expect(() => assertLifecycleResults([...LIFECYCLE_CASES], results.map((r, i) => i === 11 ? { ...r, status: 'failed' } : r))).toThrow();
+    });
     it('rejects provider code from a previous or absent scenario', () => {
         expect(() => assertProviderCode('this-case', 'this-case')).not.toThrow();
         for (const expected of [undefined, 'other-case'])

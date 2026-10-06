@@ -1,7 +1,21 @@
 import { expect, test } from '@playwright/test';
-import { categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
+import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
 import { TOP_LEVEL_DESTINATIONS } from './setup/public-shell-continuity';
 import { expectTask6Shell, submitPinnedCategoryUnpublish, beginTask6FrameAudit, finishTask6FrameAudit, assertTask6FrameWindow, computedContrast, seedTask6App } from './setup/category-navigation-helpers';
+
+// Mirrors the helper in category-navigation-b.spec.ts. The navigation client no
+// longer issues the legacy UpdateTabVisibility mutation at all — it writes the
+// whole canonical preference set through updateAccount — so asserting a legacy
+// `variables.data` patch would now assert a request the app never makes. This
+// translates the same behavioural check (exact field value, exact pin order,
+// revision carried) into the canonical payload rather than dropping it.
+function preferenceWrite(before: ReturnType<typeof canonicalCategoryAccount>, change: { category?: string; isPublic?: boolean; pins?: string[] }) {
+  const fields = new Map<string,string>([...categories.map(category => [category.route, category.field] as [string,string]), ['music', 'public_music']]);
+  return { expectedRevision: before.revision, categories: before.categories.map(row => ({ ...row,
+    ...(row.category === change.category ? { isPublic: change.isPublic } : {}),
+    ...(change.pins ? { pinnedOrder: change.pins.includes(fields.get(row.category)!) ? change.pins.indexOf(fields.get(row.category)!) - 1 : null } : {}),
+  })) };
+}
 
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900 }]) {
   test(`Task 6 contained content-state matrix ${viewport.width}x${viewport.height}`, async ({ browser, baseURL }) => {
@@ -472,10 +486,11 @@ for (const category of categories) {
       const card = owner.page.locator('.rec-card').filter({ has: owner.page.getByRole('heading', { name: category.label.replace(/ Tab$/, ''), exact: true }) });
       await card.evaluate(element => element.scrollIntoView({ block: 'center' }));
       await card.getByTitle('Category options').click();
+      const beforeEnable = canonicalCategoryAccount(state);
       const enable = owner.page.getByRole('button', { name: 'Enable Public URL', exact: true });
       await enable.focus(); await enable.press('Enter');
       await expect.poll(() => state.account[category.field]).toBe('Yes');
-      expect(state.writes.at(-1)?.variables.data).toEqual({ [category.field]: 'Yes' });
+      expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeEnable, { category: category.route, isPublic: true }));
       await settings(owner.page, true); await toggle(owner.page.getByRole('checkbox', { name: 'Auto-pin navigation tabs' }), false);
       await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
       await owner.page.goto('/recommendations'); await card.evaluate(element => element.scrollIntoView({ block: 'center' })); await card.getByTitle('Category options').click();

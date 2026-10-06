@@ -86,6 +86,38 @@
           ],
           "project": "chromium-pr-safe",
           "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: native Books Movies and Games publish and hide through verified owner preferences"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: external account preference refresh preserves all nine saved rows"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: external revision contention reports conflict without replay or lost profile update"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
         }
       ]
     },
@@ -346,6 +378,22 @@
           "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
           "titlePath": [
             "delayed old lifecycle response cannot navigate a new owner"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held feedback cannot mutate navigate or log out verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held feedback cannot mutate navigate or log out a fresh verified returning A session"
           ],
           "project": "lifecycle-chromium",
           "repeat": 0

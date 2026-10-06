@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { Kind, parse, print, visit, type SelectionSetNode } from 'graphql';
 import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
 import { bookFixtureId, createBooksOwnerFixture } from './books-owner-content';
+import { createNativeNavigationContentFixture } from './native-navigation-content-fixture';
 import { commandKeySchema, updateCollectionSchema, contentRevisionSchema, collectionCoreDtoSchema, updateAccountRequestSchema, accountDtoSchema } from '../../../tunes/shared/explorersContract';
 
 export const fixtureUser = { id: 'browser-user', documentId: 'browser-user', username: 'fixture-owner', email: 'owner@example.test', blocked: false };
@@ -126,6 +127,8 @@ export function invalidateGuests(state: FixtureState) { for (const send of state
 export async function installContainedRoutes(context: BrowserContext, origin: string, state: FixtureState) {
   const errors: string[] = [];
   const booksOwnerFixture = createBooksOwnerFixture(() => state.lists.bookLists, state.account.documentId);
+  const nativeContentFixtures = [createNativeNavigationContentFixture('movies', () => state.lists.movieLists, state.account.documentId),
+    createNativeNavigationContentFixture('games', () => state.lists.gameLists, state.account.documentId)];
   const booksCommands = new Map<string, { body: string; result: unknown }>();
   const denied: string[] = [];
   const vendors: string[] = [];
@@ -173,18 +176,25 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       const parsed=updateAccountRequestSchema.safeParse(request.postDataJSON());
       const observed=canonicalCategoryAccount(state);
       if(parsed.success&&parsed.data.expectedRevision!==observed.revision)return fail('CONFLICT',409);
-      if(!parsed.success||Object.keys(parsed.data).sort().join(',')!=='categories,expectedRevision'||!parsed.data.categories||parsed.data.categories.length!==observed.categories.length
-        ||new Set(parsed.data.categories.map(c=>c.category)).size!==observed.categories.length
-        ||parsed.data.categories.some(c=>{const previous=observed.categories.find(p=>p.category===c.category);return !previous||c.displayOrder!==previous.displayOrder||c.category!=='books'&&(c.isPublic!==previous.isPublic||c.pinnedOrder!==previous.pinnedOrder);})) {
-        denied.push('Books account command shape');return fail('INVALID_INPUT',422);
-      }
-      const books=parsed.data.categories.find(c=>c.category==='books')!;
-      state.account.public_books=books.isPublic?'Yes':'No';
-      state.account.pinned_nav_tabs=state.account.pinned_nav_tabs.filter((field:string)=>field!=='public_books');
-      if(books.pinnedOrder!==null)state.account.pinned_nav_tabs.splice(books.pinnedOrder,0,'public_books');
-      state.canonicalAccountRevision++;
+      if(!parsed.success || !((Object.keys(parsed.data).sort().join(',')==='categories,expectedRevision' && parsed.data.categories?.length===9)
+        || Object.keys(parsed.data).sort().join(',')==='autoPinning,expectedRevision')) return fail('INVALID_INPUT',422);
+      if(parsed.data.categories && (new Set(parsed.data.categories.map(row=>row.category)).size!==9
+        || parsed.data.categories.some(row=>!observed.categories.some(previous=>previous.category===row.category&&previous.displayOrder===row.displayOrder)))) return fail('INVALID_INPUT',422);
       state.writes.push({name:'PATCH /api/explorers/v1/account',variables:parsed.data,owner:true});
-      return reply({account:canonicalCategoryAccount(state)});
+      const fault=state.faults.get(url.pathname)?.shift();
+      if(fault?.gate)await fault.gate;
+      if(parsed.data.expectedRevision!==state.canonicalAccountRevision)return fail('CONFLICT',409);
+      if(fault?.kind==='offline'){expectedOffline.add(request.url());return route.abort('internetdisconnected');}
+      if(fault?.kind==='error')return fail('PROVIDER_UNAVAILABLE',fault.status??503);
+      if(parsed.data.categories) {
+        const rows=parsed.data.categories;
+        const fields=new Map<string,string>([...categories.map(c=>[c.route,c.field] as const),['music','public_music']]);
+        for(const row of rows) state.account[fields.get(row.category)!]=row.isPublic?'Yes':'No';
+        state.account.pinned_nav_tabs=['public_profile',...rows.filter(row=>row.pinnedOrder!==null).sort((a,b)=>a.pinnedOrder!-b.pinnedOrder!).map(row=>fields.get(row.category)!)];
+      }
+      if(parsed.data.autoPinning!==undefined)state.account.auto_pinning=parsed.data.autoPinning;
+      state.canonicalAccountRevision++;
+      return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply({account:canonicalCategoryAccount(state)});
     }
     const bookCollectionCommand = url.pathname.match(/^\/api\/explorers\/v1\/collections\/([0-9a-f-]{36})$/);
     if (url.origin === origin && bookCollectionCommand && url.search === '' && ['PATCH','DELETE'].includes(request.method())) {
@@ -227,6 +237,20 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       booksCommands.set(replayKey,{body:serialized,result});
       return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply(result);
     }
+    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
+      ?? (['/api/explorers/v1/collections','/api/explorers/v1/recommendations'].includes(url.pathname) ? url.searchParams.get('category') : undefined);
+    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : undefined;
+    if(url.origin===origin && request.method()==='GET' && nativeReader) {
+      const authenticated=await hasOwnerSession();state.apiCalls.push({path:url.pathname,method:'GET',authenticated});
+      if(!authenticated){expectedHttpErrors.set(request.url(),401);return route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:{code:'UNAUTHENTICATED',message:'Owner session required',requestId:'navigation-native'}})});}
+      const fault=state.faults.get(url.pathname)?.shift();if(fault?.gate)await fault.gate;
+      if(fault?.kind==='offline'){expectedOffline.add(request.url());return route.abort('internetdisconnected');}
+      const nativeResponse=nativeReader(url)!;
+      const status=fault?.kind==='error'?fault.status??503:nativeResponse.status;
+      if(status>=400)expectedHttpErrors.set(request.url(),status);
+      return route.fulfill({status,contentType:'application/json',body:JSON.stringify(fault?.kind==='error'
+        ? {error:{code:'PROVIDER_UNAVAILABLE',message:'Contained native content read failed',requestId:'navigation-native'}} : nativeResponse.body)});
+    }
     if (url.origin === origin && request.method() === 'GET') {
       const booksResponse = booksOwnerFixture(url);
       if (booksResponse) {
@@ -254,6 +278,14 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: {
           code: 'UNAUTHENTICATED', message: 'Fixture session is required', requestId: 'category-fixture-account-read',
         } }) });
+      }
+      state.reads.push({name:'GET /api/explorers/v1/me',variables:{},owner:true});
+      const fault=state.faults.get(url.pathname)?.shift();
+      if(fault?.gate)await fault.gate;
+      if(fault?.kind==='offline'){expectedOffline.add(request.url());return route.abort('internetdisconnected');}
+      if(fault?.kind==='error'){
+        const status=fault.status??503;expectedHttpErrors.set(request.url(),status);
+        return route.fulfill({status,contentType:'application/json',body:JSON.stringify({error:{code:'PROVIDER_UNAVAILABLE',message:'Contained account read failure',requestId:'category-fixture-account-read'}})});
       }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ account: canonicalCategoryAccount(state) }) });
     }
@@ -372,6 +404,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         const definition = parse(body.query).definitions[0];
         if (definition.kind !== Kind.OPERATION_DEFINITION || !definition.name || definition.name.value !== body.operationName) throw new Error('invalid operation');
         const name = definition.name.value; const variables = body.variables ?? {};
+        if(['SettingsAccount','PublicCategoryListCounts','CheckPublishedLists','UpdateTabVisibility'].includes(name)) throw new Error('legacy navigation GraphQL denied');
         const record = { name, variables, owner };
         const mutation = definition.operation === 'mutation';
         if (mutation) state.writes.push(record); else state.reads.push(record);
@@ -448,7 +481,10 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         if (fault?.kind === 'lost') return json({ version: 'music-error/v1', error: { code: 'UPSTREAM_UNAVAILABLE', message: 'Contained lost response', retryable: true, requestId: 'fixture-lost' } }, 503);
         return json(result);
       }
-      if (path === `/api/music/public-profile/${state.account.documentId}`) return state.mode === 'public'
+      // The navigation owner scope uses the canonical account UUID. Retain the
+      // public adapter's legacy fixture alias without accepting arbitrary owners.
+      if (request.method()==='GET' && [state.account.documentId,canonicalCategoryAccount(state).id]
+        .some(id=>path===`/api/music/public-profile/${id}`)) return state.mode === 'public'
         ? json({ version: 'music-public-descriptor/v1', publication: { mode: 'public', publicSlug, revision: state.revision } }) : json({}, 404);
       if (path.startsWith('/api/music/public-resource/v1/')) {
         if (path !== `/api/music/public-resource/v1/${publicSlug}` || !(state.mode === 'public' || state.mode === 'unlisted' && request.headers()['x-music-guest-capability'] === 'x'.repeat(43))) return json({}, 404);

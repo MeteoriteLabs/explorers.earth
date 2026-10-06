@@ -25,7 +25,7 @@ test('manifest requires exactly six nonempty unique delivered lanes and pending 
 });
 test('fake children qualify only scoped delivery while full milestone remains incomplete',async()=>{
  const m=manifest();const seen=[];const receipt=await qualifyLanes({manifest:m,provenance,runLane:async lane=>{seen.push(lane.name);return child(lane);}});
- assert.deepEqual(seen,['auth','profile','books','lifecycle','movies','games']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,82);
+ assert.deepEqual(seen,['auth','profile','books','lifecycle','movies','games']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,88);
 });
 for(const [name,change] of [
  ['nonzero',c=>c.status=1],['signal',c=>c.signal='SIGTERM'],['spawn error',c=>c.error='failed'],['missing receipt',c=>delete c.receipt],['wrong source',c=>c.receipt.provenance.commit='0'.repeat(40)],['source hash',c=>c.receipt.provenance.sourceHash='0'.repeat(64)],['wrong config',c=>c.receipt.config='other.config.ts'],['wrong project',c=>c.receipt.projects=['other']],['loader error',c=>c.receipt.errors.push({message:'missing module'})],['missing discovery',c=>c.receipt.discovery.pop()],['extra discovery',c=>c.receipt.discovery.push({...c.receipt.discovery[0],titlePath:['extra']})],['duplicate discovery',c=>c.receipt.discovery.push(c.receipt.discovery[0])],['missing result',c=>c.receipt.results.pop()],['extra result',c=>c.receipt.results.push(c.receipt.results[0])],['dynamic skip',c=>c.receipt.results[0].attempts[0].status='skipped'],['fixme',c=>c.receipt.results[0].expectedStatus='skipped'],['timeout',c=>c.receipt.results[0].attempts[0].status='timedOut'],['interrupted',c=>c.receipt.results[0].attempts[0].status='interrupted'],['retry pass',c=>c.receipt.results[0].attempts.push({status:'passed',retry:1})],['flaky',c=>c.receipt.results[0].status='flaky'],['empty attempts',c=>c.receipt.results[0].attempts=[]],['cleanup failure',c=>c.receipt.cleanup.status='failed'],['unowned database',c=>c.receipt.authority.owned=false],['failed browser child',c=>c.receipt.child.status=1]
@@ -109,13 +109,47 @@ test('ambient Movies fixture authority is denied before protected allocation',()
 
 const gamesTitles = ["Games manual: Home creates a native list and distinct same-title recommendations","Games manual: note and creator rating survive edit and reload without provider facts","Games manual: complete owner pages preserve memberships reorder and pin position zero","Games manual: Keep draft and Publish preserve keyboard decision and public state","Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment","Games manual: provider unavailable preserves draft and forbids browser credential authority","Games manual: anonymous category and list continuation reveal later rows and terminal state","Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes","Games manual: two anonymous contexts and username transition never reuse private or late rows","Games manual: account and route changes fence every deferred save continuation"];
 const gamesManifest=()=>{const m=manifest(); if(!m.lanes.some(l=>l.name==='games')){m.scopeContents.push('games');m.lanes.push({name:'games',runner:'tunes/scripts/games-browser-fixture.ts',config:'explorers-earth/e2e/replatform/games.playwright.config.ts',spec:'explorers-earth/e2e/replatform/games.spec.ts',projects:['games-desktop','games-mobile'],identities:['games-desktop','games-mobile'].flatMap(project=>gamesTitles.map(title=>({file:'explorers-earth/e2e/replatform/games.spec.ts',titlePath:[title],project,repeat:0}))) });} return m;};
-test('Games adds exact twenty identities while the preceding sixty-two stay unchanged',async()=>{const m=gamesManifest();assert.equal(validateManifest(m),true);assert.equal(m.lanes.slice(0,5).reduce((n,l)=>n+l.identities.length,0),62);const r=await qualifyLanes({manifest:m,provenance,runLane:async lane=>child(lane)});assert.equal(r.identities,82);assert.equal(r.releaseEligible,false);});
+test('Games adds exact twenty identities while the preceding sixty-eight stay unchanged',async()=>{const m=gamesManifest();assert.equal(validateManifest(m),true);assert.equal(m.lanes.slice(0,5).reduce((n,l)=>n+l.identities.length,0),68);const r=await qualifyLanes({manifest:m,provenance,runLane:async lane=>child(lane)});assert.equal(r.identities,88);assert.equal(r.releaseEligible,false);});
 test('Games exact identity admission rejects renamed duplicate extra and missing cases',()=>{for(const change of [l=>l.identities[0].titlePath=['renamed'],l=>l.identities[0].titlePath=['extra',gamesTitles[0]],l=>l.identities.pop(),l=>l.identities.push(l.identities[0]),l=>l.identities[0].repeat=1,l=>l.identities[0].project='games-other']){const m=gamesManifest();change(m.lanes.at(-1));assert.throws(()=>validateManifest(m));}});
 test('Games ambient fixture authority is rejected before any child',()=>{assert.throws(()=>assertEnvironment({GAMES_E2E_FIXTURE_PATH:'unowned'}));});
 
 test('Games receipts preserve source artifact cleanup and single-attempt ownership guards',()=>{const lane=gamesManifest().lanes.at(-1);for(const change of [c=>c.receipt.provenance.sourceHash='0'.repeat(64),c=>c.receipt.cleanup.status='failed',c=>c.receipt.authority.database='foreign',c=>c.receipt.artifacts.trace='on',c=>c.receipt.results[0].attempts.push({status:'passed',retry:1}),c=>c.receipt.results[0].attempts[0].status='skipped']){const c=structuredClone(child(lane));change(c);assert.throws(()=>validateLaneReceipt(lane,c,provenance));}});
-test('Games addition preserves committed prior sixty-two identities and rejects altered prior discovery',()=>{const prior=JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true}));const m=gamesManifest();assert.deepEqual(m.lanes.slice(0,5),prior.lanes.slice(0,5));const lane=structuredClone(m.lanes[0]),raw=rawReport(lane);lane.identities[0].titlePath=['unreviewed old-lane rename'];assert.throws(()=>decodeProtectedReport(raw,lane,process.cwd(),false));});
+test('Games addition preserves committed prior sixty-two identities and rejects altered prior discovery',()=>{const prior=JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true}));const m=gamesManifest();const preserved=structuredClone(m.lanes.slice(0,5));preserved.find(l=>l.name==='lifecycle').identities.splice(10);preserved.find(l=>l.name==='profile').identities.splice(2);assert.deepEqual(preserved,prior.lanes.slice(0,5));const lane=structuredClone(m.lanes[0]),raw=rawReport(lane);lane.identities[0].titlePath=['unreviewed old-lane rename'];assert.throws(()=>decodeProtectedReport(raw,lane,process.cwd(),false));});
 
 test('Games declared source titles remain exact before actual protected discovery',()=>{const source=readFileSync(new URL('../explorers-earth/e2e/replatform/games.spec.ts',import.meta.url),'utf8');const declared=[...source.matchAll(/^test\('([^']+)'/gm)].map(m=>m[1]);assert.deepEqual(declared.sort(),[...gamesTitles].sort());});
 
 test('Games fixture-local control remains inside its fixed native API preview proxy',()=>{const source=readFileSync(new URL('../tunes/scripts/games-browser-fixture.ts',import.meta.url),'utf8');const path=source.match(/composed\.app\.post\('([^']+)'/)?.[1];assert.ok(path&&path.startsWith('/api/'),'Fixture control must reach native API through the fixed /api proxy');assert.match(source,/proxy:\{'\/api':\{target:/);});
+
+test('lifecycle requires exactly twelve ordered identities including both C9 extensions',()=>{
+ const m=manifest(),lane=m.lanes.find(l=>l.name==='lifecycle');
+ assert.equal(lane.identities.length,12);assert.equal(validateManifest(m),true);
+ assert.deepEqual(lane.identities.slice(10).map(i=>i.titlePath[0]),['held feedback cannot mutate navigate or log out verified replacement B','held feedback cannot mutate navigate or log out a fresh verified returning A session']);
+ for(const mutate of [l=>l.identities.splice(10),l=>l.identities.push({...l.identities[11],titlePath:['unapproved']}),l=>l.identities[11].titlePath=['unapproved']]){const changed=structuredClone(m);mutate(changed.lanes.find(l=>l.name==='lifecycle'));if(changed.lanes.find(l=>l.name==='lifecycle').identities.length!==12)assert.throws(()=>validateManifest(changed));else assert.throws(()=>validateLaneReceipt(lane,child(changed.lanes.find(l=>l.name==='lifecycle')),provenance));}
+});
+test('C9 cookie freshness assertions expose only boolean comparison diagnostics',()=>{
+ const source=readFileSync(new URL('../explorers-earth/e2e/replatform/lifecycle.spec.ts',import.meta.url),'utf8');
+ assert.ok(source.includes('expect(issued.cookie === owners[owner].cookie).toBe(false)'));
+ assert.ok(source.includes('expect(current.cookie === b.cookie).toBe(false)'));
+ assert.doesNotMatch(source,/expect\([^\n]*cookie\)\.not\.toBe/);
+});
+test('fixture excludes reserved port before bind even when it is available',async()=>{
+ const {runInNewContext}=await import('node:vm');
+ const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8');
+ const start=source.indexOf('async function freePort('),end=source.indexOf('async function waitFor(',start);
+ const body=source.slice(start,end).replace(': Promise<number>','').replace('new Promise<boolean>','new Promise');
+ let candidate=0,created=0;const bound=[];
+ const freePort=runInNewContext(body+';freePort',{randomBytes:()=>({readUInt16BE:()=>[642,643][candidate++]}),createServer:()=>(created++,{once(){},listen(port,host,ready){bound.push(port);ready();},close(done){done();}})});
+ assert.equal(await freePort(51000,51999),51643);assert.deepEqual(bound,[51643]);assert.equal(created,1);
+});
+
+const profileNavigationTitles=["canonical navigation: native Books Movies and Games publish and hide through verified owner preferences","canonical navigation: external account preference refresh preserves all nine saved rows","canonical navigation: external revision contention reports conflict without replay or lost profile update","canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope"];
+test('profile registry preserves original two and appends exactly four reviewed canonical navigation identities',()=>{
+ const m=manifest(),lane=m.lanes.find(l=>l.name==='profile');
+ const source=readFileSync(new URL('../explorers-earth/e2e/replatform/profile.spec.ts',import.meta.url),'utf8');
+ const declared=[...source.matchAll(/^test\('([^']+)'/gm)].map(match=>match[1]);
+ assert.deepEqual(declared,profileNavigationTitles);
+ assert.equal(lane.identities.length,6);
+ assert.deepEqual(lane.identities.slice(2),profileNavigationTitles.map(title=>({file:lane.spec,titlePath:[title],project:'chromium-pr-safe',repeat:0})));
+ assert.equal(validateManifest(m),true);
+ for(const mutate of [...[2,3,4,5].map(index=>l=>l.identities.splice(index,1)),l=>l.identities.push({...l.identities[2],titlePath:['unapproved extra']}),l=>l.identities.push(l.identities[2]),l=>l.identities[2].titlePath=['unreviewed'],l=>l.identities[2].repeat=1,l=>l.identities[2].project='other']){const changed=structuredClone(m);mutate(changed.lanes.find(l=>l.name==='profile'));assert.throws(()=>validateLaneReceipt(lane,child(changed.lanes.find(l=>l.name==='profile')),provenance));}
+});

@@ -9,7 +9,7 @@ import { UnpublishCategoryDialog } from "./components/UnpublishCategoryDialog";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import {
   updatePasswordMutation,
 } from "./api/mutation";
@@ -23,7 +23,6 @@ import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
 import ProfileAccountSettings from "./components/ProfileAccountSettings";
-import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
 import { createCanonicalAccountLifecycleService, type CanonicalAccountLifecycleDto } from "../../services/accountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 import { useAccountLifecycleIdentity } from "../../services/useAccountLifecycleIdentity";
@@ -32,22 +31,6 @@ import { useOwnerMusicAvailability } from "../music/PublicMusicAvailabilityProvi
 import { useCanonicalAccount } from "../Profile/api/useCanonicalAccount";
 import { useLogout } from "../../hooks/useLogout";
 import { closeLocalMusicSession } from "../music/musicSessionBoundary";
-
-// Retained category UI reads its legacy settings projection until category conversion.
-// The transport in main.tsx strips all canonical/session credentials from this read.
-const settingsAccountQuery = gql`
-  query SettingsAccount($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      documentId
-      accounts {
-        documentId Account_Name Account_Type mobile_number Addresss public_profile
-        public_recommendations public_music public_movie public_guides public_books
-        public_games public_apps public_products public_people pinned_nav_tabs auto_pinning
-      }
-    }
-  }
-`;
-
 
 const Settings = memo(() => {
   const identity = useAccountLifecycleIdentity();
@@ -143,21 +126,11 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
 
   const data = { usersPermissionsUser: { provider: "google" } };
 
-  const { loading: settingsLoading } = useQuery(settingsAccountQuery, {
-    variables: { documentId: user?.documentId }, skip: !user?.documentId,
-  });
+  const settingsLoading = !categoryNavigation.error && (!categoryNavigation.authority || !categoryNavigation.content);
   const navigationAccountDocumentId = categoryNavigation.snapshot?.scope.accountDocumentId;
-  const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
-    variables: {
-      accountDocumentId: navigationAccountDocumentId,
-    },
-    skip: !navigationAccountDocumentId,
-  });
 
   useEffect(() => {
-    if (!settingsLoading) {
-      (window as any).__dashboardLoaded = true;
-    }
+    (window as any).__dashboardLoaded = !settingsLoading;
   }, [settingsLoading]);
 
   const { t, i18n } = useTranslation();
@@ -257,18 +230,8 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
 
   const isAutoPinningEnabled = categoryNavigation.snapshot?.autoPinning ?? true;
 
-  // Map each tab ID to its published list count
-  const categoryListCountMap: Record<string, number> = useMemo(() => ({
-    public_recommendations: listCountsData?.recommendationLists?.length ?? 0,
-    public_movie:           listCountsData?.movieLists?.length ?? 0,
-    public_books:           listCountsData?.bookLists?.length ?? 0,
-    public_games:           listCountsData?.gameLists?.length ?? 0,
-    public_apps:            listCountsData?.appLists?.length ?? 0,
-    public_products:        listCountsData?.productLists?.length ?? 0,
-    public_people:          listCountsData?.personLists?.length ?? 0,
-    public_guides:          listCountsData?.guides?.length ?? 0,
-    public_profile:         0,
-  }), [listCountsData]);
+  // Unknown content has no count; only verified native counts enter ranking.
+  const categoryListCountMap = categoryNavigation.content?.counts ?? {};
 
   const effectiveAccount = {
     ...categoryNavigation.snapshot?.visibility,
@@ -753,7 +716,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                             const rowSaving = !isProfile && key !== 'public_music' && isCategoryPending(key as CategoryId);
                             const rowLabel = <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">{icon}</div>
-                              <span className="text-xs text-white font-poppins">{label}</span>
+                              <span className="text-xs text-white font-poppins">{label}{!isProfile && key !== 'public_music' && categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' && <span className="text-[10px] text-dashboard-muted ml-2">{categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : 'Unavailable – refresh to verify'}</span>}</span>
                             </div>;
                             if (key === 'public_music') return <MusicPublishSwitch key={key} origin={categoryNavigation.authority} ready compactLabel={rowLabel} />;
                             return (
@@ -902,7 +865,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                               const isProfile = key === 'public_profile';
                               const isEnabled = key === "public_profile" || (key === "public_music" ? musicPublishing.state.kind === "published" : categoryNavigation.snapshot?.visibility[key as CategoryId] === "Yes");
                               const isPinned = isTabPinned(key);
-                              const pinHint = key === 'public_music' ? musicPinHints[musicPublishing.state.kind] : !isEnabled ? 'Visibility off' : null;
+                              const pinHint = key === 'public_music' ? musicPinHints[musicPublishing.state.kind] : isProfile ? null : !isEnabled ? 'Visibility off' : categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' ? 'Unavailable – refresh to verify' : null;
                               return (
                                 <div key={key} className={`flex min-h-11 min-w-0 items-center justify-between gap-3 py-1.5 transition-opacity duration-150 ${(isProfile || (!isEnabled && !isPinned)) ? 'opacity-50' : ''}`}>
                                   <div className="flex min-w-0 items-center gap-2 break-words">

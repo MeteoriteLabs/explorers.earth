@@ -1,7 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
+import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
 import { submitPinnedCategoryUnpublish } from './setup/category-navigation-helpers';
 import { bookFixtureId } from './setup/books-owner-content';
+
+function preferenceWrite(before: ReturnType<typeof canonicalCategoryAccount>, change: { category?: string; isPublic?: boolean; pins?: string[] }) {
+  const fields = new Map<string,string>([...categories.map(category => [category.route, category.field] as [string,string]), ['music', 'public_music']]);
+  return { expectedRevision: before.revision, categories: before.categories.map(row => ({ ...row,
+    ...(row.category === change.category ? { isPublic: change.isPublic } : {}),
+    ...(change.pins ? { pinnedOrder: change.pins.includes(fields.get(row.category)!) ? change.pins.indexOf(fields.get(row.category)!) - 1 : null } : {}),
+  })) };
+}
 
 for (const category of categories) {
   // Break caught: Off forgets only visibility, or On silently restores saved pin.
@@ -12,9 +20,10 @@ for (const category of categories) {
     const guest = await openFixture(browser, baseURL!, state);
     try {
       await settings(owner.page);
+      const beforeOff = canonicalCategoryAccount(state);
       await submitPinnedCategoryUnpublish(owner.page, owner.page.getByRole('checkbox', { name: category.label, exact: true }), category.label);
       await expect.poll(() => state.writes.length).toBe(1);
-      expect(state.writes.map(r => r.variables)).toEqual([{ documentId: 'browser-account', data: { [category.field]: 'No', pinned_nav_tabs: ['public_profile', other] } }]);
+      expect(state.writes.map(r => r.variables)).toEqual([preferenceWrite(beforeOff, { category: category.route, isPublic: false, pins: ['public_profile', other] })]);
       await owner.page.reload(); await settings(owner.page, true);
       await expect(owner.page.getByRole('checkbox', { name: category.label, exact: true })).not.toBeChecked();
       await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
@@ -24,18 +33,24 @@ for (const category of categories) {
       await guest.page.goto(`/${fixtureUser.username}/${category.route}?utm_source=browser`);
       await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}?utm_source=browser`);
       await owner.page.goto(`/recommendations/${category.route}`);
+      const beforeOn = canonicalCategoryAccount(state);
       await toggle(owner.page.getByRole('checkbox').first(), true);
-      expect(state.writes.at(-1)?.variables.data).toEqual({ [category.field]: 'Yes' });
+      expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeOn, { category: category.route, isPublic: true }));
       expect(state.account.pinned_nav_tabs).toEqual(['public_profile', other]);
       await settings(owner.page, true);
       const pin = owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true });
+      const beforePin = canonicalCategoryAccount(state);
       await expect(pin).not.toBeChecked(); await toggle(pin, true);
-      expect(state.writes.at(-1)?.variables.data).toEqual({ pinned_nav_tabs: ['public_profile', other, category.field] });
+      expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforePin, { pins: ['public_profile', other, category.field] }));
       await owner.page.reload(); await settings(owner.page, true); await expect(pin).toBeChecked();
       await guest.page.goto(`/${fixtureUser.username}`);
       await expect(guest.page.getByRole('link', { name: category.route[0].toUpperCase() + category.route.slice(1), exact: true })).toBeVisible();
       expect(guest.guard.vendors).toEqual([]);
-      expect(await guest.page.evaluate(() => ({ auth: localStorage.getItem('auth-storage'), token: localStorage.getItem('qrtoken') }))).toEqual({ auth: null, token: null });
+      const persisted = await guest.page.evaluate(() => ({ auth: localStorage.getItem('auth-storage'), token: localStorage.getItem('qrtoken') }));
+      expect(persisted.token).toBeNull();
+      // Canonical Zustand persistence retains only an inert empty envelope.
+      // Any user, account, token or authority field must still fail this check.
+      if (persisted.auth !== null) expect(JSON.parse(persisted.auth)).toEqual({ state: {}, version: 0 });
     } finally { await closeFixture(owner); await closeFixture(guest); }
   });
 }
@@ -51,8 +66,9 @@ test('Profile mandatory, five slots, unpublished pin blocked and hidden saved ch
     await people.focus(); await people.press('Space');
     await expect(owner.page.getByRole('alert')).toContainText('up to 5 tabs'); expect(state.writes).toEqual([]);
     state.account.public_books = 'No'; await owner.page.reload(); await settings(owner.page, true);
+    const beforeUnpin = canonicalCategoryAccount(state);
     await toggle(owner.page.getByRole('checkbox', { name: 'Pin Books Tab' }), false);
-    expect(state.writes.at(-1)?.variables.data).toEqual({ pinned_nav_tabs: ['public_profile', 'public_movie', 'public_apps', 'public_products'] });
+    expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeUnpin, { pins: ['public_profile', 'public_movie', 'public_apps', 'public_products'] }));
     expect(state.account.auto_pinning).toBe(false);
   } finally { await closeFixture(owner); }
 });
@@ -64,9 +80,11 @@ for (const failure of ['read', 'write', 'lost', 'verification'] as const) {
     try {
       await settings(owner.page, true);
       const before = state.writes.length;
-      if (failure === 'read') state.faults.set('CategoryNavigationAccount', [{ kind: 'error' }]);
-      else if (failure === 'verification') state.faults.set('CategoryNavigationAccount', [{}, { kind: 'error' }]);
-      else state.faults.set('UpdateTabVisibility', [{ kind: failure === 'lost' ? 'lost' : 'error' }]);
+      if (failure === 'read') state.faults.set('/api/explorers/v1/me', [{ kind: 'error' }]);
+      // The transaction reads once, commit rereads the revision, then verifies
+      // after PATCH. Fail that final read, after the actual committed mutation.
+      else if (failure === 'verification') state.faults.set('/api/explorers/v1/me', [{}, {}, { kind: 'error' }]);
+      else state.faults.set('/api/explorers/v1/account', [{ kind: failure === 'lost' ? 'lost' : 'error' }]);
       const control = owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true });
       await submitPinnedCategoryUnpublish(owner.page, control, 'Books Tab');
       await expect(owner.page.getByRole('alert').filter({ has: owner.page.getByRole('button', { name: 'Refresh', exact: true }) })).toBeVisible();
@@ -91,7 +109,7 @@ test('two owner tabs merge latest pins, rapid repeated activation cannot add dup
     await toggle(owner.page.getByRole('checkbox', { name: 'Pin Games Tab' }), true);
     await toggle(second.getByRole('checkbox', { name: 'Pin Apps & Tools Tab' }), true);
     await expect.poll(() => state.account.pinned_nav_tabs).toEqual(['public_profile', 'public_books', 'public_games', 'public_apps']);
-    let release!: () => void; state.faults.set('UpdateTabVisibility', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
+    let release!: () => void; state.faults.set('/api/explorers/v1/account', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
     const control = second.getByRole('checkbox', { name: 'Books Tab', exact: true });
     await submitPinnedCategoryUnpublish(second, control, 'Books Tab'); await expect(control).toBeDisabled(); await control.press('Space');
     expect(state.writes).toHaveLength(3); release(); await expect(control).not.toBeChecked();
@@ -260,15 +278,16 @@ test('offline/online and Music outage preserve unrelated pins until explicit fre
   const owner = await openFixture(browser, baseURL!, state, { owner: true });
   try {
     await settings(owner.page, true);
-    state.faults.set('CategoryNavigationAccount', [{ kind: 'offline' }]);
+    state.faults.set('/api/explorers/v1/me', [{ kind: 'offline' }]);
     await owner.context.setOffline(true);
     const pin = owner.page.getByRole('checkbox', { name: 'Pin Games Tab' }); await pin.focus(); await pin.press('Space');
     await expect(owner.page.getByRole('button', { name: 'Refresh', exact: true })).toBeVisible(); expect(state.writes).toEqual([]);
     expect(state.account.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books']);
     await owner.context.setOffline(false); await expect(pin).toBeEnabled(); expect(state.writes).toEqual([]);
-    state.faults.set('/api/music/public-profile/browser-account', Array.from({ length: 10 }, () => ({ kind: 'error' as const })));
+    state.faults.set(`/api/music/public-profile/${canonicalCategoryAccount(state).id}`, Array.from({ length: 10 }, () => ({ kind: 'error' as const })));
+    const beforePin = canonicalCategoryAccount(state);
     await toggle(pin, true);
-    expect(state.writes.at(-1)?.variables.data).toEqual({ pinned_nav_tabs: ['public_profile', 'public_music', 'public_books', 'public_games'] });
+    expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforePin, { pins: ['public_profile', 'public_music', 'public_books', 'public_games'] }));
     expect(state.account.public_music).toBe('Yes'); expect(state.mode).toBe('public');
   } finally { await owner.context.setOffline(false); await closeFixture(owner); }
 });
@@ -281,7 +300,7 @@ test('ordinary stale loaded account rereads latest pins and route/account change
     await toggle(owner.page.getByRole('checkbox', { name: 'Pin Games Tab' }), true);
     expect(state.account.pinned_nav_tabs).toEqual(['public_profile', 'public_books', 'public_apps', 'public_games']);
     const writes = state.writes.length;
-    state.faults.set('CategoryNavigationAccount', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
+    state.faults.set('/api/explorers/v1/me', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
     const books = owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true }); await submitPinnedCategoryUnpublish(owner.page, books, 'Books Tab'); await expect(books).toBeDisabled();
     state.account.documentId = 'fixture-account-b'; await owner.page.goto('/recommendations/books'); release();
     await expect(owner.page.getByRole('checkbox').first()).toBeEnabled(); expect(state.writes).toHaveLength(writes); expect(state.account.public_books).toBe('Yes');

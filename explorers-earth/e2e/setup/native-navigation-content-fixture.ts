@@ -1,0 +1,61 @@
+import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
+import { bookFixtureId } from './books-owner-content';
+import * as contract from '../../../tunes/shared/explorersOwnerContentContract';
+
+/** Contained collection fixtures only; nonempty recommendations require their own qualified adapter. */
+export function createNativeNavigationContentFixture(category: 'movies' | 'games', lists: () => Record<string, any>[], legacyAccountId: string) {
+  let signature = '', revision = 0;
+  const snapshots = new Map<string, { revision: string; expiresAt: number }>();
+  return (url: URL): { status: number; body: unknown } | undefined => {
+    const base = '/api/explorers/v1';
+    if (!url.pathname.startsWith(base + '/')) return;
+    const path = url.pathname.slice(base.length);
+    const snapshot = path === `/categories/${category}/content-snapshot`;
+    const validate = path === `/categories/${category}/content-snapshot/validate`;
+    const stream = path === '/collections' && url.searchParams.get('category') === category ? 'collections'
+      : path === '/recommendations' && url.searchParams.get('category') === category ? 'recommendations'
+      : path === `/categories/${category}/memberships` ? 'memberships'
+      : path === `/categories/${category}/top-picks` ? 'pins' : undefined;
+    if (!snapshot && !validate && !stream) return;
+    const fail = (code: string, status: number) => ({ status, body: { error: { code, message: 'Contained native content read rejected', requestId: 'navigation-native' } } });
+    if ([...url.searchParams.keys()].some(key => url.searchParams.getAll(key).length !== 1)) return fail('INVALID_INPUT', 422);
+    const params = Object.fromEntries(url.searchParams);
+    const schema = snapshot ? contract.ownerSnapshotRequestSchema : validate ? contract.ownerSnapshotValidationRequestSchema
+      : stream === 'collections' ? contract.ownerCollectionsRequestSchema : stream === 'recommendations' ? contract.ownerRecommendationsRequestSchema
+      : stream === 'memberships' ? contract.ownerMembershipsRequestSchema : contract.ownerTopPicksRequestSchema;
+    const parsed = schema.safeParse(stream === 'collections' || stream === 'recommendations' ? params : { category, ...params });
+    if (!parsed.success || parsed.data.category !== category) return fail('INVALID_INPUT', 422);
+    const source = lists();
+    if (source.some(list => list.account?.documentId !== legacyAccountId)) return fail('FORBIDDEN', 403);
+    const relation = category === 'movies' ? 'recommended_movies' : 'recommended_games';
+    if (source.some(list => !Array.isArray(list[relation]) || list[relation].length !== 0)) return fail('PROVIDER_UNAVAILABLE', 503);
+    const next = JSON.stringify(source);
+    if (next !== signature) { signature = next; revision++; }
+    const collections = source.map((list, displayOrder) => contract.ownerCollectionDtoSchema.parse({
+      id: bookFixtureId('collection', list.documentId), accountId: canonicalAccountFixture().id, category,
+      title: list.List_Name, slug: list.slug, visibility: list.visibility ? 'public' : 'private',
+      publicationState: list.canonicalPublicationState ?? (list.Visibility ? 'published' : 'draft'),
+      revision: list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null,
+      archived: list.archived === true, displayOrder,
+    }));
+    let snapshotToken = params.snapshotToken;
+    if (!snapshotToken && (snapshot || stream && !params.cursor)) {
+      snapshotToken = `${category}-fixture-${revision}-${snapshots.size}`;
+      snapshots.set(snapshotToken, { revision: String(revision), expiresAt: Date.now() + 60000 });
+    }
+    const observed = snapshotToken && snapshots.get(snapshotToken);
+    if (!observed || observed.revision !== String(revision) || observed.expiresAt <= Date.now()) return fail('CONFLICT', 409);
+    const common = { version: 'explorers-owner-content/v2', snapshotToken, expiresAt: observed.expiresAt };
+    if (snapshot || validate) return { status: 200, body: contract.ownerSnapshotSchema.parse({ ...common, revision: String(revision), pinRevision: 1 }) };
+    const prefix = `${category}-offset-`;
+    if (params.cursor && (!params.cursor.startsWith(prefix) || !/^(0|[1-9][0-9]*)$/.test(params.cursor.slice(prefix.length)))) return fail('INVALID_INPUT', 422);
+    const offset = params.cursor ? Number(params.cursor.slice(prefix.length)) : 0;
+    if (!Number.isSafeInteger(offset)) return fail('INVALID_INPUT', 422);
+    const limit = Number(params.limit ?? 24);
+    const items = stream === 'collections' ? collections.filter(item => params.status === 'all' || item.archived === (params.status === 'archived')) : [];
+    const pageSchema = stream === 'collections' ? contract.ownerCollectionPageSchema : stream === 'recommendations' ? contract.ownerRecommendationPageSchema
+      : stream === 'memberships' ? contract.ownerMembershipPageSchema : contract.ownerTopPickPageSchema;
+    return { status: 200, body: pageSchema.parse({ ...common, snapshot: String(revision), items: items.slice(offset, offset + limit),
+      nextCursor: offset + limit < items.length ? `${prefix}${offset + limit}` : null, ...(stream === 'pins' ? { pinRevision: 1 } : {}) }) };
+  };
+}

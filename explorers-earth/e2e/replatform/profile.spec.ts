@@ -184,3 +184,195 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     expect(apiCalls.some((entry) => entry.startsWith('PATCH /api/explorers/v1/account 200'))).toBe(true);
   });
 }
+
+// These additional cases use only the harness's existing signed sessions and
+// canonical HTTP routes. They deliberately do not seed persisted auth state.
+type NavigationAccount = {
+  id: string; revision: number; onboardingStatus: string; autoPinning: boolean;
+  bioPlain: string | null;
+  categories: Array<{ category: string; isPublic: boolean; displayOrder: number; pinnedOrder: number | null }>;
+};
+const navigationBase = '/api/explorers/v1';
+const navigationOwner = (fixture.personas as Fixture['personas'] & { ownerC: Persona }).ownerC;
+async function navigationAccount(page: Page): Promise<NavigationAccount> {
+  const response = await page.request.get(`${fixture.origin}${navigationBase}/me`);
+  expect(response.status()).toBe(200);
+  return (await response.json()).account;
+}
+async function navigationPatch(page: Page, data: Record<string, unknown>) {
+  return page.request.patch(`${fixture.origin}${navigationBase}/account`, {
+    headers: { Origin: fixture.origin }, data,
+  });
+}
+async function navigationSession(page: Page, persona: Persona) {
+  const separator = persona.cookie.indexOf('=');
+  await page.context().addCookies([{ name: persona.cookie.slice(0, separator),
+    value: persona.cookie.slice(separator + 1), url: fixture.origin, sameSite: 'Lax' }]);
+  await page.route('**/*', route => {
+    const target = new URL(route.request().url());
+    return target.origin === fixture.origin || ['data:', 'blob:'].includes(target.protocol)
+      ? route.continue() : route.abort();
+  });
+  const session = await page.request.get(`${fixture.origin}/api/auth/get-session`);
+  expect(session.status()).toBe(200);
+  // Boolean identity assertions avoid printing session payloads on failure.
+  expect((await session.json()).user?.id === persona.userId).toBe(true);
+  let account = await navigationAccount(page);
+  expect(account.id === persona.userId).toBe(false);
+  expect(account.id).toMatch(/^[0-9a-f-]{36}$/);
+  if (account.onboardingStatus !== 'complete') {
+    const response = await navigationPatch(page, { expectedRevision: account.revision,
+      onboardingStatus: 'complete', handle: persona.handle, displayName: 'Navigation Fixture', accountType: 'Personal' });
+    expect(response.status()).toBe(200);
+    account = await navigationAccount(page);
+  }
+  return account;
+}
+async function prepareNavigation(page: Page) {
+  const account = await navigationSession(page, navigationOwner);
+  const response = await navigationPatch(page, { expectedRevision: account.revision, autoPinning: false,
+    categories: account.categories.map(row => ({ ...row, isPublic: false, pinnedOrder: null })) });
+  expect(response.status()).toBe(200);
+  const legacyOperations: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/graphql') {
+      const operation = request.postDataJSON()?.operationName;
+      if (['CategoryNavigationAccount', 'SettingsAccount', 'PublicCategoryListCounts', 'CheckPublishedLists'].includes(operation))
+        legacyOperations.push(operation);
+    }
+  });
+  return legacyOperations;
+}
+async function openNavigation(page: Page) {
+  await page.goto('/settings#public-navigation');
+  await expect(page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true })).toBeEnabled();
+}
+async function createNavigationList(page: Page, category: 'books' | 'movies' | 'games') {
+  const response = await page.request.post(`${fixture.origin}${navigationBase}/collections`, {
+    headers: { Origin: fixture.origin, 'Idempotency-Key': crypto.randomUUID() },
+    data: { category, title: `Navigation ${category}`, slug: `navigation-${crypto.randomUUID()}`,
+      visibility: 'public', publicationState: 'published' },
+  });
+  expect(response.status()).toBe(201);
+  const collection = (await response.json()).collection;
+  expect(collection).toMatchObject({ accountId: (await navigationAccount(page)).id,
+    category, visibility: 'public', publicationState: 'published' });
+  return collection as { id: string; revision: number };
+}
+
+test('canonical navigation: native Books Movies and Games publish and hide through verified owner preferences', async ({ page }) => {
+  const legacy = await prepareNavigation(page);
+  for (const category of ['books', 'movies', 'games'] as const) await createNavigationList(page, category);
+  await openNavigation(page);
+  await page.getByRole('button', { name: /Public Visibility/i }).click();
+  const labels = { books: 'Books Tab', movies: 'Movies & Shows Tab', games: 'Games Tab' };
+  for (const category of ['books', 'movies', 'games'] as const) {
+    const control = page.getByRole('region', { name: 'Public visibility settings' })
+      .getByRole('checkbox', { name: labels[category], exact: true });
+    await expect(control).toBeEnabled();
+    await expect(control).not.toBeChecked();
+    await control.click({ force: true });
+    await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(true);
+    await expect(control).toBeChecked();
+    await control.click({ force: true });
+    await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(false);
+    await expect(control).not.toBeChecked();
+  }
+  expect(legacy).toEqual([]);
+});
+
+test('canonical navigation: external account preference refresh preserves all nine saved rows', async ({ page }) => {
+  const legacy = await prepareNavigation(page);
+  await openNavigation(page);
+  const account = await navigationAccount(page);
+  const categories = account.categories.map(row => ({ ...row, isPublic: true, pinnedOrder: null }));
+  const response = await navigationPatch(page, { expectedRevision: account.revision, autoPinning: true, categories });
+  expect(response.status()).toBe(200);
+  await page.reload();
+  await expect(page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true })).toBeChecked();
+  await page.getByRole('button', { name: /Public Visibility/i }).click();
+  await expect(page.getByRole('region', { name: 'Public visibility settings' }).getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeChecked();
+  const refreshed = await navigationAccount(page);
+  expect(refreshed.categories).toEqual(categories);
+  expect(refreshed.categories).toHaveLength(9);
+  expect(legacy).toEqual([]);
+});
+
+test('canonical navigation: external revision contention reports conflict without replay or lost profile update', async ({ page }) => {
+  const legacy = await prepareNavigation(page);
+  await openNavigation(page);
+  const account = await navigationAccount(page);
+  const autoPin = page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true });
+  await expect(autoPin).not.toBeChecked();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let writes = 0;
+  await page.route(`**${navigationBase}/account`, async route => {
+    if (route.request().method() !== 'PATCH') return route.continue();
+    writes += 1;
+    await gate;
+    await route.continue();
+  });
+  try {
+    const admitted = page.waitForRequest(request => new URL(request.url()).pathname === `${navigationBase}/account` && request.method() === 'PATCH');
+    await autoPin.click({ force: true });
+    const request = await admitted;
+    await expect(autoPin).not.toBeChecked();
+    expect(request.postDataJSON().expectedRevision).toBe(account.revision);
+    const external = await navigationPatch(page, { expectedRevision: account.revision, bioPlain: 'External navigation revision sentinel' });
+    expect(external.status()).toBe(200);
+    const conflict = page.waitForResponse(response => new URL(response.url()).pathname === `${navigationBase}/account`
+      && response.request().method() === 'PATCH' && response.status() === 409);
+    release();
+    await conflict;
+    await expect(autoPin).not.toBeChecked();
+    await expect(page.getByRole('alert').filter({ hasText: 'Navigation changed elsewhere' })).toBeVisible();
+    const preserved = await navigationAccount(page);
+    expect(preserved.bioPlain).toBe('External navigation revision sentinel');
+    expect(preserved.autoPinning).toBe(false);
+    expect(preserved.revision).toBe(account.revision + 1);
+    expect(writes).toBe(1);
+    expect(legacy).toEqual([]);
+  } finally { release(); await page.unroute(`**${navigationBase}/account`); }
+});
+
+test('canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope', async ({ page, browser }) => {
+  const legacy = await prepareNavigation(page);
+  const list = await createNavigationList(page, 'books');
+  const owner = await navigationAccount(page);
+  const foreignContext = await browser.newContext();
+  try {
+    const foreignPage = await foreignContext.newPage();
+    const foreign = await navigationSession(foreignPage, fixture.personas.ownerB);
+    expect(foreign.id === owner.id).toBe(false);
+    await openNavigation(foreignPage);
+    const foreignAuto = foreignPage.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true });
+    if (foreign.autoPinning) await expect(foreignAuto).toBeChecked();
+    else await expect(foreignAuto).not.toBeChecked();
+    const denied = await foreignPage.request.get(`${fixture.origin}${navigationBase}/collections/${list.id}/editable`);
+    expect(denied.status()).toBe(404);
+    const deniedMutation = await foreignPage.request.patch(`${fixture.origin}${navigationBase}/collections/${list.id}`, {
+      headers: { Origin: fixture.origin, 'Idempotency-Key': crypto.randomUUID() },
+      data: { expectedRevision: list.revision, visibility: 'private' },
+    });
+    expect(deniedMutation.status()).toBe(404);
+    const ambiguous = await foreignPage.request.patch(`${fixture.origin}${navigationBase}/account`, {
+      headers: { Origin: fixture.origin, 'X-Account-Id': owner.id },
+      data: { expectedRevision: owner.revision, autoPinning: true },
+    });
+    expect(ambiguous.status()).toBe(401);
+    expect((await navigationAccount(page)).revision).toBe(owner.revision);
+    expect((await navigationAccount(foreignPage)).revision).toBe(foreign.revision);
+    await openNavigation(page);
+    const ownerAuto = page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true });
+    await expect(ownerAuto).not.toBeChecked();
+    await ownerAuto.click({ force: true });
+    await expect.poll(async () => (await navigationAccount(page)).autoPinning).toBe(true);
+    await expect(ownerAuto).toBeChecked();
+    expect((await navigationAccount(foreignPage)).revision).toBe(foreign.revision);
+    await foreignPage.reload();
+    if (foreign.autoPinning) await expect(foreignAuto).toBeChecked();
+    else await expect(foreignAuto).not.toBeChecked();
+    expect(legacy).toEqual([]);
+  } finally { await foreignContext.close(); }
+});

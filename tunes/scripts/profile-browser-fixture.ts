@@ -45,6 +45,7 @@ let interrupted = false;
 async function freePort(min = 55000, max = 60999): Promise<number> {
   for (let i = 0; i < 150; i++) {
     const port = min + randomBytes(2).readUInt16BE(0) % (max - min + 1);
+    if (port === 51642) continue;
     const free = await new Promise<boolean>((done) => {
       const server = createServer();
       server.once('error', () => done(false));

@@ -1,3 +1,4 @@
+import type { AccountDto } from '../../../../tunes/shared/explorersContract';
 export const CATEGORY_IDS = [
   'public_recommendations', 'public_music', 'public_guides', 'public_movie',
   'public_books', 'public_games', 'public_apps', 'public_products', 'public_people',
@@ -12,6 +13,8 @@ export type GenericNavigationIntent =
   | { category: 'public_music'; action: 'pin' | 'unpin' };
 export type NavigationSnapshot = {
   scope: Scope;
+  revision: number;
+  categories: AccountDto['categories'];
   visibility: Record<CategoryId, 'Yes' | 'No' | null>;
   savedPins: unknown;
   autoPinning: boolean;
@@ -59,8 +62,13 @@ export function planCategoryIntent(
   const savedPins = snapshot.savedPins;
 
   if (action === 'publish') {
-    const blocked = eligibilityBlock(eligibility);
-    if (blocked) return blocked;
+    // Visibility is the owner's declared intent and does not depend on current
+    // inventory. Content eligibility deliberately does NOT gate this: a category
+    // whose producer is not built yet ('unknown') or which is simply empty
+    // ('no-content') must still be togglable, or our unbuilt backends would present
+    // as the owner's control being broken. Emptiness is a display concern, handled
+    // on the public side. Pinning keeps its eligibility gate below, because a
+    // pinned empty tab is a dead link in a five-slot public nav.
     return visibility === 'Yes'
       ? { kind: 'noop' }
       : { kind: 'write', patch: { [category]: 'Yes' } };

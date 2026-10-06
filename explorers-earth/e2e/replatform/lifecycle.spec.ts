@@ -168,3 +168,102 @@ test(LIFECYCLE_CASES[9], async ({ page }) => {
     expect((await control('observe', 1)).feedback).toEqual([]);
     expect((await control('observe', 0)).feedback).toHaveLength(1);
 });
+
+// Read existing authority only; replacement authority always comes from real refresh requests.
+async function authority(page: Page) {
+    return page.evaluate(async () => {
+        const modulePath = '/src/store/store.ts';
+        const { default: store } = await import(modulePath);
+        const { generation, accountId, status, isAuthenticated, logoutError } = store.getState();
+        return { generation, accountId, status, isAuthenticated, logoutError };
+    });
+}
+async function verifyReplacement(page: Page, owner: number) {
+    const issued = await control('session', owner);
+    expect(issued.cookie === owners[owner].cookie).toBe(false);
+    await session(page.context(), { ...owners[owner], cookie: issued.cookie });
+    const sessionResponse = page.waitForResponse(r => new URL(r.url()).pathname === '/api/auth/get-session');
+    const meResponse = page.waitForResponse(r => new URL(r.url()).pathname === `${base}/me`);
+    await page.evaluate(async () => {
+        const modulePath = '/src/lib/authClient.ts';
+        const { authClient } = await import(modulePath);
+        await authClient.refresh();
+    });
+    const authenticated = await sessionResponse, me = await meResponse;
+    expect(authenticated.status()).toBe(200);
+    expect(me.status()).toBe(200);
+    const verifiedSession = await authenticated.json();
+    expect(verifiedSession.user.id).toBe(owners[owner].userId);
+    expect(verifiedSession.session.id).toEqual(expect.any(String));
+    expect((await me.json()).account.id).toBe(owners[owner].accountId);
+    await expect.poll(() => authority(page)).toMatchObject({ accountId: owners[owner].accountId, status: 'active-complete', isAuthenticated: true, logoutError: false });
+    return { sessionId: verifiedSession.session.id as string, cookie: issued.cookie as string, authority: await authority(page) };
+}
+for (const returningA of [false, true]) test(LIFECYCLE_CASES[returningA ? 11 : 10], async ({ page }) => {
+    await settings(page);
+    const initialSession = await page.request.get('/api/auth/get-session');
+    expect(initialSession.status()).toBe(200);
+    const initialSessionId = (await initialSession.json()).session.id;
+    const initialAuthority = await authority(page);
+    const before = [await control('observe', 0), await control('observe', 1)];
+    await deletionReason(page);
+    let release!: () => void, arrived!: () => void;
+    const held = new Promise<void>(done => release = done), ready = new Promise<void>(done => arrived = done);
+    let feedbackId = '', attempts = 0;
+    await page.route(`**${base}/account/deletion-feedback`, async route => {
+        ++attempts;
+        const response = await route.fetch();
+        expect(response.status()).toBe(201);
+        feedbackId = (await response.json()).feedback.id;
+        arrived();
+        await held;
+        await route.fulfill({ response });
+    });
+    await page.getByPlaceholder('Please let us know the reason for leaving...').fill('Held original A feedback');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await ready;
+    const b = await verifyReplacement(page, 1);
+    expect(b.sessionId).not.toBe(initialSessionId);
+    expect(b.authority.generation).toBeGreaterThan(initialAuthority.generation);
+    const current = returningA ? await verifyReplacement(page, 0) : b;
+    if (returningA) {
+        expect(current.sessionId).not.toBe(initialSessionId);
+        expect(current.sessionId).not.toBe(b.sessionId);
+        expect(current.cookie === b.cookie).toBe(false);
+        expect(current.authority.generation).toBeGreaterThan(b.authority.generation);
+    }
+    const settled = [await control('observe', 0), await control('observe', 1)];
+    expect(settled[0].feedback).toEqual([{ id: feedbackId, reason: 'Held original A feedback' }]);
+    expect(settled[1].feedback).toEqual([]);
+    const staleRequests: string[] = [], staleNavigations: string[] = [];
+    page.on('request', request => {
+        const path = new URL(request.url()).pathname;
+        if (request.method() !== 'GET' && (path.startsWith(`${base}/account/`) || path === '/api/auth/sign-out')) staleRequests.push(path);
+    });
+    page.on('framenavigated', frame => { if (frame === page.mainFrame()) staleNavigations.push(frame.url()); });
+    const delivered = page.waitForResponse(r => new URL(r.url()).pathname === `${base}/account/deletion-feedback`);
+    release();
+    await (await delivered).finished();
+    // Let the fulfilled fetch continuation and React's resulting paint complete.
+    await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+    expect(await authority(page)).toEqual(current.authority);
+    await expect(page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/settings$/);
+    expect(staleNavigations).toEqual([]);
+    expect(staleRequests).toEqual([]);
+    expect(attempts).toBe(1);
+    const stillAuthenticated = await page.request.get('/api/auth/get-session');
+    expect(stillAuthenticated.status()).toBe(200);
+    expect((await stillAuthenticated.json()).session.id).toBe(current.sessionId);
+    const currentMe = await page.request.get(`${base}/me`);
+    expect(currentMe.status()).toBe(200);
+    expect((await currentMe.json()).account.id).toBe(owners[returningA ? 0 : 1].accountId);
+    for (const owner of [0, 1]) {
+        const after = await control('observe', owner);
+        expect(after).toEqual(settled[owner]);
+        expect(after.account).toEqual(before[owner].account);
+        expect(after.security).toEqual(before[owner].security);
+        expect(after.operations).toEqual([]);
+        expect(after.account.status).toBe('active');
+    }
+});

@@ -69,7 +69,9 @@ export function createBooksOwnerFixture(lists: () => Record<string, any>[], lega
       return {status:200,body: detail[1] === 'collections' ? {collection: contract.editableOwnerCollectionSchema.parse({...item,categoryRevision:String(revision)})} : {recommendation:item}};
     }
     let snapshotToken = params.snapshotToken;
-    if (snapshot && !snapshotToken) {
+    // Canonical collection reads may start without a separately issued snapshot.
+    // Continuations must still present the exact token from their first page.
+    if (!snapshotToken && (snapshot || stream && !params.cursor)) {
       snapshotToken = `books-fixture-${revision}-${snapshots.size}`;
       snapshots.set(snapshotToken,{revision:String(revision),expiresAt:Date.now()+60000});
     }
