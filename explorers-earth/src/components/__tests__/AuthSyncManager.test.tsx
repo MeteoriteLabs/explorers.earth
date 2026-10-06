@@ -27,16 +27,23 @@ describe("AuthSyncManager canonical session boundary", () => {
     render(<AuthSyncManager />);
     expect(calls.refresh).toHaveBeenCalledTimes(1);
   });
-  it("reconciles Music owner provisioning from the verified canonical session", async () => {
-    // Nothing called reconcile() before this, so isReadyFor() stayed false and every
-    // Music publication control rendered disabled in the real application.
+  it("provisions no Music owner from a verified session, because the Music surface owns that", async () => {
+    // This component did provision, and provisioning app-wide made a Music owner out of
+    // every signed-in visitor. account_music_identity is the deletion boundary
+    // accountLifecycleMaintenance enforces, so each of those accounts could no longer
+    // finish a deletion request. A Music owner is someone who opened Music, so
+    // pages/Music.tsx provisions from its own canonical scope.
+    //
+    // The positive assertion moved with the behaviour and is stronger there, against the
+    // real client rather than this mock: music-accessibility.spec.ts requires exactly one
+    // ensure on opening Music, and music-fullstack.spec.ts requires it at the canonical
+    // path carrying no bearer.
     verify("account-a");
     render(<AuthSyncManager />);
-    await waitFor(() => expect(calls.reconcile).toHaveBeenCalledTimes(1));
-    expect(calls.reconcile).toHaveBeenCalledWith({ provider: "google", authenticated: true, verified: true,
-      userDocumentId: "user-account-a", account: { documentId: "account-a" } });
+    await waitFor(() => expect(calls.clearStore).not.toHaveBeenCalled());
+    expect(calls.reconcile).not.toHaveBeenCalled();
   });
-  it("reconciles no Music owner without a verified session", () => {
+  it("provisions no Music owner without a verified session either", () => {
     render(<AuthSyncManager />);
     expect(calls.reconcile).not.toHaveBeenCalled();
   });
