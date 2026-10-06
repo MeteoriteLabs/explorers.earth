@@ -50,6 +50,41 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(read("tunes/scripts/music-image-ci-tests.ts")).toContain('["test", "--", "--maxWorkers=2"]');
   });
 
+  it("scopes the blocking scan suppression to the browser apk packages and keeps it expiring", () => {
+    // The gate suppresses named apk packages only, because tunes/Dockerfile ships
+    // chromium for the Puppeteer scraper. The disclosure scan must stay unfiltered,
+    // and the suppression must stay narrow and dated - otherwise "we scan images"
+    // quietly stops meaning anything.
+    const workflow = parseYaml(read(".github/workflows/tunes.yml"));
+    const steps = workflow.jobs["build-test-scan-push"].steps;
+    const gate = steps.find(
+      (step: any) => step.name === "Block fixable high and critical image vulnerabilities",
+    );
+    const disclosure = steps.find(
+      (step: any) => step.name === "Report all high and critical image vulnerabilities",
+    );
+    expect(gate.env.GRYPE_CONFIG).toBe(".grype-gate.yaml");
+    // Complete disclosure reads no config, so the report keeps listing everything.
+    expect(disclosure.env?.GRYPE_CONFIG).toBeUndefined();
+
+    const gateConfig = parseYaml(read(".grype-gate.yaml"));
+    expect(Array.isArray(gateConfig.ignore)).toBe(true);
+    for (const rule of gateConfig.ignore) {
+      // Only ever a named apk package: no vulnerability wildcards, no fix-state
+      // rules, and nothing reaching application dependencies.
+      expect(Object.keys(rule)).toEqual(["package"]);
+      expect(Object.keys(rule.package).sort()).toEqual(["name", "type"]);
+      expect(rule.package.type).toBe("apk");
+      expect(rule.package.name).toMatch(/^(chromium|ffmpeg-[a-z]+)$/);
+    }
+
+    // An expiry a reviewer has to act on, rather than a comment nobody revisits.
+    const reviewBy = Date.parse(`${gateConfig["x-review-by"]}T00:00:00Z`);
+    expect(Number.isFinite(reviewBy)).toBe(true);
+    expect(Date.now()).toBeLessThan(reviewBy);
+    expect(typeof gateConfig["x-tracking"]).toBe("string");
+  });
+
   it("blocks fixable high vulnerabilities and retains a complete disclosure scan", () => {
     const workflow = parseYaml(read(".github/workflows/tunes.yml"));
     const steps = workflow.jobs["build-test-scan-push"].steps;
