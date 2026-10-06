@@ -177,4 +177,57 @@ describe("scoped Music token service", () => {
     }).token.split(".")[0], "base64url").toString("utf8"));
     expect(mintedHeader.kid).toBe("music-current-2026-08");
   });
+
+  it("mints a canonical credential whose subject is the account and whose kind is explicit", () => {
+    // ADR-008. The subject is the canonical account id, and the kind is carried as a
+    // claim so no reader has to guess from the subject's shape.
+    const minted = service().mintCanonical({ accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 });
+    const claims = service().verify(minted.token);
+    expect(claims.sub).toBe("6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411");
+    expect(claims.subjectKind).toBe("canonical-account");
+    expect(claims.sessionVersion).toBe(3);
+    expect(minted.expiresAt).toBe((NOW_SECONDS + 600) * 1_000);
+  });
+
+  it("keeps a legacy credential free of the canonical kind", () => {
+    const minted = service().mint({
+      id: 41, strapiUserDocumentId: "strapi-user-document-id", strapiAccountDocumentId: "strapi-account",
+      identityStatus: "active", sessionVersion: 7,
+    });
+    expect(service().verify(minted.token).subjectKind).toBeUndefined();
+  });
+
+  it.each([
+    ["not a uuid", { accountId: "strapi-user-document-id", musicUserId: 41, sessionVersion: 3 }],
+    ["a non-v4 uuid", { accountId: "6f1a9c42-0d3b-1f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 }],
+    ["a zero venue id", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 0, sessionVersion: 3 }],
+    ["a fractional venue id", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 1.5, sessionVersion: 3 }],
+    ["a zero session version", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 0 }],
+    ["a fractional session version", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 1.5 }],
+  ])("refuses to mint a canonical credential for %s", (_label, input) => {
+    expectTokenError(() => service().mintCanonical(input), "TOKEN_INVALID");
+  });
+
+  it.each([
+    ["an unrecognised subject kind", { subjectKind: "strapi-user" }],
+    ["a canonical kind over a non-uuid subject", { subjectKind: "canonical-account" }],
+  ])("rejects %s", (_label, overrides) => {
+    // The second case is the attack this claim exists to stop: claiming canonical
+    // provenance for a subject that is not a canonical account id.
+    const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, validClaims(overrides));
+    expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
+
+  it("still refuses a claim it does not recognise at all", () => {
+    // Optionality is granted to one named claim; it does not loosen strictness.
+    const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, validClaims({ scope: "all" }));
+    expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
+
+  it("still requires every mandatory claim", () => {
+    const claims = validClaims();
+    delete claims.sessionVersion;
+    const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, claims);
+    expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
 });

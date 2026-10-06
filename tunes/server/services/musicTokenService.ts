@@ -28,6 +28,13 @@ export interface MusicTokenClaims {
   iat: number;
   exp: number;
   sessionVersion: number;
+  /**
+   * ADR-008. Present only when `sub` is a canonical account id. Absent means the
+   * subject is a legacy Strapi user document id. The kind is carried explicitly
+   * because a Strapi document id that happened to be UUID-shaped would otherwise be
+   * resolved against the wrong table.
+   */
+  subjectKind?: typeof CANONICAL_SUBJECT_KIND;
 }
 
 export interface MintedMusicToken {
@@ -49,6 +56,9 @@ interface MusicTokenDependencies {
 
 const HEADER_KEYS = ["alg", "kid"] as const;
 const CLAIM_KEYS = ["aud", "exp", "iat", "iss", "jti", "sessionVersion", "sub"] as const;
+const OPTIONAL_CLAIM_KEYS = ["subjectKind"] as const;
+export const CANONICAL_SUBJECT_KIND = "canonical-account";
+const CANONICAL_SUBJECT_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const KID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const SUBJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,511}$/;
 const JTI_PATTERN = /^[a-f0-9]{32}$/;
@@ -73,17 +83,38 @@ export class MusicTokenService {
         || identity.sessionVersion < 1) {
       throw new MusicTokenError("TOKEN_INVALID", "Music credential cannot be minted for this identity.");
     }
+    return this.issue(identity.strapiUserDocumentId, identity.sessionVersion);
+  }
+
+  /**
+   * ADR-008. Mints a credential whose subject is the canonical account that owns the
+   * venue row. Additive: it does not widen MusicIdentityProjection, so the legacy
+   * path and its call sites keep their guarantees.
+   */
+  mintCanonical(input: { accountId: string; musicUserId: number; sessionVersion: number }): MintedMusicToken {
+    if (!CANONICAL_SUBJECT_PATTERN.test(input.accountId)
+        || !Number.isSafeInteger(input.musicUserId)
+        || input.musicUserId < 1
+        || !Number.isSafeInteger(input.sessionVersion)
+        || input.sessionVersion < 1) {
+      throw new MusicTokenError("TOKEN_INVALID", "Music credential cannot be minted for this identity.");
+    }
+    return this.issue(input.accountId, input.sessionVersion, CANONICAL_SUBJECT_KIND);
+  }
+
+  private issue(sub: string, sessionVersion: number, subjectKind?: typeof CANONICAL_SUBJECT_KIND): MintedMusicToken {
     const iat = Math.floor(this.now() / 1_000);
     const exp = iat + this.configuration.tokenLifetimeSeconds;
     const header = { alg: "HS256", kid: this.configuration.current.kid };
     const claims: MusicTokenClaims = {
       iss: MUSIC_TOKEN_ISSUER,
       aud: MUSIC_TOKEN_AUDIENCE,
-      sub: identity.strapiUserDocumentId,
+      sub,
       jti: this.randomBytes(16).toString("hex"),
       iat,
       exp,
-      sessionVersion: identity.sessionVersion,
+      sessionVersion,
+      ...(subjectKind ? { subjectKind } : {}),
     };
     const unsigned = `${encodeJson(header)}.${encodeJson(claims)}`;
     return {
@@ -107,7 +138,7 @@ export class MusicTokenService {
       const expected = Buffer.from(signature(unsigned, key.secret));
       const provided = Buffer.from(signaturePart);
       if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return invalid();
-      const claims = decodeStrictObject(payloadPart, CLAIM_KEYS) as Partial<MusicTokenClaims>;
+      const claims = decodeStrictObject(payloadPart, CLAIM_KEYS, OPTIONAL_CLAIM_KEYS) as Partial<MusicTokenClaims>;
       validateClaims(claims, this.configuration, now);
       return claims as MusicTokenClaims;
     } catch (error) {
@@ -166,7 +197,9 @@ function validateClaims(
       || !Number.isSafeInteger(claims.iat)
       || !Number.isSafeInteger(claims.exp)
       || !Number.isSafeInteger(claims.sessionVersion)
-      || (claims.sessionVersion ?? 0) < 1) return invalid();
+      || (claims.sessionVersion ?? 0) < 1
+      || (claims.subjectKind !== undefined && claims.subjectKind !== CANONICAL_SUBJECT_KIND)
+      || (claims.subjectKind === CANONICAL_SUBJECT_KIND && !CANONICAL_SUBJECT_PATTERN.test(claims.sub))) return invalid();
   const iat = claims.iat as number;
   const exp = claims.exp as number;
   const lifetime = exp - iat;
@@ -178,7 +211,7 @@ function validateClaims(
   }
 }
 
-function decodeStrictObject(segment: string, expectedKeys: readonly string[]): Record<string, unknown> {
+function decodeStrictObject(segment: string, expectedKeys: readonly string[], optionalKeys: readonly string[] = []): Record<string, unknown> {
   if (!/^[A-Za-z0-9_-]+$/.test(segment)) return invalid();
   const bytes = Buffer.from(segment, "base64url");
   if (bytes.toString("base64url") !== segment) return invalid();
@@ -188,9 +221,12 @@ function decodeStrictObject(segment: string, expectedKeys: readonly string[]): R
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return invalid();
   const keys = Array.from(raw.matchAll(/"([A-Za-z][A-Za-z0-9]*)"\s*:/g), (match) => match[1]);
   if (new Set(keys).size !== keys.length) return invalid();
-  const actualKeys = Object.keys(parsed as object).sort();
-  if (actualKeys.length !== expectedKeys.length
-      || actualKeys.some((key, index) => key !== [...expectedKeys].sort()[index])) return invalid();
+  const actualKeys = Object.keys(parsed as object);
+  // Every required key present, and nothing beyond required plus explicitly optional.
+  // Unknown claims remain refused outright; optionality is never inferred.
+  const allowed = new Set<string>([...expectedKeys, ...optionalKeys]);
+  if (actualKeys.some((key) => !allowed.has(key))) return invalid();
+  if (expectedKeys.some((key) => !actualKeys.includes(key))) return invalid();
   return parsed as Record<string, unknown>;
 }
 
