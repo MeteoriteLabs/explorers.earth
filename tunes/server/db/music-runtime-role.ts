@@ -128,6 +128,7 @@ const expectedRuntimeFunctions = [
   "explorers_content_revision_insert()",
   "explorers_content_revision_lifecycle()",
   "explorers_content_revision_update()",
+  "finalize_canonical_music_venue_deletion(integer,text,text)",
   "finalize_music_identity_deletion(integer,text,text)",
   "guard_book_entity_details()",
   "guard_book_recommendation_context()",
