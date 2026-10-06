@@ -13,6 +13,35 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
     UPDATE deletion_feedback f SET reason=NULL,user_id=NULL,purged_at=clock_timestamp()
     FROM due WHERE f.id=due.id`, [batchSize]);
 
+  // Release the canonical Music venue a pending deletion owns, so the boundary below no
+  // longer applies to it. 6.1 made that boundary reachable by provisioning a mapping,
+  // and without a release a Music owner's deletion request parks there forever.
+  //
+  // The release goes through migration 0042's sanctioned function, which proves the
+  // venue is canonical and owned by a pending account deletion naming it before it
+  // authorizes anything. Deliberately not done here: this code does not set
+  // music.lifecycle_delete_authorized itself, because that is the control standing
+  // between ordinary code and deleting a Music identity, and it belongs inside the
+  // database's sanctioned surface rather than in maintenance.
+  //
+  // A failure leaves the mapping in place, so the boundary below still refuses the
+  // deletion, which is the fail-closed direction. Only a canonical venue is released; a
+  // legacy one carries a Strapi identity its own saga must retire.
+  const releasable = await pool.query<{ operation_id: string; music_user_id: number }>(
+    `SELECT o.id AS operation_id,mi.music_user_id FROM account_lifecycle_operations o
+     JOIN creator_accounts a ON a.id=o.account_id
+     JOIN account_music_identity mi ON mi.account_id=o.account_id
+     JOIN users u ON u.id=mi.music_user_id
+     WHERE o.kind='delete' AND o.state='pending' AND a.status='pending_deletion'
+       AND a.deletion_requested_at<=clock_timestamp()
+       AND u.strapi_user_document_id IS NULL AND u.strapi_account_document_id IS NULL
+     ORDER BY o.created_at,o.id LIMIT $1`, [batchSize]);
+  for (const venue of releasable.rows) {
+    await pool.query("SELECT finalize_canonical_music_venue_deletion($1,$2,$3)",
+      [venue.music_user_id, venue.operation_id, "canonical-account-deletion"])
+      .catch(() => undefined);
+  }
+
   // Music ownership is delivered in 6.1. Record that boundary once, then leave
   // these operations out of the claim window so they cannot starve other owners.
   await pool.query(`WITH blocked AS (SELECT o.id FROM account_lifecycle_operations o

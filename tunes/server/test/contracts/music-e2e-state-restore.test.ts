@@ -154,6 +154,7 @@ describe("Music E2E transactional state restore", () => {
       "0039_music_venue_account_ownership",
       "0040_canonical_music_venue_provisioning",
       "0041_canonical_music_venue_release",
+      "0042_canonical_music_venue_release_function",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

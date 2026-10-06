@@ -70,7 +70,8 @@
     "0038_explorers_movie_media",
     "0039_music_venue_account_ownership",
     "0040_canonical_music_venue_provisioning",
-    "0041_canonical_music_venue_release"
+    "0041_canonical_music_venue_release",
+    "0042_canonical_music_venue_release_function"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",
