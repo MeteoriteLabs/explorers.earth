@@ -62,22 +62,19 @@ export function createAccountMusicRepository(
       // password and both Strapi document ids stay NULL. ADR-007 decision 4 forbids
       // populating a password to satisfy a constraint, and migration 0039 made that
       // possible; the legacy path stored random filler here, which this does not.
-      // lifecycle_operation_id is NOT NULL with no default. It is derived from the
-      // account so a retry names the same provisioning operation, and migration 0040
-      // keeps a canonical venue out of the Strapi-keyed lifecycle operations table, so
-      // this marker is never joined against it: every read of that table is keyed on a
-      // Strapi document id.
+      // lifecycle_operation_id is left unset too. Migration 0040 relaxed it and keeps a
+      // canonical venue out of the Strapi-keyed lifecycle operations table, so there is
+      // no operation for it to reference; its foreign key would reject any value this
+      // path could invent.
       const venue = await client.query<{ id: number }>(
         `INSERT INTO users(username,password,email,guest_url,venue_name,
-           strapi_user_document_id,strapi_account_document_id,guest_capability_hash,
-           lifecycle_operation_id)
-         VALUES ($1,NULL,NULL,$2,$3,NULL,NULL,$4,$5) RETURNING id`,
+           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+         VALUES ($1,NULL,NULL,$2,$3,NULL,NULL,$4) RETURNING id`,
         [
           internalUsernameFor(actor.accountId),
           randomBytes(24).toString("base64url"),
           account.rows[0]?.display_name || account.rows[0]?.handle || "Explorers Music",
           createHash("sha256").update(guestSecret).digest("hex"),
-          `canonical-provision:${actor.accountId}`,
         ]);
       const musicUserId = venue.rows[0]?.id;
       if (!Number.isSafeInteger(musicUserId) || Number(musicUserId) <= 0) {

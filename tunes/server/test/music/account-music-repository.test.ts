@@ -81,14 +81,15 @@ describe("canonical Music venue provisioning", () => {
     // no Strapi document id is written during canonical provisioning. Asserted on the
     // literal VALUES list so a later edit cannot quietly reintroduce either.
     const insert = log.find((entry) => /INSERT INTO users/i.test(entry)) ?? "";
-    expect(insert).toContain("VALUES ($1,NULL,NULL,$2,$3,NULL,NULL,$4,$5)");
+    expect(insert).toContain("VALUES ($1,NULL,NULL,$2,$3,NULL,NULL,$4)");
     expect(insert).toMatch(/password,.*strapi_user_document_id,strapi_account_document_id/s);
-    // lifecycle_operation_id is NOT NULL with no default, so it has to be supplied.
-    // Break caught: the placeholder is filled with a Strapi document id, or anything
-    // else that would make a canonical venue look externally identified.
-    expect(insert).toMatch(/guest_capability_hash,\s*lifecycle_operation_id\)/);
+    // Migration 0040 relaxed lifecycle_operation_id, which is a foreign key into the
+    // Strapi-keyed operations table, and a canonical venue has no operation to point at.
+    // Break caught: this path invents an operation id, which the foreign key would
+    // reject outright, or smuggles any extra column into the venue insert.
+    expect(insert).not.toMatch(/lifecycle_operation_id/);
     const venueValues = parameters.find((entry) => /INSERT INTO users/i.test(entry.sql))?.values ?? [];
-    expect(venueValues[4]).toBe(`canonical-provision:${ACCOUNT}`);
+    expect(venueValues).toHaveLength(4);
   });
 
   it("locks the account row before inserting, so same-account callers serialise", async () => {

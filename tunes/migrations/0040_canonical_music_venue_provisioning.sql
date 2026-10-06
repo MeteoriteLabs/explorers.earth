@@ -21,6 +21,16 @@
 -- A venue carrying exactly one of the two Strapi columns is neither a legacy nor a
 -- canonical identity. Nothing created such a row before, and either branch would treat
 -- it wrongly, so it is refused explicitly instead of being allowed to pick a branch.
+--
+-- users.lifecycle_operation_id is a NOT NULL foreign key into that same operations
+-- table, so a venue with no operation row cannot carry a value for it either: the
+-- column is relaxed and a canonical venue carries NULL, which is what "this venue has
+-- no Strapi-keyed lifecycle operation" means. The foreign key is MATCH SIMPLE, so NULL
+-- satisfies it while any non-NULL value must still name a real operation - that
+-- constraint, not a new trigger branch, is what keeps a canonical venue from inventing
+-- an operation id. The legacy path is untouched and still supplies one.
+
+ALTER TABLE public.users ALTER COLUMN lifecycle_operation_id DROP NOT NULL;
 
 CREATE OR REPLACE FUNCTION enforce_music_identity_insert() RETURNS trigger
 LANGUAGE plpgsql AS $$

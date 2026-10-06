@@ -993,12 +993,10 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       accountId = (await client.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
       musicUserId = (await client.query(
         `INSERT INTO users(username,password,email,guest_url,venue_name,
-           strapi_user_document_id,strapi_account_document_id,guest_capability_hash,
-           lifecycle_operation_id)
-         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3,$4) RETURNING id`,
+           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
         [`explorers-music-${accountId}`, publicSlug,
-          createHash("sha256").update(`canonical-${accountId}`).digest("hex"),
-          `canonical-provision:${accountId}`],
+          createHash("sha256").update(`canonical-${accountId}`).digest("hex")],
       )).rows[0].id as number;
       await client.query(
         "INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
@@ -1043,13 +1041,11 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
       strapiUser?: string | null; strapiAccount?: string | null;
     } = {}) => client.query<{ id: number }>(
       `INSERT INTO users(username,password,email,guest_url,venue_name,
-         strapi_user_document_id,strapi_account_document_id,guest_capability_hash,
-         lifecycle_operation_id)
-       VALUES($1,NULL,NULL,$2,'Explorers Music',$3,$4,$5,$6) RETURNING id`,
+         strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+       VALUES($1,NULL,NULL,$2,'Explorers Music',$3,$4,$5) RETURNING id`,
       [`explorers-music-${accountId}`, `slug-${accountId}`.slice(0, 60),
         columns.strapiUser ?? null, columns.strapiAccount ?? null,
-        createHash("sha256").update(`guard-${accountId}`).digest("hex"),
-        `canonical-provision:${accountId}`]);
+        createHash("sha256").update(`guard-${accountId}`).digest("hex")]);
 
     const client = await pool.connect();
     try {
@@ -1065,9 +1061,14 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
         "SELECT count(*)::int AS rows FROM music_identity_lifecycle_operations WHERE music_user_id=$1",
         [musicUserId],
       )).rows[0].rows).toBe(0);
-      expect((await pool.query(
-        "SELECT lifecycle_state AS state FROM users WHERE id=$1", [musicUserId],
-      )).rows[0].state).toBe("none");
+      const venue = (await pool.query(
+        "SELECT lifecycle_state AS state,lifecycle_operation_id AS operation FROM users WHERE id=$1",
+        [musicUserId],
+      )).rows[0];
+      expect(venue.state).toBe("none");
+      // The column is a foreign key into that same table, so "no operation" has to mean
+      // NULL rather than an invented id.
+      expect(venue.operation).toBeNull();
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
