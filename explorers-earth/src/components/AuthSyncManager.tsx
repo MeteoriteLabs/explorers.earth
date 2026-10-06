@@ -36,13 +36,17 @@ export default function AuthSyncManager() {
     if (!isAuthenticated || status !== "active-complete" || !userDocumentId || !accountId) return;
     // Google-only by configuration; the server takes the subject from the Actor, so
     // these identifiers scope the client's own readiness, not the request.
-    void musicIdentityCoordinator.reconcile({
+    // A provisioning failure is already observable through the coordinator's own
+    // state, which the Music surfaces render as an outage with an explicit retry, and
+    // it must not break the Explorers shell. `void` does not handle a rejection, so
+    // absorb it here instead of letting it escape as an unhandled rejection.
+    musicIdentityCoordinator.reconcile({
       provider: "google",
       authenticated: true,
       verified: true,
       userDocumentId,
       account: { documentId: accountId },
-    });
+    }).catch(() => {});
   }, [isAuthenticated, status, userDocumentId, accountId, generation]);
 
   return null;
