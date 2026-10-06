@@ -155,6 +155,10 @@ describe("Music E2E transactional state restore", () => {
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
+      // 0039's deferred ownership triggers. CREATE CONSTRAINT TRIGGER is AFTER and FOR
+      // EACH ROW, so tgtype is ROW(1) plus its events: INSERT(4)+UPDATE(16)=21, DELETE(8)=9.
+      { table: "account_music_identity", name: "account_music_identity_owner_retained", enabled: "O", type: 9 },
+      { table: "users", name: "users_music_venue_owned", enabled: "O", type: 21 },
       { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
       { table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 },
       { table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 },

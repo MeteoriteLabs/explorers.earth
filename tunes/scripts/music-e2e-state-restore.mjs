@@ -61,6 +61,8 @@ const revisionTriggers = Object.freeze([
 ]);
 export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 }),
+  Object.freeze({ table: "account_music_identity", name: "account_music_identity_owner_retained", enabled: "O", type: 9 }),
+  Object.freeze({ table: "users", name: "users_music_venue_owned", enabled: "O", type: 21 }),
   Object.freeze({ table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 }),
   Object.freeze({ table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 }),

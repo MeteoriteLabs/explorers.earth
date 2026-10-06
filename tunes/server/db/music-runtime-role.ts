@@ -113,6 +113,8 @@ const expectedRuntimeSequences = [
   "youtube_tokens_id_seq",
 ] as const;
 const expectedRuntimeFunctions = [
+  "assert_music_venue_owned()",
+  "assert_music_venue_owner_retained()",
   "enforce_music_identity_immutability()",
   "enforce_music_identity_insert()",
   "enforce_music_lifecycle_operation_state()",
