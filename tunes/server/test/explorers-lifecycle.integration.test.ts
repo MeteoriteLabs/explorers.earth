@@ -402,7 +402,7 @@ describe("canonical account lifecycle", () => {
     expect((await pool.query("SELECT status FROM creator_accounts WHERE id=$1", [owner.accountId])).rows[0].status)
       .toBe("deleted");
     expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1",
-      [pending.body.lifecycle.operationId])).rows[0]).toMatchObject({ state: "completed", failure_code: null });
+      [pending.body.lifecycle.operationId])).rows[0]).toMatchObject({ state: "succeeded", failure_code: null });
     // The venue is gone and the mapping with it, by cascade from the venue row.
     expect((await pool.query("SELECT 1 FROM users WHERE id=$1", [musicUserId])).rowCount).toBe(0);
     expect((await pool.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [owner.accountId])).rowCount).toBe(0);

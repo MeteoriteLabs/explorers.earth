@@ -1,5 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
-import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import MusicDashboard from "../components/MusicDashboard";
 import SEO from "../components/SEO";
@@ -16,8 +16,6 @@ import useAuthStore from "../store/store";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import type { MusicPublicationOwnerScope } from "../features/music/musicPublicationCommandRegistry";
 import { createMusicRolloutClient, subscribeMusicRollout, type MusicRolloutScope } from "../features/music/musicRollout";
-import { musicIdentityCoordinator } from "../features/music/musicApi";
-import { musicSessionBoundary } from "../features/music/musicSessionBoundary";
 import { musicApi } from "../features/music/musicApi";
 
 const musicRollout = createMusicRolloutClient((input) => musicApi.request(input));
@@ -202,42 +200,6 @@ const MusicPage = () => {
     userDocumentId: user.documentId,
     accountDocumentId: accountId,
   } : undefined;
-  const onboarding = onboardingFromEligibility(eligibility);
-
-  // ADR-006: the canonical session is the Music owner's authority, so provisioning is
-  // reconciled from the verified account. It lives here, on the Music surface, rather
-  // than in AuthSyncManager: provisioning app-wide made a Music owner out of every
-  // signed-in visitor, and account_music_identity is what accountLifecycleMaintenance
-  // treats as the Music deletion boundary, so every such account's deletion request
-  // then parked at MUSIC_BOUNDARY_PENDING forever. A Music owner is someone who opened
-  // Music. Elsewhere the publish control shows its own designed not-ready state.
-  //
-  // A cross-tab account-generation event resets the coordinator, so this has to run
-  // again for the same scope; that is what the boundary generation is read for.
-  const musicGeneration = useSyncExternalStore(
-    musicSessionBoundary.subscribeAccountGeneration,
-    musicSessionBoundary.getAccountGenerationSnapshot,
-    musicSessionBoundary.getAccountGenerationSnapshot,
-  );
-  useEffect(() => {
-    // Gated on the page's own eligibility, not merely on a resolved scope: an
-    // unconfirmed non-Google profile has a selectable account but is not an Explorer who
-    // may own Music, and provisioning one would hand it the deletion boundary too.
-    if (!scope || onboarding !== "complete") return;
-    // Google-only by configuration; the server takes the subject from the Actor, so
-    // these identifiers scope the client's own readiness, not the request. A failure is
-    // observable through the coordinator's own state, which this page renders as an
-    // outage with an explicit retry, so the rejection is absorbed rather than left to
-    // escape - `void` would not handle it.
-    musicIdentityCoordinator.reconcile({
-      provider: "google",
-      authenticated: true,
-      verified: true,
-      userDocumentId: scope.userDocumentId,
-      account: { documentId: scope.accountDocumentId },
-    }).catch(() => {});
-  }, [scope?.userDocumentId, scope?.accountDocumentId, onboarding, musicGeneration]);
-
   const data = useTunesDashboard(scope);
   const [ownerWorkspace, setOwnerWorkspace] = useState(false);
   const previousScope = useRef<MusicRolloutScope>();
@@ -251,6 +213,7 @@ const MusicPage = () => {
       setOwnerWorkspace(resolveOwnerWorkspaceExposure(exposure.ownerWorkspace, localOwnerWorkspacePreview));
     });
   }, [scope?.userDocumentId, scope?.accountDocumentId, data.identityStatus]);
+  const onboarding = onboardingFromEligibility(eligibility);
 
   const action = (value: keyof typeof actionLabels) => {
     if (value === "try_again") {
