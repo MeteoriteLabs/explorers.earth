@@ -189,6 +189,54 @@ describe("scoped Music token service", () => {
     expect(minted.expiresAt).toBe((NOW_SECONDS + 600) * 1_000);
   });
 
+  it("mints a socket ticket that no HTTP surface accepts, and a credential the socket refuses", () => {
+    // Ticket 6.3. Before this the handshake consumed the same 600-second bearer as owner
+    // HTTP, so a leaked handshake value was ten minutes of full owner access. The
+    // separation only holds if it is refused in both directions, which is what this
+    // asserts: a ticket is not a credential and a credential is not a ticket.
+    const ticket = service().mintSocketTicket({ subject: "strapi-user-document-id", sessionVersion: 7 });
+    const credential = service().mint({
+      id: 41, strapiUserDocumentId: "strapi-user-document-id", strapiAccountDocumentId: "strapi-account",
+      identityStatus: "active", sessionVersion: 7,
+    });
+
+    const claims = service().verifySocketTicket(ticket.token);
+    expect(claims.purpose).toBe("music-socket");
+    expect(claims.sub).toBe("strapi-user-document-id");
+    expect(claims.sessionVersion).toBe(7);
+
+    expectTokenError(() => service().verify(ticket.token), "TOKEN_INVALID");
+    expectTokenError(() => service().verifySocketTicket(credential.token), "TOKEN_INVALID");
+  });
+
+  it("gives a socket ticket its own short lifetime without touching the pinned credential lifetime", () => {
+    // The configured lifetime is pinned to exactly 600 seconds by configuration
+    // validation, so the ticket's 60 seconds is a constant rather than a setting.
+    const ticket = service().mintSocketTicket({ subject: "strapi-user-document-id", sessionVersion: 7 });
+    expect(ticket.expiresAt).toBe((NOW_SECONDS + 60) * 1_000);
+    // Expiry bites at exp plus the 15-second configured skew, not at exp.
+    expectTokenError(() => service({}, NOW_SECONDS + 75).verifySocketTicket(ticket.token), "TOKEN_EXPIRED");
+    expect(service({}, NOW_SECONDS + 74).verifySocketTicket(ticket.token).purpose).toBe("music-socket");
+  });
+
+  it("carries the canonical subject kind on a socket ticket when the owner is canonical", () => {
+    const ticket = service().mintSocketTicket({
+      subject: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", sessionVersion: 3, subjectKind: "canonical-account",
+    });
+    const claims = service().verifySocketTicket(ticket.token);
+    expect(claims.subjectKind).toBe("canonical-account");
+    expect(claims.purpose).toBe("music-socket");
+  });
+
+  it.each([
+    ["a legacy subject that is not a document id", { subject: "", sessionVersion: 7 }],
+    ["a canonical kind with a non-uuid subject", { subject: "strapi-user", sessionVersion: 7, subjectKind: "canonical-account" as const }],
+    ["a zero session version", { subject: "strapi-user-document-id", sessionVersion: 0 }],
+    ["a fractional session version", { subject: "strapi-user-document-id", sessionVersion: 1.5 }],
+  ])("refuses to mint a socket ticket for %s", (_label, input) => {
+    expectTokenError(() => service().mintSocketTicket(input), "TOKEN_INVALID");
+  });
+
   it("keeps a legacy credential free of the canonical kind", () => {
     const minted = service().mint({
       id: 41, strapiUserDocumentId: "strapi-user-document-id", strapiAccountDocumentId: "strapi-account",
@@ -216,6 +264,20 @@ describe("scoped Music token service", () => {
     // provenance for a subject that is not a canonical account id.
     const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, validClaims(overrides));
     expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
+
+  it("refuses a purpose it does not recognise, and a ticket lifetime that is not exactly its own", () => {
+    // The purpose claim decides which lifetime is exact, so an unrecognised value must be
+    // refused before it can select one, and a 'music-socket' token minted with the
+    // credential window must not pass as a ticket.
+    const unknownPurpose = rawToken({ alg: "HS256", kid: "music-current-2026-08" },
+      validClaims({ purpose: "music-admin" }));
+    expectTokenError(() => service().verify(unknownPurpose), "TOKEN_INVALID");
+    expectTokenError(() => service().verifySocketTicket(unknownPurpose), "TOKEN_INVALID");
+
+    const stretched = rawToken({ alg: "HS256", kid: "music-current-2026-08" },
+      validClaims({ purpose: "music-socket" }));
+    expectTokenError(() => service().verifySocketTicket(stretched), "TOKEN_INVALID");
   });
 
   it("still refuses a claim it does not recognise at all", () => {

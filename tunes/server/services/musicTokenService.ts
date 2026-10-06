@@ -35,6 +35,14 @@ export interface MusicTokenClaims {
    * resolved against the wrong table.
    */
   subjectKind?: typeof CANONICAL_SUBJECT_KIND;
+  /**
+   * Ticket 6.3. Present only on a socket handshake ticket. Its absence means a general
+   * owner credential, which the socket must refuse; its presence means a ticket, which
+   * every HTTP surface must refuse. The separation is the point: before this claim the
+   * socket consumed the same 600-second bearer as owner HTTP, so a leaked handshake
+   * value was ten minutes of full owner access.
+   */
+  purpose?: typeof SOCKET_TICKET_PURPOSE;
 }
 
 export interface MintedMusicToken {
@@ -56,8 +64,15 @@ interface MusicTokenDependencies {
 
 const HEADER_KEYS = ["alg", "kid"] as const;
 const CLAIM_KEYS = ["aud", "exp", "iat", "iss", "jti", "sessionVersion", "sub"] as const;
-const OPTIONAL_CLAIM_KEYS = ["subjectKind"] as const;
+const OPTIONAL_CLAIM_KEYS = ["subjectKind", "purpose"] as const;
 export const CANONICAL_SUBJECT_KIND = "canonical-account";
+export const SOCKET_TICKET_PURPOSE = "music-socket";
+/**
+ * Deliberately a constant rather than configuration. The configured lifetime is
+ * pinned to exactly 600 seconds by validateMusicTokenConfiguration, and a handshake
+ * ticket must be far shorter without weakening that invariant.
+ */
+export const SOCKET_TICKET_LIFETIME_SECONDS = 60;
 const CANONICAL_SUBJECT_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const KID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const SUBJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,511}$/;
@@ -102,9 +117,29 @@ export class MusicTokenService {
     return this.issue(input.accountId, input.sessionVersion, CANONICAL_SUBJECT_KIND);
   }
 
-  private issue(sub: string, sessionVersion: number, subjectKind?: typeof CANONICAL_SUBJECT_KIND): MintedMusicToken {
+  /**
+   * Ticket 6.3. A short, purpose-limited handshake ticket for the same owner. It carries
+   * the subject and session version so revocation still applies, and nothing else: it is
+   * not accepted by any HTTP surface, so it cannot stand in for a credential.
+   */
+  mintSocketTicket(input: { subject: string; sessionVersion: number; subjectKind?: typeof CANONICAL_SUBJECT_KIND }): MintedMusicToken {
+    const canonical = input.subjectKind === CANONICAL_SUBJECT_KIND;
+    if (!(canonical ? CANONICAL_SUBJECT_PATTERN : SUBJECT_PATTERN).test(input.subject)
+        || !Number.isSafeInteger(input.sessionVersion)
+        || input.sessionVersion < 1) {
+      throw new MusicTokenError("TOKEN_INVALID", "Music socket ticket cannot be minted for this identity.");
+    }
+    return this.issue(input.subject, input.sessionVersion, input.subjectKind, SOCKET_TICKET_PURPOSE);
+  }
+
+  private issue(
+    sub: string,
+    sessionVersion: number,
+    subjectKind?: typeof CANONICAL_SUBJECT_KIND,
+    purpose?: typeof SOCKET_TICKET_PURPOSE,
+  ): MintedMusicToken {
     const iat = Math.floor(this.now() / 1_000);
-    const exp = iat + this.configuration.tokenLifetimeSeconds;
+    const exp = iat + (purpose ? SOCKET_TICKET_LIFETIME_SECONDS : this.configuration.tokenLifetimeSeconds);
     const header = { alg: "HS256", kid: this.configuration.current.kid };
     const claims: MusicTokenClaims = {
       iss: MUSIC_TOKEN_ISSUER,
@@ -115,6 +150,7 @@ export class MusicTokenService {
       exp,
       sessionVersion,
       ...(subjectKind ? { subjectKind } : {}),
+      ...(purpose ? { purpose } : {}),
     };
     const unsigned = `${encodeJson(header)}.${encodeJson(claims)}`;
     return {
@@ -123,7 +159,25 @@ export class MusicTokenService {
     };
   }
 
+  /**
+   * Ticket 6.3. Every HTTP surface verifies through here, and a handshake ticket is
+   * refused: a ticket is not a credential, so a leaked one cannot be replayed against
+   * owner HTTP. Use verifySocketTicket for the handshake, which refuses the inverse.
+   */
   verify(token: string): MusicTokenClaims {
+    const claims = this.decode(token);
+    if (claims.purpose !== undefined) return invalid();
+    return claims;
+  }
+
+  /** Ticket 6.3. The handshake's only accepted credential, and never a general one. */
+  verifySocketTicket(token: string): MusicTokenClaims {
+    const claims = this.decode(token);
+    if (claims.purpose !== SOCKET_TICKET_PURPOSE) return invalid();
+    return claims;
+  }
+
+  private decode(token: string): MusicTokenClaims {
     try {
       if (typeof token !== "string" || token.length < 64 || token.length > 4_096) return invalid();
       const segments = token.split(".");
@@ -199,11 +253,18 @@ function validateClaims(
       || !Number.isSafeInteger(claims.sessionVersion)
       || (claims.sessionVersion ?? 0) < 1
       || (claims.subjectKind !== undefined && claims.subjectKind !== CANONICAL_SUBJECT_KIND)
-      || (claims.subjectKind === CANONICAL_SUBJECT_KIND && !CANONICAL_SUBJECT_PATTERN.test(claims.sub))) return invalid();
+      || (claims.subjectKind === CANONICAL_SUBJECT_KIND && !CANONICAL_SUBJECT_PATTERN.test(claims.sub))
+      || (claims.purpose !== undefined && claims.purpose !== SOCKET_TICKET_PURPOSE)) return invalid();
   const iat = claims.iat as number;
   const exp = claims.exp as number;
   const lifetime = exp - iat;
-  if (lifetime !== configuration.tokenLifetimeSeconds) return invalid();
+  // Exact for both kinds. A handshake ticket must be exactly its own short lifetime and a
+  // credential exactly the configured one, so neither can be minted with the other's
+  // window and neither can be stretched by an attacker reusing the structure.
+  const expectedLifetime = claims.purpose === SOCKET_TICKET_PURPOSE
+    ? SOCKET_TICKET_LIFETIME_SECONDS
+    : configuration.tokenLifetimeSeconds;
+  if (lifetime !== expectedLifetime) return invalid();
   const now = Math.floor(nowMilliseconds / 1_000);
   if (iat > now + configuration.clockSkewSeconds) return invalid();
   if (now >= exp + configuration.clockSkewSeconds) {
