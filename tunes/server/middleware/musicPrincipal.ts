@@ -51,20 +51,80 @@ export class MusicPrincipalError extends Error {
   }
 }
 
+/**
+ * Ticket 6.3. The identity half of a verified credential: everything resolution needs
+ * once a token's signature, audience and lifetime have been checked. Keeping it separate
+ * from the token is what lets a socket recheck an owner without re-verifying the
+ * short-lived ticket that opened the connection.
+ */
+export interface MusicPrincipalSubject {
+  readonly sub: string;
+  readonly sessionVersion: number;
+  readonly subjectKind?: string;
+  /** The key ID that vouched for the credential this subject was resolved from. */
+  readonly signingKeyId: string;
+}
+
 export class MusicPrincipalService {
   constructor(
-    private readonly tokens: Pick<MusicTokenService, "verify">,
+    private readonly tokens: Pick<MusicTokenService, "verifyContext" | "verifySocketTicketContext" | "acceptsSigningKey">,
     private readonly repository: MusicCredentialSubjectRepository,
   ) {}
 
   async resolve(token: string): Promise<MusicPrincipal> {
-    let claims;
+    return this.resolveSubject(this.verified(token, "verifyContext"));
+  }
+
+  /**
+   * Ticket 6.3. The socket handshake's only accepted credential. It refuses a general
+   * Music credential, exactly as `verify` refuses a handshake ticket, so neither can be
+   * presented where the other is expected.
+   */
+  async resolveSocketTicket(token: string): Promise<MusicSocketCredentialContext> {
+    const verified = this.verified(token, "verifySocketTicketContext");
+    const principal = await this.resolveSubject(verified);
+    // Narrowed deliberately: only the fields a recheck needs are retained, so an open
+    // connection holds no expiry, audience or purpose claim it could be judged against
+    // later, and no token at all.
+    return {
+      subject: {
+        sub: verified.sub,
+        sessionVersion: verified.sessionVersion,
+        signingKeyId: verified.signingKeyId,
+        ...(verified.subjectKind ? { subjectKind: verified.subjectKind } : {}),
+      },
+      principal,
+    };
+  }
+
+  private verified(
+    token: string,
+    method: "verifyContext" | "verifySocketTicketContext",
+  ): MusicPrincipalSubject {
     try {
-      claims = this.tokens.verify(token);
+      const context = this.tokens[method](token);
+      return { ...context.claims, signingKeyId: context.kid };
     } catch (error) {
       if (error instanceof MusicTokenError) {
         throw new MusicPrincipalError(error.code, 401, error.message);
       }
+      throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid.");
+    }
+  }
+
+  /**
+   * Ticket 6.3. Every identity-side check, run without re-verifying a token. A handshake
+   * ticket lives 60 seconds while the connection it opened may live far longer, so
+   * rechecking the ticket itself would disconnect every owner a minute after connecting.
+   * Nothing is weakened by that: revocation is an identity fact, not a token fact, and a
+   * tombstone, suspension, pending deletion or bumped session version fails here exactly
+   * as it does on an HTTP request.
+   */
+  async resolveSubject(claims: MusicPrincipalSubject): Promise<MusicPrincipal> {
+    // Rotating the signing keys retires every credential they signed, including the
+    // handshake ticket that opened a still-open socket. Checked here rather than only at
+    // verification so a recheck cannot outlive its key's bounded acceptance window.
+    if (!this.tokens.acceptsSigningKey(claims.signingKeyId)) {
       throw new MusicPrincipalError("TOKEN_INVALID", 401, "The Music credential is invalid.");
     }
     if (claims.subjectKind === CANONICAL_SUBJECT_KIND) return this.resolveCanonical(claims.sub, claims.sessionVersion);
@@ -167,17 +227,23 @@ export function assertMusicResourceOwner(principal: MusicPrincipal, musicUserId:
 }
 
 export interface MusicSocketCredentialContext {
-  readonly token: string;
+  readonly subject: MusicPrincipalSubject;
   readonly principal: MusicPrincipal;
 }
 
+/**
+ * Ticket 6.3. The socket admits a purpose-limited handshake ticket and nothing else, and
+ * then retains only the resolved subject. It deliberately does not keep the ticket: an
+ * open connection has no use for it, and a credential kept for the life of a connection
+ * is a credential available to anything that can read that connection's state.
+ */
 export function createMusicSocketCredentialVerifier(principals: MusicPrincipalService) {
   return {
     async handshake(input: { token: string }): Promise<MusicSocketCredentialContext> {
-      return { token: input.token, principal: await principals.resolve(input.token) };
+      return principals.resolveSocketTicket(input.token);
     },
     async recheck(context: MusicSocketCredentialContext): Promise<MusicPrincipal> {
-      return principals.resolve(context.token);
+      return principals.resolveSubject(context.subject);
     },
   };
 }

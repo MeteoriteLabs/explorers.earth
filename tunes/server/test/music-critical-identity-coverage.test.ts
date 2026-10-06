@@ -240,13 +240,19 @@ describe("C5 principal critical coverage", () => {
 
   it("normalizes non-token verifier failures and rejects subject substitution", async () => {
     const verifierFailure = new MusicPrincipalService(
-      { verify: () => { throw new Error("unsafe dependency detail"); } },
+      {
+        verifyContext: () => { throw new Error("unsafe dependency detail"); },
+        acceptsSigningKey: () => true,
+      } as never,
       { resolveCredentialSubject: async () => ({ identity: activeIdentity, tombstoned: false }) },
     );
     await expect(verifierFailure.resolve("token")).rejects.toEqual(expect.objectContaining({ code: "TOKEN_INVALID" }));
 
     const subjectMismatch = new MusicPrincipalService(
-      { verify: () => ({ ...validPayload(), sub: "subject-claims" }) as never },
+      {
+        verifyContext: () => ({ claims: { ...validPayload(), sub: "subject-claims" }, kid: "current" }),
+        acceptsSigningKey: () => true,
+      } as never,
       { resolveCredentialSubject: async () => ({ identity: activeIdentity, tombstoned: false }) },
     );
     await expect(subjectMismatch.resolve("token")).rejects.toEqual(expect.objectContaining({ code: "TOKEN_REVOKED" }));

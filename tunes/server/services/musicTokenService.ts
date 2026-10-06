@@ -45,6 +45,12 @@ export interface MusicTokenClaims {
   purpose?: typeof SOCKET_TICKET_PURPOSE;
 }
 
+/** Ticket 6.3. A verified token's claims and the key ID that vouched for them. */
+export interface MusicTokenContext {
+  readonly claims: MusicTokenClaims;
+  readonly kid: string;
+}
+
 export interface MintedMusicToken {
   token: string;
   expiresAt: number;
@@ -165,19 +171,43 @@ export class MusicTokenService {
    * owner HTTP. Use verifySocketTicket for the handshake, which refuses the inverse.
    */
   verify(token: string): MusicTokenClaims {
-    const claims = this.decode(token);
-    if (claims.purpose !== undefined) return invalid();
-    return claims;
+    return this.verifyContext(token).claims;
   }
 
   /** Ticket 6.3. The handshake's only accepted credential, and never a general one. */
   verifySocketTicket(token: string): MusicTokenClaims {
-    const claims = this.decode(token);
-    if (claims.purpose !== SOCKET_TICKET_PURPOSE) return invalid();
-    return claims;
+    return this.verifySocketTicketContext(token).claims;
   }
 
-  private decode(token: string): MusicTokenClaims {
+  /**
+   * Ticket 6.3. Verification plus the signing key that vouched for the token. A socket
+   * keeps the key ID rather than the token, so an operator who rotates keys to invalidate
+   * credentials still evicts already-connected owners through acceptsSigningKey, without
+   * the connection holding a replayable credential for its whole lifetime.
+   */
+  verifyContext(token: string): MusicTokenContext {
+    const context = this.decode(token);
+    if (context.claims.purpose !== undefined) return invalid();
+    return context;
+  }
+
+  /** Ticket 6.3. The handshake equivalent of verifyContext. */
+  verifySocketTicketContext(token: string): MusicTokenContext {
+    const context = this.decode(token);
+    if (context.claims.purpose !== SOCKET_TICKET_PURPOSE) return invalid();
+    return context;
+  }
+
+  /**
+   * Ticket 6.3. Whether a key ID is still accepted for verification right now. A rotated
+   * previous key stops being accepted once its bounded overlap elapses, which is the
+   * mechanism that retires credentials it signed.
+   */
+  acceptsSigningKey(kid: string): boolean {
+    return this.verificationKey(kid, this.now()) !== undefined;
+  }
+
+  private decode(token: string): MusicTokenContext {
     try {
       if (typeof token !== "string" || token.length < 64 || token.length > 4_096) return invalid();
       const segments = token.split(".");
@@ -194,7 +224,7 @@ export class MusicTokenService {
       if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return invalid();
       const claims = decodeStrictObject(payloadPart, CLAIM_KEYS, OPTIONAL_CLAIM_KEYS) as Partial<MusicTokenClaims>;
       validateClaims(claims, this.configuration, now);
-      return claims as MusicTokenClaims;
+      return { claims: claims as MusicTokenClaims, kid: header.kid };
     } catch (error) {
       if (error instanceof MusicTokenError) throw error;
       return invalid();

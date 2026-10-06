@@ -7,7 +7,7 @@ import {
   type CanonicalMusicCredentialSubjectState,
   type MusicCredentialSubjectState,
 } from "../middleware/musicPrincipal";
-import { MusicTokenService, type MusicTokenConfiguration } from "../services/musicTokenService";
+import { CANONICAL_SUBJECT_KIND, MusicTokenService, type MusicTokenConfiguration } from "../services/musicTokenService";
 
 const NOW = 1_800_000_000_000;
 const currentSecret = Buffer.alloc(32, 0x31).toString("base64url");
@@ -102,13 +102,92 @@ describe("local Music principal resolution", () => {
     const verifierTokens = new MusicTokenService(previousConfiguration, { now: () => now });
     const local = repository({ identity: active, tombstoned: false });
     const socketVerifier = createMusicSocketCredentialVerifier(new MusicPrincipalService(verifierTokens, local));
-    const context = await socketVerifier.handshake({ token: previousSigner.mint(active).token });
+
+    // Ticket 6.3. The handshake takes a purpose-limited ticket and refuses the general
+    // credential every HTTP surface uses, so a leaked owner bearer cannot open a socket.
+    await expectPrincipalError(
+      () => socketVerifier.handshake({ token: previousSigner.mint(active).token }),
+      "TOKEN_INVALID",
+    );
+
+    const ticket = previousSigner.mintSocketTicket({
+      subject: active.strapiUserDocumentId,
+      sessionVersion: active.sessionVersion,
+    });
+    const context = await socketVerifier.handshake({ token: ticket.token });
+    // The connection retains the resolved subject and its signing key ID, never the ticket.
+    expect(context).toEqual({
+      subject: { sub: "subject-41", sessionVersion: 3, signingKeyId: "previous" },
+      principal: { musicUserId: 41, subject: "subject-41", accountDocumentId: "account-41", sessionVersion: 3 },
+    });
+
     await expect(socketVerifier.recheck(context)).resolves.toMatchObject({ musicUserId: 41 });
+
     local.set({ identity: { ...active, sessionVersion: 4 }, tombstoned: false });
     await expectPrincipalError(() => socketVerifier.recheck(context), "TOKEN_REVOKED");
     local.set({ identity: active, tombstoned: false });
     now = NOW + 5_000;
     await expectPrincipalError(() => socketVerifier.recheck(context), "TOKEN_INVALID");
+  });
+
+  it("keeps an already-connected socket alive once only its handshake ticket has expired", async () => {
+    // Break caught: the socket rechecks the ticket that opened it, so every owner is
+    // disconnected 60 seconds after connecting while their identity is perfectly valid.
+    let now = NOW;
+    const tokens = new MusicTokenService(tokenConfiguration, { now: () => now, randomBytes: () => Buffer.alloc(16, 0x44) });
+    const local = repository({ identity: active, tombstoned: false });
+    const socketVerifier = createMusicSocketCredentialVerifier(new MusicPrincipalService(tokens, local));
+    const ticket = tokens.mintSocketTicket({
+      subject: active.strapiUserDocumentId,
+      sessionVersion: active.sessionVersion,
+    });
+    const context = await socketVerifier.handshake({ token: ticket.token });
+
+    // A ticket lives 60 seconds; the connection it opened may live for hours.
+    now = NOW + 3_600_000;
+    await expect(socketVerifier.recheck(context)).resolves.toMatchObject({ musicUserId: 41 });
+
+    // Revocation still lands, because the recheck judges identity and not the ticket.
+    local.set({ identity: { ...active, sessionVersion: 4 }, tombstoned: false });
+    await expectPrincipalError(() => socketVerifier.recheck(context), "TOKEN_REVOKED");
+
+    // The expired ticket still cannot open a second connection.
+    local.set({ identity: active, tombstoned: false });
+    await expectPrincipalError(() => socketVerifier.handshake({ token: ticket.token }), "TOKEN_EXPIRED");
+  });
+
+  it("carries the canonical subject kind through a socket handshake and its rechecks", async () => {
+    // Break caught: the handshake drops subjectKind, so the recheck falls through to the
+    // legacy Strapi subject resolution for a canonical owner. ADR-008 decision 2 forbids
+    // re-deriving the kind from the subject's shape, so losing it here is unrecoverable.
+    const accountId = "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411";
+    const tokens = tokenService();
+    const canonical = repository(
+      { identity: undefined, tombstoned: false },
+      { venue: canonicalVenue, tombstoned: false },
+    );
+    const socketVerifier = createMusicSocketCredentialVerifier(new MusicPrincipalService(tokens, canonical));
+    const ticket = tokens.mintSocketTicket({
+      subject: accountId,
+      sessionVersion: 3,
+      subjectKind: CANONICAL_SUBJECT_KIND,
+    });
+
+    const context = await socketVerifier.handshake({ token: ticket.token });
+    expect(context.subject).toEqual({
+      sub: accountId,
+      sessionVersion: 3,
+      signingKeyId: tokenConfiguration.current.kid,
+      subjectKind: CANONICAL_SUBJECT_KIND,
+    });
+    expect(context.principal).toMatchObject({ musicUserId: 41, subjectKind: CANONICAL_SUBJECT_KIND });
+
+    await expect(socketVerifier.recheck(context)).resolves.toMatchObject({ musicUserId: 41 });
+
+    // The recheck resolves through the canonical mapping, not the legacy subject: an
+    // unmapped venue revokes even though the legacy repository would have no opinion.
+    canonical.setCanonical({ venue: undefined, tombstoned: false });
+    await expectPrincipalError(() => socketVerifier.recheck(context), "TOKEN_REVOKED");
   });
 
   it("resolves a canonical credential through the account mapping", () => {

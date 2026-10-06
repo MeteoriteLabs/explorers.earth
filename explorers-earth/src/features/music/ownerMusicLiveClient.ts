@@ -14,16 +14,25 @@ type SocketLike = {
 
 export interface OwnerMusicSubscription { unsubscribe(): void }
 
+/**
+ * Ticket 6.3. Socket.IO calls this on every connection attempt, reconnects included, so
+ * a ticket is minted per attempt rather than captured once. That is what makes a
+ * 60-second ticket workable: a reconnect after a 30-second backoff would otherwise
+ * present an expired one.
+ */
+export type OwnerMusicSocketAuth = (callback: (data: { token: string }) => void) => void;
+
 export function subscribeToOwnerMusic(
   options: {
-    token: string;
+    mintTicket(): Promise<string>;
     initialRevision?: number;
     onInvalidate(signal: AbortSignal): Promise<{ revision: number } | void>;
     onError?(error: unknown): void;
     signal?: AbortSignal;
   },
-  dependencies: { socketFactory?: (auth: { token: string }) => SocketLike } = {},
+  dependencies: { socketFactory?: (auth: OwnerMusicSocketAuth) => SocketLike } = {},
 ): OwnerMusicSubscription {
+  let stopped = false;
   const socketFactory = dependencies.socketFactory ?? ((auth) => {
     const transport = runtimeSocketTransport(resolveMusicSocketTransport({
       development: import.meta.env.DEV,
@@ -40,8 +49,20 @@ export function subscribeToOwnerMusic(
       randomizationFactor: 0.2,
     });
   });
-  const socket = socketFactory({ token: options.token });
-  let stopped = false;
+  const authorize: OwnerMusicSocketAuth = (callback) => {
+    void options.mintTicket().then((token) => {
+      if (stopped) return;
+      callback({ token });
+    }).catch((error) => {
+      if (stopped) return;
+      options.onError?.(error);
+      // Fail closed. Offering no credential lets the server refuse the handshake and
+      // Socket.IO retry under its own backoff; never fall back to a previous ticket,
+      // which is what reusing one would amount to.
+      callback({ token: "" });
+    });
+  };
+  const socket = socketFactory(authorize);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let inFlight: Promise<void> | undefined;
   let controller: AbortController | undefined;
