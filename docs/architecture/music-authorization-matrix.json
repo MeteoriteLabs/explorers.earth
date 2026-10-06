@@ -823,6 +823,25 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/api/explorers/v1/music/identity/ensure",
+      "source": "tunes/server/routes/explorersMusicIdentityRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "USE",
       "path": "/api/explorers/v1/public/recommendations",
       "source": "tunes/server/routes/explorersPublicContentRoutes.ts",

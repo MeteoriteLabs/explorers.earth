@@ -14,7 +14,8 @@ export interface ExplorersMusicIdentityDependencies {
   config: ExplorersAuthConfig;
   accounts: AccountMusicRepository;
   resolveCanonicalSubject(accountId: string): Promise<CanonicalMusicCredentialSubjectState>;
-  mintCanonical(input: { accountId: string; musicUserId: number; sessionVersion: number }): MintedMusicToken;
+  /** Resolved on first use, so absent Music configuration cannot stop this app booting. */
+  mintCanonical(input: { accountId: string; musicUserId: number; sessionVersion: number }): Promise<MintedMusicToken>;
 }
 
 /**
@@ -51,7 +52,7 @@ export function setupExplorersMusicIdentityRoutes(
       if (venue.identityStatus === "pending_deletion") {
         throw new AuthorizationError(403, "FORBIDDEN", "This Music identity is pending deletion");
       }
-      const credential = dependencies.mintCanonical({
+      const credential = await dependencies.mintCanonical({
         accountId: ensured.accountId,
         musicUserId: venue.musicUserId,
         sessionVersion: venue.sessionVersion,

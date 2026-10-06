@@ -135,6 +135,12 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
     if (route.method === "POST" && route.path === "/api/explorers/v1/recovery/start") return "explorers-recovery";
     if (route.method === "GET" && route.path === "/api/explorers/v1/me") return "explorers-owner";
   }
+  // ADR-006 and ADR-008. Canonical Music owner provisioning and credential issue:
+  // the subject is the verified Actor's own account, so this is a canonical owner
+  // surface. Without this it falls through to the fail-closed tombstone default,
+  // which would record an owner-authenticated route as having no owner source.
+  if (route.source === "tunes/server/routes/explorersMusicIdentityRoutes.ts"
+      && route.method === "POST" && route.path === "/api/explorers/v1/music/identity/ensure") return "explorers-owner";
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
   if(route.source==='tunes/server/routes/explorersPublicContentRoutes.ts' && route.method==='GET' && [

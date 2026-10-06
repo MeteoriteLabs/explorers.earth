@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-06)
+Accepted (2026-10-06)
 
 > Decision taken by the repository owner on 2026-10-06: the Music credential's
 > subject becomes the canonical account id. This ADR records that decision and the
@@ -74,6 +74,25 @@ to be driven to full coverage.
    tombstone, which is accurate — canonical owner deletion is not implemented either.
    Giving canonical owners a tombstone key is a further append-only migration and
    belongs with the lifecycle work, not with 6.1.
+
+6. **The canonical API app issues Music credentials.** The canonical session and the
+   account-to-venue mapping both live there, so it is the natural issuer, and it now
+   holds the Music token signing secret in addition to the Music app. The alternative
+   - having the Music app validate the canonical session - would have given the Music
+   app the Better Auth session secret and a dependency on the auth stack, reintroducing
+   the cross-app session trust ADR-006 removed.
+
+   The issuer is resolved on **first use, not at boot**. A missing or invalid Music
+   authority fails this one route closed with a 503; it does not stop accounts,
+   profiles or recommendations from mounting, and it does not silently serve a 404.
+   Eager resolution was written first and rejected: it made the whole canonical API
+   app refuse to start without Music configuration, which contradicts the standing
+   rule that optional Music configuration must not prevent unrelated routes mounting.
+
+   The route is classified `explorers-owner` in `musicSurfacePolicy`. Without that it
+   falls through to the fail-closed `tombstone` default, which would have recorded an
+   owner-authenticated route in the generated authorization matrix as having no owner
+   source - accurate as a default, wrong as documentation.
 
 ## Consequences
 

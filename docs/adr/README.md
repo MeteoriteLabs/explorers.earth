@@ -15,7 +15,7 @@ Architecture Decision Records capture important architectural decisions made dur
 | [005](005-music-identity-migration-deployment-authority.md) | Canonical Music identity, migrations, and deployment authority | Superseded in part |
 | [006](006-canonical-music-identity-supersedes-strapi-proof.md) | Canonical session ensure for Music identity, superseding ADR-005's Strapi proof boundary | Accepted |
 | [007](007-music-venue-profile-owned-by-canonical-account.md) | Music venue profile owned by the canonical account; Music `users` is not an identity | Accepted |
-| [008](008-canonical-account-is-the-music-credential-subject.md) | Canonical account id is the Music credential subject | Proposed |
+| [008](008-canonical-account-is-the-music-credential-subject.md) | Canonical account id is the Music credential subject | Accepted |
 
 > **Decision recorded (2026-10-05).** ADR-006 is **Accepted**. It supersedes ADR-005's identity-issuance decision only — the bodyless proof boundary and its three distinct credential scopes — and ADR-005 stays the current authority for the schema model, append-only migrations, deployment authority and image-digest promotion. ADR-005's status row above reads "Superseded in part" accordingly, following the precedent of [002](002-auth-strategies.md) and [004](004-database-orm-choice.md). Ticket 6.1 is unblocked: a writer implementing it follows ADR-006, and must not reinstate the Strapi proof exchange or mint a fixture proof to work around it.
 
