@@ -912,6 +912,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/CategoryNavigationProvider.tsx
 !explorers-earth/src/features/navigation/NavigationStatus.tsx
 !explorers-earth/src/features/navigation/accountNavigationWriter.ts
+!explorers-earth/src/features/navigation/canonicalNavigationContent.ts
+!explorers-earth/src/features/navigation/canonicalNavigationMapping.ts
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
 !explorers-earth/src/hooks/useAIGuideQuota.ts
