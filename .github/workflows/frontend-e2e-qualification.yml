@@ -75,3 +75,63 @@ jobs:
             explorers-earth/.artifacts/**/results/
             explorers-earth/test-results/
           retention-days: 14
+
+  # The real-stack replatform suites under explorers-earth/e2e/replatform were run only
+  # by hand: every one of them is enumerated in
+  # explorers-earth/e2e/replatform/suite-manifest.json, and no workflow referenced any of
+  # them. The canonical account lifecycle in particular had no automated browser coverage
+  # at all, while the mocked account-lifecycle.spec.ts was the only gated substitute.
+  #
+  # They are deliberately not in the required set yet. Each one owns a disposable
+  # PostgreSQL 15 container and builds the frontend, so they belong here first, where a
+  # nightly run and workflow_dispatch can establish whether they hold on a runner before
+  # anything merges on them. Promote a lane into the required workflow once it has been
+  # observed green here, not before.
+  #
+  # Their guard refuses an ambient database or a redirected Docker daemon, so this job
+  # must not define DATABASE_URL, DATABASE_URL_TEST, DOCKER_HOST or DOCKER_CONTEXT, and
+  # the acknowledgement has to be passed verbatim as the only argument.
+  replatform-real-stack:
+    name: real-stack ${{ matrix.lane }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lane: profile, command: "npm run explorers:test:profile-browser --" }
+          - { lane: auth, command: "npm run explorers:test:auth-browser --" }
+          - { lane: lifecycle, command: "npm run explorers:test:lifecycle-browser --" }
+          - { lane: books, command: "npx tsx scripts/books-browser-fixture.ts" }
+          - { lane: movies, command: "npx tsx scripts/movies-browser-fixture.ts" }
+          - { lane: games, command: "npx tsx scripts/games-browser-fixture.ts" }
+          - { lane: analytics, command: "npx tsx scripts/analytics-browser-fixture.ts" }
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci
+      - name: Install fixture runner dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
+      # The fixture drives explorers-earth's own Playwright CLI from that directory, so
+      # the browsers have to be installed there rather than under tunes.
+      - run: npx playwright install --with-deps chromium
+      - name: Run owned real-stack lane
+        working-directory: tunes
+        run: ${{ matrix.command }} --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
+        env:
+          CI: true
+      - name: Upload real-stack evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: replatform-real-stack-${{ matrix.lane }}
+          path: |
+            .artifacts/**/results/
+            explorers-earth/.artifacts/**/results/
+            explorers-earth/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
