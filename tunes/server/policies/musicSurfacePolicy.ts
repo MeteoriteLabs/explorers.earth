@@ -195,6 +195,9 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if (route.method === "GET" && PUBLIC_PROFILE_GET_PATHS.has(route.path)) return "public";
   if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";
+  // Ticket 6.3. Owner-authenticated like the rest of this group: a handshake ticket
+  // is minted only for a caller who already proved a credential on the request.
+  if (route.path === "/api/music/socket-ticket") return "owner";
   if (route.path === "/api/music/entitlement" || route.path === "/api/music/dashboard" || route.path === "/api/music/features" || route.path === "/api/music/guest-controls") return "owner";
   if (route.path === "/api/music/publication" || route.path === "/api/music/queue/replace" || route.path === "/api/music/queue/append") return "owner";
   if (route.path === "/api/playlist/:guestUrl") return "guest";

@@ -7,6 +7,13 @@ export interface MusicPrincipal {
   subject: string;
   accountDocumentId: string;
   sessionVersion: number;
+  /**
+   * Ticket 6.3. Carried forward from the verified claim so a socket ticket can be
+   * minted for the same subject. ADR-008 decision 2 forbids deciding what a subject
+   * means from its shape, so the kind travels with the principal rather than being
+   * re-derived; absent means a legacy Strapi subject.
+   */
+  subjectKind?: typeof CANONICAL_SUBJECT_KIND;
 }
 
 export interface MusicCredentialSubjectState {
@@ -107,6 +114,7 @@ export class MusicPrincipalService {
       throw new MusicPrincipalError("TOKEN_REVOKED", 401, "The Music credential has been revoked.");
     }
     return {
+      subjectKind: CANONICAL_SUBJECT_KIND,
       musicUserId: venue.musicUserId,
       subject: accountId,
       // Opaque stable per-account identifier, used for feature allowlists and cohort

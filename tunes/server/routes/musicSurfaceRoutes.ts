@@ -95,6 +95,16 @@ interface CanonicalMusicRepository {
 export interface CanonicalMusicRouteDependencies {
   repository: CanonicalMusicRepository;
   resolvePrincipal(token: string): Promise<MusicPrincipal>;
+  /**
+   * Ticket 6.3. Issues a short, purpose-limited handshake ticket for an already
+   * authenticated owner. Optional while the socket still accepts a credential, so the
+   * ticket route simply does not mount where it is absent.
+   */
+  mintSocketTicket?(input: {
+    subject: string;
+    sessionVersion: number;
+    subjectKind?: MusicPrincipal["subjectKind"];
+  }): { token: string; expiresAt: number };
   requestIdFactory?: () => string;
   now?: () => Date;
   allowedOrigins: string[];
@@ -325,6 +335,25 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       });
     } catch (error) { next(error); }
   }));
+
+  // Ticket 6.3. A handshake ticket is minted only for an owner who already proved a
+  // credential on this request, and it is never accepted in place of one: the socket
+  // takes tickets and every HTTP surface refuses them. Short-lived by construction, so
+  // the client asks again per connection attempt rather than holding one.
+  if (dependencies.mintSocketTicket) {
+    const mintSocketTicket = dependencies.mintSocketTicket;
+    app.post("/api/music/socket-ticket", ...owner(async (req, res, next) => {
+      try {
+        const principal = req.musicPrincipal!;
+        const ticket = mintSocketTicket({
+          subject: principal.subject,
+          sessionVersion: principal.sessionVersion,
+          ...(principal.subjectKind ? { subjectKind: principal.subjectKind } : {}),
+        });
+        res.status(200).json({ version: "music-socket-ticket/v1", ticket });
+      } catch (error) { next(error); }
+    }));
+  }
 
   app.get("/api/music/dashboard", ...owner(async (req, res, next) => {
     try { res.status(200).json(dashboardDto(await dependencies.repository.ownerDashboard(req.musicPrincipal!.musicUserId), true)); } catch (error) { next(error); }

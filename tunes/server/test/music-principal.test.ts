@@ -120,6 +120,11 @@ describe("local Music principal resolution", () => {
       subject: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411",
       accountDocumentId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411",
       sessionVersion: 3,
+      // Ticket 6.3. The kind travels with the principal so a socket ticket can be minted
+      // for the same subject without re-deriving it from the subject's shape, which
+      // ADR-008 decision 2 forbids. A legacy principal carries no kind at all, which the
+      // legacy case above asserts by pinning its exact shape.
+      subjectKind: "canonical-account",
     });
   });
 
