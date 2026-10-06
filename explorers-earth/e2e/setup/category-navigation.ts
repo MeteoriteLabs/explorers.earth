@@ -493,6 +493,14 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if (path === '/api/playlists' && request.method() === 'GET' && musicOwner) return json(state.playlists);
       if (path === '/api/music/entitlement' && musicOwner) return json({ state: 'included', coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 });
       if (path === '/api/music/features' && musicOwner) return json({ ownerWorkspace: state.ownerWorkspace, guestWorkspace: false, playlistImports: false, exposureId: 'fixture-browser', expiresAt: new Date(Date.now() + 600000).toISOString() });
+      // Ticket 6.3. The owner live socket mints a purpose-limited handshake ticket per
+      // connection attempt instead of reusing the HTTP credential. No real socket opens
+      // under this fixture, so the ticket only has to be well-formed; leaving it
+      // unstubbed denies it and fails the clean-network assertion.
+      if (path === '/api/music/socket-ticket' && request.method() === 'POST' && musicOwner) {
+        return json({ version: 'music-socket-ticket/v1',
+          ticket: { token: `${credential}.socket`, expiresAt: Math.floor(Date.now() / 1000) + 60 } });
+      }
       if (path === '/api/music/publication' && request.method() === 'POST' && musicOwner) {
         const body = request.postDataJSON(); const key = request.headers()['idempotency-key'];
         state.writes.push({ name: path, owner: true, variables: { body, key } });

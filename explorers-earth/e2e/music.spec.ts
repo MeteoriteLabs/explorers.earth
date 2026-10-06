@@ -194,6 +194,15 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
       guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
     }),
   }));
+  // Ticket 6.3. One purpose-limited handshake ticket per connection attempt.
+  await page.route("**/api/music/socket-ticket", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      version: "music-socket-ticket/v1",
+      ticket: { token: "fixture.socket.ticket", expiresAt: Math.floor(Date.now() / 1000) + 60 },
+    }),
+  }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
