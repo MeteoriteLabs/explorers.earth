@@ -3,7 +3,16 @@ name: Frontend E2E qualification
 on:
   schedule:
     - cron: "23 3 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      # A real-stack lane owns a PostgreSQL container and builds the frontend, so
+      # proving one costs far less than running thirteen. The schedule always runs
+      # everything; this only narrows a manual dispatch.
+      lane:
+        description: "Single lane to run, or all"
+        required: false
+        default: all
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +28,7 @@ defaults:
 jobs:
   browser-matrix:
     name: ${{ matrix.lane }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
@@ -93,6 +103,7 @@ jobs:
   # the acknowledgement has to be passed verbatim as the only argument.
   replatform-real-stack:
     name: real-stack ${{ matrix.lane }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
