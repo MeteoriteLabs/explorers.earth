@@ -49,6 +49,15 @@ describe("Tunes host preflight authority", () => {
     expect(result.stdout).toContain('users:(("node",pid=123,fd=4))');
     expect(section).not.toMatch(/\.Config\.Env|docker compose config|cat .*\.env/);
   });
+
+  it("requires read-only database and backup evidence without dumping rows", () => {
+    const script = parseYaml(read(".github/workflows/tunes-host-preflight.yml")).jobs.preflight.steps.find((s: any) => s.with?.script).with.script;
+    expect(script).toContain("pg_isready");
+    expect(script).toContain("pg_database_size");
+    expect(script).toContain("deployment-backups");
+    expect(script).toContain("find \"$compose_dir/deployment-backups\" -maxdepth 2 -type f");
+    expect(script).not.toMatch(/pg_dump|pg_dumpall|SELECT\s+\*|\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b/i);
+  });
   it("is manual, uses the proven SSH connection, and cannot deploy", () => {
     const source = read(".github/workflows/tunes-host-preflight.yml");
     const workflow = parseYaml(source);

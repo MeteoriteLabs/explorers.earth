@@ -85,6 +85,20 @@ jobs:
               docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} image={{.Image}} mounts={{range .Mounts}}type={{.Type}} volume={{.Name}} destination={{.Destination}};{{end}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}};{{end}}' "$container"
               docker image inspect --format 'platform={{.Os}}/{{.Architecture}}' "$(docker inspect --format '{{.Image}}' "$container")"
             done
+            printf '%s\n' '=== database readiness and catalog size ==='
+            if docker exec tunes-db-1 pg_isready; then
+              printf '%s\n' 'database=ready'
+              docker exec tunes-db-1 psql -U postgres -d postgres -Atqc 'SELECT current_database(), pg_database_size(current_database());' || printf '%s\n' 'catalog_size=unavailable'
+            else
+              printf '%s\n' 'database=not-ready-or-command-unavailable'
+            fi
+            printf '%s\n' '=== backup evidence (names and sizes only) ==='
+            compose_dir=/home/deploy/tunes/tunes
+            if [ -d "$compose_dir/deployment-backups" ]; then
+              find "$compose_dir/deployment-backups" -maxdepth 2 -type f -printf '%f %s bytes\n' | sort | tail -20
+            else
+              printf '%s\n' 'backup_directory=absent'
+            fi
             # End migration inventory
             printf '%s\n' '=== compose projects ==='
             docker compose ls
