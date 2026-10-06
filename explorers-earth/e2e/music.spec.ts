@@ -416,11 +416,11 @@ test("logout boundary clears Explorer authentication in another tab", async ({ p
   await installMusicMocks(second);
   await page.goto("/recommendations/music");
   await second.goto("/recommendations/music");
-  // ADR-006: the canonical session cookie is the authority, so a logout is the session
-  // actually ending. The cookie goes first, because a tab that re-verifies a still-valid
-  // cookie is entitled to come straight back - the replaced localStorage assertion could
-  // not tell those two outcomes apart.
-  await context.clearCookies({ name: "better-auth.session_token" });
+  // ADR-006: the canonical session is the authority, so a logout is the session actually
+  // ending. Sign out first, because a tab that re-verifies a still-valid session is
+  // entitled to come straight back - the replaced localStorage assertion could not tell
+  // those two outcomes apart.
+  await page.evaluate(() => fetch("/api/auth/sign-out", { method: "POST", credentials: "include" }).then(() => undefined));
   await page.evaluate(() => {
     const event = { version: "music-session/v1", kind: "logout", eventId: crypto.randomUUID() };
     localStorage.setItem("explorers-music-session", JSON.stringify(event));

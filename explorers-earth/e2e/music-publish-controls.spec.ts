@@ -347,7 +347,10 @@ for (const condition of ['invalid', 'unknown', 'identity not ready'] as const) {
     const state = fixtureState();
     if (condition === 'invalid') state.mode = 'invalid' as any;
     else if (condition === 'unknown') state.faults.set('/api/music/dashboard', Array.from({ length: 10 }, () => ({ kind: 'error' as const })));
-    else state.faults.set('/api/music/identity/ensure', Array.from({ length: 10 }, () => ({ kind: 'error' as const })));
+    // Provisioning moved to the canonical same-origin route (ADR-006/008), so faulting
+    // the legacy Music-origin path no longer makes the identity unready - the client
+    // never calls it, ensure succeeds and the control renders enabled.
+    else state.faults.set('/api/explorers/v1/music/identity/ensure', Array.from({ length: 10 }, () => ({ kind: 'error' as const })));
     const owner = await openFixture(browser, baseURL!, state, { owner: true });
     try {
       await settings(owner.page); const control = owner.page.getByRole('switch', { name: 'Music public visibility' }); await expect(control).toBeDisabled();

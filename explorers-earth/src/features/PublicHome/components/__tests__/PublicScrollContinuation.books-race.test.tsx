@@ -43,6 +43,11 @@ describe('actual Books spec continuation outcome', () => {
     const next = vi.fn(async () => rows(24,6));
     render(<Harness next={next}/>);
     await screen.findByRole('button',{name:'Load more books'});
+    // The effect only observes once it has a target and a page left to continue, so the
+    // button can be committed a tick before the observer is constructed. Waiting for the
+    // constructor is the real precondition; assuming the order made this fail with
+    // "callback is not a function" on a loaded CI runner.
+    await vi.waitFor(() => { if (typeof callback !== 'function') throw new Error('observer not constructed'); });
     await act(async () => callback([{isIntersecting:true} as IntersectionObserverEntry],{} as IntersectionObserver));
     await screen.findByRole('button',{name:title});
     expect(screen.queryByRole('button',{name:'Load more books'})).not.toBeInTheDocument();

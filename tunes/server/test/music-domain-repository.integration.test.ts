@@ -980,31 +980,52 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     // every Google-only owner's public Music page is unreachable. The legacy arm is
     // exercised by the cases above, which also prove the canonical comparison does not
     // coerce $1 to uuid - that would raise 22P02 on each of those string IDs.
-    const owner = await identities.ensureIdentity(identityInput("canonical-descriptor"));
-    const accountId = (await pool.query(
-      "INSERT INTO creator_accounts DEFAULT VALUES RETURNING id",
-    )).rows[0].id as string;
+    // The venue is built exactly the way accountMusicRepository provisions one - both
+    // Strapi columns NULL from the start - rather than by releasing them on an existing
+    // row, which enforce_music_identity_immutability() rejects outright. Ownership is
+    // recorded in the same transaction so the venue is never momentarily unowned.
+    const publicSlug = "c6-canonical-descriptor-slug";
+    const client = await pool.connect();
+    let accountId: string;
+    let musicUserId: number;
+    try {
+      await client.query("BEGIN");
+      accountId = (await client.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+      musicUserId = (await client.query(
+        `INSERT INTO users(username,password,email,guest_url,venue_name,
+           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
+        [`explorers-music-${accountId}`, publicSlug, createHash("sha256").update(`canonical-${accountId}`).digest("hex")],
+      )).rows[0].id as number;
+      await client.query(
+        "INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
+        [accountId, musicUserId],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
     const unmapped = (await pool.query(
       "INSERT INTO creator_accounts DEFAULT VALUES RETURNING id",
     )).rows[0].id as string;
     await pool.query(
-      "INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
-      [accountId, owner.id],
-    );
-    // Ownership is recorded before the Strapi column is released, so the venue is
-    // never momentarily unowned.
-    await pool.query(
-      "UPDATE users SET guest_discoverable=true,public_snapshot_revision=12,strapi_account_document_id=NULL WHERE id=$1",
-      [owner.id],
+      "UPDATE users SET guest_discoverable=true,public_snapshot_revision=12 WHERE id=$1",
+      [musicUserId],
     );
 
+    // The premise: this owner carries no Strapi account id at all, so the legacy arm of
+    // the descriptor query cannot reach it on any input.
+    expect((await pool.query(
+      "SELECT strapi_account_document_id AS legacy FROM users WHERE id=$1", [musicUserId],
+    )).rows[0].legacy).toBeNull();
+
     await expect(domain.resolvePublicDescriptor(accountId)).resolves.toEqual({
-      mode: "public", publicSlug: "c6-public-canonical-descriptor", revision: 12,
+      mode: "public", publicSlug, revision: 12,
     });
     await expect(domain.resolvePublicDescriptor(unmapped)).resolves.toBeUndefined();
-    // The released Strapi document ID must stop resolving with the column.
-    await expect(domain.resolvePublicDescriptor("c6-account-canonical-descriptor"))
-      .resolves.toBeUndefined();
   });
 
   it("fails closed only while another User document ID collides with a live public Account document ID", async () => {

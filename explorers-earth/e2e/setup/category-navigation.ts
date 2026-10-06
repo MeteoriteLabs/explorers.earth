@@ -272,6 +272,13 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         await hasOwnerSession() ? { user: { id: fixtureUser.id, email: fixtureUser.email }, session: { id: sessionId } } : null,
       ) });
     }
+    // Signing out is a canonical same-origin command and ends the session by expiring the
+    // cookie, exactly as the server does, so a later get-session reports signed out.
+    // Without this branch the deny-by-default guard records it as an unexpected request.
+    if (url.origin === origin && url.pathname === '/api/auth/sign-out' && url.search === '' && request.method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}',
+        headers: { 'set-cookie': `${sessionCookie}=; Path=/; Max-Age=0` } });
+    }
     if (url.origin === origin && url.pathname === '/api/explorers/v1/me' && request.method() === 'GET') {
       if (!await hasOwnerSession()) {
         expectedHttpErrors.set(request.url(), 401);

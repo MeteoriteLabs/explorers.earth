@@ -22,39 +22,42 @@ export async function setupMockAuthentication(context: BrowserContext, options: 
   };
   // Populate storage state / session data to skip login
   const cookieDomain = options.cookieDomain ?? 'localhost';
+  const cookieAttributes = { domain: cookieDomain, path: '/', expires: -1, secure: false, sameSite: 'Lax' as const };
   await context.addCookies([
-    {
-      name: 'token',
-      value: token,
-      domain: cookieDomain,
-      path: '/',
-    },
-    {
-      name: SESSION_COOKIE,
-      value: SESSION_VALUE,
-      domain: cookieDomain,
-      path: '/',
-    },
+    { name: 'token', value: token, ...cookieAttributes },
+    { name: SESSION_COOKIE, value: SESSION_VALUE, ...cookieAttributes, httpOnly: true },
   ]);
 
-  // Authentication follows the cookie this request actually carries, so a fixture
-  // that clears it represents a signed-out browser rather than a permanently
-  // authenticated one. Playwright's abbreviated headers() collection can omit
-  // Cookie, so read it through headerValue.
+  // The session is tracked here rather than read back off each request's Cookie
+  // header. On WebKit an intercepted request reports `headerValue('cookie')` as null
+  // even though the page holds the cookie and the browser would send it, so a
+  // cookie-reading fixture reported every WebKit page as signed out and Music was
+  // never provisioned. Chromium and Firefox were unaffected, which is why this only
+  // ever failed the webkit-music-visual project.
+  let signedOut = false;
   await context.route('**/api/auth/get-session', async route => {
-    const request = route.request();
-    if (request.method() !== 'GET') return route.abort('blockedbyclient');
-    const authenticated = ((await request.headerValue('cookie')) ?? '')
-      .split(';').some(cookie => cookie.trim() === `${SESSION_COOKIE}=${SESSION_VALUE}`);
+    if (route.request().method() !== 'GET') return route.abort('blockedbyclient');
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(authenticated
-        ? { user: { id: user.documentId, email: user.email }, session: { id: SESSION_ID } }
-        : null),
+      body: JSON.stringify(signedOut
+        ? null
+        : { user: { id: user.documentId, email: user.email }, session: { id: SESSION_ID } }),
     });
   });
-  
+
+  // Signing out really ends the session, so a later verification reports a
+  // signed-out browser. This is the fixture's only way to represent that, given the
+  // Cookie header is not observable on every engine.
+  await context.route('**/api/auth/sign-out', async route => {
+    if (route.request().method() !== 'POST') return route.abort('blockedbyclient');
+    signedOut = true;
+    return route.fulfill({
+      status: 200, contentType: 'application/json', body: '{}',
+      headers: { 'set-cookie': `${SESSION_COOKIE}=; Path=/; Max-Age=0` },
+    });
+  });
+
   // Inject localStorage login state safely
   await context.addInitScript(({ fixtureToken, fixtureUser }) => {
     try {
