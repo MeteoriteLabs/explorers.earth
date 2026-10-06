@@ -236,7 +236,11 @@ test("a finalized deletion hides every ordinary delete entry point and performs 
   await mockSettings(context, "deleted", commands);
   await openSettings(page);
 
-  await expect(page.getByRole("status")).toContainText("Account deletion is complete.");
+  // Filtered, not a bare status role: the shell renders its own loading and
+  // "verifying your account" statuses, so on a slower runner a bare getByRole
+  // resolves to several elements and fails strict mode before this one appears.
+  await expect(page.getByRole("status").filter({ hasText: "Account deletion is complete." }))
+    .toBeVisible();
   await expect(deleteEntryPoint(page)).toHaveCount(0);
   expect(commands).toEqual([]);
 });
