@@ -58,7 +58,7 @@ and anything behind the 2.4/3.5 deployment-authority gates.
 | 1 — 4.3 Apps | **complete** (`11987c69`, `e90ebb6b`, `487cae51`) |
 | 2 — 4.4 Products | **complete** (`4190600c`, `b832bb4f`, `88b2297c`, `2901093d`) |
 | 2 — 4.5 People | **complete** (`a1b5cd61`, `233b1bd1`, `8d9fc37a`, `5386bfac`) |
-| 3 — 5.1 Places | contract, migration `0046`, storage and claim lookup landed (`8ba664e4`, `6afe0c4f`); projection, write path, adapter and consumer blocked on the two owner decisions in [ticket 5.1](tickets/ticket-5-1.md) |
+| 3 - 5.1 Places | **complete** (`8ba664e4`, `6afe0c4f`, `c5eba1f8`, `2ecb315c`, `6b466f94`, `26fe7608`, `7ac28fc4`, `ced36a10`, `36e8f98e`); both owner decisions answered 2026-10-07, taxonomy deferred to its own ticket |
 | 4 — 5.2 Guides attachment | not started; consumes the order 2 and 3 attachment contracts |
 
 One input is outstanding and it belongs to order 3: the Places category/subcategory
@@ -66,3 +66,18 @@ vocabulary lives in Strapi content (`recommendationCategories`, fetched at runti
 than in this repository, and ticket 5.1 forbids inventing production taxonomy values. Every
 other part of Places proceeds without it; the seeded taxonomy and the sector browse route
 that groups by it are recorded as owed.
+
+## Order 3 closing note (2026-10-08)
+
+The Places owner surface is entirely native: the lists, the list detail, the add and edit
+flows, the list menu and the dashboard page. What is left on Apollo under
+`features/Favorites` belongs to 5.2 (the linked person and product lists), 5.4 (the
+claimable-place service, no longer called) and Epic 8 (removing the retired documents).
+
+Still owed on this order, each recorded in [ticket 5.1](tickets/ticket-5-1.md):
+
+- the seeded category/subcategory taxonomy and the sector browse that groups by it, which
+  is its own ticket by the owner's decision of 2026-10-07;
+- `tunes/server/test/explorers/places.test.ts`, the unit-level suite the ticket names;
+- `explorers-earth/e2e/replatform/places.spec.ts`, which needs a Docker fixture runner and
+  identities in `e2e/replatform/suite-manifest.json` - reserved to the coordinator.

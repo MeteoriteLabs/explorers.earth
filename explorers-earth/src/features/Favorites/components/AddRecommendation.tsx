@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import SwitchButton from "../../../components/ui/SwitchButton";
 import RecommendationForm, {
@@ -6,11 +6,8 @@ import RecommendationForm, {
 } from "./RecommendForm";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import { toast } from "sonner";
-import { useQuery } from "@apollo/client";
-import {
-  recommendationCategoriesQuery,
-  recommendedPlaceQuery,
-} from "../api/query";
+import { usePlacesOwner } from "../hooks/usePlacesOwner";
+import type { KeyValuePair } from "./RecommendForm";
 import { Places } from "../../Profile/types/types";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { EarthLoader } from "../../../components/EarthLoader";
@@ -194,43 +191,44 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     }
   }, [searchParams]);
 
-  // fetching the place in case of updation
-  const { data: fetchedPlace, loading: isPlaceLoading } = useQuery(recommendedPlaceQuery, {
-    variables: {
-      documentId: placeId,
-    },
-    fetchPolicy: "network-only",
-    skip: !placeId,
-  });
+  // Ticket 5.1. The place being edited comes from the native owner read, which returns
+  // every list complete, so the recommendation is found in it rather than fetched by id.
+  const owner = usePlacesOwner(undefined, Boolean(placeId));
+  const isPlaceLoading = owner.loading;
+  const editedPlace = useMemo(() => {
+    if (!placeId) return undefined;
+    for (const list of owner.data?.recommendationLists ?? []) {
+      const found = list.recommended_places.find((place: { documentId: string }) => place.documentId === placeId);
+      if (found) return found;
+    }
+    return undefined;
+  }, [owner.data, placeId]);
+  // The shape the form fields and the media transform already read.
+  const fetchedPlace = useMemo(() => (editedPlace ? { recommendedPlace: editedPlace } : undefined), [editedPlace]);
   const navigate = useNavigate();
 
   // google places place_id for further usage
+  // A manual place has no provider id, which is absent rather than an empty string.
   const googlePlaceRefId =
-    fetchedPlace?.recommendedPlace?.Place_Details?.Place_Id;
+    fetchedPlace?.recommendedPlace?.Place_Details?.Place_Id ?? undefined;
   // custom hooke for handling the recommendation form fields
   const { formFields, validationSchema, initialValues, editInitialValues } =
     useRecommendationFields({ places, isCustom: true, fetchedPlace, recommendationType, instagramLink, instagramCaption, personName });
 
-  // meida details
-  const media_details = fetchedPlace?.recommendedPlace?.media_details;
-
   const transformImages = (
-    imageDetails: { url: string; id: string; documentId: string }[],
-    thumbnail: { url: string; id: string; documentId: string } | null
-  ) => {
-    // Transform imageDetails array with isThumbnail: false
-    const transformedImages = imageDetails?.map((image) => ({
+    imageDetails: { url: string; id: string; documentId?: string }[] | undefined,
+    thumbnail: { url?: string; id?: string; documentId?: string } | null | undefined
+  ): GoogleMedia[] => {
+    const items = imageDetails ?? [];
+    const transformedImages: GoogleMedia[] = items.map((image) => ({
       url: image.url,
       id: image.id,
       documentId: image.documentId,
       isThumbnail: false,
     }));
 
-    // Check if thumbnail exists and is not already included in imageDetails
-    if (
-      thumbnail?.url &&
-      !imageDetails.some((img) => img.url === thumbnail.url)
-    ) {
+    // The thumbnail joins the gallery unless it is already in it.
+    if (thumbnail?.url && thumbnail.id && !items.some((img) => img.url === thumbnail.url)) {
       transformedImages.push({
         url: thumbnail.url,
         id: thumbnail.id,
@@ -269,7 +267,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     placeId,
     listId,
     fetchedListId,
-    media_details,
     fetchedGoogleMedia,
     instagramMedia,
     recommendationType,
@@ -280,13 +277,10 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   });
   const hasMediaFailure = mediaStatus === "upload-failed" || mediaStatus === "metadata-failed";
 
-  // fetching the created categories
-  const {
-    data: fetchedCategories,
-    loading,
-    error,
-  } = useQuery(recommendationCategoriesQuery, {
-  });
+  // Taxonomy is deferred to its own ticket: the category vocabulary is Strapi content and
+  // 5.1 forbids inventing production values, so the form offers no terms rather than terms
+  // this app made up.
+  const fetchedCategories = { recommendationCategories: [] as KeyValuePair[] };
 
   useEffect(() => {
     // function to fetch google photos
@@ -728,9 +722,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     };
   }, [isDropdownOpen]);
 
-  if (error) {
-    return toast.error(t("toast.error.errorLoadingCategories"));
-  }
 
   // Handle the removal of an image
   const handleRemoveImage = async (image: GoogleMedia) => {
@@ -952,7 +943,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
         </div>,
         document.body
       )}
-      {!isLoading && loading ? (
+      {false ? (
         <div className="flex items-center justify-center min-h-screen">
           <EarthLoader context="general" size="small" />
         </div>

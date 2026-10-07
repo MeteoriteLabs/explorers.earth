@@ -113,12 +113,52 @@ deferred to its own ticket. The consumer half proceeded on those answers.
 | `hooks/useCreateLocation.ts` | migrated, 7 cases |
 | `hooks/useAddRecommendation.ts` | migrated, 13 cases |
 | `components/ListForm.tsx` | **no change needed** - presentational, never touched Apollo |
-| `components/Recommendations.tsx` | not yet migrated |
-| `components/AddRecommendation.tsx` | not yet migrated |
-| `features/PublicHome/components/PublicPlaceCard.tsx` | not yet migrated |
+| `components/Recommendations.tsx` | migrated, 3 render cases |
+| `components/AddRecommendation.tsx` | migrated |
+| `hooks/useMenuItems.ts` (not in the original list) | migrated |
+| `hooks/useRecommedationFields.ts` (not in the original list) | migrated |
+| `pages/Favorites.tsx` (not in the original list) | migrated |
+| `features/PublicHome/components/PublicPlaceCard.tsx` | reads the public projection, which this ticket delivered; no change needed |
 | `tunes/server/explorers/categories/places.ts` | not created, as recorded above |
 | `tunes/server/test/explorers/places.test.ts` | not written |
 | `explorers-earth/e2e/replatform/places.spec.ts` | not started - needs a fixture runner and protected-manifest identities |
+
+### What is left on Apollo in this surface, and why
+
+Nothing in the Places owner surface reads or writes Strapi any more. What remains in
+`features/Favorites` belongs to other tickets:
+
+- `AddLinkedPeoplePage.tsx`, `AddLinkedProductsPage.tsx` and the one remaining
+  `useQuery(recommendedListByIdQuery)` in `Recommendations.tsx` read the linked person and
+  product lists. That is [5.2](ticket-5-2.md)'s attachment contract and is not this
+  ticket's to migrate.
+- `services/claimablePlaceProfileService.ts` is [5.4](ticket-5-4.md)'s. It is no longer
+  called from the add flow, because 5.1 specifies the direct canonical claim query and
+  forbids a second asynchronously stale directory.
+- `api/query.ts` and `api/mutation.ts` are the retired documents; Epic 8 removes them
+  after checking callers.
+
+### Two more gaps, and a defect the types were hiding
+
+4. **A list's pin and its order had storage and no command.** `collections.pin_order` has
+   existed since the list schema and nothing wrote it; `display_order` was readable and
+   not writable. So pinning or reordering a list was impossible through any command, for
+   every category. Both are now on `updateCollection` as separate decisions, and
+   `pinOrder` travels on the editable list read - not on the category page, because that
+   page DTO is the shape every category's client and fixture already produces, and a
+   list's pin is only read where a list is edited.
+5. **`Geometry` was the wrong shape.** The view model and the public projection emitted
+   `{location:{lat,lng}}`, and every map and card in the app reads `Geometry.lat` and
+   `Geometry.lng` directly - `PlaceOverview`, `GooglePlaceModal`, the guide route modals,
+   `PublicGuideDetailPage`, `useRecommedationFields`, and the map-preview test's own
+   fixture. It typechecked, and every map would have rendered nothing. Both edges now emit
+   the flat shape, and the view-model test pins it.
+
+The typechecker surfaced what Strapi had hidden once the DTOs became honest:
+`CardDataItem`, `FetchedPlace`, `TopPlacesByCategory` and `AddPlaceOverlay` all declared
+`Place_Id`, `Rating` and `media_details` as always present. A manual place has no provider
+id or rating and a recommendation may carry no media, so those types now say so, and a
+render case covers exactly that place.
 
 ### Three gaps the storage half had left
 
