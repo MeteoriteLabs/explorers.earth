@@ -97,6 +97,72 @@ What the storage proves, each assertion checked by breaking it:
 - `recommendation_type = 'person'` inside a Places list is preserved with a deferred
   entity-kind invariant checked from both sides.
 
+## Consumer half (2026-10-07)
+
+Both blocking decisions were answered by the owner on 2026-10-07: place photos and all
+other media are stored in S3 as owned assets, and the category/subcategory taxonomy is
+deferred to its own ticket. The consumer half proceeded on those answers.
+
+| Mandated path | State |
+|---|---|
+| `explorers-earth/src/features/Favorites/api/explorersAdapter.ts` | delivered |
+| `explorers-earth/src/features/Favorites/api/placesClient.ts` (new) | delivered |
+| `explorers-earth/src/features/Favorites/api/placesViewModel.ts` (new) | delivered, 17 cases |
+| `explorers-earth/src/features/Favorites/api/placesCommands.ts` (new) | delivered |
+| `explorers-earth/src/features/Favorites/hooks/usePlacesOwner.ts` (new) | delivered |
+| `hooks/useCreateLocation.ts` | migrated, 7 cases |
+| `hooks/useAddRecommendation.ts` | migrated, 13 cases |
+| `components/ListForm.tsx` | **no change needed** - presentational, never touched Apollo |
+| `components/Recommendations.tsx` | not yet migrated |
+| `components/AddRecommendation.tsx` | not yet migrated |
+| `features/PublicHome/components/PublicPlaceCard.tsx` | not yet migrated |
+| `tunes/server/explorers/categories/places.ts` | not created, as recorded above |
+| `tunes/server/test/explorers/places.test.ts` | not written |
+| `explorers-earth/e2e/replatform/places.spec.ts` | not started - needs a fixture runner and protected-manifest identities |
+
+### Three gaps the storage half had left
+
+1. **The location aggregate was unreachable.** `0048` created
+   `place_collection_details` and `writePlaceCollectionDetails`, and no command wrote it
+   and no read returned it. The collection commands now carry `placeLocation`, a Places
+   list is given its location row at creation, and the editable list read returns it.
+   Every other category refuses the field.
+2. **A list cover could not be uploaded at all.** `0024` has always allowed the stored
+   media purpose `collection`, `0030` requires a cover's asset to carry exactly it, and
+   `collection_media` is the slot - but the upload allowlist in
+   `tunes/server/application/media.ts` omitted it, so `coverMediaId` was unreachable from
+   any client, for every category. Added, with the same 5 MB cap as the other image
+   purposes.
+3. **`providerPlaceId` was not exposed.** Consumers deduplicate and look places up by the
+   provider's identifier, and the DTO carried only the internal entity id. It is now
+   entity identity on `placeEntityDtoSchema`, read from `entity_identifiers`.
+
+### `List_Name_Details` is assembled, not stored
+
+Consumers read `note`, `thumbnail`, `location.{latitude,longitude,address}` and `place_id`
+from one blob. Those are not one thing, so they are not stored as one: the note is the
+collection's `description`, the thumbnail is its cover media, and the rest is the location
+snapshot. `legacyListNameDetails` assembles them once in the shared contract, so the owner
+view and the public projection cannot drift into two shapes for the same consumed blob.
+
+### Narrowings, each deliberate
+
+- **No category or subcategory is written.** The vocabulary is Strapi content and this
+  ticket forbids inventing production values, so the add form no longer blocks a save on a
+  subcategory it cannot store. The seeded taxonomy, the reusable-category assertions and
+  sector browse remain owed to the taxonomy ticket.
+- **The claimable-place directory write is gone.** `publicPlaceLookup` is the direct
+  canonical query this ticket specifies, and it forbids a second asynchronously stale
+  directory, so `syncClaimablePlaceProfile` is no longer called from the add flow.
+  `services/claimablePlaceProfileService.ts` still exists for 5.4 to decide on.
+- **Correcting a place's own facts repoints the recommendation.** Provider facts live on
+  the shared entity and are outside the override vocabulary by design, so an owner editing
+  an address resolves their own corrected place and the recommendation is repointed to it
+  through `replaceRecommendationEntity`. Nobody else's recommendation of the original is
+  touched. This is a behavioural difference from Strapi, where every recommendation held
+  its own copy of `Place_Details`, and it is the only way to honour both the edit and the
+  shared-entity rule.
+
 ## Two decisions block the rest
 
 ### 1. The category/subcategory vocabulary is not in this repository

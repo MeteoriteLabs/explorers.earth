@@ -1,7 +1,8 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import {createRecommendationSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
-import {resolveManualPlaceSchema,placeRecommendationContextSchema,placeCollectionDetailsSchema,emptyPlaceContext,
+import {resolveManualPlaceSchema,placeRecommendationContextSchema,placeCollectionDetailsSchema,emptyPlaceContext,emptyPlaceDetails,
  type PlaceEntityDetails,type PlaceRecommendationContext,type PlaceCollectionDetails} from '../../../../../tunes/shared/explorersPlaceContract';
+import {resolveManualPersonSchema} from '../../../../../tunes/shared/explorersPersonContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
 
@@ -25,6 +26,9 @@ export type PlaceMembershipIntent=Readonly<{parent:CollectionObservation;item:Re
 
 const intents=new WeakMap<object,{accountId:string|null;generation:number;route:string}>();
 const membershipIntents=new WeakMap<object,{accountId:string|null;generation:number;route:string}>();
+// A person recommendation inside a Places list resolves a person entity rather than a
+// place; the intent records which, so the resolve cannot be chosen at save time.
+const personIntents=new WeakSet<object>();
 const route=()=>typeof window==='undefined'?'':window.location.pathname;
 const key=()=>crypto.randomUUID();
 function freeze<T>(value:T):T{if(value&&typeof value==='object'){Object.freeze(value);for(const child of Object.values(value))if(child&&typeof child==='object'&&!Object.isFrozen(child))freeze(child);}return value;}
@@ -47,7 +51,7 @@ export const PlacesClient={
  },
  // A place gallery is owned media in S3, so provider imagery is imported rather than
  // linked and nothing here references a provider URL.
- async upload(file:File,_commandKey:string,signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.createMedia(file,'recommendation',signal);current(scope,signal);return media;},
+ async upload(file:File,purpose:'recommendation'|'collection'='recommendation',signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.createMedia(file,purpose,signal);current(scope,signal);return media;},
  async readCompleteOwner(signal?:AbortSignal):Promise<CompletePlacesOwnerContent>{const value=await explorersApiClient.getCompleteMyCategoryContent({category:'places',status:'active'},signal,true);complete(value);return value;},
  async observeCollection(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableCollection(id,signal);collection(value);return value;},
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
@@ -69,11 +73,43 @@ export const PlacesClient={
  },
  async createManual(intent:ManualPlaceIntent,signal?:AbortSignal){
   const scope=intents.get(intent);if(!scope)fail();current(scope,signal);collection(intent.parent);
-  const entity=await explorersApiClient.resolvePlaceEntity({kind:'manual',category:'places',details:{...intent.draft.details,title:intent.draft.title}},intent.entityKey,signal);
+  const entity=personIntents.has(intent)
+   ?await explorersApiClient.resolvePersonEntity({kind:'manual',category:'people',details:{title:intent.draft.title}},intent.entityKey,signal)
+   :await explorersApiClient.resolvePlaceEntity({kind:'manual',category:'places',details:{...intent.draft.details,title:intent.draft.title}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
   const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,
    mediaIds:[...intent.draft.mediaIds],publicationState:'draft',placeContext:intent.draft.context,placePhotos:{photoMediaIds:[...intent.draft.photoMediaIds]}},intent.recommendationKey,signal);
   current(scope,signal);return result;
+ },
+ /**
+  * A Places list may hold a person recommendation - the legacy Recommendation_Type
+  * 'person'. The entity is a person, so the person resolve supplies it; the
+  * recommendation stays in the Places list with a person context, and no place facts
+  * are invented for it.
+  */
+ prepareManualPersonIntent(parent:CollectionObservation,draft:ManualPlaceDraft):ManualPlaceIntent{
+  collection(parent);
+  const details=resolveManualPersonSchema.parse({kind:'manual',category:'people',details:{title:draft.title}}).details;
+  const context=placeRecommendationContextSchema.parse({...emptyPlaceContext(),...draft.context,recommendationType:'person'});
+  const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{...draft,title:details.title,details:{},context,
+   mediaIds:[...draft.mediaIds],photoMediaIds:[...draft.photoMediaIds]}});
+  personIntents.add(intent);
+  const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
+ },
+ /**
+  * Correct a shared place's provider facts for this owner alone.
+  *
+  * The facts belong to the entity, which everyone recommending that place shares, so
+  * they are not overridable - one owner must not be able to move a place for everyone.
+  * Instead the owner's recommendation is repointed at their own corrected place, which
+  * leaves every other recommendation of the original untouched.
+  */
+ async correctFacts(observed:RecommendationObservation,title:string,details:Partial<PlaceEntityDetails>,entityKey:string,commandKey:string,signal?:AbortSignal){
+  recommendation(observed);
+  const resolved=resolveManualPlaceSchema.parse({kind:'manual',category:'places',details:{...emptyPlaceDetails(),...details,title}});
+  const entity=await explorersApiClient.resolvePlaceEntity(resolved,entityKey,signal);
+  recommendation(observed);
+  return explorersApiClient.replaceRecommendationEntity(observed,entity.id,commandKey,signal);
  },
  // A location list is created with its location, so the list and its location never
  // exist in two different states.

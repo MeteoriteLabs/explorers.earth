@@ -6,7 +6,11 @@ import type { MediaDto, RequestContext } from "../../shared/explorersContract";
 import { MediaAccountInactive, MediaRepository } from "../repositories/mediaRepository";
 import { resolveObjectStorage, type ObjectStorage } from "../services/objectStorage";
 
-export type MediaUploadInput = { purpose: "profile" | "background" | "feed" | "recommendation"; filename: string;
+// "collection" is a list cover. 0024 has always allowed the stored purpose, 0030 requires
+// a cover's asset to carry exactly it, and collection_media is the slot - only the upload
+// allowlist was narrower, so no client could set a list cover at all. Ticket 5.1 needs it
+// for the location-list thumbnail the share, QR and city surfaces read.
+export type MediaUploadInput = { purpose: "profile" | "background" | "feed" | "recommendation" | "collection"; filename: string;
   mimeType: string; length: number; bytes: Buffer; alternativeText?: string | null; caption?: string | null };
 export type AuthorizedMediaObject = { key: string; mimeType: string; length: number; bytes: Buffer;
   sha256: string };
@@ -14,7 +18,7 @@ export class MediaInputError extends Error {}
 export class MediaUnavailable extends Error {}
 
 const limits: Record<MediaUploadInput["purpose"], number> = { profile: 5 * 1024 * 1024,
-  background: 5 * 1024 * 1024, feed: 10 * 1024 * 1024,recommendation:5*1024*1024 };
+  background: 5 * 1024 * 1024, feed: 10 * 1024 * 1024,recommendation:5*1024*1024,collection:5*1024*1024 };
 
 function sniff(bytes: Buffer): string | undefined {
   if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return "image/png";

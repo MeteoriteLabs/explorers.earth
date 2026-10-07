@@ -3,7 +3,7 @@ import {useLocation} from 'react-router-dom';
 import useAuthStore from '../../../store/store';
 import type {CollectionObservation,RecommendationObservation} from '../../../lib/explorersApiClient';
 import {PlacesClient,type CompletePlacesOwnerContent,type PlaceMembershipIntent,type ManualPlaceDraft} from './placesClient';
-import type {PlaceCollectionDetails} from '../../../../../tunes/shared/explorersPlaceContract';
+import type {PlaceCollectionDetails,PlaceEntityDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import {invalidatePlaces} from '../hooks/usePlacesOwner';
 
 // Ticket 5.1. Native Places commands, in their own module because api/query.ts is the
@@ -54,6 +54,20 @@ export function usePlacesCommands() {
    const intent=PlacesClient.prepareManualIntent(parent,draft);assert();
    const result=await PlacesClient.createManual(intent,signal);assert();forget(signature);return result;
   }),
+  // The legacy Recommendation_Type 'person' inside a Places list.
+  createPerson:(collectionId:string,draft:ManualPlaceDraft)=>run(async(assert,signal)=>{
+   const signature=`create-person:${collectionId}:${JSON.stringify(draft)}`;begin(`collection:${collectionId}`,signature);
+   const parent=await observeCollection(signature,collectionId,assert,signal);assert();
+   const intent=PlacesClient.prepareManualPersonIntent(parent,draft);assert();
+   const result=await PlacesClient.createManual(intent,signal);assert();forget(signature);return result;
+  }),
+  // Correcting the provider facts repoints this owner's recommendation at their own
+  // corrected place rather than rewriting the shared one.
+  correctFacts:(id:string,title:string,details:Partial<PlaceEntityDetails>)=>run(async(assert,signal)=>{
+   const signature=`correct:${id}:${title}:${JSON.stringify(details)}`;begin(`recommendation:${id}`,signature);
+   const observed=await observeRecommendation(signature,id,assert,signal);assert();
+   const result=await PlacesClient.correctFacts(observed,title,details,key(`${signature}:entity`),key(signature),signal);assert();forget(signature);return result;
+  }),
   updatePlace:(id:string,patch:Parameters<typeof PlacesClient.updateRecommendation>[1])=>run(async(assert,signal)=>{const signature=`update-place:${id}:${JSON.stringify(patch)}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.updateRecommendation(observed,patch,key(signature),signal);assert();forget(signature);return result;}),
   archivePlace:(id:string)=>run(async(assert,signal)=>{const signature=`archive-place:${id}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.archiveRecommendation(observed,key(signature),signal);assert();forget(signature);return result;}),
   publishPlace:(id:string,published:boolean)=>run(async(assert,signal)=>{const signature=`recommendation-publication:${id}:${published}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.updateRecommendation(observed,{publicationState:published?'published':'draft'},key(signature),signal);assert();forget(signature);return result;}),
@@ -73,6 +87,6 @@ export function usePlacesCommands() {
   savePins:(pins:{recommendationId:string;collectionId:string}[])=>run(async(assert,signal)=>{const signature=`save-pins:${JSON.stringify(pins)}`;begin('pins',signature);const observed=await observeComplete(signature,assert,signal);assert();const result=await PlacesClient.setTopPicks(observed,pins,key(signature),signal);assert();forget(signature);return result;}),
   // Provider imagery is imported into owned media before it is referenced, so a place
   // gallery never depends on a provider request to render.
-  upload:(file:File)=>run(async(assert,signal)=>{const signature=`upload:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,key(signature),signal);assert();forget(signature);return result;}),
+  upload:(file:File,purpose:'recommendation'|'collection'='recommendation')=>run(async(assert,signal)=>{const signature=`upload:${purpose}:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${purpose}:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,purpose,signal);assert();forget(signature);return result;}),
  };
 }

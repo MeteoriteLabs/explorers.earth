@@ -49,10 +49,10 @@ async function collection(accountId: string, category: string) {
     VALUES($1,$2,'List',$3,'private','draft',0) RETURNING id,revision::text AS revision`, [accountId, category, `list-${randomUUID()}`])).rows[0];
   return {id: row.id as string, revision: Number(row.revision)};
 }
-async function readyMedia(accountId: string, salt: string) {
+async function readyMedia(accountId: string, salt: string, purpose = "recommendation") {
   return (await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
-    VALUES($1,'recommendation','ready','image/png',1024,$2,now()) RETURNING id`,
-    [accountId, createHash("sha256").update(salt).digest()])).rows[0].id as string;
+    VALUES($1,$3,'ready','image/png',1024,$2,now()) RETURNING id`,
+    [accountId, createHash("sha256").update(salt).digest(), purpose])).rows[0].id as string;
 }
 
 describePg("owner write path for typed categories", () => {
@@ -222,6 +222,17 @@ describePg("owner write path for typed categories", () => {
     const books = await repository.createCollection(accountId, {category: "books", title: "Reads", slug: `reads-${randomUUID()}`}, key());
     await expect(repository.updateCollection(accountId, books.id, books.revision, {placeLocation: location}, key())).rejects.toThrow();
     expect((await pool.query("SELECT count(*)::int AS count FROM place_collection_details WHERE collection_id=$1", [books.id])).rows[0].count).toBe(0);
+  });
+
+  it("accepts a list cover whose asset carries the collection purpose and refuses any other", async () => {
+    // The upload allowlist was narrower than the storage design, so no client could set a
+    // list cover at all; 0030 requires the asset's purpose to be exactly 'collection'.
+    const accountId = await account();
+    const cover = await readyMedia(accountId, `cover-${randomUUID()}`, "collection");
+    const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`, coverMediaId: cover}, key());
+    expect(list.coverMediaId).toBe(cover);
+    const wrong = await readyMedia(accountId, `wrong-${randomUUID()}`, "recommendation");
+    await expect(repository.createCollection(accountId, {category: "places", title: "Porto", slug: `porto-${randomUUID()}`, coverMediaId: wrong}, key())).rejects.toThrow();
   });
 
   it("refuses an App resolve without the URL its storage requires", async () => {

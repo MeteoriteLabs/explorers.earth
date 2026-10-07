@@ -533,7 +533,7 @@ export const explorersApiClient = {
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
     return (await responseBody<{ account: AccountDto }>(response, generation)).account;
   },
-  async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation", signal?: AbortSignal): Promise<MediaDto> {
+  async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation" | "collection", signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media", { method: "POST", credentials: "include", signal,
       headers: { "Content-Type": file.type, "X-Media-Purpose": purpose, "X-File-Name": file.name }, body: file });
