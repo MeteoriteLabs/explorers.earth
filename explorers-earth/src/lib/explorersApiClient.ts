@@ -17,6 +17,7 @@ import { createCollectionSchema,updateCollectionSchema,createRecommendationSchem
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
+import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/explorersAppContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -266,26 +267,27 @@ async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id
 function commandInput<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
  const result=schema.safeParse(input);if(!result.success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');return result.data;
 }
-async function gameMembershipCommand(parent:CollectionObservation,item:RecommendationObservation,key:string,attached:boolean,signal?:AbortSignal){
+async function membershipCommand(category:'games'|'apps',parent:CollectionObservation,item:RecommendationObservation,key:string,attached:boolean,signal?:AbortSignal){
+ const label=category==='games'?'Games':'Apps';
  assertOwnerDetailObservation(parent,'collection');assertOwnerDetailObservation(item,'recommendation');commandInput(commandKeySchema,key);
- if(parent.detail.category!=='games'||item.detail.category!=='games'||parent.accountId!==item.accountId||parent.generation!==item.generation)throw new ExplorersApiError(422,'INVALID_INPUT','Games membership observations required');
+ if(parent.detail.category!==category||item.detail.category!==category||parent.accountId!==item.accountId||parent.generation!==item.generation)throw new ExplorersApiError(422,'INVALID_INPUT',`${label} membership observations required`);
  const input=commandInput(gameMembershipCommandSchema,{expectedCollectionRevision:parent.resourceRevision,expectedRecommendationRevision:item.resourceRevision});
  const controller=new AbortController(),stop=()=>controller.abort(),initial=useAuthStore.getState(),route=window.location.pathname,deadline=AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
  const current=()=>{const state=useAuthStore.getState();return state.isAuthenticated&&state.accountId===initial.accountId&&state.generation===initial.generation&&window.location.pathname===route;};
  const unsubscribe=useAuthStore.subscribe(()=>{if(!current())stop();});signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
  const revoke=()=>{issuedDetails.delete(parent);issuedDetails.delete(item);};
  try{
-  if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED','Games membership cancelled');
+  if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED',`${label} membership cancelled`);
   const fetching=fetch(`/api/explorers/v1/collections/${parent.resourceId}/memberships/${item.resourceId}`,{method:attached?'POST':'DELETE',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify(input),signal:deadline});
   void fetching.then(reply=>{if(deadline.aborted)void reply.body?.cancel().catch(()=>{});},()=>{});
   const reply=await gameCommandAwait(fetching,deadline),raw=await gameMembershipBody(reply,initial.generation,deadline);
-  if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED','Games owner changed');
+  if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED',`${label} owner changed`);
   const parsed=z.object({membership:gameMembershipResultSchema}).strict().safeParse(raw);revoke();
-  if(!parsed.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Games membership response');
+  if(!parsed.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT',`Invalid ${label} membership response`);
   const result=parsed.data.membership;
-  if(result.attached!==attached||result.collection.id!==parent.resourceId||result.recommendation.id!==item.resourceId||result.collection.accountId!==initial.accountId||result.recommendation.accountId!==initial.accountId||result.collection.category!=='games'||result.recommendation.category!=='games'||result.collection.revision!==parent.resourceRevision+1||result.recommendation.revision!==item.resourceRevision+1||result.recommendation.entityId!==item.detail.entityId)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Games membership identity');
+  if(result.attached!==attached||result.collection.id!==parent.resourceId||result.recommendation.id!==item.resourceId||result.collection.accountId!==initial.accountId||result.recommendation.accountId!==initial.accountId||result.collection.category!==category||result.recommendation.category!==category||result.collection.revision!==parent.resourceRevision+1||result.recommendation.revision!==item.resourceRevision+1||result.recommendation.entityId!==item.detail.entityId)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT',`Invalid ${label} membership identity`);
   return deepFreeze(result);
- }catch(error){if(error instanceof ExplorersApiError){if([401,403,404,409].includes(error.status))revoke();throw error;}throw new ExplorersApiError(503,'UNAVAILABLE','Unable to save Games membership');}
+ }catch(error){if(error instanceof ExplorersApiError){if([401,403,404,409].includes(error.status))revoke();throw error;}throw new ExplorersApiError(503,'UNAVAILABLE',`Unable to save ${label} membership`);}
  finally{unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 async function gameCommandAwait<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
@@ -342,8 +344,10 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
 export const explorersApiClient = {
-  attachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>gameMembershipCommand(parent,item,key,true,signal),
-  detachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>gameMembershipCommand(parent,item,key,false,signal),
+  attachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('games',parent,item,key,true,signal),
+  attachMyAppMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('apps',parent,item,key,true,signal),
+  detachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('games',parent,item,key,false,signal),
+  detachMyAppMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('apps',parent,item,key,false,signal),
   async getMovieGenres(signal?:AbortSignal){return ownerRead('/catalog/movie-genres',{},movieGenreTermsResultSchema,signal,true);},
   async importMovieMedia(observed:RecommendationObservation,key:string,signal?:AbortSignal){
    assertOwnerDetailObservation(observed,'recommendation');if(observed.detail.category!=='movies')throw new ExplorersApiError(422,'INVALID_INPUT','Movie import requires Movies');
@@ -360,6 +364,12 @@ export const explorersApiClient = {
   },
   async searchBookCandidates(input:{query:string;limit?:number;cursor?:string},signal?:AbortSignal){
    const parsed=commandInput(bookCandidateRequestSchema,input);return ownerRead('/catalog/books',parsed,bookCandidatesSchema,signal,true);
+  },
+  async resolveAppEntity(input:z.input<typeof resolveManualAppSchema>,key:string,signal?:AbortSignal){
+   const body=commandInput(resolveManualAppSchema,input);
+   const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',appEntityDtoSchema,signal);
+   if(entity.kind!=='app'||entity.title!==body.details.title||entity.details.appUrl!==body.details.appUrl)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved App identity');
+   return entity;
   },
   async resolveBookEntity(input:z.input<typeof resolveProviderBookSchema>|z.input<typeof resolveManualBookSchema>,key:string,signal?:AbortSignal){
    const body=commandInput(z.union([resolveProviderBookSchema,resolveManualBookSchema]),input);
