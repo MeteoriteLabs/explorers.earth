@@ -1,0 +1,161 @@
+import {createHash, randomUUID} from "node:crypto";
+import pg from "pg";
+import {afterAll, beforeAll, describe, expect, it} from "vitest";
+import {migrateMusicDatabase} from "../../db/migrate";
+import {ExplorersRecommendationRepository} from "../../repositories/explorersRecommendationRepository";
+import {readAppScreenshotMediaIds} from "../../repositories/appCatalogRepository";
+import {readProductOffer} from "../../repositories/productCatalogRepository";
+
+/**
+ * Tickets 4.3 and 4.4. The owner write path for Apps and Products, end to end through the
+ * repository against a real PostgreSQL 15.
+ *
+ * This file exists because three gaps were only visible from here. The command contract
+ * accepted typed Apps and Products payloads, the storage existed, and the two were not
+ * connected:
+ *
+ *  1. resolveEntity fell through to resolveManualEntity for both categories, so the
+ *     entities row was written and the typed details were silently discarded. The client
+ *     then rejected the untyped response, so creating one could not succeed at all.
+ *  2. createRecommendation and updateRecommendation accepted appScreenshots and
+ *     productOffer and wrote neither.
+ *  3. updateRecommendation rejected any display override other than title for every
+ *     category except Books and Movies, so editing an App's or a Product's presentational
+ *     fields was impossible even though the command contract allows it.
+ *
+ * Each assertion below fails if its gap is reintroduced.
+ */
+const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
+const enabled = process.env.MUSIC_C6_POSTGRES_TEST === "1";
+const describePg = enabled ? describe.sequential : describe.skip;
+const databaseName = `explorers_write_path_${process.pid}`;
+
+let admin: pg.Pool;
+let pool: pg.Pool;
+let repository: ExplorersRecommendationRepository;
+
+const key = () => randomUUID();
+
+async function account() {
+  const accountId = (await pool.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+  await pool.query("UPDATE creator_accounts SET status='active' WHERE id=$1", [accountId]);
+  return accountId;
+}
+async function collection(accountId: string, category: string) {
+  // revision is a bigint, which pg returns as a string; the repository requires a number.
+  const row = (await pool.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
+    VALUES($1,$2,'List',$3,'private','draft',0) RETURNING id,revision::text AS revision`, [accountId, category, `list-${randomUUID()}`])).rows[0];
+  return {id: row.id as string, revision: Number(row.revision)};
+}
+async function readyMedia(accountId: string, salt: string) {
+  return (await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
+    VALUES($1,'recommendation','ready','image/png',1024,$2,now()) RETURNING id`,
+    [accountId, createHash("sha256").update(salt).digest()])).rows[0].id as string;
+}
+
+describePg("owner write path for typed categories", () => {
+  beforeAll(async () => {
+    admin = new pg.Pool({connectionString: exactTarget, max: 1});
+    await admin.query(`DROP DATABASE IF EXISTS ${databaseName}`);
+    await admin.query(`CREATE DATABASE ${databaseName}`);
+    const url = new URL(exactTarget); url.pathname = `/${databaseName}`;
+    pool = new pg.Pool({connectionString: url.toString(), max: 4});
+    await migrateMusicDatabase(pool);
+    repository = new ExplorersRecommendationRepository(pool);
+  }, 300_000);
+  afterAll(async () => {
+    await pool?.end();
+    if (admin) { await admin.query(`DROP DATABASE IF EXISTS ${databaseName}`); await admin.end(); }
+  }, 120_000);
+
+  it("persists the typed App details the manual resolve carries", async () => {
+    const accountId = await account();
+    const entity = await repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {
+      title: "Focus Timer", appUrl: "https://example.com/focus", developer: "Quiet Software", priceTier: "Paid", platforms: ["iOS", "Web"],
+    }}, key());
+    expect(entity).toMatchObject({kind: "app", title: "Focus Timer", origin: "manual"});
+    expect(entity.details).toMatchObject({appUrl: "https://example.com/focus", developer: "Quiet Software", priceTier: "Paid", platforms: ["iOS", "Web"]});
+    // The details row exists in storage, not only in the response.
+    expect((await pool.query("SELECT app_url FROM app_entity_details WHERE entity_id=$1", [entity.id])).rows[0].app_url).toBe("https://example.com/focus");
+  });
+
+  it("persists the typed Product details the manual resolve carries", async () => {
+    const accountId = await account();
+    const entity = await repository.resolveProductEntity(accountId, {kind: "manual", category: "products", details: {
+      title: "Widget", productUrl: "https://example.com/widget", brand: "Acme", specifications: {Weight: "1kg"}, imageUrls: ["https://example.com/a.png"],
+    }}, key());
+    expect(entity).toMatchObject({kind: "product", title: "Widget", origin: "manual"});
+    expect(entity.details).toMatchObject({productUrl: "https://example.com/widget", brand: "Acme", specifications: {Weight: "1kg"}});
+    expect((await pool.query("SELECT product_url FROM product_entity_details WHERE entity_id=$1", [entity.id])).rows[0].product_url).toBe("https://example.com/widget");
+  });
+
+  it("writes App screenshots on create and replaces them on update", async () => {
+    const accountId = await account();
+    const entity = await repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {title: "Shots", appUrl: "https://example.com/shots"}}, key());
+    const parent = await collection(accountId, "apps");
+    const first = await readyMedia(accountId, `a-${accountId}`), second = await readyMedia(accountId, `b-${accountId}`);
+    const created = await repository.createRecommendation(accountId, {category: "apps", entityId: entity.id, collectionId: parent.id,
+      expectedCollectionRevision: parent.revision, appScreenshots: {screenshotMediaIds: [first, second]}}, key());
+    expect(await readAppScreenshotMediaIds(pool, created.id, accountId)).toEqual([first, second]);
+    await repository.updateRecommendation(accountId, created.id, created.revision, {appScreenshots: {screenshotMediaIds: [second]}}, key());
+    expect(await readAppScreenshotMediaIds(pool, created.id, accountId)).toEqual([second]);
+  });
+
+  it("writes an offer on create, defaults it to unknown, and replaces it on update", async () => {
+    const accountId = await account();
+    const entity = await repository.resolveProductEntity(accountId, {kind: "manual", category: "products", details: {title: "Priced", productUrl: "https://example.com/priced"}}, key());
+    const parent = await collection(accountId, "products");
+    // No offer supplied: the row is created as unknown, never as free.
+    const created = await repository.createRecommendation(accountId, {category: "products", entityId: entity.id, collectionId: parent.id,
+      expectedCollectionRevision: parent.revision}, key());
+    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    // The reader returns the empty offer for an absent row too, so assert the row itself
+    // exists: this recommendation owns its offer from creation.
+    expect((await pool.query("SELECT count(*)::int AS count FROM product_recommendation_context WHERE recommendation_id=$1", [created.id])).rows[0].count).toBe(1);
+    const updated = await repository.updateRecommendation(accountId, created.id, created.revision, {productOffer: {price: "0.00", currencyCode: "USD", buyUrl: null}}, key());
+    expect(await readProductOffer(pool, created.id, accountId)).toMatchObject({price: "0.00", currencyCode: "USD"});
+    await repository.updateRecommendation(accountId, created.id, updated.revision, {productOffer: {price: null, currencyCode: null, buyUrl: null}}, key());
+    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+  });
+
+  it("accepts an App and a Product display override on update", async () => {
+    const accountId = await account();
+    const app = await repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {title: "Editable", appUrl: "https://example.com/editable"}}, key());
+    const appList = await collection(accountId, "apps");
+    const appRow = await repository.createRecommendation(accountId, {category: "apps", entityId: app.id, collectionId: appList.id, expectedCollectionRevision: appList.revision}, key());
+    await expect(repository.updateRecommendation(accountId, appRow.id, appRow.revision, {displayOverrides: {title: "Renamed", developer: "New dev"}}, key())).resolves.toBeTruthy();
+
+    const product = await repository.resolveProductEntity(accountId, {kind: "manual", category: "products", details: {title: "Editable", productUrl: "https://example.com/editable-product"}}, key());
+    const productList = await collection(accountId, "products");
+    const productRow = await repository.createRecommendation(accountId, {category: "products", entityId: product.id, collectionId: productList.id, expectedCollectionRevision: productList.revision}, key());
+    await expect(repository.updateRecommendation(accountId, productRow.id, productRow.revision, {displayOverrides: {title: "Renamed", brand: "New brand"}}, key())).resolves.toBeTruthy();
+  });
+
+  it("refuses a category payload on the wrong category, on create and on update", async () => {
+    const accountId = await account();
+    const app = await repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {title: "Wrong", appUrl: "https://example.com/wrong"}}, key());
+    const appList = await collection(accountId, "apps");
+    await expect(repository.createRecommendation(accountId, {category: "apps", entityId: app.id, collectionId: appList.id,
+      expectedCollectionRevision: appList.revision, productOffer: {price: "1.00", currencyCode: "USD", buyUrl: null}}, key())).rejects.toThrow();
+    const row = await repository.createRecommendation(accountId, {category: "apps", entityId: app.id, collectionId: appList.id, expectedCollectionRevision: appList.revision}, key());
+    await expect(repository.updateRecommendation(accountId, row.id, row.revision, {productOffer: {price: "1.00", currencyCode: "USD", buyUrl: null}}, key())).rejects.toThrow();
+    // The refused offer left nothing behind.
+    expect(await readProductOffer(pool, row.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+  });
+
+  it("refuses an App resolve without the URL its storage requires", async () => {
+    const accountId = await account();
+    await expect(repository.resolveAppEntity(accountId, {kind: "manual", category: "apps", details: {title: "No link"}}, key())).rejects.toThrow();
+    await expect(repository.resolveProductEntity(accountId, {kind: "manual", category: "products", details: {title: "No link"}}, key())).rejects.toThrow();
+  });
+
+  it("replays one resolve command rather than creating a second entity", async () => {
+    const accountId = await account();
+    const commandKey = key();
+    const input = {kind: "manual", category: "apps", details: {title: "Replayed", appUrl: "https://example.com/replayed"}} as const;
+    const first = await repository.resolveAppEntity(accountId, input, commandKey);
+    const second = await repository.resolveAppEntity(accountId, input, commandKey);
+    expect(second.id).toBe(first.id);
+    expect((await pool.query("SELECT count(*)::int AS count FROM entities WHERE title='Replayed'")).rows[0].count).toBe(1);
+  });
+});

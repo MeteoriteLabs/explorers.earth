@@ -46,6 +46,7 @@ const fixedFiles = [
   "tunes/shared/explorersMovieContract.ts",
   "tunes/shared/explorersMovieMediaContract.ts",
   "tunes/shared/explorersAppContract.ts",
+  "tunes/shared/explorersProductContract.ts",
   "tunes/shared/explorersGameContract.ts",
   "tunes/shared/explorersGameOwnerContract.ts",
   "explorers-earth/src/features/Games/api/gamesClient.ts",

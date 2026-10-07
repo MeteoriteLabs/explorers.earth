@@ -7,6 +7,10 @@ import { lockContentCategories } from '../db/explorers-content-lock';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
 import {insertBookDetails,readBookEntity,writeBookContext} from './bookCatalogRepository';
+import {insertAppDetails,readAppEntity,writeAppScreenshots} from './appCatalogRepository';
+import {insertProductDetails,readProductEntity,writeProductOffer} from './productCatalogRepository';
+import {appDisplayFieldsSchema,appEntityDetailsSchema,type AppScreenshots} from '../../shared/explorersAppContract';
+import {productDisplayFieldsSchema,productEntityDetailsSchema,emptyProductOffer,type ProductOffer} from '../../shared/explorersProductContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
 export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|'products'|'people';
@@ -124,6 +128,28 @@ export class ExplorersRecommendationRepository {
       return result.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
+  /**
+   * Apps and Products have no provider, so there is only a manual path - but the details
+   * are typed, and before this they were silently discarded: resolveEntity fell through
+   * to resolveManualEntity, which writes the entities row and nothing else. The client
+   * then rejected the untyped response, so creating one could not succeed.
+   */
+  async resolveAppEntity(accountId:string,input:{kind:'manual';category:'apps';details:Record<string,unknown>},key:string) {
+    return this.command(accountId,'resolveAppEntity',input,key,async db=>{
+      const {title,...fields}=input.details as {title:string};
+      const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('app',$1,'manual',to_tsvector('simple',$1)) RETURNING id",[title])).rows[0];
+      await insertAppDetails(db,entity.id,appEntityDetailsSchema.parse({developer:null,logoUrl:null,description:null,downloadUrl:null,priceTier:null,platforms:[],...fields}));
+      return readAppEntity(db,entity.id);
+    });
+  }
+  async resolveProductEntity(accountId:string,input:{kind:'manual';category:'products';details:Record<string,unknown>},key:string) {
+    return this.command(accountId,'resolveProductEntity',input,key,async db=>{
+      const {title,...fields}=input.details as {title:string};
+      const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('product',$1,'manual',to_tsvector('simple',$1)) RETURNING id",[title])).rows[0];
+      await insertProductDetails(db,entity.id,productEntityDetailsSchema.parse({brand:null,logoUrl:null,description:null,specifications:{},imageUrls:[],...fields}));
+      return readProductEntity(db,entity.id);
+    });
+  }
   async resolveBookEntity(accountId:string,input:{kind:'provider';category:'books';externalId:string}|{kind:'manual';category:'books';details:{title:string}},key:string,fetchCandidate:()=>Promise<BookCandidate>) {
     return this.command(accountId,'resolveBookEntity',input,key,async db=>{
       if(input.kind==='provider') {
@@ -195,7 +221,7 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[]},key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer},key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
@@ -207,6 +233,11 @@ export class ExplorersRecommendationRepository {
       await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1',[input.collectionId]);
       if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,result.rows[0].id,input.displayOverrides);
       if(input.bookContext!==undefined) await writeBookContext(db,result.rows[0].id,accountId,input.bookContext);
+      if(input.category!=='apps'&&input.appScreenshots!==undefined||input.category!=='products'&&input.productOffer!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
+      if(input.appScreenshots!==undefined) await writeAppScreenshots(db,result.rows[0].id,accountId,input.appScreenshots.screenshotMediaIds);
+      // An offer row is always written for a product so the recorded offer is this
+      // recommendation's own from the start; absent fields are unknown, not zero.
+      if(input.category==='products') await writeProductOffer(db,result.rows[0].id,accountId,input.productOffer??emptyProductOffer());
       if(input.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[input.entityId])).rows[0]){await writeMovieContext(db,result.rows[0].id,accountId,input.entityId,input.movieContext??{region:'US',selectedProviderIds:null});await writeMovieTerms(db,result.rows[0].id,accountId,input.entityId,input.movieTermIds);}
       await this.replaceMedia(db,accountId,result.rows[0].id,input.mediaIds??[]);
       return this.recommendationRecord(db,result.rows[0]);
@@ -281,19 +312,21 @@ export class ExplorersRecommendationRepository {
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
   }
-  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[]},key:string):Promise<RecommendationRecord> {
+  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer},key:string):Promise<RecommendationRecord> {
     if(input.userRating!==undefined&&input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockRecommendation(db,accountId,id,expectedRevision);
-      if(locked.category!=='books'&&input.bookContext!==undefined||locked.category!=='movies'&&(input.movieContext!==undefined||input.movieTermIds!==undefined))throw new RecommendationFailure(422,'Category context mismatch');
-      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
+      if(locked.category!=='books'&&input.bookContext!==undefined||locked.category!=='movies'&&(input.movieContext!==undefined||input.movieTermIds!==undefined)||locked.category!=='apps'&&input.appScreenshots!==undefined||locked.category!=='products'&&input.productOffer!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
+      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(locked.category==='apps'){const {title,...fields}=input.displayOverrides??{};if(!appDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid App overrides');}else if(locked.category==='products'){const {title,...fields}=input.displayOverrides??{};if(!productDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Product overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
       const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
         publication_state=coalesce($4,publication_state),note=CASE WHEN $5 THEN $6::jsonb ELSE note END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null,input.note!==undefined,input.note==null?null:JSON.stringify(input.note)]);
       if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,id,input.displayOverrides);
       if(input.bookContext!==undefined) await writeBookContext(db,id,accountId,input.bookContext);
       if(input.movieContext!==undefined)await writeMovieContext(db,id,accountId,locked.entity_id,input.movieContext);
       if(input.movieTermIds!==undefined)await writeMovieTerms(db,id,accountId,locked.entity_id,input.movieTermIds);
+      if(input.appScreenshots!==undefined) await writeAppScreenshots(db,id,accountId,input.appScreenshots.screenshotMediaIds);
+      if(input.productOffer!==undefined) await writeProductOffer(db,id,accountId,input.productOffer);
       if(input.mediaIds!==undefined) await this.replaceMedia(db,accountId,id,input.mediaIds);
       return this.recommendationRecord(db,result.rows[0]);
     });

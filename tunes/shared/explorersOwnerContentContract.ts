@@ -3,6 +3,7 @@ import {movieProviderMediaSchema} from './explorersMovieMediaContract';
 import {movieEntityDtoSchema,movieDetailsSchema,movieContextSchema,movieTermsSchema,movieDisplayFieldsSchema} from './explorersMovieContract';
 import {bookCoversSchema} from './explorersBookCoverContract';
 import {appEntityDtoSchema,appEntityDetailsSchema,appDisplayFieldsSchema,appScreenshotsSchema} from './explorersAppContract';
+import {productEntityDtoSchema,productEntityDetailsSchema,productDisplayFieldsSchema,productOfferSchema} from './explorersProductContract';
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema,entityCoreDtoSchema,displayOverridesReadSchema,catalogTitleSchema } from './explorersContract';
 import { richNoteSchema } from './explorersRichNoteContract';
@@ -17,7 +18,7 @@ export const ownerCollectionDtoSchema=collectionCoreDtoSchema.extend({title:z.st
 export const ownerRecommendationDtoSchema=recommendationCoreDtoSchema.extend({archived:z.boolean(),pin:z.object({collectionId:contentIdSchema,position:z.number().int().nonnegative(),revision:z.number().int().positive().safe()}).strict().nullable()}).strict();
 const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSafeInteger(Number(v)));
 export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision}).strict();
-export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional()}).strict().superRefine((v,ctx)=>{
+export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema,productEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional(),productOffer:productOfferSchema.optional(),effectiveProductDetails:productEntityDetailsSchema.optional()}).strict().superRefine((v,ctx)=>{
  if(v.category==='games'?!v.gamePresentation||v.gamePresentation.images.length!==v.mediaIds.length||v.gamePresentation.images.some((image,index)=>image.mediaId!==v.mediaIds[index]):v.gamePresentation!==undefined)ctx.addIssue({code:'custom',message:'Inconsistent Game presentation'});
  const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};
  const title=Object.prototype.hasOwnProperty.call(v.displayOverrides,'title')?v.displayOverrides.title:v.entity.title;
@@ -25,6 +26,7 @@ export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.exte
  if(v.category!=='books'&&(v.bookCovers!==undefined||v.bookContext!==undefined||v.effectiveBookDetails!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Book presentation'});
  if(v.category!=='movies'&&(v.movieContext!==undefined||v.effectiveMovieDetails!==undefined||v.movieTerms!==undefined||v.providerMedia!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Movie presentation'});
  if(v.category!=='apps'&&(v.appScreenshots!==undefined||v.effectiveAppDetails!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent App presentation'});
+ if(v.category!=='products'&&(v.productOffer!==undefined||v.effectiveProductDetails!==undefined))ctx.addIssue({code:'custom',message:'Inconsistent Product presentation'});
  if(v.providerMedia){
   const media=v.providerMedia;
   if(v.entity.kind!=='movie'||!('details' in v.entity)||!('provenance' in v.entity)||!v.entity.provenance)ctx.addIssue({code:'custom',message:'Movie copies require canonical provider source'});
@@ -35,10 +37,10 @@ export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.exte
   }
  }
  const {title:_title,...fields}=v.displayOverrides;
- if(v.category==='books'?!bookDisplayFieldsSchema.safeParse(fields).success:v.category==='movies'?!movieDisplayFieldsSchema.safeParse(fields).success:v.category==='apps'?!appDisplayFieldsSchema.safeParse(fields).success:Object.keys(fields).length>0)ctx.addIssue({code:'custom',message:'Inconsistent category overrides'});
+ if(v.category==='books'?!bookDisplayFieldsSchema.safeParse(fields).success:v.category==='movies'?!movieDisplayFieldsSchema.safeParse(fields).success:v.category==='apps'?!appDisplayFieldsSchema.safeParse(fields).success:v.category==='products'?!productDisplayFieldsSchema.safeParse(fields).success:Object.keys(fields).length>0)ctx.addIssue({code:'custom',message:'Inconsistent category overrides'});
  if('details' in v.entity){
-  const effective=v.entity.kind==='book'?v.effectiveBookDetails:v.entity.kind==='app'?v.effectiveAppDetails:v.effectiveMovieDetails;
-  if(v.entity.kind==='book'?v.category!=='books'||!v.bookContext||!effective:v.entity.kind==='app'?v.category!=='apps'||!effective:v.category!=='movies'||!v.movieContext||!v.movieTerms||!effective)ctx.addIssue({code:'custom',message:'Missing typed presentation'});
+  const effective=v.entity.kind==='book'?v.effectiveBookDetails:v.entity.kind==='app'?v.effectiveAppDetails:v.entity.kind==='product'?v.effectiveProductDetails:v.effectiveMovieDetails;
+  if(v.entity.kind==='book'?v.category!=='books'||!v.bookContext||!effective:v.entity.kind==='app'?v.category!=='apps'||!effective:v.entity.kind==='product'?v.category!=='products'||!effective||!v.productOffer:v.category!=='movies'||!v.movieContext||!v.movieTerms||!effective)ctx.addIssue({code:'custom',message:'Missing typed presentation'});
   else for(const [key,value] of Object.entries(v.entity.details))if(JSON.stringify((effective as any)[key])!==JSON.stringify(Object.prototype.hasOwnProperty.call(v.displayOverrides,key)?(v.displayOverrides as any)[key]:value))ctx.addIssue({code:'custom',message:'Inconsistent effective details'});
  }
 });

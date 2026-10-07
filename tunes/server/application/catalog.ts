@@ -10,6 +10,8 @@ import { parseContent } from './recommendations';
 import { RecommendationFailure,ExplorersRecommendationRepository } from '../repositories/explorersRecommendationRepository';
 import {BookCatalog} from '../services/bookCatalog';
 import {bookEntityDtoSchema} from '../../shared/explorersBookContract';
+import {appEntityDtoSchema,resolveManualAppSchema} from '../../shared/explorersAppContract';
+import {productEntityDtoSchema,resolveManualProductSchema} from '../../shared/explorersProductContract';
 
 export class MovieGenreFailure extends Error {constructor(readonly status:422|503,readonly code:'INVALID_INPUT'|'READ_LIMIT'){super(code==='INVALID_INPUT'?'Genre parameters are not supported':'Movie genre configuration unavailable');}}
 export class GameCatalogFailure extends Error {
@@ -42,6 +44,10 @@ export class CatalogService {
       if(parsed.kind==='manual'&&parsed.category==='movies')return movieEntityDtoSchema.parse(await new ExplorersRecommendationRepository(this.db).resolveMovieEntity(actor.accountId,parseContent(resolveManualMovieSchema,parsed),parseContent(commandKeySchema,context?.idempotencyKey),async()=>{throw new RecommendationFailure(422,'Manual Movie cannot fetch provider authority');}));
       if(parsed.kind==='provider'&&parsed.category==='movies')return movieEntityDtoSchema.parse(await new ExplorersRecommendationRepository(this.db).resolveMovieEntity(actor.accountId,parsed,parseContent(commandKeySchema,context?.idempotencyKey),()=>this.movies.resolve(actor,parsed.externalKind,parsed.externalId)));
       const key=parseContent(commandKeySchema,context?.idempotencyKey),repository=new ExplorersRecommendationRepository(this.db);
+      // Apps and Products carry typed details with their manual resolve. Without these
+      // branches the details were dropped and only the entities row was written.
+      if(parsed.kind==='manual'&&parsed.category==='apps')return appEntityDtoSchema.parse(await repository.resolveAppEntity(actor.accountId,parseContent(resolveManualAppSchema,parsed),key));
+      if(parsed.kind==='manual'&&parsed.category==='products')return productEntityDtoSchema.parse(await repository.resolveProductEntity(actor.accountId,parseContent(resolveManualProductSchema,parsed),key));
       if(parsed.kind==='provider'||parsed.category==='books'&&Object.keys(parsed.details).some(k=>k!=='title'))return bookEntityDtoSchema.parse(await repository.resolveBookEntity(actor.accountId,parsed as any,key,()=>this.books.resolve(actor.accountId,(parsed as any).externalId)));
       return entityCoreDtoSchema.parse(await repository.resolveManualEntity(actor.accountId,parsed as any,key));
     }

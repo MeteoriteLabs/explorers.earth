@@ -15,6 +15,8 @@ import { normalizeRichNote } from './richNote';
 import {ownerSearchRequestSchema,ownerSearchPageSchema} from '../../shared/explorersSearchContract';
 import {SearchQuery,SearchFailure,searchError} from './searchQuery';
 import {readBookEntity,readBookContext,effectiveBookDetails} from '../repositories/bookCatalogRepository';
+import {readAppEntity,readAppScreenshotMediaIds,effectiveAppDetails} from '../repositories/appCatalogRepository';
+import {readProductEntity,readProductOffer,effectiveProductDetails} from '../repositories/productCatalogRepository';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -217,8 +219,10 @@ export class OwnerContentService {
    const values=displayOverridesReadSchema.safeParse(detail.display_values??{}),entity=entityCoreDtoSchema.safeParse({id:detail.entity_id,kind:detail.kind,title:detail.title});
    if(!values.success||!entity.success||detail.override_schema_version!==null&&detail.override_schema_version!==1)throw new RecommendationFailure(422,'Invalid stored presentation');
    const displayTitle=Object.hasOwn(values.data,'title')?values.data.title:entity.data.title;
-   const book= row.category==='books'?await readBookEntity(db,detail.entity_id):undefined;const movie=row.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readMovieEntity(db,detail.entity_id):undefined;
-   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??movie??entity.data,displayOverrides:values.data,displayTitle,...(row.category==='games'?{gamePresentation:await readManualGamePresentation(db,id,actor.accountId)}:{}),...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{}),...(movie?{movieContext:await readMovieContext(db,id,actor.accountId),effectiveMovieDetails:effectiveMovieDetails(movie.details,values.data),movieTerms:await readMovieTerms(db,id,actor.accountId),providerMedia:await readMovieProviderMedia(db,id,actor.accountId)}:{})});
+   const book= row.category==='books'?await readBookEntity(db,detail.entity_id):undefined;
+   const app= row.category==='apps'&&(await db.query('SELECT 1 FROM app_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readAppEntity(db,detail.entity_id):undefined;
+   const product= row.category==='products'&&(await db.query('SELECT 1 FROM product_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readProductEntity(db,detail.entity_id):undefined;const movie=row.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readMovieEntity(db,detail.entity_id):undefined;
+   const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??movie??app??product??entity.data,displayOverrides:values.data,displayTitle,...(row.category==='games'?{gamePresentation:await readManualGamePresentation(db,id,actor.accountId)}:{}),...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{}),...(movie?{movieContext:await readMovieContext(db,id,actor.accountId),effectiveMovieDetails:effectiveMovieDetails(movie.details,values.data),movieTerms:await readMovieTerms(db,id,actor.accountId),providerMedia:await readMovieProviderMedia(db,id,actor.accountId)}:{}),...(app?{appScreenshots:{screenshotMediaIds:await readAppScreenshotMediaIds(db,id,actor.accountId)},effectiveAppDetails:effectiveAppDetails(app.details,values.data)}:{}),...(product?{productOffer:await readProductOffer(db,id,actor.accountId),effectiveProductDetails:effectiveProductDetails(product.details,values.data)}:{})});
    if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });
  }
