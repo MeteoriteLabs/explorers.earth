@@ -125,6 +125,7 @@ function appFor(overrides: Record<string, unknown> = {}, routeOverrides: Record<
       search: vi.fn(async () => ({ items: [{ id: { videoId: "abcdefghijk" }, snippet: { title: "safe" } }], nextPageToken: null })),
       videoFromUrl: vi.fn(async () => ({ id: { videoId: "abcdefghijk" }, snippet: { title: "safe" } })),
     },
+    mintSocketTicket: () => ({ token: "default.socket.ticket", expiresAt: 1760000060 }),
     ...routeOverrides,
   });
   return { app, repository, calls };
@@ -620,15 +621,22 @@ describe("canonical Music REST surfaces", () => {
     expect(mintSocketTicket).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the socket handshake route unmounted when no minter is wired", async () => {
-    // Break caught: an optional dependency is treated as present and the route answers
-    // with a 500 instead of not existing, which advertises a capability the server cannot mint.
+  it("always mounts the socket handshake route, because the socket accepts nothing else", async () => {
+    // Break caught, and this one shipped: the mint was an optional dependency and the
+    // production composition in routes/index.ts never passed it, so the route did not
+    // mount while the socket had already been switched to require a ticket. Every owner
+    // would have failed to open a live connection. The dependency is required now, and a
+    // default composition must answer this route rather than 404.
     const { app } = appFor();
     const { request } = await loopback.open({ app });
     const response = await request.post("/api/music/socket-ticket")
       .set({ Authorization: "Bearer aaa.bbb.ccc", Origin: "https://explorers.example" }).send({});
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      version: "music-socket-ticket/v1",
+      ticket: { token: "default.socket.ticket", expiresAt: 1760000060 },
+    });
   });
 
   it("requires durable idempotency for saved-playlist song insertion", async () => {

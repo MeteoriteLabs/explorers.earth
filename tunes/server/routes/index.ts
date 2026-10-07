@@ -149,6 +149,9 @@ export async function registerRoutes(
     isTrustedProxy: musicConfig.isTrustedProxy,
     youtube: createYouTubeReadService(process.env.YOUTUBE_API_KEY),
     observability: publicMusicObservability,
+    // Ticket 6.3. The socket admits only a purpose-limited handshake ticket, so this mint
+    // is the single way an owner can open a live connection. It is not optional.
+    mintSocketTicket: musicTokens.mintSocketTicket.bind(musicTokens),
   };
   const featureFlags: MusicFeatureFlag[] = ["ownerWorkspace", "guestWorkspace", "playlistImports"];
   const featureEnvironment: Record<MusicFeatureFlag, string> = { ownerWorkspace: "OWNER_WORKSPACE", guestWorkspace: "GUEST_WORKSPACE", playlistImports: "PLAYLIST_IMPORTS" };
