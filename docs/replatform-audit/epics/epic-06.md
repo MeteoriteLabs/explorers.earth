@@ -11,10 +11,10 @@ Individual [ticket plans](../ticket-index.md), [execution packages](../execution
 
 | Ticket | Current disposition | Next owned package |
 |---|---|---|
-| [6.1](../tickets/ticket-6-1.md) | priority prerequisite | Package M1: canonical mapping/principal and session HTTP. M2: token-null production startup and generation fencing. M3: purpose-limited socket credential/revocation. Backend/frontend split only after exact interface handoff. |
-| [6.2](../tickets/ticket-6-2.md) | waiting | Qualify retained owner playlists, queue, playback, history and entitlement transactions; do not rebuild unrelated Music services. |
-| [6.3](../tickets/ticket-6-3.md) | waiting | Qualify guest capability, public playback, replay/revocation and socket separation after canonical owner behavior. |
-| [6.4](../tickets/ticket-6-4.md) | waiting | Release a canonical Music venue so an account deletion it owns finalises. Deferred half of ADR-008 decision 5, reachable since 6.1 and proved by the real-stack lifecycle lane. |
+| [6.1](../tickets/ticket-6-1.md) | delivered 2026-10-06 | Canonical mapping, principal and session HTTP, token-null startup and generation fencing, purpose-limited socket credential. |
+| [6.2](../tickets/ticket-6-2.md) | delivered 2026-10-07, one recorded deviation | Owner parity qualified. Reconnect and socket separation proved at real-stack level, desktop/mobile in the browser lanes; a single two-origin browser lane was not built and the reason is recorded in the ticket. |
+| [6.3](../tickets/ticket-6-3.md) | delivered 2026-10-07, one recorded deviation | Guest capability, replay/revocation and socket separation qualified. Two browser contexts covered across the fixture lanes plus real-stack socket cases rather than one two-context real-stack lane. |
+| [6.4](../tickets/ticket-6-4.md) | delivered 2026-10-06 | Canonical Music venue release, so an account deletion that owns one finalises. |
 
 **Status:** consult the [durable implementation ledger](../../../.superpowers/sdd/epic-01/progress.md); remaining checkboxes are requirements, not completion claims. [Master plan](../implementation-plan.md) · [Backlog](../epics-and-tickets.md) · [Shared execution checklist](../execution-checklist.md)
 
