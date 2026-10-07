@@ -59,3 +59,20 @@ Both blockers the 2026-10-05 review recorded are now resolved, and the remaining
 2. **Reconnect.** `:33` requires exercising reconnect, and nothing does. This cannot be written honestly before 6.3 step 3: today the socket accepts the general 600-second HTTP bearer captured once at `ownerMusicLiveClient.ts:43`, so a "reconnect" case would assert the behaviour 6.3 exists to remove.
 
 **Sequencing consequence.** 6.3 step 3 must land before 6.2's last gate, which inverts the ticket-number order. Writing the reconnect case first would pin the credential sharing that 6.3 removes, and would then have to be rewritten — the same shape of waste as qualifying a provisioning step before its release.
+
+### The reconnect obligation needs a socket server (measured 2026-10-07)
+
+Attempted in a fixture and reverted. Recording the measurement so it is not attempted again.
+
+`:33` requires exercising reconnect. The obvious cheap route is the existing CI-wired fixture spec `e2e/music-fullstack.spec.ts`, on the theory that with no socket server Socket.IO's own retry loop would supply the reconnect path for free. It does not, and the reason is in the library rather than in the fixture.
+
+`socket.io-client/build/esm/socket.js:405-413` calls the function form of `auth` from `onopen()` — "called upon engine `open`". The ticket is therefore minted once per *successful* transport open, which is exactly the right contract for 6.3: a genuine reconnect reopens the transport, `onopen` fires again, and a fresh ticket is minted rather than an expired one replayed. But in a fixture the transport never opens at all — `localtunes.test` does not resolve — so `onopen` never fires and the mint count is zero. An assertion written there passes or fails on nothing.
+
+Two consequences:
+
+1. **6.3's per-attempt minting is verified, and the verification is unit-level, not browser-level.** `ownerMusicLiveClient.test.ts` invokes the auth callback directly three times and proves a fresh ticket per invocation, no reuse, and a fail-closed empty credential when minting fails. The remaining question — whether Socket.IO invokes that callback per reconnect — is library behaviour, answered by the source above rather than by a test of ours.
+2. **The browser-level reconnect proof requires a real socket server, so it belongs in the real-stack lane and nowhere cheaper.** This is not a gap that a better fixture closes.
+
+A `page.route` stub for the mint stays in the three owner-ready fixtures regardless. It is inert while no transport opens, but it is what keeps a deny-by-default fixture from failing on the mint if one ever does.
+
+**Runner constraint for whoever builds that lane.** `scripts/replatform-e2e.mjs:55` requires `lane.spec === explorers-earth/e2e/replatform/${lane.name}.spec.ts`, so the lane file must be `music.spec.ts`. The `music-owner.spec.ts` named in this ticket's **Modify** list would be rejected outright by `validateManifest`. The `--milestone` scope string is *not* a blocker: `:9` marks `delivered-auth-profile-books` a stable compatibility identifier and `validateManifest` only requires `manifest.scopeContents` to equal the lane registry's keys. Adding a lane means four coupled edits — the registry at `:11`, the protected-path list at `:124`, the overlay set at `:129`, and the ambient-authority regex in `assertEnvironment` at `:44`, which enumerates `AUTH|PROFILE|BOOKS|LIFECYCLE|MOVIES|GAMES` and needs `MUSIC`.
