@@ -234,6 +234,25 @@ export const movieRecommendationContext=pgTable('movie_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
 },t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
 
+// 0046 owns the kind guards, the paired-coordinate invariant, URL schemes and grants.
+export const placeEntityDetails=pgTable('place_entity_details',{
+ entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
+ formattedAddress:text('formatted_address'),addressComponents:jsonb('address_components').notNull().default(sql`'[]'::jsonb`),
+ latitude:numeric('latitude',{precision:10,scale:7}),longitude:numeric('longitude',{precision:10,scale:7}),
+ providerTypes:text('provider_types').array().notNull().default(sql`'{}'::text[]`),
+ providerRating:numeric('provider_rating',{precision:3,scale:2}),ratingsCount:bigint('ratings_count',{mode:'number'}),
+ publicPhone:text('public_phone'),publicPhoneNormalized:text('public_phone_normalized'),websiteUrl:text('website_url'),
+ priceLevel:smallint('price_level'),priceRange:jsonb('price_range'),
+});
+// 0046 owns composite ownership FKs, the deferred type/kind invariant and revisions.
+// contact_visibility defaults to private: disclosure is the creator's explicit choice.
+export const placeRecommendationContext=pgTable('place_recommendation_context',{
+ recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('places'),
+ recommendationType:text('recommendation_type').notNull().default('place'),sourceOfRecommendation:text('source_of_recommendation').notNull().default('self'),
+ contactName:text('contact_name'),contactNumber:text('contact_number'),contactVisibility:text('contact_visibility').notNull().default('private'),
+ placeSocialUrl:text('place_social_url'),placeWebsiteUrl:text('place_website_url'),creatorSocialUrl:text('creator_social_url'),
+ legacyPlaceNote:jsonb('legacy_place_note'),personProfileUrl:text('person_profile_url'),personAddress:text('person_address'),
+},t=>[index('place_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
 // 0045 owns the kind guard, the social-link key set, URL schemes and grants. The table is
 // insert-only for the runtime, so suppressed_at has no application write path at all.
 export const personEntityDetails=pgTable('person_entity_details',{

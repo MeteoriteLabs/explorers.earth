@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0045_explorers_people_catalog" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0046_explorers_places_catalog" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -44,6 +44,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0042_canonical_music_venue_release_function",
   "0043_explorers_apps_provider_context",
   "0044_explorers_products_offer_context",
+  "0045_explorers_people_catalog",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -93,6 +94,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0042_canonical_music_venue_release_function",
   "0043_explorers_apps_provider_context",
   "0044_explorers_products_offer_context",
+  "0045_explorers_people_catalog",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 
