@@ -106,10 +106,16 @@ describe("Recommendations on the native owner read", () => {
   it("shows the first ten of a longer list and keeps the rest in hand", async () => {
     mocks.places = Array.from({ length: 14 }, (_, i) => place(i + 1));
     render(<Recommendations refetchCities={vi.fn()} />);
-    await waitFor(() => expect(screen.getAllByText("Place 1").length).toBeGreaterThan(0));
-    // The eleventh is held back by the reveal window, not by a missing fetch.
+    // All three settle together. Waiting only for the first card and then asserting the
+    // tenth synchronously made this flaky under full-suite load: the cards animate in, so
+    // "Place 1" can be present a tick before "Place 10" is.
+    await waitFor(() => {
+      expect(screen.getAllByText("Place 1").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Place 10").length).toBeGreaterThan(0);
+    });
+    // The eleventh is held back by the reveal window, not by a missing fetch. Checked
+    // after the window has filled, so its absence means withheld rather than not yet drawn.
     expect(screen.queryByText("Place 11")).toBeNull();
-    expect(screen.getAllByText("Place 10").length).toBeGreaterThan(0);
   });
 
   it("renders a place with no provider id, no media and zero coordinates", async () => {
