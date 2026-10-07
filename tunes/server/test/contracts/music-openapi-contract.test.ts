@@ -309,6 +309,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       repository,
       resolvePrincipal: async () => ({ musicUserId: 11, subject: "subject", accountDocumentId: "account", sessionVersion: 1 }),
       allowedOrigins: ["https://explorers.example"],
+      // Ticket 6.3. Required: the socket accepts only a handshake ticket, so every
+      // composition serving the Music surface must be able to mint one.
+      mintSocketTicket: () => ({ token: "openapi.socket.ticket", expiresAt: 1760000060 }),
       requestIdFactory: () => "openapi-success-request",
       now: () => new Date("2026-08-14T10:00:01.000Z"),
       publicRateLimited: () => false,
