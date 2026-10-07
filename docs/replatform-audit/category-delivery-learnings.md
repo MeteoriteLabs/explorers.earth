@@ -69,9 +69,9 @@ Diagnostic mistakes also remain evidence: normalized LF preparation missed actua
 - Use fresh agents for every new assignment. If capacity prevents dispatch, record it, continue safe independent work and retain the unfulfilled review gate.
 ## Known intermittent: `category-navigation-a.spec.ts:474` Enable Public URL (recorded 2026-10-07)
 
-Recorded because it is unreproduced, not because it is resolved. Treat a green re-run as weak evidence.
+Recorded unreproduced on 2026-10-07 and mitigated the same day on its second occurrence. The mechanism below was never proved, so treat the fix as narrowing the window rather than removing the cause.
 
-**Observed once in CI**, run `37525558414` on `ca1072cf`: the `movies` case of the eight-category `Auto saved → header Off → reload → Hub On → Manual explicit Pin` test failed with `TimeoutError: locator.press: Timeout 12000ms exceeded`, call log `waiting for getByRole('button', { name: 'Enable Public URL', exact: true })`. 18 of 19 lane cases passed. A re-run of the same commit with no code change passed, and the lane has been green since.
+**Observed twice in CI.** First in run `37525558414` on `ca1072cf`: the `movies` case of the eight-category `Auto saved → header Off → reload → Hub On → Manual explicit Pin` test failed with `TimeoutError: locator.press: Timeout 12000ms exceeded`, call log `waiting for getByRole('button', { name: 'Enable Public URL', exact: true })`. 18 of 19 lane cases passed, and a re-run of the same commit with no code change passed. Second on `3b089cdd`, a markdown-only commit, which is what settled it as intermittent and triggered the mitigation below.
 
 **It is not a regression from the 6.3 socket work.** The test never touches Music, has no clean-network assertion, and the same lane passed on `9daa9d6f`, which already carried the entire owner-socket client change. The only delta in `ca1072cf` is three browser-fixture stubs, one of which is gated on `path === '/api/music/socket-ticket' && musicOwner` and is therefore inert here.
 
@@ -90,4 +90,6 @@ await enable.focus(); await enable.press('Enter');
 
 `locator.press()` focuses the element itself, so the explicit `focus()` is redundant, and it creates a second independent resolution of the same locator. If a late re-render closes or rebuilds that popover between the two calls, `focus()` succeeds against the old element and `press()` then waits the full 12s for a detached one. This matches the observed call log — the timeout is on `press`, and it is waiting for the locator rather than for actionability.
 
-**Deliberately not changed.** Deleting the redundant `focus()` is semantically neutral and would halve the window, but it was not applied: the failure could not be reproduced, so there is no way to show the change fixes anything, and a timing assertion altered on a hunch is how a lane quietly stops catching defects. If this recurs, delete the `focus()` call first and look for what re-renders `/recommendations` after the popover opens — settling category-preference state is the first place to look. Do not raise the 12s timeout; the margin is not the defect.
+**Resolved 2026-10-07, on the second occurrence.** The recurrence was on `3b089cdd`, a commit whose only change was a markdown file, which rules out any code cause conclusively and settles this as intermittent rather than a regression. Per the plan recorded above, the redundant `focus()` was deleted and `press('Enter')` left to focus and press on its own: semantically identical, one locator resolution instead of two. Eight category cases pass locally after the change.
+
+This is a mitigation, not a root cause. What re-renders `/recommendations` after the popover opens was never identified, and settling category-preference state remains the first place to look if the timeout returns on the single remaining resolution. The 12s timeout was left alone both times: the margin is not the defect, and raising it would only hide the next occurrence.
