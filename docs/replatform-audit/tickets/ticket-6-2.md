@@ -76,3 +76,22 @@ Two consequences:
 A `page.route` stub for the mint stays in the three owner-ready fixtures regardless. It is inert while no transport opens, but it is what keeps a deny-by-default fixture from failing on the mint if one ever does.
 
 **Runner constraint for whoever builds that lane.** `scripts/replatform-e2e.mjs:55` requires `lane.spec === explorers-earth/e2e/replatform/${lane.name}.spec.ts`, so the lane file must be `music.spec.ts`. The `music-owner.spec.ts` named in this ticket's **Modify** list would be rejected outright by `validateManifest`. The `--milestone` scope string is *not* a blocker: `:9` marks `delivered-auth-profile-books` a stable compatibility identifier and `validateManifest` only requires `manifest.scopeContents` to equal the lane registry's keys. Adding a lane means four coupled edits — the registry at `:11`, the protected-path list at `:124`, the overlay set at `:129`, and the ambient-authority regex in `assertEnvironment` at `:44`, which enumerates `AUTH|PROFILE|BOOKS|LIFECYCLE|MOVIES|GAMES` and needs `MUSIC`.
+
+### Why the real-stack lane is a two-origin build (measured 2026-10-07)
+
+Established from source while sizing the lane. This is the structural reason 6.2's browser obligation has stayed open, and it is not a defect.
+
+The canonical Music flow is served by **two servers in two mutually exclusive modes**, selected by `EXPLORERS_API_MODE` (`server/apiMode.ts`: exactly `canonical` or `legacy-music`).
+
+- **canonical** → `server/api.ts` starts `startCanonicalServer`, which composes `createCanonicalApp(pool, config)` and a plain `createServer(app)`. It mounts `setupExplorersMusicIdentityRoutes` — `POST /api/explorers/v1/music/identity/ensure`, the canonical session-authenticated mint — and **no** `/api/music/*` surface and **no** Socket.IO server.
+- **legacy-music** → `startMusicServer` composes `registerRoutes`, which mounts `setupCanonicalMusicRoutes`, `setupMusicSurfaceBoundary` and, through `setupPlaylistRoutes` → `createMusicSocketServer`, the socket. It does **not** mount the canonical ensure route.
+
+The client is built for exactly this split, and says so at `localTunesApiClient.ts:41-44`: "the two have different origins and different authority: this one carries the session cookie and no bearer." `sessionFetch` calls the ensure route same-origin against the Explorers app; `fetchImpl` calls `/api/music/*` against `baseUrl`, the Music origin, with the minted bearer.
+
+So a canonical owner Music session spans both origins, and **no single-server fixture can exercise it.** That is why the games-style single-app pattern does not transfer: `createCanonicalApp` alone gives provisioning with nothing to talk to, and `registerRoutes` alone gives a Music surface no canonical client can obtain a credential for.
+
+Consequences for whoever builds the lane:
+
+1. It needs **two servers over one database** — a canonical-mode app and a legacy-music-mode app — plus the frontend, with `VITE_LOCAL_TUNES_API_URL` pointed at the second. Both must share one `MusicTokenConfiguration`, or the credential the first mints will not verify at the second.
+2. `docker-compose.music-test.yml` is **not** reusable as-is. It runs the real server image and the real frontend, which is the right shape, but at `EXPLORERS_API_MODE: legacy-music` with a Strapi fixture — the legacy identity path that 6.1 replaced. A canonical variant needs a second service in canonical mode and no Strapi dependency.
+3. Prefer composing the production entry points over hand-composing a replica. A replica is what let `mintSocketTicket` go unwired in `registerRoutes` while every unit test passed, because the tests inject the minter themselves. A lane that boots the real composition catches that class of defect; one that rebuilds it does not.
