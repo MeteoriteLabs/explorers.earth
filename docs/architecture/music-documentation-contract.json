@@ -73,7 +73,8 @@
     "0041_canonical_music_venue_release",
     "0042_canonical_music_venue_release_function",
     "0043_explorers_apps_provider_context",
-    "0044_explorers_products_offer_context"
+    "0044_explorers_products_offer_context",
+    "0045_explorers_people_catalog"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

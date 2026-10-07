@@ -234,6 +234,15 @@ export const movieRecommendationContext=pgTable('movie_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
 },t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
 
+// 0045 owns the kind guard, the social-link key set, URL schemes and grants. The table is
+// insert-only for the runtime, so suppressed_at has no application write path at all.
+export const personEntityDetails=pgTable('person_entity_details',{
+ entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
+ usernameHandle:text('username_handle'),headline:text('headline'),locationText:text('location_text'),avatarUrl:text('avatar_url'),
+ primaryPlatform:text('primary_platform'),socialUrls:jsonb('social_urls').notNull().default(sql`'{}'::jsonb`),
+ skillsTags:text('skills_tags').array().notNull().default(sql`'{}'::text[]`),externalFollowerCountText:text('external_follower_count_text'),
+ suppressedAt:timestamp('suppressed_at',{withTimezone:true}),
+});
 // 0044 owns the kind guard, URL scheme CHECKs, the specifications shape and grants.
 export const productEntityDetails=pgTable('product_entity_details',{
  entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),

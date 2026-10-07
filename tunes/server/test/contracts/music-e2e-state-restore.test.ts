@@ -123,7 +123,7 @@ describe("Music E2E transactional state restore", () => {
       "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects",
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
-      "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
+      "music_schema_migrations", "page_contents", "person_entity_details", "playback_states", "played_songs", "playlist_songs",
       "playlists", "product_entity_details", "product_recommendation_context", "profile_feed_items", "profile_media", "recommendation_app_screenshots", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_movie_media", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
@@ -157,6 +157,7 @@ describe("Music E2E transactional state restore", () => {
       "0042_canonical_music_venue_release_function",
       "0043_explorers_apps_provider_context",
       "0044_explorers_products_offer_context",
+      "0045_explorers_people_catalog",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
