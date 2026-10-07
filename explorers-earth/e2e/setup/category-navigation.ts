@@ -133,7 +133,8 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
   const nativeContentFixtures = [createNativeNavigationContentFixture('movies', () => state.lists.movieLists, state.account.documentId),
     createNativeNavigationContentFixture('games', () => state.lists.gameLists, state.account.documentId),
     createNativeNavigationContentFixture('apps', () => state.lists.appLists, state.account.documentId),
-    createNativeNavigationContentFixture('products', () => state.lists.productLists, state.account.documentId)];
+    createNativeNavigationContentFixture('products', () => state.lists.productLists, state.account.documentId),
+    createNativeNavigationContentFixture('people', () => state.lists.personLists, state.account.documentId)];
   const booksCommands = new Map<string, { body: string; result: unknown }>();
   const denied: string[] = [];
   const vendors: string[] = [];
@@ -242,9 +243,9 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       booksCommands.set(replayKey,{body:serialized,result});
       return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply(result);
     }
-    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
+    const nativeCategory = url.pathname.match(/^\/api\/explorers\/v1\/categories\/(movies|games|apps|products|people)\/(?:content-snapshot(?:\/validate)?|memberships|top-picks)$/)?.[1]
       ?? (['/api/explorers/v1/collections','/api/explorers/v1/recommendations'].includes(url.pathname) ? url.searchParams.get('category') : undefined);
-    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : nativeCategory==='apps' ? nativeContentFixtures[2] : nativeCategory==='products' ? nativeContentFixtures[3] : undefined;
+    const nativeReader = nativeCategory==='movies' ? nativeContentFixtures[0] : nativeCategory==='games' ? nativeContentFixtures[1] : nativeCategory==='apps' ? nativeContentFixtures[2] : nativeCategory==='products' ? nativeContentFixtures[3] : nativeCategory==='people' ? nativeContentFixtures[4] : undefined;
     if(url.origin===origin && request.method()==='GET' && nativeReader) {
       const authenticated=await hasOwnerSession();state.apiCalls.push({path:url.pathname,method:'GET',authenticated});
       if(!authenticated){expectedHttpErrors.set(request.url(),401);return route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:{code:'UNAUTHENTICATED',message:'Owner session required',requestId:'navigation-native'}})});}

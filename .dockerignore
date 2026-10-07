@@ -182,6 +182,8 @@ explorers-earth/src/features/music/components/*
 explorers-earth/src/features/People/api/*
 !explorers-earth/src/features/People/components/
 explorers-earth/src/features/People/components/*
+!explorers-earth/src/features/People/hooks/
+explorers-earth/src/features/People/hooks/*
 !explorers-earth/src/features/People/types/
 explorers-earth/src/features/People/types/*
 !explorers-earth/src/features/People/utils/
@@ -747,7 +749,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Movies/index.ts
 !explorers-earth/src/features/Movies/types/index.ts
 !explorers-earth/src/features/Movies/utils/movieHelpers.ts
+!explorers-earth/src/features/People/api/explorersAdapter.ts
 !explorers-earth/src/features/People/api/mutation.ts
+!explorers-earth/src/features/People/api/peopleClient.ts
+!explorers-earth/src/features/People/api/peopleViewModel.ts
 !explorers-earth/src/features/People/api/query.ts
 !explorers-earth/src/features/People/components/PlatformIcon.tsx
 !explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx
@@ -761,6 +766,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/People/components/public/PublicPeople.tsx
 !explorers-earth/src/features/People/components/public/PublicPersonList.tsx
 !explorers-earth/src/features/People/components/public/PublicPersonSector.tsx
+!explorers-earth/src/features/People/hooks/usePeopleOwner.ts
 !explorers-earth/src/features/People/index.ts
 !explorers-earth/src/features/People/types/index.ts
 !explorers-earth/src/features/People/utils/personHelpers.ts

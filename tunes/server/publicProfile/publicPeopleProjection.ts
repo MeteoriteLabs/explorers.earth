@@ -89,7 +89,7 @@ export async function publicPeopleProjection(pool:Pool,username:string,limit:num
   for(const row of rows.slice(0,slug?1:limit)){
    if(Buffer.byteLength(JSON.stringify(row),'utf8')>32768)throw new Error('Public list exceeds read bound');
    const page=await children(db,observed.id,row.id,slug?limit:12,slug?offset:0);
-   lists.push({documentId:row.id,List_Name:row.title,list_description:row.description,slug:row.slug,Visibility:true,display_order:row.display_order,top_people_heading:row.heading,
+   lists.push({documentId:row.id,List_Name:row.title,list_description:row.description,slug:row.slug,Visibility:true,display_order:row.display_order,top_picks_heading:row.heading,top_people_heading:row.heading,
     cover_image:row.cover_media_id?{url:`/api/explorers/v1/media/${row.cover_media_id}/content`,alternativeText:null}:null,
     account:{documentId:observed.id,username:observed.handle},recommended_people:page.people,recommended_people_next_cursor:page.nextCursor});
   }

@@ -74,3 +74,94 @@ So the legacy required fields are **currently unrepresentable** end to end: pers
 ### Shared fixtures module
 
 The epic-mandated `explorers-earth/e2e/replatform/fixtures.ts` (specified at `docs/replatform-audit/epics/epic-04.md:71`, exporting `test`, `expect`, acceptance account IDs, `signInAs('ownerA'|'ownerB'|'suspended')` and an API request context) **DOES NOT EXIST**; all six existing lanes roll bespoke setup. Creating it is folded into **4.3** as the first category package of Epic 4. This ticket's `people.spec.ts` consumes that fixture — in particular its `ownerA`/`ownerB`/`suspended` identities, which the foreign-owner and handle-collision negatives need — rather than deriving its own sign-in, and must not add a publicly mounted test-login endpoint or relax the contained-test network restrictions.
+
+## Delivery status (2026-10-07)
+
+| Mandated path | State |
+|---|---|
+| `tunes/server/explorers/categories/people.ts` | **not created, deliberately** — same reasoning as Apps and Products: that directory exists for Movies because Movies owns provider genre seeds. People has no provider, no taxonomy and no seeds, so the equivalent logic is the repository and the projection. |
+| `explorers-earth/src/features/People/api/explorersAdapter.ts` | delivered |
+| `tunes/server/test/explorers/people.test.ts` | **still missing** — the static SQL-shape proof over `0045`; the storage is covered by the integration suite against real PostgreSQL. |
+| `tunes/server/test/explorers/people.integration.test.ts` | delivered (12 cases) |
+| `explorers-earth/e2e/replatform/people.spec.ts` | **still missing** — needs a Docker fixture runner and protected-manifest identities, which the plan reserves to the coordinator. |
+
+Delivered beyond the adapter, from the same scope correction the other category tickets carried:
+
+- `tunes/shared/explorersPersonContract.ts` and
+  `tunes/migrations/0045_explorers_people_catalog.sql`.
+- `personCatalogRepository`, `publicPeopleProjection` wired into the gateway, the People
+  vocabulary admitted to the public override allowlist, typed entity resolution in the
+  write path, and the owner read. Before this the public People read answered HTTP 200
+  with an empty list.
+- The live consumer is native: `usePeopleOwner`, `usePeopleCommands` and all four
+  dashboard components. The public pages were already native.
+
+### The suppression column
+
+`suppressed_at` is the one addition to the target schema's table, taken as an owner
+decision on 2026-10-07. A recommended person has no account and so no route to ask for
+their own removal. When it is set the public projection and search omit them and their
+recommendations stop publishing, while the owner's own list keeps working.
+
+It is enforced **in the page query**, not as a filter applied afterwards, so a suppressed
+person occupies no page count, cursor position or byte budget. Removing that one SQL
+clause fails the suite.
+
+`person_entity_details` is insert-only for the runtime, so `suppressed_at` has no
+application write path at all: it is an operator action through the migrator role, and
+neither an owner's edit nor a compromised runtime can set or clear it.
+
+### Privacy properties worth knowing
+
+- Public **search** indexes only `to_tsvector('simple', title)` — the person's name. The
+  descriptive fields are not in the search projection and surface only on a profile the
+  owner has published.
+- There is no unique handle or name, so people are never auto-merged: two "Alex Lee"
+  records are two entities, asserted directly.
+- A handle equal to a real account's handle creates no membership, binding or link.
+  Asserted directly.
+- `usernameHandle` is excluded from the override vocabulary, so one owner cannot re-point
+  a shared person at someone else's handle. The entity details being insert-only is what
+  makes "A's person data edit cannot change B's recommendation" true by construction.
+
+### One field was narrowed, deliberately
+
+The Strapi form had separate **"Headline / Role"** and **"Bio / Description"** inputs and
+sent both. The target schema's `person_entity_details` has only `headline`, and
+`RecommendedPerson` already declares `bio` as a compatibility alias of it. The native page
+therefore keeps one headline input and `bio` reads from it.
+
+That is a real narrowing of what an owner can record, not a mapping detail. If the product
+wants a long description separate from a one-line role, it needs a column and belongs in
+its own ticket.
+
+### Strapi-era behaviour removed rather than ported
+
+- `AddPersonPage` posted to `/api/people/scrape-profile`. The server has no such route and
+  `music-security-containment.test.ts` asserts the path stays absent, so the step called a
+  dead endpoint and discarded the draft when it failed. With no enrichment left there is
+  nothing to fail, which is the strongest reading of "enrichment failure must not erase a
+  manual draft". `profile-scrape.integration.test.tsx` is replaced by
+  `manualPersonFlow.test.tsx`.
+- Scraped screenshots of a third party's profile: imagery is owner media now.
+- The category selector read a Strapi taxonomy with no canonical replacement.
+
+`PersonListView` gained a per-recommendation publication control, as the other categories
+have, and its Top Picks heading edit is mapped onto the canonical collection heading.
+`PersonTopPicksManager` writes the whole pin set in one command.
+
+### Remaining obligations
+
+- [ ] `people.test.ts` and the replatform `people.spec.ts` lane, as above.
+- [ ] `explorers-earth/e2e/people.spec.ts` still expects the scraper steps. It runs only
+  in the nightly `frontend-e2e-qualification` workflow, which was already failing on
+  `main` before this work. Owed by 4.5 regardless.
+- [ ] **UAT** at the ticket's own list (create/edit manually, external profiles, sector
+  browse, custom order and top picks, private/public views) is unrun.
+- [ ] The **sector browse** route (`PublicPersonSector`) reads a taxonomy that has no
+  canonical source; the projection serves `person_category` as null, so sector browse has
+  nothing to group by. That is taxonomy work, not People storage, and it is the one
+  behaviour contract item this package does not satisfy.
+- [ ] Nothing exposes suppression yet: there is no operator surface for setting
+  `suppressed_at`. Today it is a column an operator sets with SQL. If that should be a
+  route or an admin action, it needs its own ticket.
