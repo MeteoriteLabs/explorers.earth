@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0043_explorers_apps_provider_context",
+    "expectedId": "0044_explorers_products_offer_context",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -46,7 +46,7 @@
       "0040_canonical_music_venue_provisioning.sql",
       "0041_canonical_music_venue_release.sql",
       "0042_canonical_music_venue_release_function.sql",
-      "0043_explorers_apps_provider_context.sql"
+      "0043_explorers_apps_provider_context.sql",        "0044_explorers_products_offer_context.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -84,6 +84,18 @@
       "managedBy": "drizzle",
       "family": "user-content",
       "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "product_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "product_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
     },
     {
       "name": "book_entity_details",

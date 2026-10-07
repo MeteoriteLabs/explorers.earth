@@ -234,6 +234,19 @@ export const movieRecommendationContext=pgTable('movie_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
 },t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
 
+// 0044 owns the kind guard, URL scheme CHECKs, the specifications shape and grants.
+export const productEntityDetails=pgTable('product_entity_details',{
+ entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
+ productUrl:text('product_url').notNull(),brand:text('brand'),logoUrl:text('logo_url'),description:text('description'),
+ specifications:jsonb('specifications').notNull().default(sql`'{}'::jsonb`),imageUrls:text('image_urls').array().notNull().default(sql`'{}'::text[]`),
+});
+// 0044 owns composite ownership FKs, the price CHECK and category revisions. price is
+// numeric(20,6) and is read and written as an exact decimal string, never a float.
+export const productRecommendationContext=pgTable('product_recommendation_context',{
+ recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('products'),
+ price:numeric('price',{precision:20,scale:6}),currencyCode:text('currency_code'),buyUrl:text('buy_url'),
+},t=>[index('product_recommendation_context_price_idx').on(t.accountId,t.price,t.recommendationId)]);
+
 // 0038 SQL owns source binding, inverse guards, immutable identity and grants.
 export const recommendationMovieMedia=pgTable('recommendation_movie_media',{
  recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),sourceEntityId:uuid('source_entity_id').notNull(),sourceExternalKind:text('source_external_kind').notNull(),sourceExternalId:text('source_external_id').notNull(),sourceFetchedAt:bigint('source_fetched_at',{mode:'number'}).notNull(),sourceMappingVersion:smallint('source_mapping_version').notNull(),slot:text('slot').notNull(),slotIndex:integer('slot_index').notNull(),castOrdinal:integer('cast_ordinal'),personId:bigint('person_id',{mode:'number'}),creditId:text('credit_id'),mediaId:uuid('media_id').notNull(),

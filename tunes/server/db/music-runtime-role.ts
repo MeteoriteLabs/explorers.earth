@@ -57,6 +57,8 @@ const expectedRuntimeTables = [
   "played_songs",
   "playlist_songs",
   "playlists",
+  "product_entity_details",
+  "product_recommendation_context",
   "profile_feed_items",
   "profile_media",
   "recommendation_app_screenshots",
@@ -139,6 +141,7 @@ const expectedRuntimeFunctions = [
   "guard_movie_details()",
   "guard_movie_genres()",
   "guard_movie_media()",
+  "guard_product_entity_details()",
   "guard_recommendation_app_screenshot()",
   "guard_recommendation_book_cover()",
   "guard_recommendation_entity_kind()",
@@ -626,10 +629,10 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
-      ON entity_identifiers,book_entity_details,app_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
+      ON entity_identifiers,book_entity_details,app_entity_details,product_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
-    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot() FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON analytics_events,analytics_event_receipts FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
@@ -779,7 +782,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true,true,false,false]
       : row.object_name === "account_music_identity"
         ? [true, true, false, false]
-      : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || row.object_name === "app_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
+      : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || row.object_name === "app_entity_details" || row.object_name === "product_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
         ? [true, true, false, false]
       : row.object_name === "music_publication_operation_archive"
         ? [false, false, false, false]
@@ -835,7 +838,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
           && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
-          && !/^guard_(app_entity_details|recommendation_app_screenshot)\(\)$/.test(row.function_signature)))) {
+          && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");
   }
 
