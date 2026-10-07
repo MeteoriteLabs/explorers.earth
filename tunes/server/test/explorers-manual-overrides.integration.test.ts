@@ -29,14 +29,16 @@ async function recommendation(owner:{cookie:string},collection:any,entityId:stri
   const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
 }
 it.each([['books','book'],['movies','movie'],['games','game'],['apps','app'],['products','product'],['people','person']])('bootstraps distinct manual %s identities and replays normalized input',async(category,kind)=>{
- const a=await persona(),key=randomUUID(),input={kind:'manual',category,details:{title:'  😀 Canonical  '}};
+ const required=category==='apps'?{appUrl:'https://example.com/app'}:category==='products'?{productUrl:'https://example.com/product'}:{};
+ const a=await persona(),key=randomUUID(),input={kind:'manual',category,details:{title:'  😀 Canonical  ',...required}};
  const [one,two]=await Promise.all([command(a,'post','/entities/resolve',input,key),command(a,'post','/entities/resolve',input,key)]);
  expect(one.status).toBe(200);expect(two.body).toEqual(one.body);expect(one.body.entity).toMatchObject({kind,title:'😀 Canonical'});
- expect((await command(a,'post','/entities/resolve',{...input,details:{title:'😀 Canonical'}},key)).body).toEqual(one.body);
- expect((await command(a,'post','/entities/resolve',{...input,details:{title:'Changed'}},key)).status).toBe(409);
+ expect((await command(a,'post','/entities/resolve',{...input,details:{title:'😀 Canonical',...required}},key)).body).toEqual(one.body);
+ expect((await command(a,'post','/entities/resolve',{...input,details:{title:'Changed',...required}},key)).status).toBe(409);
  const distinct=await command(a,'post','/entities/resolve',input);expect(distinct.body.entity.id).not.toBe(one.body.entity.id);
- if(category==='movies') {
-  expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveMovieEntity' AND status='completed'",[a.accountId])).rows[0].n).toBe(2);
+ const typedOperation=category==='movies'?'resolveMovieEntity':category==='apps'?'resolveAppEntity':category==='products'?'resolveProductEntity':undefined;
+ if(typedOperation) {
+  expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND status='completed'",[a.accountId,typedOperation])).rows[0].n).toBe(2);
   expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveManualEntity'",[a.accountId])).rows[0].n).toBe(0);
  } else {
   expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveManualEntity'",[a.accountId])).rows[0].n).toBe(2);
