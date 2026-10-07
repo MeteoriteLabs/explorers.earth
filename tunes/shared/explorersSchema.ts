@@ -234,6 +234,11 @@ export const movieRecommendationContext=pgTable('movie_recommendation_context',{
  recommendationId:uuid('recommendation_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('movies'),region:text('region').notNull().default('US'),selectedProviderIds:bigint('selected_provider_ids',{mode:'number'}).array(),
 },t=>[index('movie_recommendation_context_account_idx').on(t.accountId,t.recommendationId)]);
 
+// 0047 owns composite ownership FKs, the image readiness guard and category revisions.
+// Provider photos are imported into owned media, so a place gallery is S3 bytes.
+export const recommendationPlacePhotos=pgTable('recommendation_place_photos',{
+ recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('places'),slotIndex:integer('slot_index').notNull(),mediaId:uuid('media_id').notNull(),
+},t=>[primaryKey({columns:[t.recommendationId,t.slotIndex]}),index('recommendation_place_photos_asset_idx').on(t.mediaId,t.accountId),index('recommendation_place_photos_account_idx').on(t.accountId,t.recommendationId)]);
 // 0046 owns the kind guards, the paired-coordinate invariant, URL schemes and grants.
 export const placeEntityDetails=pgTable('place_entity_details',{
  entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),

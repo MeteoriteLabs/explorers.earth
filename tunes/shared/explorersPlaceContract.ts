@@ -100,6 +100,12 @@ export function publicPlaceContact(context:PlaceRecommendationContext){
  };
 }
 
+// Place photos are owned media in ordered slots, not provider URLs. Owner decision,
+// 2026-10-07: all photos and media are stored in S3, so a provider photo is imported
+// into an owned asset first - the same contract book covers and movie media use.
+export const placePhotosSchema=z.object({photoMediaIds:z.array(z.string().uuid()).max(10)}).strict();
+export type PlacePhotos=z.infer<typeof placePhotosSchema>;
+
 export const placeEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('place'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:placeEntityDetailsSchema,origin:z.enum(['manual','provider'])}).strict();
 export const resolveManualPlaceSchema=z.object({kind:z.literal('manual'),category:z.literal('places'),details:z.object(entityFields).partial().extend({title:placeTitleSchema}).strict()}).strict();
 

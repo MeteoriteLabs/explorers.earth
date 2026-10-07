@@ -103,6 +103,27 @@ export async function publicPlaceLookup(db:Pick<Pool,'query'>,entityId:string){
  return {found:creators>0,creators};
 }
 
+/**
+ * The place gallery, as ordered owned media. Read by slot so the arrangement survives a
+ * reload, and bounded at ten by 0047.
+ */
+export async function readPlacePhotoMediaIds(db:Pick<Pool,'query'>,recommendationId:string,accountId:string):Promise<string[]>{
+ const rows=(await db.query<{media_id:string}>('SELECT media_id FROM recommendation_place_photos WHERE recommendation_id=$1 AND account_id=$2 ORDER BY slot_index',[recommendationId,accountId])).rows;
+ if(rows.length>10)throw new RecommendationFailure(413,'Place photos exceed the read bound');
+ return rows.map(row=>row.media_id);
+}
+
+/** Replaces the whole ordered set, so a reorder is never observed half-applied. */
+export async function writePlacePhotos(db:PoolClient,recommendationId:string,accountId:string,mediaIds:readonly string[]){
+ if(mediaIds.length>10)throw new RecommendationFailure(422,'Place photos exceed ten slots');
+ if(new Set(mediaIds).size!==mediaIds.length)throw new RecommendationFailure(422,'Place photos must be distinct');
+ await db.query('DELETE FROM recommendation_place_photos WHERE recommendation_id=$1 AND account_id=$2',[recommendationId,accountId]);
+ if(!mediaIds.length)return;
+ await db.query(`INSERT INTO recommendation_place_photos(recommendation_id,account_id,slot_index,media_id)
+   SELECT $1,$2,ordinality-1,value FROM unnest($3::uuid[]) WITH ORDINALITY AS entry(value,ordinality)`,
+  [recommendationId,accountId,[...mediaIds]]);
+}
+
 // An owner's display override re-presents a shared entity. The coordinates, address,
 // components and provider facts are excluded from the vocabulary, so they can never be
 // replaced here - one owner must not be able to move a place others recommend.

@@ -1,8 +1,8 @@
-import {randomUUID} from "node:crypto";
+import {createHash, randomUUID} from "node:crypto";
 import pg from "pg";
 import {afterAll, beforeAll, describe, expect, it} from "vitest";
 import {migrateMusicDatabase} from "../../db/migrate";
-import {insertPlaceDetails, readPlaceEntity, readPlaceContext, writePlaceContext, publicPlaceLookup, effectivePlaceDetails} from "../../repositories/placeCatalogRepository";
+import {insertPlaceDetails, readPlaceEntity, readPlaceContext, writePlaceContext, publicPlaceLookup, effectivePlaceDetails, readPlacePhotoMediaIds, writePlacePhotos} from "../../repositories/placeCatalogRepository";
 import {placeEntityDetailsSchema, emptyPlaceDetails, emptyPlaceContext, publicPlaceContact} from "../../../shared/explorersPlaceContract";
 
 /**
@@ -232,6 +232,45 @@ describePg("Places storage against PostgreSQL", () => {
     });
     await publish(b.accountId, b.recommendationId, `ownerb${randomUUID().slice(0, 8)}`);
     expect(await publicPlaceLookup(pool, a.entityId)).toEqual({found: true, creators: 2});
+  });
+
+  // Owner decision, 2026-10-07: all photos and media are stored in S3, so a place
+  // gallery is owned media in ordered slots rather than provider URLs.
+  it("stores the gallery as ordered owned media and compacts a removal", async () => {
+    const {accountId, recommendationId} = await place();
+    const media: string[] = [];
+    for (let index = 0; index < 3; index += 1)
+      media.push((await pool.query(
+        `INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
+         VALUES($1,'recommendation','ready','image/jpeg',2048,$2,now()) RETURNING id`,
+        [accountId, createHash("sha256").update(`photo-${index}-${recommendationId}`).digest()])).rows[0].id as string);
+    await withClient(client => writePlacePhotos(client, recommendationId, accountId, media));
+    expect(await readPlacePhotoMediaIds(pool, recommendationId, accountId)).toEqual(media);
+    // A removal compacts the slots rather than leaving a hole.
+    await withClient(client => writePlacePhotos(client, recommendationId, accountId, [media[2], media[0]]));
+    expect(await readPlacePhotoMediaIds(pool, recommendationId, accountId)).toEqual([media[2], media[0]]);
+    expect((await pool.query("SELECT slot_index FROM recommendation_place_photos WHERE recommendation_id=$1 ORDER BY slot_index", [recommendationId])).rows.map(r => r.slot_index)).toEqual([0, 1]);
+  });
+
+  it("refuses a duplicate, an unready and a foreign photo", async () => {
+    const {accountId, recommendationId} = await place();
+    const ready = (await pool.query(
+      `INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
+       VALUES($1,'recommendation','ready','image/jpeg',2048,$2,now()) RETURNING id`,
+      [accountId, createHash("sha256").update(`ready-${recommendationId}`).digest()])).rows[0].id as string;
+    const pending = (await pool.query(
+      `INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256)
+       VALUES($1,'recommendation','uploading','image/jpeg',2048,$2) RETURNING id`,
+      [accountId, createHash("sha256").update(`pending-${recommendationId}`).digest()])).rows[0].id as string;
+    const other = await place();
+    const foreign = (await pool.query(
+      `INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
+       VALUES($1,'recommendation','ready','image/jpeg',2048,$2,now()) RETURNING id`,
+      [other.accountId, createHash("sha256").update(`foreign-${recommendationId}`).digest()])).rows[0].id as string;
+    await expect(withClient(client => writePlacePhotos(client, recommendationId, accountId, [ready, ready]))).rejects.toThrow();
+    await expect(withClient(client => writePlacePhotos(client, recommendationId, accountId, [pending]))).rejects.toThrow();
+    await expect(withClient(client => writePlacePhotos(client, recommendationId, accountId, [foreign]))).rejects.toThrow();
+    expect(await readPlacePhotoMediaIds(pool, recommendationId, accountId)).toEqual([]);
   });
 
   it("refuses a place detail row on an entity of another kind", async () => {

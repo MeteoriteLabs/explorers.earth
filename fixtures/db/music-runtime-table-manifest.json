@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0046_explorers_places_catalog",
+    "expectedId": "0047_explorers_place_photo_media",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -48,7 +48,8 @@
       "0042_canonical_music_venue_release_function.sql",
       "0043_explorers_apps_provider_context.sql",        "0044_explorers_products_offer_context.sql",
         "0045_explorers_people_catalog.sql",
-        "0046_explorers_places_catalog.sql"
+        "0046_explorers_places_catalog.sql",
+        "0047_explorers_place_photo_media.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -191,6 +192,12 @@
     },
     {
       "name": "recommendation_app_screenshots",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_place_photos",
       "managedBy": "drizzle",
       "family": "media",
       "lifecycle": "detach-on-deletion"

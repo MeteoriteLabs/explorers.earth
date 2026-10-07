@@ -75,7 +75,8 @@
     "0043_explorers_apps_provider_context",
     "0044_explorers_products_offer_context",
     "0045_explorers_people_catalog",
-    "0046_explorers_places_catalog"
+    "0046_explorers_places_catalog",
+    "0047_explorers_place_photo_media"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",
