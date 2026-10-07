@@ -4,6 +4,7 @@ import pg from "pg";
 import { io as connectSocket, type Socket } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
+import { createGuestCapability, hashGuestCapability } from "../policies/musicSurfacePolicy";
 import { createMusicSocketCredentialVerifier, MusicPrincipalService } from "../middleware/musicPrincipal";
 import { MusicDomainRepository } from "../repositories/musicDomainRepository";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
@@ -175,6 +176,48 @@ describePg("canonical owner Music socket handshake over a real stack", () => {
       headers: { Authorization: `Bearer ${credential}`, Origin: ORIGIN },
     });
     expect(asCredential.status).toBe(200);
+  }, 30_000);
+
+  it("admits a guest holding the hashed capability and refuses a revoked one", async () => {
+    // Ticket 6.3 ":32" keeps guest transport separate from owner authentication. The guest
+    // presents a capability and never a credential, the server stores only its hash, and
+    // revoking it denies a fresh connection without touching the owner's.
+    const capability = createGuestCapability();
+    await pool.query(
+      // 0002 requires rotation metadata whenever the hash changes, which is the rotation
+      // semantics ":32" asks to preserve: a hash cannot be swapped silently.
+      `UPDATE users SET guest_capability_hash=$2,guest_capability_rotated_at=now(),
+         guest_capability_revoked_at=NULL,allow_song_requests=true WHERE id=$1`,
+      [musicUserId, hashGuestCapability(capability)],
+    );
+
+    const guest = await connect({ guestCapability: capability });
+    expect(guest.connected).toBe(true);
+
+    await pool.query("UPDATE users SET guest_capability_revoked_at=now() WHERE id=$1", [musicUserId]);
+    await expect(connect({ guestCapability: capability })).rejects.toThrow();
+
+    // The owner path is unaffected by guest revocation: separate authority, separate token.
+    const credential = tokens.mintCanonical({ accountId, musicUserId, sessionVersion: 1 }).token;
+    const owner = await connect({ token: await mintTicket(credential) });
+    expect(owner.connected).toBe(true);
+
+    await pool.query("UPDATE users SET guest_capability_revoked_at=NULL WHERE id=$1", [musicUserId]);
+  }, 30_000);
+
+  it("disconnects a live owner socket when the lifecycle revokes it", async () => {
+    // Ticket 6.3 ":33" revocation while connected. MusicLifecycleService revokes through
+    // this registry, so a suspended or deleted owner loses socket authority and not only
+    // HTTP access - the obligation the epic records at ":54".
+    const credential = tokens.mintCanonical({ accountId, musicUserId, sessionVersion: 1 }).token;
+    const socket = await connect({ token: await mintTicket(credential) });
+    expect(socket.connected).toBe(true);
+
+    const disconnected = new Promise<void>((resolve) => { socket.once("disconnect", () => resolve()); });
+    await ownerRegistry.disconnectOwner(musicUserId);
+    await disconnected;
+
+    expect(socket.connected).toBe(false);
   }, 30_000);
 
   it("asks for a new ticket on every reconnect and admits the connection with it", async () => {
