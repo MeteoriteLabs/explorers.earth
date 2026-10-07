@@ -68,6 +68,10 @@ it('patches display fields partially and keeps screenshots to ten owned media ID
  expect(appDisplayFieldsSchema.safeParse({}).success).toBe(true);
  expect(appDisplayFieldsSchema.safeParse({developer:'Only this'}).success).toBe(true);
  expect(appDisplayFieldsSchema.safeParse({developer:'x',unknown:1}).success).toBe(false);
+ // appUrl is the app's identity, not presentation. A display override re-presents a
+ // shared entity for one owner, so permitting it would let that owner point everyone
+ // else's entity at a different URL.
+ expect(appDisplayFieldsSchema.safeParse({appUrl:'https://evil.example/app'}).success).toBe(false);
  const id=()=>'00000000-0000-4000-8000-0000000000'+String(10+Math.floor(Math.random()*89));
  expect(appScreenshotsSchema.safeParse({screenshotMediaIds:[]}).success).toBe(true);
  expect(appScreenshotsSchema.safeParse({screenshotMediaIds:Array.from({length:10},id)}).success).toBe(true);

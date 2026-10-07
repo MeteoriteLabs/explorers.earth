@@ -31,9 +31,13 @@ const fields={
  platforms:z.array(text(100).refine(v=>v.length>0,'Invalid platform')).max(16),
 };
 export const appEntityDetailsSchema=z.object(fields).strict().refine(v=>new TextEncoder().encode(JSON.stringify(v)).length<=8192,'App details too large');
-// Every field is owner-entered, so the editable set is the whole set. appUrl becomes
-// optional here because a display override patches fields rather than replacing them.
-export const appDisplayFieldsSchema=z.object(fields).partial().strict();
+// A display override re-presents a *shared* entity for one owner, so appUrl is excluded:
+// it is the app's identity, and letting one owner point a shared entity at a different URL
+// would change what the thing is rather than how it reads. Books strips its provider-owned
+// rating and ratings count for the same reason. Everything else is presentational and
+// patchable, and the fields stay optional because an override patches rather than replaces.
+const {appUrl:_identity,...overridable}=fields;
+export const appDisplayFieldsSchema=z.object(overridable).partial().strict();
 export const appEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('app'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:appEntityDetailsSchema,origin:z.literal('manual')}).strict();
 export const resolveManualAppSchema=z.object({kind:z.literal('manual'),category:z.literal('apps'),details:z.object(fields).partial().extend({title:appTitleSchema,appUrl:safeAppUrlSchema}).strict()}).strict();
 // Screenshots are owned media, so the command carries media IDs rather than URLs. 0043
