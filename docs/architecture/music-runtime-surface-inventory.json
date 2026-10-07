@@ -724,7 +724,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 13
+      "line": 19
     },
     {
       "method": "DELETE",
@@ -734,7 +734,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 33
+      "line": 39
     },
     {
       "method": "GET",
@@ -744,7 +744,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 82
+      "line": 98
     },
     {
       "method": "HEAD",
@@ -754,7 +754,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 83
+      "line": 99
     },
     {
       "method": "POST",
