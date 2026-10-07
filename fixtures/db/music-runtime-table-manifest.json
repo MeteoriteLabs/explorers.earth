@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0042_canonical_music_venue_release_function",
+    "expectedId": "0043_explorers_apps_provider_context",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -45,7 +45,8 @@
       "0039_music_venue_account_ownership.sql",
       "0040_canonical_music_venue_provisioning.sql",
       "0041_canonical_music_venue_release.sql",
-      "0042_canonical_music_venue_release_function.sql"
+      "0042_canonical_music_venue_release_function.sql",
+      "0043_explorers_apps_provider_context.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -77,6 +78,12 @@
       "managedBy": "drizzle",
       "family": "analytics",
       "lifecycle": "retain-minimized-retry-markers"
+    },
+    {
+      "name": "app_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
     },
     {
       "name": "book_entity_details",
@@ -149,6 +156,12 @@
       "managedBy": "drizzle",
       "family": "user-content",
       "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "recommendation_app_screenshots",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
     },
     {
       "name": "recommendation_book_covers",

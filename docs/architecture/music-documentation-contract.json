@@ -71,7 +71,8 @@
     "0039_music_venue_account_ownership",
     "0040_canonical_music_venue_provisioning",
     "0041_canonical_music_venue_release",
-    "0042_canonical_music_venue_release_function"
+    "0042_canonical_music_venue_release_function",
+    "0043_explorers_apps_provider_context"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

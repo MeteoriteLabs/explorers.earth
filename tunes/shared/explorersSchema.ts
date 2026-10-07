@@ -180,6 +180,15 @@ export const recommendationMedia=pgTable('recommendation_media',{
   recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),mediaId:uuid('media_id').notNull(),
   displayOrder:integer('display_order').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[primaryKey({columns:[t.recommendationId,t.mediaId]})]);
+// 0043 owns the kind guard, URL scheme and price-tier CHECKs, indexes and grants.
+export const appEntityDetails=pgTable('app_entity_details',{
+ entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
+ appUrl:text('app_url').notNull(),developer:text('developer'),logoUrl:text('logo_url'),description:text('description'),downloadUrl:text('download_url'),priceTier:text('price_tier'),platforms:text('platforms').array().notNull().default(sql`'{}'::text[]`),
+});
+// 0043 owns composite ownership FKs, the image guard and category revisions.
+export const recommendationAppScreenshots=pgTable('recommendation_app_screenshots',{
+ recommendationId:uuid('recommendation_id').notNull(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('apps'),slotIndex:integer('slot_index').notNull(),mediaId:uuid('media_id').notNull(),
+},t=>[primaryKey({columns:[t.recommendationId,t.slotIndex]}),index('recommendation_app_screenshots_asset_idx').on(t.mediaId,t.accountId),index('recommendation_app_screenshots_account_idx').on(t.accountId,t.recommendationId)]);
 // 0034 owns kind/category guards, cascading composite FK, revision triggers and grants.
 export const bookEntityDetails=pgTable('book_entity_details',{
  entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
